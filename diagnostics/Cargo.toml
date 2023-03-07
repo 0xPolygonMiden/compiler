@@ -1,0 +1,24 @@
+[package]
+name = "miden-diagnostics"
+description = "Diagnostics and source-level debugging information for Miden IR"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+atty = "0.2"
+codespan = "0.11"
+codespan-reporting = "0.11"
+flurry = "0.4"
+miden_diagnostics_macros = { path = "../diagnostics-macros" }
+parking_lot.workspace = true
+rustc-hash.workspace = true
+unicode-width = "0.1"

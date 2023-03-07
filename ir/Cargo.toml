@@ -1,0 +1,19 @@
+[package]
+name = "miden-ir"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+miden-diagnostics = { path = "../diagnostics" }
+thiserror.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

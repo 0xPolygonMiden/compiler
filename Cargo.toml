@@ -1,0 +1,39 @@
+[workspace]
+
+members = [
+  "diagnostics",
+  "ir",
+  "tools/*",
+]
+
+[workspace.package]
+version = "0.1.0"
+rust-version = "1.67"
+authors = ["Miden Team"]
+description = "An intermediate representation and compiler for Miden Assembly"
+repository = "https://github.com/0xPolygonMiden/miden-ir"
+homepage = "https://github.com/0xPolygonMiden/miden-ir"
+documentation = "https://github.com/0xPolygonMiden/miden-ir"
+categories = ["Compilers"]
+keywords = ["compiler", "miden"]
+license = "MIT"
+readme = "README.md"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+anyhow = "1.0"
+bitflags = "1.3"
+env_logger = "0.9"
+log = "0.4"
+parking_lot = "0.12"
+parking_lot_core = "0.9"
+pretty_assertions = "1.0"
+rustc-hash = "1.1"
+smallvec = { version = "1.9", features = ["union", "const_generics", "const_new", "specialization"] }
+smallstr = { version = "0.3", features = ["union"] }
+thiserror = "1.0"
+
+[profile.release]
+opt-level = 2
+lto = false

@@ -1,0 +1,23 @@
+[package]
+name = "midenc"
+description = "The compiler frontend/executable for Miden"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bitflags.workspace = true
+clap = { version = "4.1", features = ["derive"] }
+env_logger.workspace = true
+human-panic = "1.0"
+log.workspace = true
+miden-diagnostics = { path = "../../diagnostics" }
