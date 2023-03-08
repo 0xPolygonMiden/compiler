@@ -133,15 +133,22 @@ description = "Run cargo-bloat"
 command = "cargo"
 args = ["bloat", "${@}"]
 
+[tasks.midenc]
+category = "Build"
+description = "Builds midenc and installs it to the bin folder"
+command = "rustup"
+args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "-Z", "unstable-options", "build", "-p", "midenc", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
+
 [tasks.build]
 category = "Build"
-description = "Runs cargo build"
-command = "rustup"
-args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "build", "${@}"]
+description = "Runs cargo build on the workspace"
+run_task = [
+  { name = ["midenc", "build-filecheck"] },
+]
 
 [tasks.check]
 category = "Build"
-description = "Runs cargo check"
+description = "Runs cargo check on the workspace"
 command = "rustup"
 args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "check", "${@}"]
 
@@ -154,7 +161,7 @@ args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "clean", "${@}"]
 [tasks.test]
 category = "Test"
 description = "Runs all tests"
-dependencies = ["test-rust"]
+dependencies = ["test-rust", "test-filecheck"]
 
 [tasks.test-rust]
 category = "Test"
@@ -162,3 +169,26 @@ description = "Runs tests written in Rust"
 command = "rustup"
 args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "test", "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)", "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )", "${@}"]
 
+[tasks.test-filecheck]
+category = "Test"
+description = "Runs file-based checks using filecheck"
+command = "bin/filecheck"
+args = ["-t", "mir", "-t", "sw", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/test/lit"]
+dependencies = [
+  "filecheck",
+]
+
+[tasks.filecheck]
+category = "Test"
+description = "Invokes filecheck with the given arguments"
+command = "bin/filecheck"
+args = ["${@}"]
+dependencies = [
+  "build",
+]
+
+[tasks.build-filecheck]
+category = "Build"
+description = "Builds the filecheck helper"
+command = "rustup"
+args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "-Z", "unstable-options", "build", "-p", "filecheck", "--release", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]

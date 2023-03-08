@@ -1,0 +1,10 @@
+[package]
+name = "filecheck"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+lit = { git = "https://github.com/bitwalker/lit", branch = "main" }
