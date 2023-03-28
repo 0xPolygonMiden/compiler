@@ -173,9 +173,9 @@ args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "test", "@@remove-empty(CARGO
 category = "Test"
 description = "Runs file-based checks using filecheck"
 command = "bin/filecheck"
-args = ["-t", "mir", "-t", "sw", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/test/lit"]
+args = ["-t", "mir", "-t", "sw", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit"]
 dependencies = [
-  "filecheck",
+  "build-filecheck",
 ]
 
 [tasks.filecheck]
