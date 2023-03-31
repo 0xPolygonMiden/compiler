@@ -31,7 +31,7 @@ parking_lot = "0.12"
 parking_lot_core = "0.9"
 pretty_assertions = "1.0"
 rustc-hash = "1.1"
-smallvec = { version = "1.9", features = ["union", "const_generics", "const_new", "specialization"] }
+smallvec = { version = "1.9", features = ["union", "const_generics", "const_new"] }
 smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
 

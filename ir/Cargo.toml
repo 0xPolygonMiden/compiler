@@ -12,8 +12,13 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bitflags.workspace = true
+cranelift-entity = "0.81"
+intrusive-collections = "0.9"
 miden-diagnostics = { path = "../diagnostics" }
+smallvec.workspace = true
 thiserror.workspace = true
+typed-arena = "2.0"
 
 [dev-dependencies]
 pretty_assertions.workspace = true
