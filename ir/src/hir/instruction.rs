@@ -68,8 +68,10 @@ pub enum Instruction {
     CondBr(CondBr),
     Switch(Switch),
     Ret(Ret),
+    MemCpy(MemCpy),
     PrimOp(PrimOp),
     PrimOpImm(PrimOpImm),
+    Test(Test),
     InlineAsm(InlineAsm),
 }
 impl Instruction {
@@ -84,8 +86,10 @@ impl Instruction {
             | Self::CondBr(CondBr { ref op, .. })
             | Self::Switch(Switch { ref op, .. })
             | Self::Ret(Ret { ref op, .. })
+            | Self::MemCpy(MemCpy { ref op, .. })
             | Self::PrimOp(PrimOp { ref op, .. })
             | Self::PrimOpImm(PrimOpImm { ref op, .. })
+            | Self::Test(Test { ref op, .. })
             | Self::InlineAsm(InlineAsm { ref op, .. }) => *op,
         }
     }
@@ -101,8 +105,10 @@ impl Instruction {
             Self::CondBr(CondBr { ref cond, .. }) => core::slice::from_ref(cond),
             Self::Switch(Switch { ref arg, .. }) => core::slice::from_ref(arg),
             Self::Ret(Ret { ref args, .. }) => args.as_slice(pool),
+            Self::MemCpy(MemCpy { ref args, .. }) => args.as_slice(),
             Self::PrimOp(PrimOp { ref args, .. }) => args.as_slice(pool),
             Self::PrimOpImm(PrimOpImm { ref args, .. }) => args.as_slice(pool),
+            Self::Test(Test { ref arg, .. }) => core::slice::from_ref(arg),
             Self::InlineAsm(InlineAsm { ref args, .. }) => args.as_slice(pool),
         }
     }
@@ -118,8 +124,10 @@ impl Instruction {
             Self::CondBr(CondBr { ref mut cond, .. }) => core::slice::from_mut(cond),
             Self::Switch(Switch { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::Ret(Ret { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::MemCpy(MemCpy { ref mut args, .. }) => args.as_mut_slice(),
             Self::PrimOp(PrimOp { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::PrimOpImm(PrimOpImm { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::Test(Test { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::InlineAsm(InlineAsm { ref mut args, .. }) => args.as_mut_slice(pool),
         }
     }
@@ -195,6 +203,8 @@ pub enum Opcode {
     AssertTest,
     /// Represents an immediate integer value
     ImmInt,
+    /// Represents an immediate floating-point value
+    ImmFloat,
     /// Represents an immediate "null" value, where all bytes of the representation are zeroed
     ImmNull,
     /// Loads the address of a given value into memory
@@ -270,7 +280,7 @@ impl Opcode {
             Self::Assert | Self::Assertz | Self::AssertTest => 1,
             Self::AssertEq => 2,
             // Immediates/constants have none
-            Self::ImmInt | Self::ImmNull => 0,
+            Self::ImmInt | Self::ImmFloat | Self::ImmNull => 0,
             // Binary ops always have two
             Self::Store
             | Self::Add
@@ -347,6 +357,7 @@ impl Opcode {
             Self::Test | Self::IsOdd => smallvec![Type::I1],
             // For these ops, the controlling type variable determines the type for the op
             Self::ImmInt
+            | Self::ImmFloat
             | Self::ImmNull
             | Self::PtrToInt
             | Self::IntToPtr
@@ -429,6 +440,7 @@ impl fmt::Display for Opcode {
             Self::AssertEq => f.write_str("assert.eq"),
             Self::AssertTest => f.write_str("assert.test"),
             Self::ImmInt => f.write_str("const.int"),
+            Self::ImmFloat => f.write_str("const.float"),
             Self::ImmNull => f.write_str("const.null"),
             Self::AddrOf => f.write_str("addrof"),
             Self::Load => f.write_str("load"),
@@ -555,6 +567,21 @@ pub struct Switch {
 pub struct Ret {
     pub op: Opcode,
     pub args: ValueList,
+}
+
+/// Test and AssertTest
+#[derive(Debug, Clone)]
+pub struct Test {
+    pub op: Opcode,
+    pub arg: Value,
+    pub ty: Type,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemCpy {
+    pub op: Opcode,
+    pub args: [Value; 3],
+    pub ty: Type,
 }
 
 /// A primop/intrinsic that takes a variable number of arguments

@@ -30,6 +30,23 @@ pub enum Type {
 }
 impl Type {
     #[inline]
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            Self::I1
+            | Self::I8
+            | Self::I16
+            | Self::I32
+            | Self::I64
+            | Self::I128
+            | Self::I256
+            | Self::Isize
+            | Self::F64
+            | Self::Felt => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn is_integer(&self) -> bool {
         match self {
             Self::I1

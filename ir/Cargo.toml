@@ -16,6 +16,7 @@ bitflags.workspace = true
 cranelift-entity = "0.81"
 intrusive-collections = "0.9"
 miden-diagnostics = { path = "../diagnostics" }
+paste = "1.0"
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
