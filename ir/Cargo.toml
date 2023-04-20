@@ -21,3 +21,9 @@ paste = "1.0"
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
+miden-assembly = { git = "https://github.com/0xpolygonmiden/miden-vm", member = "assembly", branch = "next" }
+miden-core = { git = "https://github.com/0xpolygonmiden/miden-vm", member = "core", branch = "next" }
+winter-utils = { version = "0.6", default-features = false }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
