@@ -5,11 +5,13 @@ mod function;
 mod immediates;
 mod instruction;
 mod layout;
+#[cfg(test)]
+mod tests;
 mod value;
 mod write;
 
 pub use self::block::{Block, BlockData};
-pub use self::builder::{InstBuilder, InstBuilderBase};
+pub use self::builder::{FunctionBuilder, InstBuilder, InstBuilderBase};
 pub use self::dataflow::DataFlowGraph;
 pub use self::function::{FuncRef, Function, Signature, Visibility};
 pub use self::immediates::Immediate;
@@ -40,7 +42,7 @@ pub struct Module {
     pub name: String,
     /// The source span from which this module was parsed, if available
     pub span: SourceSpan,
-    /// This is the list of functions defined in this module
+    /// This is the set of functions defined in this module
     pub functions: Vec<Function>,
     /// This map associates function references to metadata about that function (arity, type, visibility, etc.)
     ///
@@ -99,9 +101,11 @@ impl Module {
         self.functions.iter_mut().find(|f| f.id == id)
     }
 
-    /// Declares a function in the current module with the given signature, and creates the empty
-    /// definition for it. Use the returned `FuncRef` to obtain a reference to that definition using
-    /// `get_function` or `get_function_mut`.
+    /// Declares a function known to the current module with the given signature.
+    ///
+    /// Use the returned `FuncRef` to refer to the declared function uniquely. For functions
+    /// defined in this module, `get_function` or `get_function_mut` can be used to get the
+    /// definition for the `FuncRef` returned.
     pub fn declare_function(&mut self, signature: Signature) -> FuncRef {
         let mut signatures = self.signatures.borrow_mut();
         let mut names = self.names.borrow_mut();
@@ -117,6 +121,10 @@ impl Module {
     ///
     /// This function will panic if the function provided is not declared in this module
     pub fn define_function(&mut self, function: Function) {
+        assert!(
+            self.get_function(function.id).is_none(),
+            "cannot redefine a function"
+        );
         let signatures = self.signatures.borrow();
         assert!(
             signatures.get(function.id).is_some(),

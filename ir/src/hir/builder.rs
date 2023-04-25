@@ -1,8 +1,131 @@
+use cranelift_entity::packed_option::PackedOption;
+
 use miden_diagnostics::SourceSpan;
 
 use crate::types::Type;
 
 use super::*;
+
+pub struct FunctionBuilder<'a> {
+    pub func: &'a mut Function,
+    pub entry: Block,
+    position: PackedOption<Block>,
+}
+impl<'a> FunctionBuilder<'a> {
+    pub fn new(func: &'a mut Function) -> Self {
+        let entry = func.dfg.make_block();
+        let position = Some(entry);
+
+        Self {
+            func,
+            entry,
+            position: position.into(),
+        }
+    }
+
+    #[inline]
+    pub fn current_block(&self) -> Block {
+        self.position.expand().unwrap()
+    }
+
+    #[inline]
+    pub fn switch_to_block(&mut self, block: Block) {
+        self.position = PackedOption::from(block);
+    }
+
+    #[inline]
+    pub fn create_block(&mut self) -> Block {
+        self.func.dfg.make_block()
+    }
+
+    pub fn remove_block(&mut self, block: Block) {
+        assert_ne!(
+            block,
+            self.current_block(),
+            "cannot remove block the builder is currently inserting in"
+        );
+        self.func.dfg.remove_block(block);
+    }
+
+    #[inline]
+    pub fn block_params(&self, block: Block) -> &[Value] {
+        self.func.dfg.block_params(block)
+    }
+
+    #[inline]
+    pub fn append_block_param(&mut self, block: Block, ty: Type, span: SourceSpan) -> Value {
+        self.func.dfg.append_block_param(block, ty, span)
+    }
+
+    #[inline]
+    pub fn inst_results(&self, inst: Inst) -> &[Value] {
+        self.func.dfg.inst_results(inst)
+    }
+
+    #[inline]
+    pub fn first_result(&self, inst: Inst) -> Value {
+        self.func.dfg.first_result(inst)
+    }
+
+    #[inline]
+    pub fn get_callee(&self, name: &str) -> Option<FuncRef> {
+        self.func.dfg.get_callee(name)
+    }
+
+    #[inline]
+    pub fn register_callee(&self, name: String, signature: Signature) -> FuncRef {
+        self.func.dfg.register_callee(name, signature)
+    }
+
+    pub fn ins<'short>(&'short mut self) -> FuncInstBuilder<'short, 'a> {
+        let block = self
+            .position
+            .expect("must be in a block to insert instructions");
+        FuncInstBuilder::new(self, block)
+    }
+
+    pub(super) fn is_block_terminated(&self, block: Block) -> bool {
+        if let Some(inst) = self.func.dfg.last_inst(block) {
+            let data = &self.func.dfg[inst];
+            data.opcode().is_terminator()
+        } else {
+            false
+        }
+    }
+}
+
+pub struct FuncInstBuilder<'a, 'b: 'a> {
+    builder: &'a mut FunctionBuilder<'b>,
+    block: Block,
+}
+impl<'a, 'b> FuncInstBuilder<'a, 'b> {
+    fn new(builder: &'a mut FunctionBuilder<'b>, block: Block) -> Self {
+        assert!(builder.func.dfg.is_block_inserted(block));
+
+        Self { builder, block }
+    }
+}
+impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilder<'a, 'b> {
+    fn data_flow_graph(&self) -> &DataFlowGraph {
+        &self.builder.func.dfg
+    }
+
+    fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
+        &mut self.builder.func.dfg
+    }
+
+    fn build(self, data: Instruction, ty: Type, span: SourceSpan) -> (Inst, &'a mut DataFlowGraph) {
+        debug_assert!(
+            !self.builder.is_block_terminated(self.block),
+            "cannot append an instruction to a block that is already terminated"
+        );
+
+        let inst = self.builder.func.dfg.push_inst(self.block, data, span);
+        self.builder.func.dfg.make_inst_results(inst, ty);
+
+        (inst, &mut self.builder.func.dfg)
+    }
+}
 
 pub trait InstBuilderBase<'f>: Sized {
     fn data_flow_graph(&self) -> &DataFlowGraph;
