@@ -13,8 +13,19 @@ pub struct FunctionBuilder<'a> {
 }
 impl<'a> FunctionBuilder<'a> {
     pub fn new(func: &'a mut Function) -> Self {
-        let entry = func.dfg.make_block();
-        let position = Some(entry);
+        let (entry, position) = match func.dfg.entry_block() {
+            None => {
+                let entry = func.dfg.make_block();
+                for param in func.signature.params() {
+                    func.dfg.append_block_param(entry, param.clone(), func.span);
+                }
+                (entry, entry)
+            }
+            Some(entry) => {
+                let position = func.dfg.last_block().unwrap_or(entry);
+                (entry, position)
+            }
+        };
 
         Self {
             func,
@@ -124,6 +135,56 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilder<'a, 'b> {
         self.builder.func.dfg.make_inst_results(inst, ty);
 
         (inst, &mut self.builder.func.dfg)
+    }
+}
+
+/// Instruction builder that replaces an existing instruction.
+///
+/// The inserted instruction will have the same `Inst` number as the old one.
+///
+/// If the old instruction still has result values attached, it is assumed that the new instruction
+/// produces the same number and types of results. The old result values are preserved. If the
+/// replacement instruction format does not support multiple results, the builder panics. It is a
+/// bug to leave result values dangling.
+pub struct ReplaceBuilder<'f> {
+    dfg: &'f mut DataFlowGraph,
+    inst: Inst,
+}
+
+impl<'f> ReplaceBuilder<'f> {
+    /// Create a `ReplaceBuilder` that will overwrite `inst`.
+    pub fn new(dfg: &'f mut DataFlowGraph, inst: Inst) -> Self {
+        Self { dfg, inst }
+    }
+}
+
+impl<'f> InstBuilderBase<'f> for ReplaceBuilder<'f> {
+    fn data_flow_graph(&self) -> &DataFlowGraph {
+        self.dfg
+    }
+
+    fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
+        self.dfg
+    }
+
+    fn build(
+        self,
+        data: Instruction,
+        ctrl_typevar: Type,
+        span: SourceSpan,
+    ) -> (Inst, &'f mut DataFlowGraph) {
+        use miden_diagnostics::Span;
+
+        // Splat the new instruction on top of the old one.
+        self.dfg.insts[self.inst].replace(Span::new(span, data));
+
+        if !self.dfg.has_results(self.inst) {
+            // The old result values were either detached or non-existent.
+            // Construct new ones.
+            self.dfg.make_inst_results(self.inst, ctrl_typevar);
+        }
+
+        (self.inst, self.dfg)
     }
 }
 
@@ -524,11 +585,11 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.Switch(arg, arms, default, span).0
     }
 
-    fn ret(mut self, returning: Value, span: SourceSpan) -> Inst {
+    fn ret(mut self, returning: Option<Value>, span: SourceSpan) -> Inst {
         let mut vlist = ValueList::default();
-        {
+        if let Some(value) = returning {
             let pool = &mut self.data_flow_graph_mut().value_lists;
-            vlist.push(returning, pool);
+            vlist.push(value, pool);
         }
         self.Ret(vlist, span).0
     }

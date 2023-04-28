@@ -38,6 +38,14 @@ impl DataFlowGraph {
         }
     }
 
+    #[cfg(test)]
+    pub fn empty() -> Self {
+        Self::new(
+            Rc::new(RefCell::new(PrimaryMap::new())),
+            Rc::new(RefCell::new(BTreeMap::new())),
+        )
+    }
+
     /// Returns the signature of the given function reference
     pub fn callee_signature(&self, callee: FuncRef) -> Ref<'_, Signature> {
         Ref::map(self.signatures.borrow(), |sigs| sigs.get(callee).unwrap())
@@ -118,6 +126,11 @@ impl DataFlowGraph {
         }
     }
 
+    /// Create a `ReplaceBuilder` that will replace `inst` with a new instruction in-place.
+    pub fn replace(&mut self, inst: Inst) -> ReplaceBuilder {
+        ReplaceBuilder::new(self, inst)
+    }
+
     pub fn append_result(&mut self, inst: Inst, ty: Type) -> Value {
         let res = self.values.next_key();
         let num = self.results[inst].push(res, &mut self.value_lists);
@@ -143,6 +156,47 @@ impl DataFlowGraph {
         self.results[inst].as_slice(&self.value_lists)
     }
 
+    pub fn inst_block(&self, inst: Inst) -> Option<Block> {
+        let inst_data = &self.insts[inst];
+        if inst_data.link.is_linked() {
+            Some(inst_data.block)
+        } else {
+            None
+        }
+    }
+
+    pub fn pp_block(&self, pp: ProgramPoint) -> Block {
+        match pp {
+            ProgramPoint::Block(block) => block,
+            ProgramPoint::Inst(inst) => self.inst_block(inst).expect("program point not in layout"),
+        }
+    }
+
+    pub fn pp_cmp<A, B>(&self, a: A, b: B) -> core::cmp::Ordering
+    where
+        A: Into<ProgramPoint>,
+        B: Into<ProgramPoint>,
+    {
+        let a = a.into();
+        let b = b.into();
+        debug_assert_eq!(self.pp_block(a), self.pp_block(b));
+        let a_seq = match a {
+            ProgramPoint::Block(_) => 0,
+            ProgramPoint::Inst(inst) => {
+                let block = self.insts[inst].block;
+                self.blocks[block].insts().position(|i| i == inst).unwrap()
+            }
+        };
+        let b_seq = match b {
+            ProgramPoint::Block(_) => 0,
+            ProgramPoint::Inst(inst) => {
+                let block = self.insts[inst].block;
+                self.blocks[block].insts().position(|i| i == inst).unwrap()
+            }
+        };
+        a_seq.cmp(&b_seq)
+    }
+
     pub fn call_signature(&self, inst: Inst) -> Option<Signature> {
         match self.insts[inst].analyze_call(&self.value_lists) {
             CallInfo::NotACall => None,
@@ -162,6 +216,18 @@ impl DataFlowGraph {
         Blocks {
             cursor: self.blocks.cursor(),
         }
+    }
+
+    pub fn entry_block(&self) -> Option<Block> {
+        self.blocks.first().map(|b| b.key())
+    }
+
+    pub(super) fn last_block(&self) -> Option<Block> {
+        self.blocks.last().map(|b| b.key())
+    }
+
+    pub fn num_blocks(&self) -> usize {
+        self.blocks.iter().count()
     }
 
     pub fn block_insts<'f>(&'f self, block: Block) -> impl Iterator<Item = Inst> + 'f {

@@ -38,6 +38,10 @@ impl InstNode {
             data,
         }
     }
+
+    pub fn replace(&mut self, data: Span<Instruction>) {
+        self.data = data;
+    }
 }
 impl Deref for InstNode {
     type Target = Span<Instruction>;
@@ -271,6 +275,13 @@ impl Opcode {
     pub fn is_terminator(&self) -> bool {
         match self {
             Self::Br | Self::CondBr | Self::Switch | Self::Ret => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_branch(&self) -> bool {
+        match self {
+            Self::Br | Self::CondBr | Self::Switch => true,
             _ => false,
         }
     }

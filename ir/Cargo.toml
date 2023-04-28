@@ -13,7 +13,8 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 bitflags.workspace = true
-cranelift-entity = "0.81"
+cranelift-entity = "0.95"
+cranelift-bforest = "0.95"
 intrusive-collections = "0.9"
 miden-diagnostics = { path = "../diagnostics" }
 paste = "1.0"

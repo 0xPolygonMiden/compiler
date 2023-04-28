@@ -1,5 +1,6 @@
 mod block;
 mod builder;
+mod cfg;
 mod dataflow;
 mod function;
 mod immediates;
@@ -11,7 +12,8 @@ mod value;
 mod write;
 
 pub use self::block::{Block, BlockData};
-pub use self::builder::{FunctionBuilder, InstBuilder, InstBuilderBase};
+pub use self::builder::{FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder};
+pub use self::cfg::{BlockPredecessor, ControlFlowGraph};
 pub use self::dataflow::DataFlowGraph;
 pub use self::function::{FuncRef, Function, Signature, Visibility};
 pub use self::immediates::Immediate;
@@ -132,5 +134,52 @@ impl Module {
         );
 
         self.functions.push(function);
+    }
+}
+
+/// A `ProgramPoint` represents a position in a function where the live range of an SSA value can
+/// begin or end. It can be either:
+///
+/// 1. An instruction or
+/// 2. A block header.
+///
+/// This corresponds more or less to the lines in the textual form of the IR.
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum ProgramPoint {
+    /// An instruction in the function.
+    Inst(Inst),
+    /// A block header.
+    Block(Block),
+}
+impl ProgramPoint {
+    /// Get the instruction we know is inside.
+    pub fn unwrap_inst(self) -> Inst {
+        match self {
+            Self::Inst(x) => x,
+            Self::Block(x) => panic!("expected inst: {}", x),
+        }
+    }
+}
+impl From<Inst> for ProgramPoint {
+    fn from(inst: Inst) -> Self {
+        Self::Inst(inst)
+    }
+}
+impl From<Block> for ProgramPoint {
+    fn from(block: Block) -> Self {
+        Self::Block(block)
+    }
+}
+impl fmt::Display for ProgramPoint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Self::Inst(x) => write!(f, "{}", x),
+            Self::Block(x) => write!(f, "{}", x),
+        }
+    }
+}
+impl fmt::Debug for ProgramPoint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ProgramPoint({})", self)
     }
 }

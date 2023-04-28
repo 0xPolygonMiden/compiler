@@ -100,7 +100,7 @@ fn integration_test_function_builder() {
 
         // The result block simply redirects its argument to the caller, so lets flesh out its definition real quick
         builder.switch_to_block(result_block);
-        builder.ins().ret(result, SourceSpan::default());
+        builder.ins().ret(Some(result), SourceSpan::default());
 
         // Now, starting from the entry block, we build out the rest of the function in control flow order
         builder.switch_to_block(entry);
@@ -144,7 +144,7 @@ fn integration_test_function_builder() {
             builder.first_result(call)
         };
         let fibn = builder.ins().add(fib1, fib2, SourceSpan::default());
-        builder.ins().ret(fibn, SourceSpan::default());
+        builder.ins().ret(Some(fibn), SourceSpan::default());
     }
 
     // Now, attach our built function to the module it was declared in
