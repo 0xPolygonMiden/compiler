@@ -494,7 +494,6 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     binary_numeric_op!(max, Opcode::Max);
     binary_int_op!(r#mod, Opcode::Mod);
     binary_int_op!(divmod, Opcode::DivMod);
-    binary_int_op!(pow2, Opcode::Pow2);
     binary_int_op!(exp, Opcode::Exp);
     binary_int_op!(and, Opcode::And);
     binary_int_op!(or, Opcode::Or);
@@ -505,6 +504,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     binary_int_op!(rotr, Opcode::Rotr);
     unary_numeric_op!(neg, Opcode::Neg);
     unary_numeric_op!(inv, Opcode::Inv);
+    unary_int_op!(pow2, Opcode::Pow2);
     unary_int_op!(not, Opcode::Not);
     unary_int_op!(popcnt, Opcode::Popcnt);
 
