@@ -20,4 +20,4 @@ clap.workspace = true
 env_logger.workspace = true
 human-panic = "1.0"
 log.workspace = true
-miden-diagnostics = { path = "../../diagnostics" }
+miden-diagnostics.workspace = true
