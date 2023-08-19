@@ -21,3 +21,4 @@ env_logger.workspace = true
 human-panic = "1.0"
 log.workspace = true
 miden-diagnostics.workspace = true
+miden-frontend-wasm.workspace = true

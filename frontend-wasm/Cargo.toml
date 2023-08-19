@@ -1,0 +1,26 @@
+[package]
+name = "miden-frontend-wasm"
+description = "Build MidenIR from Wasm"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+miden-ir.workspace = true
+miden-diagnostics.workspace = true
+thiserror.workspace = true
+smallvec.workspace = true
+log.workspace = true
+anyhow.workspace = true
+wasmparser = "0.107"
+itertools = "0.11"
+
+[dev-dependencies]
+wat = "1.0.69"
+expect-test = "1.4.1"
