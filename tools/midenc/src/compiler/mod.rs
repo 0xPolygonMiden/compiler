@@ -2,11 +2,13 @@ mod options;
 
 pub use self::options::Options;
 
+use anyhow::anyhow;
 use std::sync::Arc;
 use std::time::Instant;
 
 use miden_diagnostics::term::termcolor::ColorChoice;
 use miden_diagnostics::*;
+use miden_frontend_wasm::WasmTranslationConfig;
 
 use crate::utils::HumanDuration;
 
@@ -30,12 +32,38 @@ pub fn compile(
         diagnostics.fatal("No inputs found!").raise();
     }
 
+    if options.input_files.len() > 1 {
+        diagnostics
+            .fatal("Multiple Wasm files are not supported!")
+            .raise();
+    }
+
     // Track when compilation began
     let start = Instant::now();
 
-    // let files = options.input_files.clone();
-    // let artifacts = compile()?;
-    // diagnostics.abort_if_errors();
+    let input_file = options.input_files.first().unwrap();
+    let wasm_data = match input_file {
+        FileName::Real(path) => match std::fs::read(path) {
+            Ok(data) => data,
+            Err(e) => diagnostics
+                .fatal(format!(
+                    "error reading file {}, with error {e}",
+                    path.display()
+                ))
+                .raise(),
+        },
+        FileName::Virtual(_) => todo!("virtual files are not yet supported"),
+    };
+    let config = WasmTranslationConfig::default();
+    let res = miden_frontend_wasm::translate_module(&wasm_data, &config, &diagnostics);
+    let _module = match res {
+        Ok(module) => module,
+        Err(e) => {
+            diagnostics.emit(e);
+            return Err(anyhow!("error translating module"));
+        }
+    };
+    diagnostics.abort_if_errors();
 
     let duration = HumanDuration::since(start);
     diagnostics.success(

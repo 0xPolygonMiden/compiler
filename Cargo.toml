@@ -8,6 +8,7 @@ members = [
   "hir-transform",
   "hir-type",
   "tools/*",
+  "frontend-wasm"
 ]
 
 [workspace.package]
@@ -37,11 +38,17 @@ parking_lot = "0.12"
 parking_lot_core = "0.9"
 pretty_assertions = "1.0"
 rustc-hash = "1.1"
-smallvec = { version = "1.9", features = ["union", "const_generics", "const_new"] }
+smallvec = { version = "1.9", features = [
+  "union",
+  "const_generics",
+  "const_new",
+] }
 smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
 miden-diagnostics = { git = "https://github.com/0xpolygonmiden/miden-diagnostics" }
 miden-parsing = { git = "https://github.com/0xpolygonmiden/miden-parsing" }
+miden-ir = { path = "ir" }
+miden-frontend-wasm = { path = "frontend-wasm" }
 
 [profile.release]
 opt-level = 2
