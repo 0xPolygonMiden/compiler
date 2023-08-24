@@ -57,7 +57,7 @@ pub fn translate_module(
 
             Payload::TableSection(tables) => {
                 validator.table_section(&tables)?;
-                unsupported_diag!(diagnostics, "Table sections are not supported");
+                // skip the table section
             }
 
             Payload::MemorySection(memories) => {
@@ -77,7 +77,7 @@ pub fn translate_module(
 
             Payload::ExportSection(exports) => {
                 validator.export_section(&exports)?;
-                unsupported_diag!(diagnostics, "Export sections are not supported");
+                // skip the export section
             }
 
             Payload::StartSection { func, range } => {
