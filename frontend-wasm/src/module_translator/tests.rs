@@ -49,7 +49,7 @@ fn module() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn main() ->   {
             block0:
@@ -77,7 +77,7 @@ fn locals() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn main() ->   {
             block0:
@@ -115,7 +115,7 @@ fn locals_inter_block() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn main() -> i32  {
             block0:
@@ -158,7 +158,7 @@ fn func_call() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn add(i32, i32) -> i32  {
             block0(v0: i32, v1: i32):
@@ -199,7 +199,7 @@ fn br() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn main() -> i32  {
             block0:
@@ -242,7 +242,7 @@ fn loop_br_if() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn main() -> i32  {
             block0:
@@ -285,7 +285,7 @@ fn if_then_else() {
         )
     "#,
         expect![[r#"
-            module untitled
+            module noname
 
             pub fn main() -> i32  {
             block0:
