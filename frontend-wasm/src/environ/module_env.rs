@@ -93,26 +93,25 @@ impl<'a> ModuleEnvironment<'a> {
     }
 
     pub fn build(mut self, diagnostics: &DiagnosticsHandler) -> WasmResult<Module> {
-        let module_name = self.module_name.clone().unwrap_or("untitled".to_string());
-        // TODO: build all module callees and sigs (= all module finctions)
-        // and pass it in the module's constructor
+        let module_name = self.module_name.clone().unwrap_or("noname".to_string());
         let mut module = Module::new(module_name, Some(SourceSpan::default()));
         let get_num_func_imports = self.get_num_func_imports();
         for (def_func_index, body) in &self.function_bodies {
             let func_index = FuncIndex::new(get_num_func_imports + def_func_index.index());
             let sig_type_idx = self.get_func_type(func_index);
             let func_ty = &self.info.func_types[sig_type_idx];
+            let name = self
+                .get_func_name(func_index)
+                .unwrap_or(&format!("func{}", func_index.index()))
+                .to_string();
             let sig = Signature {
                 visibility: Visibility::PUBLIC,
-                name: self
-                    .get_func_name(func_index)
-                    .unwrap_or(&format!("func{}", func_index.index()))
-                    .to_string(),
+                name,
                 ty: func_ty.clone(),
             };
-            let id = module.declare_function(sig.clone());
+            let fref = module.declare_function(sig.clone());
             let mut func = Function::new(
-                id,
+                fref,
                 SourceSpan::default(),
                 sig.clone(),
                 module.signatures.clone(),
