@@ -24,3 +24,5 @@ itertools = "0.11"
 [dev-dependencies]
 wat = "1.0.69"
 expect-test = "1.4.1"
+wasmprinter = "0.2.63"
+sha2 = "0.10"

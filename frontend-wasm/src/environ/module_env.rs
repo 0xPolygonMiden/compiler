@@ -150,7 +150,7 @@ impl<'a> ModuleEnvironment<'a> {
 
     /// Declares a global to the environment.
     pub fn declare_global(&mut self, _global: Global, _init: GlobalInit) {
-        todo!("store global and global inits");
+        // TODO: store global and global inits
     }
 
     /// Declares a memory to the environment
