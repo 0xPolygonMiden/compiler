@@ -35,7 +35,11 @@ fn compile_wasm(rust_source: &str) -> Vec<u8> {
     // include rustc_opts in the hash to ensure that the output file changes when options change
     let file_name = hash_string(&[&rustc_opts.concat(), rust_source]);
 
-    let temp_dir = std::env::temp_dir();
+    let mut temp_dir = std::env::temp_dir();
+    temp_dir = temp_dir.join("miden-frontend-wasm-rust-comp-tests");
+    if !temp_dir.exists() {
+        fs::create_dir(&temp_dir).unwrap();
+    }
     let input_file = temp_dir.join(format!("{file_name}.rs"));
     let output_file = temp_dir.join(format!("{file_name}.wasm"));
 
@@ -55,10 +59,8 @@ fn compile_wasm(rust_source: &str) -> Vec<u8> {
         .expect("Failed to execute rustc.");
 
     if !output.status.success() {
-        panic!(
-            "Compilation failed: {:?}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+        panic!("Rust to Wasm compilation failed!");
     }
     fs::read(output_file).unwrap()
 }
