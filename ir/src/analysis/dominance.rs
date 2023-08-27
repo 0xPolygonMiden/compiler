@@ -3,8 +3,9 @@ use core::cmp::Ordering;
 use cranelift_entity::packed_option::PackedOption;
 use cranelift_entity::SecondaryMap;
 
-use crate::hir::{Block, BranchInfo, Function, Inst, ProgramPoint};
-use crate::hir::{BlockPredecessor, ControlFlowGraph, DataFlowGraph};
+use crate::hir::{Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint};
+
+use super::{BlockPredecessor, ControlFlowGraph};
 
 /// RPO numbers are assigned as multiples of STRIDE to leave room
 /// for modifications to the dominator tree.
@@ -36,6 +37,7 @@ enum Visit {
     Last,
 }
 
+#[derive(Default)]
 pub struct DominatorTree {
     nodes: SecondaryMap<Block, Node>,
     /// Post-order of all reachable blocks in the control flow graph
@@ -48,12 +50,7 @@ impl DominatorTree {
     /// Allocate a new blank dominator tree. Use `compute` to compute the dominator tree for a
     /// function.
     pub fn new() -> Self {
-        Self {
-            nodes: SecondaryMap::new(),
-            postorder: Vec::new(),
-            stack: Vec::new(),
-            valid: false,
-        }
+        Self::default()
     }
 
     /// Allocate and compute a dominator tree.

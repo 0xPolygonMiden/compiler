@@ -1,7 +1,7 @@
 use cranelift_bforest as bforest;
 use cranelift_entity::SecondaryMap;
 
-use super::{Block, DataFlowGraph, Function, Inst, Instruction};
+use crate::hir::{Block, DataFlowGraph, Function, Inst, Instruction};
 
 /// Represents the predecessor of the current basic block.
 ///
@@ -35,14 +35,19 @@ pub struct ControlFlowGraph {
     succ_forest: bforest::SetForest<Block>,
     valid: bool,
 }
-impl ControlFlowGraph {
-    pub fn new() -> Self {
+impl Default for ControlFlowGraph {
+    fn default() -> Self {
         Self {
-            data: SecondaryMap::new(),
+            data: SecondaryMap::default(),
             pred_forest: bforest::MapForest::new(),
             succ_forest: bforest::SetForest::new(),
             valid: false,
         }
+    }
+}
+impl ControlFlowGraph {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Reset this control flow graph to its initial state for reuse
@@ -74,24 +79,6 @@ impl ControlFlowGraph {
         self.valid = true;
     }
 
-    fn compute_block(&mut self, dfg: &DataFlowGraph, block: Block) {
-        visit_block_succs(dfg, block, |inst, dest, _| {
-            self.add_edge(block, inst, dest);
-        });
-    }
-
-    fn invalidate_block_successors(&mut self, block: Block) {
-        use core::mem;
-
-        let mut successors = mem::replace(&mut self.data[block].successors, Default::default());
-        for succ in successors.iter(&self.succ_forest) {
-            self.data[succ]
-                .predecessors
-                .retain(&mut self.pred_forest, |_, &mut e| e != block);
-        }
-        successors.clear(&mut self.succ_forest);
-    }
-
     /// Recompute the control flow graph of `block`.
     ///
     /// This is for use after modifying instructions within a block. It recomputes all edges
@@ -104,13 +91,26 @@ impl ControlFlowGraph {
         self.compute_block(dfg, block);
     }
 
-    fn add_edge(&mut self, from: Block, from_inst: Inst, to: Block) {
-        self.data[from]
-            .successors
-            .insert(to, &mut self.succ_forest, &());
-        self.data[to]
+    /// Similar to `recompute_block`, this recomputes all edges from `block` as if they had been
+    /// removed, while leaving edges to `block` intact. It is expected that predecessor blocks
+    /// will have `recompute_block` subsequently called on them so that `block` is fully removed
+    /// from the CFG.
+    pub fn detach_block(&mut self, block: Block) {
+        debug_assert!(self.is_valid());
+        self.invalidate_block_successors(block);
+    }
+
+    /// Return the number of predecessors for `block`
+    pub fn num_predecessors(&self, block: Block) -> usize {
+        self.data[block]
             .predecessors
-            .insert(from_inst, from, &mut self.pred_forest, &());
+            .iter(&self.pred_forest)
+            .count()
+    }
+
+    /// Return the number of successors for `block`
+    pub fn num_successors(&self, block: Block) -> usize {
+        self.data[block].successors.iter(&self.succ_forest).count()
     }
 
     /// Get an iterator over the CFG predecessors to `block`.
@@ -131,6 +131,33 @@ impl ControlFlowGraph {
     /// CFG is consistent with the function.
     pub fn is_valid(&self) -> bool {
         self.valid
+    }
+
+    fn compute_block(&mut self, dfg: &DataFlowGraph, block: Block) {
+        visit_block_succs(dfg, block, |inst, dest, _| {
+            self.add_edge(block, inst, dest);
+        });
+    }
+
+    fn invalidate_block_successors(&mut self, block: Block) {
+        use core::mem;
+
+        let mut successors = mem::replace(&mut self.data[block].successors, Default::default());
+        for succ in successors.iter(&self.succ_forest) {
+            self.data[succ]
+                .predecessors
+                .retain(&mut self.pred_forest, |_, &mut e| e != block);
+        }
+        successors.clear(&mut self.succ_forest);
+    }
+
+    fn add_edge(&mut self, from: Block, from_inst: Inst, to: Block) {
+        self.data[from]
+            .successors
+            .insert(to, &mut self.succ_forest, &());
+        self.data[to]
+            .predecessors
+            .insert(from_inst, from, &mut self.pred_forest, &());
     }
 }
 
@@ -159,7 +186,7 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
     block: Block,
     mut visit: F,
 ) {
-    use super::{Br, CondBr, Switch};
+    use crate::hir::{Br, CondBr, Switch};
 
     if let Some(inst) = dfg.last_inst(block) {
         match &*dfg[inst] {
@@ -197,8 +224,12 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 
 #[cfg(test)]
 mod tests {
+    use miden_diagnostics::SourceSpan;
+
     use crate::hir::*;
     use crate::types::{FunctionType, Type};
+
+    use super::*;
 
     #[test]
     fn empty() {
