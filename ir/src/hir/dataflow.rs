@@ -230,6 +230,10 @@ impl DataFlowGraph {
         self.blocks.iter().count()
     }
 
+    pub fn block_args(&self, block: Block) -> &[Value] {
+        self.blocks[block].params.as_slice(&self.value_lists)
+    }
+
     pub fn block_insts<'f>(&'f self, block: Block) -> impl Iterator<Item = Inst> + 'f {
         self.blocks[block].insts()
     }

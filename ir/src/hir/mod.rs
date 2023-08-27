@@ -144,7 +144,7 @@ impl Module {
 /// 2. A block header.
 ///
 /// This corresponds more or less to the lines in the textual form of the IR.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ProgramPoint {
     /// An instruction in the function.
     Inst(Inst),
