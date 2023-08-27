@@ -2,9 +2,8 @@ use cranelift_entity::packed_option::PackedOption;
 use cranelift_entity::{entity_impl, PrimaryMap, SecondaryMap};
 
 use crate::hir::{Block, DataFlowGraph, Function};
-use crate::hir::{BlockPredecessor, ControlFlowGraph};
 
-use super::DominatorTree;
+use super::{BlockPredecessor, ControlFlowGraph, DominatorTree};
 
 /// Represents a loop in the loop tree of a function
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -55,17 +54,6 @@ impl Default for LoopLevel {
     }
 }
 
-/// Loop tree information for a single function.
-///
-/// Loops are referenced by the `Loop` type, and for each loop you can
-/// access its header block, its eventual parent in the loop tree, and
-/// all the blocks belonging to the loop.
-pub struct LoopAnalysis {
-    loops: PrimaryMap<Loop, LoopData>,
-    block_loop_map: SecondaryMap<Block, PackedOption<Loop>>,
-    valid: bool,
-}
-
 struct LoopData {
     header: Block,
     parent: PackedOption<Loop>,
@@ -82,15 +70,34 @@ impl LoopData {
     }
 }
 
-impl LoopAnalysis {
-    /// Allocate a new blank loop analysis struct. Use `compute` to compute the loop analysis for
-    /// a function.
-    pub fn new() -> Self {
+/// Loop tree information for a single function.
+///
+/// Loops are referenced by the `Loop` type, and for each loop you can
+/// access its header block, its eventual parent in the loop tree, and
+/// all the blocks belonging to the loop.
+pub struct LoopAnalysis {
+    loops: PrimaryMap<Loop, LoopData>,
+    block_loop_map: SecondaryMap<Block, PackedOption<Loop>>,
+    valid: bool,
+}
+impl Default for LoopAnalysis {
+    fn default() -> Self {
         Self {
             valid: false,
             loops: PrimaryMap::new(),
             block_loop_map: SecondaryMap::new(),
         }
+    }
+}
+impl LoopAnalysis {
+    pub fn with_function(
+        function: &Function,
+        cfg: &ControlFlowGraph,
+        domtree: &DominatorTree,
+    ) -> Self {
+        let mut this = Self::default();
+        this.compute(function, cfg, domtree);
+        this
     }
 
     /// Detects the loops in a function. Needs the control flow graph and the dominator tree.
