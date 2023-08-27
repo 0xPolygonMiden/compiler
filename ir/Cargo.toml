@@ -18,6 +18,7 @@ cranelift-bforest = "0.95"
 intrusive-collections = "0.9"
 miden-diagnostics.workspace = true
 paste = "1.0"
+rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"

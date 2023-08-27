@@ -534,6 +534,7 @@ dependencies = [
  "intrusive-collections",
  "miden-diagnostics",
  "paste",
+ "rustc-hash",
  "smallvec",
  "thiserror",
  "typed-arena",

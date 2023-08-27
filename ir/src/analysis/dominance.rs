@@ -1,7 +1,10 @@
-use core::cmp::Ordering;
+use core::cmp::{self, Ordering};
+use core::mem;
 
 use cranelift_entity::packed_option::PackedOption;
 use cranelift_entity::SecondaryMap;
+
+use rustc_hash::FxHashSet;
 
 use crate::hir::{Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint};
 
@@ -399,5 +402,284 @@ impl DominatorTree {
         }
 
         idom.inst
+    }
+}
+
+/// Auxiliary structure for `DominatorTree` which provides:
+///
+/// - Traversal of the dominator tree in pre-order
+/// - Ordering of blocks in dominator tree pre-order
+/// - Constant-time dominance checks per-block
+pub struct DominatorTreePreorder {
+    nodes: SecondaryMap<Block, PreorderNode>,
+    stack: Vec<Block>,
+}
+
+#[derive(Default, Clone)]
+struct PreorderNode {
+    /// First child node in the dominator tree
+    child: Option<Block>,
+    /// Next sibling node in the dominator tree, ordered
+    /// according to the control-flow graph reverse post-order.
+    sibling: Option<Block>,
+    /// Sequence number for this node in a pre-order traversal of the dominator tree
+    ///
+    /// Unreachable blocks are 0, entry block is 1
+    pre_number: u32,
+    /// Maximum `pre_number` for the sub-tree of the dominator tree that is rooted at this node.
+    ///
+    /// This is always greater than or equal to `pre_number`
+    pre_max: u32,
+}
+
+impl DominatorTreePreorder {
+    pub fn new() -> Self {
+        Self {
+            nodes: Default::default(),
+            stack: vec![],
+        }
+    }
+
+    pub fn with_function(domtree: &DominatorTree, function: &Function) -> Self {
+        let mut this = Self::new();
+        this.compute(domtree, function);
+        this
+    }
+
+    pub fn compute(&mut self, domtree: &DominatorTree, function: &Function) {
+        self.nodes.clear();
+        debug_assert_eq!(self.stack.len(), 0);
+
+        // Step 1: Populate the child and sibling links.
+        //
+        // By following the CFG post-order and pushing to the front of the lists, we make sure that
+        // sibling lists are ordered according to the CFG reverse post-order.
+        for &block in domtree.cfg_postorder() {
+            if let Some(idom_inst) = domtree.idom(block) {
+                let idom = function.dfg.inst_block(idom_inst).unwrap();
+                let sib = mem::replace(&mut self.nodes[idom].child, Some(block));
+                self.nodes[block].sibling = sib;
+            } else {
+                // The only block without an immediate dominator is the entry.
+                self.stack.push(block);
+            }
+        }
+
+        // Step 2. Assign pre-order numbers from a DFS of the dominator tree.
+        debug_assert!(self.stack.len() <= 1);
+        let mut n = 0;
+        while let Some(block) = self.stack.pop() {
+            n += 1;
+            let node = &mut self.nodes[block];
+            node.pre_number = n;
+            node.pre_max = n;
+            if let Some(n) = node.sibling {
+                self.stack.push(n);
+            }
+            if let Some(n) = node.child {
+                self.stack.push(n);
+            }
+        }
+
+        // Step 3. Propagate the `pre_max` numbers up the tree.
+        // The CFG post-order is topologically ordered w.r.t. dominance so a node comes after all
+        // its dominator tree children.
+        for &block in domtree.cfg_postorder() {
+            if let Some(idom_inst) = domtree.idom(block) {
+                let idom = function.dfg.inst_block(idom_inst).unwrap();
+                let pre_max = cmp::max(self.nodes[block].pre_max, self.nodes[idom].pre_max);
+                self.nodes[idom].pre_max = pre_max;
+            }
+        }
+    }
+
+    /// Get an iterator over the immediate children of `block` in the dominator tree.
+    ///
+    /// These are the blocks whose immediate dominator is an instruction in `block`, ordered according
+    /// to the CFG reverse post-order.
+    pub fn children(&self, block: Block) -> ChildIter {
+        ChildIter {
+            dtpo: self,
+            next: self.nodes[block].child,
+        }
+    }
+
+    /// Fast, constant time dominance check with block granularity.
+    ///
+    /// This computes the same result as `domtree.dominates(a, b)`, but in guaranteed fast constant
+    /// time. This is less general than the `DominatorTree` method because it only works with block
+    /// program points.
+    ///
+    /// A block is considered to dominate itself.
+    pub fn dominates(&self, a: Block, b: Block) -> bool {
+        let na = &self.nodes[a];
+        let nb = &self.nodes[b];
+        na.pre_number <= nb.pre_number && na.pre_max >= nb.pre_max
+    }
+
+    /// Compare two blocks according to the dominator pre-order.
+    pub fn pre_cmp_block(&self, a: Block, b: Block) -> Ordering {
+        self.nodes[a].pre_number.cmp(&self.nodes[b].pre_number)
+    }
+
+    /// Compare two program points according to the dominator tree pre-order.
+    ///
+    /// This ordering of program points have the property that given a program point, pp, all the
+    /// program points dominated by pp follow immediately and contiguously after pp in the order.
+    pub fn pre_cmp<A, B>(&self, a: A, b: B, function: &Function) -> Ordering
+    where
+        A: Into<ProgramPoint>,
+        B: Into<ProgramPoint>,
+    {
+        let a = a.into();
+        let b = b.into();
+        self.pre_cmp_block(function.dfg.pp_block(a), function.dfg.pp_block(b))
+            .then_with(|| function.dfg.pp_cmp(a, b))
+    }
+}
+
+/// An iterator that enumerates the direct children of a block in the dominator tree.
+pub struct ChildIter<'a> {
+    dtpo: &'a DominatorTreePreorder,
+    next: Option<Block>,
+}
+
+impl<'a> Iterator for ChildIter<'a> {
+    type Item = Block;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let n = self.next;
+        if let Some(block) = n {
+            self.next = self.dtpo.nodes[block].sibling;
+        }
+        n
+    }
+}
+
+/// Calculates the dominance frontier for every block in a given `DominatorTree`
+///
+/// A dominance frontier of a block `B` is the set of blocks `N` where control flow
+/// join points exist, where multiple value definitions together as one.
+///
+/// More formally, the dominance frontier is every block `Ni` in `N` where the following
+/// properties hold:
+///
+/// * `B` dominates an immediate predecessor of `Ni`
+/// * `B` does not strictly dominate `Ni`; strict dominance is when `B` dominates
+/// `Ni`, but `B != Ni`
+///
+/// Consider the following example:
+///
+///
+/// ```ignore
+/// block0(v0):
+///   v1 = ...
+///   cond_br v0, block1, block2
+///
+/// block1():
+///   br block3(v1)
+///
+/// block2():
+///   v2 = ...
+///   br block3(v2)
+///
+/// block3(v3):
+///   ...
+/// ```
+///
+/// Here, `block0` strictly dominates all other blocks; but neither `block1` or `block2`
+/// dominate `block3`. This tells us that `block3` must be in the dominance frontier of `block1`
+/// and `block2`, because:
+///
+/// * By definition, every block dominates itself, but does not strictly dominate itself
+/// * Both `block1` and `block2` are immediate predecessors of `block3`
+/// * Thus, both `block1` and `block2` technically dominate a predecessor of `block3`
+/// * Neither `block1` nor `block2` strictly dominate `block3`
+///
+/// It is also obvious that `block3` must be in the dominance frontier of `block1` and `block2`,
+/// because we can observe that `block3` is a join point for control that flows through `block1` and
+/// `block2` - the value of `v3` depends on which path is taken to reach `block3`.
+///
+/// You might wonder if `block3` is in the dominance frontier of `block0`, and the answer is no.
+/// That's because `block0` strictly dominates `block3`, i.e. all control flow must pass through it
+/// to reach `block3`. The reason why strict dominance matters becomes more clear when you consider
+/// that any value defined in `block0` will have the same definition same regardless of which path is
+/// taken to reach `block3`.
+///
+/// ## Purpose
+///
+/// The dominance frontier is used to place new phi nodes (which in our IR are represented by block arguments)
+/// after introducing register spills/reloads. Reloads would naturally introduce multiple definitions for
+/// a given value, which would break the SSA property of the IR, so to preserve it, reloads introduce new
+/// definitions, and all uses of the original definition dominated by the reload are updated.
+///
+/// However, that alone is insufficient, since there may be uses of the original definition which are _not_
+/// dominated by the reload due to branching control flow. To address this, we must introduce new block
+/// arguments to every block in the dominance frontier of the block in which reloads occur, and where
+/// the reloaded value is live. All uses of either the original definition dominated by that phi node are
+/// rewritten to use the definition produced by the phi.
+///
+/// The actual algorithm works bottom-up, rather than top-down, but the relationship to the dominance frontier
+/// is the same in both cases.
+#[derive(Default)]
+pub struct DominanceFrontier {
+    /// The dominance frontier for each block, as a set of blocks
+    dfs: SecondaryMap<Block, FxHashSet<Block>>,
+}
+impl DominanceFrontier {
+    pub fn compute(domtree: &DominatorTree, cfg: &ControlFlowGraph, function: &Function) -> Self {
+        let mut dfs = SecondaryMap::<Block, FxHashSet<Block>>::default();
+
+        for id in domtree.cfg_postorder() {
+            let id = *id;
+            if cfg.num_predecessors(id) < 2 {
+                continue;
+            }
+            let idom = domtree.idom(id).unwrap();
+            for BlockPredecessor { block: p, inst: i } in cfg.pred_iter(id) {
+                let mut p = p;
+                let mut i = i;
+                while i != idom {
+                    dfs[p].insert(id);
+                    let Some(idom_p) = domtree.idom(p) else { break; };
+                    i = idom_p;
+                    p = function.dfg.inst_block(idom_p).unwrap();
+                }
+            }
+        }
+
+        Self { dfs }
+    }
+
+    /// Get an iterator over the dominance frontier of `block`
+    pub fn iter(&self, block: &Block) -> impl Iterator<Item = Block> + '_ {
+        DominanceFrontierIter {
+            df: self.dfs.get(*block).map(|set| set.iter().copied()),
+        }
+    }
+
+    /// Get the set of blocks in the dominance frontier of `block`,
+    /// or `None` if `block` has an empty dominance frontier.
+    #[inline]
+    pub fn get(&self, block: &Block) -> Option<&FxHashSet<Block>> {
+        self.dfs.get(*block)
+    }
+}
+
+struct DominanceFrontierIter<I> {
+    df: Option<I>,
+}
+impl<'a, I> Iterator for DominanceFrontierIter<I>
+where
+    I: Iterator<Item = Block> + 'a,
+{
+    type Item = Block;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(i) = self.df.as_mut() {
+            i.next()
+        } else {
+            None
+        }
     }
 }
