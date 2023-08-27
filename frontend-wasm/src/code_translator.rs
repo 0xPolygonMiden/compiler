@@ -25,6 +25,7 @@ use crate::wasm_types::BlockType;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_ir::cranelift_entity::packed_option::ReservedValue;
 use miden_ir::hir::{Block, Inst, InstBuilder, Value};
+use miden_ir::types::Type;
 use wasmparser::Operator;
 
 /// Translates wasm operators into Miden IR instructions.
@@ -62,7 +63,26 @@ pub fn translate_operator(
         }
         /********************************* Stack misc **************************************/
         Operator::Drop => _ = state.pop1(),
+        Operator::Select => {
+            // TODO: Missing in Miden IR? Or should be implemented via `CondBr`?
+            // let (mut arg1, mut arg2, cond) = state.pop3();
+            // if cond is zero returns arg2, else returns arg1
+            todo!("Wasm Operator::Select translation is not yet implemented");
+        }
+        Operator::TypedSelect { ty: _ } => {
+            // We ignore the explicit type parameter as it is only needed for
+            // validation, which we require to have been performed before
+            // translation.
+
+            // TODO: implement as Select above
+            todo!("Wasm Operator::TypedSelect translation is not yet implemented");
+        }
         Operator::Nop => {}
+        Operator::Unreachable => {
+            todo!("Wasm Operator::Unreachable translation is not yet implemented");
+            // TODO: halt the program as it reached the point that should never be executed
+            // state.reachable = false;
+        }
         /***************************** Control flow blocks *********************************/
         Operator::Block { blockty } => translate_block(blockty, builder, state, environ.mod_info)?,
         Operator::Loop { blockty } => translate_loop(blockty, builder, state, environ.mod_info)?,
@@ -73,6 +93,9 @@ pub fn translate_operator(
         /**************************** Branch instructions *********************************/
         Operator::Br { relative_depth } => translate_br(state, relative_depth, builder),
         Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state),
+        Operator::BrTable { .. } => {
+            unsupported_diag!(diagnostics, "Wasm Operator::BrTable is not supported");
+        }
         Operator::Return => translate_return(state, builder, diagnostics)?,
         /********************************** Exception handing *****************************/
         Operator::Try { .. }
@@ -86,6 +109,9 @@ pub fn translate_operator(
         /************************************ Calls ****************************************/
         Operator::Call { function_index } => {
             translate_call(state, builder, function_index, environ);
+        }
+        Operator::CallIndirect { .. } => {
+            unsupported_diag!(diagnostics, "Wasm Operator::CallIndirect is not supported",);
         }
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => {
