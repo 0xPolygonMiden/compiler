@@ -35,8 +35,7 @@ fn compile_wasm(rust_source: &str) -> Vec<u8> {
     // include rustc_opts in the hash to ensure that the output file changes when options change
     let file_name = hash_string(&[&rustc_opts.concat(), rust_source]);
 
-    let mut temp_dir = std::env::temp_dir();
-    temp_dir = temp_dir.join("miden-frontend-wasm-rust-comp-tests");
+    let temp_dir = std::env::temp_dir().join("miden-frontend-wasm-rust-comp-tests");
     if !temp_dir.exists() {
         fs::create_dir(&temp_dir).unwrap();
     }
