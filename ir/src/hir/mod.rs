@@ -1,6 +1,7 @@
 mod block;
 mod builder;
 mod dataflow;
+mod display;
 mod function;
 mod immediates;
 mod instruction;
@@ -13,6 +14,7 @@ mod write;
 pub use self::block::{Block, BlockData};
 pub use self::builder::{FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder};
 pub use self::dataflow::DataFlowGraph;
+pub use self::display::{Decorator, DisplayValues};
 pub use self::function::{FuncRef, Function, Signature, Visibility};
 pub use self::immediates::Immediate;
 pub use self::instruction::*;
