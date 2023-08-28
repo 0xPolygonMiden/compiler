@@ -70,14 +70,6 @@ pub fn translate_operator(
             // if cond is zero returns arg2, else returns arg1
             todo!("Wasm Operator::Select translation is not yet implemented");
         }
-        Operator::TypedSelect { ty: _ } => {
-            // We ignore the explicit type parameter as it is only needed for
-            // validation, which we require to have been performed before
-            // translation.
-
-            // TODO: implement as Select above
-            todo!("Wasm Operator::TypedSelect translation is not yet implemented");
-        }
         Operator::Nop => {}
         Operator::Unreachable => {
             todo!("Wasm Operator::Unreachable translation is not yet implemented");
@@ -102,15 +94,6 @@ pub fn translate_operator(
             unsupported_diag!(diagnostics, "Wasm Operator::BrTable is not supported");
         }
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
-        /********************************** Exception handing *****************************/
-        Operator::Try { .. }
-        | Operator::Catch { .. }
-        | Operator::Throw { .. }
-        | Operator::Rethrow { .. }
-        | Operator::Delegate { .. }
-        | Operator::CatchAll => {
-            unsupported_diag!(diagnostics, "Exception handling is not supported {:?}", op);
-        }
         /************************************ Calls ****************************************/
         Operator::Call { function_index } => {
             translate_call(state, builder, function_index, environ, span);
@@ -161,27 +144,6 @@ pub fn translate_operator(
         Operator::F32Load { memarg: _ } => todo!("implement f32.load"),
         Operator::I64Load { memarg } => translate_load(Type::I64, memarg, state, builder, span),
         Operator::F64Load { memarg } => translate_load(Type::F64, memarg, state, builder, span),
-        Operator::V128Load { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load");
-        }
-        Operator::V128Load8x8S { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load8x8_s");
-        }
-        Operator::V128Load8x8U { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load8x8_u");
-        }
-        Operator::V128Load16x4S { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load16x4_s");
-        }
-        Operator::V128Load16x4U { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load16x4_u");
-        }
-        Operator::V128Load32x2S { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load32x2_s");
-        }
-        Operator::V128Load32x2U { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.load32x2_u");
-        }
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(Type::I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(Type::I64, memarg, state, builder, span),
@@ -194,9 +156,6 @@ pub fn translate_operator(
             translate_store(Type::I16, memarg, state, builder, span);
         }
         Operator::I64Store32 { memarg } => translate_store(Type::I32, memarg, state, builder, span),
-        Operator::V128Store { .. } => {
-            unsupported_diag!(diagnostics, "unsupported v128.store");
-        }
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => state.push1(builder.ins().i32(*value, span)),
         Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
@@ -215,7 +174,9 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().sub(arg1, arg2, span));
         }
-        op => todo!("Wasm op {:?} translation is not yet implemented", op),
+        op => {
+            unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
+        }
     };
     Ok(())
 }
