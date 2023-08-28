@@ -35,9 +35,10 @@ pub fn translate_operator(
     state: &mut FuncTranslationState,
     environ: &mut FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     if !state.reachable {
-        translate_unreachable_operator(&op, builder, state, environ.mod_info)?;
+        translate_unreachable_operator(&op, builder, state, environ.mod_info, span)?;
         return Ok(());
     }
 
@@ -84,19 +85,23 @@ pub fn translate_operator(
             // state.reachable = false;
         }
         /***************************** Control flow blocks *********************************/
-        Operator::Block { blockty } => translate_block(blockty, builder, state, environ.mod_info)?,
-        Operator::Loop { blockty } => translate_loop(blockty, builder, state, environ.mod_info)?,
-        Operator::If { blockty } => translate_if(blockty, state, builder, environ.mod_info)?,
-        Operator::Else => translate_else(state, builder)?,
-        Operator::End => translate_end(state, builder),
+        Operator::Block { blockty } => {
+            translate_block(blockty, builder, state, environ.mod_info, span)?
+        }
+        Operator::Loop { blockty } => {
+            translate_loop(blockty, builder, state, environ.mod_info, span)?
+        }
+        Operator::If { blockty } => translate_if(blockty, state, builder, environ.mod_info, span)?,
+        Operator::Else => translate_else(state, builder, span)?,
+        Operator::End => translate_end(state, builder, span),
 
         /**************************** Branch instructions *********************************/
-        Operator::Br { relative_depth } => translate_br(state, relative_depth, builder),
-        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state),
+        Operator::Br { relative_depth } => translate_br(state, relative_depth, builder, span),
+        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span),
         Operator::BrTable { .. } => {
             unsupported_diag!(diagnostics, "Wasm Operator::BrTable is not supported");
         }
-        Operator::Return => translate_return(state, builder, diagnostics)?,
+        Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /********************************** Exception handing *****************************/
         Operator::Try { .. }
         | Operator::Catch { .. }
@@ -108,7 +113,7 @@ pub fn translate_operator(
         }
         /************************************ Calls ****************************************/
         Operator::Call { function_index } => {
-            translate_call(state, builder, function_index, environ);
+            translate_call(state, builder, function_index, environ, span);
         }
         Operator::CallIndirect { .. } => {
             unsupported_diag!(diagnostics, "Wasm Operator::CallIndirect is not supported",);
@@ -116,46 +121,46 @@ pub fn translate_operator(
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
             // Do nothing and return total Miden memory size
-            state.push1(builder.ins().i32(mem_total_pages(), SourceSpan::default()));
+            state.push1(builder.ins().i32(mem_total_pages(), span));
         }
         Operator::MemorySize { .. } => {
-            state.push1(builder.ins().i32(mem_total_pages(), SourceSpan::default()));
+            state.push1(builder.ins().i32(mem_total_pages(), span));
         }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
-            translate_load_zext(Type::I8, Type::I32, memarg, state, builder)
+            translate_load_zext(Type::I8, Type::I32, memarg, state, builder, span)
         }
         Operator::I32Load16U { memarg } => {
-            translate_load_zext(Type::I16, Type::I32, memarg, state, builder)
+            translate_load_zext(Type::I16, Type::I32, memarg, state, builder, span)
         }
         Operator::I32Load8S { memarg } => {
-            translate_load_sext(Type::I8, Type::I32, memarg, state, builder);
+            translate_load_sext(Type::I8, Type::I32, memarg, state, builder, span);
         }
         Operator::I32Load16S { memarg } => {
-            translate_load_sext(Type::I16, Type::I32, memarg, state, builder);
+            translate_load_sext(Type::I16, Type::I32, memarg, state, builder, span);
         }
         Operator::I64Load8U { memarg } => {
-            translate_load_zext(Type::I8, Type::I64, memarg, state, builder)
+            translate_load_zext(Type::I8, Type::I64, memarg, state, builder, span)
         }
         Operator::I64Load16U { memarg } => {
-            translate_load_zext(Type::I16, Type::I64, memarg, state, builder)
+            translate_load_zext(Type::I16, Type::I64, memarg, state, builder, span)
         }
         Operator::I64Load8S { memarg } => {
-            translate_load_sext(Type::I8, Type::I64, memarg, state, builder);
+            translate_load_sext(Type::I8, Type::I64, memarg, state, builder, span);
         }
         Operator::I64Load16S { memarg } => {
-            translate_load_sext(Type::I16, Type::I64, memarg, state, builder);
+            translate_load_sext(Type::I16, Type::I64, memarg, state, builder, span);
         }
         Operator::I64Load32S { memarg } => {
-            translate_load_sext(Type::I32, Type::I64, memarg, state, builder)
+            translate_load_sext(Type::I32, Type::I64, memarg, state, builder, span)
         }
         Operator::I64Load32U { memarg } => {
-            translate_load_zext(Type::I32, Type::I64, memarg, state, builder)
+            translate_load_zext(Type::I32, Type::I64, memarg, state, builder, span)
         }
-        Operator::I32Load { memarg } => translate_load(Type::I32, memarg, state, builder),
+        Operator::I32Load { memarg } => translate_load(Type::I32, memarg, state, builder, span),
         Operator::F32Load { memarg: _ } => todo!("implement f32.load"),
-        Operator::I64Load { memarg } => translate_load(Type::I64, memarg, state, builder),
-        Operator::F64Load { memarg } => translate_load(Type::F64, memarg, state, builder),
+        Operator::I64Load { memarg } => translate_load(Type::I64, memarg, state, builder, span),
+        Operator::F64Load { memarg } => translate_load(Type::F64, memarg, state, builder, span),
         Operator::V128Load { .. } => {
             unsupported_diag!(diagnostics, "unsupported v128.load");
         }
@@ -178,45 +183,37 @@ pub fn translate_operator(
             unsupported_diag!(diagnostics, "unsupported v128.load32x2_u");
         }
         /****************************** Store instructions ***********************************/
-        Operator::I32Store { memarg } => translate_store(Type::I32, memarg, state, builder),
-        Operator::I64Store { memarg } => translate_store(Type::I64, memarg, state, builder),
+        Operator::I32Store { memarg } => translate_store(Type::I32, memarg, state, builder, span),
+        Operator::I64Store { memarg } => translate_store(Type::I64, memarg, state, builder, span),
         Operator::F32Store { memarg: _ } => todo!("implement f32.store"),
-        Operator::F64Store { memarg } => translate_store(Type::F64, memarg, state, builder),
+        Operator::F64Store { memarg } => translate_store(Type::F64, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
-            translate_store(Type::I8, memarg, state, builder);
+            translate_store(Type::I8, memarg, state, builder, span);
         }
         Operator::I32Store16 { memarg } | Operator::I64Store16 { memarg } => {
-            translate_store(Type::I16, memarg, state, builder);
+            translate_store(Type::I16, memarg, state, builder, span);
         }
-        Operator::I64Store32 { memarg } => translate_store(Type::I32, memarg, state, builder),
+        Operator::I64Store32 { memarg } => translate_store(Type::I32, memarg, state, builder, span),
         Operator::V128Store { .. } => {
             unsupported_diag!(diagnostics, "unsupported v128.store");
         }
         /****************************** Nullary Operators **********************************/
-        Operator::I32Const { value } => {
-            state.push1(builder.ins().i32(*value, SourceSpan::default()))
-        }
-        Operator::I64Const { value } => {
-            state.push1(builder.ins().i64(*value, SourceSpan::default()))
-        }
+        Operator::I32Const { value } => state.push1(builder.ins().i32(*value, span)),
+        Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
         Operator::F32Const { value: _ } => {
             todo!("handle f32 const");
         }
         Operator::F64Const { value } => {
-            state.push1(
-                builder
-                    .ins()
-                    .f64(f64_translation(*value), SourceSpan::default()),
-            );
+            state.push1(builder.ins().f64(f64_translation(*value), span));
         }
         /****************************** Binary Operators ************************************/
         Operator::I32Add | Operator::I64Add => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().add(arg1, arg2, SourceSpan::default()));
+            state.push1(builder.ins().add(arg1, arg2, span));
         }
         Operator::I32Sub | Operator::I64Sub => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().sub(arg1, arg2, SourceSpan::default()));
+            state.push1(builder.ins().sub(arg1, arg2, span));
         }
         op => todo!("Wasm op {:?} translation is not yet implemented", op),
     };
@@ -236,10 +233,11 @@ fn translate_load(
     memarg: &MemArg,
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
+    span: SourceSpan,
 ) {
     let addr_int = state.pop1();
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
-    state.push1(builder.ins().load(addr, SourceSpan::default()));
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    state.push1(builder.ins().load(addr, span));
 }
 
 fn translate_load_sext(
@@ -248,11 +246,12 @@ fn translate_load_sext(
     memarg: &MemArg,
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
+    span: SourceSpan,
 ) {
     let addr_int = state.pop1();
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
-    let val = builder.ins().load(addr, SourceSpan::default());
-    let sext_val = builder.ins().sext(val, sext_ty, SourceSpan::default());
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    let val = builder.ins().load(addr, span);
+    let sext_val = builder.ins().sext(val, sext_ty, span);
     state.push1(sext_val);
 }
 
@@ -262,11 +261,12 @@ fn translate_load_zext(
     memarg: &MemArg,
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
+    span: SourceSpan,
 ) {
     let addr_int = state.pop1();
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
-    let val = builder.ins().load(addr, SourceSpan::default());
-    let sext_val = builder.ins().zext(val, zext_ty, SourceSpan::default());
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    let val = builder.ins().load(addr, span);
+    let sext_val = builder.ins().zext(val, zext_ty, span);
     state.push1(sext_val);
 }
 
@@ -275,18 +275,17 @@ fn translate_store(
     memarg: &MemArg,
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
+    span: SourceSpan,
 ) {
     let (addr_int, val) = state.pop2();
     let val_ty = builder.func().dfg.value_type(val);
     let arg = if ptr_ty != val_ty {
-        builder
-            .ins()
-            .trunc(val, ptr_ty.clone(), SourceSpan::default())
+        builder.ins().trunc(val, ptr_ty.clone(), span)
     } else {
         val
     };
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
-    builder.ins().store(addr, arg, SourceSpan::default());
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    builder.ins().store(addr, arg, span);
 }
 
 fn prepare_addr(
@@ -294,20 +293,17 @@ fn prepare_addr(
     ptr_ty: &Type,
     memarg: &MemArg,
     builder: &mut FunctionBuilderExt,
+    span: SourceSpan,
 ) -> Value {
     let full_addr_int = if memarg.offset != 0 {
-        let offset = builder
-            .ins()
-            .i32(memarg.offset as i32, SourceSpan::default());
-        builder.ins().add(addr_int, offset, SourceSpan::default())
+        let offset = builder.ins().i32(memarg.offset as i32, span);
+        builder.ins().add(addr_int, offset, span)
     } else {
         addr_int
     };
-    builder.ins().inttoptr(
-        full_addr_int,
-        Type::Ptr(ptr_ty.clone().into()),
-        SourceSpan::default(),
-    )
+    builder
+        .ins()
+        .inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)
 }
 
 fn translate_call(
@@ -315,10 +311,11 @@ fn translate_call(
     builder: &mut FunctionBuilderExt<'_>,
     function_index: &u32,
     environ: &mut FuncEnvironment<'_>,
+    span: SourceSpan,
 ) {
     let (fref, num_args) = state.get_direct_func(builder.inner.func, *function_index, environ);
     let args = state.peekn_mut(num_args);
-    let call = builder.ins().call(fref, &args, SourceSpan::default());
+    let call = builder.ins().call(fref, &args, span);
     let inst_results = builder.inner.inst_results(call);
     state.popn(num_args);
     state.pushn(inst_results);
@@ -328,6 +325,7 @@ fn translate_return(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
     diagnostics: &DiagnosticsHandler,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     let return_count = {
         let frame = &mut state.control_stack[0];
@@ -342,7 +340,7 @@ fn translate_return(
             }
         };
 
-        builder.ins().ret(return_args, SourceSpan::default());
+        builder.ins().ret(return_args, span);
     }
     state.popn(return_count);
     state.reachable = false;
@@ -353,6 +351,7 @@ fn translate_br(
     state: &mut FuncTranslationState,
     relative_depth: &u32,
     builder: &mut FunctionBuilderExt<'_>,
+    span: SourceSpan,
 ) {
     let i = state.control_stack.len() - 1 - (*relative_depth as usize);
     let (return_count, br_destination) = {
@@ -367,9 +366,7 @@ fn translate_br(
         (return_count, frame.br_destination())
     };
     let destination_args = state.peekn_mut(return_count);
-    builder
-        .ins()
-        .br(br_destination, &destination_args, SourceSpan::default());
+    builder.ins().br(br_destination, &destination_args, span);
     state.popn(return_count);
     state.reachable = false;
 }
@@ -378,6 +375,7 @@ fn translate_br_if(
     relative_depth: u32,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
+    span: SourceSpan,
 ) {
     let cond = state.pop1();
     let (br_destination, inputs) = translate_br_if_args(relative_depth, state);
@@ -386,14 +384,9 @@ fn translate_br_if(
     let then_args = inputs;
     let else_dest = next_block;
     let else_args = &[];
-    builder.ins().cond_br(
-        cond,
-        then_dest,
-        then_args,
-        else_dest,
-        else_args,
-        SourceSpan::default(),
-    );
+    builder
+        .ins()
+        .cond_br(cond, then_dest, then_args, else_dest, else_args, span);
     builder.seal_block(next_block); // The only predecessor is the current block.
     builder.switch_to_block(next_block);
 }
@@ -424,14 +417,19 @@ fn translate_block(
     builder: &mut FunctionBuilderExt<'_>,
     state: &mut FuncTranslationState,
     module_info: &ModuleInfo,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
-    let next = block_with_params(builder, blockty.results.clone())?;
+    let next = block_with_params(builder, blockty.results.clone(), span)?;
     state.push_block(next, blockty.params.len(), blockty.results.len());
     Ok(())
 }
 
-fn translate_end(state: &mut FuncTranslationState, builder: &mut FunctionBuilderExt<'_>) {
+fn translate_end(
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt,
+    span: SourceSpan,
+) {
     // The `End` instruction pops the last control frame from the control stack, seals
     // the destination block (since `br` instructions targeting it only appear inside the
     // block and have already been translated) and modify the value stack to use the
@@ -441,9 +439,7 @@ fn translate_end(state: &mut FuncTranslationState, builder: &mut FunctionBuilder
     let return_count = frame.num_return_values();
     let return_args = state.peekn_mut(return_count);
 
-    builder
-        .ins()
-        .br(next_block, return_args, SourceSpan::default());
+    builder.ins().br(next_block, return_args, span);
 
     // You might expect that if we just finished an `if` block that
     // didn't have a corresponding `else` block, then we would clean
@@ -468,7 +464,8 @@ fn translate_end(state: &mut FuncTranslationState, builder: &mut FunctionBuilder
 
 fn translate_else(
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     let i = state.control_stack.len() - 1;
     Ok(match state.control_stack[i] {
@@ -498,13 +495,10 @@ fn translate_else(
                         placeholder,
                     } => {
                         debug_assert_eq!(blocktype.params.len(), num_return_values);
-                        let else_block = block_with_params(builder, blocktype.params.clone())?;
+                        let else_block =
+                            block_with_params(builder, blocktype.params.clone(), span)?;
                         let params_len = blocktype.params.len();
-                        builder.ins().br(
-                            destination,
-                            state.peekn(params_len),
-                            SourceSpan::default(),
-                        );
+                        builder.ins().br(destination, state.peekn(params_len), span);
                         state.popn(params_len);
 
                         builder.change_jump_destination(branch_inst, placeholder, else_block);
@@ -512,11 +506,9 @@ fn translate_else(
                         else_block
                     }
                     ElseData::WithElse { else_block } => {
-                        builder.ins().br(
-                            destination,
-                            state.peekn(num_return_values),
-                            SourceSpan::default(),
-                        );
+                        builder
+                            .ins()
+                            .br(destination, state.peekn(num_return_values), span);
                         state.popn(num_return_values);
                         else_block
                     }
@@ -547,6 +539,7 @@ fn translate_if(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
     module_info: &ModuleInfo,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
     let val = state.pop1();
@@ -558,14 +551,14 @@ fn translate_if(
         // destination block following the whole `if...end`. If we do end
         // up discovering an `else`, then we will allocate a block for it
         // and go back and patch the jump.
-        let destination = block_with_params(builder, blockty.results.clone())?;
+        let destination = block_with_params(builder, blockty.results.clone(), span)?;
         let branch_inst = builder.ins().cond_br(
             val,
             next_block,
             &[],
             destination,
             state.peekn(blockty.params.len()),
-            SourceSpan::default(),
+            span,
         );
         (
             destination,
@@ -577,15 +570,15 @@ fn translate_if(
     } else {
         // The `if` type signature is not valid without an `else` block,
         // so we eagerly allocate the `else` block here.
-        let destination = block_with_params(builder, blockty.results.clone())?;
-        let else_block = block_with_params(builder, blockty.params.clone())?;
+        let destination = block_with_params(builder, blockty.results.clone(), span)?;
+        let else_block = block_with_params(builder, blockty.params.clone(), span)?;
         builder.ins().cond_br(
             val,
             next_block,
             &[],
             else_block,
             state.peekn(blockty.params.len()),
-            SourceSpan::default(),
+            span,
         );
         builder.seal_block(else_block);
         (destination, ElseData::WithElse { else_block })
@@ -607,15 +600,14 @@ fn translate_loop(
     builder: &mut FunctionBuilderExt<'_>,
     state: &mut FuncTranslationState,
     module_info: &ModuleInfo,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
-    let loop_body = block_with_params(builder, blockty.params.clone())?;
-    let next = block_with_params(builder, blockty.results.clone())?;
-    builder.ins().br(
-        loop_body,
-        state.peekn(blockty.params.len()),
-        SourceSpan::default(),
-    );
+    let loop_body = block_with_params(builder, blockty.params.clone(), span)?;
+    let next = block_with_params(builder, blockty.results.clone(), span)?;
+    builder
+        .ins()
+        .br(loop_body, state.peekn(blockty.params.len()), span);
     state.push_loop(loop_body, next, blockty.params.len(), blockty.results.len());
     state.popn(blockty.params.len());
     state
@@ -633,6 +625,7 @@ fn translate_unreachable_operator(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     module_info: &ModuleInfo,
+    span: SourceSpan,
 ) -> WasmResult<()> {
     debug_assert!(!state.reachable);
     match *op {
@@ -677,7 +670,7 @@ fn translate_unreachable_operator(
                                 placeholder,
                             } => {
                                 let else_block =
-                                    block_with_params(builder, blocktype.params.clone())?;
+                                    block_with_params(builder, blocktype.params.clone(), span)?;
                                 let frame = state.control_stack.last().unwrap();
                                 frame.truncate_value_stack_to_else_params(&mut state.stack);
 
