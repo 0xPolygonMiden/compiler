@@ -418,3 +418,37 @@ fn mem_trunc_sext() {
         "#]],
     );
 }
+
+#[test]
+fn mem_management() {
+    check_ir(
+        r#"
+        (module
+            (func $main (result i32)
+                memory.size
+                i32.const 1
+                i32.add
+                memory.grow
+                drop
+                memory.size
+            )
+        )
+    "#,
+        expect![[r#"
+            module noname
+
+            pub fn main() -> i32  {
+            block0:
+                v1 = const.int 1048575  : i32
+                v2 = const.int 1  : i32
+                v3 = add v1, v2  : i32
+                v4 = const.int 1048575  : i32
+                v5 = const.int 1048575  : i32
+                br block1(v5)
+
+            block1(v0: i32):
+                v6 = ret v0  : ()
+            }
+        "#]],
+    );
+}
