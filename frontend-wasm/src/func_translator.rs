@@ -151,7 +151,14 @@ fn parse_function_body(
 
     while !reader.eof() {
         let op = reader.read_operator()?;
-        translate_operator(&op, builder, state, environ, diagnostics)?;
+        translate_operator(
+            &op,
+            builder,
+            state,
+            environ,
+            diagnostics,
+            SourceSpan::default(),
+        )?;
     }
 
     // The final `End` operator left us in the exit block where we need to manually add a return
