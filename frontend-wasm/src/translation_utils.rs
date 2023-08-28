@@ -11,13 +11,12 @@ use miden_ir::{
 pub fn block_with_params(
     builder: &mut FunctionBuilderExt,
     params: impl IntoIterator<Item = Type>,
+    span: SourceSpan,
 ) -> WasmResult<Block> {
     // TODO: make this a method `create_block_with_params` in FunctionBuilderExt?
     let block = builder.create_block();
     for ty in params {
-        builder
-            .inner
-            .append_block_param(block, ty, SourceSpan::default());
+        builder.inner.append_block_param(block, ty, span);
     }
     Ok(block)
 }
