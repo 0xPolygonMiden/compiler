@@ -309,3 +309,112 @@ fn if_then_else() {
         "#]],
     );
 }
+
+#[test]
+fn mem_access() {
+    check_ir(
+        r#"
+        (module
+            (func $main (result i32)
+                i32.const 1024
+                i32.const 3
+                i32.store
+                i32.const 1024
+                i32.load
+            )
+        )
+    "#,
+        expect![[r#"
+            module noname
+
+            pub fn main() -> i32  {
+            block0:
+                v1 = const.int 1024  : i32
+                v2 = const.int 3  : i32
+                v3 = inttoptr v1  : *mut i32
+                store v3, v2
+                v4 = const.int 1024  : i32
+                v5 = inttoptr v4  : *mut i32
+                v6 = load v5  : i32
+                br block1(v6)
+
+            block1(v0: i32):
+                v7 = ret v0  : ()
+            }
+        "#]],
+    );
+}
+
+#[test]
+fn mem_trunc_zext() {
+    check_ir(
+        r#"
+        (module
+            (func $main (result i32)
+                i32.const 1024
+                i64.const 3
+                i64.store32
+                i32.const 1024
+                i64.load32_u
+            )
+        )
+    "#,
+        expect![[r#"
+            module noname
+
+            pub fn main() -> i32  {
+            block0:
+                v1 = const.int 1024  : i32
+                v2 = const.int 3  : i64
+                v3 = trunc v2  : i32
+                v4 = inttoptr v1  : *mut i32
+                store v4, v3
+                v5 = const.int 1024  : i32
+                v6 = inttoptr v5  : *mut i32
+                v7 = load v6  : i32
+                v8 = zext v7  : i64
+                br block1(v8)
+
+            block1(v0: i32):
+                v9 = ret v0  : ()
+            }
+        "#]],
+    );
+}
+
+#[test]
+fn mem_trunc_sext() {
+    check_ir(
+        r#"
+        (module
+            (func $main (result i32)
+                i32.const 1024
+                i64.const -3
+                i64.store32
+                i32.const 1024
+                i64.load32_s
+            )
+        )
+    "#,
+        expect![[r#"
+            module noname
+
+            pub fn main() -> i32  {
+            block0:
+                v1 = const.int 1024  : i32
+                v2 = const.int -3  : i64
+                v3 = trunc v2  : i32
+                v4 = inttoptr v1  : *mut i32
+                store v4, v3
+                v5 = const.int 1024  : i32
+                v6 = inttoptr v5  : *mut i32
+                v7 = load v6  : i32
+                v8 = sext v7  : i64
+                br block1(v8)
+
+            block1(v0: i32):
+                v9 = ret v0  : ()
+            }
+        "#]],
+    );
+}
