@@ -2,9 +2,7 @@ use cranelift_entity::{self as entity, entity_impl};
 
 use miden_diagnostics::SourceSpan;
 
-use crate::types::Type;
-
-use super::{Block, Inst};
+use super::{Block, Inst, Type};
 
 pub type ValueList = entity::EntityList<Value>;
 pub type ValueListPool = entity::ListPool<Value>;

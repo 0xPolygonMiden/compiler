@@ -524,21 +524,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-ir"
+name = "miden-hir"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bitflags",
- "cranelift-bforest",
  "cranelift-entity",
  "intrusive-collections",
  "miden-diagnostics",
+ "miden-hir-type",
  "paste",
  "rustc-hash",
  "smallvec",
  "thiserror",
  "typed-arena",
 ]
+
+[[package]]
+name = "miden-hir-analysis"
+version = "0.1.0"
+dependencies = [
+ "cranelift-bforest",
+ "cranelift-entity",
+ "miden-hir",
+ "rustc-hash",
+ "smallvec",
+]
+
+[[package]]
+name = "miden-hir-pass"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "miden-hir-type"
+version = "0.1.0"
 
 [[package]]
 name = "miden_diagnostics_macros"

@@ -1,5 +1,7 @@
-use core::ops::{Index, IndexMut};
-use core::ptr::NonNull;
+use std::{
+    ops::{Index, IndexMut},
+    ptr::NonNull,
+};
 
 use cranelift_entity::EntityRef;
 use intrusive_collections::linked_list::{Cursor, CursorMut, LinkedList};

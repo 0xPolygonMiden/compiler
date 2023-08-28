@@ -1,4 +1,9 @@
-use std::fmt;
+#![no_std]
+
+extern crate alloc;
+
+use core::fmt;
+use alloc::{boxed::Box, vec::Vec};
 
 /// Represents the type of a value
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

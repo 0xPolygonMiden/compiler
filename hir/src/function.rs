@@ -7,8 +7,6 @@ use cranelift_entity::{entity_impl, PrimaryMap};
 
 use miden_diagnostics::{SourceSpan, Spanned};
 
-use crate::types::{FunctionType, Type};
-
 use super::*;
 
 /// A handle that refers to a function definition/declaration

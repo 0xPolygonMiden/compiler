@@ -1,7 +1,7 @@
 use cranelift_bforest as bforest;
 use cranelift_entity::SecondaryMap;
 
-use crate::hir::{Block, DataFlowGraph, Function, Inst, Instruction};
+use miden_hir::{Block, DataFlowGraph, Function, Inst, Instruction};
 
 /// Represents the predecessor of the current basic block.
 ///
@@ -186,7 +186,7 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
     block: Block,
     mut visit: F,
 ) {
-    use crate::hir::{Br, CondBr, Switch};
+    use miden_hir::{Br, CondBr, Switch};
 
     if let Some(inst) = dfg.last_inst(block) {
         match &*dfg[inst] {
@@ -225,9 +225,7 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 #[cfg(test)]
 mod tests {
     use miden_diagnostics::SourceSpan;
-
-    use crate::hir::*;
-    use crate::types::{FunctionType, Type};
+    use miden_hir::*;
 
     use super::*;
 

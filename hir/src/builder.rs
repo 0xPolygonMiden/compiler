@@ -2,8 +2,6 @@ use cranelift_entity::packed_option::PackedOption;
 
 use miden_diagnostics::SourceSpan;
 
-use crate::types::Type;
-
 use super::*;
 
 pub struct FunctionBuilder<'a> {

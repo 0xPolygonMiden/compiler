@@ -1,13 +1,13 @@
-use core::fmt;
-use core::ops::{Deref, DerefMut};
+use std::{
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedListLink, UnsafeRef};
 use smallvec::SmallVec;
 
 use miden_diagnostics::{Span, Spanned};
-
-use crate::types::Type;
 
 use super::*;
 

@@ -1,7 +1,7 @@
 use cranelift_entity::packed_option::PackedOption;
 use cranelift_entity::{entity_impl, PrimaryMap, SecondaryMap};
 
-use crate::hir::{Block, DataFlowGraph, Function};
+use miden_hir::{Block, DataFlowGraph, Function};
 
 use super::{BlockPredecessor, ControlFlowGraph, DominatorTree};
 
