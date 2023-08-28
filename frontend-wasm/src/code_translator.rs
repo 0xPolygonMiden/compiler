@@ -26,7 +26,7 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_ir::cranelift_entity::packed_option::ReservedValue;
 use miden_ir::hir::{Block, Inst, InstBuilder, Value};
 use miden_ir::types::Type;
-use wasmparser::Operator;
+use wasmparser::{MemArg, Operator};
 
 /// Translates wasm operators into Miden IR instructions.
 pub fn translate_operator(
@@ -113,6 +113,77 @@ pub fn translate_operator(
         Operator::CallIndirect { .. } => {
             unsupported_diag!(diagnostics, "Wasm Operator::CallIndirect is not supported",);
         }
+        /******************************* Load instructions ***********************************/
+        Operator::I32Load8U { memarg } => {
+            translate_load_zext(Type::I8, Type::I32, memarg, state, builder)
+        }
+        Operator::I32Load16U { memarg } => {
+            translate_load_zext(Type::I16, Type::I32, memarg, state, builder)
+        }
+        Operator::I32Load8S { memarg } => {
+            translate_load_sext(Type::I8, Type::I32, memarg, state, builder);
+        }
+        Operator::I32Load16S { memarg } => {
+            translate_load_sext(Type::I16, Type::I32, memarg, state, builder);
+        }
+        Operator::I64Load8U { memarg } => {
+            translate_load_zext(Type::I8, Type::I64, memarg, state, builder)
+        }
+        Operator::I64Load16U { memarg } => {
+            translate_load_zext(Type::I16, Type::I64, memarg, state, builder)
+        }
+        Operator::I64Load8S { memarg } => {
+            translate_load_sext(Type::I8, Type::I64, memarg, state, builder);
+        }
+        Operator::I64Load16S { memarg } => {
+            translate_load_sext(Type::I16, Type::I64, memarg, state, builder);
+        }
+        Operator::I64Load32S { memarg } => {
+            translate_load_sext(Type::I32, Type::I64, memarg, state, builder)
+        }
+        Operator::I64Load32U { memarg } => {
+            translate_load_zext(Type::I32, Type::I64, memarg, state, builder)
+        }
+        Operator::I32Load { memarg } => translate_load(Type::I32, memarg, state, builder),
+        Operator::F32Load { memarg: _ } => todo!("implement f32.load"),
+        Operator::I64Load { memarg } => translate_load(Type::I64, memarg, state, builder),
+        Operator::F64Load { memarg } => translate_load(Type::F64, memarg, state, builder),
+        Operator::V128Load { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load");
+        }
+        Operator::V128Load8x8S { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load8x8_s");
+        }
+        Operator::V128Load8x8U { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load8x8_u");
+        }
+        Operator::V128Load16x4S { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load16x4_s");
+        }
+        Operator::V128Load16x4U { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load16x4_u");
+        }
+        Operator::V128Load32x2S { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load32x2_s");
+        }
+        Operator::V128Load32x2U { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.load32x2_u");
+        }
+        /****************************** Store instructions ***********************************/
+        Operator::I32Store { memarg } => translate_store(Type::I32, memarg, state, builder),
+        Operator::I64Store { memarg } => translate_store(Type::I64, memarg, state, builder),
+        Operator::F32Store { memarg: _ } => todo!("implement f32.store"),
+        Operator::F64Store { memarg } => translate_store(Type::F64, memarg, state, builder),
+        Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
+            translate_store(Type::I8, memarg, state, builder);
+        }
+        Operator::I32Store16 { memarg } | Operator::I64Store16 { memarg } => {
+            translate_store(Type::I16, memarg, state, builder);
+        }
+        Operator::I64Store32 { memarg } => translate_store(Type::I32, memarg, state, builder),
+        Operator::V128Store { .. } => {
+            unsupported_diag!(diagnostics, "unsupported v128.store");
+        }
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => {
             state.push1(builder.ins().i32(*value, SourceSpan::default()))
@@ -142,6 +213,85 @@ pub fn translate_operator(
         op => todo!("Wasm op {:?} translation is not yet implemented", op),
     };
     Ok(())
+}
+
+fn translate_load(
+    ptr_ty: Type,
+    memarg: &MemArg,
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt<'_>,
+) {
+    let addr_int = state.pop1();
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
+    state.push1(builder.ins().load(addr, SourceSpan::default()));
+}
+
+fn translate_load_sext(
+    ptr_ty: Type,
+    sext_ty: Type,
+    memarg: &MemArg,
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt<'_>,
+) {
+    let addr_int = state.pop1();
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
+    let val = builder.ins().load(addr, SourceSpan::default());
+    let sext_val = builder.ins().sext(val, sext_ty, SourceSpan::default());
+    state.push1(sext_val);
+}
+
+fn translate_load_zext(
+    ptr_ty: Type,
+    zext_ty: Type,
+    memarg: &MemArg,
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt<'_>,
+) {
+    let addr_int = state.pop1();
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
+    let val = builder.ins().load(addr, SourceSpan::default());
+    let sext_val = builder.ins().zext(val, zext_ty, SourceSpan::default());
+    state.push1(sext_val);
+}
+
+fn translate_store(
+    ptr_ty: Type,
+    memarg: &MemArg,
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt<'_>,
+) {
+    let (addr_int, val) = state.pop2();
+    let val_ty = builder.func().dfg.value_type(val);
+    let arg = if ptr_ty != val_ty {
+        builder
+            .ins()
+            .trunc(val, ptr_ty.clone(), SourceSpan::default())
+    } else {
+        val
+    };
+    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder);
+    builder.ins().store(addr, arg, SourceSpan::default());
+}
+
+fn prepare_addr(
+    addr_int: Value,
+    ptr_ty: &Type,
+    memarg: &MemArg,
+    builder: &mut FunctionBuilderExt,
+) -> Value {
+    let full_addr_int = if memarg.offset != 0 {
+        let offset = builder
+            .ins()
+            .i32(memarg.offset as i32, SourceSpan::default());
+        builder.ins().add(addr_int, offset, SourceSpan::default())
+    } else {
+        addr_int
+    };
+    builder.ins().inttoptr(
+        full_addr_int,
+        Type::Ptr(ptr_ty.clone().into()),
+        SourceSpan::default(),
+    )
 }
 
 fn translate_call(
