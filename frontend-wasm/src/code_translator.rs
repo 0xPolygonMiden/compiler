@@ -113,6 +113,14 @@ pub fn translate_operator(
         Operator::CallIndirect { .. } => {
             unsupported_diag!(diagnostics, "Wasm Operator::CallIndirect is not supported",);
         }
+        /******************************* Memory management *********************************/
+        Operator::MemoryGrow { .. } => {
+            // Do nothing and return total Miden memory size
+            state.push1(builder.ins().i32(mem_total_pages(), SourceSpan::default()));
+        }
+        Operator::MemorySize { .. } => {
+            state.push1(builder.ins().i32(mem_total_pages(), SourceSpan::default()));
+        }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
             translate_load_zext(Type::I8, Type::I32, memarg, state, builder)
@@ -213,6 +221,14 @@ pub fn translate_operator(
         op => todo!("Wasm op {:?} translation is not yet implemented", op),
     };
     Ok(())
+}
+
+/// Return the total Miden VM memory size (2^32 addresses * word (4 felts) bytes) in 64KB pages
+const fn mem_total_pages() -> i32 {
+    let bytes_fit_in_felt = 4; // although more than 32 bits can fit into a felt, use 32 bits to be safe
+    let felts_in_word = 4;
+    let total_addresses = u32::MAX as i64;
+    (total_addresses * (felts_in_word * bytes_fit_in_felt) / (64 * 1024)) as i32
 }
 
 fn translate_load(
