@@ -1,12 +1,14 @@
-use core::cmp::{self, Ordering};
-use core::mem;
+use std::{
+    cmp::{self, Ordering},
+    mem,
+};
 
 use cranelift_entity::packed_option::PackedOption;
 use cranelift_entity::SecondaryMap;
 
 use rustc_hash::FxHashSet;
 
-use crate::hir::{Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint};
+use miden_hir::{Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint};
 
 use super::{BlockPredecessor, ControlFlowGraph};
 

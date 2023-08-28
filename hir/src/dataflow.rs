@@ -9,8 +9,6 @@ use smallvec::SmallVec;
 
 use miden_diagnostics::{SourceSpan, Span};
 
-use crate::types::Type;
-
 use super::*;
 
 pub struct DataFlowGraph {

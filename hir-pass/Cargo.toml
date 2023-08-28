@@ -1,0 +1,14 @@
+[package]
+name = "miden-hir-pass"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true

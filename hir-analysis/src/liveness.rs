@@ -3,12 +3,10 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
+use miden_hir::{self as hir, Block as BlockId, Inst as InstId, Value as ValueId, *};
 use rustc_hash::FxHashMap;
 
-use crate::{
-    analysis::ControlFlowAnalysis,
-    hir::{self, Block as BlockId, Inst as InstId, Value as ValueId, *},
-};
+use super::ControlFlowAnalysis;
 
 /// This data structure is the result of computing liveness information over the
 /// control flow graph of an HIR function. It uses a somewhat novel approach to

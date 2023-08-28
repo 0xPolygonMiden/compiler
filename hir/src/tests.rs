@@ -1,5 +1,3 @@
-use crate::types::{FunctionType, Type};
-
 use super::*;
 
 /// The following test constructs an IR module equivalent to the following pseudocode:

@@ -1,7 +1,9 @@
-use core::fmt;
-use core::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
-use crate::types::Type;
+use super::Type;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Immediate {

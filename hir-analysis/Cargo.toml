@@ -1,5 +1,5 @@
 [package]
-name = "miden-hir"
+name = "miden-hir-analysis"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -11,14 +11,8 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow.workspace = true
-bitflags.workspace = true
 cranelift-entity.workspace = true
-intrusive-collections = "0.9"
-miden-diagnostics.workspace = true
-miden-hir-type = { path = "../hir-type" }
-paste = "1.0"
+cranelift-bforest.workspace = true
+miden-hir = { path = "../hir" }
 rustc-hash.workspace = true
 smallvec.workspace = true
-thiserror.workspace = true
-typed-arena = "2.0"
