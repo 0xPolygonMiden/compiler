@@ -114,7 +114,12 @@ pub fn write_block_header(
     writeln!(w, "):")
 }
 
-fn write_instruction(w: &mut dyn Write, func: &Function, inst: Inst, indent: usize) -> fmt::Result {
+pub fn write_instruction(
+    w: &mut dyn Write,
+    func: &Function,
+    inst: Inst,
+    indent: usize,
+) -> fmt::Result {
     let s = String::with_capacity(16);
 
     write!(w, "{1:0$}", indent, s)?;

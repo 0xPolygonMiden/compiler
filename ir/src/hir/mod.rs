@@ -20,7 +20,7 @@ pub use self::immediates::Immediate;
 pub use self::instruction::*;
 pub use self::layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap};
 pub use self::value::{Value, ValueData, ValueList, ValueListPool};
-pub use self::write::write_function;
+pub use self::write::{write_function, write_instruction};
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;

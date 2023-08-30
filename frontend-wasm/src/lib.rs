@@ -18,5 +18,8 @@ mod ssa;
 mod translation_utils;
 mod wasm_types;
 
+#[cfg(test)]
+mod test_utils;
+
 pub use crate::config::WasmTranslationConfig;
 pub use crate::module_translator::translate_module;
