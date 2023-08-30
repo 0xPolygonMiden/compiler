@@ -17,7 +17,7 @@ use crate::wasm_types::valtype_to_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_ir::cranelift_entity::EntityRef;
 use miden_ir::hir::{Block, Function, InstBuilder};
-use wasmparser::{BinaryReader, FunctionBody};
+use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
 /// WebAssembly to Miden IR function translator.
 ///
@@ -45,6 +45,7 @@ impl FuncTranslator {
         func: &mut Function,
         environ: &mut FuncEnvironment,
         diagnostics: &DiagnosticsHandler,
+        func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
         let mut reader = body.get_binary_reader();
         log::trace!(
@@ -68,8 +69,15 @@ impl FuncTranslator {
         builder.append_block_params_for_function_returns(exit_block);
         self.state.initialize(&builder.func().signature, exit_block);
 
-        parse_local_decls(&mut reader, &mut builder, num_params)?;
-        parse_function_body(reader, &mut builder, &mut self.state, environ, diagnostics)?;
+        parse_local_decls(&mut reader, &mut builder, num_params, func_validator)?;
+        parse_function_body(
+            reader,
+            &mut builder,
+            &mut self.state,
+            environ,
+            diagnostics,
+            func_validator,
+        )?;
 
         builder.finalize();
         Ok(())
@@ -101,13 +109,16 @@ fn parse_local_decls(
     reader: &mut BinaryReader,
     builder: &mut FunctionBuilderExt,
     num_params: usize,
+    validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
     let mut next_local = num_params;
     let local_count = reader.read_var_u32()?;
 
     for _ in 0..local_count {
+        let pos = reader.original_position();
         let count = reader.read_var_u32()?;
         let ty = reader.read()?;
+        validator.define_locals(pos, count, ty)?;
         declare_locals(builder, count, ty, &mut next_local)?;
     }
 
@@ -145,12 +156,15 @@ fn parse_function_body(
     state: &mut FuncTranslationState,
     environ: &mut FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
+    func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
     // The control stack is initialized with a single block representing the whole function.
     debug_assert_eq!(state.control_stack.len(), 1, "State not initialized");
 
     while !reader.eof() {
+        let pos = reader.original_position();
         let op = reader.read_operator()?;
+        func_validator.op(pos, &op)?;
         translate_operator(
             &op,
             builder,
@@ -160,6 +174,8 @@ fn parse_function_body(
             SourceSpan::default(),
         )?;
     }
+    let pos = reader.original_position();
+    func_validator.finish(pos)?;
 
     // The final `End` operator left us in the exit block where we need to manually add a return
     // instruction.
