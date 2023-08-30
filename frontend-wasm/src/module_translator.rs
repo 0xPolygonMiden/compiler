@@ -37,7 +37,9 @@ pub fn translate_module(
                 validator.version(num, encoding, &range)?;
             }
             Payload::End(offset) => {
+                let module = module_env.build(diagnostics, &mut validator)?;
                 validator.end(offset)?;
+                return Ok(module);
             }
 
             Payload::TypeSection(types) => {
@@ -95,10 +97,7 @@ pub fn translate_module(
             }
 
             Payload::CodeSectionEntry(body) => {
-                let func_validator = validator
-                    .code_section_entry(&body)?
-                    .into_validator(Default::default());
-                env.define_function_body(func_validator, body);
+                env.define_function_body(body);
             }
 
             Payload::DataSection(data) => {
@@ -126,5 +125,6 @@ pub fn translate_module(
             }
         }
     }
-    Ok(module_env.build(diagnostics)?)
+    // The parsing should've ended with a Payload::End where we build the Miden IR module
+    panic!("unexpected end of Webassembly parsing, missing Payload::End");
 }

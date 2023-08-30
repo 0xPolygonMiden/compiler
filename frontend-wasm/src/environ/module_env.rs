@@ -11,7 +11,7 @@ use miden_ir::hir::{Function, Module, Signature, Visibility};
 use miden_ir::types::FunctionType;
 use std::string::String;
 use std::vec::Vec;
-use wasmparser::{FuncValidator, FunctionBody, ValidatorResources};
+use wasmparser::{FunctionBody, Validator};
 
 use super::FuncEnvironment;
 
@@ -92,7 +92,11 @@ impl<'a> ModuleEnvironment<'a> {
         self.info.function_names.get(func_index).map(String::as_ref)
     }
 
-    pub fn build(mut self, diagnostics: &DiagnosticsHandler) -> WasmResult<Module> {
+    pub fn build(
+        mut self,
+        diagnostics: &DiagnosticsHandler,
+        validator: &mut Validator,
+    ) -> WasmResult<Module> {
         let module_name = self.module_name.clone().unwrap_or("noname".to_string());
         let mut module = Module::new(module_name, Some(SourceSpan::default()));
         let get_num_func_imports = self.get_num_func_imports();
@@ -118,8 +122,16 @@ impl<'a> ModuleEnvironment<'a> {
                 module.names.clone(),
             );
             let mut func_environ = FuncEnvironment::new(&self.info);
-            self.trans
-                .translate_body(body, &mut func, &mut func_environ, diagnostics)?;
+            let mut func_validator = validator
+                .code_section_entry(&body)?
+                .into_validator(Default::default());
+            self.trans.translate_body(
+                body,
+                &mut func,
+                &mut func_environ,
+                diagnostics,
+                &mut func_validator,
+            )?;
             module.define_function(func);
         }
         Ok(module)
@@ -165,11 +177,7 @@ impl<'a> ModuleEnvironment<'a> {
     }
 
     /// Provides the contents of a function body.
-    pub fn define_function_body(
-        &mut self,
-        _validator: FuncValidator<ValidatorResources>,
-        body: FunctionBody<'a>,
-    ) {
+    pub fn define_function_body(&mut self, body: FunctionBody<'a>) {
         self.function_bodies.push(body);
     }
 
