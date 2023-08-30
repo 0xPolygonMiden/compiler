@@ -28,6 +28,9 @@ use miden_ir::hir::{Block, Inst, InstBuilder, Value};
 use miden_ir::types::Type;
 use wasmparser::{MemArg, Operator};
 
+#[cfg(test)]
+mod tests;
+
 /// Translates wasm operators into Miden IR instructions.
 pub fn translate_operator(
     op: &Operator,
