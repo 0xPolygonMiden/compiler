@@ -168,6 +168,20 @@ pub fn translate_operator(
         Operator::F64Const { value } => {
             state.push1(builder.ins().f64(f64_translation(*value), span));
         }
+        /******************************* Unary Operators *************************************/
+        Operator::I32Popcnt | Operator::I64Popcnt => {
+            let val = state.pop1();
+            state.push1(builder.ins().popcnt(val, span));
+        }
+        Operator::I64ExtendI32S => {
+            let val = state.pop1();
+            // TODO: use Type::* and use just I64
+            state.push1(builder.ins().sext(val, Type::I64, span));
+        }
+        Operator::I64ExtendI32U => {
+            let val = state.pop1();
+            state.push1(builder.ins().zext(val, Type::I64, span));
+        }
         /****************************** Binary Operators ************************************/
         Operator::I32Add | Operator::I64Add => {
             let (arg1, arg2) = state.pop2();
