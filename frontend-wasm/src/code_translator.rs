@@ -180,6 +180,14 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().add(arg1, arg2, span));
         }
+        Operator::I32And | Operator::I64And => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().and(arg1, arg2, span));
+        }
+        Operator::I32Or | Operator::I64Or => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().or(arg1, arg2, span));
+        }
         Operator::I32Sub | Operator::I64Sub => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().sub(arg1, arg2, span));
