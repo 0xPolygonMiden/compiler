@@ -31,6 +31,9 @@ use wasmparser::{MemArg, Operator};
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod tests_unsupported;
+
 /// Translates wasm operators into Miden IR instructions.
 pub fn translate_operator(
     op: &Operator,
@@ -93,16 +96,10 @@ pub fn translate_operator(
         /**************************** Branch instructions *********************************/
         Operator::Br { relative_depth } => translate_br(state, relative_depth, builder, span),
         Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span),
-        Operator::BrTable { .. } => {
-            unsupported_diag!(diagnostics, "Wasm Operator::BrTable is not supported");
-        }
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /************************************ Calls ****************************************/
         Operator::Call { function_index } => {
             translate_call(state, builder, function_index, environ, span);
-        }
-        Operator::CallIndirect { .. } => {
-            unsupported_diag!(diagnostics, "Wasm Operator::CallIndirect is not supported",);
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
@@ -144,13 +141,11 @@ pub fn translate_operator(
             translate_load_zext(Type::I32, Type::I64, memarg, state, builder, span)
         }
         Operator::I32Load { memarg } => translate_load(Type::I32, memarg, state, builder, span),
-        Operator::F32Load { memarg: _ } => todo!("implement f32.load"),
         Operator::I64Load { memarg } => translate_load(Type::I64, memarg, state, builder, span),
         Operator::F64Load { memarg } => translate_load(Type::F64, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(Type::I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(Type::I64, memarg, state, builder, span),
-        Operator::F32Store { memarg: _ } => todo!("implement f32.store"),
         Operator::F64Store { memarg } => translate_store(Type::F64, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
             translate_store(Type::I8, memarg, state, builder, span);
@@ -162,12 +157,10 @@ pub fn translate_operator(
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => state.push1(builder.ins().i32(*value, span)),
         Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
-        Operator::F32Const { value: _ } => {
-            todo!("handle f32 const");
-        }
         Operator::F64Const { value } => {
             state.push1(builder.ins().f64(f64_translation(*value), span));
         }
+
         /******************************* Unary Operators *************************************/
         Operator::I32Popcnt | Operator::I64Popcnt => {
             let val = state.pop1();
