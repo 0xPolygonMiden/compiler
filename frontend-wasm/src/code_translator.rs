@@ -26,6 +26,7 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_ir::cranelift_entity::packed_option::ReservedValue;
 use miden_ir::hir::{Block, Inst, InstBuilder, Value};
 use miden_ir::types::Type;
+use miden_ir::types::Type::*;
 use wasmparser::{MemArg, Operator};
 
 #[cfg(test)]
@@ -111,49 +112,49 @@ pub fn translate_operator(
         }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
-            translate_load_zext(Type::I8, Type::I32, memarg, state, builder, span)
+            translate_load_zext(I8, I32, memarg, state, builder, span)
         }
         Operator::I32Load16U { memarg } => {
-            translate_load_zext(Type::I16, Type::I32, memarg, state, builder, span)
+            translate_load_zext(I16, I32, memarg, state, builder, span)
         }
         Operator::I32Load8S { memarg } => {
-            translate_load_sext(Type::I8, Type::I32, memarg, state, builder, span);
+            translate_load_sext(I8, I32, memarg, state, builder, span);
         }
         Operator::I32Load16S { memarg } => {
-            translate_load_sext(Type::I16, Type::I32, memarg, state, builder, span);
+            translate_load_sext(I16, I32, memarg, state, builder, span);
         }
         Operator::I64Load8U { memarg } => {
-            translate_load_zext(Type::I8, Type::I64, memarg, state, builder, span)
+            translate_load_zext(I8, I64, memarg, state, builder, span)
         }
         Operator::I64Load16U { memarg } => {
-            translate_load_zext(Type::I16, Type::I64, memarg, state, builder, span)
+            translate_load_zext(I16, I64, memarg, state, builder, span)
         }
         Operator::I64Load8S { memarg } => {
-            translate_load_sext(Type::I8, Type::I64, memarg, state, builder, span);
+            translate_load_sext(I8, I64, memarg, state, builder, span);
         }
         Operator::I64Load16S { memarg } => {
-            translate_load_sext(Type::I16, Type::I64, memarg, state, builder, span);
+            translate_load_sext(I16, I64, memarg, state, builder, span);
         }
         Operator::I64Load32S { memarg } => {
-            translate_load_sext(Type::I32, Type::I64, memarg, state, builder, span)
+            translate_load_sext(I32, I64, memarg, state, builder, span)
         }
         Operator::I64Load32U { memarg } => {
-            translate_load_zext(Type::I32, Type::I64, memarg, state, builder, span)
+            translate_load_zext(I32, I64, memarg, state, builder, span)
         }
-        Operator::I32Load { memarg } => translate_load(Type::I32, memarg, state, builder, span),
-        Operator::I64Load { memarg } => translate_load(Type::I64, memarg, state, builder, span),
-        Operator::F64Load { memarg } => translate_load(Type::F64, memarg, state, builder, span),
+        Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
+        Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
+        Operator::F64Load { memarg } => translate_load(F64, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
-        Operator::I32Store { memarg } => translate_store(Type::I32, memarg, state, builder, span),
-        Operator::I64Store { memarg } => translate_store(Type::I64, memarg, state, builder, span),
-        Operator::F64Store { memarg } => translate_store(Type::F64, memarg, state, builder, span),
+        Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
+        Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
+        Operator::F64Store { memarg } => translate_store(F64, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
-            translate_store(Type::I8, memarg, state, builder, span);
+            translate_store(I8, memarg, state, builder, span);
         }
         Operator::I32Store16 { memarg } | Operator::I64Store16 { memarg } => {
-            translate_store(Type::I16, memarg, state, builder, span);
+            translate_store(I16, memarg, state, builder, span);
         }
-        Operator::I64Store32 { memarg } => translate_store(Type::I32, memarg, state, builder, span),
+        Operator::I64Store32 { memarg } => translate_store(I32, memarg, state, builder, span),
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => state.push1(builder.ins().i32(*value, span)),
         Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
@@ -168,12 +169,11 @@ pub fn translate_operator(
         }
         Operator::I64ExtendI32S => {
             let val = state.pop1();
-            // TODO: use Type::* and use just I64
-            state.push1(builder.ins().sext(val, Type::I64, span));
+            state.push1(builder.ins().sext(val, I64, span));
         }
         Operator::I64ExtendI32U => {
             let val = state.pop1();
-            state.push1(builder.ins().zext(val, Type::I64, span));
+            state.push1(builder.ins().zext(val, I64, span));
         }
         /****************************** Binary Operators ************************************/
         Operator::I32Add | Operator::I64Add => {
