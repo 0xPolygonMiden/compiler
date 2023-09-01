@@ -396,6 +396,51 @@ fn i64_const() {
 }
 
 #[test]
+fn i32_popcnt() {
+    check_op(
+        r#"
+            i32.const 1
+            i32.popcnt
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 1  : i32
+            v1 = popcnt v0  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_extend_i32_s() {
+    check_op(
+        r#"
+            i32.const 1
+            i64.extend_i32_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 1  : i32
+            v1 = sext v0  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i64_extend_i32_u() {
+    check_op(
+        r#"
+            i32.const 1
+            i64.extend_i32_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 1  : i32
+            v1 = zext v0  : i64
+        "#]],
+    )
+}
+
+#[test]
 fn i32_add() {
     check_op(
         r#"
