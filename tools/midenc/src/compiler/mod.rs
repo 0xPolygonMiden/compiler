@@ -37,6 +37,13 @@ pub fn compile(
     // let artifacts = compile()?;
     // diagnostics.abort_if_errors();
 
+//    for x in artifacts {
+//        let dir = options.get_output_dir();
+//        dir.push(x.name);
+//        dir.set_extension("masm");
+//        self::emitter::write_ast_to_file(x.ast, dir.as_path());
+//    }
+    
     let duration = HumanDuration::since(start);
     diagnostics.success(
         "Finished",

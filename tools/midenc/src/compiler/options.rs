@@ -120,6 +120,13 @@ impl Options {
             output_dir,
         }))
     }
+
+    fn get_output_dir(&self) -> PathBuf {
+        match self.output_dir {
+            Some(ref dir) => dir.clone(),
+            None => self.current_dir.clone(),
+        }
+    }
 }
 
 bitflags::bitflags! {
