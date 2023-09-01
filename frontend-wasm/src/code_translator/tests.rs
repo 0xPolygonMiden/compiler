@@ -458,6 +458,91 @@ fn i32_add() {
 }
 
 #[test]
+fn i64_add() {
+    check_op(
+        r#"
+            i64.const 3
+            i64.const 1
+            i64.add
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 3  : i64
+            v1 = const.int 1  : i64
+            v2 = add v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_and() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.and
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = and v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_and() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.and
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = and v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_or() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.or
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = or v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_or() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.or
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = or v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
 fn i32_sub() {
     check_op(
         r#"
@@ -470,6 +555,23 @@ fn i32_sub() {
             v0 = const.int 3  : i32
             v1 = const.int 1  : i32
             v2 = sub v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_sub() {
+    check_op(
+        r#"
+            i64.const 3
+            i64.const 1
+            i64.sub
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 3  : i64
+            v1 = const.int 1  : i64
+            v2 = sub v0, v1  : i64
         "#]],
     )
 }
