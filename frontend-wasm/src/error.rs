@@ -21,7 +21,7 @@ pub enum WasmError {
     },
 
     /// A feature used by the WebAssembly code is not supported by the Miden IR.
-    #[error("Unsupported feature: {0}")]
+    #[error("Unsupported Wasm: {0}")]
     Unsupported(String),
 
     #[error("Too many declared functions in the module")]
