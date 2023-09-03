@@ -71,18 +71,7 @@ pub fn translate_operator(
         }
         /********************************* Stack misc **************************************/
         Operator::Drop => _ = state.pop1(),
-        Operator::Select => {
-            // TODO: Missing in Miden IR? Or should be implemented via `CondBr`?
-            // let (mut arg1, mut arg2, cond) = state.pop3();
-            // if cond is zero returns arg2, else returns arg1
-            todo!("Wasm Operator::Select translation is not yet implemented");
-        }
         Operator::Nop => {}
-        Operator::Unreachable => {
-            todo!("Wasm Operator::Unreachable translation is not yet implemented");
-            // TODO: halt the program as it reached the point that should never be executed
-            // state.reachable = false;
-        }
         /***************************** Control flow blocks *********************************/
         Operator::Block { blockty } => {
             translate_block(blockty, builder, state, environ.mod_info, span)?
