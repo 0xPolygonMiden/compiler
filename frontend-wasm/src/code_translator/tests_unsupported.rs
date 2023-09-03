@@ -61,8 +61,9 @@ fn check_unsupported(op: &Operator) {
     );
 }
 
+// Wasm Spec v1.0
 const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
-    // Wasm Spec v1.0
+    /****************************** Memory Operators ************************************/
     CallIndirect {
         type_index: 0,
         table_index: 0,
@@ -73,7 +74,7 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     Select,
     // Halt the program as it reached the point that should never be executed
     Unreachable,
-    // Memory
+    /****************************** Memory Operators ************************************/
     F32Load {
         memarg: MemArg {
             align: 0,
@@ -90,14 +91,14 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
             memory: 0,
         },
     },
-    // Nullary
+    /****************************** Nullary Operators ************************************/
 
     // Cannot construct since Ieee32 fields are private
     // F32Const {
     //     value: Ieee32(0),
     // },
 
-    // Unary
+    /****************************** Unary Operators ************************************/
     I32Ctz,
     I32Clz,
     I64Ctz,
@@ -147,6 +148,9 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     F64ReinterpretI64,
     I32ReinterpretF32,
     I64ReinterpretF64,
+    /****************************** Binary Operators ************************************/
+    I32ShrS,
+    I64ShrS,
 ];
 
 #[test]
