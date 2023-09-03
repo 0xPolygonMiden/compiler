@@ -316,6 +316,23 @@ fn i64_store() {
 }
 
 #[test]
+fn f64_store() {
+    check_op(
+        r#"
+            i32.const 1024
+            f64.const 1.9
+            f64.store
+        "#,
+        expect![[r#"
+            v0 = const.int 1024  : i32
+            v1 = const.float 1.9  : f64
+            v2 = inttoptr v0  : *mut f64
+            store v2, v1
+        "#]],
+    )
+}
+
+#[test]
 fn i32_store8() {
     check_op(
         r#"
@@ -391,6 +408,19 @@ fn i64_const() {
         "#,
         expect![[r#"
             v0 = const.int 1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_const() {
+    check_op(
+        r#"
+            f64.const 1.9
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 1.9  : f64
         "#]],
     )
 }
@@ -742,6 +772,40 @@ fn i64_rotr() {
             v0 = const.int 2  : i64
             v1 = const.int 1  : i64
             v2 = shr v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_add() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.add
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = add v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_sub() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.sub
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = sub v0, v1  : f64
         "#]],
     )
 }
