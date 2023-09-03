@@ -643,3 +643,105 @@ fn i64_shl() {
         "#]],
     )
 }
+
+#[test]
+fn i32_shr_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.shr_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = shr v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_shr_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.shr_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = shr v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_rotl() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.rotl
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = shl v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_rotl() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.rotl
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = shl v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_rotr() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.rotr
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = shr v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_rotr() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.rotr
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = shr v0, v1  : i64
+        "#]],
+    )
+}
