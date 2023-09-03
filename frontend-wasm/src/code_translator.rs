@@ -209,6 +209,34 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().sub(arg1, arg2, span));
         }
+        Operator::I32Mul | Operator::I64Mul => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().mul(arg1, arg2, span));
+        }
+        Operator::F64Mul => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().mul(arg1, arg2, span));
+        }
+        Operator::F64Div => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().div(arg1, arg2, span));
+        }
+        Operator::I32DivU | Operator::I64DivU => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().div(arg1, arg2, span));
+        }
+        Operator::I32RemU | Operator::I64RemU => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().r#mod(arg1, arg2, span));
+        }
+        Operator::F64Min => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().min(arg1, arg2, span));
+        }
+        Operator::F64Max => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().max(arg1, arg2, span));
+        }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
         }
