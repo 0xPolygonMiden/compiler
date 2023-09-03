@@ -809,3 +809,173 @@ fn f64_sub() {
         "#]],
     )
 }
+
+#[test]
+fn i32_mul() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.mul
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = mul v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_mul() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.mul
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = mul v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_mul() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.mul
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = mul v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_div() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.div
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = div v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_div_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.div_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = div v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_div_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.div_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = div v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_rem_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.rem_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = mod v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_rem_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.rem_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = mod v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_min() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.min
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = min v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_max() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.max
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = max v0, v1  : f64
+        "#]],
+    )
+}
