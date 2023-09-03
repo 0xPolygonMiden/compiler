@@ -575,3 +575,71 @@ fn i64_sub() {
         "#]],
     )
 }
+
+#[test]
+fn i32_xor() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.xor
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = xor v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_xor() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.xor
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = xor v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_shl() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.shl
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = shl v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_shl() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.shl
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = shl v0, v1  : i64
+        "#]],
+    )
+}
