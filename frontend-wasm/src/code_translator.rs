@@ -237,6 +237,23 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().max(arg1, arg2, span));
         }
+        /**************************** Comparison Operators **********************************/
+        Operator::I32LtU | Operator::I64LtU => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().lt(arg0, arg1, span));
+        }
+        Operator::I32LeU | Operator::I64LeU => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().lte(arg0, arg1, span));
+        }
+        Operator::I32GtU | Operator::I64GtU => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().gt(arg0, arg1, span));
+        }
+        Operator::I32GeU | Operator::I64GeU => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().gte(arg0, arg1, span));
+        }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
         }
