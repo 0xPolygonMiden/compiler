@@ -192,6 +192,14 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().sub(arg1, arg2, span));
         }
+        Operator::I32Xor | Operator::I64Xor => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().xor(arg1, arg2, span));
+        }
+        Operator::I32Shl | Operator::I64Shl => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().shl(arg1, arg2, span));
+        }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
         }
