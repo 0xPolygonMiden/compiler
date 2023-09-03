@@ -22,8 +22,9 @@ pub fn block_with_params(
 }
 
 /// Turns a `wasmparser` `f64` into a `Miden` one.
-pub fn f64_translation(_x: wasmparser::Ieee64) -> f64 {
-    todo!("f64_translation")
+pub fn f64_translation(x: wasmparser::Ieee64) -> f64 {
+    let ieee64_bits = x.bits();
+    f64::from_bits(ieee64_bits)
 }
 
 /// Emit instructions to produce a zero value in the given type.

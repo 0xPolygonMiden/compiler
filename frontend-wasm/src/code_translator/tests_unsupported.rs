@@ -151,6 +151,8 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     /****************************** Binary Operators ************************************/
     I32ShrS,
     I64ShrS,
+    F32Add,
+    F32Sub,
 ];
 
 #[test]

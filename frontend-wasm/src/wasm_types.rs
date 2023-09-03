@@ -133,7 +133,7 @@ pub fn valtype_to_type(ty: &wasmparser::ValType) -> WasmResult<Type> {
         wasmparser::ValType::I32 => Type::I32,
         wasmparser::ValType::I64 => Type::I64,
         wasmparser::ValType::F32 => {
-            todo!("f32 type translation")
+            todo!("no f32 type in Miden IR")
         }
         wasmparser::ValType::F64 => Type::F64,
         wasmparser::ValType::V128 => {
