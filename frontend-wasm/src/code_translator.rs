@@ -177,10 +177,6 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().or(arg1, arg2, span));
         }
-        Operator::I32Sub | Operator::I64Sub => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().sub(arg1, arg2, span));
-        }
         Operator::I32Xor | Operator::I64Xor => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().xor(arg1, arg2, span));
@@ -200,6 +196,18 @@ pub fn translate_operator(
         Operator::I32Rotr | Operator::I64Rotr => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().shr_wrapping(arg1, arg2, span));
+        }
+        Operator::F64Add => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().add(arg1, arg2, span));
+        }
+        Operator::I32Sub | Operator::I64Sub => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().sub(arg1, arg2, span));
+        }
+        Operator::F64Sub => {
+            let (arg1, arg2) = state.pop2();
+            state.push1(builder.ins().sub(arg1, arg2, span));
         }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
