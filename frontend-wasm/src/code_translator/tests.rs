@@ -979,3 +979,139 @@ fn f64_max() {
         "#]],
     )
 }
+
+#[test]
+fn i32_lt_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.lt_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = lt v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_lt_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.lt_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = lt v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_le_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.le_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = lte v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_le_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.le_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = lte v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_gt_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.gt_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = gt v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_gt_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.gt_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = gt v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_ge_u() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.ge_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = gte v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_ge_u() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.ge_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = gte v0, v1  : i64
+        "#]],
+    )
+}

@@ -163,6 +163,15 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     F32Max,
     F32Copysign,
     F64Copysign,
+    /**************************** Comparison Operators **********************************/
+    I32LtS,
+    I64LtS,
+    I32LeS,
+    I64LeS,
+    I32GtS,
+    I64GtS,
+    I32GeS,
+    I64GeS,
 ];
 
 #[test]
