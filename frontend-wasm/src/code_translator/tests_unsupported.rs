@@ -63,7 +63,6 @@ fn check_unsupported(op: &Operator) {
 
 // Wasm Spec v1.0
 const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
-    /****************************** Memory Operators ************************************/
     CallIndirect {
         type_index: 0,
         table_index: 0,
@@ -74,6 +73,8 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     Select,
     // Halt the program as it reached the point that should never be executed
     Unreachable,
+    /**************************** Branch instructions *********************************/
+    // BrTable { targets: .. },
     /****************************** Memory Operators ************************************/
     F32Load {
         memarg: MemArg {
