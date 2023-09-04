@@ -1,0 +1,21 @@
+[package]
+name = "miden-hir-transform"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cranelift-entity.workspace = true
+miden-diagnostics.workspace = true
+miden-hir = { path = "../hir" }
+miden-hir-analysis = { path = "../hir-analysis" }
+miden-hir-pass = { path = "../hir-pass" }
+rustc-hash.workspace = true
+smallvec.workspace = true
