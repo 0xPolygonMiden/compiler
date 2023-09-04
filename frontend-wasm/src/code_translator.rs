@@ -254,6 +254,48 @@ pub fn translate_operator(
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().gte(arg0, arg1, span));
         }
+        Operator::I32Eqz => {
+            let arg = state.pop1();
+            let imm_zero = builder.ins().i32(0, span);
+            state.push1(builder.ins().eq(arg, imm_zero, span));
+        }
+        Operator::I64Eqz => {
+            let arg = state.pop1();
+            let imm_zero = builder.ins().i64(0, span);
+            state.push1(builder.ins().eq(arg, imm_zero, span));
+        }
+        Operator::I32Eq | Operator::I64Eq => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().eq(arg0, arg1, span));
+        }
+        Operator::F64Eq => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().eq(arg0, arg1, span));
+        }
+        Operator::I32Ne | Operator::I64Ne => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().neq(arg0, arg1, span));
+        }
+        Operator::F64Ne => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().neq(arg0, arg1, span));
+        }
+        Operator::F64Gt => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().gt(arg0, arg1, span));
+        }
+        Operator::F64Ge => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().gte(arg0, arg1, span));
+        }
+        Operator::F64Le => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().lte(arg0, arg1, span));
+        }
+        Operator::F64Lt => {
+            let (arg0, arg1) = state.pop2();
+            state.push1(builder.ins().lt(arg0, arg1, span));
+        }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
         }

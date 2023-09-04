@@ -172,6 +172,12 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     I64GtS,
     I32GeS,
     I64GeS,
+    F32Eq,
+    F32Ne,
+    F32Gt,
+    F32Ge,
+    F32Le,
+    F32Lt,
 ];
 
 #[test]
