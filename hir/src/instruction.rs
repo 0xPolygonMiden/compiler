@@ -63,6 +63,7 @@ intrusive_adapter!(pub InstAdapter = UnsafeRef<InstNode>: InstNode { link: Linke
 /// Represents the type of instruction associated with a particular opcode
 #[derive(Debug, Clone)]
 pub enum Instruction {
+    GlobalValue(GlobalValueOp),
     BinaryOp(BinaryOp),
     BinaryOpImm(BinaryOpImm),
     UnaryOp(UnaryOp),
@@ -72,6 +73,8 @@ pub enum Instruction {
     CondBr(CondBr),
     Switch(Switch),
     Ret(Ret),
+    RetImm(RetImm),
+    Load(LoadOp),
     MemCpy(MemCpy),
     PrimOp(PrimOp),
     PrimOpImm(PrimOpImm),
@@ -81,7 +84,8 @@ pub enum Instruction {
 impl Instruction {
     pub fn opcode(&self) -> Opcode {
         match self {
-            Self::BinaryOp(BinaryOp { ref op, .. })
+            Self::GlobalValue(GlobalValueOp { ref op, .. })
+            | Self::BinaryOp(BinaryOp { ref op, .. })
             | Self::BinaryOpImm(BinaryOpImm { ref op, .. })
             | Self::UnaryOp(UnaryOp { ref op, .. })
             | Self::UnaryOpImm(UnaryOpImm { ref op, .. })
@@ -90,6 +94,8 @@ impl Instruction {
             | Self::CondBr(CondBr { ref op, .. })
             | Self::Switch(Switch { ref op, .. })
             | Self::Ret(Ret { ref op, .. })
+            | Self::RetImm(RetImm { ref op, .. })
+            | Self::Load(LoadOp { ref op, .. })
             | Self::MemCpy(MemCpy { ref op, .. })
             | Self::PrimOp(PrimOp { ref op, .. })
             | Self::PrimOpImm(PrimOpImm { ref op, .. })
@@ -98,22 +104,49 @@ impl Instruction {
         }
     }
 
+    /// Returns true if this instruction has side effects, or may have side effects
+    ///
+    /// Side effects are defined as control flow, writing memory, trapping execution,
+    /// I/O, etc.
+    ///
+    #[inline]
+    pub fn has_side_effects(&self) -> bool {
+        self.opcode().has_side_effects()
+    }
+
+    /// Returns true if this instruction is a binary operator requiring two operands
+    ///
+    /// NOTE: Binary operators with immediate operands are not considered binary for
+    /// this purpose, as they only require a single operand to be provided to the
+    /// instruction, the immediate being the other one provided by the instruction
+    /// itself.
+    pub fn is_binary(&self) -> bool {
+        matches!(self, Self::BinaryOp(_))
+    }
+
+    /// Returns true if this instruction is a binary operator whose operands may
+    /// appear in any order.
+    #[inline]
+    pub fn is_commutative(&self) -> bool {
+        self.opcode().is_commutative()
+    }
+
     pub fn arguments<'a>(&'a self, pool: &'a ValueListPool) -> &[Value] {
         match self {
             Self::BinaryOp(BinaryOp { ref args, .. }) => args.as_slice(),
             Self::BinaryOpImm(BinaryOpImm { ref arg, .. }) => core::slice::from_ref(arg),
             Self::UnaryOp(UnaryOp { ref arg, .. }) => core::slice::from_ref(arg),
-            Self::UnaryOpImm(UnaryOpImm { .. }) => &[],
             Self::Call(Call { ref args, .. }) => args.as_slice(pool),
-            Self::Br(Br { ref args, .. }) => args.as_slice(pool),
             Self::CondBr(CondBr { ref cond, .. }) => core::slice::from_ref(cond),
             Self::Switch(Switch { ref arg, .. }) => core::slice::from_ref(arg),
             Self::Ret(Ret { ref args, .. }) => args.as_slice(pool),
+            Self::Load(LoadOp { ref addr, .. }) => core::slice::from_ref(addr),
             Self::MemCpy(MemCpy { ref args, .. }) => args.as_slice(),
             Self::PrimOp(PrimOp { ref args, .. }) => args.as_slice(pool),
             Self::PrimOpImm(PrimOpImm { ref args, .. }) => args.as_slice(pool),
             Self::Test(Test { ref arg, .. }) => core::slice::from_ref(arg),
             Self::InlineAsm(InlineAsm { ref args, .. }) => args.as_slice(pool),
+            Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &[],
         }
     }
 
@@ -122,17 +155,17 @@ impl Instruction {
             Self::BinaryOp(BinaryOp { ref mut args, .. }) => args.as_mut_slice(),
             Self::BinaryOpImm(BinaryOpImm { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::UnaryOp(UnaryOp { ref mut arg, .. }) => core::slice::from_mut(arg),
-            Self::UnaryOpImm(UnaryOpImm { .. }) => &mut [],
             Self::Call(Call { ref mut args, .. }) => args.as_mut_slice(pool),
-            Self::Br(Br { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::CondBr(CondBr { ref mut cond, .. }) => core::slice::from_mut(cond),
             Self::Switch(Switch { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::Ret(Ret { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::Load(LoadOp { ref mut addr, .. }) => core::slice::from_mut(addr),
             Self::MemCpy(MemCpy { ref mut args, .. }) => args.as_mut_slice(),
             Self::PrimOp(PrimOp { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::PrimOpImm(PrimOpImm { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::Test(Test { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::InlineAsm(InlineAsm { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &mut [],
         }
     }
 
@@ -192,7 +225,7 @@ impl<'a> JumpTable<'a> {
 
 pub enum CallInfo<'a> {
     NotACall,
-    Direct(FuncRef, &'a [Value]),
+    Direct(FunctionIdent, &'a [Value]),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -203,16 +236,48 @@ pub enum Opcode {
     Assertz,
     /// Asserts the two given values are equal
     AssertEq,
-    /// Same as `Test`, but does not return a value, instead it traps on failure
-    AssertTest,
-    /// Represents an immediate integer value
-    ImmInt,
-    /// Represents an immediate floating-point value
-    ImmFloat,
-    /// Represents an immediate "null" value, where all bytes of the representation are zeroed
-    ImmNull,
-    /// Loads the address of a given value into memory
-    AddrOf,
+    /// Represents an immediate boolean value (1-bit integer)
+    ImmI1,
+    /// Represents an immediate 8-bit integer value
+    ImmI8,
+    /// Represents an immediate 16-bit integer value
+    ImmI16,
+    /// Represents an immediate 32-bit integer value
+    ImmI32,
+    /// Represents an immediate 64-bit integer value
+    ImmI64,
+    /// Represents an immediate machine-width integer value (32-bit integer for the time being)
+    ImmIsize,
+    /// Represents an immediate field element
+    ImmFelt,
+    /// Represents an immediate 64-bit floating-point value
+    ImmF64,
+    /// Allocates a new "null" value in a temporary memory slot, where null is defined by
+    /// the semantics of the type. The result of this instruction is always a pointer to
+    /// the allocated type.
+    ///
+    /// For integral types, the null value is always zero.
+    ///
+    /// For pointer types, the null value is equal to the address of the start of the linear
+    /// memory range, i.e. address `0x0`.
+    ///
+    /// For structs and arrays, the null value is a value equal in size (in bytes) to the size
+    /// of the type, but whose contents are undefined, i.e. you cannot assume that the binary
+    /// representation of the value is zeroed.
+    Alloca,
+    /// Like the WebAssembly `memory.grow` instruction, this allocates a given number of pages from the
+    /// global heap, and returns the previous size of the heap, in pages. Each page is 64kb by default.
+    ///
+    /// For the time being, this instruction is emulated using a heap pointer global which tracks
+    /// the "end" of the available heap. Nothing actually prevents one from accessing memory past
+    /// that point (assuming it is within the 32-bit address range), however this allows us to
+    /// support code compiled for the `wasm32-unknown-unknown` target cleanly.
+    MemGrow,
+    /// This instruction is used to represent a global value in the IR
+    ///
+    /// See [GlobalValueOp] and [GlobalValueData] for details on what types of values are represented
+    /// behind this opcode.
+    GlobalValue,
     /// Loads a value from a pointer to memory
     Load,
     /// Stores a value to a pointer to memory
@@ -244,6 +309,7 @@ pub enum Opcode {
     DivMod,
     Neg,
     Inv,
+    Incr,
     Pow2,
     Exp,
     Not,
@@ -265,16 +331,18 @@ pub enum Opcode {
     Min,
     Max,
     Call,
+    Syscall,
     Br,
     CondBr,
     Switch,
     Ret,
+    Unreachable,
     InlineAsm,
 }
 impl Opcode {
     pub fn is_terminator(&self) -> bool {
         match self {
-            Self::Br | Self::CondBr | Self::Switch | Self::Ret => true,
+            Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Unreachable => true,
             _ => false,
         }
     }
@@ -286,12 +354,102 @@ impl Opcode {
         }
     }
 
+    pub fn is_commutative(&self) -> bool {
+        match self {
+            Self::Add
+            | Self::Mul
+            | Self::Min
+            | Self::Max
+            | Self::Eq
+            | Self::Neq
+            | Self::And
+            | Self::Or
+            | Self::Xor => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_side_effects(&self) -> bool {
+        match self {
+            // These opcodes are all effectful
+            Self::Assert
+            | Self::Assertz
+            | Self::AssertEq
+            | Self::Store
+            | Self::Alloca
+            | Self::MemCpy
+            | Self::MemGrow
+            | Self::Call
+            | Self::Syscall
+            | Self::Br
+            | Self::CondBr
+            | Self::Switch
+            | Self::Ret
+            | Self::Unreachable
+            | Self::InlineAsm => true,
+            // These opcodes are not
+            Self::ImmI1
+            | Self::ImmI8
+            | Self::ImmI16
+            | Self::ImmI32
+            | Self::ImmI64
+            | Self::ImmIsize
+            | Self::ImmFelt
+            | Self::ImmF64
+            | Self::GlobalValue
+            | Self::Load
+            | Self::PtrToInt
+            | Self::IntToPtr
+            | Self::Cast
+            | Self::Trunc
+            | Self::Zext
+            | Self::Sext
+            | Self::Test
+            | Self::Add
+            | Self::Sub
+            | Self::Mul
+            | Self::Div
+            | Self::Mod
+            | Self::DivMod
+            | Self::Neg
+            | Self::Inv
+            | Self::Incr
+            | Self::Pow2
+            | Self::Exp
+            | Self::Not
+            | Self::And
+            | Self::Or
+            | Self::Xor
+            | Self::Shl
+            | Self::Shr
+            | Self::Rotl
+            | Self::Rotr
+            | Self::Popcnt
+            | Self::Eq
+            | Self::Neq
+            | Self::Gt
+            | Self::Gte
+            | Self::Lt
+            | Self::Lte
+            | Self::IsOdd
+            | Self::Min
+            | Self::Max => false,
+        }
+    }
+
     pub fn num_fixed_args(&self) -> usize {
         match self {
-            Self::Assert | Self::Assertz | Self::AssertTest => 1,
+            Self::Assert | Self::Assertz => 1,
             Self::AssertEq => 2,
             // Immediates/constants have none
-            Self::ImmInt | Self::ImmFloat | Self::ImmNull => 0,
+            Self::ImmI1
+            | Self::ImmI8
+            | Self::ImmI16
+            | Self::ImmI32
+            | Self::ImmI64
+            | Self::ImmIsize
+            | Self::ImmFelt
+            | Self::ImmF64 => 0,
             // Binary ops always have two
             Self::Store
             | Self::Add
@@ -317,7 +475,7 @@ impl Opcode {
             | Self::Min
             | Self::Max => 2,
             // Unary ops always have one
-            Self::AddrOf
+            Self::MemGrow
             | Self::Load
             | Self::PtrToInt
             | Self::IntToPtr
@@ -328,6 +486,7 @@ impl Opcode {
             | Self::Test
             | Self::Neg
             | Self::Inv
+            | Self::Incr
             | Self::Pow2
             | Self::Popcnt
             | Self::Not
@@ -335,7 +494,7 @@ impl Opcode {
             // MemCpy requires source, destination, and arity
             Self::MemCpy => 3,
             // Calls are entirely variable
-            Self::Call => 0,
+            Self::Call | Self::Syscall => 0,
             // Unconditional branches have no fixed arguments
             Self::Br => 0,
             // Ifs have a single argument, the conditional
@@ -345,7 +504,7 @@ impl Opcode {
             // Returns require at least one argument
             Self::Ret => 1,
             // The following require no arguments
-            Self::InlineAsm => 0,
+            Self::GlobalValue | Self::Alloca | Self::Unreachable | Self::InlineAsm => 0,
         }
     }
 
@@ -357,19 +516,27 @@ impl Opcode {
             Self::Assert
             | Self::Assertz
             | Self::AssertEq
-            | Self::AssertTest
             | Self::Store
+            | Self::MemGrow
             | Self::MemCpy
             | Self::Br
             | Self::CondBr
             | Self::Switch
+            | Self::Unreachable
             | Self::InlineAsm => smallvec![],
             // These ops have fixed result types
             Self::Test | Self::IsOdd => smallvec![Type::I1],
             // For these ops, the controlling type variable determines the type for the op
-            Self::ImmInt
-            | Self::ImmFloat
-            | Self::ImmNull
+            Self::ImmI1
+            | Self::ImmI8
+            | Self::ImmI16
+            | Self::ImmI32
+            | Self::ImmI64
+            | Self::ImmIsize
+            | Self::ImmFelt
+            | Self::ImmF64
+            | Self::GlobalValue
+            | Self::Alloca
             | Self::PtrToInt
             | Self::IntToPtr
             | Self::Cast
@@ -379,11 +546,6 @@ impl Opcode {
             | Self::Ret => {
                 smallvec![ctrl_ty]
             }
-            // The result type of addrof is derived from the value type
-            Self::AddrOf => {
-                assert_eq!(args.len(), 1);
-                smallvec![Type::Ptr(Box::new(args[0].clone()))]
-            }
             // The result type of a load is derived from the pointee type
             Self::Load => {
                 assert_eq!(args.len(), 1);
@@ -392,10 +554,10 @@ impl Opcode {
                     "expected pointer type, got {:#?}",
                     &args[0]
                 );
-                smallvec![args[0].pointee().unwrap()]
+                smallvec![args[0].pointee().unwrap().clone()]
             }
             // These ops are unary operators whose result type depends on the argument type, which must be integral
-            Self::Neg | Self::Inv | Self::Pow2 | Self::Popcnt | Self::Not => {
+            Self::Neg | Self::Inv | Self::Incr | Self::Pow2 | Self::Popcnt | Self::Not => {
                 assert_eq!(args.len(), 1);
                 assert!(args[0].is_integer());
                 smallvec![args[0].clone()]
@@ -439,7 +601,7 @@ impl Opcode {
                 smallvec![args[0].clone()]
             }
             // Call results are handled separately
-            Self::Call => unreachable!(),
+            Self::Call | Self::Syscall => unreachable!(),
         }
     }
 }
@@ -449,11 +611,17 @@ impl fmt::Display for Opcode {
             Self::Assert => f.write_str("assert"),
             Self::Assertz => f.write_str("assertz"),
             Self::AssertEq => f.write_str("assert.eq"),
-            Self::AssertTest => f.write_str("assert.test"),
-            Self::ImmInt => f.write_str("const.int"),
-            Self::ImmFloat => f.write_str("const.float"),
-            Self::ImmNull => f.write_str("const.null"),
-            Self::AddrOf => f.write_str("addrof"),
+            Self::ImmI1 => f.write_str("const.i1"),
+            Self::ImmI8 => f.write_str("const.i8"),
+            Self::ImmI16 => f.write_str("const.i16"),
+            Self::ImmI32 => f.write_str("const.i32"),
+            Self::ImmI64 => f.write_str("const.i64"),
+            Self::ImmIsize => f.write_str("const.isize"),
+            Self::ImmFelt => f.write_str("const.felt"),
+            Self::ImmF64 => f.write_str("const.f64"),
+            Self::GlobalValue => f.write_str("global"),
+            Self::Alloca => f.write_str("alloca"),
+            Self::MemGrow => f.write_str("memory.grow"),
             Self::Load => f.write_str("load"),
             Self::Store => f.write_str("store"),
             Self::MemCpy => f.write_str("memcpy"),
@@ -467,6 +635,7 @@ impl fmt::Display for Opcode {
             Self::CondBr => f.write_str("condbr"),
             Self::Switch => f.write_str("switch"),
             Self::Call => f.write_str("call"),
+            Self::Syscall => f.write_str("syscall"),
             Self::Ret => f.write_str("ret"),
             Self::Test => f.write_str("test"),
             Self::Add => f.write_str("add"),
@@ -478,6 +647,7 @@ impl fmt::Display for Opcode {
             Self::Exp => f.write_str("exp"),
             Self::Neg => f.write_str("neg"),
             Self::Inv => f.write_str("inv"),
+            Self::Incr => f.write_str("incr"),
             Self::Pow2 => f.write_str("pow2"),
             Self::Not => f.write_str("not"),
             Self::And => f.write_str("and"),
@@ -497,6 +667,7 @@ impl fmt::Display for Opcode {
             Self::IsOdd => f.write_str("is_odd"),
             Self::Min => f.write_str("min"),
             Self::Max => f.write_str("max"),
+            Self::Unreachable => f.write_str("unreachable"),
             Self::InlineAsm => f.write_str("asm"),
         }
     }
@@ -509,6 +680,21 @@ pub enum Overflow {
     Checked,
     Wrapping,
     Overflowing,
+}
+impl Overflow {
+    pub fn is_unchecked(&self) -> bool {
+        matches!(self, Self::Unchecked)
+    }
+
+    pub fn is_checked(&self) -> bool {
+        matches!(self, Self::Checked)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GlobalValueOp {
+    pub op: Opcode,
+    pub global: GlobalValue,
 }
 
 #[derive(Debug, Clone)]
@@ -543,7 +729,7 @@ pub struct UnaryOpImm {
 #[derive(Debug, Clone)]
 pub struct Call {
     pub op: Opcode,
-    pub callee: FuncRef,
+    pub callee: FunctionIdent,
     pub args: ValueList,
 }
 
@@ -580,11 +766,26 @@ pub struct Ret {
     pub args: ValueList,
 }
 
-/// Test and AssertTest
+/// Return an immediate
+#[derive(Debug, Clone)]
+pub struct RetImm {
+    pub op: Opcode,
+    pub arg: Immediate,
+}
+
+/// Test
 #[derive(Debug, Clone)]
 pub struct Test {
     pub op: Opcode,
     pub arg: Value,
+    pub ty: Type,
+}
+
+/// Load a value of type `ty` from `addr`
+#[derive(Debug, Clone)]
+pub struct LoadOp {
+    pub op: Opcode,
+    pub addr: Value,
     pub ty: Type,
 }
 

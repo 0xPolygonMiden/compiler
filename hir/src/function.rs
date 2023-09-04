@@ -1,66 +1,183 @@
-use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::fmt;
-use std::rc::Rc;
 
-use cranelift_entity::{entity_impl, PrimaryMap};
-
-use miden_diagnostics::{SourceSpan, Spanned};
+use cranelift_entity::entity_impl;
+use intrusive_collections::{intrusive_adapter, LinkedListLink};
+use miden_diagnostics::Spanned;
 
 use super::*;
 
-/// A handle that refers to a function definition/declaration
+/// This error is raised when two function declarations conflict with the same symbol name
+#[derive(Debug, thiserror::Error)]
+#[error("item with this name has already been declared, or cannot be merged")]
+pub struct SymbolConflictError(pub FunctionIdent);
+
+/// A handle that refers to an [ExternalFunction]
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FuncRef(u32);
 entity_impl!(FuncRef, "fn");
 
-bitflags::bitflags! {
-    pub struct Visibility: u8 {
-        /// The function is private
-        const PRIVATE = 1;
-        /// The function is public
-        const PUBLIC = 1 << 1;
-        /// The function is defined externally, but referenced locally
-        const EXTERN = 1 << 2;
-    }
+/// Represents the calling convention of a function.
+///
+/// Calling conventions are part of a program's ABI (Application Binary Interface), and
+/// they define things such how arguments are passed to a function, how results are returned,
+/// etc. In essence, the contract between caller and callee is described by the calling convention
+/// of a function.
+///
+/// Importantly, it is perfectly normal to mix calling conventions. For example, the public
+/// API for a C library will use whatever calling convention is used by C on the target
+/// platform (for Miden, that would be `SystemV`). However, internally that library may use
+/// the `Fast` calling convention to allow the compiler to optimize more effectively calls
+/// from the public API to private functions. In short, choose a calling convention that is
+/// well-suited for a given function, to the extent that other constraints don't impose a choice
+/// on you.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum CallConv {
+    /// This calling convention is what I like to call "chef's choice" - the
+    /// compiler chooses it's own convention that optimizes for call performance.
+    ///
+    /// As a result of this, it is not permitted to use this convention in externally
+    /// linked functions, as the convention is unstable, and the compiler can't ensure
+    /// that the caller in another translation unit will use the correct convention.
+    Fast,
+    /// The standard calling convention used for C on most platforms
+    #[default]
+    SystemV,
+    /// A function with this calling convention must be called using
+    /// the `syscall` instruction. Attempts to call it with any other
+    /// call instruction will cause a validation error. The one exception
+    /// to this rule is when calling another function with the `Kernel`
+    /// convention that is defined in the same module, which can use the
+    /// standard `call` instruction.
+    ///
+    /// Kernel functions may only be defined in a kernel [Module].
+    ///
+    /// In all other respects, this calling convention is the same as `SystemV`
+    Kernel,
 }
-impl Visibility {
-    pub fn is_externally_defined(&self) -> bool {
-        self.contains(Self::EXTERN)
-    }
 
-    pub fn is_public(&self) -> bool {
-        self.contains(Self::PUBLIC)
-    }
+/// Represents whether an argument or return value has a special purpose in
+/// the calling convention of a function.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum ArgumentPurpose {
+    /// No special purpose, the argument is passed/returned by value
+    #[default]
+    Default,
+    /// Used for platforms where the calling convention expects return values of
+    /// a certain size to be written to a pointer passed in by the caller.
+    StructReturn,
 }
-impl Default for Visibility {
-    fn default() -> Self {
-        Self::PRIVATE
+impl fmt::Display for ArgumentPurpose {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Default => f.write_str("default"),
+            Self::StructReturn => f.write_str("sret"),
+        }
     }
 }
 
+/// Represents how to extend a small integer value to native machine integer width.
+///
+/// For Miden, native integrals are unsigned 64-bit field elements, but it is typically
+/// going to be the case that we are targeting the subset of Miden Assembly where integrals
+/// are unsigned 32-bit integers with a standard twos-complement binary representation.
+///
+/// It is for the latter scenario that argument extension is really relevant.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub enum ArgumentExtension {
+    /// Do not perform any extension, high bits have undefined contents
+    #[default]
+    None,
+    /// Zero-extend the value
+    Zext,
+    /// Sign-extend the value
+    Sext,
+}
+impl fmt::Display for ArgumentExtension {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::None => f.write_str("none"),
+            Self::Zext => f.write_str("zext"),
+            Self::Sext => f.write_str("sext"),
+        }
+    }
+}
+
+/// Describes a function parameter or result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AbiParam {
+    /// The type associated with this value
+    pub ty: Type,
+    /// The special purpose, if any, of this parameter or result
+    pub purpose: ArgumentPurpose,
+    /// The desired approach to extending the size of this value to
+    /// a larger bit width, if applicable.
+    pub extension: ArgumentExtension,
+}
+impl AbiParam {
+    pub fn new(ty: Type) -> Self {
+        Self {
+            ty,
+            purpose: ArgumentPurpose::default(),
+            extension: ArgumentExtension::default(),
+        }
+    }
+}
+
+/// A [Signature] represents the type, ABI, and linkage of a function.
+///
+/// A function signature provides us with all of the necessary detail to correctly
+/// validate and emit code for a function, whether from the perspective of a caller,
+/// or the callee.
 #[derive(Debug, Clone)]
 pub struct Signature {
-    pub visibility: Visibility,
-    pub name: String,
-    pub ty: FunctionType,
+    /// The arguments expected by this function
+    pub params: Vec<AbiParam>,
+    /// The results returned by this function
+    pub results: Vec<AbiParam>,
+    /// The calling convention that applies to this function
+    pub cc: CallConv,
+    /// The linkage that should be used for this function
+    pub linkage: Linkage,
 }
 impl Signature {
-    /// Returns a slice of the parameter types for this function
-    pub fn params(&self) -> &[Type] {
-        self.ty.params()
+    /// Returns true if this function is externally visible
+    pub fn is_public(&self) -> bool {
+        matches!(self.linkage, Linkage::External)
     }
 
-    /// Returns the parameter type of the argument at `index`, if present
+    /// Returns true if this function is only visible within it's containing module
+    pub fn is_private(&self) -> bool {
+        matches!(self.linkage, Linkage::Internal)
+    }
+
+    /// Returns true if this function is a kernel function
+    pub fn is_kernel(&self) -> bool {
+        matches!(self.cc, CallConv::Kernel)
+    }
+
+    /// Returns the number of arguments expected by this function
+    pub fn arity(&self) -> usize {
+        self.params().len()
+    }
+
+    /// Returns a slice containing the parameters for this function
+    pub fn params(&self) -> &[AbiParam] {
+        self.params.as_slice()
+    }
+
+    /// Returns the parameter at `index`, if present
     #[inline]
-    pub fn param(&self, index: usize) -> Option<&Type> {
-        self.ty.params().get(index)
+    pub fn param(&self, index: usize) -> Option<&AbiParam> {
+        self.params.get(index)
     }
 
-    pub fn results(&self) -> &[Type] {
-        match self.ty.results() {
-            [Type::Unit] => &[],
-            [Type::Never] => &[],
+    /// Returns a slice containing the results of this function
+    pub fn results(&self) -> &[AbiParam] {
+        match self.results.as_slice() {
+            [AbiParam { ty: Type::Unit, .. }] => &[],
+            [AbiParam {
+                ty: Type::Never, ..
+            }] => &[],
             results => results,
         }
     }
@@ -68,43 +185,138 @@ impl Signature {
 impl Eq for Signature {}
 impl PartialEq for Signature {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.params().len() == other.params().len()
-            && self.results().len() == other.results().len()
+        self.linkage == other.linkage
+            && self.cc == other.cc
+            && self.params.len() == other.params.len()
+            && self.results.len() == other.results.len()
     }
 }
 
-/// Represents the dataflow structure of a function definition
+/// An [ExternalFunction] represents a function whose name and signature are known,
+/// but which may or may not be compiled as part of the current translation unit.
+///
+/// When building a [Function], we use [ExternalFunction] to represent references to
+/// other functions in the program which are called from its body. One "imports" a
+/// function to make it callable.
+///
+/// At link time, we make sure all external function references are either defined in
+/// the current program, or are well-known functions that are provided as part of a kernel
+/// or standard library in the Miden VM.
+pub struct ExternalFunction {
+    pub id: FunctionIdent,
+    pub signature: Signature,
+}
+
+intrusive_adapter!(pub FunctionListAdapter = Box<Function>: Function { link: LinkedListLink });
+
+/// [Function] corresponds to a function definition, in single-static assignment (SSA) form.
+///
+/// * Functions may have zero or more parameters, and produce zero or more results.
+/// * Functions are namespaced in [Module]s. You may define a function separately from a module,
+/// to aid in parallelizing compilation, but functions must be attached to a module prior to code
+/// generation. Furthermore, in order to reference other functions, you must do so using their
+/// fully-qualified names.
+/// * Functions consist of one or more basic blocks, where the entry block is predefined based
+/// on the function signature.
+/// * Basic blocks consist of a sequence of [Instruction] without any control flow (excluding calls),
+/// terminating with a control flow instruction. Our SSA representation uses block arguments rather
+/// than phi nodes to represent join points in the control flow graph.
+/// * Instructions consume zero or more arguments, and produce zero or more results. Results produced
+/// by an instruction constitute definitions of those values. A value may only ever have a single
+/// definition, e.g. you can't reassign a value after it is introduced by an instruction.
+///
+/// References to functions and global variables from a [Function] are not fully validated until
+/// link-time/code generation.
 #[derive(Spanned)]
 pub struct Function {
-    pub id: FuncRef,
+    link: LinkedListLink,
     #[span]
-    pub span: SourceSpan,
+    pub id: FunctionIdent,
     pub signature: Signature,
     pub dfg: DataFlowGraph,
 }
 impl Function {
-    pub fn new(
-        id: FuncRef,
-        span: SourceSpan,
-        signature: Signature,
-        signatures: Rc<RefCell<PrimaryMap<FuncRef, Signature>>>,
-        callees: Rc<RefCell<BTreeMap<String, FuncRef>>>,
-    ) -> Self {
-        let dfg = DataFlowGraph::new(signatures, callees);
-        Self {
+    /// Create a new [Function] with the given name, signature, and source location.
+    ///
+    /// The resulting function will be given default internal linkage, i.e. it will only
+    /// be visible within it's containing [Module].
+    pub fn new(id: FunctionIdent, signature: Signature) -> Self {
+        let mut dfg = DataFlowGraph::default();
+        let entry = dfg.entry_block();
+        for param in signature.params() {
+            dfg.append_block_param(entry, param.ty.clone(), id.span());
+        }
+        dfg.imports.insert(
             id,
-            span,
+            ExternalFunction {
+                id,
+                signature: signature.clone(),
+            },
+        );
+        Self {
+            link: Default::default(),
+            id,
             signature,
             dfg,
         }
+    }
+
+    /// Returns true if this function has yet to be attached to a [Module]
+    pub fn is_detached(&self) -> bool {
+        !self.link.is_linked()
+    }
+
+    /// Returns true if this function is a kernel function
+    pub fn is_kernel(&self) -> bool {
+        self.signature.is_kernel()
+    }
+
+    /// Returns true if this function has external linkage
+    pub fn is_public(&self) -> bool {
+        self.signature.is_public()
+    }
+
+    /// Return the [Signature] for this function
+    #[inline]
+    pub fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    /// Return the [Signature] for this function
+    #[inline]
+    pub fn signature_mut(&mut self) -> &mut Signature {
+        &mut self.signature
+    }
+
+    /// Return the number of parameters this function expects
+    pub fn arity(&self) -> usize {
+        self.signature.arity()
+    }
+
+    /// Return the [Linkage] type for this function
+    pub fn linkage(&self) -> Linkage {
+        self.signature.linkage
+    }
+
+    /// Set the linkage type for this function
+    pub fn set_linkage(&mut self, linkage: Linkage) {
+        self.signature.linkage = linkage;
+    }
+
+    /// Return the [CallConv] type for this function
+    pub fn calling_convention(&self) -> CallConv {
+        self.signature.cc
+    }
+
+    /// Set the linkage type for this function
+    pub fn set_calling_convention(&mut self, cc: CallConv) {
+        self.signature.cc = cc;
     }
 }
 impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("id", &self.id)
-            .field("span", &self.span)
             .field("signature", &self.signature)
             .finish()
     }

@@ -1,5 +1,5 @@
 use cranelift_entity::entity_impl;
-use intrusive_collections::linked_list::{Cursor, LinkedList};
+use intrusive_collections::linked_list::{Cursor, CursorMut, LinkedList};
 use intrusive_collections::{LinkedListLink, UnsafeRef};
 
 use super::*;
@@ -48,14 +48,56 @@ impl BlockData {
         }
     }
 
+    #[inline]
+    pub fn arity(&self, pool: &ValueListPool) -> usize {
+        self.params.len(pool)
+    }
+
+    #[inline]
+    pub fn params<'a, 'b: 'a>(&'b self, pool: &'a ValueListPool) -> &'a [Value] {
+        self.params.as_slice(pool)
+    }
+
     pub fn insts<'f>(&'f self) -> impl Iterator<Item = Inst> + 'f {
         Insts {
             cursor: self.insts.front(),
         }
     }
 
-    pub unsafe fn append(&mut self, inst: UnsafeRef<InstNode>) {
+    #[inline(always)]
+    pub fn prepend(&mut self, inst: UnsafeRef<InstNode>) {
+        self.insts.push_front(inst);
+    }
+
+    #[inline(always)]
+    pub fn append(&mut self, inst: UnsafeRef<InstNode>) {
         self.insts.push_back(inst);
+    }
+
+    #[inline(always)]
+    pub fn cursor_mut<'a, 'b: 'a>(&'b mut self) -> CursorMut<'a, InstAdapter> {
+        self.insts.front_mut()
+    }
+
+    pub fn cursor_mut_at<'a, 'b: 'a>(&'b mut self, index: usize) -> CursorMut<'a, InstAdapter> {
+        let mut cursor = self.insts.front_mut();
+        for _ in 0..index {
+            cursor.move_next();
+            assert!(!cursor.is_null(), "index out of bounds");
+        }
+        cursor
+    }
+
+    #[inline]
+    pub fn insert_after(&mut self, index: usize, inst: UnsafeRef<InstNode>) {
+        let mut cursor = self.cursor_mut_at(index);
+        cursor.insert_after(inst);
+    }
+
+    #[inline]
+    pub fn insert_before(&mut self, index: usize, inst: UnsafeRef<InstNode>) {
+        let mut cursor = self.cursor_mut_at(index);
+        cursor.insert_before(inst);
     }
 
     pub fn first(&self) -> Option<Inst> {

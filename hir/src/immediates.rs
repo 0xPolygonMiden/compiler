@@ -32,6 +32,40 @@ impl Immediate {
         }
     }
 
+    /// Returns true if this immediate is an odd integer, otherwise false
+    ///
+    /// If the immediate is not an integer, returns `None`
+    pub fn is_odd(self) -> Option<bool> {
+        match self {
+            Self::I1(b) => Some(b),
+            Self::I8(i) => Some(i % 2 == 0),
+            Self::I16(i) => Some(i % 2 == 0),
+            Self::I32(i) => Some(i % 2 == 0),
+            Self::I64(i) => Some(i % 2 == 0),
+            Self::Felt(i) => Some(i % 2 == 0),
+            Self::I128(i) => Some(i % 2 == 0),
+            Self::Isize(i) => Some(i % 2 == 0),
+            Self::F64(_) => None,
+        }
+    }
+
+    /// Returns true if this immediate is a non-zero integer, otherwise false
+    ///
+    /// If the immediate is not an integer, returns `None`
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::I1(b) => Some(*b),
+            Self::I8(i) => Some(*i != 0),
+            Self::I16(i) => Some(*i != 0),
+            Self::I32(i) => Some(*i != 0),
+            Self::I64(i) => Some(*i != 0),
+            Self::Felt(i) => Some(*i != 0),
+            Self::I128(i) => Some(*i != 0),
+            Self::Isize(i) => Some(*i != 0),
+            Self::F64(_) => None,
+        }
+    }
+
     pub fn as_i64(&self) -> Option<i64> {
         match self {
             Self::I1(b) => Some(*b as i64),
@@ -39,10 +73,10 @@ impl Immediate {
             Self::I16(i) => Some(*i as i64),
             Self::I32(i) => Some(*i as i64),
             Self::I64(i) => Some(*i),
+            Self::Felt(i) => (*i).try_into().ok(),
             Self::I128(i) => (*i).try_into().ok(),
             Self::Isize(i) => Some(*i as i64),
             Self::F64(_) => None,
-            Self::Felt(_) => None,
         }
     }
 }

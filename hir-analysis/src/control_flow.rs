@@ -7,7 +7,7 @@ use miden_hir::{Block, DataFlowGraph, Function, Inst, Instruction};
 ///
 /// A predecessor in this context is both the instruction which transfers control to
 /// the current block, and the block which encloses that instruction.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct BlockPredecessor {
     pub block: Block,
     pub inst: Inst,
@@ -241,9 +241,9 @@ mod tests {
     fn no_predecessors() {
         let mut dfg = DataFlowGraph::empty();
 
-        let _block0 = dfg.make_block();
-        let _block1 = dfg.make_block();
-        let _block2 = dfg.make_block();
+        let _block0 = dfg.create_block();
+        let _block1 = dfg.create_block();
+        let _block2 = dfg.create_block();
 
         let mut cfg = ControlFlowGraph::new();
         cfg.compute(&dfg);
