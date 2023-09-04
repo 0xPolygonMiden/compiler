@@ -559,6 +559,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-hir-symbol"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "miden-hir-type"
 version = "0.1.0"
 
