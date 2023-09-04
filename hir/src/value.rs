@@ -40,9 +40,38 @@ pub enum ValueData {
     },
 }
 impl ValueData {
-    pub fn ty(&self) -> Type {
+    pub fn ty(&self) -> &Type {
         match self {
-            Self::Inst { ty, .. } | Self::Param { ty, .. } => ty.clone(),
+            Self::Inst { ref ty, .. } | Self::Param { ref ty, .. } => ty,
+        }
+    }
+
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Inst { .. } => SourceSpan::UNKNOWN,
+            Self::Param { span, .. } => *span,
+        }
+    }
+
+    /// Update the block to which a block parameter belongs
+    ///
+    /// NOTE: This function will panic if the value is not a block parameter
+    ///
+    /// # SAFETY
+    ///
+    /// This function is marked unsafe because changing the block associated
+    /// with a value could cause unexpected results if the other pieces of the
+    /// DataFlowGraph are not updated correctly. Callers must ensure that this
+    /// is _only_ called when a block parameter has been moved to another block.
+    pub unsafe fn set_block(&mut self, block: Block) {
+        match self {
+            Self::Param {
+                block: ref mut orig,
+                ..
+            } => {
+                *orig = block;
+            }
+            _ => panic!("expected block parameter, got instruction result"),
         }
     }
 

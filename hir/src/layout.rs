@@ -143,6 +143,21 @@ impl<K: EntityRef, V: Clone> ArenaMap<K, V> {
             .and_then(|item| item.map(|mut nn| unsafe { nn.as_mut() }))
     }
 
+    /// Returns a raw pointer to the value associated with the given key
+    ///
+    /// # SAFETY
+    ///
+    /// This function is unsafe, since the resulting pointer could outlive the arena itself,
+    /// or be used to incorrectly alias a value for which a mutable reference exists.
+    ///
+    /// To safely use this function, callers must never construct a reference from the pointer
+    /// unless they can guarantee that the data pointed to is immutable, or can be safely accessed
+    /// using atomic operations. No other uses are permitted, unless you want to shoot yourself
+    /// in the foot.
+    pub unsafe fn get_raw(&self, key: K) -> Option<NonNull<V>> {
+        self.keys.get(key.index()).copied().and_then(|item| item)
+    }
+
     /// Takes the value that was stored at the given key
     pub fn take(&mut self, key: K) -> Option<NonNull<V>> {
         self.keys[key.index()].take()
@@ -305,6 +320,15 @@ impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
         key
     }
 
+    /// Like `push`, but inserts the node after `after` in the list
+    ///
+    /// NOTE: This function will panic if `after` is not present in the list
+    pub fn push_after(&mut self, after: K, value: V) -> K {
+        let key = self.alloc_key();
+        self.insert_after(key, after, value);
+        key
+    }
+
     /// Unlinks the value associated with the given key from this map
     ///
     /// NOTE: Removal does not result in deallocation of the underlying data, this
@@ -351,9 +375,11 @@ impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
         unsafe { self.list.cursor_mut_from_ptr(ptr) }
     }
 
-    /// Returns an iterator over the key/value pairs in the map, in order (front to back)
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (K, &'a V)> {
-        self.list.iter().map(|item| (item.key(), item.value()))
+    /// Returns an iterator over the key/value pairs in the map.
+    ///
+    /// The iterator is double-ended, so can be used to traverse the map front-to-back, or back-to-front
+    pub fn iter(&self) -> OrderedArenaMapIter<'_, K, V> {
+        OrderedArenaMapIter(self.list.iter())
     }
 
     /// Returns an iterator over the keys in the map, in order (front to back)
@@ -388,5 +414,34 @@ impl<K: EntityRef, V: Clone> IndexMut<K> for OrderedArenaMap<K, V> {
     #[inline]
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
         self.get_mut(index).unwrap()
+    }
+}
+
+pub struct OrderedArenaMapIter<'a, K, V>(
+    intrusive_collections::linked_list::Iter<'a, LayoutAdapter<K, V>>,
+)
+where
+    K: EntityRef,
+    V: Clone;
+impl<'a, K, V> Iterator for OrderedArenaMapIter<'a, K, V>
+where
+    K: EntityRef,
+    V: Clone,
+{
+    type Item = (K, &'a V);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|item| (item.key(), item.value()))
+    }
+}
+impl<'a, K, V> DoubleEndedIterator for OrderedArenaMapIter<'a, K, V>
+where
+    K: EntityRef,
+    V: Clone,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back().map(|item| (item.key(), item.value()))
     }
 }

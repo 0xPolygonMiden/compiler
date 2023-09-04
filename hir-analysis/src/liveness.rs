@@ -6,7 +6,7 @@ use std::{
 use miden_hir::{self as hir, Block as BlockId, Inst as InstId, Value as ValueId, *};
 use rustc_hash::FxHashMap;
 
-use super::ControlFlowAnalysis;
+use super::{ControlFlowGraph, DominatorTree, LoopAnalysis};
 
 /// This data structure is the result of computing liveness information over the
 /// control flow graph of an HIR function. It uses a somewhat novel approach to
@@ -50,15 +50,43 @@ use super::ControlFlowAnalysis;
 /// not be used for awhile.
 #[derive(Debug, Default)]
 pub struct LivenessAnalysis {
+    // Liveness/global next-uses at a given program point
     live_in: FxHashMap<ProgramPoint, NextUseSet>,
+    // Liveness/global next-uses after a given program point
     live_out: FxHashMap<ProgramPoint, NextUseSet>,
+    // Maximum register pressure for each block
     per_block_register_pressure: FxHashMap<BlockId, usize>,
 }
 impl LivenessAnalysis {
-    /// Computes liveness for the given function, using the provided `ControlFlowAnalysis`
-    #[inline]
-    pub fn compute(function: &Function, cfa: &ControlFlowAnalysis) -> Self {
-        compute_liveness(function, cfa)
+    /// Computes liveness for the given function, using the provided analyses
+    pub fn compute(
+        function: &Function,
+        cfg: &ControlFlowGraph,
+        domtree: &DominatorTree,
+        loops: &LoopAnalysis,
+    ) -> Self {
+        let mut liveness = Self::default();
+        liveness.recompute(function, cfg, domtree, loops);
+        liveness
+    }
+
+    /// Recomputes liveness for the given function, using the provided analyses
+    pub fn recompute(
+        &mut self,
+        function: &Function,
+        cfg: &ControlFlowGraph,
+        domtree: &DominatorTree,
+        loops: &LoopAnalysis,
+    ) {
+        self.clear();
+        compute_liveness(self, function, cfg, domtree, loops)
+    }
+
+    /// Clear all computed liveness information, without releasing the memory we allocated
+    pub fn clear(&mut self) {
+        self.live_in.clear();
+        self.live_out.clear();
+        self.per_block_register_pressure.clear();
     }
 
     /// Returns true if `value` is live at the given program point.
@@ -340,22 +368,22 @@ impl<'a, 'b> std::ops::BitXor<&'b NextUseSet> for &'a NextUseSet {
 /// next-use distance will be 0, and if it is never used after that, it won't be present in the "after" set.
 /// However, if it used again later, it's distance in the "after" set will be the distance from the instruction
 /// following the current one (or the block exit if the current one is a terminator).
-fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> LivenessAnalysis {
+fn compute_liveness(
+    liveness: &mut LivenessAnalysis,
+    function: &Function,
+    cfg: &ControlFlowGraph,
+    domtree: &DominatorTree,
+    loops: &LoopAnalysis,
+) {
     use std::collections::hash_map::Entry;
 
     // The distance penalty applied to an edge which exits a loop
     const LOOP_EXIT_DISTANCE: u32 = 100_000;
 
     let mut worklist = VecDeque::new();
-    for block in analyses.domtree.cfg_postorder().iter().copied() {
+    for block in domtree.cfg_postorder().iter().copied() {
         worklist.push_back(block);
     }
-
-    // Liveness/global next-uses for each program point
-    let mut live_in = FxHashMap::<ProgramPoint, NextUseSet>::default();
-    let mut live_out = FxHashMap::<ProgramPoint, NextUseSet>::default();
-    // Maximum register pressure for each block
-    let mut per_block_register_pressure = FxHashMap::<BlockId, usize>::default();
 
     // Compute liveness and global next-uses for each block, bottom-up
     //
@@ -382,7 +410,7 @@ fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> Live
     // incremented by 1
     while let Some(block_id) = worklist.pop_front() {
         let block = &function.dfg.blocks[block_id];
-        let block_loop = analyses.loops.innermost_loop(block_id);
+        let block_loop = loops.innermost_loop(block_id);
         let mut max_register_pressure = 0;
         let mut inst_cursor = block.insts.back();
         while let Some(inst_data) = inst_cursor.get() {
@@ -401,147 +429,147 @@ fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> Live
             // the succeeding instruction, with all distances incremented by 1, but with all values
             // defined by the successor removed from the set.
             //
-            let (mut inst_next_uses, mut inst_next_uses_after) = match inst_data
-                .analyze_branch(&function.dfg.value_lists)
-            {
-                // This is either a non-branching terminator, or a regular instruction
-                BranchInfo::NotABranch => {
-                    let succ_cursor = inst_cursor.peek_next();
-                    if let Some(succ) = succ_cursor.get() {
-                        // Start with the next-use set of the next instruction
-                        let mut inst_next_uses = live_in
-                            .entry(ProgramPoint::Inst(succ.key))
+            let (mut inst_next_uses, mut inst_next_uses_after) =
+                match inst_data.analyze_branch(&function.dfg.value_lists) {
+                    // This is either a non-branching terminator, or a regular instruction
+                    BranchInfo::NotABranch => {
+                        let succ_cursor = inst_cursor.peek_next();
+                        if let Some(succ) = succ_cursor.get() {
+                            // Start with the next-use set of the next instruction
+                            let mut inst_next_uses = liveness
+                                .live_in
+                                .entry(ProgramPoint::Inst(succ.key))
+                                .or_insert_with(Default::default)
+                                .clone();
+                            for (_value, dist) in inst_next_uses.iter_mut() {
+                                *dist = dist.saturating_add(1);
+                            }
+                            let inst_next_uses_after = inst_next_uses.clone();
+                            for value in function.dfg.inst_results(succ.key).iter() {
+                                inst_next_uses.remove(value);
+                            }
+                            (inst_next_uses, inst_next_uses_after)
+                        } else {
+                            // This must be a non-branching terminator, i.e. the `ret` instruction
+                            // Thus, the next-use set is empty initially
+                            (NextUseSet::default(), NextUseSet::default())
+                        }
+                    }
+                    // This is a branch instruction, so get the next-use set at the entry of each successor,
+                    // increment the distances in those sets based on the distance of the edge, and then take
+                    // the join of those sets as the initial next-use set for `inst`
+                    BranchInfo::SingleDest(succ, inst_uses) => {
+                        let mut inst_next_uses = liveness
+                            .live_in
+                            .entry(ProgramPoint::Block(succ))
                             .or_insert_with(Default::default)
                             .clone();
-                        for (_value, dist) in inst_next_uses.iter_mut() {
-                            *dist = dist.saturating_add(1);
-                        }
-                        let inst_next_uses_after = inst_next_uses.clone();
-                        for value in function.dfg.inst_results(succ.key).iter() {
-                            inst_next_uses.remove(value);
-                        }
-                        (inst_next_uses, inst_next_uses_after)
-                    } else {
-                        // This must be a non-branching terminator, i.e. the `ret` instruction
-                        // Thus, the next-use set is empty initially
-                        (NextUseSet::default(), NextUseSet::default())
-                    }
-                }
-                // This is a branch instruction, so get the next-use set at the entry of each successor,
-                // increment the distances in those sets based on the distance of the edge, and then take
-                // the join of those sets as the initial next-use set for `inst`
-                BranchInfo::SingleDest(succ, inst_uses) => {
-                    let mut inst_next_uses = live_in
-                        .entry(ProgramPoint::Block(succ))
-                        .or_insert_with(Default::default)
-                        .clone();
-                    let mut inst_next_uses_after = inst_next_uses.clone();
+                        let mut inst_next_uses_after = inst_next_uses.clone();
 
-                    // For every argument passed to the successor block, mark those values used
-                    // by this instruction IF the next-use distance of the corresponding block
-                    // argument is < u32::MAX
-                    for (in_arg, out_arg) in inst_uses
-                        .iter()
-                        .copied()
-                        .zip(function.dfg.block_args(succ).iter())
-                    {
-                        if inst_next_uses.is_live(out_arg) {
-                            inst_next_uses.insert(in_arg, 0);
-                        }
-                    }
-
-                    // Remove the successor block arguments, as those values cannot be live before
-                    // they are defined, and even if the destination block dominates the current
-                    // block (via loop), those values must be dead at this instruction as we're
-                    // providing new definitions for them.
-                    for value in function.dfg.block_args(succ) {
-                        inst_next_uses.remove(value);
-                        inst_next_uses_after.remove(value);
-                    }
-
-                    // If this block is in a loop, make sure we add the loop exit distance for edges leaving the loop
-                    if let Some(block_loop) = block_loop {
-                        let succ_loop = analyses.loops.innermost_loop(succ);
-                        let is_loop_exit = succ_loop
-                            .map(|l| block_loop != l && analyses.loops.is_child_loop(block_loop, l))
-                            .unwrap_or(true);
-                        if is_loop_exit {
-                            for (_, dist) in inst_next_uses.iter_mut() {
-                                *dist = dist.saturating_add(LOOP_EXIT_DISTANCE);
-                            }
-                            for (_, dist) in inst_next_uses_after.iter_mut() {
-                                *dist = dist.saturating_add(LOOP_EXIT_DISTANCE);
-                            }
-                        }
-                    }
-                    (inst_next_uses, inst_next_uses_after)
-                }
-                // Same as above
-                //
-                // NOTE: We additionally assert here that all critical edges in the control flow graph have been split,
-                // as we cannot proceed correctly otherwise. It is expected that either no critical edges
-                // exist, or that they have been split by a prior transformation.
-                BranchInfo::MultiDest(jts) => {
-                    let mut inst_next_uses = NextUseSet::default();
-                    let mut inst_next_uses_after = NextUseSet::default();
-                    for JumpTable {
-                        destination,
-                        args: inst_uses,
-                    } in jts.iter()
-                    {
-                        let destination = *destination;
-                        // If the successor block has multiple predecessors, this is a critical edge, as by
-                        // definition this instruction means the current block has multiple successors
-                        assert_eq!(
-                            analyses.cfg.num_predecessors(destination),
-                            1,
-                            "expected all critical edges of {} to have been split!",
-                            destination,
-                        );
-                        let mut jt_next_uses = live_in
-                            .entry(ProgramPoint::Block(destination))
-                            .or_insert_with(Default::default)
-                            .clone();
-                        let mut jt_next_uses_after = jt_next_uses.clone();
-                        // As is done for unconditional branches, propagate next-use distance for
-                        // the successor arguments.
+                        // For every argument passed to the successor block, mark those values used
+                        // by this instruction IF the next-use distance of the corresponding block
+                        // argument is < u32::MAX
                         for (in_arg, out_arg) in inst_uses
                             .iter()
                             .copied()
-                            .zip(function.dfg.block_args(destination).iter())
+                            .zip(function.dfg.block_args(succ).iter())
                         {
-                            if jt_next_uses.is_live(out_arg) {
-                                jt_next_uses.insert(in_arg, 0);
+                            if inst_next_uses.is_live(out_arg) {
+                                inst_next_uses.insert(in_arg, 0);
                             }
                         }
-                        // Likewise, remove block arguments of the successor from the set
-                        for value in function.dfg.block_args(destination) {
-                            jt_next_uses.remove(value);
-                            jt_next_uses_after.remove(value);
+
+                        // Remove the successor block arguments, as those values cannot be live before
+                        // they are defined, and even if the destination block dominates the current
+                        // block (via loop), those values must be dead at this instruction as we're
+                        // providing new definitions for them.
+                        for value in function.dfg.block_args(succ) {
+                            inst_next_uses.remove(value);
+                            inst_next_uses_after.remove(value);
                         }
+
                         // If this block is in a loop, make sure we add the loop exit distance for edges leaving the loop
                         if let Some(block_loop) = block_loop {
-                            let succ_loop = analyses.loops.innermost_loop(destination);
+                            let succ_loop = loops.innermost_loop(succ);
                             let is_loop_exit = succ_loop
-                                .map(|l| {
-                                    block_loop != l && analyses.loops.is_child_loop(block_loop, l)
-                                })
+                                .map(|l| block_loop != l && loops.is_child_loop(block_loop, l))
                                 .unwrap_or(true);
                             if is_loop_exit {
-                                for (_, dist) in jt_next_uses.iter_mut() {
+                                for (_, dist) in inst_next_uses.iter_mut() {
                                     *dist = dist.saturating_add(LOOP_EXIT_DISTANCE);
                                 }
-                                for (_, dist) in jt_next_uses_after.iter_mut() {
+                                for (_, dist) in inst_next_uses_after.iter_mut() {
                                     *dist = dist.saturating_add(LOOP_EXIT_DISTANCE);
                                 }
                             }
                         }
-                        inst_next_uses = inst_next_uses.union(&jt_next_uses);
-                        inst_next_uses_after = inst_next_uses_after.union(&jt_next_uses_after);
+                        (inst_next_uses, inst_next_uses_after)
                     }
-                    (inst_next_uses, inst_next_uses_after)
-                }
-            };
+                    // Same as above
+                    //
+                    // NOTE: We additionally assert here that all critical edges in the control flow graph have been split,
+                    // as we cannot proceed correctly otherwise. It is expected that either no critical edges
+                    // exist, or that they have been split by a prior transformation.
+                    BranchInfo::MultiDest(jts) => {
+                        let mut inst_next_uses = NextUseSet::default();
+                        let mut inst_next_uses_after = NextUseSet::default();
+                        for JumpTable {
+                            destination,
+                            args: inst_uses,
+                        } in jts.iter()
+                        {
+                            let destination = *destination;
+                            // If the successor block has multiple predecessors, this is a critical edge, as by
+                            // definition this instruction means the current block has multiple successors
+                            assert_eq!(
+                                cfg.num_predecessors(destination),
+                                1,
+                                "expected all critical edges of {} to have been split!",
+                                destination,
+                            );
+                            let mut jt_next_uses = liveness
+                                .live_in
+                                .entry(ProgramPoint::Block(destination))
+                                .or_insert_with(Default::default)
+                                .clone();
+                            let mut jt_next_uses_after = jt_next_uses.clone();
+                            // As is done for unconditional branches, propagate next-use distance for
+                            // the successor arguments.
+                            for (in_arg, out_arg) in inst_uses
+                                .iter()
+                                .copied()
+                                .zip(function.dfg.block_args(destination).iter())
+                            {
+                                if jt_next_uses.is_live(out_arg) {
+                                    jt_next_uses.insert(in_arg, 0);
+                                }
+                            }
+                            // Likewise, remove block arguments of the successor from the set
+                            for value in function.dfg.block_args(destination) {
+                                jt_next_uses.remove(value);
+                                jt_next_uses_after.remove(value);
+                            }
+                            // If this block is in a loop, make sure we add the loop exit distance for edges leaving the loop
+                            if let Some(block_loop) = block_loop {
+                                let succ_loop = loops.innermost_loop(destination);
+                                let is_loop_exit = succ_loop
+                                    .map(|l| block_loop != l && loops.is_child_loop(block_loop, l))
+                                    .unwrap_or(true);
+                                if is_loop_exit {
+                                    for (_, dist) in jt_next_uses.iter_mut() {
+                                        *dist = dist.saturating_add(LOOP_EXIT_DISTANCE);
+                                    }
+                                    for (_, dist) in jt_next_uses_after.iter_mut() {
+                                        *dist = dist.saturating_add(LOOP_EXIT_DISTANCE);
+                                    }
+                                }
+                            }
+                            inst_next_uses = inst_next_uses.union(&jt_next_uses);
+                            inst_next_uses_after = inst_next_uses_after.union(&jt_next_uses_after);
+                        }
+                        (inst_next_uses, inst_next_uses_after)
+                    }
+                };
 
             // If a value is defined by `inst`, it's next-use distance is whatever the distance at the next instruction is + 1
             //
@@ -568,8 +596,8 @@ fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> Live
             );
 
             // Record the next-use distances for this program point
-            live_in.insert(pp, inst_next_uses);
-            live_out.insert(pp, inst_next_uses_after);
+            liveness.live_in.insert(pp, inst_next_uses);
+            liveness.live_out.insert(pp, inst_next_uses_after);
 
             // Move to the instruction preceding this one
             inst_cursor.move_prev();
@@ -579,7 +607,7 @@ fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> Live
         let pp = ProgramPoint::Block(block_id);
         // The block header derives it's next-use distances from it's first instruction, sans defs
         let first_inst = block.insts.front().get().unwrap().key;
-        let mut block_next_uses = live_in[&ProgramPoint::Inst(first_inst)].clone();
+        let mut block_next_uses = liveness.live_in[&ProgramPoint::Inst(first_inst)].clone();
         for value in function.dfg.inst_results(first_inst).iter() {
             block_next_uses.remove(value);
         }
@@ -595,13 +623,13 @@ fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> Live
         // For block's, the "after" set corresponds to the next-use set "after" the block
         // terminator. This makes it easy to query liveness at entry and exit to a block.
         let last_inst = block.insts.back().get().unwrap().key;
-        let block_next_uses_after = live_out[&ProgramPoint::Inst(last_inst)].clone();
+        let block_next_uses_after = liveness.live_out[&ProgramPoint::Inst(last_inst)].clone();
         // Re-enqueue this block until analysis reaches a stable state, i.e. the next-use
         // distances remain unchanged.
-        match live_in.entry(pp) {
+        match liveness.live_in.entry(pp) {
             Entry::Vacant(entry) => {
                 entry.insert(block_next_uses);
-                live_out.insert(pp, block_next_uses_after);
+                liveness.live_out.insert(pp, block_next_uses_after);
                 // We haven't visited this block before, so re-enqueue it as by
                 // definition the next-use set has changed.
                 worklist.push_back(block_id);
@@ -615,16 +643,12 @@ fn compute_liveness(function: &Function, analyses: &ControlFlowAnalysis) -> Live
                     worklist.push_back(block_id);
                 }
                 entry.insert(block_next_uses);
-                live_out.insert(pp, block_next_uses_after);
+                liveness.live_out.insert(pp, block_next_uses_after);
             }
         }
-        per_block_register_pressure.insert(block_id, max_register_pressure);
-    }
-
-    LivenessAnalysis {
-        live_in,
-        live_out,
-        per_block_register_pressure,
+        liveness
+            .per_block_register_pressure
+            .insert(block_id, max_register_pressure);
     }
 }
 

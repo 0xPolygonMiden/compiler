@@ -528,22 +528,24 @@ name = "miden-hir"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bitflags",
  "cranelift-entity",
  "intrusive-collections",
  "miden-diagnostics",
+ "miden-hir-symbol",
  "miden-hir-type",
  "paste",
  "rustc-hash",
  "smallvec",
  "thiserror",
  "typed-arena",
+ "winter-math",
 ]
 
 [[package]]
 name = "miden-hir-analysis"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cranelift-bforest",
  "cranelift-entity",
  "miden-hir",
@@ -1138,3 +1140,18 @@ checksum = "ee7b2c67f962bf5042bfd8b6a916178df33a26eec343ae064cb8e069f638fa6f"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "winter-math"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1795f5323f03c987a6aada6e8229f2c7f9353956cfa1b648b9c6cf5440958caa"
+dependencies = [
+ "winter-utils",
+]
+
+[[package]]
+name = "winter-utils"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b903fda6a50cce2aa5a172a9269aca0f09b25df20afb1faa427db76d40779671"

@@ -2,8 +2,8 @@
 
 extern crate alloc;
 
+use alloc::{alloc::Layout, boxed::Box, vec::Vec};
 use core::fmt;
-use alloc::{boxed::Box, vec::Vec};
 
 /// Represents the type of a value
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -67,6 +67,54 @@ impl Type {
         }
     }
 
+    /// Returns the size in bits of this type
+    ///
+    /// It is intended for this to be used with integral types
+    pub fn bitwidth(&self) -> usize {
+        match self {
+            Self::I1 => 1,
+            _ => self.size_in_bytes() * 8,
+        }
+    }
+
+    /// Returns the size in bytes of this type
+    pub fn size_in_bytes(&self) -> usize {
+        self.layout().size()
+    }
+
+    /// Returns the layout of this type in memory
+    pub fn layout(&self) -> Layout {
+        match self {
+            Self::Unknown | Self::Unit | Self::Never => Layout::new::<()>(),
+            Self::I1 | Self::I8 => Layout::new::<i8>(),
+            Self::I16 => Layout::new::<i16>(),
+            Self::I32 | Self::Isize | Self::Ptr(_) => Layout::new::<i32>(),
+            Self::I64 | Self::F64 | Self::Felt => Layout::new::<i64>(),
+            Self::I128 => Layout::new::<i128>(),
+            Self::I256 => Layout::new::<[i128; 2]>(),
+            Self::Struct(ref tys) => {
+                if let Some(ty) = tys.first() {
+                    let mut layout = ty.layout();
+                    for ty in tys.iter().skip(1) {
+                        let (new_layout, _field_offset) = layout
+                            .extend(ty.layout())
+                            .expect("invalid type: layout too large");
+                        layout = new_layout;
+                    }
+                    layout.pad_to_align()
+                } else {
+                    Layout::new::<()>()
+                }
+            }
+            Self::Array(ty, len) => {
+                let layout = ty.layout().pad_to_align();
+                let size = layout.size();
+                let align = layout.align();
+                Layout::from_size_align(size * len, align).expect("invalid type: layout too large")
+            }
+        }
+    }
+
     #[inline]
     pub fn is_float(&self) -> bool {
         match self {
@@ -108,10 +156,10 @@ impl Type {
     }
 
     #[inline]
-    pub fn pointee(&self) -> Option<Type> {
+    pub fn pointee(&self) -> Option<&Type> {
         use core::ops::Deref;
         match self {
-            Self::Ptr(ty) => Some(ty.deref().clone()),
+            Self::Ptr(ty) => Some(ty.deref()),
             _ => None,
         }
     }

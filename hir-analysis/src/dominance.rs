@@ -281,13 +281,7 @@ impl DominatorTree {
         //   0:    block has not yet had its first visit
         //   SEEN: block has been visited at least once, implying that all of its successors are on
         //         the stack
-
-        match func.dfg.entry_block() {
-            Some(block) => {
-                self.stack.push((Visit::First, block));
-            }
-            None => return,
-        }
+        self.stack.push((Visit::First, func.dfg.entry_block()));
 
         while let Some((visit, block)) = self.stack.pop() {
             match visit {
@@ -347,7 +341,6 @@ impl DominatorTree {
             Some((&eb, rest)) => (eb, rest),
             None => return,
         };
-        debug_assert_eq!(Some(entry_block), func.dfg.entry_block());
 
         // Do a first pass where we assign RPO numbers to all reachable nodes.
         self.nodes[entry_block].rpo_number = 2 * STRIDE;
