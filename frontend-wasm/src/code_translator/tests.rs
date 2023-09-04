@@ -1115,3 +1115,205 @@ fn i64_ge_u() {
         "#]],
     )
 }
+
+#[test]
+fn i32_eqz() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.eqz
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 0  : i32
+            v2 = eq v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_eqz() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.eqz
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 0  : i64
+            v2 = eq v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_eq() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.eq
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = eq v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_eq() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.eq
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = eq v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_eq() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.eq
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = eq v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_ne() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.ne
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i32
+            v1 = const.int 1  : i32
+            v2 = neq v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_ne() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.ne
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.int 2  : i64
+            v1 = const.int 1  : i64
+            v2 = neq v0, v1  : i64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_ne() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.ne
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = neq v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_gt() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.gt
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = gt v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_ge() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.ge
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = gte v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_le() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.le
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = lte v0, v1  : f64
+        "#]],
+    )
+}
+
+#[test]
+fn f64_lt() {
+    check_op(
+        r#"
+            f64.const 2.5
+            f64.const 1.9
+            f64.lt
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.float 2.5  : f64
+            v1 = const.float 1.9  : f64
+            v2 = lt v0, v1  : f64
+        "#]],
+    )
+}
