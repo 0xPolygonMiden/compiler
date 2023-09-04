@@ -568,6 +568,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-hir-transform"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cranelift-entity",
+ "miden-diagnostics",
+ "miden-hir",
+ "miden-hir-analysis",
+ "miden-hir-pass",
+ "rustc-hash",
+ "smallvec",
+]
+
+[[package]]
 name = "miden-hir-type"
 version = "0.1.0"
 

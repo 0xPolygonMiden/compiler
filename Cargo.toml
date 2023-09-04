@@ -5,6 +5,7 @@ members = [
   "hir-analysis",
   "hir-pass",
   "hir-symbol",
+  "hir-transform",
   "hir-type",
   "tools/*",
 ]
