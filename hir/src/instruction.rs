@@ -301,6 +301,8 @@ pub enum Opcode {
     Sext,
     /// Returns true if argument fits in the given integral type, e.g. u32, otherwise false
     Test,
+    /// Selects between two values given a conditional
+    Select,
     Add,
     Sub,
     Mul,
@@ -405,6 +407,7 @@ impl Opcode {
             | Self::Zext
             | Self::Sext
             | Self::Test
+            | Self::Select
             | Self::Add
             | Self::Sub
             | Self::Mul
@@ -491,6 +494,8 @@ impl Opcode {
             | Self::Popcnt
             | Self::Not
             | Self::IsOdd => 1,
+            // Select requires condition, arg1, and arg2
+            Self::Select => 3,
             // MemCpy requires source, destination, and arity
             Self::MemCpy => 3,
             // Calls are entirely variable
@@ -543,7 +548,8 @@ impl Opcode {
             | Self::Trunc
             | Self::Zext
             | Self::Sext
-            | Self::Ret => {
+            | Self::Ret
+            | Self::Select => {
                 smallvec![ctrl_ty]
             }
             // The result type of a load is derived from the pointee type
@@ -638,6 +644,7 @@ impl fmt::Display for Opcode {
             Self::Syscall => f.write_str("syscall"),
             Self::Ret => f.write_str("ret"),
             Self::Test => f.write_str("test"),
+            Self::Select => f.write_str("select"),
             Self::Add => f.write_str("add"),
             Self::Sub => f.write_str("sub"),
             Self::Mul => f.write_str("mul"),
