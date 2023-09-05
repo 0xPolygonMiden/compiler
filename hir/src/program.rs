@@ -47,7 +47,7 @@ impl Program {
     /// This symbol is required by, and managed by, the `memory.grow` instruction.
     ///
     /// This global is only available in the root context, accessed by syscall
-    pub const SYMBOL_PAGES: &str = "__MIDEN_PAGES";
+    pub const SYMBOL_PAGES: &'static str = "__MIDEN_PAGES";
 
     /// Create a new, empty [Program].
     ///

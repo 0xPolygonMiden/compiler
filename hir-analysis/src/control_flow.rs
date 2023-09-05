@@ -224,14 +224,18 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 
 #[cfg(test)]
 mod tests {
-    use miden_diagnostics::SourceSpan;
+    use std::sync::Arc;
+
+    use miden_diagnostics::{
+        term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler, SourceSpan,
+    };
     use miden_hir::*;
 
     use super::*;
 
     #[test]
     fn empty() {
-        let dfg = DataFlowGraph::empty();
+        let dfg = DataFlowGraph::default();
 
         let mut cfg = ControlFlowGraph::new();
         cfg.compute(&dfg);
@@ -239,7 +243,7 @@ mod tests {
 
     #[test]
     fn no_predecessors() {
-        let mut dfg = DataFlowGraph::empty();
+        let mut dfg = DataFlowGraph::default();
 
         let _block0 = dfg.create_block();
         let _block1 = dfg.create_block();
@@ -258,59 +262,48 @@ mod tests {
 
     #[test]
     fn branches_and_jumps() {
+        let codemap = Arc::new(CodeMap::new());
+        let emitter = Arc::new(DefaultEmitter::new(ColorChoice::Auto));
+        let diagnostics = DiagnosticsHandler::new(Default::default(), codemap.clone(), emitter);
+
         // Define the 'test' module
-        let mut module = Module::new("test".to_string(), None);
+        let mut builder = ModuleBuilder::new("test");
 
         // Declare the `fib` function, with the appropriate type signature
         let sig = Signature {
-            visibility: Visibility::PUBLIC,
-            name: "branches_and_jumps".to_string(),
-            ty: FunctionType::new(vec![Type::I32], vec![Type::I32]),
+            params: vec![AbiParam::new(Type::I32)],
+            results: vec![AbiParam::new(Type::I32)],
+            cc: CallConv::SystemV,
+            linkage: Linkage::External,
         };
-        let id = module.declare_function(sig.clone());
+        let mut fb = builder
+            .build_function("branches_and_jumps", sig, SourceSpan::UNKNOWN)
+            .expect("unexpected symbol conflict");
 
-        // Create the function for building - at this point the function is not yet attached to the module
-        let mut function = Function::new(
-            id,
-            SourceSpan::default(),
-            sig,
-            module.signatures.clone(),
-            module.names.clone(),
-        );
+        let block0 = fb.entry_block();
+        let cond = {
+            let args = fb.block_params(block0);
+            args[0]
+        };
 
-        // We create a new lexical scope for the builder so that we can do more
-        // with the function after we're done with the builder. You could also
-        // explicitly call `drop` on the builder value, but using a block like this
-        // gives us a nice visual separation as well.
-        let cond;
-        let block0;
-        let block1;
-        let block2;
-        let br_block0_block2_block1;
-        let br_block1_block1_block2;
-        {
-            // Instantiate a builder with the Function
-            let mut builder = FunctionBuilder::new(&mut function);
+        let block1 = fb.create_block();
+        let block2 = fb.create_block();
 
-            block0 = builder.current_block();
-            cond = {
-                let args = builder.block_params(block0);
-                args[0]
-            };
+        let cond = fb.ins().trunc(cond, Type::I1, SourceSpan::default());
+        let br_block0_block2_block1 =
+            fb.ins()
+                .cond_br(cond, block2, &[], block1, &[], SourceSpan::default());
+        fb.switch_to_block(block1);
+        let br_block1_block1_block2 =
+            fb.ins()
+                .cond_br(cond, block1, &[], block2, &[], SourceSpan::default());
 
-            block1 = builder.create_block();
-            block2 = builder.create_block();
+        let id = fb
+            .build(&diagnostics)
+            .expect("unexpected validation error, see diagnostics output");
 
-            br_block0_block2_block1 =
-                builder
-                    .ins()
-                    .cond_br(cond, block2, &[], block1, &[], SourceSpan::default());
-            builder.switch_to_block(block1);
-            br_block1_block1_block2 =
-                builder
-                    .ins()
-                    .cond_br(cond, block1, &[], block2, &[], SourceSpan::default());
-        }
+        let mut module = builder.build();
+        let mut function = module.unlink(id.function);
 
         let mut cfg = ControlFlowGraph::with_function(&function);
 

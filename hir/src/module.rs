@@ -304,7 +304,7 @@ impl Module {
     ///
     /// If no function with `id` is in the list, the returned cursor will point to the null object.
     pub fn cursor_at<'a, 'b: 'a>(&'b self, id: Ident) -> Cursor<'a, FunctionListAdapter> {
-        let mut cursor = self.functions.cursor();
+        let mut cursor = self.functions.front();
         while let Some(function) = cursor.get() {
             if function.id.function == id {
                 break;
@@ -318,7 +318,7 @@ impl Module {
     ///
     /// If no function with `id` is in the list, the returned cursor will point to the null object.
     pub fn cursor_mut_at<'a, 'b: 'a>(&'b mut self, id: Ident) -> ModuleCursor<'a> {
-        let mut cursor = self.functions.cursor_mut();
+        let mut cursor = self.functions.front_mut();
         while let Some(function) = cursor.get() {
             if function.id.function == id {
                 break;

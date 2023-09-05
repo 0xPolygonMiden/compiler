@@ -130,7 +130,7 @@ impl<'f> InstBuilderBase<'f> for DefaultInstBuilder<'f> {
             } = self.ip
             {
                 debug_assert!(
-                    self.dfg.is_block_terminated(blk),
+                    !self.dfg.is_block_terminated(blk),
                     "cannot append an instruction to a block that is already terminated"
                 );
             }
