@@ -349,10 +349,36 @@ macro_rules! binary_int_op {
     };
 }
 
+macro_rules! binary_boolean_op {
+    ($name:ident, $op:expr) => {
+        paste::paste! {
+            fn $name(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+                let lty = require_matching_operands!(self, lhs, rhs).clone();
+                assert_eq!(lty, Type::I1, concat!(stringify!($name), " requires boolean operands"));
+                into_first_result!(self.Binary($op, lty, lhs, rhs, span))
+            }
+            fn [<$name _imm>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+                let lty = require_integer!(self, lhs, Type::I1).clone();
+                assert_eq!(lty, Type::I1, concat!(stringify!($name), " requires boolean operands"));
+                into_first_result!(self.BinaryImm($op, lty, lhs, imm, span))
+            }
+        }
+    };
+}
+
 macro_rules! unary_int_op {
     ($name:ident, $op:expr) => {
         fn $name(self, rhs: Value, span: SourceSpan) -> Value {
             let rty = assert_integer_operands!(self, rhs);
+            into_first_result!(self.Unary($op, rty, rhs, span))
+        }
+    };
+}
+
+macro_rules! unary_boolean_op {
+    ($name:ident, $op:expr) => {
+        fn $name(self, rhs: Value, span: SourceSpan) -> Value {
+            let rty = require_integer!(self, rhs, Type::I1).clone();
             into_first_result!(self.Unary($op, rty, rhs, span))
         }
     };
@@ -757,9 +783,12 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     binary_int_op!(r#mod, Opcode::Mod);
     binary_int_op!(divmod, Opcode::DivMod);
     binary_int_op!(exp, Opcode::Exp);
-    binary_int_op!(and, Opcode::And);
-    binary_int_op!(or, Opcode::Or);
-    binary_int_op!(xor, Opcode::Xor);
+    binary_boolean_op!(and, Opcode::And);
+    binary_int_op!(band, Opcode::Band);
+    binary_boolean_op!(or, Opcode::Or);
+    binary_int_op!(bor, Opcode::Bor);
+    binary_boolean_op!(xor, Opcode::Xor);
+    binary_int_op!(bxor, Opcode::Bxor);
     binary_int_op!(shl, Opcode::Shl);
     binary_int_op!(shr, Opcode::Shr);
     binary_int_op!(rotl, Opcode::Rotl);
@@ -768,7 +797,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     unary_int_op!(inv, Opcode::Inv);
     unary_int_op!(incr, Opcode::Incr);
     unary_int_op!(pow2, Opcode::Pow2);
-    unary_int_op!(not, Opcode::Not);
+    unary_boolean_op!(not, Opcode::Not);
+    unary_int_op!(bnot, Opcode::Bnot);
     unary_int_op!(popcnt, Opcode::Popcnt);
 
     fn eq(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {

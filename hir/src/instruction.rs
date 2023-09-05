@@ -315,9 +315,13 @@ pub enum Opcode {
     Pow2,
     Exp,
     Not,
+    Bnot,
     And,
+    Band,
     Or,
+    Bor,
     Xor,
+    Bxor,
     Shl,
     Shr,
     Rotl,
@@ -365,8 +369,11 @@ impl Opcode {
             | Self::Eq
             | Self::Neq
             | Self::And
+            | Self::Band
             | Self::Or
-            | Self::Xor => true,
+            | Self::Bor
+            | Self::Xor
+            | Self::Bxor => true,
             _ => false,
         }
     }
@@ -420,9 +427,13 @@ impl Opcode {
             | Self::Pow2
             | Self::Exp
             | Self::Not
+            | Self::Bnot
             | Self::And
+            | Self::Band
             | Self::Or
+            | Self::Bor
             | Self::Xor
+            | Self::Bxor
             | Self::Shl
             | Self::Shr
             | Self::Rotl
@@ -463,8 +474,11 @@ impl Opcode {
             | Self::DivMod
             | Self::Exp
             | Self::And
+            | Self::Band
             | Self::Or
+            | Self::Bor
             | Self::Xor
+            | Self::Bxor
             | Self::Shl
             | Self::Shr
             | Self::Rotl
@@ -493,6 +507,7 @@ impl Opcode {
             | Self::Pow2
             | Self::Popcnt
             | Self::Not
+            | Self::Bnot
             | Self::IsOdd => 1,
             // Select requires condition, arg1, and arg2
             Self::Select => 3,
@@ -513,7 +528,7 @@ impl Opcode {
         }
     }
 
-    pub(super) fn results(&self, ctrl_ty: Type, args: &[Type]) -> SmallVec<[Type; 1]> {
+    pub(super) fn results(&self, ctrl_ty: Type) -> SmallVec<[Type; 1]> {
         use smallvec::smallvec;
 
         match self {
@@ -530,7 +545,18 @@ impl Opcode {
             | Self::Unreachable
             | Self::InlineAsm => smallvec![],
             // These ops have fixed result types
-            Self::Test | Self::IsOdd => smallvec![Type::I1],
+            Self::Test
+            | Self::IsOdd
+            | Self::Not
+            | Self::And
+            | Self::Or
+            | Self::Xor
+            | Self::Eq
+            | Self::Neq
+            | Self::Gt
+            | Self::Gte
+            | Self::Lt
+            | Self::Lte => smallvec![Type::I1],
             // For these ops, the controlling type variable determines the type for the op
             Self::ImmI1
             | Self::ImmI8
@@ -549,62 +575,34 @@ impl Opcode {
             | Self::Zext
             | Self::Sext
             | Self::Ret
-            | Self::Select => {
-                smallvec![ctrl_ty]
-            }
-            // The result type of a load is derived from the pointee type
-            Self::Load => {
-                assert_eq!(args.len(), 1);
-                debug_assert!(
-                    args[0].is_pointer(),
-                    "expected pointer type, got {:#?}",
-                    &args[0]
-                );
-                smallvec![args[0].pointee().unwrap().clone()]
-            }
-            // These ops are unary operators whose result type depends on the argument type, which must be integral
-            Self::Neg | Self::Inv | Self::Incr | Self::Pow2 | Self::Popcnt | Self::Not => {
-                assert_eq!(args.len(), 1);
-                assert!(args[0].is_integer());
-                smallvec![args[0].clone()]
-            }
-            // These ops are binary operators whose result type depends on the type of the arguments,
-            // and those arguments must be the same type
-            Self::Add
+            | Self::Select
+            | Self::Add
             | Self::Sub
             | Self::Mul
             | Self::Div
-            | Self::Eq
-            | Self::Neq
-            | Self::Gt
-            | Self::Gte
-            | Self::Lt
-            | Self::Lte
             | Self::Min
-            | Self::Max => {
-                assert_eq!(args.len(), 2);
-                assert_eq!(&args[0], &args[1], "type mismatch: expected operator to have matching operand types, got: {:?} vs {:?}", &args[0], &args[1]);
-                smallvec![args[0].clone()]
-            }
-            // Same as above, but the type must be integral
-            Self::Mod
+            | Self::Max
+            | Self::Neg
+            | Self::Inv
+            | Self::Incr
+            | Self::Pow2
+            | Self::Popcnt
+            | Self::Mod
             | Self::DivMod
             | Self::Exp
-            | Self::And
-            | Self::Or
-            | Self::Xor
+            | Self::Bnot
+            | Self::Band
+            | Self::Bor
+            | Self::Bxor
             | Self::Shl
             | Self::Shr
             | Self::Rotl
             | Self::Rotr => {
-                assert_eq!(args.len(), 2);
-                assert_eq!(&args[0], &args[1], "type mismatch: expected operator to have matching operand types, got: {:?} vs {:?}", &args[0], &args[1]);
-                assert!(
-                    args[0].is_integer(),
-                    "invalid operand type: expected integral type, got: {:#?}",
-                    &args[0]
-                );
-                smallvec![args[0].clone()]
+                smallvec![ctrl_ty]
+            }
+            // The result type of a load is derived from the pointee type
+            Self::Load => {
+                smallvec![ctrl_ty.pointee().expect("expected pointer type").clone()]
             }
             // Call results are handled separately
             Self::Call | Self::Syscall => unreachable!(),
@@ -657,9 +655,13 @@ impl fmt::Display for Opcode {
             Self::Incr => f.write_str("incr"),
             Self::Pow2 => f.write_str("pow2"),
             Self::Not => f.write_str("not"),
+            Self::Bnot => f.write_str("bnot"),
             Self::And => f.write_str("and"),
+            Self::Band => f.write_str("band"),
             Self::Or => f.write_str("or"),
+            Self::Bor => f.write_str("bor"),
             Self::Xor => f.write_str("xor"),
+            Self::Bxor => f.write_str("bxor"),
             Self::Shl => f.write_str("shl"),
             Self::Shr => f.write_str("shr"),
             Self::Rotl => f.write_str("rotl"),

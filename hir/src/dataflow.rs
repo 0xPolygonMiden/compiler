@@ -309,12 +309,7 @@ impl DataFlowGraph {
                 self.append_result(inst, ty);
             }
         } else {
-            let mut args = SmallVec::<[Type; 2]>::default();
-            for arg in self.insts[inst].arguments(&self.value_lists) {
-                args.push(self.values[*arg].ty().clone());
-            }
-            let result_types = opcode.results(ctrl_ty, &args);
-            for ty in result_types.into_iter() {
+            for ty in opcode.results(ctrl_ty).into_iter() {
                 self.append_result(inst, ty);
             }
         }
@@ -328,11 +323,7 @@ impl DataFlowGraph {
         if let Some(fdata) = self.call_signature(inst) {
             new_results.extend(fdata.results().iter().map(|p| p.ty.clone()));
         } else {
-            let mut args = SmallVec::<[Type; 2]>::default();
-            for arg in self.insts[inst].arguments(&self.value_lists) {
-                args.push(self.values[*arg].ty().clone());
-            }
-            new_results = opcode.results(ctrl_ty, &args);
+            new_results = opcode.results(ctrl_ty);
         }
         let old_results_len = old_results.len();
         let new_results_len = new_results.len();
