@@ -836,6 +836,21 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.Call(Opcode::Syscall, callee, vlist, span).0
     }
 
+    fn select(mut self, cond: Value, a: Value, b: Value, span: SourceSpan) -> Inst {
+        let mut vlist = ValueList::default();
+        let ty = require_matching_operands!(self, a, b).clone();
+        {
+            let dfg = self.data_flow_graph_mut();
+            assert_eq!(
+                dfg.value_type(cond),
+                &Type::I1,
+                "select expect the type of the condition to be i1"
+            );
+            vlist.extend([cond, a, b], &mut dfg.value_lists);
+        }
+        self.PrimOp(Opcode::Select, ty, vlist, span).0
+    }
+
     fn br(mut self, block: Block, args: &[Value], span: SourceSpan) -> Inst {
         let mut vlist = ValueList::default();
         {
