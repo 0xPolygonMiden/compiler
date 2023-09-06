@@ -540,6 +540,10 @@ impl DataFlowGraph {
         id
     }
 
+    pub fn append_block(&mut self, block: Block) {
+        self.blocks.append(block, BlockData::new());
+    }
+
     /// Creates a new block, inserted into the function layout just after `block`
     pub fn create_block_after(&mut self, block: Block) -> Block {
         let id = self.blocks.create();
@@ -612,6 +616,136 @@ impl DataFlowGraph {
         } else {
             false
         }
+    }
+
+    /// Removes `val` from `block`'s parameters by a standard linear time list removal which
+    /// preserves ordering. Also updates the values' data.
+    pub fn remove_block_param(&mut self, val: Value) {
+        let (block, num) = if let ValueData::Param { num, block, .. } = self.values[val] {
+            (block, num)
+        } else {
+            panic!("{} must be a block parameter", val);
+        };
+        self.blocks[block]
+            .params
+            .remove(num as usize, &mut self.value_lists);
+        for index in num..(self.num_block_params(block) as u16) {
+            let value_data = &mut self.values[self.blocks[block]
+                .params
+                .get(index as usize, &self.value_lists)
+                .unwrap()];
+            let mut value_data_clone = value_data.clone();
+            match &mut value_data_clone {
+                ValueData::Param { ref mut num, .. } => {
+                    *num -= 1;
+                    *value_data = value_data_clone.into();
+                }
+                _ => panic!(
+                    "{} must be a block parameter",
+                    self.blocks[block]
+                        .params
+                        .get(index as usize, &self.value_lists)
+                        .unwrap()
+                ),
+            }
+        }
+    }
+
+    /// Appends `value` as an argument to the `branch_inst` instruction arguments list if the
+    /// destination block of the `branch_inst` is `dest`.
+    /// Panics if `branch_inst` is not a branch instruction.
+    pub fn append_branch_destination_argument(
+        &mut self,
+        branch_inst: Inst,
+        dest: Block,
+        value: Value,
+    ) {
+        match self.insts[branch_inst].data.item {
+            Instruction::Br(Br {
+                destination,
+                ref mut args,
+                ..
+            }) if destination == dest => {
+                args.push(value, &mut self.value_lists);
+            }
+            Instruction::CondBr(CondBr {
+                then_dest: (then_dest, ref mut then_args),
+                else_dest: (else_dest, ref mut else_args),
+                ..
+            }) => {
+                if then_dest == dest {
+                    then_args.push(value, &mut self.value_lists);
+                } else if else_dest == dest {
+                    else_args.push(value, &mut self.value_lists);
+                }
+            }
+            _ => panic!("{} must be a branch instruction", branch_inst),
+        }
+    }
+
+    /// Resolve value aliases.
+    /// Find the original SSA value that `value` aliases.
+    pub fn resolve_aliases(&self, value: Value) -> Value {
+        let mut v = value;
+        // Note that values may be empty here.
+        for _ in 0..=self.values.len() {
+            if let ValueData::Alias { original, .. } = self.values[v] {
+                v = original;
+            } else {
+                return v;
+            }
+        }
+        panic!("Value alias loop detected for {}", value);
+    }
+
+    /// Determine if `v` is an attached instruction result / block parameter.
+    ///
+    /// An attached value can't be attached to something else without first being detached.
+    ///
+    /// Value aliases are not considered to be attached to anything. Use `resolve_aliases()` to
+    /// determine if the original aliased value is attached.
+    pub fn value_is_attached(&self, v: Value) -> bool {
+        use self::ValueData::*;
+        match self.values[v] {
+            Inst { inst, num, .. } => Some(&v) == self.inst_results(inst).get(num as usize),
+            Param { block, num, .. } => Some(&v) == self.block_params(block).get(num as usize),
+            Alias { .. } => false,
+        }
+    }
+
+    /// Turn a value into an alias of another.
+    ///
+    /// Change the `dest` value to behave as an alias of `src`. This means that all uses of `dest`
+    /// will behave as if they used that value `src`.
+    ///
+    /// The `dest` value can't be attached to an instruction or block.
+    pub fn change_to_alias(&mut self, dest: Value, src: Value) {
+        debug_assert!(!self.value_is_attached(dest));
+        // Try to create short alias chains by finding the original source value.
+        // This also avoids the creation of loops.
+        let original = self.resolve_aliases(src);
+        debug_assert_ne!(
+            dest, original,
+            "Aliasing {} to {} would create a loop",
+            dest, src
+        );
+        let ty = self.value_type(original);
+        debug_assert_eq!(
+            self.value_type(dest),
+            ty,
+            "Aliasing {} to {} would change its type {} to {}",
+            dest,
+            src,
+            self.value_type(dest),
+            ty
+        );
+        debug_assert_ne!(ty, &Type::Unknown);
+
+        self.values[dest] = ValueData::Alias {
+            ty: ty.clone(),
+            original,
+        }
+        .into();
     }
 }
 impl Index<Inst> for DataFlowGraph {

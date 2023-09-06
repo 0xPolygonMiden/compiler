@@ -9,7 +9,7 @@ use crate::{
     environ::FuncEnvironment,
     wasm_types::{BlockType, FuncIndex},
 };
-use miden_ir::hir::{Block, FuncRef, Function, Inst, Signature, Value};
+use miden_hir::{Block, Function, FunctionIdent, Inst, Signature, Value};
 use std::{
     collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant, HashMap},
     vec::Vec,
@@ -232,7 +232,7 @@ pub struct FuncTranslationState {
     // Imported and local functions that have been created by
     // `FuncEnvironment::make_direct_func()`.
     // Stores both the function reference and the number of WebAssembly arguments
-    functions: HashMap<FuncIndex, (FuncRef, usize)>,
+    functions: HashMap<FuncIndex, (FunctionIdent, usize)>,
 }
 
 impl FuncTranslationState {
@@ -259,7 +259,7 @@ impl FuncTranslationState {
     /// The exit block is the last block in the function which will contain the return instruction.
     pub(crate) fn initialize(&mut self, sig: &Signature, exit_block: Block) {
         self.clear();
-        self.push_block(exit_block, 0, sig.ty.results.len());
+        self.push_block(exit_block, 0, sig.results().len());
     }
 
     /// Push a value.
@@ -410,14 +410,17 @@ impl FuncTranslationState {
         func: &mut Function,
         index: u32,
         environ: &mut FuncEnvironment,
-    ) -> (FuncRef, usize) {
+    ) -> (FunctionIdent, usize) {
         let index = FuncIndex::from_u32(index);
+        // TODO: get rid of self.functions?
         match self.functions.entry(index) {
             Occupied(entry) => *entry.get(),
             Vacant(entry) => {
-                let fref = environ.make_direct_func(func, index);
-                let sig = func.dfg.callee_signature(fref);
-                *entry.insert((fref, sig.params().len()))
+                // TODO: get rid of FuncEnvironment::make_direct_func()?
+                let fident = environ.make_direct_func(func, index);
+                // let sig = func.dfg.callee_signature(fident);
+                let sig = func.dfg.imports[&fident].signature.clone();
+                *entry.insert((fident, sig.params().len()))
             }
         }
     }

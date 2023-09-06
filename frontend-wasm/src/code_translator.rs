@@ -23,10 +23,10 @@ use crate::translation_utils::{block_with_params, f64_translation};
 use crate::unsupported_diag;
 use crate::wasm_types::BlockType;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_ir::cranelift_entity::packed_option::ReservedValue;
-use miden_ir::hir::{Block, Inst, InstBuilder, Value};
-use miden_ir::types::Type;
-use miden_ir::types::Type::*;
+use miden_hir::cranelift_entity::packed_option::ReservedValue;
+use miden_hir::Type;
+use miden_hir::Type::*;
+use miden_hir::{Block, Inst, InstBuilder, Value};
 use wasmparser::{MemArg, Operator};
 
 #[cfg(test)]
@@ -171,15 +171,15 @@ pub fn translate_operator(
         }
         Operator::I32And | Operator::I64And => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().and(arg1, arg2, span));
+            state.push1(builder.ins().band(arg1, arg2, span));
         }
         Operator::I32Or | Operator::I64Or => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().or(arg1, arg2, span));
+            state.push1(builder.ins().bor(arg1, arg2, span));
         }
         Operator::I32Xor | Operator::I64Xor => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().xor(arg1, arg2, span));
+            state.push1(builder.ins().bxor(arg1, arg2, span));
         }
         Operator::I32Shl | Operator::I64Shl => {
             let (arg1, arg2) = state.pop2();
@@ -197,10 +197,6 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().shr_wrapping(arg1, arg2, span));
         }
-        Operator::F64Add => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().add(arg1, arg2, span));
-        }
         Operator::I32Sub | Operator::I64Sub => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().sub(arg1, arg2, span));
@@ -213,14 +209,6 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().mul(arg1, arg2, span));
         }
-        Operator::F64Mul => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().mul(arg1, arg2, span));
-        }
-        Operator::F64Div => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().div(arg1, arg2, span));
-        }
         Operator::I32DivU | Operator::I64DivU => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().div(arg1, arg2, span));
@@ -229,14 +217,27 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().r#mod(arg1, arg2, span));
         }
-        Operator::F64Min => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().min(arg1, arg2, span));
-        }
-        Operator::F64Max => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().max(arg1, arg2, span));
-        }
+        /****************************** Float Binary Operators ************************************/
+        // Operator::F64Add => {
+        //     let (arg1, arg2) = state.pop2();
+        //     state.push1(builder.ins().add(arg1, arg2, span));
+        // }
+        // Operator::F64Mul => {
+        //     let (arg1, arg2) = state.pop2();
+        //     state.push1(builder.ins().mul(arg1, arg2, span));
+        // }
+        // Operator::F64Div => {
+        //     let (arg1, arg2) = state.pop2();
+        //     state.push1(builder.ins().div(arg1, arg2, span));
+        // }
+        // Operator::F64Min => {
+        //     let (arg1, arg2) = state.pop2();
+        //     state.push1(builder.ins().min(arg1, arg2, span));
+        // }
+        // Operator::F64Max => {
+        //     let (arg1, arg2) = state.pop2();
+        //     state.push1(builder.ins().max(arg1, arg2, span));
+        // }
         /**************************** Comparison Operators **********************************/
         Operator::I32LtU | Operator::I64LtU => {
             let (arg0, arg1) = state.pop2();
@@ -268,34 +269,35 @@ pub fn translate_operator(
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().eq(arg0, arg1, span));
         }
-        Operator::F64Eq => {
-            let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().eq(arg0, arg1, span));
-        }
         Operator::I32Ne | Operator::I64Ne => {
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().neq(arg0, arg1, span));
         }
-        Operator::F64Ne => {
-            let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().neq(arg0, arg1, span));
-        }
-        Operator::F64Gt => {
-            let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().gt(arg0, arg1, span));
-        }
-        Operator::F64Ge => {
-            let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().gte(arg0, arg1, span));
-        }
-        Operator::F64Le => {
-            let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().lte(arg0, arg1, span));
-        }
-        Operator::F64Lt => {
-            let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().lt(arg0, arg1, span));
-        }
+        /**************************** Float Comparison Operators **********************************/
+        // Operator::F64Eq => {
+        //     let (arg0, arg1) = state.pop2();
+        //     state.push1(builder.ins().eq(arg0, arg1, span));
+        // }
+        // Operator::F64Ne => {
+        //     let (arg0, arg1) = state.pop2();
+        //     state.push1(builder.ins().neq(arg0, arg1, span));
+        // }
+        // Operator::F64Gt => {
+        //     let (arg0, arg1) = state.pop2();
+        //     state.push1(builder.ins().gt(arg0, arg1, span));
+        // }
+        // Operator::F64Ge => {
+        //     let (arg0, arg1) = state.pop2();
+        //     state.push1(builder.ins().gte(arg0, arg1, span));
+        // }
+        // Operator::F64Le => {
+        //     let (arg0, arg1) = state.pop2();
+        //     state.push1(builder.ins().lte(arg0, arg1, span));
+        // }
+        // Operator::F64Lt => {
+        //     let (arg0, arg1) = state.pop2();
+        //     state.push1(builder.ins().lt(arg0, arg1, span));
+        // }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
         }
@@ -362,7 +364,7 @@ fn translate_store(
 ) {
     let (addr_int, val) = state.pop2();
     let val_ty = builder.func().dfg.value_type(val);
-    let arg = if ptr_ty != val_ty {
+    let arg = if ptr_ty != *val_ty {
         builder.ins().trunc(val, ptr_ty.clone(), span)
     } else {
         val
@@ -396,9 +398,9 @@ fn translate_call(
     environ: &mut FuncEnvironment<'_>,
     span: SourceSpan,
 ) {
-    let (fref, num_args) = state.get_direct_func(builder.inner.func, *function_index, environ);
+    let (fident, num_args) = state.get_direct_func(builder.inner.func, *function_index, environ);
     let args = state.peekn_mut(num_args);
-    let call = builder.ins().call(fref, &args, span);
+    let call = builder.ins().call(fident, &args, span);
     let inst_results = builder.inner.inst_results(call);
     state.popn(num_args);
     state.pushn(inst_results);
@@ -467,9 +469,11 @@ fn translate_br_if(
     let then_args = inputs;
     let else_dest = next_block;
     let else_args = &[];
+    let zero = builder.ins().i32(0, span);
+    let cond_i1 = builder.ins().neq(cond, zero, span);
     builder
         .ins()
-        .cond_br(cond, then_dest, then_args, else_dest, else_args, span);
+        .cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
     builder.seal_block(next_block); // The only predecessor is the current block.
     builder.switch_to_block(next_block);
 }
@@ -625,7 +629,9 @@ fn translate_if(
     span: SourceSpan,
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
-    let val = state.pop1();
+    let cond = state.pop1();
+    let zero = builder.ins().i32(0, span);
+    let cond_i1 = builder.ins().neq(cond, zero, span);
     let next_block = builder.create_block();
     let (destination, else_data) = if blockty.params.eq(&blockty.results) {
         // It is possible there is no `else` block, so we will only
@@ -636,7 +642,7 @@ fn translate_if(
         // and go back and patch the jump.
         let destination = block_with_params(builder, blockty.results.clone(), span)?;
         let branch_inst = builder.ins().cond_br(
-            val,
+            cond_i1,
             next_block,
             &[],
             destination,
@@ -656,7 +662,7 @@ fn translate_if(
         let destination = block_with_params(builder, blockty.results.clone(), span)?;
         let else_block = block_with_params(builder, blockty.params.clone(), span)?;
         builder.ins().cond_br(
-            val,
+            cond_i1,
             next_block,
             &[],
             else_block,

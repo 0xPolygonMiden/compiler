@@ -2,13 +2,14 @@
 
 use crate::error::WasmResult;
 use crate::func_translator::FuncTranslator;
+use crate::translation_utils::sig_from_funct_type;
 use crate::wasm_types::{
     DefinedFuncIndex, FuncIndex, Global, GlobalInit, Memory, MemoryIndex, TypeIndex,
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_ir::cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
-use miden_ir::hir::{Function, Module, Signature, Visibility};
-use miden_ir::types::FunctionType;
+use miden_hir::cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
+use miden_hir::{CallConv, Ident, Linkage, Module, ModuleBuilder, Symbol};
+use miden_hir_type::FunctionType;
 use std::string::String;
 use std::vec::Vec;
 use wasmparser::{FunctionBody, Validator};
@@ -19,6 +20,9 @@ use super::FuncEnvironment;
 /// `ModuleEnvironment` to allow it to be borrowed separately from the
 /// `FuncTranslator` field.
 pub struct ModuleInfo {
+    /// Module name
+    pub id: Ident,
+
     /// Function types
     pub func_types: PrimaryMap<TypeIndex, FunctionType>,
 
@@ -39,8 +43,9 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn new() -> Self {
+    pub fn new(id: Ident) -> Self {
         Self {
+            id,
             func_types: PrimaryMap::new(),
             imported_funcs: Vec::new(),
             functions: PrimaryMap::new(),
@@ -58,9 +63,6 @@ pub struct ModuleEnvironment<'a> {
     /// Function translation.
     pub trans: FuncTranslator,
 
-    /// Name of the module from the wasm file.
-    pub module_name: Option<String>,
-
     /// Unparsed function bodies (bytes).
     pub function_bodies: PrimaryMap<DefinedFuncIndex, FunctionBody<'a>>,
 }
@@ -69,9 +71,8 @@ impl<'a> ModuleEnvironment<'a> {
     /// Creates a new `ModuleEnvironment` instance.
     pub fn new() -> Self {
         Self {
-            info: ModuleInfo::new(),
+            info: ModuleInfo::new(Ident::with_empty_span(Symbol::intern("noname"))),
             trans: FuncTranslator::new(),
-            module_name: None,
             function_bodies: PrimaryMap::new(),
         }
     }
@@ -97,44 +98,36 @@ impl<'a> ModuleEnvironment<'a> {
         diagnostics: &DiagnosticsHandler,
         validator: &mut Validator,
     ) -> WasmResult<Module> {
-        let module_name = self.module_name.clone().unwrap_or("noname".to_string());
-        let mut module = Module::new(module_name, Some(SourceSpan::default()));
+        let mut module_builder = ModuleBuilder::new(self.info.id.as_str());
         let get_num_func_imports = self.get_num_func_imports();
         for (def_func_index, body) in &self.function_bodies {
             let func_index = FuncIndex::new(get_num_func_imports + def_func_index.index());
             let sig_type_idx = self.get_func_type(func_index);
             let func_ty = &self.info.func_types[sig_type_idx];
-            let name = self
+            let func_name = self
                 .get_func_name(func_index)
                 .unwrap_or(&format!("func{}", func_index.index()))
                 .to_string();
-            let sig = Signature {
-                visibility: Visibility::PUBLIC,
-                name,
-                ty: func_ty.clone(),
-            };
-            let fref = module.declare_function(sig.clone());
-            let mut func = Function::new(
-                fref,
-                SourceSpan::default(),
-                sig.clone(),
-                module.signatures.clone(),
-                module.names.clone(),
-            );
+            let sig = sig_from_funct_type(func_ty, CallConv::SystemV, Linkage::External);
+            let mut module_func_builder =
+                module_builder.build_function(func_name, sig.clone(), SourceSpan::default())?;
+            let func_builder = module_func_builder.func_builder();
             let mut func_environ = FuncEnvironment::new(&self.info);
             let mut func_validator = validator
                 .code_section_entry(&body)?
                 .into_validator(Default::default());
             self.trans.translate_body(
                 body,
-                &mut func,
+                func_builder,
                 &mut func_environ,
                 diagnostics,
                 &mut func_validator,
             )?;
-            module.define_function(func);
+            // TODO: handle error
+            module_func_builder.build(diagnostics).unwrap();
         }
-        Ok(module)
+        let module = module_builder.build();
+        Ok(*module)
     }
 
     /// Declares a function signature to the environment.
@@ -183,7 +176,7 @@ impl<'a> ModuleEnvironment<'a> {
 
     /// Declares the name of a module to the environment.
     pub fn declare_module_name(&mut self, name: &'a str) {
-        self.module_name = Some(String::from(name));
+        self.info.id = Ident::with_empty_span(Symbol::intern(name));
     }
 
     /// Declares the name of a function to the environment.

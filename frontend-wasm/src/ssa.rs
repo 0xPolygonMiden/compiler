@@ -11,10 +11,10 @@
 
 use core::mem;
 use miden_diagnostics::SourceSpan;
-use miden_ir::cranelift_entity::packed_option::PackedOption;
-use miden_ir::cranelift_entity::{entity_impl, EntityList, EntitySet, ListPool, SecondaryMap};
-use miden_ir::hir::{Block, Function, Inst, Value};
-use miden_ir::types::Type;
+use miden_hir::cranelift_entity::packed_option::PackedOption;
+use miden_hir::cranelift_entity::{entity_impl, EntityList, EntitySet, ListPool, SecondaryMap};
+use miden_hir::{Block, Function, Inst, Value};
+use miden_hir_type::Type;
 
 /// Structure containing the data relevant the construction of SSA for a given function.
 ///
@@ -135,7 +135,7 @@ enum Call {
 }
 
 /// Emit instructions to produce a zero value in the given type.
-fn emit_zero(_ty: Type, //, mut cur: FuncCursor
+fn emit_zero(_ty: &Type, //, mut cur: FuncCursor
 ) -> Value {
     todo!("emit zero value at the beginning of a block")
 }
@@ -399,7 +399,7 @@ impl SSABuilder {
             // self.side_effects may be non-empty here so that callers can
             // accumulate side effects over multiple calls.
             self.begin_predecessors_lookup(val, block);
-            self.run_state_machine(func, var, func.dfg.value_type(val));
+            self.run_state_machine(func, var, func.dfg.value_type(val).clone());
         }
 
         undef_variables.clear(&mut self.variable_pool);

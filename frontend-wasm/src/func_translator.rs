@@ -15,8 +15,8 @@ use crate::ssa::Variable;
 use crate::translation_utils::emit_zero;
 use crate::wasm_types::valtype_to_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_ir::cranelift_entity::EntityRef;
-use miden_ir::hir::{Block, Function, InstBuilder};
+use miden_hir::cranelift_entity::EntityRef;
+use miden_hir::{Block, FunctionBuilder, InstBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
 /// WebAssembly to Miden IR function translator.
@@ -42,21 +42,20 @@ impl FuncTranslator {
     pub fn translate_body(
         &mut self,
         body: &FunctionBody<'_>,
-        func: &mut Function,
+        func_builder: FunctionBuilder,
         environ: &mut FuncEnvironment,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
         let mut reader = body.get_binary_reader();
-        log::trace!(
-            "translate({} bytes, {}{:?})",
-            reader.bytes_remaining(),
-            func.signature.name,
-            func.signature
-        );
-        debug_assert_eq!(func.dfg.num_blocks(), 0, "Function must be empty");
+        // log::trace!(
+        //     "translate({} bytes, {}{:?})",
+        //     reader.bytes_remaining(),
+        //     func.signature.name,
+        //     func.signature
+        // );
 
-        let mut builder = FunctionBuilderExt::new(func, &mut self.func_ctx);
+        let mut builder = FunctionBuilderExt::new(func_builder, &mut self.func_ctx);
         // entry block is created by `FunctionBuilder::new`
         let entry_block = builder.inner.current_block();
         builder.seal_block(entry_block); // Declare all predecessors known.
@@ -91,9 +90,9 @@ fn declare_parameters(builder: &mut FunctionBuilderExt, entry_block: Block) -> u
     let sig_len = builder.func().signature.params().len();
     let mut next_local = 0;
     for i in 0..sig_len {
-        let param_type = &builder.func().signature.params()[i];
+        let abi_param = &builder.func().signature.params()[i];
         let local = Variable::new(next_local);
-        builder.declare_var(local, param_type.clone());
+        builder.declare_var(local, abi_param.ty.clone());
         next_local += 1;
 
         let param_value = builder.block_params(entry_block)[i];
