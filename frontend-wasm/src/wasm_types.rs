@@ -1,8 +1,8 @@
 //! Internal types for parsed WebAssembly.
 
-use miden_ir::cranelift_entity::entity_impl;
-use miden_ir::types::FunctionType;
-use miden_ir::types::Type;
+use miden_hir::cranelift_entity::entity_impl;
+use miden_hir_type::FunctionType;
+use miden_hir_type::Type;
 
 use crate::environ::ModuleInfo;
 use crate::error::WasmError;

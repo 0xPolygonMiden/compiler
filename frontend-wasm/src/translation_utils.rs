@@ -2,10 +2,10 @@
 
 use crate::{error::WasmResult, function_builder_ext::FunctionBuilderExt};
 use miden_diagnostics::SourceSpan;
-use miden_ir::{
-    hir::{Block, FunctionBuilder, InstBuilder, Value},
-    types::Type,
+use miden_hir::{
+    AbiParam, Block, CallConv, FunctionBuilder, InstBuilder, Linkage, Signature, Value,
 };
+use miden_hir_type::{FunctionType, Type};
 
 /// Create a `Block` with the given parameters.
 pub fn block_with_params(
@@ -35,7 +35,7 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilder) -> Value {
         Type::I16 => builder.ins().i16(0, SourceSpan::default()),
         Type::I32 => builder.ins().i32(0, SourceSpan::default()),
         Type::I64 => builder.ins().i64(0, SourceSpan::default()),
-        Type::I128 => builder.ins().i128(0, SourceSpan::default()),
+        Type::I128 => todo!(),
         Type::I256 => todo!(),
         Type::Isize => todo!(),
         Type::F64 => builder.ins().f64(0.0, SourceSpan::default()),
@@ -46,5 +46,26 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilder) -> Value {
         Type::Unknown => panic!("cannot emit zero for unknown type"),
         Type::Unit => panic!("cannot emit zero for unit type"),
         Type::Never => panic!("cannot emit zero for never type"),
+    }
+}
+
+pub fn sig_from_funct_type(
+    func_type: &FunctionType,
+    call_conv: CallConv,
+    linkage: Linkage,
+) -> Signature {
+    Signature {
+        params: func_type
+            .params
+            .iter()
+            .map(|ty| AbiParam::new(ty.clone()))
+            .collect(),
+        results: func_type
+            .results
+            .iter()
+            .map(|ty| AbiParam::new(ty.clone()))
+            .collect(),
+        cc: call_conv,
+        linkage,
     }
 }

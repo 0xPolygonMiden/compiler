@@ -25,9 +25,9 @@ fn module() {
         expect![[r#"
             module noname
 
-            pub fn main() ->   {
+            pub fn main() {
             block0:
-                v0 = const.int 0  : i32
+                v0 = const.i32 0  : i32
                 br block1
 
             block1:
@@ -53,10 +53,10 @@ fn locals() {
         expect![[r#"
             module noname
 
-            pub fn main() ->   {
+            pub fn main() {
             block0:
-                v0 = const.int 0  : i32
-                v1 = const.int 1  : i32
+                v0 = const.i32 0  : i32
+                v1 = const.i32 1  : i32
                 br block1
 
             block1:
@@ -91,22 +91,22 @@ fn locals_inter_block() {
         expect![[r#"
             module noname
 
-            pub fn main() -> i32  {
+            pub fn main() -> i32 {
             block0:
-                v1 = const.int 0  : i32
-                v2 = const.int 3  : i32
+                v1 = const.i32 0  : i32
+                v2 = const.i32 3  : i32
                 br block2
 
             block1(v0: i32):
                 v7 = ret v0  : ()
 
             block2:
-                v3 = const.int 5  : i32
+                v3 = const.i32 5  : i32
                 v4 = add v2, v3  : i32
                 br block3
 
             block3:
-                v5 = const.int 7  : i32
+                v5 = const.i32 7  : i32
                 v6 = add v5, v4  : i32
                 br block1(v6)
             }
@@ -134,7 +134,7 @@ fn func_call() {
         expect![[r#"
             module noname
 
-            pub fn add(i32, i32) -> i32  {
+            pub fn add(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
                 v3 = add v0, v1  : i32
                 br block1(v3)
@@ -143,11 +143,11 @@ fn func_call() {
                 v4 = ret v2  : ()
             }
 
-            pub fn main() -> i32  {
+            pub fn main() -> i32 {
             block0:
-                v1 = const.int 3  : i32
-                v2 = const.int 5  : i32
-                v3 = call add(v1, v2)  : i32
+                v1 = const.i32 3  : i32
+                v2 = const.i32 5  : i32
+                v3 = call noname::add(v1, v2)  : i32
                 br block1(v3)
 
             block1(v0: i32):
@@ -175,10 +175,10 @@ fn br() {
         expect![[r#"
             module noname
 
-            pub fn main() -> i32  {
+            pub fn main() -> i32 {
             block0:
-                v1 = const.int 0  : i32
-                v2 = const.int 3  : i32
+                v1 = const.i32 0  : i32
+                v2 = const.i32 3  : i32
                 br block2
 
             block1(v0: i32):
@@ -218,20 +218,22 @@ fn loop_br_if() {
         expect![[r#"
             module noname
 
-            pub fn main() -> i32  {
+            pub fn main() -> i32 {
             block0:
-                v1 = const.int 0  : i32
-                v2 = const.int 2  : i32
+                v1 = const.i32 0  : i32
+                v2 = const.i32 2  : i32
                 br block2(v2, v1)
 
             block1(v0: i32):
-                v8 = ret v0  : ()
+                v10 = ret v0  : ()
 
             block2(v3: i32, v4: i32):
                 v5 = add v3, v4  : i32
-                v6 = const.int 1  : i32
+                v6 = const.i32 1  : i32
                 v7 = sub v3, v6  : i32
-                condbr v7, block2(v7, v5), block4
+                v8 = const.i32 0  : i32
+                v9 = neq v7, v8  : i1
+                condbr v9, block2(v7, v5), block4
 
             block3:
                 br block1(v5)
@@ -261,24 +263,26 @@ fn if_then_else() {
         expect![[r#"
             module noname
 
-            pub fn main() -> i32  {
+            pub fn main() -> i32 {
             block0:
-                v1 = const.int 2  : i32
-                condbr v1, block2, block4
+                v1 = const.i32 2  : i32
+                v2 = const.i32 0  : i32
+                v3 = neq v1, v2  : i1
+                condbr v3, block2, block4
 
             block1(v0: i32):
-                v5 = ret v0  : ()
+                v7 = ret v0  : ()
 
             block2:
-                v3 = const.int 3  : i32
-                br block3(v3)
+                v5 = const.i32 3  : i32
+                br block3(v5)
 
-            block3(v2: i32):
-                br block1(v2)
+            block3(v4: i32):
+                br block1(v4)
 
             block4:
-                v4 = const.int 5  : i32
-                br block3(v4)
+                v6 = const.i32 5  : i32
+                br block3(v6)
             }
         "#]],
     );

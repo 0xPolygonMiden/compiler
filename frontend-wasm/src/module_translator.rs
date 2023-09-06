@@ -10,7 +10,7 @@ use crate::sections_translator::{
 use crate::wasm_types::FuncIndex;
 use crate::{unsupported_diag, WasmTranslationConfig};
 use miden_diagnostics::DiagnosticsHandler;
-use miden_ir::hir::Module;
+use miden_hir::Module;
 use std::prelude::v1::*;
 use wasmparser::{NameSectionReader, Parser, Payload, Validator, WasmFeatures};
 

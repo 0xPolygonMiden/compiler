@@ -1,5 +1,6 @@
 use miden_diagnostics::Diagnostic;
 use miden_diagnostics::ToDiagnostic;
+use miden_hir::SymbolConflictError;
 use thiserror::Error;
 
 /// A WebAssembly translation error.
@@ -26,6 +27,9 @@ pub enum WasmError {
 
     #[error("Too many declared functions in the module")]
     FuncNumLimitExceeded,
+
+    #[error("{0}")]
+    SymbolConflictError(#[from] SymbolConflictError),
 }
 
 impl From<wasmparser::BinaryReaderError> for WasmError {
