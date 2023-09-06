@@ -1,6 +1,6 @@
 //! Module translation environment
 
-use crate::error::WasmResult;
+use crate::error::{WasmError, WasmResult};
 use crate::func_translator::FuncTranslator;
 use crate::translation_utils::sig_from_funct_type;
 use crate::wasm_types::{
@@ -123,8 +123,9 @@ impl<'a> ModuleEnvironment<'a> {
                 diagnostics,
                 &mut func_validator,
             )?;
-            // TODO: handle error
-            module_func_builder.build(diagnostics).unwrap();
+            module_func_builder
+                .build(diagnostics)
+                .map_err(|_| WasmError::InvalidFunctionError)?;
         }
         let module = module_builder.build();
         Ok(*module)
