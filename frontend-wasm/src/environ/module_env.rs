@@ -21,7 +21,7 @@ use super::FuncEnvironment;
 /// `FuncTranslator` field.
 pub struct ModuleInfo {
     /// Module name
-    pub id: Ident,
+    pub name: Ident,
 
     /// Function types
     pub func_types: PrimaryMap<TypeIndex, FunctionType>,
@@ -45,7 +45,7 @@ pub struct ModuleInfo {
 impl ModuleInfo {
     pub fn new(id: Ident) -> Self {
         Self {
-            id,
+            name: id,
             func_types: PrimaryMap::new(),
             imported_funcs: Vec::new(),
             functions: PrimaryMap::new(),
@@ -98,7 +98,7 @@ impl<'a> ModuleEnvironment<'a> {
         diagnostics: &DiagnosticsHandler,
         validator: &mut Validator,
     ) -> WasmResult<Module> {
-        let mut module_builder = ModuleBuilder::new(self.info.id.as_str());
+        let mut module_builder = ModuleBuilder::new(self.info.name.as_str());
         let get_num_func_imports = self.get_num_func_imports();
         for (def_func_index, body) in &self.function_bodies {
             let func_index = FuncIndex::new(get_num_func_imports + def_func_index.index());
@@ -176,7 +176,7 @@ impl<'a> ModuleEnvironment<'a> {
 
     /// Declares the name of a module to the environment.
     pub fn declare_module_name(&mut self, name: &'a str) {
-        self.info.id = Ident::with_empty_span(Symbol::intern(name));
+        self.info.name = Ident::with_empty_span(Symbol::intern(name));
     }
 
     /// Declares the name of a function to the environment.
