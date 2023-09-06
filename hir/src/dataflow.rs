@@ -5,7 +5,7 @@ use intrusive_collections::UnsafeRef;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
-use miden_diagnostics::{SourceSpan, Span};
+use miden_diagnostics::{SourceSpan, Span, Spanned};
 
 use super::*;
 
@@ -127,6 +127,13 @@ impl DataFlowGraph {
         self.values[v].ty()
     }
 
+    pub fn value_span(&self, v: Value) -> SourceSpan {
+        match &self.values[v] {
+            ValueData::Param { span, .. } => *span,
+            ValueData::Inst { inst, .. } => self.inst_span(*inst),
+        }
+    }
+
     #[inline(always)]
     pub fn value_data(&self, v: Value) -> &ValueData {
         &self.values[v]
@@ -150,6 +157,10 @@ impl DataFlowGraph {
     #[inline(always)]
     pub fn inst_mut(&mut self, inst: Inst) -> &mut InstNode {
         &mut self.insts[inst]
+    }
+
+    pub fn inst_span(&self, inst: Inst) -> SourceSpan {
+        self.inst(inst).span()
     }
 
     pub fn inst_args(&self, inst: Inst) -> &[Value] {
