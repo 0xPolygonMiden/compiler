@@ -30,6 +30,8 @@ pub enum WasmError {
 
     #[error("{0}")]
     SymbolConflictError(#[from] SymbolConflictError),
+    #[error("Failed to build function. See diagnostics for details")]
+    InvalidFunctionError,
 }
 
 impl From<wasmparser::BinaryReaderError> for WasmError {
