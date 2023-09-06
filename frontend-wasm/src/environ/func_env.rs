@@ -40,7 +40,7 @@ impl<'a> FuncEnvironment<'a> {
         // TODO: handle error
         let imported_fid = func
             .dfg
-            .import_function(self.mod_info.id, fid, sig)
+            .import_function(self.mod_info.name, fid, sig)
             .unwrap();
         imported_fid
     }

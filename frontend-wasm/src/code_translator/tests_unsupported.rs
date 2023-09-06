@@ -1,65 +1,62 @@
-// use miden_diagnostics::SourceSpan;
-// use miden_hir::Function;
-// use miden_hir::ModuleBuilder;
-// use miden_hir::Signature;
-// use miden_hir_type::FunctionType;
+use miden_diagnostics::SourceSpan;
+use miden_hir::CallConv;
+use miden_hir::Ident;
+use miden_hir::Linkage;
+use miden_hir::ModuleBuilder;
+use miden_hir::Signature;
+use miden_hir::Symbol;
 
 use wasmparser::MemArg;
 use wasmparser::Operator;
 use wasmparser::Operator::*;
 
-// use crate::environ::FuncEnvironment;
-// use crate::environ::ModuleInfo;
-// use crate::func_translation_state::FuncTranslationState;
-// use crate::function_builder_ext::FunctionBuilderContext;
-// use crate::function_builder_ext::FunctionBuilderExt;
-// use crate::test_utils::test_diagnostics;
+use crate::environ::FuncEnvironment;
+use crate::environ::ModuleInfo;
+use crate::func_translation_state::FuncTranslationState;
+use crate::function_builder_ext::FunctionBuilderContext;
+use crate::function_builder_ext::FunctionBuilderExt;
+use crate::test_utils::test_diagnostics;
 
-// use super::translate_operator;
+use super::translate_operator;
 
-fn check_unsupported(_op: &Operator) {
-    // TODO: fix
-    // let diagnostics = test_diagnostics();
-    // let mut module_builder = ModuleBuilder::new("module_name");
-    // let sig = Signature {
-    //     visibility: Visibility::PUBLIC,
-    //     name: "func_name".to_string(),
-    //     ty: FunctionType::new(vec![], vec![]),
-    // };
-    // let fref = module.declare_function(sig.clone());
-    // let mut func = Function::new(
-    //     fref,
-    //     SourceSpan::default(),
-    //     sig.clone(),
-    //     module.signatures.clone(),
-    //     module.names.clone(),
-    // );
-    // let mut fb_ctx = FunctionBuilderContext::new();
-    // let mut builder = FunctionBuilderExt::new(&mut func, &mut fb_ctx);
-    // let mut state = FuncTranslationState::new();
-    // let module_info = ModuleInfo::new();
-    // let mut func_environ = FuncEnvironment::new(&module_info);
-    // let result = translate_operator(
-    //     op,
-    //     &mut builder,
-    //     &mut state,
-    //     &mut func_environ,
-    //     &diagnostics,
-    //     SourceSpan::default(),
-    // );
-    // assert!(
-    //     result.is_err(),
-    //     "Expected unsupported op error for {:?}",
-    //     op
-    // );
-    // assert_eq!(
-    //     result.unwrap_err().to_string(),
-    //     format!("Unsupported Wasm: Wasm op {:?} is not supported", op)
-    // );
-    // assert!(
-    //     diagnostics.has_errors(),
-    //     "Expected diagnostics to have errors"
-    // );
+fn check_unsupported(op: &Operator) {
+    let diagnostics = test_diagnostics();
+    let module_info = ModuleInfo::new(Ident::with_empty_span(Symbol::intern("noname")));
+    let mut module_builder = ModuleBuilder::new(module_info.name.as_str());
+    let sig = Signature {
+        params: vec![],
+        results: vec![],
+        cc: CallConv::SystemV,
+        linkage: Linkage::External,
+    };
+    let mut module_func_builder = module_builder
+        .build_function("func_name", sig.clone(), SourceSpan::default())
+        .unwrap();
+    let mut fb_ctx = FunctionBuilderContext::new();
+    let mut builder_ext = FunctionBuilderExt::new(module_func_builder.func_builder(), &mut fb_ctx);
+    let mut state = FuncTranslationState::new();
+    let mut func_environ = FuncEnvironment::new(&module_info);
+    let result = translate_operator(
+        op,
+        &mut builder_ext,
+        &mut state,
+        &mut func_environ,
+        &diagnostics,
+        SourceSpan::default(),
+    );
+    assert!(
+        result.is_err(),
+        "Expected unsupported op error for {:?}",
+        op
+    );
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        format!("Unsupported Wasm: Wasm op {:?} is not supported", op)
+    );
+    assert!(
+        diagnostics.has_errors(),
+        "Expected diagnostics to have errors"
+    );
 }
 
 // Wasm Spec v1.0
