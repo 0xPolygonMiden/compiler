@@ -241,18 +241,18 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "cranelift-bforest"
-version = "0.98.1"
+version = "0.95.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1380172556902242d32f78ed08c98aac4f5952aef22d3684aed5c66a5db0a6fc"
+checksum = "1277fbfa94bc82c8ec4af2ded3e639d49ca5f7f3c7eeab2c66accd135ece4e70"
 dependencies = [
  "cranelift-entity",
 ]
 
 [[package]]
 name = "cranelift-entity"
-version = "0.98.1"
+version = "0.95.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e3173c1434af23c00e4964722cf93ca8f0e6287289bf5d52110597c3ba2ea09"
+checksum = "40099d38061b37e505e63f89bab52199037a72b931ad4868d9089ff7268660b0"
 
 [[package]]
 name = "crypto-common"
@@ -589,8 +589,25 @@ name = "miden-hir"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bitflags",
- "cranelift-bforest",
+ "expect-test",
+ "itertools 0.11.0",
+ "log",
+ "miden-diagnostics",
+ "miden-hir",
+ "miden-hir-type",
+ "sha2",
+ "smallvec",
+ "thiserror",
+ "wasmparser 0.107.0",
+ "wasmprinter",
+ "wat",
+]
+
+[[package]]
+name = "miden-hir"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "cranelift-entity",
  "intrusive-collections",
  "miden-diagnostics",

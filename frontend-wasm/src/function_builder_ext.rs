@@ -1,16 +1,18 @@
 use miden_diagnostics::SourceSpan;
-use miden_ir::cranelift_entity::SecondaryMap;
-use miden_ir::hir::Block;
-use miden_ir::hir::Br;
-use miden_ir::hir::CondBr;
-use miden_ir::hir::DataFlowGraph;
-use miden_ir::hir::Function;
-use miden_ir::hir::FunctionBuilder;
-use miden_ir::hir::Inst;
-use miden_ir::hir::InstBuilderBase;
-use miden_ir::hir::Instruction;
-use miden_ir::hir::Value;
-use miden_ir::types::Type;
+use miden_hir::cranelift_entity::SecondaryMap;
+use miden_hir::Block;
+use miden_hir::Br;
+use miden_hir::CondBr;
+use miden_hir::DataFlowGraph;
+use miden_hir::Function;
+use miden_hir::FunctionBuilder;
+use miden_hir::InsertionPoint;
+use miden_hir::Inst;
+use miden_hir::InstBuilderBase;
+use miden_hir::Instruction;
+use miden_hir::ProgramPoint;
+use miden_hir::Value;
+use miden_hir_type::Type;
 
 use crate::ssa::SSABuilder;
 use crate::ssa::SideEffects;
@@ -62,10 +64,9 @@ pub struct FunctionBuilderExt<'a> {
 }
 
 impl<'a> FunctionBuilderExt<'a> {
-    pub fn new(func: &'a mut Function, func_ctx: &'a mut FunctionBuilderContext) -> Self {
+    pub fn new(inner: FunctionBuilder<'a>, func_ctx: &'a mut FunctionBuilderContext) -> Self {
         debug_assert!(func_ctx.is_empty());
-        let inner = FunctionBuilder::new(func);
-        func_ctx.ssa.declare_block(inner.entry);
+        // func_ctx.ssa.declare_block(inner.entry);
         Self { inner, func_ctx }
     }
 
@@ -97,7 +98,7 @@ impl<'a> FunctionBuilderExt<'a> {
 
         for argtyp in self.inner.func.signature.results().to_vec() {
             self.inner
-                .append_block_param(block, argtyp.clone(), SourceSpan::default());
+                .append_block_param(block, argtyp.ty.clone(), SourceSpan::default());
         }
     }
 
@@ -270,7 +271,7 @@ impl<'a> FunctionBuilderExt<'a> {
             .types
             .get(var)
             .ok_or(DefVariableError::DefinedBeforeDeclared(var))?;
-        if var_ty != &self.inner.func.dfg.value_type(val) {
+        if var_ty != self.inner.func.dfg.value_type(val) {
             return Err(DefVariableError::TypeMismatch(var, val));
         }
 
@@ -316,10 +317,7 @@ impl<'a> FunctionBuilderExt<'a> {
     ///
     /// The entry block of a function is never unreachable.
     pub fn is_unreachable(&self) -> bool {
-        let is_entry = match self.inner.func.dfg.entry_block() {
-            None => false,
-            Some(entry) => self.inner.current_block() == entry,
-        };
+        let is_entry = self.inner.current_block() == self.inner.func.dfg.entry_block();
         !is_entry
             && self.func_ctx.ssa.is_sealed(self.inner.current_block())
             && !self
@@ -385,12 +383,15 @@ pub enum DefVariableError {
 
 pub struct FuncInstBuilderExt<'a, 'b: 'a> {
     builder: &'a mut FunctionBuilderExt<'b>,
-    block: Block,
+    ip: InsertionPoint,
 }
 impl<'a, 'b> FuncInstBuilderExt<'a, 'b> {
     fn new(builder: &'a mut FunctionBuilderExt<'b>, block: Block) -> Self {
         assert!(builder.inner.func.dfg.is_block_inserted(block));
-        Self { builder, block }
+        Self {
+            builder,
+            ip: InsertionPoint::after(ProgramPoint::Block(block)),
+        }
     }
 }
 impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
@@ -400,6 +401,10 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
 
     fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
         &mut self.builder.inner.func.dfg
+    }
+
+    fn insertion_point(&self) -> InsertionPoint {
+        self.ip
     }
 
     // This implementation is richer than `InsertBuilder` because we use the data of the
@@ -414,8 +419,7 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
             .inner
             .func
             .dfg
-            .push_inst(self.block, data.clone(), span);
-        self.builder.inner.func.dfg.make_inst_results(inst, ty);
+            .insert_inst(self.ip, data.clone(), ty, span);
 
         match &self.builder.inner.func.dfg.insts[inst].data.item.clone() {
             Instruction::Br(Br { destination, .. }) => {

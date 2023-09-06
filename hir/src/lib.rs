@@ -43,7 +43,10 @@ pub use self::layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap};
 pub use self::module::*;
 pub use self::program::{Linker, LinkerError, Program};
 pub use self::value::{Value, ValueData, ValueList, ValueListPool};
-pub use self::write::{write_external_function, write_function};
+pub use self::write::{write_external_function, write_function, write_instruction};
+
+// Re-export cranelift_entity so that users don't have to hunt for the same version
+pub use cranelift_entity;
 
 use core::fmt;
 

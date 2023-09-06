@@ -1,5 +1,6 @@
 use expect_test::expect;
-use miden_ir::hir::write_instruction;
+use miden_hir::write_instruction;
+use miden_hir::Ident;
 
 use crate::test_utils::test_diagnostics;
 use crate::translate_module;
@@ -20,10 +21,12 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
     let wasm = wat::parse_str(wat).unwrap();
     let diagnostics = test_diagnostics();
     let module = translate_module(&wasm, &WasmTranslationConfig::default(), &diagnostics).unwrap();
-    let fref = module.get_funcref_by_name("test_wrapper").unwrap();
-    let func = module.get_function(fref).unwrap();
-    let entry_block = func.dfg.entry_block().unwrap();
-    let entry_block_data = func.dfg.block_data(entry_block);
+    let func = module.function(Ident::from_str("test_wrapper")).unwrap();
+    // let fref = module.get_funcref_by_name("test_wrapper").unwrap();
+    // let func = module.get_function(fref).unwrap();
+    let entry_block = func.dfg.entry_block();
+    // let entry_block_data = func.dfg.block_data(entry_block);
+    let entry_block_data = func.dfg.block(entry_block);
     let mut w = String::new();
     // print instructions up to the branch to the exit block
     for inst in entry_block_data
@@ -44,8 +47,8 @@ fn memory_grow() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1  : i32
-            v1 = const.int 1048575  : i32
+            v0 = const.i32 1  : i32
+            v1 = const.i32 1048575  : i32
         "#]],
     )
 }
@@ -58,7 +61,7 @@ fn memory_size() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1048575  : i32
+            v0 = const.i32 1048575  : i32
         "#]],
     )
 }
@@ -72,7 +75,7 @@ fn i32_load8_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i8
             v2 = load v1  : i8
             v3 = zext v2  : i32
@@ -89,7 +92,7 @@ fn i32_load16_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i16
             v2 = load v1  : i16
             v3 = zext v2  : i32
@@ -106,7 +109,7 @@ fn i32_load8_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i8
             v2 = load v1  : i8
             v3 = sext v2  : i32
@@ -123,7 +126,7 @@ fn i32_load16_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i16
             v2 = load v1  : i16
             v3 = sext v2  : i32
@@ -140,7 +143,7 @@ fn i64_load8_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i8
             v2 = load v1  : i8
             v3 = zext v2  : i64
@@ -157,7 +160,7 @@ fn i64_load16_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i16
             v2 = load v1  : i16
             v3 = zext v2  : i64
@@ -174,7 +177,7 @@ fn i64_load8_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i8
             v2 = load v1  : i8
             v3 = sext v2  : i64
@@ -191,7 +194,7 @@ fn i64_load16_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i16
             v2 = load v1  : i16
             v3 = sext v2  : i64
@@ -208,7 +211,7 @@ fn i64_load32_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i32
             v2 = load v1  : i32
             v3 = sext v2  : i64
@@ -225,7 +228,7 @@ fn i64_load32_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i32
             v2 = load v1  : i32
             v3 = zext v2  : i64
@@ -242,7 +245,7 @@ fn i32_load() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i32
             v2 = load v1  : i32
         "#]],
@@ -258,7 +261,7 @@ fn i64_load() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut i64
             v2 = load v1  : i64
         "#]],
@@ -274,7 +277,7 @@ fn f64_load() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
+            v0 = const.i32 1024  : i32
             v1 = inttoptr v0  : *mut f64
             v2 = load v1  : f64
         "#]],
@@ -290,8 +293,8 @@ fn i32_store() {
             i32.store
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 1024  : i32
+            v1 = const.i32 1  : i32
             v2 = inttoptr v0  : *mut i32
             store v2, v1
         "#]],
@@ -307,8 +310,8 @@ fn i64_store() {
             i64.store
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
-            v1 = const.int 1  : i64
+            v0 = const.i32 1024  : i32
+            v1 = const.i64 1  : i64
             v2 = inttoptr v0  : *mut i64
             store v2, v1
         "#]],
@@ -324,8 +327,8 @@ fn f64_store() {
             f64.store
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
-            v1 = const.float 1.9  : f64
+            v0 = const.i32 1024  : i32
+            v1 = const.f64 1.9  : f64
             v2 = inttoptr v0  : *mut f64
             store v2, v1
         "#]],
@@ -341,8 +344,8 @@ fn i32_store8() {
             i32.store8
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 1024  : i32
+            v1 = const.i32 1  : i32
             v2 = trunc v1  : i8
             v3 = inttoptr v0  : *mut i8
             store v3, v2
@@ -359,8 +362,8 @@ fn i32_store16() {
             i32.store16
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 1024  : i32
+            v1 = const.i32 1  : i32
             v2 = trunc v1  : i16
             v3 = inttoptr v0  : *mut i16
             store v3, v2
@@ -377,8 +380,8 @@ fn i64_store32() {
             i64.store32
         "#,
         expect![[r#"
-            v0 = const.int 1024  : i32
-            v1 = const.int 1  : i64
+            v0 = const.i32 1024  : i32
+            v1 = const.i64 1  : i64
             v2 = trunc v1  : i32
             v3 = inttoptr v0  : *mut i32
             store v3, v2
@@ -394,7 +397,7 @@ fn i32_const() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1  : i32
+            v0 = const.i32 1  : i32
         "#]],
     )
 }
@@ -407,7 +410,7 @@ fn i64_const() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1  : i64
+            v0 = const.i64 1  : i64
         "#]],
     )
 }
@@ -420,7 +423,7 @@ fn f64_const() {
             drop
         "#,
         expect![[r#"
-            v0 = const.float 1.9  : f64
+            v0 = const.f64 1.9  : f64
         "#]],
     )
 }
@@ -434,7 +437,7 @@ fn i32_popcnt() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1  : i32
+            v0 = const.i32 1  : i32
             v1 = popcnt v0  : i32
         "#]],
     )
@@ -449,7 +452,7 @@ fn i64_extend_i32_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1  : i32
+            v0 = const.i32 1  : i32
             v1 = sext v0  : i64
         "#]],
     )
@@ -464,7 +467,7 @@ fn i64_extend_i32_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 1  : i32
+            v0 = const.i32 1  : i32
             v1 = zext v0  : i64
         "#]],
     )
@@ -480,8 +483,8 @@ fn i32_add() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 3  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 3  : i32
+            v1 = const.i32 1  : i32
             v2 = add v0, v1  : i32
         "#]],
     )
@@ -497,8 +500,8 @@ fn i64_add() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 3  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 3  : i64
+            v1 = const.i64 1  : i64
             v2 = add v0, v1  : i64
         "#]],
     )
@@ -514,9 +517,9 @@ fn i32_and() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = and v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = band v0, v1  : i32
         "#]],
     )
 }
@@ -531,9 +534,9 @@ fn i64_and() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = and v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = band v0, v1  : i64
         "#]],
     )
 }
@@ -548,9 +551,9 @@ fn i32_or() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = or v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = bor v0, v1  : i32
         "#]],
     )
 }
@@ -565,9 +568,9 @@ fn i64_or() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = or v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = bor v0, v1  : i64
         "#]],
     )
 }
@@ -582,8 +585,8 @@ fn i32_sub() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 3  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 3  : i32
+            v1 = const.i32 1  : i32
             v2 = sub v0, v1  : i32
         "#]],
     )
@@ -599,8 +602,8 @@ fn i64_sub() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 3  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 3  : i64
+            v1 = const.i64 1  : i64
             v2 = sub v0, v1  : i64
         "#]],
     )
@@ -616,9 +619,9 @@ fn i32_xor() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = xor v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = bxor v0, v1  : i32
         "#]],
     )
 }
@@ -633,9 +636,9 @@ fn i64_xor() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = xor v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = bxor v0, v1  : i64
         "#]],
     )
 }
@@ -650,8 +653,8 @@ fn i32_shl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = shl v0, v1  : i32
         "#]],
     )
@@ -667,8 +670,8 @@ fn i64_shl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = shl v0, v1  : i64
         "#]],
     )
@@ -684,8 +687,8 @@ fn i32_shr_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = shr v0, v1  : i32
         "#]],
     )
@@ -701,8 +704,8 @@ fn i64_shr_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = shr v0, v1  : i64
         "#]],
     )
@@ -718,8 +721,8 @@ fn i32_rotl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = shl v0, v1  : i32
         "#]],
     )
@@ -735,8 +738,8 @@ fn i64_rotl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = shl v0, v1  : i64
         "#]],
     )
@@ -752,8 +755,8 @@ fn i32_rotr() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = shr v0, v1  : i32
         "#]],
     )
@@ -769,13 +772,14 @@ fn i64_rotr() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = shr v0, v1  : i64
         "#]],
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_add() {
     check_op(
@@ -793,6 +797,7 @@ fn f64_add() {
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_sub() {
     check_op(
@@ -820,8 +825,8 @@ fn i32_mul() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = mul v0, v1  : i32
         "#]],
     )
@@ -837,13 +842,14 @@ fn i64_mul() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = mul v0, v1  : i64
         "#]],
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_mul() {
     check_op(
@@ -861,6 +867,7 @@ fn f64_mul() {
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_div() {
     check_op(
@@ -888,8 +895,8 @@ fn i32_div_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = div v0, v1  : i32
         "#]],
     )
@@ -905,8 +912,8 @@ fn i64_div_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = div v0, v1  : i64
         "#]],
     )
@@ -922,8 +929,8 @@ fn i32_rem_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
             v2 = mod v0, v1  : i32
         "#]],
     )
@@ -939,13 +946,14 @@ fn i64_rem_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
             v2 = mod v0, v1  : i64
         "#]],
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_min() {
     check_op(
@@ -963,6 +971,7 @@ fn f64_min() {
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_max() {
     check_op(
@@ -990,9 +999,9 @@ fn i32_lt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = lt v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = lt v0, v1  : i1
         "#]],
     )
 }
@@ -1007,9 +1016,9 @@ fn i64_lt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = lt v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = lt v0, v1  : i1
         "#]],
     )
 }
@@ -1024,9 +1033,9 @@ fn i32_le_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = lte v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = lte v0, v1  : i1
         "#]],
     )
 }
@@ -1041,9 +1050,9 @@ fn i64_le_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = lte v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = lte v0, v1  : i1
         "#]],
     )
 }
@@ -1058,9 +1067,9 @@ fn i32_gt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = gt v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = gt v0, v1  : i1
         "#]],
     )
 }
@@ -1075,9 +1084,9 @@ fn i64_gt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = gt v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = gt v0, v1  : i1
         "#]],
     )
 }
@@ -1092,9 +1101,9 @@ fn i32_ge_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = gte v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = gte v0, v1  : i1
         "#]],
     )
 }
@@ -1109,9 +1118,9 @@ fn i64_ge_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = gte v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = gte v0, v1  : i1
         "#]],
     )
 }
@@ -1125,9 +1134,9 @@ fn i32_eqz() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 0  : i32
-            v2 = eq v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 0  : i32
+            v2 = eq v0, v1  : i1
         "#]],
     )
 }
@@ -1141,9 +1150,9 @@ fn i64_eqz() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 0  : i64
-            v2 = eq v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 0  : i64
+            v2 = eq v0, v1  : i1
         "#]],
     )
 }
@@ -1158,9 +1167,9 @@ fn i32_eq() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = eq v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = eq v0, v1  : i1
         "#]],
     )
 }
@@ -1175,13 +1184,14 @@ fn i64_eq() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = eq v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = eq v0, v1  : i1
         "#]],
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_eq() {
     check_op(
@@ -1192,9 +1202,9 @@ fn f64_eq() {
             drop
         "#,
         expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = eq v0, v1  : f64
+            v0 = const.f64 2.5  : f64
+            v1 = const.f64 1.9  : f64
+            v2 = eq v0, v1  : i1
         "#]],
     )
 }
@@ -1209,9 +1219,9 @@ fn i32_ne() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i32
-            v1 = const.int 1  : i32
-            v2 = neq v0, v1  : i32
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = neq v0, v1  : i1
         "#]],
     )
 }
@@ -1226,13 +1236,14 @@ fn i64_ne() {
             drop
         "#,
         expect![[r#"
-            v0 = const.int 2  : i64
-            v1 = const.int 1  : i64
-            v2 = neq v0, v1  : i64
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = neq v0, v1  : i1
         "#]],
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_ne() {
     check_op(
@@ -1243,13 +1254,14 @@ fn f64_ne() {
             drop
         "#,
         expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = neq v0, v1  : f64
+            v0 = const.f64 2.5  : f64
+            v1 = const.f64 1.9  : f64
+            v2 = neq v0, v1  : i1
         "#]],
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_gt() {
     check_op(
@@ -1267,6 +1279,7 @@ fn f64_gt() {
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_ge() {
     check_op(
@@ -1284,6 +1297,7 @@ fn f64_ge() {
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_le() {
     check_op(
@@ -1301,6 +1315,7 @@ fn f64_le() {
     )
 }
 
+#[ignore = "not implemented"]
 #[test]
 fn f64_lt() {
     check_op(

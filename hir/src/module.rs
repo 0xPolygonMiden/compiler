@@ -515,6 +515,10 @@ impl<'m> ModuleFunctionBuilder<'m> {
         self.function.id
     }
 
+    pub fn func_builder(&mut self) -> FunctionBuilder {
+        FunctionBuilder::new(&mut self.function)
+    }
+
     pub fn module<'a, 'b: 'a>(&'b mut self) -> &'a mut ModuleBuilder {
         self.builder
     }

@@ -126,7 +126,7 @@ fn rust_add() {
         expect![[r#"
             module noname
 
-            pub fn add(i32, i32) -> i32  {
+            pub fn add(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
                 v3 = add v1, v0  : i32
                 br block1(v3)
@@ -135,11 +135,11 @@ fn rust_add() {
                 v4 = ret v2  : ()
             }
 
-            pub fn __main() -> i32  {
+            pub fn __main() -> i32 {
             block0:
-                v1 = const.int 1  : i32
-                v2 = const.int 2  : i32
-                v3 = call add(v1, v2)  : i32
+                v1 = const.i32 1  : i32
+                v2 = const.i32 2  : i32
+                v3 = call noname::add(v1, v2)  : i32
                 br block1(v3)
 
             block1(v0: i32):
@@ -202,34 +202,36 @@ fn rust_fib() {
         expect![[r#"
             module noname
 
-            pub fn fib(i32) -> i32  {
+            pub fn fib(i32) -> i32 {
             block0(v0: i32):
-                v2 = const.int 0  : i32
-                v3 = const.int 0  : i32
-                v4 = const.int 1  : i32
+                v2 = const.i32 0  : i32
+                v3 = const.i32 0  : i32
+                v4 = const.i32 1  : i32
                 br block2(v4, v0, v3)
 
             block1(v1: i32):
 
-            block2(v6: i32, v7: i32, v8: i32):
-                condbr v7, block4, block5
+            block2(v6: i32, v7: i32, v10: i32):
+                v8 = const.i32 0  : i32
+                v9 = neq v7, v8  : i1
+                condbr v9, block4, block5
 
             block3(v5: i32):
 
             block4:
-                v10 = const.int -1  : i32
-                v11 = add v7, v10  : i32
-                v12 = add v8, v6  : i32
-                br block2(v12, v11, v6)
+                v12 = const.i32 -1  : i32
+                v13 = add v7, v12  : i32
+                v14 = add v10, v6  : i32
+                br block2(v14, v13, v6)
 
             block5:
-                v9 = ret v8  : ()
+                v11 = ret v10  : ()
             }
 
-            pub fn __main() -> i32  {
+            pub fn __main() -> i32 {
             block0:
-                v1 = const.int 25  : i32
-                v2 = call fib(v1)  : i32
+                v1 = const.i32 25  : i32
+                v2 = call noname::fib(v1)  : i32
                 br block1(v2)
 
             block1(v0: i32):

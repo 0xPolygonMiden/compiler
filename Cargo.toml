@@ -47,7 +47,8 @@ smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
 miden-diagnostics = { git = "https://github.com/0xpolygonmiden/miden-diagnostics" }
 miden-parsing = { git = "https://github.com/0xpolygonmiden/miden-parsing" }
-miden-ir = { path = "ir" }
+miden-hir = { path = "hir" }
+miden-hir-type = { path = "hir-type" }
 miden-frontend-wasm = { path = "frontend-wasm" }
 
 [profile.release]

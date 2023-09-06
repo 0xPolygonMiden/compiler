@@ -652,7 +652,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             addr,
             ty: ty.clone(),
         });
-        into_first_result!(self.build(data, ty, span))
+        let addr_ty = self.data_flow_graph().value_type(addr).clone();
+        into_first_result!(self.build(data, addr_ty, span))
     }
 
     /// Stores `value` to the address given by `ptr`
