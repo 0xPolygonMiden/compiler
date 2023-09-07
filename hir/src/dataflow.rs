@@ -131,6 +131,7 @@ impl DataFlowGraph {
         match &self.values[v] {
             ValueData::Param { span, .. } => *span,
             ValueData::Inst { inst, .. } => self.inst_span(*inst),
+            ValueData::Alias { ty: _, original } => self.value_span(*original),
         }
     }
 
