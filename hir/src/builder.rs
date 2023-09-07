@@ -941,6 +941,10 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.build(data, Type::Never, span).0
     }
 
+    fn inline_asm(self, args: &[Value], ty: Type, span: SourceSpan) -> MasmBuilder<Self> {
+        MasmBuilder::new(self, args, ty, span)
+    }
+
     #[allow(non_snake_case)]
     fn CondBr(
         self,

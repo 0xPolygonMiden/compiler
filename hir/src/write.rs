@@ -134,7 +134,7 @@ fn write_instruction(w: &mut dyn Write, func: &Function, inst: Inst, indent: usi
 
     let opcode = func.dfg[inst].opcode();
     write!(w, "{}", opcode)?;
-    write_operands(w, &func.dfg, inst)?;
+    write_operands(w, &func.dfg, inst, indent)?;
 
     if has_results {
         write!(w, "  : ")?;
@@ -153,7 +153,12 @@ fn write_instruction(w: &mut dyn Write, func: &Function, inst: Inst, indent: usi
     Ok(())
 }
 
-fn write_operands(w: &mut dyn Write, dfg: &DataFlowGraph, inst: Inst) -> fmt::Result {
+fn write_operands(
+    w: &mut dyn Write,
+    dfg: &DataFlowGraph,
+    inst: Inst,
+    indent: usize,
+) -> fmt::Result {
     let pool = &dfg.value_lists;
     match dfg[inst].as_ref() {
         Instruction::BinaryOp(BinaryOp { args, .. }) => write!(w, " {}, {}", args[0], args[1]),
@@ -221,21 +226,8 @@ fn write_operands(w: &mut dyn Write, dfg: &DataFlowGraph, inst: Inst) -> fmt::Re
         }) => {
             write!(w, ".{} {}, {}, {}", ty, src, dst, count)
         }
-        Instruction::InlineAsm(InlineAsm { ref body, args, .. }) => {
-            write!(w, " \"")?;
-            for (i, ix) in body.iter().enumerate() {
-                if i == 0 {
-                    write!(w, "{}", &ix.name)?;
-                } else {
-                    write!(w, " {}", &ix.name)?;
-                }
-            }
-            let args = args.as_slice(pool);
-            if args.is_empty() {
-                write!(w, "\"")
-            } else {
-                write!(w, "\", {}", DisplayValues(args))
-            }
+        Instruction::InlineAsm(ref asm) => {
+            write!(w, " {}", asm.display(dfg, indent))
         }
         Instruction::GlobalValue(GlobalValueOp { global, .. }) => {
             write_global_value(w, dfg, *global, false)
@@ -333,7 +325,18 @@ impl fmt::Display for DisplayOffset {
     }
 }
 
-struct DisplayValues<'a>(&'a [Value]);
+pub struct DisplayIndent(pub usize);
+impl fmt::Display for DisplayIndent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        const INDENT: &'static str = "  ";
+        for _ in 0..self.0 {
+            f.write_str(INDENT)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct DisplayValues<'a>(pub &'a [Value]);
 impl<'a> fmt::Display for DisplayValues<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, val) in self.0.iter().enumerate() {
@@ -347,7 +350,7 @@ impl<'a> fmt::Display for DisplayValues<'a> {
     }
 }
 
-struct DisplayValuesWithImmediate<'a>(&'a [Value], Immediate);
+pub struct DisplayValuesWithImmediate<'a>(&'a [Value], Immediate);
 impl<'a> fmt::Display for DisplayValuesWithImmediate<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, val) in self.0.iter().enumerate() {
