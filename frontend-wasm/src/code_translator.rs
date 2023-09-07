@@ -167,7 +167,9 @@ pub fn translate_operator(
         /****************************** Binary Operators ************************************/
         Operator::I32Add | Operator::I64Add => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().add(arg1, arg2, span));
+            // wrapping because the result is mod 2^N
+            // https://www.w3.org/TR/wasm-core-1/#op-iadd
+            state.push1(builder.ins().add_wrapping(arg1, arg2, span));
         }
         Operator::I32And | Operator::I64And => {
             let (arg1, arg2) = state.pop2();
@@ -199,7 +201,9 @@ pub fn translate_operator(
         }
         Operator::I32Sub | Operator::I64Sub => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().sub(arg1, arg2, span));
+            // wrapping because the result is mod 2^N
+            // https://www.w3.org/TR/wasm-core-1/#op-isub
+            state.push1(builder.ins().sub_wrapping(arg1, arg2, span));
         }
         Operator::F64Sub => {
             let (arg1, arg2) = state.pop2();
@@ -207,7 +211,9 @@ pub fn translate_operator(
         }
         Operator::I32Mul | Operator::I64Mul => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().mul(arg1, arg2, span));
+            // wrapping because the result is mod 2^N
+            // https://www.w3.org/TR/wasm-core-1/#op-imul
+            state.push1(builder.ins().mul_wrapping(arg1, arg2, span));
         }
         Operator::I32DivU | Operator::I64DivU => {
             let (arg1, arg2) = state.pop2();
