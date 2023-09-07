@@ -542,8 +542,7 @@ impl Opcode {
             | Self::Br
             | Self::CondBr
             | Self::Switch
-            | Self::Unreachable
-            | Self::InlineAsm => smallvec![],
+            | Self::Unreachable => smallvec![],
             // These ops have fixed result types
             Self::Test
             | Self::IsOdd
@@ -597,7 +596,8 @@ impl Opcode {
             | Self::Shl
             | Self::Shr
             | Self::Rotl
-            | Self::Rotr => {
+            | Self::Rotr
+            | Self::InlineAsm => {
                 smallvec![ctrl_ty]
             }
             // The result type of a load is derived from the pointee type
@@ -819,16 +819,4 @@ pub struct PrimOpImm {
     pub op: Opcode,
     pub imm: Immediate,
     pub args: ValueList,
-}
-
-#[derive(Debug, Clone)]
-pub struct InlineAsm {
-    pub op: Opcode,
-    pub body: Vec<AsmInstruction>,
-    pub args: ValueList,
-}
-
-#[derive(Debug, Clone)]
-pub struct AsmInstruction {
-    pub name: String,
 }

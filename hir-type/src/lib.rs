@@ -5,6 +5,7 @@ extern crate alloc;
 use alloc::{alloc::Layout, boxed::Box, vec::Vec};
 use core::fmt;
 
+const FELT_SIZE: usize = core::mem::size_of::<u64>();
 const WORD_SIZE: usize = core::mem::size_of::<[u64; 4]>();
 
 /// Represents the type of a value
@@ -177,6 +178,13 @@ impl Type {
     /// Returns the size in bytes of this type, including necessary alignment padding
     pub fn size_in_bytes(&self) -> usize {
         self.layout().pad_to_align().size()
+    }
+
+    /// Returns the size in field elements of this type, including necessary alignment padding
+    pub fn size_in_felts(&self) -> usize {
+        let bytes = self.size_in_bytes();
+        let trailing = bytes % FELT_SIZE;
+        (bytes / FELT_SIZE) + ((trailing > 0) as usize)
     }
 
     /// Returns the size in words of this type, including necessary alignment padding
