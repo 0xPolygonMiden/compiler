@@ -22,7 +22,7 @@ impl Default for Value {
 
 /// Data associated with a `Value`.
 ///
-/// Values are either block arguments or instructions, and
+/// Values are either block arguments, instructions or aliases, and
 /// in addition to being linked to a `Inst` or a `Block`, they
 /// have an associated type, position, and in some cases, a `SourceSpan`.
 #[derive(Debug, Clone)]
