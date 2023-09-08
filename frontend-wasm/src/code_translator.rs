@@ -71,6 +71,14 @@ pub fn translate_operator(
         }
         /********************************* Stack misc **************************************/
         Operator::Drop => _ = state.pop1(),
+        Operator::Select => {
+            let (arg1, arg2, cond) = state.pop3();
+            // if cond is not 0, return arg1, else return arg2
+            // https://www.w3.org/TR/wasm-core-1/#-hrefsyntax-instr-parametricmathsfselect%E2%91%A0
+            let zero = builder.ins().i32(0, span);
+            let cond_i1 = builder.ins().neq(cond, zero, span);
+            state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
+        }
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
         Operator::Block { blockty } => {
