@@ -240,3 +240,110 @@ fn rust_fib() {
         "#]],
     );
 }
+
+#[test]
+fn rust_enum() {
+    check_ir(
+        include_str!("rust_source/enum.rs"),
+        expect![[r#"
+            (module
+              (type (;0;) (func (param i32 i32 i32) (result i32)))
+              (type (;1;) (func (result i32)))
+              (func $match_enum (;0;) (type 0) (param i32 i32 i32) (result i32)
+                block ;; label = @1
+                  block ;; label = @2
+                    block ;; label = @3
+                      local.get 2
+                      i32.const 255
+                      i32.and
+                      br_table 0 (;@3;) 1 (;@2;) 2 (;@1;) 0 (;@3;)
+                    end
+                    local.get 1
+                    local.get 0
+                    i32.add
+                    return
+                  end
+                  local.get 0
+                  local.get 1
+                  i32.sub
+                  return
+                end
+                local.get 1
+                local.get 0
+                i32.mul
+              )
+              (func $__main (;1;) (type 1) (result i32)
+                i32.const 3
+                i32.const 5
+                i32.const 0
+                call $match_enum
+                i32.const 3
+                i32.const 5
+                i32.const 1
+                call $match_enum
+                i32.add
+                i32.const 3
+                i32.const 5
+                i32.const 2
+                call $match_enum
+                i32.add
+              )
+              (memory (;0;) 16)
+              (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
+              (global (;1;) i32 i32.const 1048576)
+              (global (;2;) i32 i32.const 1048576)
+              (export "memory" (memory 0))
+              (export "match_enum" (func $match_enum))
+              (export "__main" (func $__main))
+              (export "__data_end" (global 1))
+              (export "__heap_base" (global 2))
+            )"#]],
+        expect![[r#"
+            module noname
+
+            pub fn match_enum(i32, i32, i32) -> i32 {
+            block0(v0: i32, v1: i32, v2: i32):
+                v4 = const.i32 255  : i32
+                v5 = band v2, v4  : i32
+                switch v5, 0 => block4, 1 => block3, 2 => block2, block4
+
+            block1(v3: i32):
+                v11 = ret v3  : ()
+
+            block2:
+                v10 = mul v1, v0  : i32
+                br block1(v10)
+
+            block3:
+                v8 = sub v0, v1  : i32
+                v9 = ret v8  : ()
+
+            block4:
+                v6 = add v1, v0  : i32
+                v7 = ret v6  : ()
+            }
+
+            pub fn __main() -> i32 {
+            block0:
+                v1 = const.i32 3  : i32
+                v2 = const.i32 5  : i32
+                v3 = const.i32 0  : i32
+                v4 = call noname::match_enum(v1, v2, v3)  : i32
+                v5 = const.i32 3  : i32
+                v6 = const.i32 5  : i32
+                v7 = const.i32 1  : i32
+                v8 = call noname::match_enum(v5, v6, v7)  : i32
+                v9 = add v4, v8  : i32
+                v10 = const.i32 3  : i32
+                v11 = const.i32 5  : i32
+                v12 = const.i32 2  : i32
+                v13 = call noname::match_enum(v10, v11, v12)  : i32
+                v14 = add v9, v13  : i32
+                br block1(v14)
+
+            block1(v0: i32):
+                v15 = ret v0  : ()
+            }
+        "#]],
+    )
+}
