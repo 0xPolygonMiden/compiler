@@ -1332,3 +1332,24 @@ fn f64_lt() {
         "#]],
     )
 }
+
+#[test]
+fn select_i32() {
+    check_op(
+        r#"
+            i64.const 3
+            i64.const 7
+            i32.const 42
+            select
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 3  : i64
+            v1 = const.i64 7  : i64
+            v2 = const.i32 42  : i32
+            v3 = const.i32 0  : i32
+            v4 = neq v2, v3  : i1
+            v5 = select v4, v0, v1  : i64
+        "#]],
+    )
+}

@@ -66,9 +66,6 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
         table_index: 0,
         table_byte: 0,
     },
-    // let (mut arg1, mut arg2, cond) = state.pop3();
-    // if cond is zero returns arg2, else returns arg1
-    Select,
     // Halt the program as it reached the point that should never be executed
     Unreachable,
     /**************************** Branch instructions *********************************/
