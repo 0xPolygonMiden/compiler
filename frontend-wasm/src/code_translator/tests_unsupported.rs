@@ -66,8 +66,6 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
         table_index: 0,
         table_byte: 0,
     },
-    // Halt the program as it reached the point that should never be executed
-    Unreachable,
     /**************************** Branch instructions *********************************/
     // BrTable { targets: .. },
     /****************************** Memory Operators ************************************/
