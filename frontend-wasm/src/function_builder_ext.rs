@@ -1,4 +1,5 @@
 use miden_diagnostics::SourceSpan;
+use miden_hir::cranelift_entity::EntitySet;
 use miden_hir::cranelift_entity::SecondaryMap;
 use miden_hir::Block;
 use miden_hir::Br;
@@ -11,6 +12,7 @@ use miden_hir::Inst;
 use miden_hir::InstBuilderBase;
 use miden_hir::Instruction;
 use miden_hir::ProgramPoint;
+use miden_hir::Switch;
 use miden_hir::Value;
 use miden_hir_type::Type;
 
@@ -436,6 +438,29 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
                 self.builder.declare_successor(*block_then, inst);
                 if block_then != block_else {
                     self.builder.declare_successor(*block_else, inst);
+                }
+            }
+            Instruction::Switch(Switch {
+                op: _,
+                arg: _,
+                arms,
+                default: _,
+            }) => {
+                // Unlike all other jumps/branches, arms are
+                // capable of having the same successor appear
+                // multiple times, so we must deduplicate.
+                let mut unique = EntitySet::<Block>::new();
+                for (_, dest_block) in arms {
+                    if !unique.insert(*dest_block) {
+                        continue;
+                    }
+
+                    // Call `declare_block_predecessor` instead of `declare_successor` for
+                    // avoiding the borrow checker.
+                    self.builder
+                        .func_ctx
+                        .ssa
+                        .declare_block_predecessor(*dest_block, inst);
                 }
             }
             inst => debug_assert!(!inst.opcode().is_branch()),

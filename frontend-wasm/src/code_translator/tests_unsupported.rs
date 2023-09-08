@@ -66,8 +66,6 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
         table_index: 0,
         table_byte: 0,
     },
-    /**************************** Branch instructions *********************************/
-    // BrTable { targets: .. },
     /****************************** Memory Operators ************************************/
     F32Load {
         memarg: MemArg {
