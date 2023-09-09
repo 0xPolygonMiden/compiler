@@ -2,8 +2,10 @@ use core::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
+    str::FromStr,
 };
 
+use anyhow::anyhow;
 use miden_diagnostics::{SourceSpan, Spanned};
 
 use super::{symbols, Symbol};
@@ -14,6 +16,23 @@ pub struct FunctionIdent {
     pub module: Ident,
     #[span]
     pub function: Ident,
+}
+impl FromStr for FunctionIdent {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.rsplit_once("::") {
+            Some((ns, id)) => {
+                let module = Ident::with_empty_span(Symbol::intern(ns));
+                let function = Ident::with_empty_span(Symbol::intern(id));
+                Ok(Self {
+                    module,
+                    function,
+                })
+            }
+            None => Err(anyhow!("invalid function name, expected fully-qualified identifier, e.g. 'std::math::u64::checked_add'")),
+        }
+    }
 }
 impl fmt::Debug for FunctionIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
