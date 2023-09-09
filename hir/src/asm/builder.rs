@@ -1,6 +1,6 @@
 use crate::{
-    DataFlowGraph, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, SourceSpan, Type,
-    Value,
+    CallConv, DataFlowGraph, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow,
+    SourceSpan, Type, TypeRepr, Value,
 };
 
 use super::*;
@@ -10,7 +10,6 @@ pub struct MasmBuilder<B> {
     builder: B,
     span: SourceSpan,
     asm: InlineAsm,
-    ty: Type,
     current_block: MasmBlockId,
     stack: OperandStack<Type>,
 }
@@ -19,22 +18,12 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
     ///
     /// The `args` list represents the arguments which will be visible on the operand stack in this inline assembly block.
     ///
-    /// The type given by `ty` represents the expected result type for this inline assembly block. If the inline assembly
-    /// will not produce a result, use `Type::Unit`. It is expected that the value(s) remaining on the operand stack upon
-    /// exit from the inline assembly block, are a match for `ty`. For example, if `Type::Unit` is given, no values should
-    /// remain on the operand stack; if `Type::Felt` is given, then a single value should be on the operand stack; if
-    /// `Type::Array[Type::Felt; 2]` is given, then two values should be on the operand stack, and so on.
-    ///
-    /// NOTE: Not all types are permitted as inline assembly results. The type must be "loadable", i.e. no larger than a word.
+    /// The `results` set represents the types that are expected to be found on the operand stack when the inline
+    /// assembly block finishes executing. Use an empty set to represent no results.
     ///
     /// Any attempt to modify the operand stack beyond what is made visible via arguments, or introduced within the
     /// inline assembly block, will cause an assertion to fail.
-    pub fn new(mut builder: B, args: &[Value], ty: Type, span: SourceSpan) -> Self {
-        assert!(
-            ty.is_loadable(),
-            "invalid inline assembly block type: type must be loadable, but got {}",
-            &ty
-        );
+    pub fn new(mut builder: B, args: &[Value], results: Vec<Type>, span: SourceSpan) -> Self {
         // Construct the initial operand stack with the given arguments
         let mut stack = OperandStack::<Type>::default();
         {
@@ -45,7 +34,7 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
         }
 
         // Construct an empty inline assembly block with the given arguments
-        let mut asm = InlineAsm::new();
+        let mut asm = InlineAsm::new(results);
         {
             let dfg = builder.data_flow_graph_mut();
             let mut vlist = ValueList::default();
@@ -58,7 +47,6 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
             builder,
             span,
             asm,
-            ty,
             current_block,
             stack,
         }
@@ -82,19 +70,31 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
         }
     }
 
-    pub fn build(self) -> (Inst, &'f mut DataFlowGraph) {
-        let ty = self.ty;
-        match &ty {
-            Type::Unit => assert!(self.stack.is_empty(), "invalid inline assembly: expected operand stack to be empty upon exit, found: {:?}", self.stack.display()),
-            ty => {
-                let len = ty.size_in_felts();
-                assert_eq!(len, self.stack.len(), "invalid inline assembly: expected operand stack to have {} elements upon exit, found: {:?}", len, self.stack.display());
+    /// Finalize this inline assembly block, inserting it into the `Function` from which this builder was derived.
+    ///
+    /// Returns the [Inst] which corresponds to the inline assembly instruction, and the inner [DataFlowGraph] reference
+    /// held by the underlying [InstBuilderBase].
+    pub fn build(self) -> Inst {
+        if self.asm.results.is_empty() {
+            assert!(self.stack.is_empty(), "invalid inline assembly: expected operand stack to be empty upon exit, found: {:?}", self.stack.display());
+        } else {
+            let mut len = 0;
+            for ty in self.asm.results.iter() {
+                let repr = ty.repr().expect("invalid result type");
+                len += repr.size();
             }
+            assert_eq!(
+                len,
+                self.stack.len(),
+                "invalid inline assembly: needed {} elements on the operand stack, found: {:?}",
+                len,
+                self.stack.display()
+            );
         }
 
         let span = self.span;
         let data = Instruction::InlineAsm(self.asm);
-        self.builder.build(data, ty, span)
+        self.builder.build(data, Type::Unit, span).0
     }
 }
 

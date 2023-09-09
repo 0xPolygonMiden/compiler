@@ -10,14 +10,19 @@ pub use self::stack::{OperandStack, Stack};
 
 use cranelift_entity::PrimaryMap;
 
-use super::{DataFlowGraph, Opcode, ValueList};
+use super::{DataFlowGraph, Opcode, Type, ValueList};
 
 /// Represents Miden Assembly (MASM) directly in the IR
 ///
 /// Each block of inline assembly executes in its own pseudo-isolated environment,
 /// i.e. other than arguments provided to the inline assembly, and values introduced
 /// within the inline assembly, it is not permitted to access anything else on the
-/// operand stack
+/// operand stack.
+///
+/// In addition to arguments, inline assembly can produce zero or more results,
+/// see [MasmBuilder] for more info.
+///
+/// Inline assembly can be built using [InstBuilder::inline_asm].
 #[derive(Debug, Clone)]
 pub struct InlineAsm {
     pub op: Opcode,
@@ -31,6 +36,8 @@ pub struct InlineAsm {
     /// the operand stack below the given arguments will remain on the stack
     /// when the inline assembly finishes executing.
     pub args: ValueList,
+    /// The types of the results produced by this inline assembly block
+    pub results: Vec<Type>,
     /// The main code block
     pub body: MasmBlockId,
     /// The set of all code blocks contained in this inline assembly
@@ -39,14 +46,15 @@ pub struct InlineAsm {
     pub blocks: PrimaryMap<MasmBlockId, MasmBlock>,
 }
 impl InlineAsm {
-    /// Constructs a new, empty inline assembly block
-    pub fn new() -> Self {
+    /// Constructs a new, empty inline assembly block with the given result type(s).
+    pub fn new(results: Vec<Type>) -> Self {
         let mut blocks = PrimaryMap::<MasmBlockId, MasmBlock>::new();
         let id = blocks.next_key();
         let body = blocks.push(MasmBlock { id, ops: vec![] });
         Self {
             op: Opcode::InlineAsm,
             args: ValueList::default(),
+            results,
             body,
             blocks,
         }
