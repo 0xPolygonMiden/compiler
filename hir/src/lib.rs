@@ -3,7 +3,7 @@
 pub use intrusive_collections::UnsafeRef;
 pub use miden_diagnostics::SourceSpan;
 pub use miden_hir_symbol::{symbols, Symbol};
-pub use miden_hir_type::{FunctionType, Type};
+pub use miden_hir_type::{FunctionType, Type, TypeRepr};
 
 pub type Felt = winter_math::fields::f64::BaseElement;
 

@@ -121,6 +121,11 @@ impl AbiParam {
             extension: ArgumentExtension::default(),
         }
     }
+
+    /// Returns the [TypeRepr] for this function parameter
+    pub fn repr(&self) -> Option<TypeRepr> {
+        self.ty.repr()
+    }
 }
 
 /// A [Signature] represents the type, ABI, and linkage of a function.
