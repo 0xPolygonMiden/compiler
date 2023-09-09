@@ -3,10 +3,81 @@
 extern crate alloc;
 
 use alloc::{alloc::Layout, boxed::Box, vec::Vec};
-use core::fmt;
+use core::{fmt, num::NonZeroU8};
 
 const FELT_SIZE: usize = core::mem::size_of::<u64>();
 const WORD_SIZE: usize = core::mem::size_of::<[u64; 4]>();
+
+/// This enum represents a [Type] decorated with the way in which it should be represented
+/// on the operand stack of the Miden VM.
+///
+/// We don't use this representation when laying out types in memory however, since we must
+/// preserve the semantics of a byte-addressable address space for consumers of the IR.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TypeRepr {
+    /// This value is a zero-sized type, and is not actually reified on the operand stack
+    Zst(Type),
+    /// This value is a sized type that fits in a single element on the operand stack
+    Default(Type),
+    /// This value is a sized type that is split across multiple elements on the operand stack,
+    /// for example, the representation of u64 in Miden uses two field elements, rather than
+    /// packing it in a single element.
+    ///
+    /// We call these "sparse" because the value is split along arbitrary lines, rather than
+    /// due to binary representation requirements.
+    Sparse(Type, NonZeroU8),
+    /// This value is a sized type which is encoded into one or more field elements as follows:
+    ///
+    /// * Each element is logically split into multiple u32 values
+    /// * The type is encoded into its binary representation, and spread across as many u32
+    /// values as necessary to hold it
+    /// * The number of u32 values is then rounded up to the nearest multiple of two
+    /// * The u32 values are packed into field elements using the inverse of `u32.split`
+    /// * The packed field elements are pushed on the stack such that the lowest bits of
+    /// the binary representation are nearest to the top of the stack.
+    Packed(Type),
+}
+impl TypeRepr {
+    /// Returns the size in field elements of this type, in the given representation
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Zst(_) => 0,
+            Self::Default(_) => 1,
+            Self::Sparse(_, n) => n.get() as usize,
+            Self::Packed(ref ty) => ty.size_in_felts(),
+        }
+    }
+
+    /// Returns true if this type is a zero-sized type
+    pub fn is_zst(&self) -> bool {
+        matches!(self, Self::Zst(_))
+    }
+
+    /// Returns true if this type is sparsely encoded
+    pub fn is_sparse(&self) -> bool {
+        matches!(self, Self::Sparse(_, _))
+    }
+
+    /// Returns true if this type is densely encoded (packed)
+    pub fn is_packed(&self) -> bool {
+        matches!(self, Self::Packed(_))
+    }
+
+    /// Returns a reference to the underlying [Type]
+    pub fn ty(&self) -> &Type {
+        match self {
+            Self::Zst(ref ty)
+            | Self::Default(ref ty)
+            | Self::Sparse(ref ty, _)
+            | Self::Packed(ref ty) => ty,
+        }
+    }
+}
+impl fmt::Display for TypeRepr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self.ty(), f)
+    }
+}
 
 /// Represents the type of a value
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -140,6 +211,61 @@ impl Type {
         match self {
             Self::Array(_, _) => true,
             _ => false,
+        }
+    }
+
+    /// Returns the [TypeRepr] corresponding to this type.
+    ///
+    /// If the type is unknown, returns `None`.
+    pub fn repr(&self) -> Option<TypeRepr> {
+        match self {
+            Type::Unknown | Type::Never => None,
+            // The unit type is a zero-sized type
+            Type::Unit => Some(TypeRepr::Zst(Type::Unit)),
+            // All numeric types < 64 bits in size use the default representation
+            ty @ (Type::I1
+            | Type::I8
+            | Type::U8
+            | Type::I16
+            | Type::U16
+            | Type::I32
+            | Type::U32
+            | Type::Isize
+            | Type::Usize
+            | Type::F64
+            | Type::Felt) => Some(TypeRepr::Default(ty.clone())),
+            // 64-bit integers are represented sparsely, as two field elements
+            ty @ (Type::I64 | Type::U64) => Some(TypeRepr::Sparse(ty.clone(), unsafe {
+                NonZeroU8::new_unchecked(2)
+            })),
+            // 128-bit integers are represented sparsely, as three field elements
+            ty @ (Type::I128 | Type::U128) => Some(TypeRepr::Sparse(ty.clone(), unsafe {
+                NonZeroU8::new_unchecked(3)
+            })),
+            // 256-bit integers are represented sparsely, as five field elements
+            ty @ Type::U256 => Some(TypeRepr::Sparse(ty.clone(), unsafe {
+                NonZeroU8::new_unchecked(5)
+            })),
+            // All pointer types use a single field element
+            ty @ (Type::Ptr(_) | Type::NativePtr(_)) => Some(TypeRepr::Default(ty.clone())),
+            // Empty structs are zero-sized by definition
+            Type::Struct(ref fields) if fields.is_empty() => {
+                Some(TypeRepr::Zst(Type::Struct(Vec::new())))
+            }
+            // Structs are "packed" across one or more field elements
+            Type::Struct(ref fields) => {
+                match fields.as_slice() {
+                    // Single-field structs have transparent representation
+                    [field_ty] => field_ty.repr(),
+                    fields => Some(TypeRepr::Packed(Type::Struct(fields.to_vec()))),
+                }
+            }
+            // Zero-sized arrays are treated as zero-sized types
+            ty @ Type::Array(_, 0) => Some(TypeRepr::Zst(ty.clone())),
+            // Single-element arrays have transparent representation
+            Type::Array(ref element_ty, 1) => element_ty.repr(),
+            // N-ary arrays are "packed" across one or more field elements
+            ty @ Type::Array(_, _) => Some(TypeRepr::Packed(ty.clone())),
         }
     }
 
