@@ -596,8 +596,7 @@ impl Opcode {
             | Self::Shl
             | Self::Shr
             | Self::Rotl
-            | Self::Rotr
-            | Self::InlineAsm => {
+            | Self::Rotr => {
                 smallvec![ctrl_ty]
             }
             // The result type of a load is derived from the pointee type
@@ -605,7 +604,7 @@ impl Opcode {
                 smallvec![ctrl_ty.pointee().expect("expected pointer type").clone()]
             }
             // Call results are handled separately
-            Self::Call | Self::Syscall => unreachable!(),
+            Self::Call | Self::Syscall | Self::InlineAsm => unreachable!(),
         }
     }
 }

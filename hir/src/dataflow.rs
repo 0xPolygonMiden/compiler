@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::{Deref, Index, IndexMut};
 
 use cranelift_entity::{PrimaryMap, SecondaryMap};
 use intrusive_collections::UnsafeRef;
@@ -320,8 +320,18 @@ impl DataFlowGraph {
                 self.append_result(inst, ty);
             }
         } else {
-            for ty in opcode.results(ctrl_ty).into_iter() {
-                self.append_result(inst, ty);
+            match self.insts[inst].data.deref() {
+                Instruction::InlineAsm(ref asm) => {
+                    let results = asm.results.clone();
+                    for ty in results.into_iter() {
+                        self.append_result(inst, ty);
+                    }
+                }
+                _ => {
+                    for ty in opcode.results(ctrl_ty).into_iter() {
+                        self.append_result(inst, ty);
+                    }
+                }
             }
         }
     }
@@ -334,7 +344,14 @@ impl DataFlowGraph {
         if let Some(fdata) = self.call_signature(inst) {
             new_results.extend(fdata.results().iter().map(|p| p.ty.clone()));
         } else {
-            new_results = opcode.results(ctrl_ty);
+            match self.insts[inst].data.deref() {
+                Instruction::InlineAsm(ref asm) => {
+                    new_results.extend(asm.results.as_slice().iter().cloned());
+                }
+                _ => {
+                    new_results = opcode.results(ctrl_ty);
+                }
+            }
         }
         let old_results_len = old_results.len();
         let new_results_len = new_results.len();
