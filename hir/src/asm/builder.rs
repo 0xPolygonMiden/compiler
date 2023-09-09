@@ -5,12 +5,27 @@ use crate::{
 
 use super::*;
 
-/// Used to construct an [InlineAssembly] instruction, while checking various safety invariants.
+/// Used to construct an [InlineAsm] instruction, while checking the input/output types,
+/// and enforcing various safety invariants.
 pub struct MasmBuilder<B> {
+    /// The [InstBuilderBase] which we are building from
     builder: B,
+    /// The span of the resulting inline assembly block
     span: SourceSpan,
+    /// The inline assembly block we're building
     asm: InlineAsm,
+    /// The current code block in the inline assembly that the builder is inserting into
     current_block: MasmBlockId,
+    /// The emulated operand stack, primarily used to track the number of stack elements
+    /// upon entry and exit from the inline assembly block.
+    ///
+    /// The only `Type` which is represented on this stack is `Type::Felt`, since we're only
+    /// interested in the number of stack elements at any given point. In the future, we may
+    /// choose to do additional type checking.
+    ///
+    /// Upon exit from the inline assembly block, the state of the stack must have enough elements
+    /// to store a value of the expected result type, represented by `ty`. Whether those elements
+    /// actually store a valid value of that type is beyond the scope of this builder, for now.
     stack: OperandStack<Type>,
 }
 impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
@@ -52,16 +67,19 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
         }
     }
 
+    /// Create a new, empty MASM code block, for use with control flow instructions
     #[inline]
     pub fn create_block(&mut self) -> MasmBlockId {
         self.asm.create_block()
     }
 
+    /// Change the insertion point of the builder to the end of `block`
     #[inline(always)]
     pub fn switch_to_block(&mut self, block: MasmBlockId) {
         self.current_block = block;
     }
 
+    /// Get a builder for a single MASM instruction
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> MasmOpBuilder<'a> {
         MasmOpBuilder {
             asm: &mut self.asm,
@@ -100,8 +118,11 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
 
 /// Used to construct a single MASM opcode
 pub struct MasmOpBuilder<'a> {
+    /// The inline assembly block being created
     asm: &'a mut InlineAsm,
+    /// The state of the operand stack at this point in the program
     stack: &'a mut OperandStack<Type>,
+    /// The block to which this builder should append the instruction it builds
     ip: MasmBlockId,
 }
 impl<'a> MasmOpBuilder<'a> {
@@ -727,17 +748,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// Performs unsigned addition of the top two elements on the stack, `b` and `a` respectively, which
     /// are expected to be valid u32 values.
     ///
-    /// The specific behavior of the addition depends on the given `overflow` flags:
-    ///
-    /// * `Overflow::Unchecked` - the addition is performed using the `add` op for field elements, which may
-    /// produce a value that is outside of the u32 range, it is the callers responsibility to ensure that the
-    /// resulting value is in range.
-    /// * `Overflow::Checked` - the operation will trap if either operand, or the result, is not a valid u32
-    /// * `Overflow::Wrapping` - computes the result as `(a + b) mod 2^32`, behavior is undefined if either operand
-    /// is not a valid u32
-    /// * `Overflow::Overflowing` - similar to above, the result is computed as `(a + b) mod 2^32`, however a boolean
-    /// is also pushed on the stack after the result, which is 1 if the result of `a + b` overflowed, else 0.
-    ///
+    /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
     pub fn add_u32(self, overflow: Overflow) {
         self.stack.dropn(2);
         self.stack.push(Type::U32);
@@ -783,17 +794,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// Performs unsigned subtraction of the top two elements on the stack, `b` and `a` respectively, which
     /// are expected to be valid u32 values.
     ///
-    /// The specific behavior of the subtraction depends on the given `overflow` flags:
-    ///
-    /// * `Overflow::Unchecked` - the subtraction is performed using the `sub` op for field elements, which may
-    /// produce a value that is outside of the u32 range, it is the callers responsibility to ensure that the
-    /// resulting value is in range.
-    /// * `Overflow::Checked` - the operation will trap if either operand, or the result, is not a valid u32
-    /// * `Overflow::Wrapping` - computes the result as `(a - b) mod 2^32`, behavior is undefined if either operand
-    /// is not a valid u32
-    /// * `Overflow::Overflowing` - similar to above, the result is computed as `(a - b) mod 2^32`, however a boolean
-    /// is also pushed on the stack after the result, which is 1 if the result of `a - b` underflowed, else 0.
-    ///
+    /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
     pub fn sub_u32(self, overflow: Overflow) {
         self.stack.dropn(2);
         self.stack.push(Type::U32);
@@ -822,17 +823,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// Performs unsigned multiplication of the top two elements on the stack, `b` and `a` respectively, which
     /// are expected to be valid u32 values.
     ///
-    /// The specific behavior of the subtraction depends on the given `overflow` flags:
-    ///
-    /// * `Overflow::Unchecked` - the multiplication is performed using the `mul` op for field elements, which may
-    /// produce a value that is outside of the u32 range, it is the callers responsibility to ensure that the
-    /// resulting value is in range.
-    /// * `Overflow::Checked` - the operation will trap if either operand, or the result, is not a valid u32
-    /// * `Overflow::Wrapping` - computes the result as `(a * b) mod 2^32`, behavior is undefined if either operand
-    /// is not a valid u32
-    /// * `Overflow::Overflowing` - similar to above, the result is computed as `(a * b) mod 2^32`, however a boolean
-    /// is also pushed on the stack after the result, which is 1 if the result of `a * b` underflowed, else 0.
-    ///
+    /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
     pub fn mul_u32(self, overflow: Overflow) {
         self.stack.dropn(2);
         self.stack.push(Type::U32);
