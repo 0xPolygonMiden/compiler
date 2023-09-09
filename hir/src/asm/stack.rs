@@ -50,24 +50,21 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
 
     /// Returns the value on top of the stack, without consuming it
     #[inline]
-    fn peek(&self) -> Self::Element {
-        self.stack()
-            .last()
-            .cloned()
-            .expect("operand stack is empty")
+    fn peek(&self) -> Option<Self::Element> {
+        self.stack().last().cloned()
     }
 
     /// Returns the word on top of the stack, without consuming it
     #[inline]
-    fn peekw(&self) -> [Self::Element; 4] {
+    fn peekw(&self) -> Option<[Self::Element; 4]> {
         let stack = self.stack();
-        let end = stack.len().checked_sub(1).expect("operand stack is empty");
-        [
+        let end = stack.len().checked_sub(1)?;
+        Some([
             stack[end].clone(),
             stack[end - 1].clone(),
             stack[end - 2].clone(),
             stack[end - 3].clone(),
-        ]
+        ])
     }
 
     /// Pushes a word of zeroes on top of the stack
@@ -156,7 +153,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
         );
         match index {
             0 => {
-                let word = self.peekw();
+                let word = self.peekw().expect("operand stack is empty");
                 self.pushw(word);
             }
             n => {
