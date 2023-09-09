@@ -404,24 +404,99 @@ impl<'a> MasmOpBuilder<'a> {
         self.asm.push(self.ip, MasmOp::MemStorewImm(addr));
     }
 
-    /// Pops a boolean value from the stack, and executes the first block if it is true,
-    /// otherwise the second block.
-    pub fn if_true(self, then_blk: MasmBlockId, else_blk: MasmBlockId) {
-        self.stack.drop();
-        self.asm.push(self.ip, MasmOp::If(then_blk, else_blk))
+    /// Begins construction of a `if.true` statement.
+    ///
+    /// An `if.true` pops a boolean value off the stack, and uses it to choose between
+    /// one of two branches. The "then" branch is taken if the conditional is true,
+    /// the "else" branch otherwise.
+    ///
+    /// NOTE: This function will panic if the top of the operand stack is not of boolean type
+    /// when called.
+    ///
+    /// You must ensure that both branches of the `if.true` statement leave the operand stack
+    /// in the same abstract state, so that when control resumes after the `if.true`, the remaining
+    /// program is well-formed. This will be validated automatically for you, but if validation
+    /// fails, the builder will panic.
+    pub fn if_true(self) -> IfTrueBuilder<'a> {
+        let cond = self.stack.pop().expect("operand stack is empty");
+        assert_eq!(
+            cond,
+            Type::I1,
+            "expected while.true condition to be a boolean value"
+        );
+        let out_stack = self.stack.clone();
+        IfTrueBuilder {
+            dfg: self.dfg,
+            asm: self.asm,
+            in_stack: self.stack,
+            out_stack,
+            ip: self.ip,
+            then_blk: None,
+            else_blk: None,
+        }
     }
 
-    /// Pops a boolean value from the stack, and executes the given block if it is true,
-    /// otherwise it is skipped. The given block will continue to execute for as long as
-    /// the top value on the stack at the end of the block is true.
-    pub fn while_true(self, body: MasmBlockId) {
-        self.stack.drop();
-        self.asm.push(self.ip, MasmOp::While(body));
+    /// Begins construction of a `while.true` loop.
+    ///
+    /// A `while.true` pops a boolean value off the stack to use as the condition for
+    /// entering the loop, and will then execute the loop body for as long as the value
+    /// on top of the stack is a boolean and true. If the condition is not a boolean,
+    /// execution traps.
+    ///
+    /// NOTE: This function will panic if the top of the operand stack is not of boolean type
+    /// when called.
+    ///
+    /// Before finalizing construction of the loop body, you must ensure two things:
+    ///
+    /// 1. There is a value of boolean type on top of the operand stack
+    /// 2. The abstract state of the operand stack, assuming the boolean just mentioned
+    /// has been popped, must be consistent with the state of the operand stack when the
+    /// loop was entered, as well as if the loop was skipped due to the conditional being
+    /// false. The abstract state referred to here is the number, and type, of the elements
+    /// on the operand stack.
+    ///
+    /// Both of these are validated by [LoopBuilder], and a panic is raised if validation fails.
+    pub fn while_true(self) -> LoopBuilder<'a> {
+        let cond = self.stack.pop().expect("operand stack is empty");
+        assert_eq!(
+            cond,
+            Type::I1,
+            "expected while.true condition to be a boolean value"
+        );
+        let out_stack = self.stack.clone();
+        let body = self.asm.create_block();
+        LoopBuilder {
+            dfg: self.dfg,
+            asm: self.asm,
+            in_stack: self.stack,
+            out_stack,
+            ip: self.ip,
+            body,
+            style: LoopType::While,
+        }
     }
 
-    /// Repeatedly executes `body`, `n` times.
-    pub fn repeat(self, n: u8, body: MasmBlockId) {
-        self.asm.push(self.ip, MasmOp::Repeat(n, body));
+    /// Begins construction of a `repeat` loop, with an iteration count of `n`.
+    ///
+    /// A `repeat` instruction requires no operands on the stack, and will execute the loop body `n` times.
+    ///
+    /// NOTE: The iteration count must be non-zero, or this function will panic.
+    pub fn repeat(self, n: u8) -> LoopBuilder<'a> {
+        assert!(
+            n > 0,
+            "invalid iteration count for `repeat.n`, must be non-zero"
+        );
+        let out_stack = self.stack.clone();
+        let body = self.asm.create_block();
+        LoopBuilder {
+            dfg: self.dfg,
+            asm: self.asm,
+            in_stack: self.stack,
+            out_stack,
+            ip: self.ip,
+            body,
+            style: LoopType::Repeat(n),
+        }
     }
 
     /// Executes the named procedure as a regular function.
@@ -1343,5 +1418,329 @@ impl<'a> MasmOpBuilder<'a> {
         self.stack.dropn(2);
         self.stack.push(Type::U32);
         self.asm.push(self.ip, MasmOp::U32UncheckedMax);
+    }
+}
+
+#[doc(hidden)]
+enum IfBranch {
+    Then,
+    Else,
+}
+
+/// This builder is used to construct an `if.true` instruction, while maintaining
+/// the invariant that the operand stack has a uniform state upon exit from either
+/// branch of the `if.true`, i.e. the number of elements, and their types, must
+/// match.
+///
+/// We do this by snapshotting the state of the operand stack on entry, using it
+/// when visiting each branch as the initial stack state, and then validating that
+/// when both branches have been constructed, that the stack state on exit is the
+/// same. The first branch to be completed defines the expected state of the stack
+/// for the remaining branch.
+///
+/// # Example
+///
+/// The general usage here looks like this, where `masm_builder` is an instance of
+/// [MasmBuilder]:
+///
+/// ```rust,ignore
+/// // If the current top of the stack is > 0, decrement the next stack element, which
+/// is a counter, and then call a function, otherwise, pop the counter, push 0, and proceed.
+/// masm_builder.ins().gt_imm(Felt::ZERO);
+/// let if_builder = masm_builder.ins().if_true();
+///
+/// // Build the then branch
+/// let then_b = if_builder.build_then();
+/// then_b.ins().sub_imm(Felt::new(1 as u64));
+/// then_b.ins().exec("do_some_stuff_and_return_a_boolean".parse().unwrap());
+/// then_b.end();
+///
+/// // Build the else branch
+/// let else_b = if_builder.build_else();
+/// else_b.ins().pop();
+/// else_b.ins().push(Felt::ZERO);
+/// else_b.end();
+///
+/// // Finalize
+/// if_builder.build();
+/// ```
+pub struct IfTrueBuilder<'a> {
+    dfg: &'a mut DataFlowGraph,
+    asm: &'a mut InlineAsm,
+    /// This reference is to the operand stack in the parent [MasmOpBuilder],
+    /// which represents the operand stack on entry to the `if.true`. Upon
+    /// finalizatio of the `if.true`, we use update this operand stack to
+    /// reflect the state upon exit from the `if.true`.
+    ///
+    /// In effect, when the call to `if_true` returns, the operand stack in the
+    /// parent builder will look as if the `if.true` instruction has finished executing.
+    in_stack: &'a mut OperandStack<Type>,
+    /// This is set when the first branch is finished being constructed, and
+    /// will be used as the expected state of the operand stack when we finish
+    /// constructing the second branch and validate the `if.true`.
+    out_stack: OperandStack<Type>,
+    /// This is the block to which the `if.true` will be appended
+    ip: MasmBlockId,
+    /// The block id for the then branch, unset until it has been finalized
+    then_blk: Option<MasmBlockId>,
+    /// The block id for the else branch, unset until it has been finalized
+    else_blk: Option<MasmBlockId>,
+}
+impl<'f> IfTrueBuilder<'f> {
+    /// Start constructing the then block for this `if.true` instruction
+    ///
+    /// NOTE: This function will panic if the then block has already been built
+    pub fn build_then<'a: 'f, 'b: 'f + 'a>(&'b mut self) -> IfTrueBlockBuilder<'a> {
+        assert!(
+            self.then_blk.is_none(),
+            "cannot build the 'then' branch twice"
+        );
+        let then_blk = self.asm.create_block();
+        let stack = self.in_stack.clone();
+        IfTrueBlockBuilder {
+            builder: self,
+            stack,
+            block: then_blk,
+            branch: IfBranch::Then,
+        }
+    }
+
+    /// Start constructing the else block for this `if.true` instruction
+    ///
+    /// NOTE: This function will panic if the else block has already been built
+    pub fn build_else<'a: 'f, 'b: 'f + 'a>(&'b mut self) -> IfTrueBlockBuilder<'a> {
+        assert!(
+            self.else_blk.is_none(),
+            "cannot build the 'else' branch twice"
+        );
+        let else_blk = self.asm.create_block();
+        let stack = self.in_stack.clone();
+        IfTrueBlockBuilder {
+            builder: self,
+            stack,
+            block: else_blk,
+            branch: IfBranch::Else,
+        }
+    }
+
+    /// Finalize this `if.true` instruction, inserting it into the block this
+    /// builder was constructed from.
+    pub fn build(mut self) {
+        let then_blk = self.then_blk.expect("missing 'then' block");
+        let else_blk = self.else_blk.expect("missing 'else' block");
+        self.asm.push(self.ip, MasmOp::If(then_blk, else_blk));
+        // Update the operand stack to represent the state after execution of the `if.true`
+        let in_stack = self.in_stack.stack_mut();
+        in_stack.clear();
+        in_stack.append(self.out_stack.stack_mut());
+    }
+}
+
+/// Used to construct a single branch of an `if.true` instruction
+///
+/// See [IfTrueBuilder] for usage.
+pub struct IfTrueBlockBuilder<'a> {
+    builder: &'a mut IfTrueBuilder<'a>,
+    // The state of the operand stack in this block
+    stack: OperandStack<Type>,
+    // The block we're building
+    block: MasmBlockId,
+    branch: IfBranch,
+}
+impl<'f> IfTrueBlockBuilder<'f> {
+    /// Construct a MASM instruction in this block
+    pub fn ins<'a, 'b: 'a>(&'b mut self) -> MasmOpBuilder<'a> {
+        MasmOpBuilder {
+            dfg: self.builder.dfg,
+            asm: self.builder.asm,
+            stack: &mut self.stack,
+            ip: self.block,
+        }
+    }
+
+    /// Finalize this block, and release the builder
+    pub fn end(self) {}
+}
+impl<'a> Drop for IfTrueBlockBuilder<'a> {
+    fn drop(&mut self) {
+        match self.branch {
+            IfBranch::Then => {
+                self.builder.then_blk = Some(self.block);
+            }
+            IfBranch::Else => {
+                self.builder.else_blk = Some(self.block);
+            }
+        }
+
+        // If the if.true instruction is complete, validate that the operand stack in
+        // both branches is identical
+        //
+        // Otherwise, save the state of the stack here to be compared to the other
+        // branch when it is constructed
+        let is_complete = self.builder.then_blk.is_some() && self.builder.else_blk.is_some();
+        if is_complete {
+            assert_eq!(self.stack.stack(), self.builder.out_stack.stack(), "expected the operand stack to be in the same abstract state upon exit from either branch of this if.true instruction");
+        } else {
+            core::mem::swap(&mut self.builder.out_stack, &mut self.stack);
+        }
+    }
+}
+
+#[doc(hidden)]
+enum LoopType {
+    While,
+    Repeat(u8),
+}
+
+/// This builder is used to construct both `while.true` and `repeat.n` loops, enforcing
+/// their individual invariants with regard to the operand stack.
+///
+/// In particular, this builder ensures that the body of a `while.true` loop is valid,
+/// i.e. that when returning to the top of the loop to evaluate the conditional, that
+/// there is a boolean value on top of the stack for that purpose. Similarly, it validates
+/// that after the conditional has been evaluated, that the abstract state of the operand
+/// stack is the same across iterations, and regardless of whether the loop is taken. The
+/// abstract state in question is the number, and type, of the operands on the stack.
+///
+/// # Example
+///
+/// The general usage here looks like this, where `masm_builder` is an instance of
+/// [MasmBuilder]:
+///
+/// ```rust,ignore
+/// // For our example here, we're generating inline assembly that performs
+/// // the equivalent of `for (i = 0; i < len; i++) sum += array[i / 4][i % 4]`,
+/// // where `array` is a pointer to words, and we're attempting to sum `len`
+/// // field elements, across how ever many words that spans.
+/// //
+/// // We assume the operand stack is as follows (top to bottom):
+/// //
+/// //    [len, sum, array]
+/// //
+/// // First, build out the loop header
+/// masm_builder.ins().push(Felt::ZERO); // [i, len, sum, array]
+/// masm_builder.ins().dup(0);  // [i, i, len, sum, array]
+/// masm_builder.ins().dup(2);  // [len, i, i, len, sum, array]
+/// masm_builder.ins().lt();    // [i < len, i, len, sum, array]
+///
+/// // Now, build the loop body
+/// //
+/// // The state of the stack on entry is: [i, len, sum, array]
+/// let mut lb = masm_builder.ins().while_true();
+///
+/// // Calculate `i / 4`
+/// lb.ins().dup(0);     // [i, i, len, sum, array]
+/// lb.ins().div_imm(4); // [word_offset, i, len, sum, array]
+///
+/// // Calculate the address for `array[i / 4]`
+/// lb.ins().dup(4);     // [array, word_offset, ..]
+/// lb.ins().add_u32(Overflow::Checked); // [array + word_offset, i, ..]
+///
+/// // Calculate the `i % 4`
+/// lb.ins().dup(1);     // [i, array + word_offset, ..]
+/// lb.ins().mod_imm_u32(4); // [element_offset, array + word_offset, ..]
+///
+/// // Precalculate what elements of the word to drop, so that
+/// // we are only left with the specific element we wanted
+/// lb.ins().dup(0);     // [element_offset, element_offset, ..]
+/// lb.ins().lt_imm(Felt::new(3)); // [element_offset < 3, element_offset, ..]
+/// lb.ins().dup(1);     // [element_offset, element_offset < 3, ..]
+/// lb.ins().lt_imm(Felt::new(2)); // [element_offset < 2, element_offset < 3, ..]
+/// lb.ins().dup(2);     // [element_offset, element_offset < 2, ..]
+/// lb.ins().lt_imm(Felt::new(1)); // [element_offset < 1, element_offset < 2, ..]
+///
+/// // Load the word
+/// lb.ins().dup(4);      // [array + word_offset, element_offset < 1]
+/// lb.ins().loadw(); // [word[0], word[1], word[2], word[3], element_offset < 1]
+///
+/// // Select the element, `E`, that we want by conditionally dropping
+/// // elements on the operand stack with a carefully chosen sequence
+/// // of conditionals: E < N forall N in 0..=3
+/// lb.ins().movup(4);   // [element_offset < 1, word[0], ..]
+/// lb.ins().cdrop();    // [word[0 or 1], word[2], word[3], element_offset < 2]
+/// lb.ins().movup(3);   // [element_offset < 2, word[0 or 1], ..]
+/// lb.ins().cdrop();    // [word[0 or 1 or 2], word[3], element_offset < 3]
+/// lb.ins().movup(2);   // [element_offset < 3, ..]
+/// lb.ins().cdrop();    // [array[i], i, len, sum, array]
+/// lb.ins().movup(3);   // [sum, array[i], i, len, array]
+/// lb.ins().add();      // [sum + array[i], i, len, array]
+/// lb.ins().movdn(2);   // [i, len, sum + array[i], array]
+///
+/// // We've reached the end of the loop, but we need a copy of the
+/// // loop header here in order to use the expression `i < len` as
+/// // the condition for the loop
+/// lb.ins().dup(0);     // [i, i, len, ..]
+/// lb.ins().dup(2);     // [len, i, i, len, ..]
+/// lb.ins().lt();       // [i < len, i, len, sum, array]
+///
+/// // Finalize, it is at this point that validation will occur
+/// lb.build();
+/// ```
+pub struct LoopBuilder<'a> {
+    dfg: &'a mut DataFlowGraph,
+    asm: &'a mut InlineAsm,
+    /// This reference is to the operand stack in the parent [MasmOpBuilder],
+    /// which represents the operand stack on entry to the loop. Upon finalization
+    /// of the loop, we use update this operand stack to reflect the state upon
+    /// exit from the loop.
+    ///
+    /// In effect, when the call to `while_true` or `repeat` returns, the operand
+    /// stack in the parent builder will look as if the loop instruction has finished
+    /// executing.
+    in_stack: &'a mut OperandStack<Type>,
+    /// This is the operand stack state within the loop.
+    ///
+    /// Upon finalization of the loop instruction, this state is used to validate
+    /// the effect of the loop body on the operand stack. For `repeat`, which is
+    /// unconditionally entered, no special validation is performed. However, for
+    /// `while.true`, we must validate two things:
+    ///
+    /// 1. That the top of the stack holds a boolean value
+    /// 2. That after popping the boolean, the output state of the operand stack
+    /// matches the input state in number and type of elements. This is required,
+    /// as otherwise program behavior is undefined based on whether the loop is
+    /// entered or not.
+    out_stack: OperandStack<Type>,
+    /// The block to which the loop instruction will be appended
+    ip: MasmBlockId,
+    /// The top-level block for the loop
+    body: MasmBlockId,
+    /// The type of loop we're building
+    style: LoopType,
+}
+impl<'f> LoopBuilder<'f> {
+    /// Get a builder for a single MASM instruction
+    pub fn ins<'a, 'b: 'a>(&'b mut self) -> MasmOpBuilder<'a> {
+        MasmOpBuilder {
+            dfg: self.dfg,
+            asm: self.asm,
+            stack: &mut self.out_stack,
+            ip: self.body,
+        }
+    }
+
+    /// Finalize construction of this loop, performing any final validation.
+    pub fn build(mut self) {
+        match self.style {
+            LoopType::While => {
+                // First, validate that the top of the stack holds a boolean
+                let cond = self.out_stack.pop().expect("operand stack is empty");
+                assert_eq!(cond, Type::I1, "expected there to be a boolean on top of the stack at the end of the while.true body");
+                // Next, validate that the contents of the operand stack match
+                // the input stack, in order to ensure that the operand stack
+                // is consistent whether the loop is taken or not
+                assert_eq!(self.in_stack.stack(), self.out_stack.stack(), "expected the operand stack to be in the same abstract state whether the while.true loop is taken or skipped");
+                self.asm.push(self.ip, MasmOp::While(self.body));
+            }
+            LoopType::Repeat(n) => {
+                // No special validation is needed, we're done
+                self.asm.push(self.ip, MasmOp::Repeat(n, self.body));
+            }
+        }
+
+        // Update the operand stack to represent the state after execution of this loop
+        let in_stack = self.in_stack.stack_mut();
+        in_stack.clear();
+        in_stack.append(self.out_stack.stack_mut());
     }
 }

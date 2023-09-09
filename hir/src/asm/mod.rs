@@ -3,7 +3,7 @@ mod display;
 mod isa;
 mod stack;
 
-pub use self::builder::{MasmBuilder, MasmOpBuilder};
+pub use self::builder::*;
 pub use self::display::DisplayInlineAsm;
 pub use self::isa::*;
 pub use self::stack::{OperandStack, Stack};
