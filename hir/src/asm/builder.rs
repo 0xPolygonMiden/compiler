@@ -82,6 +82,7 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
     /// Get a builder for a single MASM instruction
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> MasmOpBuilder<'a> {
         MasmOpBuilder {
+            dfg: self.builder.data_flow_graph_mut(),
             asm: &mut self.asm,
             stack: &mut self.stack,
             ip: self.current_block,
@@ -118,6 +119,7 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
 
 /// Used to construct a single MASM opcode
 pub struct MasmOpBuilder<'a> {
+    dfg: &'a mut DataFlowGraph,
     /// The inline assembly block being created
     asm: &'a mut InlineAsm,
     /// The state of the operand stack at this point in the program
@@ -423,13 +425,73 @@ impl<'a> MasmOpBuilder<'a> {
     }
 
     /// Executes the named procedure as a regular function.
-    pub fn exec(self, id: FunctionIdent) {
+    pub fn exec(mut self, id: FunctionIdent) {
+        self.execute_call(&id, false);
         self.asm.push(self.ip, MasmOp::Exec(id));
     }
 
     /// Executes the named procedure as a syscall.
-    pub fn syscall(self, id: FunctionIdent) {
+    pub fn syscall(mut self, id: FunctionIdent) {
+        self.execute_call(&id, true);
         self.asm.push(self.ip, MasmOp::Syscall(id));
+    }
+
+    /// Validate that a call to `id` is possible given the current state of the operand stack,
+    /// and if so, update the state of the operand stack to reflect the call.
+    fn execute_call(&mut self, id: &FunctionIdent, is_syscall: bool) {
+        let import = self
+            .dfg
+            .get_import(&id)
+            .expect("unknown function, are you missing an import?");
+        if is_syscall {
+            assert_eq!(
+                import.signature.cc,
+                CallConv::Kernel,
+                "cannot call a non-kernel function with the `syscall` instruction"
+            );
+        } else {
+            assert_ne!(
+                import.signature.cc,
+                CallConv::Kernel,
+                "`syscall` cannot be used to call non-kernel functions"
+            );
+        }
+        match import.signature.cc {
+            // For now, we're treating all calling conventions the same as SystemV
+            CallConv::Fast | CallConv::SystemV | CallConv::Kernel => {
+                // Visit the argument list in reverse (so that the top of the stack on entry
+                // is the first argument), and allocate elements based on the argument types.
+                let mut elements_needed = 0;
+                for param in import.signature.params().iter().rev() {
+                    let repr = param.repr().expect("invalid parameter type");
+                    elements_needed += repr.size();
+                }
+
+                // Verify that we have `elements_needed` values on the operand stack
+                let elements_available = self.stack.len();
+                assert!(elements_needed <= elements_available, "the operand stack does not contain enough values to call {} ({} exepected vs {} available)", id, elements_needed, elements_available);
+                self.stack.dropn(elements_needed);
+
+                // Update the operand stack to reflect the results
+                for result in import.signature.results().iter().rev() {
+                    let repr = result.repr().expect("invalid result type");
+                    match repr {
+                        TypeRepr::Zst(_) => continue,
+                        TypeRepr::Default(ty) => self.stack.push(ty),
+                        TypeRepr::Sparse(_, n) => {
+                            for _ in 0..n.get() {
+                                self.stack.push(Type::Felt);
+                            }
+                        }
+                        TypeRepr::Packed(ty) => {
+                            for _ in 0..ty.size_in_felts() {
+                                self.stack.push(Type::Felt);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Pops two field elements from the stack, adds them, and places the result on the stack.
