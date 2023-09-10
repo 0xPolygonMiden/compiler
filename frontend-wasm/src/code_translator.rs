@@ -199,7 +199,15 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().shl(arg1, arg2, span));
         }
-        Operator::I32ShrU | Operator::I64ShrU => {
+        Operator::I32ShrU => {
+            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().shr(arg1, arg2, span));
+        }
+        Operator::I64ShrU => {
+            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().shr(arg1, arg2, span));
+        }
+        Operator::I32ShrS | Operator::I64ShrS => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().shr(arg1, arg2, span));
         }
@@ -227,11 +235,27 @@ pub fn translate_operator(
             // https://www.w3.org/TR/wasm-core-1/#op-imul
             state.push1(builder.ins().mul_wrapping(arg1, arg2, span));
         }
-        Operator::I32DivU | Operator::I64DivU => {
+        Operator::I32DivS | Operator::I64DivS => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().div(arg1, arg2, span));
         }
-        Operator::I32RemU | Operator::I64RemU => {
+        Operator::I32DivU => {
+            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().div(arg1, arg2, span));
+        }
+        Operator::I64DivU => {
+            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().div(arg1, arg2, span));
+        }
+        Operator::I32RemU => {
+            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().r#mod(arg1, arg2, span));
+        }
+        Operator::I64RemU => {
+            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().r#mod(arg1, arg2, span));
+        }
+        Operator::I32RemS | Operator::I64RemS => {
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().r#mod(arg1, arg2, span));
         }
@@ -257,19 +281,51 @@ pub fn translate_operator(
         //     state.push1(builder.ins().max(arg1, arg2, span));
         // }
         /**************************** Comparison Operators **********************************/
-        Operator::I32LtU | Operator::I64LtU => {
+        Operator::I32LtU => {
+            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().lt(arg0, arg1, span));
+        }
+        Operator::I64LtU => {
+            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().lt(arg0, arg1, span));
+        }
+        Operator::I32LtS | Operator::I64LtS => {
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().lt(arg0, arg1, span));
         }
-        Operator::I32LeU | Operator::I64LeU => {
+        Operator::I32LeU => {
+            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().lte(arg0, arg1, span));
+        }
+        Operator::I64LeU => {
+            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().lte(arg0, arg1, span));
+        }
+        Operator::I32LeS | Operator::I64LeS => {
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().lte(arg0, arg1, span));
         }
-        Operator::I32GtU | Operator::I64GtU => {
+        Operator::I32GtU => {
+            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().gt(arg0, arg1, span));
+        }
+        Operator::I64GtU => {
+            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().gt(arg0, arg1, span));
+        }
+        Operator::I32GtS | Operator::I64GtS => {
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().gt(arg0, arg1, span));
         }
-        Operator::I32GeU | Operator::I64GeU => {
+        Operator::I32GeU => {
+            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            state.push1(builder.ins().gte(arg0, arg1, span));
+        }
+        Operator::I64GeU => {
+            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            state.push1(builder.ins().gte(arg0, arg1, span));
+        }
+        Operator::I32GeS | Operator::I64GeS => {
             let (arg0, arg1) = state.pop2();
             state.push1(builder.ins().gte(arg0, arg1, span));
         }

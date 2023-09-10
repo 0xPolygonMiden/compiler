@@ -689,7 +689,9 @@ fn i32_shr_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = shr v0, v1  : i32
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = shr v2, v3  : u32
         "#]],
     )
 }
@@ -701,6 +703,42 @@ fn i64_shr_u() {
             i64.const 2
             i64.const 1
             i64.shr_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = shr v2, v3  : u64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_shr_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.shr_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = shr v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_shr_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.shr_s
             drop
         "#,
         expect![[r#"
@@ -897,7 +935,9 @@ fn i32_div_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = div v0, v1  : i32
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = div v2, v3  : u32
         "#]],
     )
 }
@@ -909,6 +949,42 @@ fn i64_div_u() {
             i64.const 2
             i64.const 1
             i64.div_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = div v2, v3  : u64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_div_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.div_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = div v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_div_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.div_s
             drop
         "#,
         expect![[r#"
@@ -931,7 +1007,9 @@ fn i32_rem_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = mod v0, v1  : i32
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = mod v2, v3  : u32
         "#]],
     )
 }
@@ -943,6 +1021,42 @@ fn i64_rem_u() {
             i64.const 2
             i64.const 1
             i64.rem_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = mod v2, v3  : u64
+        "#]],
+    )
+}
+
+#[test]
+fn i32_rem_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.rem_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = mod v0, v1  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i64_rem_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.rem_s
             drop
         "#,
         expect![[r#"
@@ -1001,7 +1115,9 @@ fn i32_lt_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = lt v0, v1  : i1
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = lt v2, v3  : i1
         "#]],
     )
 }
@@ -1013,6 +1129,42 @@ fn i64_lt_u() {
             i64.const 2
             i64.const 1
             i64.lt_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = lt v2, v3  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i32_lt_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.lt_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = lt v0, v1  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i64_lt_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.lt_s
             drop
         "#,
         expect![[r#"
@@ -1035,7 +1187,9 @@ fn i32_le_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = lte v0, v1  : i1
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = lte v2, v3  : i1
         "#]],
     )
 }
@@ -1047,6 +1201,42 @@ fn i64_le_u() {
             i64.const 2
             i64.const 1
             i64.le_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = lte v2, v3  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i32_le_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.le_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = lte v0, v1  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i64_le_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.le_s
             drop
         "#,
         expect![[r#"
@@ -1069,7 +1259,9 @@ fn i32_gt_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = gt v0, v1  : i1
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = gt v2, v3  : i1
         "#]],
     )
 }
@@ -1081,6 +1273,42 @@ fn i64_gt_u() {
             i64.const 2
             i64.const 1
             i64.gt_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = gt v2, v3  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i32_gt_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.gt_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = gt v0, v1  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i64_gt_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.gt_s
             drop
         "#,
         expect![[r#"
@@ -1103,7 +1331,9 @@ fn i32_ge_u() {
         expect![[r#"
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
-            v2 = gte v0, v1  : i1
+            v2 = cast v0  : u32
+            v3 = cast v1  : u32
+            v4 = gte v2, v3  : i1
         "#]],
     )
 }
@@ -1115,6 +1345,42 @@ fn i64_ge_u() {
             i64.const 2
             i64.const 1
             i64.ge_u
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 2  : i64
+            v1 = const.i64 1  : i64
+            v2 = cast v0  : u64
+            v3 = cast v1  : u64
+            v4 = gte v2, v3  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i32_ge_s() {
+    check_op(
+        r#"
+            i32.const 2
+            i32.const 1
+            i32.ge_s
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 2  : i32
+            v1 = const.i32 1  : i32
+            v2 = gte v0, v1  : i1
+        "#]],
+    )
+}
+
+#[test]
+fn i64_ge_s() {
+    check_op(
+        r#"
+            i64.const 2
+            i64.const 1
+            i64.ge_s
             drop
         "#,
         expect![[r#"
