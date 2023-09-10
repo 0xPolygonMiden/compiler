@@ -7,9 +7,12 @@
 
 use crate::{
     environ::FuncEnvironment,
+    function_builder_ext::FunctionBuilderExt,
     wasm_types::{BlockType, FuncIndex},
 };
-use miden_hir::{Block, Function, FunctionIdent, Inst, Signature, Value};
+use miden_diagnostics::SourceSpan;
+use miden_hir::{Block, Function, FunctionIdent, Inst, InstBuilder, Signature, Value};
+use miden_hir_type::Type;
 use std::{
     collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant, HashMap},
     vec::Vec,
@@ -292,6 +295,20 @@ impl FuncTranslationState {
         let v2 = self.stack.pop().unwrap();
         let v1 = self.stack.pop().unwrap();
         (v1, v2)
+    }
+
+    /// Pop two values. Cast them to the specified type. Return them in the order they were pushed.
+    pub(crate) fn pop2_casted(
+        &mut self,
+        ty: Type,
+        builder: &mut FunctionBuilderExt,
+        span: SourceSpan,
+    ) -> (Value, Value) {
+        let v2 = self.stack.pop().unwrap();
+        let v1 = self.stack.pop().unwrap();
+        let v1_casted = builder.ins().cast(v1, ty.clone(), span);
+        let v2_casted = builder.ins().cast(v2, ty, span);
+        (v1_casted, v2_casted)
     }
 
     /// Pop three values. Return them in the order they were pushed.
