@@ -95,7 +95,6 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     I32Clz,
     I64Ctz,
     I64Clz,
-    I32WrapI64,
     F32Sqrt,
     F64Sqrt,
     F32Ceil,

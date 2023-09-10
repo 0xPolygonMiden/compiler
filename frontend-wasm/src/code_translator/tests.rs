@@ -474,6 +474,21 @@ fn i64_extend_i32_u() {
 }
 
 #[test]
+fn i32_wrap_i64() {
+    check_op(
+        r#"
+            i64.const 1
+            i32.wrap_i64
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i64 1  : i64
+            v1 = trunc v0  : i32
+        "#]],
+    )
+}
+
+#[test]
 fn i32_add() {
     check_op(
         r#"
