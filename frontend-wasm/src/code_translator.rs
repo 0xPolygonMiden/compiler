@@ -176,6 +176,10 @@ pub fn translate_operator(
             let val = state.pop1();
             state.push1(builder.ins().zext(val, I64, span));
         }
+        Operator::I32WrapI64 => {
+            let val = state.pop1();
+            state.push1(builder.ins().trunc(val, I32, span));
+        }
         /****************************** Binary Operators ************************************/
         Operator::I32Add | Operator::I64Add => {
             let (arg1, arg2) = state.pop2();
