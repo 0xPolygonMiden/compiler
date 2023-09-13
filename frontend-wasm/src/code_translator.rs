@@ -15,7 +15,7 @@
 
 use std::collections::{hash_map, HashMap};
 
-use crate::environ::{FuncEnvironment, ModuleInfo};
+use crate::environ::ModuleInfo;
 use crate::error::{WasmError, WasmResult};
 use crate::func_translation_state::ControlStackFrame;
 use crate::func_translation_state::{ElseData, FuncTranslationState};
@@ -42,12 +42,12 @@ pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    environ: &mut FuncEnvironment,
+    mod_info: &ModuleInfo,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
     if !state.reachable {
-        translate_unreachable_operator(&op, builder, state, environ.mod_info, span)?;
+        translate_unreachable_operator(&op, builder, state, mod_info, span)?;
         return Ok(());
     }
 
@@ -74,14 +74,14 @@ pub fn translate_operator(
         /********************************** Globals ****************************************/
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = environ.mod_info.global_name(global_index);
-            let ty = environ.mod_info.globals[global_index].ty.clone();
+            let name = mod_info.global_name(global_index);
+            let ty = mod_info.globals[global_index].ty.clone();
             state.push1(builder.ins().load_symbol(name, ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = environ.mod_info.global_name(global_index);
-            let ty = (&environ.mod_info.globals[global_index]).ty.clone();
+            let name = mod_info.global_name(global_index);
+            let ty = (&mod_info.globals[global_index]).ty.clone();
             let ptr_u8 = builder.ins().symbol_addr(name, span);
             let int_ptr = builder.ins().ptrtoint(ptr_u8, I32, span);
             let ptr_typed = builder.ins().inttoptr(int_ptr, Ptr(ty.into()), span);
@@ -101,13 +101,9 @@ pub fn translate_operator(
         Operator::Unreachable => _ = builder.ins().unreachable(span),
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
-        Operator::Block { blockty } => {
-            translate_block(blockty, builder, state, environ.mod_info, span)?
-        }
-        Operator::Loop { blockty } => {
-            translate_loop(blockty, builder, state, environ.mod_info, span)?
-        }
-        Operator::If { blockty } => translate_if(blockty, state, builder, environ.mod_info, span)?,
+        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_info, span)?,
+        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_info, span)?,
+        Operator::If { blockty } => translate_if(blockty, state, builder, mod_info, span)?,
         Operator::Else => translate_else(state, builder, span)?,
         Operator::End => translate_end(state, builder, span),
 
@@ -118,7 +114,7 @@ pub fn translate_operator(
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /************************************ Calls ****************************************/
         Operator::Call { function_index } => {
-            translate_call(state, builder, function_index, environ, span);
+            translate_call(state, builder, function_index, mod_info, span, diagnostics)?;
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
@@ -579,15 +575,18 @@ fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt<'_>,
     function_index: &u32,
-    environ: &mut FuncEnvironment<'_>,
+    mod_info: &ModuleInfo,
     span: SourceSpan,
-) {
-    let (fident, num_args) = state.get_direct_func(builder.inner.func, *function_index, environ);
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<()> {
+    let (fident, num_args) =
+        state.get_direct_func(builder.inner.func, *function_index, mod_info, diagnostics)?;
     let args = state.peekn_mut(num_args);
     let call = builder.ins().call(fident, &args, span);
     let inst_results = builder.inner.inst_results(call);
     state.popn(num_args);
     state.pushn(inst_results);
+    Ok(())
 }
 
 fn translate_return(
