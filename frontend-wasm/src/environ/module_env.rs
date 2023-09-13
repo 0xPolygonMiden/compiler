@@ -15,8 +15,6 @@ use std::string::String;
 use std::vec::Vec;
 use wasmparser::{FunctionBody, Validator};
 
-use super::FuncEnvironment;
-
 /// The main state belonging to a `ModuleEnvironment`. This is split out from
 /// `ModuleEnvironment` to allow it to be borrowed separately from the
 /// `FuncTranslator` field.
@@ -132,7 +130,6 @@ impl<'a> ModuleEnvironment<'a> {
                 .unwrap_or(&format!("func{}", func_index.index()))
                 .to_string();
             let sig = sig_from_funct_type(func_ty, CallConv::SystemV, Linkage::External);
-            let mut func_environ = FuncEnvironment::new(&self.info);
             let mut module_func_builder =
                 module_builder.build_function(func_name, sig.clone(), SourceSpan::default())?;
             let mut func_validator = validator
@@ -141,7 +138,7 @@ impl<'a> ModuleEnvironment<'a> {
             self.trans.translate_body(
                 body,
                 &mut module_func_builder,
-                &mut func_environ,
+                &self.info,
                 diagnostics,
                 &mut func_validator,
             )?;

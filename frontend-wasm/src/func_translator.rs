@@ -7,7 +7,7 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use crate::code_translator::translate_operator;
-use crate::environ::FuncEnvironment;
+use crate::environ::ModuleInfo;
 use crate::error::WasmResult;
 use crate::func_translation_state::FuncTranslationState;
 use crate::function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt};
@@ -43,7 +43,7 @@ impl FuncTranslator {
         &mut self,
         body: &FunctionBody<'_>,
         mod_func_builder: &mut ModuleFunctionBuilder,
-        environ: &mut FuncEnvironment,
+        mod_info: &ModuleInfo,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
@@ -73,7 +73,7 @@ impl FuncTranslator {
             reader,
             &mut builder,
             &mut self.state,
-            environ,
+            mod_info,
             diagnostics,
             func_validator,
         )?;
@@ -153,7 +153,7 @@ fn parse_function_body(
     mut reader: BinaryReader,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    environ: &mut FuncEnvironment,
+    mod_info: &ModuleInfo,
     diagnostics: &DiagnosticsHandler,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
@@ -168,7 +168,7 @@ fn parse_function_body(
             &op,
             builder,
             state,
-            environ,
+            mod_info,
             diagnostics,
             SourceSpan::default(),
         )?;

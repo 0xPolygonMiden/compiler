@@ -6,12 +6,17 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use crate::{
-    environ::FuncEnvironment,
+    environ::ModuleInfo,
+    error::{WasmError, WasmResult},
     function_builder_ext::FunctionBuilderExt,
+    translation_utils::sig_from_funct_type,
     wasm_types::{BlockType, FuncIndex},
 };
-use miden_diagnostics::SourceSpan;
-use miden_hir::{Block, Function, FunctionIdent, Inst, InstBuilder, Signature, Value};
+use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
+use miden_hir::{
+    cranelift_entity::EntityRef, Block, CallConv, Function, FunctionIdent, Ident, Inst,
+    InstBuilder, Linkage, Signature, Symbol, Value,
+};
 use miden_hir_type::Type;
 use std::{
     collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant, HashMap},
@@ -426,27 +431,43 @@ impl FuncTranslationState {
 
 /// Methods for handling entity references.
 impl FuncTranslationState {
-    /// Get the `FuncRef` reference that should be used to make a direct call to function
+    /// Get the `FunctionIdent` that should be used to make a direct call to function
     /// `index`. Also return the number of WebAssembly arguments in the signature.
     ///
-    /// Create the function reference if necessary.
+    /// Import the callee into `func`'s DFG if it is not already present.
     pub(crate) fn get_direct_func(
         &mut self,
         func: &mut Function,
         index: u32,
-        environ: &mut FuncEnvironment,
-    ) -> (FunctionIdent, usize) {
+        mod_info: &ModuleInfo,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<(FunctionIdent, usize)> {
         let index = FuncIndex::from_u32(index);
-        // TODO: get rid of self.functions?
-        match self.functions.entry(index) {
+        Ok(match self.functions.entry(index) {
             Occupied(entry) => *entry.get(),
             Vacant(entry) => {
-                // TODO: get rid of FuncEnvironment::make_direct_func()?
-                let fident = environ.make_direct_func(func, index);
-                // let sig = func.dfg.callee_signature(fident);
-                let sig = func.dfg.imports[&fident].signature.clone();
-                *entry.insert((fident, sig.params().len()))
+                let sigidx = mod_info.functions[index];
+                let func_type = mod_info.func_types[sigidx].clone();
+                let func_name = mod_info
+                    .function_names
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| format!("func{}", index.index()));
+                let func_name_id = Ident::with_empty_span(Symbol::intern(&func_name));
+                let sig = sig_from_funct_type(&func_type, CallConv::SystemV, Linkage::External);
+                let Ok(func_id) =
+                    func.dfg
+                        .import_function(mod_info.name, func_name_id, sig.clone())
+                else {
+                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature (function {})", func_name_id, mod_info.name, func.id);
+                    diagnostics
+                        .diagnostic(miden_diagnostics::Severity::Error)
+                        .with_message(message.clone())
+                        .emit();
+                    return Err(WasmError::Unexpected(message));
+                };
+                *entry.insert((func_id, sig.params().len()))
             }
-        }
+        })
     }
 }

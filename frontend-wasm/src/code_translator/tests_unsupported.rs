@@ -8,7 +8,6 @@ use wasmparser::MemArg;
 use wasmparser::Operator;
 use wasmparser::Operator::*;
 
-use crate::environ::FuncEnvironment;
 use crate::environ::ModuleInfo;
 use crate::func_translation_state::FuncTranslationState;
 use crate::function_builder_ext::FunctionBuilderContext;
@@ -33,14 +32,13 @@ fn check_unsupported(op: &Operator) {
         .unwrap();
     let mut fb_ctx = FunctionBuilderContext::new();
     let mut state = FuncTranslationState::new();
-    let mut func_environ = FuncEnvironment::new(&module_info);
     let func_builder = module_func_builder.func_builder();
     let mut builder_ext = FunctionBuilderExt::new(func_builder, &mut fb_ctx);
     let result = translate_operator(
         op,
         &mut builder_ext,
         &mut state,
-        &mut func_environ,
+        &module_info,
         &diagnostics,
         SourceSpan::default(),
     );
