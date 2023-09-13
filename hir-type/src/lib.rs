@@ -166,50 +166,125 @@ impl Type {
     }
 
     pub fn is_signed_integer(&self) -> bool {
-        match self {
-            Self::I1 | Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize => {
-                true
-            }
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 | Self::Isize
+        )
+    }
+
+    pub fn is_unsigned_integer(&self) -> bool {
+        matches!(
+            self,
+            Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128 | Self::Usize
+        )
     }
 
     #[inline]
     pub fn is_float(&self) -> bool {
-        match self {
-            Self::F64 => true,
-            _ => false,
-        }
+        matches!(self, Self::F64)
     }
 
     #[inline]
     pub fn is_felt(&self) -> bool {
-        match self {
-            Self::Felt => true,
-            _ => false,
-        }
+        matches!(self, Self::Felt)
     }
 
     #[inline]
     pub fn is_pointer(&self) -> bool {
-        match self {
-            Self::Ptr(_) | Self::NativePtr(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Ptr(_) | Self::NativePtr(_))
     }
 
     #[inline]
     pub fn is_struct(&self) -> bool {
-        match self {
-            Self::Struct(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Struct(_))
     }
 
     #[inline]
     pub fn is_array(&self) -> bool {
-        match self {
-            Self::Array(_, _) => true,
+        matches!(self, Self::Array(_, _))
+    }
+
+    /// Returns true if `self` and `other` are compatible operand types for a binary operator, e.g. `add`
+    ///
+    /// In short, the rules are as follows:
+    ///
+    /// * The operand order is assumed to be `self <op> other`, i.e. `op` is being applied
+    ///   to `self` using `other`. The left-hand operand is used as the "controlling" type
+    ///   for the operator, i.e. it determines what instruction will be used to perform the
+    ///   operation.
+    /// * The operand types must be numeric, or support being manipulated numerically
+    /// * If the controlling type is unsigned, it is never compatible with signed types, because Miden
+    ///   instructions for unsigned types use a simple unsigned binary encoding, thus they will not handle
+    ///   signed operands using two's complement correctly.
+    /// * If the controlling type is signed, it is compatible with both signed and unsigned types, as long
+    ///   as the values fit in the range of the controlling type, e.g. adding a `u16` to an `i32` is fine,
+    ///   but adding a `u32` to an `i32` is not.
+    /// * Pointer types are permitted to be the controlling type, and since they are represented using u32,
+    ///   they have the same compatibility set as u32 does. In all other cases, pointer types are treated
+    ///   the same as any other non-numeric type.
+    /// * Non-numeric types are always incompatible, since no operators support these types
+    pub fn is_compatible_operand(&self, other: &Type) -> bool {
+        match (self, other) {
+            (Type::I1, Type::I1) => true,
+            (Type::I8, Type::I8) => true,
+            (Type::U8, Type::U8) => true,
+            (Type::I16, Type::I8 | Type::U8 | Type::I16) => true,
+            (Type::U16, Type::U8 | Type::U16) => true,
+            (
+                Type::I32 | Type::Isize,
+                Type::I8 | Type::U8 | Type::I16 | Type::U16 | Type::I32 | Type::Isize,
+            ) => true,
+            (Type::U32 | Type::Usize, Type::U8 | Type::U16 | Type::U32 | Type::Usize) => true,
+            (
+                Type::Felt,
+                Type::I8
+                | Type::U8
+                | Type::I16
+                | Type::U16
+                | Type::I32
+                | Type::U32
+                | Type::Isize
+                | Type::Usize
+                | Type::Felt,
+            ) => true,
+            (
+                Type::I64,
+                Type::I8
+                | Type::U8
+                | Type::I16
+                | Type::U16
+                | Type::I32
+                | Type::U32
+                | Type::Isize
+                | Type::Usize
+                | Type::Felt
+                | Type::I64,
+            ) => true,
+            (Type::U64, Type::U8 | Type::U16 | Type::U32 | Type::Usize | Type::U64) => true,
+            (
+                Type::I128,
+                Type::I8
+                | Type::U8
+                | Type::I16
+                | Type::U16
+                | Type::I32
+                | Type::U32
+                | Type::Isize
+                | Type::Usize
+                | Type::Felt
+                | Type::I64
+                | Type::U64
+                | Type::I128,
+            ) => true,
+            (
+                Type::U128,
+                Type::U8 | Type::U16 | Type::U32 | Type::Usize | Type::U64 | Type::U128,
+            ) => true,
+            (Type::U256, rty) => rty.is_integer(),
+            (Type::F64, Type::F64) => true,
+            (Type::Ptr(_) | Type::NativePtr(_), Type::U8 | Type::U16 | Type::U32 | Type::Usize) => {
+                true
+            }
             _ => false,
         }
     }
