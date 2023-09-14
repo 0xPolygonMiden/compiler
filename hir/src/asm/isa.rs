@@ -1,3 +1,5 @@
+use std::fmt;
+
 use cranelift_entity::entity_impl;
 
 use crate::{Felt, FunctionIdent, LocalId};
@@ -574,4 +576,142 @@ pub enum MasmOp {
     ///
     /// The behavior is undefined if either `a` or `b` are >= 2^32
     U32UncheckedMax,
+}
+
+/// This implementation displays the opcode name for the given [MasmOp]
+impl fmt::Display for MasmOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Padw => f.write_str("padw"),
+            Self::Push(_)
+            | Self::Pushw(_)
+            | Self::PushU8(_)
+            | Self::PushU16(_)
+            | Self::PushU32(_) => f.write_str("push"),
+            Self::Drop => f.write_str("drop"),
+            Self::Dropw => f.write_str("dropw"),
+            Self::Dup(_) => f.write_str("dup"),
+            Self::Dupw(_) => f.write_str("dupw"),
+            Self::Swap(_) => f.write_str("swap"),
+            Self::Swapw(_) => f.write_str("swapw"),
+            Self::Movup(_) => f.write_str("movup"),
+            Self::Movupw(_) => f.write_str("movupw"),
+            Self::Movdn(_) => f.write_str("movdn"),
+            Self::Movdnw(_) => f.write_str("movdnw"),
+            Self::Cswap => f.write_str("cswap"),
+            Self::Cswapw => f.write_str("cswapw"),
+            Self::Cdrop => f.write_str("cdrop"),
+            Self::Cdropw => f.write_str("cdropw"),
+            Self::Assert => f.write_str("assert"),
+            Self::Assertz => f.write_str("assertz"),
+            Self::AssertEq => f.write_str("assert_eq"),
+            Self::AssertEqw => f.write_str("assert_eqw"),
+            Self::LocAddr(_) => f.write_str("locaddr"),
+            Self::MemLoad
+            | Self::MemLoadOffset
+            | Self::MemLoadImm(_)
+            | Self::MemLoadOffsetImm(_, _) => f.write_str("mem_load"),
+            Self::MemLoadw | Self::MemLoadwImm(_) => f.write_str("mem_loadw"),
+            Self::MemStore
+            | Self::MemStoreOffset
+            | Self::MemStoreImm(_)
+            | Self::MemStoreOffsetImm(_, _) => f.write_str("mem_store"),
+            Self::MemStorew | Self::MemStorewImm(_) => f.write_str("mem_storew"),
+            Self::If(_, _) => f.write_str("if.true"),
+            Self::While(_) => f.write_str("while.true"),
+            Self::Repeat(_, _) => f.write_str("repeat"),
+            Self::Exec(_) => f.write_str("exec"),
+            Self::Syscall(_) => f.write_str("syscall"),
+            Self::Add | Self::AddImm(_) => f.write_str("add"),
+            Self::Sub | Self::SubImm(_) => f.write_str("sub"),
+            Self::Mul | Self::MulImm(_) => f.write_str("mul"),
+            Self::Div | Self::DivImm(_) => f.write_str("div"),
+            Self::Neg => f.write_str("neg"),
+            Self::Inv => f.write_str("inv"),
+            Self::Incr => f.write_str("incr"),
+            Self::Pow2 => f.write_str("pow2"),
+            Self::Exp | Self::ExpImm(_) => f.write_str("exp.u64"),
+            Self::Not => f.write_str("not"),
+            Self::And | Self::AndImm(_) => f.write_str("and"),
+            Self::Or | Self::OrImm(_) => f.write_str("or"),
+            Self::Xor | Self::XorImm(_) => f.write_str("xor"),
+            Self::Eq | Self::EqImm(_) => f.write_str("eq"),
+            Self::Neq | Self::NeqImm(_) => f.write_str("neq"),
+            Self::Gt | Self::GtImm(_) => f.write_str("gt"),
+            Self::Gte | Self::GteImm(_) => f.write_str("gte"),
+            Self::Lt | Self::LtImm(_) => f.write_str("lt"),
+            Self::Lte | Self::LteImm(_) => f.write_str("lte"),
+            Self::IsOdd => f.write_str("is_odd"),
+            Self::Eqw => f.write_str("eqw"),
+            Self::Clk => f.write_str("clk"),
+            Self::U32Test => f.write_str("u32.test"),
+            Self::U32Testw => f.write_str("u32.testw"),
+            Self::U32Assert => f.write_str("u32.assert"),
+            Self::U32Assert2 => f.write_str("u32.assert2"),
+            Self::U32Assertw => f.write_str("u32.assertw"),
+            Self::U32Cast => f.write_str("u23.cast"),
+            Self::U32Split => f.write_str("u32.split"),
+            Self::U32CheckedAdd | Self::U32CheckedAddImm(_) => f.write_str("u32.add.checked"),
+            Self::U32OverflowingAdd | Self::U32OverflowingAddImm(_) => {
+                f.write_str("u32.add.overflowing")
+            }
+            Self::U32WrappingAdd | Self::U32WrappingAddImm(_) => f.write_str("u32.add.wrapping"),
+            Self::U32OverflowingAdd3 => f.write_str("u32.add3.overflowing"),
+            Self::U32WrappingAdd3 => f.write_str("u32.add3.wrapping"),
+            Self::U32CheckedSub | Self::U32CheckedSubImm(_) => f.write_str("u32.sub.checked"),
+            Self::U32OverflowingSub | Self::U32OverflowingSubImm(_) => {
+                f.write_str("u32.sub.overflowing")
+            }
+            Self::U32WrappingSub | Self::U32WrappingSubImm(_) => f.write_str("u32.sub.wrapping"),
+            Self::U32CheckedMul | Self::U32CheckedMulImm(_) => f.write_str("u32.mul.checked"),
+            Self::U32OverflowingMul | Self::U32OverflowingMulImm(_) => {
+                f.write_str("u32.mul.overflowing")
+            }
+            Self::U32WrappingMul | Self::U32WrappingMulImm(_) => f.write_str("u32.mul.wrapping"),
+            Self::U32OverflowingMadd => f.write_str("u32.madd.overflowing"),
+            Self::U32WrappingMadd => f.write_str("u32.madd.wrapping"),
+            Self::U32CheckedDiv | Self::U32CheckedDivImm(_) => f.write_str("u32.div.checked"),
+            Self::U32UncheckedDiv | Self::U32UncheckedDivImm(_) => f.write_str("u32.div.unchecked"),
+            Self::U32CheckedMod | Self::U32CheckedModImm(_) => f.write_str("u32.mod.checked"),
+            Self::U32UncheckedMod | Self::U32UncheckedModImm(_) => f.write_str("u32.mod.unchecked"),
+            Self::U32CheckedDivMod | Self::U32CheckedDivModImm(_) => {
+                f.write_str("u32.divmod.checked")
+            }
+            Self::U32UncheckedDivMod | Self::U32UncheckedDivModImm(_) => {
+                f.write_str("u32.divmod.unchecked")
+            }
+            Self::U32And => f.write_str("u32.and"),
+            Self::U32Or => f.write_str("u32.or"),
+            Self::U32Xor => f.write_str("u32.xor"),
+            Self::U32Not => f.write_str("u32.not"),
+            Self::U32CheckedShl | Self::U32CheckedShlImm(_) => f.write_str("u32.shl.checked"),
+            Self::U32UncheckedShl | Self::U32UncheckedShlImm(_) => f.write_str("u32.shl.unchecked"),
+            Self::U32CheckedShr | Self::U32CheckedShrImm(_) => f.write_str("u32.shr.checked"),
+            Self::U32UncheckedShr | Self::U32UncheckedShrImm(_) => f.write_str("u32.shr.unchecked"),
+            Self::U32CheckedRotl | Self::U32CheckedRotlImm(_) => f.write_str("u32.rotl.checked"),
+            Self::U32UncheckedRotl | Self::U32UncheckedRotlImm(_) => {
+                f.write_str("u32.rotl.unchecked")
+            }
+            Self::U32CheckedRotr | Self::U32CheckedRotrImm(_) => f.write_str("u32.rotr.checked"),
+            Self::U32UncheckedRotr | Self::U32UncheckedRotrImm(_) => {
+                f.write_str("u32.rotr.unchecked")
+            }
+            Self::U32CheckedPopcnt => f.write_str("u32.popcnt.checked"),
+            Self::U32UncheckedPopcnt => f.write_str("u32.popcnt.unchecked"),
+            Self::U32Eq | Self::U32EqImm(_) => f.write_str("u32.eq"),
+            Self::U32Neq | Self::U32NeqImm(_) => f.write_str("u32.neq"),
+            Self::U32CheckedLt => f.write_str("u32.lt.checked"),
+            Self::U32UncheckedLt => f.write_str("u32.lt.unchecked"),
+            Self::U32CheckedLte => f.write_str("u32.lte.checked"),
+            Self::U32UncheckedLte => f.write_str("u32.lte.unchecked"),
+            Self::U32CheckedGt => f.write_str("u32.gt.checked"),
+            Self::U32UncheckedGt => f.write_str("u32.gt.unchecked"),
+            Self::U32CheckedGte => f.write_str("u32.gte.checked"),
+            Self::U32UncheckedGte => f.write_str("u32.gte.unchecked"),
+            Self::U32CheckedMin => f.write_str("u32.min.checked"),
+            Self::U32UncheckedMin => f.write_str("u32.min.unchecked"),
+            Self::U32CheckedMax => f.write_str("u32.max.checked"),
+            Self::U32UncheckedMax => f.write_str("u32.max.unchecked"),
+        }
+    }
 }
