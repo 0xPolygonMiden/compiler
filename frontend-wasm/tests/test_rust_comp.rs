@@ -70,7 +70,11 @@ fn check_ir(
     expected_ir: expect_test::Expect,
 ) {
     let wasm_bytes = compile_wasm(rust_source);
-    let wat = wasmprinter::print_bytes(&wasm_bytes).unwrap();
+    let mut wasm_printer = wasmprinter::Printer::new();
+    // disable printing of the "producers" section because it contains a rustc version
+    // to not brake tests when rustc is updated
+    wasm_printer.add_custom_section_printer("producers", |_, _, _| Ok(()));
+    let wat = wasm_printer.print(wasm_bytes.as_ref()).unwrap();
     expected_wat.assert_eq(&wat);
     let codemap = Arc::new(CodeMap::new());
     let diagnostics = DiagnosticsHandler::new(
