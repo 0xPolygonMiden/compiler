@@ -1,5 +1,5 @@
 [workspace]
-
+resolver = "2"
 members = [
   "hir",
   "hir-analysis",
@@ -12,7 +12,7 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-rust-version = "1.67"
+rust-version = "1.71"
 authors = ["Miden Team"]
 description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/miden-ir"
