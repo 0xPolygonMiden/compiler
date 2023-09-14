@@ -1442,8 +1442,38 @@ impl<'f> LoopBuilder<'f> {
                 assert_eq!(self.in_stack.stack(), self.out_stack.stack(), "expected the operand stack to be in the same abstract state whether the while.true loop is taken or skipped");
                 self.asm.push(self.ip, MasmOp::While(self.body));
             }
+            LoopType::Repeat(1) => {
+                // This is an edge case, but a single iteration `repeat` is no different than
+                // inlining the loop body into the outer code block and eliding the `repeat`.
+                //
+                // Since that is the case, we literally do that transformation here, to simplify
+                // the IR as much as possible during construction.
+                let id = self.body;
+                let mut block =
+                    core::mem::replace(&mut self.asm.blocks[id], MasmBlock { id, ops: vec![] });
+                self.asm.blocks[self.ip].append(&mut block.ops);
+            }
             LoopType::Repeat(n) => {
-                // No special validation is needed, we're done
+                // Apply the stack effects of the loop body `n` times, asserting if some operation
+                // in the loop fails due to type mismatches. This is sufficient to validate `repeat`,
+                // as it's iteration count is known statically, entry into the loop is unconditional,
+                // and the only way to exit the loop is to complete all `n` iterations.
+                //
+                // By validating in this way, we also implicitly validate the following:
+                //
+                // 1. If we were to translate this to SSA form, the resulting control flow graph would
+                // have the same number and type of arguments passed to the loop header both on entry
+                // and along the loopback edges.
+                //
+                // 2. If the body of the loop removes elements from the stack, we ensure that all `n`
+                // iterations can be performed without exhausting the stack, or perform any other invalid
+                // stack operation.
+                let code = &self.asm.blocks[self.body];
+                for _ in 1..n {
+                    for op in code.ops.iter() {
+                        apply_op_stack_effects(op, &mut self.out_stack, self.dfg, self.asm);
+                    }
+                }
                 self.asm.push(self.ip, MasmOp::Repeat(n, self.body));
             }
         }
