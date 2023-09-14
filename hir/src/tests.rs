@@ -162,7 +162,7 @@ fn inline_asm_builders() {
     let sig = Signature {
         params: vec![
             AbiParam::new(Type::Ptr(Box::new(Type::Felt))),
-            AbiParam::new(Type::Felt),
+            AbiParam::new(Type::U32),
         ],
         results: vec![AbiParam::new(Type::Felt)],
         cc: CallConv::SystemV,
@@ -182,10 +182,10 @@ fn inline_asm_builders() {
         .ins()
         .inline_asm(&[ptr, len], [Type::Felt], SourceSpan::UNKNOWN);
     asm_builder.ins().push(Felt::ZERO); // [sum, ptr, len]
-    asm_builder.ins().push(Felt::ZERO); // [i, sum, ptr, len]
+    asm_builder.ins().push_u32(0); // [i, sum, ptr, len]
     asm_builder.ins().dup(0); // [i, i, sum, ptr, len]
     asm_builder.ins().dup(4); // [len, i, i, sum, ptr, len]
-    asm_builder.ins().lt(); // [i < len, i, sum, ptr, len]
+    asm_builder.ins().lt_u32(); // [i < len, i, sum, ptr, len]
 
     // Now, build the loop body
     //
@@ -194,10 +194,11 @@ fn inline_asm_builders() {
 
     // Calculate `i / 4`
     lb.ins().dup(0); // [i, i, sum, ptr, len]
-    lb.ins().div_imm(Felt::new(4)); // [word_offset, i, sum, ptr, len]
+    lb.ins().div_imm_u32(4); // [word_offset, i, sum, ptr, len]
 
     // Calculate the address for `array[i / 4]`
     lb.ins().dup(3); // [ptr, word_offset, ..]
+    lb.ins().swap(1);
     lb.ins().add_u32(Overflow::Checked); // [ptr + word_offset, i, sum, ptr, len]
 
     // Calculate the `i % 4`
@@ -206,12 +207,18 @@ fn inline_asm_builders() {
 
     // Precalculate what elements of the word to drop, so that
     // we are only left with the specific element we wanted
-    lb.ins().dup(0); // [element_offset, element_offset, ..]
-    lb.ins().lt_imm(Felt::new(3)); // [element_offset < 3, element_offset, ..]
-    lb.ins().dup(1); // [element_offset, element_offset < 3, ..]
-    lb.ins().lt_imm(Felt::new(2)); // [element_offset < 2, element_offset < 3, ..]
-    lb.ins().movup(2); // [element_offset, element_offset < 2, ..]
-    lb.ins().lt_imm(Felt::new(1)); // [element_offset < 1, element_offset < 2, ..]
+    lb.ins().push_u32(4); // [n, element_offset, ..]
+    let mut rb = lb.ins().repeat(3);
+    rb.ins().sub_imm_u32(1, Overflow::Checked); // [n = n - 1, element_offset]
+    rb.ins().dup(1); // [element_offset, n, element_offset, ..]
+    rb.ins().dup(1); // [n, element_offset, n, element_offset, ..]
+    rb.ins().lt_u32(); // [element_offset < n, n, element_offset, ..]
+    rb.ins().movdn(2); // [n, element_offset, element_offset < n]
+    rb.build(); // [0, element_offset, element_offset < 1, element_offset < 2, ..]
+
+    // Clean up the now unused operands we used to calculate which element we want
+    lb.ins().drop(); // [element_offset, ..]
+    lb.ins().drop(); // [element_offset < 1, ..]
 
     // Load the word
     lb.ins().movup(3); // [ptr + word_offset, element_offset < 1]
@@ -235,7 +242,7 @@ fn inline_asm_builders() {
     // the condition for the loop
     lb.ins().dup(0); // [i, i, sum + array[i], ptr, len]
     lb.ins().dup(4); // [len, i, i, sum + array[i], ptr, len]
-    lb.ins().lt(); // [i < len, i, sum + array[i], ptr, len]
+    lb.ins().lt_u32(); // [i < len, i, sum + array[i], ptr, len]
 
     // Finalize, it is at this point that validation will occur
     lb.build();
@@ -245,9 +252,9 @@ fn inline_asm_builders() {
     // The stack here is: [i, sum, ptr, len]
     asm_builder.ins().swap(1); // [sum, i, ptr, len]
     asm_builder.ins().movdn(3); // [i, ptr, len, sum]
-    asm_builder.ins().drop(); // [ptr, len, sum]
-    asm_builder.ins().drop(); // [len, sum]
-    asm_builder.ins().drop(); // [sum]
+    let mut rb = asm_builder.ins().repeat(3);
+    rb.ins().drop();
+    rb.build(); // [sum]
 
     // Finish the inline assembly block
     let asm = asm_builder.build();
