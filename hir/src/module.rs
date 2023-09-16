@@ -63,11 +63,48 @@ pub struct Module {
 }
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Write;
+
         if self.is_kernel {
             write!(f, "kernel {}\n", &self.name)?;
         } else {
             write!(f, "module {}\n", &self.name)?;
         }
+
+        if !self.segments.is_empty() {
+            f.write_char('\n')?;
+            f.write_str("memory {\n")?;
+            for segment in self.segments.iter() {
+                let data = self.globals.get_constant(segment.init);
+                writeln!(
+                    f,
+                    "    segment @{:#x} x {} = {};",
+                    segment.offset, segment.size, data
+                )?;
+            }
+            f.write_str("}\n\n")?;
+        }
+
+        if !self.globals.is_empty() {
+            for global in self.globals.iter() {
+                write!(
+                    f,
+                    "global {} {} : {}",
+                    global.linkage, global.name, global.ty
+                )?;
+                match global.init {
+                    Some(init) => {
+                        let data = self.globals.get_constant(init);
+                        writeln!(f, " = {} {{ id = {} }};", data, global.id())?;
+                    }
+                    None => {
+                        writeln!(f, " {{ id = {} }};", global.id())?;
+                    }
+                }
+            }
+            writeln!(f)?;
+        }
+
         let mut external_functions = BTreeMap::<FunctionIdent, Signature>::default();
         for function in self.functions.iter() {
             for import in function.dfg.imports() {
