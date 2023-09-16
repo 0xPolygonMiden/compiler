@@ -42,6 +42,8 @@ pub struct Module {
     /// Documentation attached to this module, to be passed through to
     /// Miden Assembly during code generation.
     pub docs: Option<String>,
+    /// The set of data segments allocated in this module
+    segments: DataSegmentTable,
     /// The set of global variables declared in this module
     globals: GlobalVariableTable,
     /// The set of functions which belong to this module, in the order
@@ -124,6 +126,7 @@ impl Module {
             link: Default::default(),
             name,
             docs: None,
+            segments: Default::default(),
             globals: GlobalVariableTable::new(ConflictResolutionStrategy::None),
             functions: Default::default(),
             is_kernel: false,
@@ -151,6 +154,41 @@ impl Module {
     /// Returns true if this module has yet to be attached to a [Program]
     pub fn is_detached(&self) -> bool {
         !self.link.is_linked()
+    }
+
+    /// Return an iterator over the data segments allocated in this module
+    ///
+    /// The iterator is double-ended, so can be used to traverse the segments in either direction.
+    ///
+    /// Data segments are ordered by the address at which are are allocated, in ascending order.
+    pub fn segments<'a, 'b: 'a>(
+        &'b self,
+    ) -> intrusive_collections::linked_list::Iter<'a, DataSegmentAdapter> {
+        self.segments.iter()
+    }
+
+    /// Declare a new [DataSegment] in this module, with the given offset, size, and data.
+    ///
+    /// Returns `Err` if the proposed segment overlaps with an existing segment.
+    ///
+    /// Data segments are ordered by the address at which they are allocated, at link-time, all
+    /// segments from all modules are linked together, and they must either be disjoint, or exactly
+    /// identical in order to overlap - it is not permitted to have partially overlapping segments
+    /// with different views of the memory represented by that segment.
+    pub fn declare_data_segment(
+        &mut self,
+        offset: Offset,
+        size: u32,
+        init: ConstantData,
+        readonly: bool,
+    ) -> Result<(), DataSegmentError> {
+        let init_size = init
+            .len()
+            .try_into()
+            .expect("invalid constant data: must be smaller than 2^32 bytes");
+        let size = core::cmp::max(size, init_size);
+        let init = self.globals.insert_constant(init);
+        self.segments.insert(offset, size, init, readonly)
     }
 
     /// Return an iterator over the global variables declared in this module

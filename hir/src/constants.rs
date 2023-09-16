@@ -125,6 +125,11 @@ impl ConstantPool {
         &self.constants[&id]
     }
 
+    /// Returns true if this pool contains the given constant data
+    pub fn contains(&self, data: &ConstantData) -> bool {
+        self.cache.contains_key(data)
+    }
+
     /// Insert constant data into the pool, returning a handle for later referencing; when constant
     /// data is inserted that is a duplicate of previous constant data, the existing handle will be
     /// returned.

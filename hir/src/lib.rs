@@ -5,7 +5,11 @@ pub use miden_diagnostics::SourceSpan;
 pub use miden_hir_symbol::{symbols, Symbol};
 pub use miden_hir_type::{FunctionType, Type, TypeRepr};
 
+/// Represents a field element in Miden
 pub type Felt = winter_math::fields::f64::BaseElement;
+
+/// Represents an offset from the base of linear memory in Miden
+pub type Offset = u32;
 
 macro_rules! assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
@@ -63,6 +67,7 @@ mod layout;
 mod locals;
 mod module;
 mod program;
+mod segments;
 #[cfg(test)]
 mod tests;
 mod value;
@@ -86,6 +91,7 @@ pub use self::layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap};
 pub use self::locals::{Local, LocalId};
 pub use self::module::*;
 pub use self::program::{Linker, LinkerError, Program};
+pub use self::segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable};
 pub use self::value::{Value, ValueData, ValueList, ValueListPool};
 pub use self::write::{write_external_function, write_function};
 

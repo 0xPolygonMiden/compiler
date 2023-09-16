@@ -28,6 +28,8 @@ pub struct Program {
     /// a program or just a collection of modules; and in the case of the former, what code
     /// to emit in the root code block.
     entrypoint: Option<FunctionIdent>,
+    /// The data segments gathered from all modules in the program, and laid out in address order.
+    segments: DataSegmentTable,
     /// The global variable table produced by linking the global variable tables of all
     /// modules in this program. The layout of this table corresponds to the layout of
     /// global variables in the linear memory heap at runtime.
@@ -60,6 +62,7 @@ impl Program {
         Self {
             modules: Default::default(),
             entrypoint: None,
+            segments: Default::default(),
             globals: Default::default(),
         }
     }
@@ -95,6 +98,17 @@ impl Program {
         let entry = module.function(id.function);
         debug_assert!(entry.is_some(), "invalid entrypoint: unknown function");
         entry
+    }
+
+    /// Return an iterator over the data segments allocated in this program
+    ///
+    /// The iterator is double-ended, so can be used to traverse the segments in either direction.
+    ///
+    /// Data segments are ordered by the address at which are are allocated, in ascending order.
+    pub fn segments<'a, 'b: 'a>(
+        &'b self,
+    ) -> intrusive_collections::linked_list::Iter<'a, DataSegmentAdapter> {
+        self.segments.iter()
     }
 
     /// Get a reference to the global variable table for this program
