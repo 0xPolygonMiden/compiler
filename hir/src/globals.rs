@@ -102,7 +102,6 @@ pub enum ConflictResolutionStrategy {
 
 /// This table is used to lay out and link together global variables for a [Program].
 ///
-///
 /// See the docs for [Linkage], [GlobalVariableData], and [GlobalVariableTable::declare] for more details.
 pub struct GlobalVariableTable {
     layout: LinkedList<GlobalVariableAdapter>,
@@ -127,6 +126,11 @@ impl GlobalVariableTable {
             next_unique_id: 0,
             conflict_strategy,
         }
+    }
+
+    /// Returns true if the global variable table is empty
+    pub fn is_empty(&self) -> bool {
+        self.layout.is_empty()
     }
 
     /// Get a double-ended iterator over the current table layout
@@ -175,18 +179,19 @@ impl GlobalVariableTable {
     }
 
     /// Computes the offset, in bytes, of the given [GlobalVariable] from the
-    /// start of the linear memory heap, assuming that the layout of the global
-    /// variable table up to and including `id` remains unchanged.
+    /// start of the segment in which globals are allocated, assuming that the
+    /// layout of the global variable table up to and including `id` remains
+    /// unchanged.
     ///
     /// # SAFETY
     ///
-    /// This should only be used once all global variables have been declared, and
-    /// the layout of the table has been decided. It is technically safe to use
-    /// offsets obtained before all global variables are declared, _IF_ the layout
-    /// up to and including those global variables remains unchanged after that
-    /// point.
+    /// This should only be used once all data segments and global variables have
+    /// been declared, and the layout of the table has been decided. It is technically
+    /// safe to use offsets obtained before all global variables are declared, _IF_ the
+    /// data segments and global variable layout up to and including those global variables
+    /// remains unchanged after that point.
     ///
-    /// If the offset for a given global variable is obtained, and the layout is
+    /// If the offset for a given global variable is obtained, and the heap layout is
     /// subsequently changed in such a way that the original offset is no longer
     /// accurate, bad things will happen.
     pub unsafe fn offset_of(&self, id: GlobalVariable) -> usize {
@@ -230,6 +235,21 @@ impl GlobalVariableTable {
         linkage: Linkage,
     ) -> Result<GlobalVariable, GlobalVariableConflictError> {
         self.try_insert(name, ty, linkage)
+    }
+
+    /// Get the constant data associated with `id`
+    pub fn get_constant(&self, id: Constant) -> &ConstantData {
+        self.data.get(id)
+    }
+
+    /// Inserts the given constant data into this table without allocating a global
+    pub fn insert_constant(&mut self, data: ConstantData) -> Constant {
+        self.data.insert(data)
+    }
+
+    /// Returns true if the given constant data is in the constant pool
+    pub fn contains_constant(&self, data: &ConstantData) -> bool {
+        self.data.contains(data)
     }
 
     /// This sets the initializer for the given [GlobalVariable] to `init`.
