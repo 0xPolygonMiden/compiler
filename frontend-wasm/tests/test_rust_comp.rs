@@ -24,31 +24,17 @@ fn hash_string(inputs: &[&str]) -> String {
 fn compile_wasm(rust_source: &str) -> Vec<u8> {
     use std::fs;
     use std::process::Command;
-
     let rustc_opts = [
         "-C",
         "opt-level=z", // optimize for size
         "--target",
         "wasm32-unknown-unknown",
     ];
-
-    // include rustc_opts in the hash to ensure that the output file changes when options change
-    let file_name = hash_string(&[&rustc_opts.concat(), rust_source]);
-
-    let temp_dir = std::env::temp_dir().join("miden-frontend-wasm-rust-comp-tests");
-    if !temp_dir.exists() {
-        fs::create_dir(&temp_dir).unwrap();
-    }
+    let file_name = hash_string(&[rust_source]);
+    let temp_dir = std::env::temp_dir();
     let input_file = temp_dir.join(format!("{file_name}.rs"));
     let output_file = temp_dir.join(format!("{file_name}.wasm"));
-
-    // skip compilation if the output file already exists
-    if output_file.exists() {
-        return fs::read(output_file).unwrap();
-    }
-
     fs::write(&input_file, rust_source).unwrap();
-
     let output = Command::new("rustc")
         .args(&rustc_opts)
         .arg(&input_file)
@@ -56,12 +42,14 @@ fn compile_wasm(rust_source: &str) -> Vec<u8> {
         .arg(&output_file)
         .output()
         .expect("Failed to execute rustc.");
-
     if !output.status.success() {
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         panic!("Rust to Wasm compilation failed!");
     }
-    fs::read(output_file).unwrap()
+    let wasm = fs::read(&output_file).unwrap();
+    fs::remove_file(&input_file).unwrap();
+    fs::remove_file(&output_file).unwrap();
+    return wasm;
 }
 
 fn check_ir(
