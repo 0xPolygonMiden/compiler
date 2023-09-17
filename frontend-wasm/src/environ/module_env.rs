@@ -44,12 +44,6 @@ pub struct ModuleInfo {
     /// Global names.
     global_names: SecondaryMap<GlobalIndex, String>,
 
-    /// Data segments declared in the module.
-    pub data_segments: PrimaryMap<DataSegmentIndex, DataSegment>,
-
-    /// Data segment names.
-    pub data_segment_names: SecondaryMap<DataSegmentIndex, String>,
-
     /// The start function.
     pub start_func: Option<FuncIndex>,
 }
@@ -66,8 +60,6 @@ impl ModuleInfo {
             globals: PrimaryMap::new(),
             function_names: SecondaryMap::new(),
             global_names: SecondaryMap::new(),
-            data_segments: PrimaryMap::new(),
-            data_segment_names: SecondaryMap::new(),
         }
     }
 
@@ -94,6 +86,12 @@ pub struct ModuleEnvironment<'a> {
 
     /// Unparsed function bodies (bytes).
     pub function_bodies: PrimaryMap<DefinedFuncIndex, FunctionBody<'a>>,
+
+    /// Data segments declared in the module
+    pub data_segments: PrimaryMap<DataSegmentIndex, DataSegment<'a>>,
+
+    /// Data segment names.
+    pub data_segment_names: SecondaryMap<DataSegmentIndex, String>,
 }
 
 impl<'a> ModuleEnvironment<'a> {
@@ -103,6 +101,8 @@ impl<'a> ModuleEnvironment<'a> {
             info: ModuleInfo::new(Ident::with_empty_span(Symbol::intern("noname"))),
             trans: FuncTranslator::new(),
             function_bodies: PrimaryMap::new(),
+            data_segments: PrimaryMap::new(),
+            data_segment_names: SecondaryMap::new(),
         }
     }
 
@@ -193,10 +193,10 @@ impl<'a> ModuleEnvironment<'a> {
         _module_builder: &mut ModuleBuilder,
         diagnostics: &DiagnosticsHandler,
     ) -> Result<(), WasmError> {
-        for (data_segment_idx, data_segment) in &self.info.data_segments {
-            let data_segment_name = self.info.data_segment_names[data_segment_idx].clone();
+        for (data_segment_idx, data_segment) in &self.data_segments {
+            let data_segment_name = self.data_segment_names[data_segment_idx].clone();
             let _readonly = data_segment_name.contains(".rodata");
-            let _init = ConstantData::from(data_segment.data.clone());
+            let _init = ConstantData::from(data_segment.data);
             let _offset = data_segment
                 .offset
                 .as_i32(&self.info.globals, diagnostics)?;
@@ -271,12 +271,12 @@ impl<'a> ModuleEnvironment<'a> {
         self.info.function_names[func_index] = String::from(name);
     }
 
-    pub fn declare_data_segment(&mut self, segment: DataSegment) {
-        self.info.data_segments.push(segment);
+    pub fn declare_data_segment(&mut self, segment: DataSegment<'a>) {
+        self.data_segments.push(segment);
     }
 
     pub fn declare_data_segment_name(&mut self, segment_index: DataSegmentIndex, name: &'a str) {
-        self.info.data_segment_names[segment_index] = String::from(name);
+        self.data_segment_names[segment_index] = String::from(name);
     }
 
     /// Indicates that a custom section has been found in the wasm file

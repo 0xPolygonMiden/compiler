@@ -161,11 +161,11 @@ impl DataSegmentOffset {
 
 /// A WebAssembly data segment.
 /// https://www.w3.org/TR/wasm-core-1/#data-segments%E2%91%A0
-pub struct DataSegment {
+pub struct DataSegment<'a> {
     /// The offset of the data segment inside the linear memory.
     pub offset: DataSegmentOffset,
     /// The initialization data.
-    pub data: Vec<u8>,
+    pub data: &'a [u8],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
