@@ -170,10 +170,7 @@ pub fn parse_data_section<'a>(
                         );
                     }
                 };
-                let segment = DataSegment {
-                    offset,
-                    data: data.to_owned(),
-                };
+                let segment = DataSegment { offset, data };
                 environ.declare_data_segment(segment);
             }
             DataKind::Passive => {
