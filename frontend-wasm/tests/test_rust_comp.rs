@@ -339,3 +339,232 @@ fn rust_enum() {
         "#]],
     )
 }
+
+#[test]
+fn rust_array() {
+    check_ir(
+        include_str!("rust_source/array.rs"),
+        expect![[r#"
+            (module
+              (type (;0;) (func (param i32 i32) (result i32)))
+              (type (;1;) (func (result i32)))
+              (func $sum_arr (;0;) (type 0) (param i32 i32) (result i32)
+                (local i32)
+                i32.const 0
+                local.set 2
+                block ;; label = @1
+                  local.get 1
+                  i32.eqz
+                  br_if 0 (;@1;)
+                  loop ;; label = @2
+                    local.get 0
+                    i32.load
+                    local.get 2
+                    i32.add
+                    local.set 2
+                    local.get 0
+                    i32.const 4
+                    i32.add
+                    local.set 0
+                    local.get 1
+                    i32.const -1
+                    i32.add
+                    local.tee 1
+                    br_if 0 (;@2;)
+                  end
+                end
+                local.get 2
+              )
+              (func $__main (;1;) (type 1) (result i32)
+                i32.const 1048576
+                i32.const 5
+                call $sum_arr
+                i32.const 1048596
+                i32.const 5
+                call $sum_arr
+                i32.add
+              )
+              (memory (;0;) 17)
+              (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
+              (global (;1;) i32 i32.const 1048616)
+              (global (;2;) i32 i32.const 1048624)
+              (export "memory" (memory 0))
+              (export "sum_arr" (func $sum_arr))
+              (export "__main" (func $__main))
+              (export "__data_end" (global 1))
+              (export "__heap_base" (global 2))
+              (data $.rodata (;0;) (i32.const 1048576) "\01\00\00\00\02\00\00\00\03\00\00\00\04\00\00\00\05\00\00\00\06\00\00\00\07\00\00\00\08\00\00\00\09\00\00\00\0a\00\00\00")
+            )"#]],
+        expect![[r#"
+            module noname
+
+            pub fn sum_arr(i32, i32) -> i32 {
+            block0(v0: i32, v1: i32):
+                v3 = const.i32 0  : i32
+                v4 = const.i32 0  : i32
+                v5 = const.i32 0  : i32
+                v6 = eq v1, v5  : i1
+                v7 = const.i32 0  : i32
+                v8 = neq v6, v7  : i1
+                condbr v8, block2(v4), block3
+
+            block1(v2: i32):
+                v22 = ret v2  : ()
+
+            block2(v21: i32):
+                br block1(v21)
+
+            block3:
+                br block4(v0, v4, v1)
+
+            block4(v9: i32, v12: i32, v16: i32):
+                v10 = inttoptr v9  : *mut i32
+                v11 = load v10  : i32
+                v13 = add v11, v12  : i32
+                v14 = const.i32 4  : i32
+                v15 = add v9, v14  : i32
+                v17 = const.i32 -1  : i32
+                v18 = add v16, v17  : i32
+                v19 = const.i32 0  : i32
+                v20 = neq v18, v19  : i1
+                condbr v20, block4(v15, v13, v18), block6
+
+            block5:
+                br block2(v13)
+
+            block6:
+                br block5
+            }
+
+            pub fn __main() -> i32 {
+            block0:
+                v1 = const.i32 1048576  : i32
+                v2 = const.i32 5  : i32
+                v3 = call noname::sum_arr(v1, v2)  : i32
+                v4 = const.i32 1048596  : i32
+                v5 = const.i32 5  : i32
+                v6 = call noname::sum_arr(v4, v5)  : i32
+                v7 = add v3, v6  : i32
+                br block1(v7)
+
+            block1(v0: i32):
+                v8 = ret v0  : ()
+            }
+        "#]],
+    )
+}
+
+#[test]
+fn rust_static_mut() {
+    check_ir(
+        include_str!("rust_source/static_mut.rs"),
+        expect![[r#"
+            (module
+              (type (;0;) (func))
+              (type (;1;) (func (result i32)))
+              (func $global_var_update (;0;) (type 0)
+                i32.const 0
+                i32.const 0
+                i32.load8_u offset=1048577
+                i32.const 1
+                i32.add
+                i32.store8 offset=1048576
+              )
+              (func $__main (;1;) (type 1) (result i32)
+                (local i32 i32 i32)
+                call $global_var_update
+                i32.const 0
+                local.set 0
+                i32.const -9
+                local.set 1
+                loop ;; label = @1
+                  local.get 1
+                  i32.const 1048585
+                  i32.add
+                  i32.load8_u
+                  local.get 0
+                  i32.add
+                  local.set 0
+                  local.get 1
+                  i32.const 1
+                  i32.add
+                  local.tee 2
+                  local.set 1
+                  local.get 2
+                  br_if 0 (;@1;)
+                end
+                local.get 0
+                i32.const 255
+                i32.and
+              )
+              (memory (;0;) 17)
+              (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
+              (global (;1;) i32 i32.const 1048585)
+              (global (;2;) i32 i32.const 1048592)
+              (export "memory" (memory 0))
+              (export "global_var_update" (func $global_var_update))
+              (export "__main" (func $__main))
+              (export "__data_end" (global 1))
+              (export "__heap_base" (global 2))
+              (data $.data (;0;) (i32.const 1048576) "\01\02\03\04\05\06\07\08\09")
+            )"#]],
+        expect![[r#"
+            module noname
+
+            pub fn global_var_update() {
+            block0:
+                v0 = const.i32 0  : i32
+                v1 = const.i32 0  : i32
+                v2 = const.i32 1048577  : i32
+                v3 = add v1, v2  : i32
+                v4 = inttoptr v3  : *mut i8
+                v5 = load v4  : i8
+                v6 = zext v5  : i32
+                v7 = const.i32 1  : i32
+                v8 = add v6, v7  : i32
+                v9 = trunc v8  : i8
+                v10 = const.i32 1048576  : i32
+                v11 = add v0, v10  : i32
+                v12 = inttoptr v11  : *mut i8
+                store v12, v9
+                br block1
+
+            block1:
+                v13 = ret   : ()
+            }
+
+            pub fn __main() -> i32 {
+            block0:
+                v1 = const.i32 0  : i32
+                call noname::global_var_update()
+                v2 = const.i32 0  : i32
+                v3 = const.i32 -9  : i32
+                br block2(v3, v2)
+
+            block1(v0: i32):
+                v18 = ret v0  : ()
+
+            block2(v4: i32, v10: i32):
+                v5 = const.i32 1048585  : i32
+                v6 = add v4, v5  : i32
+                v7 = inttoptr v6  : *mut i8
+                v8 = load v7  : i8
+                v9 = zext v8  : i32
+                v11 = add v9, v10  : i32
+                v12 = const.i32 1  : i32
+                v13 = add v4, v12  : i32
+                v14 = const.i32 0  : i32
+                v15 = neq v13, v14  : i1
+                condbr v15, block2(v13, v11), block4
+
+            block3:
+                v16 = const.i32 255  : i32
+                v17 = band v11, v16  : i32
+                br block1(v17)
+
+            block4:
+                br block3
+            }
+        "#]],
+    );
+}

@@ -6,14 +6,15 @@ use crate::{
     error::{WasmError, WasmResult},
     unsupported_diag,
     wasm_types::{
-        convert_func_type, convert_global_type, FuncIndex, GlobalIndex, GlobalInit, TypeIndex,
+        convert_func_type, convert_global_type, DataSegment, DataSegmentIndex, DataSegmentOffset,
+        FuncIndex, GlobalIndex, GlobalInit, TypeIndex,
     },
 };
 use miden_diagnostics::DiagnosticsHandler;
 use wasmparser::{
-    DataSectionReader, ElementSectionReader, FunctionSectionReader, GlobalSectionReader,
-    ImportSectionReader, MemorySectionReader, NameSectionReader, Naming, Operator, Type, TypeRef,
-    TypeSectionReader,
+    Data, DataKind, DataSectionReader, ElementSectionReader, FunctionSectionReader,
+    GlobalSectionReader, ImportSectionReader, MemorySectionReader, NameSectionReader, Naming,
+    Operator, Type, TypeRef, TypeSectionReader,
 };
 
 /// Parses the Type section of the wasm module.
@@ -139,11 +140,49 @@ pub fn parse_element_section<'a>(
 
 /// Parses the Data section of the wasm module.
 pub fn parse_data_section<'a>(
-    _data: DataSectionReader<'a>,
-    _environ: &mut ModuleEnvironment<'a>,
-    _diagnostics: &DiagnosticsHandler,
+    data: DataSectionReader<'a>,
+    environ: &mut ModuleEnvironment<'a>,
+    diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    todo!("Data section are not yet implemented");
+    for (_index, entry) in data.into_iter().enumerate() {
+        let Data {
+            kind,
+            data,
+            range: _,
+        } = entry?;
+        match kind {
+            DataKind::Active {
+                // ignored, since for Wasm spec v1 it's always 0
+                memory_index: _,
+                offset_expr,
+            } => {
+                let mut offset_expr_reader = offset_expr.get_binary_reader();
+                let offset = match offset_expr_reader.read_operator()? {
+                    Operator::I32Const { value } => DataSegmentOffset::I32Const(value),
+                    Operator::GlobalGet { global_index } => {
+                        DataSegmentOffset::GetGlobal(GlobalIndex::from_u32(global_index))
+                    }
+                    ref s => {
+                        unsupported_diag!(
+                            diagnostics,
+                            "unsupported init expr in data section offset: {:?}",
+                            s
+                        );
+                    }
+                };
+                let segment = DataSegment {
+                    offset,
+                    data: data.to_owned(),
+                };
+                environ.declare_data_segment(segment);
+            }
+            DataKind::Passive => {
+                // Passive data segments type is added in Wasm spec 2.0
+                unsupported_diag!(diagnostics, "Passive data segments are not supported");
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Parses the Name section of the wasm module.
@@ -185,12 +224,19 @@ pub fn parse_name_section<'a>(
                     }
                 }
             }
+            wasmparser::Name::Data(names) => {
+                for name in names {
+                    let Naming { index, name } = name?;
+                    if index != u32::max_value() {
+                        environ.declare_data_segment_name(DataSegmentIndex::from_u32(index), name);
+                    }
+                }
+            }
             wasmparser::Name::Label(_)
             | wasmparser::Name::Type(_)
             | wasmparser::Name::Table(_)
             | wasmparser::Name::Memory(_)
             | wasmparser::Name::Element(_)
-            | wasmparser::Name::Data(_)
             | wasmparser::Name::Unknown { .. } => {}
         }
     }

@@ -4,7 +4,8 @@ use crate::error::{WasmError, WasmResult};
 use crate::func_translator::FuncTranslator;
 use crate::translation_utils::sig_from_funct_type;
 use crate::wasm_types::{
-    DefinedFuncIndex, FuncIndex, Global, GlobalIndex, Memory, MemoryIndex, TypeIndex,
+    DataSegment, DataSegmentIndex, DefinedFuncIndex, FuncIndex, Global, GlobalIndex, Memory,
+    MemoryIndex, TypeIndex,
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
@@ -43,6 +44,12 @@ pub struct ModuleInfo {
     /// Global names.
     global_names: SecondaryMap<GlobalIndex, String>,
 
+    /// Data segments declared in the module.
+    pub data_segments: PrimaryMap<DataSegmentIndex, DataSegment>,
+
+    /// Data segment names.
+    pub data_segment_names: SecondaryMap<DataSegmentIndex, String>,
+
     /// The start function.
     pub start_func: Option<FuncIndex>,
 }
@@ -59,6 +66,8 @@ impl ModuleInfo {
             globals: PrimaryMap::new(),
             function_names: SecondaryMap::new(),
             global_names: SecondaryMap::new(),
+            data_segments: PrimaryMap::new(),
+            data_segment_names: SecondaryMap::new(),
         }
     }
 
@@ -120,6 +129,7 @@ impl<'a> ModuleEnvironment<'a> {
     ) -> WasmResult<Module> {
         let mut module_builder = ModuleBuilder::new(self.info.name.as_str());
         self.build_globals(&mut module_builder, diagnostics)?;
+        self.build_data_segments(&mut module_builder, diagnostics)?;
         let get_num_func_imports = self.get_num_func_imports();
         for (def_func_index, body) in &self.function_bodies {
             let func_index = FuncIndex::new(get_num_func_imports + def_func_index.index());
@@ -152,7 +162,7 @@ impl<'a> ModuleEnvironment<'a> {
     }
 
     fn build_globals(
-        &mut self,
+        &self,
         module_builder: &mut ModuleBuilder,
         diagnostics: &DiagnosticsHandler,
     ) -> Result<(), WasmError> {
@@ -176,6 +186,30 @@ impl<'a> ModuleEnvironment<'a> {
                 return Err(WasmError::Unexpected(message));
             }
         })
+    }
+
+    fn build_data_segments(
+        &self,
+        _module_builder: &mut ModuleBuilder,
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), WasmError> {
+        for (data_segment_idx, data_segment) in &self.info.data_segments {
+            let data_segment_name = self.info.data_segment_names[data_segment_idx].clone();
+            let _readonly = data_segment_name.contains(".rodata");
+            let _init = ConstantData::from(data_segment.data.clone());
+            let _offset = data_segment
+                .offset
+                .as_i32(&self.info.globals, diagnostics)?;
+            // if let Err(e) = module_builder.declare_data_segment(offset, size, init, readonly) {
+            //     let message = format!("Failed to declare data segment {init} for data segment size {size} at {offset} with error: {:?}", e);
+            //     diagnostics
+            //         .diagnostic(miden_diagnostics::Severity::Error)
+            //         .with_message(message.clone())
+            //         .emit();
+            //     return Err(WasmError::Unexpected(message));
+            // }
+        }
+        Ok(())
     }
 
     /// Declares a function signature to the environment.
@@ -235,6 +269,14 @@ impl<'a> ModuleEnvironment<'a> {
     /// Declares the name of a function to the environment.
     pub fn declare_func_name(&mut self, func_index: FuncIndex, name: &'a str) {
         self.info.function_names[func_index] = String::from(name);
+    }
+
+    pub fn declare_data_segment(&mut self, segment: DataSegment) {
+        self.info.data_segments.push(segment);
+    }
+
+    pub fn declare_data_segment_name(&mut self, segment_index: DataSegmentIndex, name: &'a str) {
+        self.info.data_segment_names[segment_index] = String::from(name);
     }
 
     /// Indicates that a custom section has been found in the wasm file

@@ -1,5 +1,6 @@
 //! Internal types for parsed WebAssembly.
 
+use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::entity_impl;
 use miden_hir::cranelift_entity::PrimaryMap;
 use miden_hir_type::FunctionType;
@@ -8,6 +9,7 @@ use miden_hir_type::Type;
 use crate::environ::ModuleInfo;
 use crate::error::WasmError;
 use crate::error::WasmResult;
+use crate::unsupported_diag;
 
 /// Index type of a function (imported or defined) inside the WebAssembly module.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
@@ -20,7 +22,7 @@ pub struct DefinedFuncIndex(u32);
 entity_impl!(DefinedFuncIndex);
 
 /// Index type of a global variable (imported or defined) inside the WebAssembly module.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, derive_more::Display)]
 pub struct GlobalIndex(u32);
 entity_impl!(GlobalIndex);
 
@@ -33,6 +35,11 @@ entity_impl!(MemoryIndex);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct TypeIndex(u32);
 entity_impl!(TypeIndex);
+
+/// Index type of a data segment inside the WebAssembly module.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+pub struct DataSegmentIndex(u32);
+entity_impl!(DataSegmentIndex);
 
 /// A WebAssembly global.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -74,6 +81,23 @@ impl GlobalInit {
             }
         }
     }
+
+    pub fn as_i32(
+        &self,
+        globals: &PrimaryMap<GlobalIndex, Global>,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<i32> {
+        Ok(match self {
+            GlobalInit::I32Const(x) => *x,
+            GlobalInit::GetGlobal(global_idx) => {
+                let global = &globals[*global_idx];
+                global.init.as_i32(globals, diagnostics)?
+            }
+            g => {
+                unsupported_diag!(diagnostics, "Expected global init to be i32, got: {:?}", g);
+            }
+        })
+    }
 }
 
 /// WebAssembly linear memory.
@@ -95,6 +119,53 @@ impl From<wasmparser::MemoryType> for Memory {
             memory64: ty.memory64,
         }
     }
+}
+
+/// Offset of a data segment inside a linear memory.
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub enum DataSegmentOffset {
+    /// An `i32.const` offset.
+    I32Const(i32),
+    /// An offset as a `global.get` of another global.
+    GetGlobal(GlobalIndex),
+}
+
+impl DataSegmentOffset {
+    /// Returns the offset as a i32, resolving the global if necessary.
+    pub fn as_i32(
+        &self,
+        globals: &PrimaryMap<GlobalIndex, Global>,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<i32> {
+        Ok(match self {
+            DataSegmentOffset::I32Const(x) => *x,
+            DataSegmentOffset::GetGlobal(global_idx) => {
+                let global = &globals[*global_idx];
+                match global.init.as_i32(globals, diagnostics) {
+                    Err(e) => {
+                        diagnostics
+                            .diagnostic(miden_diagnostics::Severity::Error)
+                            .with_message(format!(
+                                "Failed to get data segment offset from global init {:?} with global index {global_idx}",
+                                global.init,
+                            ))
+                            .emit();
+                        return Err(e);
+                    }
+                    Ok(v) => v,
+                }
+            }
+        })
+    }
+}
+
+/// A WebAssembly data segment.
+/// https://www.w3.org/TR/wasm-core-1/#data-segments%E2%91%A0
+pub struct DataSegment {
+    /// The offset of the data segment inside the linear memory.
+    pub offset: DataSegmentOffset,
+    /// The initialization data.
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
