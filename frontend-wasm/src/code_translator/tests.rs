@@ -707,6 +707,7 @@ fn i32_shr_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = shr v2, v3  : u32
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -726,6 +727,7 @@ fn i64_shr_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = shr v2, v3  : u64
+            v5 = cast v4  : i64
         "#]],
     )
 }
@@ -953,6 +955,7 @@ fn i32_div_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = div v2, v3  : u32
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -972,6 +975,7 @@ fn i64_div_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = div v2, v3  : u64
+            v5 = cast v4  : i64
         "#]],
     )
 }
@@ -1025,6 +1029,7 @@ fn i32_rem_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = mod v2, v3  : u32
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -1044,6 +1049,7 @@ fn i64_rem_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = mod v2, v3  : u64
+            v5 = cast v4  : i64
         "#]],
     )
 }
