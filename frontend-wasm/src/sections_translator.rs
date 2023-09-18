@@ -133,9 +133,11 @@ pub fn parse_global_section<'a>(
 pub fn parse_element_section<'a>(
     _elements: ElementSectionReader<'a>,
     _environ: &mut ModuleEnvironment<'a>,
-    diagnostics: &DiagnosticsHandler,
+    _diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    unsupported_diag!(diagnostics, "Element sections are not supported");
+    // Skip element section, since we don't support tables
+    // We cannot throw an error here, since rustc will generate an element section (funcref)
+    Ok(())
 }
 
 /// Parses the Data section of the wasm module.
