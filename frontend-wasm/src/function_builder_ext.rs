@@ -289,9 +289,12 @@ impl<'a> FunctionBuilderExt<'a> {
         self.try_def_var(var, val)
             .unwrap_or_else(|error| match error {
                 DefVariableError::TypeMismatch(var, val) => {
-                    panic!(
+                    assert_eq!(
+                        &self.func_ctx.types[var],
+                        self.inner.func.dfg.value_type(val),
                         "declared type of variable {:?} doesn't match type of value {}",
-                        var, val
+                        var,
+                        val
                     );
                 }
                 DefVariableError::DefinedBeforeDeclared(var) => {
