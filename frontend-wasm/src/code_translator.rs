@@ -309,69 +309,110 @@ pub fn translate_operator(
         /**************************** Comparison Operators **********************************/
         Operator::I32LtU => {
             let (arg0, arg1) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().lt(arg0, arg1, span));
+            let val = builder.ins().lt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64LtU => {
             let (arg0, arg1) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().lt(arg0, arg1, span));
+            let val = builder.ins().lt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
-        Operator::I32LtS | Operator::I64LtS => {
+        Operator::I32LtS => {
             let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().lt(arg0, arg1, span));
+            let val = builder.ins().lt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
+        }
+        Operator::I64LtS => {
+            let (arg0, arg1) = state.pop2();
+            let val = builder.ins().lt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32LeU => {
             let (arg0, arg1) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().lte(arg0, arg1, span));
+            let val = builder.ins().lte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64LeU => {
             let (arg0, arg1) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().lte(arg0, arg1, span));
+            let val = builder.ins().lte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
-        Operator::I32LeS | Operator::I64LeS => {
+        Operator::I32LeS => {
             let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().lte(arg0, arg1, span));
+            let val = builder.ins().lte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
+        }
+        Operator::I64LeS => {
+            let (arg0, arg1) = state.pop2();
+            let val = builder.ins().lte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32GtU => {
             let (arg0, arg1) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().gt(arg0, arg1, span));
+            let val = builder.ins().gt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64GtU => {
             let (arg0, arg1) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().gt(arg0, arg1, span));
+            let val = builder.ins().gt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32GtS | Operator::I64GtS => {
             let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().gt(arg0, arg1, span));
+            let val = builder.ins().gt(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I32GeU => {
             let (arg0, arg1) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().gte(arg0, arg1, span));
+            let val = builder.ins().gte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64GeU => {
             let (arg0, arg1) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().gte(arg0, arg1, span));
+            let val = builder.ins().gte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
-        Operator::I32GeS | Operator::I64GeS => {
+        Operator::I32GeS => {
             let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().gte(arg0, arg1, span));
+            let val = builder.ins().gte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
+        }
+        Operator::I64GeS => {
+            let (arg0, arg1) = state.pop2();
+            let val = builder.ins().gte(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32Eqz => {
             let arg = state.pop1();
             let imm_zero = builder.ins().i32(0, span);
-            state.push1(builder.ins().eq(arg, imm_zero, span));
+            let val = builder.ins().eq(arg, imm_zero, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64Eqz => {
             let arg = state.pop1();
             let imm_zero = builder.ins().i64(0, span);
-            state.push1(builder.ins().eq(arg, imm_zero, span));
+            let val = builder.ins().eq(arg, imm_zero, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
-        Operator::I32Eq | Operator::I64Eq => {
+        Operator::I32Eq => {
             let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().eq(arg0, arg1, span));
+            let val = builder.ins().eq(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
-        Operator::I32Ne | Operator::I64Ne => {
+        Operator::I64Eq => {
             let (arg0, arg1) = state.pop2();
-            state.push1(builder.ins().neq(arg0, arg1, span));
+            let val = builder.ins().eq(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
+        }
+        Operator::I32Ne => {
+            let (arg0, arg1) = state.pop2();
+            let val = builder.ins().neq(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I32, span));
+        }
+        Operator::I64Ne => {
+            let (arg0, arg1) = state.pop2();
+            let val = builder.ins().neq(arg0, arg1, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         /**************************** Float Comparison Operators **********************************/
         // Operator::F64Eq => {

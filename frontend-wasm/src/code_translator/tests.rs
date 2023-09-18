@@ -1139,6 +1139,7 @@ fn i32_lt_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = lt v2, v3  : i1
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -1158,6 +1159,7 @@ fn i64_lt_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = lt v2, v3  : i1
+            v5 = cast v4  : i64
         "#]],
     )
 }
@@ -1175,6 +1177,7 @@ fn i32_lt_s() {
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
             v2 = lt v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1192,6 +1195,7 @@ fn i64_lt_s() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = lt v0, v1  : i1
+            v3 = cast v2  : i64
         "#]],
     )
 }
@@ -1211,6 +1215,7 @@ fn i32_le_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = lte v2, v3  : i1
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -1230,6 +1235,7 @@ fn i64_le_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = lte v2, v3  : i1
+            v5 = cast v4  : i64
         "#]],
     )
 }
@@ -1247,6 +1253,7 @@ fn i32_le_s() {
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
             v2 = lte v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1264,6 +1271,7 @@ fn i64_le_s() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = lte v0, v1  : i1
+            v3 = cast v2  : i64
         "#]],
     )
 }
@@ -1283,6 +1291,7 @@ fn i32_gt_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = gt v2, v3  : i1
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -1302,6 +1311,7 @@ fn i64_gt_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = gt v2, v3  : i1
+            v5 = cast v4  : i64
         "#]],
     )
 }
@@ -1319,6 +1329,7 @@ fn i32_gt_s() {
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
             v2 = gt v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1336,6 +1347,7 @@ fn i64_gt_s() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = gt v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1355,6 +1367,7 @@ fn i32_ge_u() {
             v2 = cast v0  : u32
             v3 = cast v1  : u32
             v4 = gte v2, v3  : i1
+            v5 = cast v4  : i32
         "#]],
     )
 }
@@ -1374,6 +1387,7 @@ fn i64_ge_u() {
             v2 = cast v0  : u64
             v3 = cast v1  : u64
             v4 = gte v2, v3  : i1
+            v5 = cast v4  : i64
         "#]],
     )
 }
@@ -1391,6 +1405,7 @@ fn i32_ge_s() {
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
             v2 = gte v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1408,6 +1423,7 @@ fn i64_ge_s() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = gte v0, v1  : i1
+            v3 = cast v2  : i64
         "#]],
     )
 }
@@ -1424,6 +1440,7 @@ fn i32_eqz() {
             v0 = const.i32 2  : i32
             v1 = const.i32 0  : i32
             v2 = eq v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1440,6 +1457,7 @@ fn i64_eqz() {
             v0 = const.i64 2  : i64
             v1 = const.i64 0  : i64
             v2 = eq v0, v1  : i1
+            v3 = cast v2  : i64
         "#]],
     )
 }
@@ -1457,6 +1475,7 @@ fn i32_eq() {
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
             v2 = eq v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1474,6 +1493,7 @@ fn i64_eq() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = eq v0, v1  : i1
+            v3 = cast v2  : i64
         "#]],
     )
 }
@@ -1509,6 +1529,7 @@ fn i32_ne() {
             v0 = const.i32 2  : i32
             v1 = const.i32 1  : i32
             v2 = neq v0, v1  : i1
+            v3 = cast v2  : i32
         "#]],
     )
 }
@@ -1526,6 +1547,7 @@ fn i64_ne() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = neq v0, v1  : i1
+            v3 = cast v2  : i64
         "#]],
     )
 }
