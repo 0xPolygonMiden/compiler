@@ -404,33 +404,34 @@ fn rust_array() {
                 v4 = const.i32 0  : i32
                 v5 = const.i32 0  : i32
                 v6 = eq v1, v5  : i1
-                v7 = const.i32 0  : i32
-                v8 = neq v6, v7  : i1
-                condbr v8, block2(v4), block3
+                v7 = cast v6  : i32
+                v8 = const.i32 0  : i32
+                v9 = neq v7, v8  : i1
+                condbr v9, block2(v4), block3
 
             block1(v2: i32):
-                v22 = ret v2  : ()
+                v23 = ret v2  : ()
 
-            block2(v21: i32):
-                br block1(v21)
+            block2(v22: i32):
+                br block1(v22)
 
             block3:
                 br block4(v0, v4, v1)
 
-            block4(v9: i32, v12: i32, v16: i32):
-                v10 = inttoptr v9  : *mut i32
-                v11 = load v10  : i32
-                v13 = add v11, v12  : i32
-                v14 = const.i32 4  : i32
-                v15 = add v9, v14  : i32
-                v17 = const.i32 -1  : i32
-                v18 = add v16, v17  : i32
-                v19 = const.i32 0  : i32
-                v20 = neq v18, v19  : i1
-                condbr v20, block4(v15, v13, v18), block6
+            block4(v10: i32, v13: i32, v17: i32):
+                v11 = inttoptr v10  : *mut i32
+                v12 = load v11  : i32
+                v14 = add v12, v13  : i32
+                v15 = const.i32 4  : i32
+                v16 = add v10, v15  : i32
+                v18 = const.i32 -1  : i32
+                v19 = add v17, v18  : i32
+                v20 = const.i32 0  : i32
+                v21 = neq v19, v20  : i1
+                condbr v21, block4(v16, v14, v19), block6
 
             block5:
-                br block2(v13)
+                br block2(v14)
 
             block6:
                 br block5

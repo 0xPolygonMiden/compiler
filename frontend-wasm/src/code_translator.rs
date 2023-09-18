@@ -221,11 +221,13 @@ pub fn translate_operator(
         }
         Operator::I32ShrU => {
             let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().shr(arg1, arg2, span));
+            let val = builder.ins().shr(arg1, arg2, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64ShrU => {
             let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().shr(arg1, arg2, span));
+            let val = builder.ins().shr(arg1, arg2, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32ShrS | Operator::I64ShrS => {
             let (arg1, arg2) = state.pop2();
@@ -261,19 +263,23 @@ pub fn translate_operator(
         }
         Operator::I32DivU => {
             let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().div(arg1, arg2, span));
+            let val = builder.ins().div(arg1, arg2, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64DivU => {
             let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().div(arg1, arg2, span));
+            let val = builder.ins().div(arg1, arg2, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32RemU => {
             let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            state.push1(builder.ins().r#mod(arg1, arg2, span));
+            let val = builder.ins().r#mod(arg1, arg2, span);
+            state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64RemU => {
             let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            state.push1(builder.ins().r#mod(arg1, arg2, span));
+            let val = builder.ins().r#mod(arg1, arg2, span);
+            state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32RemS | Operator::I64RemS => {
             let (arg1, arg2) = state.pop2();
