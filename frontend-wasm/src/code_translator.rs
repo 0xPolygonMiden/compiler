@@ -98,7 +98,10 @@ pub fn translate_operator(
             let cond_i1 = builder.ins().neq(cond, zero, span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
-        Operator::Unreachable => _ = builder.ins().unreachable(span),
+        Operator::Unreachable => {
+            builder.ins().unreachable(span);
+            state.reachable = false;
+        }
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
         Operator::Block { blockty } => translate_block(blockty, builder, state, mod_info, span)?,
