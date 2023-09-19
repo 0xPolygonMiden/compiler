@@ -87,6 +87,19 @@ impl<'a> FunctionBuilderExt<'a> {
         block
     }
 
+    /// Create a `Block` with the given parameters.
+    pub fn create_block_with_params(
+        &mut self,
+        params: impl IntoIterator<Item = Type>,
+        span: SourceSpan,
+    ) -> Block {
+        let block = self.create_block();
+        for ty in params {
+            self.inner.append_block_param(block, ty, span);
+        }
+        block
+    }
+
     /// Append parameters to the given `Block` corresponding to the function
     /// return values. This can be used to set up the block parameters for a
     /// function exit block.
