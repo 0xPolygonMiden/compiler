@@ -680,6 +680,14 @@ impl DataFlowGraph {
                     else_args.push(value, &mut self.value_lists);
                 }
             }
+            Instruction::Switch(Switch {
+                op: _,
+                arg: _,
+                arms: _,
+                default: _,
+            }) => {
+                panic!("cannot append argument {value} to Switch destination block {dest}, since it has no block arguments support");
+            }
             _ => panic!("{} must be a branch instruction", branch_inst),
         }
     }
