@@ -355,6 +355,21 @@ impl<'a> FunctionBuilderExt<'a> {
                     *else_dest = new_block;
                 }
             }
+            Instruction::Switch(Switch {
+                op: _,
+                arg: _,
+                ref mut arms,
+                ref mut default,
+            }) => {
+                for (_, ref mut dest_block) in arms {
+                    if dest_block == &old_block {
+                        *dest_block = new_block;
+                    }
+                }
+                if default == &old_block {
+                    *default = new_block;
+                }
+            }
             _ => panic!("{} must be a branch instruction", inst),
         }
         self.func_ctx.ssa.declare_block_predecessor(new_block, inst);
