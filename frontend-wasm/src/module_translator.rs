@@ -14,9 +14,6 @@ use miden_hir::Module;
 use std::prelude::v1::*;
 use wasmparser::{NameSectionReader, Parser, Payload, Validator, WasmFeatures};
 
-#[cfg(test)]
-mod tests;
-
 /// Translate a sequence of bytes forming a valid Wasm binary into Miden IR
 pub fn translate_module(
     wasm: &[u8],
