@@ -21,7 +21,6 @@ use crate::func_translation_state::{ElseData, FuncTranslationState};
 use crate::function_builder_ext::FunctionBuilderExt;
 use crate::module_env::ModuleInfo;
 use crate::ssa::Variable;
-use crate::translation_utils::f64_translation;
 use crate::unsupported_diag;
 use crate::wasm_types::{BlockType, GlobalIndex};
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
@@ -160,11 +159,9 @@ pub fn translate_operator(
         }
         Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
         Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
-        Operator::F64Load { memarg } => translate_load(F64, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
-        Operator::F64Store { memarg } => translate_store(F64, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
             translate_store(I8, memarg, state, builder, span);
         }
@@ -175,9 +172,6 @@ pub fn translate_operator(
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => state.push1(builder.ins().i32(*value, span)),
         Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
-        Operator::F64Const { value } => {
-            state.push1(builder.ins().f64(f64_translation(*value), span));
-        }
 
         /******************************* Unary Operators *************************************/
         Operator::I32Popcnt | Operator::I64Popcnt => {
@@ -285,27 +279,6 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().r#mod(arg1, arg2, span));
         }
-        /****************************** Float Binary Operators ************************************/
-        // Operator::F64Add => {
-        //     let (arg1, arg2) = state.pop2();
-        //     state.push1(builder.ins().add(arg1, arg2, span));
-        // }
-        // Operator::F64Mul => {
-        //     let (arg1, arg2) = state.pop2();
-        //     state.push1(builder.ins().mul(arg1, arg2, span));
-        // }
-        // Operator::F64Div => {
-        //     let (arg1, arg2) = state.pop2();
-        //     state.push1(builder.ins().div(arg1, arg2, span));
-        // }
-        // Operator::F64Min => {
-        //     let (arg1, arg2) = state.pop2();
-        //     state.push1(builder.ins().min(arg1, arg2, span));
-        // }
-        // Operator::F64Max => {
-        //     let (arg1, arg2) = state.pop2();
-        //     state.push1(builder.ins().max(arg1, arg2, span));
-        // }
         /**************************** Comparison Operators **********************************/
         Operator::I32LtU => {
             let (arg0, arg1) = state.pop2_casted(U32, builder, span);
@@ -414,31 +387,6 @@ pub fn translate_operator(
             let val = builder.ins().neq(arg0, arg1, span);
             state.push1(builder.ins().cast(val, I32, span));
         }
-        /**************************** Float Comparison Operators **********************************/
-        // Operator::F64Eq => {
-        //     let (arg0, arg1) = state.pop2();
-        //     state.push1(builder.ins().eq(arg0, arg1, span));
-        // }
-        // Operator::F64Ne => {
-        //     let (arg0, arg1) = state.pop2();
-        //     state.push1(builder.ins().neq(arg0, arg1, span));
-        // }
-        // Operator::F64Gt => {
-        //     let (arg0, arg1) = state.pop2();
-        //     state.push1(builder.ins().gt(arg0, arg1, span));
-        // }
-        // Operator::F64Ge => {
-        //     let (arg0, arg1) = state.pop2();
-        //     state.push1(builder.ins().gte(arg0, arg1, span));
-        // }
-        // Operator::F64Le => {
-        //     let (arg0, arg1) = state.pop2();
-        //     state.push1(builder.ins().lte(arg0, arg1, span));
-        // }
-        // Operator::F64Lt => {
-        //     let (arg0, arg1) = state.pop2();
-        //     state.push1(builder.ins().lt(arg0, arg1, span));
-        // }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
         }

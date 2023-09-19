@@ -4,12 +4,6 @@ use miden_diagnostics::SourceSpan;
 use miden_hir::{AbiParam, CallConv, FunctionBuilder, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
 
-/// Turns a `wasmparser` `f64` into a `Miden` one.
-pub fn f64_translation(x: wasmparser::Ieee64) -> f64 {
-    let ieee64_bits = x.bits();
-    f64::from_bits(ieee64_bits)
-}
-
 /// Emit instructions to produce a zero value in the given type.
 pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilder) -> Value {
     match ty {
