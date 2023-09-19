@@ -7,10 +7,10 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use crate::code_translator::translate_operator;
-use crate::environ::ModuleInfo;
 use crate::error::WasmResult;
 use crate::func_translation_state::FuncTranslationState;
 use crate::function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt};
+use crate::module_env::ModuleInfo;
 use crate::ssa::Variable;
 use crate::translation_utils::emit_zero;
 use crate::wasm_types::valtype_to_type;

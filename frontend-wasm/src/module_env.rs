@@ -1,4 +1,4 @@
-//! Module translation environment
+//! Wasm to Miden IR translation environment
 
 use crate::error::{WasmError, WasmResult};
 use crate::func_translator::FuncTranslator;

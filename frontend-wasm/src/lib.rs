@@ -7,11 +7,11 @@
 
 mod code_translator;
 mod config;
-mod environ;
 mod error;
 mod func_translation_state;
 mod func_translator;
 mod function_builder_ext;
+mod module_env;
 mod module_translator;
 mod sections_translator;
 mod ssa;
