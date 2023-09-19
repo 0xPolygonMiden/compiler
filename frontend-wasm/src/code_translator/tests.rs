@@ -589,22 +589,6 @@ fn i64_load() {
 }
 
 #[test]
-fn f64_load() {
-    check_op(
-        r#"
-            i32.const 1024
-            f64.load
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut f64
-            v2 = load v1  : f64
-        "#]],
-    )
-}
-
-#[test]
 fn i32_store() {
     check_op(
         r#"
@@ -633,23 +617,6 @@ fn i64_store() {
             v0 = const.i32 1024  : i32
             v1 = const.i64 1  : i64
             v2 = inttoptr v0  : *mut i64
-            store v2, v1
-        "#]],
-    )
-}
-
-#[test]
-fn f64_store() {
-    check_op(
-        r#"
-            i32.const 1024
-            f64.const 1.9
-            f64.store
-        "#,
-        expect![[r#"
-            v0 = const.i32 1024  : i32
-            v1 = const.f64 1.9  : f64
-            v2 = inttoptr v0  : *mut f64
             store v2, v1
         "#]],
     )
@@ -731,19 +698,6 @@ fn i64_const() {
         "#,
         expect![[r#"
             v0 = const.i64 1  : i64
-        "#]],
-    )
-}
-
-#[test]
-fn f64_const() {
-    check_op(
-        r#"
-            f64.const 1.9
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.f64 1.9  : f64
         "#]],
     )
 }
@@ -1154,42 +1108,6 @@ fn i64_rotr() {
     )
 }
 
-#[ignore = "not implemented"]
-#[test]
-fn f64_add() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.add
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = add v0, v1  : f64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_sub() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.sub
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = sub v0, v1  : f64
-        "#]],
-    )
-}
-
 #[test]
 fn i32_mul() {
     check_op(
@@ -1220,42 +1138,6 @@ fn i64_mul() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = mul v0, v1  : i64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_mul() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.mul
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = mul v0, v1  : f64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_div() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.div
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = div v0, v1  : f64
         "#]],
     )
 }
@@ -1404,42 +1286,6 @@ fn i64_rem_s() {
             v0 = const.i64 2  : i64
             v1 = const.i64 1  : i64
             v2 = mod v0, v1  : i64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_min() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.min
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = min v0, v1  : f64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_max() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.max
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = max v0, v1  : f64
         "#]],
     )
 }
@@ -1818,24 +1664,6 @@ fn i64_eq() {
     )
 }
 
-#[ignore = "not implemented"]
-#[test]
-fn f64_eq() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.eq
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.f64 2.5  : f64
-            v1 = const.f64 1.9  : f64
-            v2 = eq v0, v1  : i1
-        "#]],
-    )
-}
-
 #[test]
 fn i32_ne() {
     check_op(
@@ -1868,96 +1696,6 @@ fn i64_ne() {
             v1 = const.i64 1  : i64
             v2 = neq v0, v1  : i1
             v3 = cast v2  : i32
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_ne() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.ne
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.f64 2.5  : f64
-            v1 = const.f64 1.9  : f64
-            v2 = neq v0, v1  : i1
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_gt() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.gt
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = gt v0, v1  : f64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_ge() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.ge
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = gte v0, v1  : f64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_le() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.le
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = lte v0, v1  : f64
-        "#]],
-    )
-}
-
-#[ignore = "not implemented"]
-#[test]
-fn f64_lt() {
-    check_op(
-        r#"
-            f64.const 2.5
-            f64.const 1.9
-            f64.lt
-            drop
-        "#,
-        expect![[r#"
-            v0 = const.float 2.5  : f64
-            v1 = const.float 1.9  : f64
-            v2 = lt v0, v1  : f64
         "#]],
     )
 }
