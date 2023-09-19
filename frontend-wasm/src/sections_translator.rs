@@ -2,8 +2,8 @@
 //! WebAssembly module.
 
 use crate::{
-    environ::ModuleEnvironment,
     error::{WasmError, WasmResult},
+    module_env::ModuleEnvironment,
     unsupported_diag,
     wasm_types::{
         convert_func_type, convert_global_type, DataSegment, DataSegmentIndex, DataSegmentOffset,

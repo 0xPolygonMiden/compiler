@@ -6,9 +6,9 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use crate::{
-    environ::ModuleInfo,
     error::{WasmError, WasmResult},
     function_builder_ext::FunctionBuilderExt,
+    module_env::ModuleInfo,
     translation_utils::sig_from_funct_type,
     wasm_types::{BlockType, FuncIndex},
 };

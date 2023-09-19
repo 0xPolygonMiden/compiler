@@ -15,11 +15,11 @@
 
 use std::collections::{hash_map, HashMap};
 
-use crate::environ::ModuleInfo;
 use crate::error::{WasmError, WasmResult};
 use crate::func_translation_state::ControlStackFrame;
 use crate::func_translation_state::{ElseData, FuncTranslationState};
 use crate::function_builder_ext::FunctionBuilderExt;
+use crate::module_env::ModuleInfo;
 use crate::ssa::Variable;
 use crate::translation_utils::{block_with_params, f64_translation};
 use crate::unsupported_diag;

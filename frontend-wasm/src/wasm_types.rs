@@ -6,9 +6,9 @@ use miden_hir::cranelift_entity::PrimaryMap;
 use miden_hir_type::FunctionType;
 use miden_hir_type::Type;
 
-use crate::environ::ModuleInfo;
 use crate::error::WasmError;
 use crate::error::WasmResult;
+use crate::module_env::ModuleInfo;
 use crate::unsupported_diag;
 
 /// Index type of a function (imported or defined) inside the WebAssembly module.
