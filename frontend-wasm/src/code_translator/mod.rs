@@ -21,7 +21,7 @@ use crate::func_translation_state::{ElseData, FuncTranslationState};
 use crate::function_builder_ext::FunctionBuilderExt;
 use crate::module_env::ModuleInfo;
 use crate::ssa::Variable;
-use crate::translation_utils::{block_with_params, f64_translation};
+use crate::translation_utils::f64_translation;
 use crate::unsupported_diag;
 use crate::wasm_types::{BlockType, GlobalIndex};
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
@@ -740,7 +740,7 @@ fn translate_block(
     span: SourceSpan,
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
-    let next = block_with_params(builder, blockty.results.clone(), span)?;
+    let next = builder.create_block_with_params(blockty.results.clone(), span);
     state.push_block(next, blockty.params.len(), blockty.results.len());
     Ok(())
 }
@@ -816,7 +816,7 @@ fn translate_else(
                     } => {
                         debug_assert_eq!(blocktype.params.len(), num_return_values);
                         let else_block =
-                            block_with_params(builder, blocktype.params.clone(), span)?;
+                            builder.create_block_with_params(blocktype.params.clone(), span);
                         let params_len = blocktype.params.len();
                         builder.ins().br(destination, state.peekn(params_len), span);
                         state.popn(params_len);
@@ -873,7 +873,7 @@ fn translate_if(
         // destination block following the whole `if...end`. If we do end
         // up discovering an `else`, then we will allocate a block for it
         // and go back and patch the jump.
-        let destination = block_with_params(builder, blockty.results.clone(), span)?;
+        let destination = builder.create_block_with_params(blockty.results.clone(), span);
         let branch_inst = builder.ins().cond_br(
             cond_i1,
             next_block,
@@ -892,8 +892,8 @@ fn translate_if(
     } else {
         // The `if` type signature is not valid without an `else` block,
         // so we eagerly allocate the `else` block here.
-        let destination = block_with_params(builder, blockty.results.clone(), span)?;
-        let else_block = block_with_params(builder, blockty.params.clone(), span)?;
+        let destination = builder.create_block_with_params(blockty.results.clone(), span);
+        let else_block = builder.create_block_with_params(blockty.params.clone(), span);
         builder.ins().cond_br(
             cond_i1,
             next_block,
@@ -925,8 +925,8 @@ fn translate_loop(
     span: SourceSpan,
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
-    let loop_body = block_with_params(builder, blockty.params.clone(), span)?;
-    let next = block_with_params(builder, blockty.results.clone(), span)?;
+    let loop_body = builder.create_block_with_params(blockty.params.clone(), span);
+    let next = builder.create_block_with_params(blockty.results.clone(), span);
     builder
         .ins()
         .br(loop_body, state.peekn(blockty.params.len()), span);
@@ -991,8 +991,8 @@ fn translate_unreachable_operator(
                                 branch_inst,
                                 placeholder,
                             } => {
-                                let else_block =
-                                    block_with_params(builder, blocktype.params.clone(), span)?;
+                                let else_block = builder
+                                    .create_block_with_params(blocktype.params.clone(), span);
                                 let frame = state.control_stack.last().unwrap();
                                 frame.truncate_value_stack_to_else_params(&mut state.stack);
 

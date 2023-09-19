@@ -1,25 +1,8 @@
 //! Helper functions and structures for the translation.
 
-use crate::{error::WasmResult, function_builder_ext::FunctionBuilderExt};
 use miden_diagnostics::SourceSpan;
-use miden_hir::{
-    AbiParam, Block, CallConv, FunctionBuilder, InstBuilder, Linkage, Signature, Value,
-};
+use miden_hir::{AbiParam, CallConv, FunctionBuilder, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
-
-/// Create a `Block` with the given parameters.
-pub fn block_with_params(
-    builder: &mut FunctionBuilderExt,
-    params: impl IntoIterator<Item = Type>,
-    span: SourceSpan,
-) -> WasmResult<Block> {
-    // TODO: make this a method `create_block_with_params` in FunctionBuilderExt?
-    let block = builder.create_block();
-    for ty in params {
-        builder.inner.append_block_param(block, ty, span);
-    }
-    Ok(block)
-}
 
 /// Turns a `wasmparser` `f64` into a `Miden` one.
 pub fn f64_translation(x: wasmparser::Ieee64) -> f64 {
