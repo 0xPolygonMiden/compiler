@@ -58,12 +58,35 @@ fn check_ir(
     expected_ir: expect_test::Expect,
 ) {
     let wasm_bytes = compile_wasm(rust_source);
+    let wat = wasm_to_wat(&wasm_bytes);
+    expected_wat.assert_eq(&wat);
+    let module = translate(wasm_bytes);
+    expected_ir.assert_eq(&module.to_string());
+}
+
+#[allow(dead_code)]
+fn check_ir_files(
+    rust_source: &str,
+    expected_wat_file: expect_test::ExpectFile,
+    expected_ir_file: expect_test::ExpectFile,
+) {
+    let wasm_bytes = compile_wasm(rust_source);
+    let wat = wasm_to_wat(&wasm_bytes);
+    expected_wat_file.assert_eq(&wat);
+    let module = translate(wasm_bytes);
+    expected_ir_file.assert_eq(&module.to_string());
+}
+
+fn wasm_to_wat(wasm_bytes: &Vec<u8>) -> String {
     let mut wasm_printer = wasmprinter::Printer::new();
     // disable printing of the "producers" section because it contains a rustc version
     // to not brake tests when rustc is updated
     wasm_printer.add_custom_section_printer("producers", |_, _, _| Ok(()));
     let wat = wasm_printer.print(wasm_bytes.as_ref()).unwrap();
-    expected_wat.assert_eq(&wat);
+    wat
+}
+
+fn translate(wasm_bytes: Vec<u8>) -> miden_hir::Module {
     let codemap = Arc::new(CodeMap::new());
     let diagnostics = DiagnosticsHandler::new(
         DiagnosticsConfig {
@@ -77,7 +100,7 @@ fn check_ir(
     );
     let module =
         translate_module(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics).unwrap();
-    expected_ir.assert_eq(&module.to_string());
+    module
 }
 
 fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
