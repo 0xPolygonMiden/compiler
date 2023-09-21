@@ -237,10 +237,10 @@ impl Module {
         self.globals.iter()
     }
 
-    /// Declare a new [GlobalVariable] in this module, with the given name, type, and linkage.
+    /// Declare a new [GlobalVariable] in this module, with the given name, type, linkage, and optional initializer.
     ///
-    /// Returns `Err` if a symbol with the same name already exists, or in the case of `odr` linkage,
-    /// the definitions are not identical.
+    /// Returns `Err` if a symbol with the same name but conflicting declaration already exists,
+    /// or if the specification of the global variable is invalid in any way.
     ///
     /// NOTE: The [GlobalVariable] returned here is scoped to this module only, it cannot be used to
     /// index into the global variable table of a [Program], which is constructed at link-time.
@@ -249,8 +249,9 @@ impl Module {
         name: Ident,
         ty: Type,
         linkage: Linkage,
-    ) -> Result<GlobalVariable, GlobalVariableConflictError> {
-        self.globals.declare(name, ty, linkage)
+        init: Option<ConstantData>,
+    ) -> Result<GlobalVariable, GlobalVariableError> {
+        self.globals.declare(name, ty, linkage, init)
     }
 
     /// Set the initializer for a [GlobalVariable] to `init`.
@@ -260,7 +261,7 @@ impl Module {
         &mut self,
         gv: GlobalVariable,
         init: ConstantData,
-    ) -> Result<(), InvalidInitializerError> {
+    ) -> Result<(), GlobalVariableError> {
         self.globals.set_initializer(gv, init)
     }
 
@@ -529,17 +530,18 @@ impl ModuleBuilder {
         name: S,
         ty: Type,
         linkage: Linkage,
+        init: Option<ConstantData>,
         span: SourceSpan,
-    ) -> Result<GlobalVariable, GlobalVariableConflictError> {
+    ) -> Result<GlobalVariable, GlobalVariableError> {
         let name = Ident::new(Symbol::intern(name.as_ref()), span);
-        self.module.declare_global_variable(name, ty, linkage)
+        self.module.declare_global_variable(name, ty, linkage, init)
     }
 
     pub fn set_global_initializer(
         &mut self,
         gv: GlobalVariable,
         init: ConstantData,
-    ) -> Result<(), InvalidInitializerError> {
+    ) -> Result<(), GlobalVariableError> {
         self.module.set_global_initializer(gv, init)
     }
 
