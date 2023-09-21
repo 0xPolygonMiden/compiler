@@ -78,6 +78,18 @@ impl Default for Ident {
         }
     }
 }
+impl FromStr for Ident {
+    type Err = core::convert::Infallible;
+
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from(name))
+    }
+}
+impl<'a> From<&'a str> for Ident {
+    fn from(name: &'a str) -> Self {
+        Self::with_empty_span(Symbol::intern(name))
+    }
+}
 impl Ident {
     #[inline]
     pub const fn new(name: Symbol, span: SourceSpan) -> Ident {
@@ -87,12 +99,6 @@ impl Ident {
     #[inline]
     pub const fn with_empty_span(name: Symbol) -> Ident {
         Ident::new(name, SourceSpan::UNKNOWN)
-    }
-
-    /// Maps a string to an identifier with an empty syntax context.
-    #[inline]
-    pub fn from_str(string: &str) -> Ident {
-        Ident::with_empty_span(Symbol::intern(string))
     }
 
     #[inline]
@@ -114,7 +120,7 @@ impl std::borrow::Borrow<str> for Ident {
 impl Ord for Ident {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.as_str().cmp(&other.as_str())
+        self.as_str().cmp(other.as_str())
     }
 }
 impl PartialOrd for Ident {

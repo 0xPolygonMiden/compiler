@@ -66,9 +66,9 @@ impl fmt::Display for Module {
         use std::fmt::Write;
 
         if self.is_kernel {
-            write!(f, "kernel {}\n", &self.name)?;
+            writeln!(f, "kernel {}", &self.name)?;
         } else {
-            write!(f, "module {}\n", &self.name)?;
+            writeln!(f, "module {}", &self.name)?;
         }
 
         if !self.segments.is_empty() {
@@ -113,9 +113,9 @@ impl fmt::Display for Module {
                 if import.id.module == self.name {
                     continue;
                 }
-                if !external_functions.contains_key(&import.id) {
-                    external_functions.insert(import.id, import.signature.clone());
-                }
+                external_functions
+                    .entry(import.id)
+                    .or_insert_with(|| import.signature.clone());
             }
             writeln!(f)?;
             write_function(f, function)?;
