@@ -77,14 +77,21 @@ intrusive_adapter!(pub GlobalVariableAdapter = UnsafeRef<GlobalVariableData>: Gl
 /// For example, two global variables with the same name, but differing
 /// types will result in this error, as there is no way to resolve the
 /// conflict.
-pub struct GlobalVariableConflictError(GlobalVariable);
-
-/// This error is raised when attempting to define the initializer value for a [GlobalVariable] fails.
-pub enum InvalidInitializerError {
-    /// The initializer data is too large for the type of the global
-    OutOfBounds,
-    /// The initializer data conflicts with a previous initializer definition
-    Conflict,
+#[derive(Debug, thiserror::Error)]
+pub enum GlobalVariableError {
+    /// There are multiple conflicting definitions of the given global symbol
+    #[error(
+        "invalid global variable: there are multiple conflicting definitions for symbol '{0}'"
+    )]
+    NameConflict(Ident),
+    /// An attempt was made to set the initializer for a global that already has one
+    #[error("cannot set an initializer for '{0}', it is already initialized")]
+    AlreadyInitialized(Ident),
+    /// The initializer data is invalid for the declared type of the given global, e.g. size mismatch.
+    #[error(
+        "invalid global variable initializer for '{0}': the data does not match the declared type"
+    )]
+    InvalidInit(Ident),
 }
 
 /// Describes the way in which global variable conflicts will be handled
@@ -117,6 +124,8 @@ impl Default for GlobalVariableTable {
     }
 }
 impl GlobalVariableTable {
+    const BASE_ADDR: usize = 0;
+
     pub fn new(conflict_strategy: ConflictResolutionStrategy) -> Self {
         Self {
             layout: Default::default(),
@@ -155,6 +164,24 @@ impl GlobalVariableTable {
         &self.arena[id]
     }
 
+    /// Removes the global variable associated with `id` from this table
+    ///
+    /// The actual definition remains behind, in order to ensure that `id`
+    /// remains valid should there be any other outstanding references,
+    /// however the data is removed from the layout, and will not be
+    /// seen when traversing the table.
+    pub fn remove(&mut self, id: GlobalVariable) {
+        let mut cursor = self.layout.front_mut();
+        while let Some(gv) = cursor.get() {
+            if gv.id == id {
+                cursor.remove();
+                return;
+            }
+
+            cursor.move_next();
+        }
+    }
+
     /// Computes the total size in bytes of the table, as it is currently laid out.
     pub fn size_in_bytes(&self) -> usize {
         // We mimic the allocation process here, by visiting each
@@ -164,7 +191,7 @@ impl GlobalVariableTable {
         //
         // At the end, the effective address of the pointer is the total
         // size in bytes of the allocation
-        let mut hp = 0 as *const u8;
+        let mut hp = Self::BASE_ADDR as *const u8;
         for gv in self.layout.iter() {
             let layout = gv.layout();
             // SAFETY: We aren't actually using these pointers,
@@ -183,7 +210,7 @@ impl GlobalVariableTable {
     /// layout of the global variable table up to and including `id` remains
     /// unchanged.
     ///
-    /// # SAFETY
+    /// # Safety
     ///
     /// This should only be used once all data segments and global variables have
     /// been declared, and the layout of the table has been decided. It is technically
@@ -195,7 +222,7 @@ impl GlobalVariableTable {
     /// subsequently changed in such a way that the original offset is no longer
     /// accurate, bad things will happen.
     pub unsafe fn offset_of(&self, id: GlobalVariable) -> usize {
-        let mut hp = 0 as *const u8;
+        let mut hp = Self::BASE_ADDR as *const u8;
         for gv in self.layout.iter() {
             let layout = gv.layout();
             let offset = hp.align_offset(layout.align());
@@ -213,30 +240,6 @@ impl GlobalVariableTable {
         hp as usize
     }
 
-    /// Declares a new global variable with the given symbol name, type, and linkage.
-    ///
-    /// If successful, `Ok` is returned, with the [GlobalVariable] corresponding to the data for the symbol.
-    ///
-    /// If a symbol with `name` already exists:
-    ///
-    /// * If the linkage is internal, a new unique name will be derived from `name` in order
-    /// to ensure there are no symbol name conflicts. It is assumed that global variables with internal
-    /// linkage were checked for uniqueness at the module level, so renaming them is safe when linking.
-    ///
-    /// * If the linkage is external, `Err` is returned, as only one declaration is allowed globally
-    ///
-    /// * If the linkage follows the "one definition rule", then as long as the previous declaration
-    /// has the same type and linkage, then the definitions are "merged" and the handle to the existing
-    /// declaration is returned rather than allocating a new one.
-    pub fn declare(
-        &mut self,
-        name: Ident,
-        ty: Type,
-        linkage: Linkage,
-    ) -> Result<GlobalVariable, GlobalVariableConflictError> {
-        self.try_insert(name, ty, linkage)
-    }
-
     /// Get the constant data associated with `id`
     pub fn get_constant(&self, id: Constant) -> &ConstantData {
         self.data.get(id)
@@ -252,60 +255,111 @@ impl GlobalVariableTable {
         self.data.contains(data)
     }
 
-    /// This sets the initializer for the given [GlobalVariable] to `init`.
+    /// Declares a new global variable with the given symbol name, type, linkage, and optional initializer.
     ///
-    /// This function will return `Err` if any of the following occur:
+    /// If successful, `Ok` is returned, with the [GlobalVariable] corresponding to the data for the symbol.
     ///
-    /// * The global variable already has an initializer
-    /// * The given data does not match the type of the global variable, i.e. more data than the type supports.
+    /// Returns an error if the specification of the global is invalid in any way, or the declaration conflicts
+    /// with a previous declaration of the same name.
     ///
-    /// If the data is smaller than the type of the global variable, the data will be zero-extended to fill it out.
-    ///
-    /// NOTE: The initializer data is expected to be in little-endian order.
-    pub fn set_initializer(
-        &mut self,
-        gv: GlobalVariable,
-        init: ConstantData,
-    ) -> Result<(), InvalidInitializerError> {
-        let global = &mut self.arena[gv];
-        let layout = global.layout();
-        if init.len() > layout.size() {
-            return Err(InvalidInitializerError::OutOfBounds);
-        }
-        let init = self.data.insert(init);
-        if let Some(prev_init) = global.initializer() {
-            if prev_init != init {
-                return Err(InvalidInitializerError::Conflict);
-            }
-        }
-        global.init = Some(init);
-        Ok(())
-    }
-
-    fn try_insert(
+    /// NOTE: While similar to `try_insert`, a key difference is that `try_declare` does not attempt to resolve
+    /// conflicts. If the given name has been previously declared, and the declarations are not identical,
+    /// then an error will be returned. This is because conflict resolution is a process performed when linking
+    /// together modules. Declaring globals is done during the initial construction of a module, where any
+    /// attempt to rename a global variable locally would cause unexpected issues as references to that global
+    /// are emitted. Once a module is constructed, globals it declares with internal linkage can be renamed freely,
+    /// as the name is no longer significant.
+    pub fn declare(
         &mut self,
         name: Ident,
         ty: Type,
         linkage: Linkage,
-    ) -> Result<GlobalVariable, GlobalVariableConflictError> {
+        init: Option<ConstantData>,
+    ) -> Result<GlobalVariable, GlobalVariableError> {
         assert_ne!(
             name.as_symbol(),
             symbols::Empty,
             "global variable declarations require a non-empty symbol name"
         );
-        let mut data = GlobalVariableData {
+
+        // Validate the initializer
+        let init = match init {
+            None => None,
+            Some(init) => {
+                let layout = ty.layout();
+                if init.len() > layout.size() {
+                    return Err(GlobalVariableError::InvalidInit(name));
+                }
+                Some(self.data.insert(init))
+            }
+        };
+
+        let data = GlobalVariableData {
             link: Default::default(),
             id: Default::default(),
             name,
             ty,
             linkage,
-            init: None,
+            init,
         };
+
+        // If the symbol is already declared, but the declarations are compatible, then
+        // return the id of the existing declaration. If the declarations are incompatible,
+        // then we raise an error.
+        //
+        // If the symbol is not declared yet, proceed with insertion.
         if let Some(gv) = self.names.get(&data.name).copied() {
+            if data.is_compatible_with(&self.arena[gv]) {
+                // If the declarations are compatible, and the new declaration has an initializer,
+                // then the previous declaration must either have no initializer, or the same one,
+                // but we want to make sure that the initializer is set if not already.
+                if data.init.is_some() {
+                    self.arena[gv].init = data.init;
+                }
+                Ok(gv)
+            } else {
+                Err(GlobalVariableError::NameConflict(data.name))
+            }
+        } else {
+            Ok(unsafe { self.insert(data) })
+        }
+    }
+
+    /// Attempt to insert the given [GlobalVariableData] into this table.
+    ///
+    /// Returns the id of the global variable in the table, along with a flag indicating whether the global symbol
+    /// was renamed to resolve a conflict with an existing symbol. The caller is expected to handle such renames
+    /// so that any references to the original name that are affected can be updated.
+    ///
+    /// If there was an unresolvable conflict, an error will be returned.
+    pub fn try_insert(
+        &mut self,
+        mut data: GlobalVariableData,
+    ) -> Result<(GlobalVariable, bool), GlobalVariableError> {
+        assert_ne!(
+            data.name.as_symbol(),
+            symbols::Empty,
+            "global variable declarations require a non-empty symbol name"
+        );
+
+        if let Some(gv) = self.names.get(&data.name).copied() {
+            // The symbol is already declared, check to see if they are compatible
+            if data.is_compatible_with(&self.arena[gv]) {
+                // If the declarations are compatible, and the new declaration has an initializer,
+                // then the previous declaration must either have no initializer, or the same one,
+                // but we make sure that the initializer is set.
+                if data.init.is_some() {
+                    self.arena[gv].init = data.init;
+                }
+                return Ok((gv, false));
+            }
+
+            // Otherwise, the declarations conflict, but depending on the conflict resolution
+            // strategy, we may yet be able to proceed.
             let rename_internal_symbols =
                 matches!(self.conflict_strategy, ConflictResolutionStrategy::Rename);
-            match linkage {
-                Linkage::External => return Err(GlobalVariableConflictError(gv)),
+            match data.linkage {
+                // Conflicting declarations with internal linkage can be resolved by renaming
                 Linkage::Internal if rename_internal_symbols => {
                     let mut generated = String::from(data.name.as_str());
                     let original_len = generated.len();
@@ -332,18 +386,69 @@ impl GlobalVariableTable {
                         // Strip off the suffix we just added before we try again
                         generated.truncate(original_len);
                     }
+
+                    let gv = unsafe { self.insert(data) };
+                    Ok((gv, true))
                 }
-                Linkage::Internal => return Err(GlobalVariableConflictError(gv)),
-                Linkage::Odr => {
-                    let prev = &self.arena[gv];
-                    if prev == &data {
-                        return Ok(gv);
-                    } else {
-                        return Err(GlobalVariableConflictError(gv));
-                    }
+                // In all other cases, a conflicting declaration cannot be resolved
+                Linkage::External | Linkage::Internal | Linkage::Odr => {
+                    Err(GlobalVariableError::NameConflict(data.name))
+                }
+            }
+        } else {
+            let gv = unsafe { self.insert(data) };
+            Ok((gv, false))
+        }
+    }
+
+    /// This sets the initializer for the given [GlobalVariable] to `init`.
+    ///
+    /// This function will return `Err` if any of the following occur:
+    ///
+    /// * The global variable already has an initializer
+    /// * The given data does not match the type of the global variable, i.e. more data than the type supports.
+    ///
+    /// If the data is smaller than the type of the global variable, the data will be zero-extended to fill it out.
+    ///
+    /// NOTE: The initializer data is expected to be in little-endian order.
+    pub fn set_initializer(
+        &mut self,
+        gv: GlobalVariable,
+        init: ConstantData,
+    ) -> Result<(), GlobalVariableError> {
+        let global = &mut self.arena[gv];
+        let layout = global.layout();
+        if init.len() > layout.size() {
+            return Err(GlobalVariableError::InvalidInit(global.name));
+        }
+
+        match global.init {
+            // If the global is uninitialized, we're good to go
+            None => {
+                global.init = Some(self.data.insert(init));
+            }
+            // If it is already initialized, but the initializers are the
+            // same, then we consider this a successful, albeit redundant,
+            // operation; otherwise we raise an error.
+            Some(prev_init) => {
+                let prev = self.data.get(prev_init);
+                if prev != &init {
+                    return Err(GlobalVariableError::AlreadyInitialized(global.name));
                 }
             }
         }
+
+        Ok(())
+    }
+
+    /// This is a low-level operation to insert global variable data directly into the table, allocating
+    /// a fresh unique id, which is then returned.
+    ///
+    /// # SAFETY
+    ///
+    /// It is expected that the caller has already guaranteed that the name of the given global variable
+    /// is not present in the table, and that all validation rules for global variables have been enforced.
+    unsafe fn insert(&mut self, mut data: GlobalVariableData) -> GlobalVariable {
         let name = data.name;
         // Allocate the data in the arena
         let gv = self.arena.alloc_key();
@@ -351,13 +456,14 @@ impl GlobalVariableTable {
         self.arena.append(gv, data);
         // Add the symbol name to the symbol map
         self.names.insert(name, gv);
+
         // Add the global variable to the layout
         let unsafe_ref = unsafe {
             let ptr = self.arena.get_raw(gv).unwrap();
             UnsafeRef::from_raw(ptr.as_ptr())
         };
         self.layout.push_back(unsafe_ref);
-        Ok(gv)
+        gv
     }
 }
 
@@ -411,6 +517,16 @@ impl GlobalVariableData {
     /// Return a handle to the initializer for this global variable, if present
     pub fn initializer(&self) -> Option<Constant> {
         self.init
+    }
+
+    /// Returns true if `self` is compatible with `other`, meaning that the two declarations are
+    /// identical in terms of type and linkage, and do not have conflicting initializers.
+    ///
+    /// NOTE: The name of the global is not considered here, only the properties of the value itself.
+    pub fn is_compatible_with(&self, other: &Self) -> bool {
+        let compatible_init =
+            self.init.is_none() || other.init.is_none() || self.init == other.init;
+        self.ty == other.ty && self.linkage == other.linkage && compatible_init
     }
 }
 impl Eq for GlobalVariableData {}
