@@ -75,11 +75,12 @@ impl fmt::Display for Module {
             f.write_char('\n')?;
             f.write_str("memory {\n")?;
             for segment in self.segments.iter() {
-                let data = self.globals.get_constant(segment.init);
                 writeln!(
                     f,
                     "    segment @{:#x} x {} = {};",
-                    segment.offset, segment.size, data
+                    segment.offset(),
+                    segment.size(),
+                    segment.init(),
                 )?;
             }
             f.write_str("}\n\n")?;
@@ -206,7 +207,7 @@ impl Module {
 
     /// Declare a new [DataSegment] in this module, with the given offset, size, and data.
     ///
-    /// Returns `Err` if the proposed segment overlaps with an existing segment.
+    /// Returns `Err` if the segment declaration is invalid, or conflicts with an existing segment
     ///
     /// Data segments are ordered by the address at which they are allocated, at link-time, all
     /// segments from all modules are linked together, and they must either be disjoint, or exactly
@@ -219,13 +220,7 @@ impl Module {
         init: ConstantData,
         readonly: bool,
     ) -> Result<(), DataSegmentError> {
-        let init_size = init
-            .len()
-            .try_into()
-            .expect("invalid constant data: must be smaller than 2^32 bytes");
-        let size = core::cmp::max(size, init_size);
-        let init = self.globals.insert_constant(init);
-        self.segments.insert(offset, size, init, readonly)
+        self.segments.declare(offset, size, init, readonly)
     }
 
     /// Return an iterator over the global variables declared in this module

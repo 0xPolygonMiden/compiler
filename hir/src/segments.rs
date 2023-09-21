@@ -4,7 +4,7 @@ use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, Unsaf
 
 intrusive_adapter!(pub DataSegmentAdapter = UnsafeRef<DataSegment>: DataSegment { link: LinkedListLink });
 
-use super::{Constant, Offset};
+use super::{ConstantData, Offset};
 
 /// This error is raised when attempting to declare a [DataSegment]
 /// that in some way conflicts with previously declared data segments.
@@ -31,6 +31,16 @@ pub enum DataSegmentError {
     /// past that point.
     #[error("invalid data segment: segment of {size} bytes at {offset:#x} would extend beyond the end of the usable heap")]
     OutOfBounds { offset: Offset, size: u32 },
+    /// The initializer for the current segment has a size greater than `u32::MAX` bytes
+    #[error("invalid data segment: segment at {0:#x} was declared with an initializer larger than 2^32 bytes")]
+    InitTooLarge(Offset),
+    /// The initializer for the current segment has a size greater than the declared segment size
+    #[error("invalid data segment: segment of {size} bytes at {offset:#x} has an initializer of {actual} bytes")]
+    InitOutOfBounds {
+        offset: Offset,
+        size: u32,
+        actual: u32,
+    },
 }
 
 /// Similar to [GlobalVariableTable], this structure is used to track data segments in a module or program.
@@ -44,63 +54,62 @@ impl DataSegmentTable {
         self.segments.is_empty()
     }
 
-    /// Try to insert a new [DataSegment] in the table, with the given offset, size, and data.
+    /// Declare a new [DataSegment], with the given offset, size, and data.
     ///
-    /// Returns `Err` if the proposed segment overlaps with an existing segment.
-    ///
-    /// Data segments are ordered by the address at which they are allocated.
-    pub fn insert(
+    /// Returns `Err` if the declared segment overlaps/conflicts with an existing segment.
+    pub fn declare(
         &mut self,
         offset: Offset,
         size: u32,
-        init: Constant,
+        init: ConstantData,
         readonly: bool,
     ) -> Result<(), DataSegmentError> {
-        // Make sure this segment does not overlap with another segment
-        let end = offset
-            .checked_add(size)
-            .ok_or_else(|| DataSegmentError::OutOfBounds { offset, size })?;
+        self.insert(Box::new(DataSegment::new(offset, size, init, readonly)?))
+    }
+
+    /// Insert a [DataSegment] into this table, while preserving the order of the table.
+    ///
+    /// This will fail if the segment is invalid, or overlaps/conflicts with an existing segment.
+    pub fn insert(&mut self, segment: Box<DataSegment>) -> Result<(), DataSegmentError> {
         let mut cursor = self.segments.front_mut();
-        while let Some(segment) = cursor.get() {
-            let segment_end = segment.offset + segment.size;
+        let end = segment.offset + segment.size;
+        while let Some(current_segment) = cursor.get() {
+            let segment_end = current_segment.offset + current_segment.size;
             // If this segment starts after the segment we're declaring,
             // we do not need to continue searching for conflicts, and
             // can go a head and perform the insert
-            if segment.offset >= end {
-                let segment = Box::new(DataSegment::new(offset, size, init, readonly));
+            if current_segment.offset >= end {
                 cursor.insert_before(UnsafeRef::from_box(segment));
                 return Ok(());
             }
             // If this segment starts at the same place as the one we're
             // declaring that's a guaranteed conflict
-            if segment.offset == offset {
+            if current_segment.offset == segment.offset {
                 // If the two segments have the same size and offset, then
                 // if they match in all other respects, we're done. If they
                 // don't match, then we raise a mismatch error.
-                if segment.size == size {
-                    if segment.init == init && segment.readonly == readonly {
-                        return Ok(());
-                    }
+                if current_segment.size == segment.size
+                    && current_segment.init == segment.init
+                    && current_segment.readonly == segment.readonly
+                {
+                    return Ok(());
                 }
-                return Err(DataSegmentError::Mismatch(offset));
+                return Err(DataSegmentError::Mismatch(segment.offset));
             }
             // This segment starts before the segment we're declaring,
             // make sure that this segment ends before our segment starts
-            if segment_end > offset {
+            if segment_end > segment.offset {
                 return Err(DataSegmentError::OverlappingSegments {
-                    offset1: offset,
-                    size1: size,
-                    offset2: segment.offset,
-                    size2: segment.size,
+                    offset1: segment.offset,
+                    size1: segment.size,
+                    offset2: current_segment.offset,
+                    size2: current_segment.size,
                 });
             }
         }
 
-        // If we reach here, we didn't find any conflicts, and all segments
-        // that were previously declared occur before the offset at which this
-        // segment is allocated
-        let segment = Box::new(DataSegment::new(offset, size, init, readonly));
         self.segments.push_back(UnsafeRef::from_box(segment));
+
         Ok(())
     }
 
@@ -109,6 +118,20 @@ impl DataSegmentTable {
         &'b self,
     ) -> intrusive_collections::linked_list::Iter<'a, DataSegmentAdapter> {
         self.segments.iter()
+    }
+
+    /// Remove the first data segment from the table
+    #[inline]
+    pub fn pop_front(&mut self) -> Option<Box<DataSegment>> {
+        self.segments
+            .pop_front()
+            .map(|unsafe_ref| unsafe { UnsafeRef::into_box(unsafe_ref) })
+    }
+
+    /// Return a reference to the last [DataSegment] in memory
+    #[inline]
+    pub fn last(&self) -> Option<&DataSegment> {
+        self.segments.back().get()
     }
 }
 
@@ -132,25 +155,77 @@ impl DataSegmentTable {
 pub struct DataSegment {
     link: LinkedListLink,
     /// The offset from the start of linear memory where this segment starts
-    pub offset: Offset,
+    offset: Offset,
     /// The size, in bytes, of this data segment.
     ///
     /// By default this will be the same size as `init`, unless explicitly given.
-    pub size: u32,
+    size: u32,
     /// The data to initialize this segment with, may not be larger than `size`
-    pub init: Constant,
+    init: ConstantData,
     /// Whether or not this segment is intended to be read-only data
-    pub readonly: bool,
+    readonly: bool,
 }
 impl DataSegment {
-    pub fn new(offset: Offset, size: u32, init: Constant, readonly: bool) -> Self {
-        Self {
+    /// Create a new [DataSegment] with the given offset, size, initializer, and readonly flag.
+    ///
+    /// If the declared size and the size of the initializer differ, then the greater of the two is
+    /// used. However, if the declared size is smaller than the initializer, an error is returned.
+    ///
+    /// If the offset and/or size are invalid, an error is returned.
+    pub(crate) fn new(
+        offset: Offset,
+        size: u32,
+        init: ConstantData,
+        readonly: bool,
+    ) -> Result<Self, DataSegmentError> {
+        // Require the initializer data to be no larger than 2^32 bytes
+        let init_size = init
+            .len()
+            .try_into()
+            .map_err(|_| DataSegmentError::InitTooLarge(offset))?;
+
+        // Require the initializer to fit within the declared bounds
+        if size < init_size {
+            return Err(DataSegmentError::InitOutOfBounds {
+                offset,
+                size,
+                actual: init_size,
+            });
+        }
+
+        // Require the entire segment to fit within the linear memory address space
+        let size = core::cmp::max(size, init_size);
+        offset
+            .checked_add(size)
+            .ok_or(DataSegmentError::OutOfBounds { offset, size })?;
+
+        Ok(Self {
             link: Default::default(),
             offset,
             size,
             init,
             readonly,
-        }
+        })
+    }
+
+    /// Get the offset from the base of linear memory where this segment starts
+    pub const fn offset(&self) -> Offset {
+        self.offset
+    }
+
+    /// Get the size, in bytes, of this segment
+    pub const fn size(&self) -> u32 {
+        self.size
+    }
+
+    /// Get a reference to this segment's initializer data
+    pub const fn init(&self) -> &ConstantData {
+        &self.init
+    }
+
+    /// Returns true if this segment is intended to be read-only
+    pub const fn is_readonly(&self) -> bool {
+        self.readonly
     }
 }
 impl Eq for DataSegment {}
