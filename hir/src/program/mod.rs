@@ -1,5 +1,8 @@
+mod linker;
+
 use intrusive_collections::RBTree;
-use smallvec::SmallVec;
+
+pub use self::linker::{Linker, LinkerError};
 
 use super::*;
 
@@ -121,52 +124,8 @@ impl Program {
         &mut self.globals
     }
 
-    /// Import a module definition into this program, assigning it a [ModuleId] in the process.
-    ///
-    /// If a module with the same name is already present in the program, `Err` will be returned.
-    ///
-    /// NOTE: This function will panic if `module` is already attached to another program.
-    pub fn import_module(&mut self, module: Box<Module>) -> Result<(), ModuleConflictError> {
-        assert!(
-            module.is_detached(),
-            "cannot import a module that is attached to a program"
-        );
-        if let Some(prev) = self.modules.find(&module.name).get() {
-            Err(ModuleConflictError(prev.name))
-        } else {
-            self.modules.insert(module);
-            Ok(())
-        }
+    /// Returns true if `name` is defined in this program.
+    pub fn contains(&self, name: Ident) -> bool {
+        !self.modules.find(&name).is_null()
     }
 }
-
-pub struct Linker {
-    program: Program,
-    modules: SmallVec<[Ident; 4]>,
-}
-impl Linker {
-    pub fn new() -> Self {
-        Self {
-            program: Program::new(),
-            modules: Default::default(),
-        }
-    }
-
-    /// Add `module` to the set of modules to be linked
-    ///
-    /// Returns `Err` if `module` conflicts with another module in the set.
-    pub fn add(&mut self, module: Box<Module>) -> Result<(), ModuleConflictError> {
-        let id = module.name;
-        self.program.import_module(module)?;
-        self.modules.push(id);
-
-        Ok(())
-    }
-
-    /// Link all modules into a [Program], or return an error if unable to complete the link
-    pub fn link(&mut self) -> Result<Program, LinkerError> {
-        todo!()
-    }
-}
-
-pub struct LinkerError;

@@ -317,6 +317,11 @@ impl Function {
     pub fn set_calling_convention(&mut self, cc: CallConv) {
         self.signature.cc = cc;
     }
+
+    /// Iterate over all of the external functions imported by this function
+    pub fn imports<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a ExternalFunction> + 'a {
+        self.dfg.imports().filter(|ext| ext.id != self.id)
+    }
 }
 impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

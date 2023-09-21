@@ -32,6 +32,7 @@ clap = { version = "4.1", features = ["derive"] }
 cranelift-entity = "0.95"
 cranelift-bforest = "0.95"
 env_logger = "0.9"
+intrusive-collections = "0.9"
 log = "0.4"
 parking_lot = "0.12"
 parking_lot_core = "0.9"

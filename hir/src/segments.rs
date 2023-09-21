@@ -106,6 +106,8 @@ impl DataSegmentTable {
                     size2: current_segment.size,
                 });
             }
+
+            cursor.move_next();
         }
 
         self.segments.push_back(UnsafeRef::from_box(segment));

@@ -13,11 +13,12 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 cranelift-entity.workspace = true
-intrusive-collections = "0.9"
+intrusive-collections.workspace = true
 miden-diagnostics.workspace = true
 miden-hir-symbol = { path = "../hir-symbol" }
 miden-hir-type = { path = "../hir-type" }
 paste = "1.0"
+petgraph = "0.6"
 rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true

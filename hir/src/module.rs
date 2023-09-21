@@ -43,12 +43,12 @@ pub struct Module {
     /// Miden Assembly during code generation.
     pub docs: Option<String>,
     /// The set of data segments allocated in this module
-    segments: DataSegmentTable,
+    pub(crate) segments: DataSegmentTable,
     /// The set of global variables declared in this module
-    globals: GlobalVariableTable,
+    pub(crate) globals: GlobalVariableTable,
     /// The set of functions which belong to this module, in the order
     /// in which they were defined.
-    functions: LinkedList<FunctionListAdapter>,
+    pub(crate) functions: LinkedList<FunctionListAdapter>,
     /// This flag indicates whether this module is a kernel module
     ///
     /// Kernel modules have additional constraints imposed on them that regular
