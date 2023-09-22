@@ -834,22 +834,9 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
                     );
                     let element_size = element_ty.size_in_bytes();
                     let min_align = element_ty.min_alignment();
-                    let align_offset = element_size % min_align;
-                    let padded_element_size = if align_offset != 0 {
-                        element_size + (min_align - align_offset)
-                    } else {
-                        element_size
-                    };
+                    let padded_element_size = element_size.align_up(min_align);
                     ty = element_ty;
-                    match index {
-                        0 => continue,
-                        1 => {
-                            offset += padded_element_size;
-                        }
-                        n => {
-                            offset += padded_element_size * n;
-                        }
-                    }
+                    offset += padded_element_size * index;
                 }
                 Type::Struct(ref fields) if index == 0 => {
                     assert!(
@@ -874,22 +861,14 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
                     for (i, ty) in fields.iter().take(index).enumerate() {
                         // Add alignment padding for all but the first field
                         if i > 0 {
-                            let min_align = ty.min_alignment();
-                            let align_offset = skipped % min_align;
-                            if align_offset != 0 {
-                                skipped += min_align - align_offset;
-                            }
+                            skipped = skipped.align_up(ty.min_alignment());
                         }
                         skipped += ty.size_in_bytes();
                     }
                     // Second, make sure the alignment padding is added for the selected field
                     let min_align = fields[index].min_alignment();
-                    let align_offset = skipped % min_align;
-                    if align_offset != 0 {
-                        skipped += min_align - align_offset;
-                    }
                     // The offset is increased by the number of bytes skipped
-                    offset += skipped;
+                    offset += skipped.align_up(min_align);
                     ty = &fields[index];
                 }
                 other => panic!(

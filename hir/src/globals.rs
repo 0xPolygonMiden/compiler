@@ -192,13 +192,7 @@ impl GlobalVariableTable {
         let mut size = 0;
         for gv in self.layout.iter() {
             let layout = gv.layout();
-            let align = layout.align();
-            let mut gv_size = layout.size();
-            let align_offset = size % align;
-            if align_offset != 0 {
-                gv_size += align - align_offset;
-            }
-            size += gv_size;
+            size += layout.size().align_up(layout.align());
         }
         size
     }
@@ -223,11 +217,8 @@ impl GlobalVariableTable {
         let mut size = 0;
         for gv in self.layout.iter() {
             let layout = gv.layout();
-            let align = layout.align();
-            let align_offset = size % align;
-            if align_offset != 0 {
-                size += align - align_offset;
-            }
+            let align_offset = layout.size().align_offset(layout.align());
+            size += align_offset;
 
             // If the current variable is the one we're after,
             // the aligned address is the offset to the start

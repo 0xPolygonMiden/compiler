@@ -460,15 +460,12 @@ impl Linker {
         // of the data segments and these globals.
         let mut globals_offset = 0;
         if let Some(last_segment) = self.program.segments.last() {
-            globals_offset = last_segment.offset() + last_segment.size();
+            let next_offset = last_segment.offset() + last_segment.size();
             // Ensure the start of the globals segment is word-aligned
-            let align_offset = globals_offset % 32;
-            if align_offset != 0 {
-                globals_offset += 32 - align_offset;
-            }
+            globals_offset = next_offset.align_up(32);
         }
         // Compute the start of the heap by finding the end of the globals segment, aligned to the nearest word boundary
-        let mut heap_base = globals_offset
+        let heap_base = globals_offset
             .checked_add(
                 self.program
                     .globals
@@ -476,11 +473,8 @@ impl Linker {
                     .try_into()
                     .expect("unable to allocate globals, unable to fit in linear memory"),
             )
-            .expect("unable to allocate globals, not enough unreserved space available");
-        let align_offset = heap_base % 32;
-        if align_offset != 0 {
-            heap_base += 32 - align_offset;
-        }
+            .expect("unable to allocate globals, not enough unreserved space available")
+            .align_up(32);
         let hp = heap_base.to_le_bytes();
         // Initialize all 3 globals with the computed heap pointer
         let heap_ptr_ty = Type::Ptr(Box::new(Type::U8));
