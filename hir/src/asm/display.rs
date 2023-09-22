@@ -1,5 +1,7 @@
 use std::fmt;
 
+use cranelift_entity::PrimaryMap;
+
 use super::*;
 use crate::{write::DisplayIndent, DataFlowGraph};
 
@@ -27,8 +29,8 @@ impl<'a> fmt::Display for DisplayInlineAsm<'a> {
         writeln!(
             f,
             "{}",
-            DisplayBlock {
-                asm: self.asm,
+            DisplayMasmBlock {
+                blocks: &self.asm.blocks,
                 block,
                 indent: indent + 1,
             }
@@ -38,21 +40,34 @@ impl<'a> fmt::Display for DisplayInlineAsm<'a> {
     }
 }
 
-struct DisplayBlock<'a> {
-    asm: &'a InlineAsm,
+pub struct DisplayMasmBlock<'a> {
+    blocks: &'a PrimaryMap<MasmBlockId, MasmBlock>,
     block: MasmBlockId,
     indent: usize,
 }
-impl<'a> fmt::Display for DisplayBlock<'a> {
+impl<'a> DisplayMasmBlock<'a> {
+    pub fn new(
+        blocks: &'a PrimaryMap<MasmBlockId, MasmBlock>,
+        block: MasmBlockId,
+        indent: usize,
+    ) -> Self {
+        Self {
+            blocks,
+            block,
+            indent,
+        }
+    }
+}
+impl<'a> fmt::Display for DisplayMasmBlock<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let block = &self.asm.blocks[self.block];
+        let block = &self.blocks[self.block];
         let indent = self.indent;
         for op in block.ops.iter() {
             writeln!(
                 f,
                 "{}",
                 DisplayOp {
-                    asm: self.asm,
+                    blocks: self.blocks,
                     op,
                     indent
                 }
@@ -63,7 +78,7 @@ impl<'a> fmt::Display for DisplayBlock<'a> {
 }
 
 struct DisplayOp<'a> {
-    asm: &'a InlineAsm,
+    blocks: &'a PrimaryMap<MasmBlockId, MasmBlock>,
     op: &'a MasmOp,
     indent: usize,
 }
@@ -115,14 +130,14 @@ impl<'a> fmt::Display for DisplayOp<'a> {
             MasmOp::If(then_blk, else_blk) => {
                 f.write_str("if.true\n")?;
                 {
-                    let then_block = &self.asm.blocks[*then_blk];
+                    let then_block = &self.blocks[*then_blk];
                     let indent = self.indent + 1;
                     for op in then_block.ops.iter() {
                         writeln!(
                             f,
                             "{}",
                             DisplayOp {
-                                asm: self.asm,
+                                blocks: self.blocks,
                                 op,
                                 indent
                             }
@@ -131,14 +146,14 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                 }
                 writeln!(f, "{}else", DisplayIndent(self.indent))?;
                 {
-                    let else_block = &self.asm.blocks[*else_blk];
+                    let else_block = &self.blocks[*else_blk];
                     let indent = self.indent + 1;
                     for op in else_block.ops.iter() {
                         writeln!(
                             f,
                             "{}",
                             DisplayOp {
-                                asm: self.asm,
+                                blocks: self.blocks,
                                 op,
                                 indent
                             }
@@ -150,14 +165,14 @@ impl<'a> fmt::Display for DisplayOp<'a> {
             MasmOp::While(blk) => {
                 f.write_str("while.true\n")?;
                 {
-                    let body = &self.asm.blocks[*blk];
+                    let body = &self.blocks[*blk];
                     let indent = self.indent + 1;
                     for op in body.ops.iter() {
                         writeln!(
                             f,
                             "{}",
                             DisplayOp {
-                                asm: self.asm,
+                                blocks: self.blocks,
                                 op,
                                 indent
                             }
@@ -169,14 +184,14 @@ impl<'a> fmt::Display for DisplayOp<'a> {
             MasmOp::Repeat(n, blk) => {
                 writeln!(f, "repeat.{}", n)?;
                 {
-                    let body = &self.asm.blocks[*blk];
+                    let body = &self.blocks[*blk];
                     let indent = self.indent + 1;
                     for op in body.ops.iter() {
                         writeln!(
                             f,
                             "{}",
                             DisplayOp {
-                                asm: self.asm,
+                                blocks: self.blocks,
                                 op,
                                 indent
                             }
