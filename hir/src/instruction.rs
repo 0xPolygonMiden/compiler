@@ -238,16 +238,22 @@ pub enum Opcode {
     AssertEq,
     /// Represents an immediate boolean value (1-bit integer)
     ImmI1,
-    /// Represents an immediate 8-bit integer value
+    /// Represents an immediate unsigned 8-bit integer value
+    ImmU8,
+    /// Represents an immediate signed 8-bit integer value
     ImmI8,
-    /// Represents an immediate 16-bit integer value
+    /// Represents an immediate unsigned 16-bit integer value
+    ImmU16,
+    /// Represents an immediate signed 16-bit integer value
     ImmI16,
-    /// Represents an immediate 32-bit integer value
+    /// Represents an immediate unsigned 32-bit integer value
+    ImmU32,
+    /// Represents an immediate signed 32-bit integer value
     ImmI32,
-    /// Represents an immediate 64-bit integer value
+    /// Represents an immediate unsigned 64-bit integer value
+    ImmU64,
+    /// Represents an immediate signed 64-bit integer value
     ImmI64,
-    /// Represents an immediate machine-width integer value (32-bit integer for the time being)
-    ImmIsize,
     /// Represents an immediate field element
     ImmFelt,
     /// Represents an immediate 64-bit floating-point value
@@ -398,11 +404,14 @@ impl Opcode {
             | Self::InlineAsm => true,
             // These opcodes are not
             Self::ImmI1
+            | Self::ImmU8
             | Self::ImmI8
+            | Self::ImmU16
             | Self::ImmI16
+            | Self::ImmU32
             | Self::ImmI32
+            | Self::ImmU64
             | Self::ImmI64
-            | Self::ImmIsize
             | Self::ImmFelt
             | Self::ImmF64
             | Self::GlobalValue
@@ -457,11 +466,14 @@ impl Opcode {
             Self::AssertEq => 2,
             // Immediates/constants have none
             Self::ImmI1
+            | Self::ImmU8
             | Self::ImmI8
+            | Self::ImmU16
             | Self::ImmI16
+            | Self::ImmU32
             | Self::ImmI32
+            | Self::ImmU64
             | Self::ImmI64
-            | Self::ImmIsize
             | Self::ImmFelt
             | Self::ImmF64 => 0,
             // Binary ops always have two
@@ -558,11 +570,14 @@ impl Opcode {
             | Self::Lte => smallvec![Type::I1],
             // For these ops, the controlling type variable determines the type for the op
             Self::ImmI1
+            | Self::ImmU8
             | Self::ImmI8
+            | Self::ImmU16
             | Self::ImmI16
+            | Self::ImmU32
             | Self::ImmI32
+            | Self::ImmU64
             | Self::ImmI64
-            | Self::ImmIsize
             | Self::ImmFelt
             | Self::ImmF64
             | Self::GlobalValue
@@ -615,11 +630,14 @@ impl fmt::Display for Opcode {
             Self::Assertz => f.write_str("assertz"),
             Self::AssertEq => f.write_str("assert.eq"),
             Self::ImmI1 => f.write_str("const.i1"),
+            Self::ImmU8 => f.write_str("const.u8"),
             Self::ImmI8 => f.write_str("const.i8"),
+            Self::ImmU16 => f.write_str("const.u16"),
             Self::ImmI16 => f.write_str("const.i16"),
+            Self::ImmU32 => f.write_str("const.u32"),
             Self::ImmI32 => f.write_str("const.i32"),
+            Self::ImmU64 => f.write_str("const.u64"),
             Self::ImmI64 => f.write_str("const.i64"),
-            Self::ImmIsize => f.write_str("const.isize"),
             Self::ImmFelt => f.write_str("const.felt"),
             Self::ImmF64 => f.write_str("const.f64"),
             Self::GlobalValue => f.write_str("global"),

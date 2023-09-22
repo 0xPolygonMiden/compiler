@@ -124,8 +124,6 @@ impl Default for GlobalVariableTable {
     }
 }
 impl GlobalVariableTable {
-    const BASE_ADDR: usize = 0;
-
     pub fn new(conflict_strategy: ConflictResolutionStrategy) -> Self {
         Self {
             layout: Default::default(),
@@ -191,18 +189,18 @@ impl GlobalVariableTable {
         //
         // At the end, the effective address of the pointer is the total
         // size in bytes of the allocation
-        let mut hp = Self::BASE_ADDR as *const u8;
+        let mut size = 0;
         for gv in self.layout.iter() {
             let layout = gv.layout();
-            // SAFETY: We aren't actually using these pointers,
-            // we're just making use of the optimized alignment
-            // intrinsics available for them
-            let offset = hp.align_offset(layout.align());
-            unsafe {
-                hp = hp.add(offset).add(layout.size());
+            let align = layout.align();
+            let mut gv_size = layout.size();
+            let align_offset = size % align;
+            if align_offset != 0 {
+                gv_size += align - align_offset;
             }
+            size += gv_size;
         }
-        hp as usize
+        size
     }
 
     /// Computes the offset, in bytes, of the given [GlobalVariable] from the
@@ -222,11 +220,14 @@ impl GlobalVariableTable {
     /// subsequently changed in such a way that the original offset is no longer
     /// accurate, bad things will happen.
     pub unsafe fn offset_of(&self, id: GlobalVariable) -> usize {
-        let mut hp = Self::BASE_ADDR as *const u8;
+        let mut size = 0;
         for gv in self.layout.iter() {
             let layout = gv.layout();
-            let offset = hp.align_offset(layout.align());
-            hp = hp.add(offset);
+            let align = layout.align();
+            let align_offset = size % align;
+            if align_offset != 0 {
+                size += align - align_offset;
+            }
 
             // If the current variable is the one we're after,
             // the aligned address is the offset to the start
@@ -234,10 +235,10 @@ impl GlobalVariableTable {
             if gv.id == id {
                 break;
             }
-            // Otherwise, continue by adding the size of the value
-            hp = hp.add(layout.size());
+
+            size += layout.size();
         }
-        hp as usize
+        size
     }
 
     /// Get the constant data associated with `id`
