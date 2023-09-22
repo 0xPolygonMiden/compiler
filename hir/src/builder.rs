@@ -901,8 +901,28 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.Binary(Opcode::Eq, Type::I1, lhs, rhs, span))
     }
 
+    fn eq_imm(self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+        let lty = assert_integer_operands!(self, lhs);
+        assert_eq!(
+            lty,
+            imm.ty(),
+            "expected immediate to be the same type as non-immediate operand",
+        );
+        into_first_result!(self.BinaryImm(Opcode::Eq, Type::I1, lhs, imm, span))
+    }
+
     fn neq(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
         into_first_result!(self.Binary(Opcode::Neq, Type::I1, lhs, rhs, span))
+    }
+
+    fn neq_imm(self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+        let lty = assert_integer_operands!(self, lhs);
+        assert_eq!(
+            lty,
+            imm.ty(),
+            "expected immediate to be the same type as non-immediate operand",
+        );
+        into_first_result!(self.BinaryImm(Opcode::Neq, Type::I1, lhs, imm, span))
     }
 
     fn gt(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
@@ -911,10 +931,30 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.Binary(Opcode::Gt, Type::I1, lhs, rhs, span))
     }
 
+    fn gt_imm(self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+        let lty = assert_integer_operands!(self, lhs);
+        assert_eq!(
+            lty,
+            imm.ty(),
+            "expected immediate to be the same type as non-immediate operand",
+        );
+        into_first_result!(self.BinaryImm(Opcode::Gt, Type::I1, lhs, imm, span))
+    }
+
     fn gte(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
         require_integer!(self, lhs);
         require_integer!(self, rhs);
         into_first_result!(self.Binary(Opcode::Gte, Type::I1, lhs, rhs, span))
+    }
+
+    fn gte_imm(self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+        let lty = assert_integer_operands!(self, lhs);
+        assert_eq!(
+            lty,
+            imm.ty(),
+            "expected immediate to be the same type as non-immediate operand",
+        );
+        into_first_result!(self.BinaryImm(Opcode::Gte, Type::I1, lhs, imm, span))
     }
 
     fn lt(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
@@ -923,10 +963,30 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.Binary(Opcode::Lt, Type::I1, lhs, rhs, span))
     }
 
+    fn lt_imm(self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+        let lty = assert_integer_operands!(self, lhs);
+        assert_eq!(
+            lty,
+            imm.ty(),
+            "expected immediate to be the same type as non-immediate operand",
+        );
+        into_first_result!(self.BinaryImm(Opcode::Lt, Type::I1, lhs, imm, span))
+    }
+
     fn lte(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
         require_integer!(self, lhs);
         require_integer!(self, rhs);
         into_first_result!(self.Binary(Opcode::Lte, Type::I1, lhs, rhs, span))
+    }
+
+    fn lte_imm(self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+        let lty = assert_integer_operands!(self, lhs);
+        assert_eq!(
+            lty,
+            imm.ty(),
+            "expected immediate to be the same type as non-immediate operand",
+        );
+        into_first_result!(self.BinaryImm(Opcode::Lte, Type::I1, lhs, imm, span))
     }
 
     fn is_odd(self, value: Value, span: SourceSpan) -> Value {
