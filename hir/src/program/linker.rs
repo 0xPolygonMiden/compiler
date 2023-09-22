@@ -511,7 +511,7 @@ impl Linker {
     /// If a library is being linked, this function is a no-op, as it is not known what will
     /// be needed at runtime once used in the context of a program.
     fn garbage_collect(&mut self) {
-        // TODO:
+        // TODO: See https://github.com/0xPolygonMiden/miden-ir/issues/26
     }
 }
 
