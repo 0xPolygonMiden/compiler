@@ -524,6 +524,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-codegen-masm"
+version = "0.1.0"
+dependencies = [
+ "cranelift-entity",
+ "intrusive-collections",
+ "miden-hir",
+ "miden-hir-analysis",
+ "miden-hir-pass",
+ "miden-hir-transform",
+ "rustc-hash",
+ "smallvec",
+]
+
+[[package]]
 name = "miden-diagnostics"
 version = "0.1.0"
 source = "git+https://github.com/0xpolygonmiden/miden-diagnostics#f99efe05b8873723fcbb1ba22c31d15c9e4b5afe"

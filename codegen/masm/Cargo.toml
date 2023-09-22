@@ -1,0 +1,21 @@
+[package]
+name = "miden-codegen-masm"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+cranelift-entity.workspace = true
+intrusive-collections.workspace = true
+miden-hir = { path = "../../hir" }
+miden-hir-analysis = { path = "../../hir-analysis" }
+miden-hir-pass = { path = "../../hir-pass" }
+miden-hir-transform = { path = "../../hir-transform" }
+rustc-hash.workspace = true
+smallvec.workspace = true

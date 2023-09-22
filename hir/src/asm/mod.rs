@@ -6,7 +6,7 @@ mod stack;
 pub use self::builder::*;
 pub use self::display::{DisplayInlineAsm, DisplayMasmBlock};
 pub use self::isa::*;
-pub use self::stack::{OperandStack, Stack};
+pub use self::stack::{OperandStack, Stack, StackElement};
 
 use cranelift_entity::PrimaryMap;
 
