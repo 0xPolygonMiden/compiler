@@ -387,31 +387,101 @@ macro_rules! unary_boolean_op {
 macro_rules! integer_literal {
     ($width:literal) => {
         paste::paste! {
-            integer_literal!($width, [<i $width>]);
+            unsigned_integer_literal!($width);
+            signed_integer_literal!($width);
         }
     };
 
     ($width:ident) => {
         paste::paste! {
-            integer_literal!($width, [<i $width>]);
+            unsigned_integer_literal!($width);
+            signed_integer_literal!($width);
         }
     };
 
     ($width:literal, $ty:ty) => {
         paste::paste! {
-            integer_literal!([<i $width>], [<I $width>], $ty);
+            unsigned_integer_literal!($width, $ty);
+            signed_integer_literal!($width, $ty);
         }
     };
 
     ($width:ident, $ty:ty) => {
         paste::paste! {
-            integer_literal!([<i $width>], [<I $width>], $ty);
+            unsigned_integer_literal!($width, $ty);
+            signed_integer_literal!($width, $ty);
+        }
+    };
+}
+
+macro_rules! unsigned_integer_literal {
+    ($width:literal) => {
+        paste::paste! {
+            unsigned_integer_literal!($width, [<u $width>]);
+        }
+    };
+
+    ($width:ident) => {
+        paste::paste! {
+            unsigned_integer_literal!($width, [<u $width>]);
+        }
+    };
+
+    ($width:literal, $ty:ty) => {
+        paste::paste! {
+            unsigned_integer_literal!([<u $width>], [<U $width>], $ty);
+        }
+    };
+
+    ($width:ident, $ty:ty) => {
+        paste::paste! {
+            unsigned_integer_literal!([<u $width>], [<U $width>], $ty);
         }
     };
 
     ($name:ident, $suffix:ident, $ty:ty) => {
         paste::paste! {
-            integer_literal!($name, $suffix, $ty, [<Imm $suffix>]);
+            unsigned_integer_literal!($name, $suffix, $ty, [<Imm $suffix>]);
+        }
+    };
+
+    ($name:ident, $suffix:ident, $ty:ty, $op:ident) => {
+        paste::paste! {
+            fn $name(self, imm: $ty, span: SourceSpan) -> Value {
+                into_first_result!(self.UnaryImm(Opcode::$op, Type::$suffix, Immediate::$suffix(imm), span))
+            }
+        }
+    };
+}
+
+macro_rules! signed_integer_literal {
+    ($width:literal) => {
+        paste::paste! {
+            signed_integer_literal!($width, [<i $width>]);
+        }
+    };
+
+    ($width:ident) => {
+        paste::paste! {
+            signed_integer_literal!($width, [<i $width>]);
+        }
+    };
+
+    ($width:literal, $ty:ty) => {
+        paste::paste! {
+            signed_integer_literal!([<i $width>], [<I $width>], $ty);
+        }
+    };
+
+    ($width:ident, $ty:ty) => {
+        paste::paste! {
+            signed_integer_literal!([<i $width>], [<I $width>], $ty);
+        }
+    };
+
+    ($name:ident, $suffix:ident, $ty:ty) => {
+        paste::paste! {
+            signed_integer_literal!($name, $suffix, $ty, [<Imm $suffix>]);
         }
     };
 
@@ -456,12 +526,11 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.PrimOp(Opcode::AssertEq, Type::Unit, vlist, span).0
     }
 
-    integer_literal!(1, bool);
+    signed_integer_literal!(1, bool);
     integer_literal!(8);
     integer_literal!(16);
     integer_literal!(32);
     integer_literal!(64);
-    integer_literal!(size);
 
     fn felt(self, i: u64, span: SourceSpan) -> Value {
         into_first_result!(self.UnaryImm(Opcode::ImmFelt, Type::Felt, Immediate::Felt(i), span))
