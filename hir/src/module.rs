@@ -540,6 +540,17 @@ impl ModuleBuilder {
         self.module.set_global_initializer(gv, init)
     }
 
+    pub fn declare_data_segment<I: Into<ConstantData>>(
+        &mut self,
+        offset: Offset,
+        size: u32,
+        init: I,
+        readonly: bool,
+    ) -> Result<(), DataSegmentError> {
+        self.module
+            .declare_data_segment(offset, size, init.into(), readonly)
+    }
+
     /// Start building a new function in this module
     pub fn build_function<'a, 'b: 'a, S: AsRef<str>>(
         &'b mut self,
