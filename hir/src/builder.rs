@@ -799,6 +799,121 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.Unary(Opcode::IntToPtr, ty, arg, span))
     }
 
+    /// This is an intrinsic which derives a new pointer from an existing pointer to an aggregate.
+    ///
+    /// In short, this represents the common need to calculate a new pointer from an existing pointer,
+    /// but without losing provenance of the original pointer. It is specifically intended for use
+    /// in obtaining a pointer to an element/field of an array/struct, of the correct type, given a
+    /// well typed pointer to the aggregate.
+    ///
+    /// This function will panic if the pointer is not to an aggregate type
+    ///
+    /// The new pointer is derived by statically navigating the structure of the pointee type, using
+    /// `offsets` to guide the traversal. Initially, the first offset is relative to the original
+    /// pointer, where `0` refers to the base/first field of the object. The second offset is then
+    /// relative to the base of the object selected by the first offset, and so on. Offsets must remain
+    /// in bounds, any attempt to index outside a type's boundaries will result in a panic.
+    fn getelementptr(mut self, ptr: Value, mut indices: &[usize], span: SourceSpan) -> Value {
+        let mut ty = require_pointee!(self, ptr);
+        assert!(
+            !indices.is_empty(),
+            "getelementptr requires at least one index"
+        );
+
+        // Calculate the offset in bytes from `ptr` to get the element pointer
+        let mut offset = 0;
+        while let Some((index, rest)) = indices.split_first().map(|(i, rs)| (*i, rs)) {
+            indices = rest;
+            match ty {
+                Type::Array(ref element_ty, len) => {
+                    assert!(
+                        index < *len,
+                        "invalid getelementptr: index of {} is out of bounds for {}",
+                        index,
+                        ty
+                    );
+                    let element_size = element_ty.size_in_bytes();
+                    let min_align = element_ty.min_alignment();
+                    let align_offset = element_size % min_align;
+                    let padded_element_size = if align_offset != 0 {
+                        element_size + (min_align - align_offset)
+                    } else {
+                        element_size
+                    };
+                    ty = element_ty;
+                    match index {
+                        0 => continue,
+                        1 => {
+                            offset += padded_element_size;
+                        }
+                        n => {
+                            offset += padded_element_size * n;
+                        }
+                    }
+                }
+                Type::Struct(ref fields) if index == 0 => {
+                    assert!(
+                        index < fields.len(),
+                        "invalid getelementptr: index of {} is out of bounds for {}",
+                        index,
+                        ty
+                    );
+                    ty = &fields[0];
+                }
+                Type::Struct(ref fields) => {
+                    assert!(
+                        index < fields.len(),
+                        "invalid getelementptr: index of {} is out of bounds for {}",
+                        index,
+                        ty
+                    );
+                    // Calculate the offset to the start of the desired field in its layout
+                    //
+                    // First, skip over all of the fields that come before `index`
+                    let mut skipped = 0;
+                    for (i, ty) in fields.iter().take(index).enumerate() {
+                        // Add alignment padding for all but the first field
+                        if i > 0 {
+                            let min_align = ty.min_alignment();
+                            let align_offset = skipped % min_align;
+                            if align_offset != 0 {
+                                skipped += min_align - align_offset;
+                            }
+                        }
+                        skipped += ty.size_in_bytes();
+                    }
+                    // Second, make sure the alignment padding is added for the selected field
+                    let min_align = fields[index].min_alignment();
+                    let align_offset = skipped % min_align;
+                    if align_offset != 0 {
+                        skipped += min_align - align_offset;
+                    }
+                    // The offset is increased by the number of bytes skipped
+                    offset += skipped;
+                    ty = &fields[index];
+                }
+                other => panic!(
+                    "invalid getelementptr: cannot index values of type {}",
+                    other
+                ),
+            }
+        }
+
+        // Emit the instruction sequence for offsetting the pointer
+        let ty = Type::Ptr(Box::new(ty.clone()));
+        // Cast the pointer to an integer
+        let addr = self.ins().ptrtoint(ptr, Type::U32, span);
+        // Add the element offset to the pointer
+        let offset: u32 = offset.try_into().expect(
+            "invalid getelementptr type: computed offset cannot possibly fit in linear memory",
+        );
+        let new_addr = self
+            .ins()
+            .add_imm_checked(addr, Immediate::U32(offset), span);
+        // Cast back to a pointer to the selected element type
+        self.inttoptr(new_addr, ty, span)
+    }
+
     /// Cast `arg` to a value of type `ty`
     ///
     /// NOTE: This is only valid for numeric to numeric, or pointer to pointer casts.
