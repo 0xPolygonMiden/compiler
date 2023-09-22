@@ -962,7 +962,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.Call(Opcode::Syscall, callee, vlist, span).0
     }
 
-    fn select(mut self, cond: Value, a: Value, b: Value, span: SourceSpan) -> Inst {
+    fn select(mut self, cond: Value, a: Value, b: Value, span: SourceSpan) -> Value {
         let mut vlist = ValueList::default();
         let ty = require_matching_operands!(self, a, b).clone();
         {
@@ -974,7 +974,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             );
             vlist.extend([cond, a, b], &mut dfg.value_lists);
         }
-        self.PrimOp(Opcode::Select, ty, vlist, span).0
+        into_first_result!(self.PrimOp(Opcode::Select, ty, vlist, span))
     }
 
     fn br(mut self, block: Block, args: &[Value], span: SourceSpan) -> Inst {
