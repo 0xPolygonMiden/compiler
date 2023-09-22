@@ -123,46 +123,46 @@ pub enum Type {
 }
 impl Type {
     pub fn is_numeric(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::I1
-            | Self::I8
-            | Self::U8
-            | Self::I16
-            | Self::U16
-            | Self::I32
-            | Self::U32
-            | Self::I64
-            | Self::U64
-            | Self::I128
-            | Self::U128
-            | Self::U256
-            | Self::Isize
-            | Self::Usize
-            | Self::F64
-            | Self::Felt => true,
-            _ => false,
-        }
+                | Self::I8
+                | Self::U8
+                | Self::I16
+                | Self::U16
+                | Self::I32
+                | Self::U32
+                | Self::I64
+                | Self::U64
+                | Self::I128
+                | Self::U128
+                | Self::U256
+                | Self::Isize
+                | Self::Usize
+                | Self::F64
+                | Self::Felt
+        )
     }
 
     pub fn is_integer(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::I1
-            | Self::I8
-            | Self::U8
-            | Self::I16
-            | Self::U16
-            | Self::I32
-            | Self::U32
-            | Self::I64
-            | Self::U64
-            | Self::I128
-            | Self::U128
-            | Self::U256
-            | Self::Isize
-            | Self::Usize
-            | Self::Felt => true,
-            _ => false,
-        }
+                | Self::I8
+                | Self::U8
+                | Self::I16
+                | Self::U16
+                | Self::I32
+                | Self::U32
+                | Self::I64
+                | Self::U64
+                | Self::I128
+                | Self::U128
+                | Self::U256
+                | Self::Isize
+                | Self::Usize
+                | Self::Felt
+        )
     }
 
     pub fn is_signed_integer(&self) -> bool {
@@ -376,19 +376,123 @@ impl Type {
         }
     }
 
-    /// Returns the size in bytes of this type, including necessary alignment padding
-    pub fn size_in_bytes(&self) -> usize {
-        self.layout().pad_to_align().size()
+    /// Returns the minimum alignment, in bytes, of this type
+    pub fn min_alignment(&self) -> usize {
+        match self {
+            // These types don't have a meaningful alignment, so choose byte-aligned
+            Self::Unknown | Self::Unit | Self::Never => 1,
+            // Felts must be naturally aligned
+            Self::Felt => 8,
+            // 256-bit and 128-bit integers must be word-aligned
+            Self::U256 | Self::I128 | Self::U128 => 32,
+            // 64-bit integers and floats must be element-aligned
+            Self::I64 | Self::U64 | Self::F64 => 8,
+            // 32-bit integers and pointers must be element-aligned
+            Self::I32
+            | Self::U32
+            | Self::Isize
+            | Self::Usize
+            | Self::Ptr(_)
+            | Self::NativePtr(_) => 8,
+            // 16-bit integers can be naturally aligned
+            Self::I16 | Self::U16 => 4,
+            // 8-bit integers and booleans can be naturally aligned
+            Self::I8 | Self::U8 | Self::I1 => 1,
+            // Structs use the minimum alignment of their first field, or 1 if a zero-sized type
+            Self::Struct(ref fields) => fields.first().map(|f| f.min_alignment()).unwrap_or(1),
+            // Arrays use the minimum alignment of their element type
+            Self::Array(ref element_ty, _) => element_ty.min_alignment(),
+        }
     }
 
-    /// Returns the size in field elements of this type, including necessary alignment padding
+    /// Returns the size in bytes of this type, without alignment padding.
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            // These types have no representation in memory
+            Self::Unknown | Self::Unit | Self::Never => 0,
+            // Booleans consume a full byte, and 8-bit integers are naturally sized
+            Self::I1 | Self::I8 | Self::U8 => 1,
+            // 16-bit integers require 2 bytes
+            Self::I16 | Self::U16 => 2,
+            // 32-bit integers require 4 bytes
+            Self::I32 | Self::U32 | Self::Isize | Self::Usize => 4,
+            // Pointers, which are 32-bits, require 4 bytes
+            Self::Ptr(_) | Self::NativePtr(_) => 4,
+            // 64-bit integers/floats (and field elements, which are 64 bits) require 8 bytes
+            Self::I64 | Self::U64 | Self::F64 | Self::Felt => 8,
+            // 128-bit integers require 16 bytes
+            Self::I128 | Self::U128 => 16,
+            // 256-bit integers require 32 bytes
+            Self::U256 => 32,
+            // Zero-sized types have no size
+            Self::Struct(ref fields) if fields.is_empty() => 0,
+            Self::Struct(ref fields) => {
+                let mut size = 0;
+                for (i, ty) in fields.iter().enumerate() {
+                    // Add alignment padding for all but the first field
+                    if i > 0 {
+                        let min_align = ty.min_alignment();
+                        let align_offset = size % min_align;
+                        if align_offset != 0 {
+                            size += min_align - align_offset;
+                        }
+                    }
+                    size += ty.size_in_bytes();
+                }
+                size
+            }
+            // Empty arrays have no size
+            Self::Array(_, 0) => 0,
+            // Single-element arrays are equivalent in size to their element type
+            Self::Array(ref element_ty, 1) => element_ty.size_in_bytes(),
+            // All other arrays are the size of their element type multiplied by the
+            // size of the array, with sufficient padding to all but the first element
+            // to ensure that each element in the array meets its required alignment
+            Self::Array(ref element_ty, n) => {
+                let min_align = element_ty.min_alignment();
+                let element_size = element_ty.size_in_bytes();
+                let align_offset = element_size % min_align;
+                let padded_element_size = if align_offset != 0 {
+                    element_size + (min_align - align_offset)
+                } else {
+                    element_size
+                };
+                element_size + (padded_element_size * (n - 1))
+            }
+        }
+    }
+
+    /// Returns the size in bytes of this type, with padding to account for alignment
+    pub fn aligned_size_in_bytes(&self) -> usize {
+        let align = self.min_alignment();
+        let size = self.size_in_bytes();
+
+        // Assuming that a pointer is allocated with the worst possible alignment,
+        // i.e. it is not aligned on a power-of-two boundary, we can ensure that there
+        // is enough space to align the pointer to the required minimum alignment and
+        // still fit it in the allocated block of memory without overflowing its bounds,
+        // by adding `align` to size.
+        //
+        // We panic if padding the size overflows `usize`.
+        //
+        // So let's say we have a type with a min alignment of 16, and size of 24. If
+        // we add 16 to 24, we get 40. We then allocate a block of memory of 40 bytes,
+        // the pointer of which happens to be at address 0x01. If we align that pointer
+        // to 0x10 (the next closest aligned address within the block we allocated),
+        // that consumes 15 bytes of the 40 we have, leaving us with 25 bytes to hold
+        // our 24 byte value.
+        size.checked_add(align)
+            .expect("type cannot meet its minimum alignment requirement due to its size")
+    }
+
+    /// Returns the size in field elements of this type
     pub fn size_in_felts(&self) -> usize {
         let bytes = self.size_in_bytes();
         let trailing = bytes % FELT_SIZE;
         (bytes / FELT_SIZE) + ((trailing > 0) as usize)
     }
 
-    /// Returns the size in words of this type, including necessary alignment padding
+    /// Returns the size in words of this type
     pub fn size_in_words(&self) -> usize {
         let bytes = self.size_in_bytes();
         let trailing = bytes % WORD_SIZE;
@@ -397,39 +501,8 @@ impl Type {
 
     /// Returns the layout of this type in memory
     pub fn layout(&self) -> Layout {
-        match self {
-            Self::Unknown | Self::Unit | Self::Never => Layout::new::<()>(),
-            Self::I1 | Self::I8 | Self::U8 => Layout::new::<i8>(),
-            Self::I16 | Self::U16 => Layout::new::<i16>(),
-            Self::I32 | Self::U32 | Self::Isize | Self::Usize | Self::Ptr(_) => {
-                Layout::new::<i32>()
-            }
-            Self::I64 | Self::U64 | Self::F64 | Self::Felt | Self::NativePtr(_) => {
-                Layout::new::<i64>()
-            }
-            Self::I128 | Self::U128 => Layout::new::<i128>(),
-            Self::U256 => Layout::new::<[u64; 4]>(),
-            Self::Struct(ref tys) => {
-                if let Some(ty) = tys.first() {
-                    let mut layout = ty.layout();
-                    for ty in tys.iter().skip(1) {
-                        let (new_layout, _field_offset) = layout
-                            .extend(ty.layout())
-                            .expect("invalid type: layout too large");
-                        layout = new_layout;
-                    }
-                    layout.pad_to_align()
-                } else {
-                    Layout::new::<()>()
-                }
-            }
-            Self::Array(ty, len) => {
-                let layout = ty.layout().pad_to_align();
-                let size = layout.size();
-                let align = layout.align();
-                Layout::from_size_align(size * len, align).expect("invalid type: layout too large")
-            }
-        }
+        Layout::from_size_align(self.size_in_bytes(), self.min_alignment())
+            .expect("invalid layout: the size, when padded for alignment, overflows isize")
     }
 }
 
