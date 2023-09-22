@@ -66,7 +66,7 @@ pub fn check_ir_files_cargo(
     let temp_dir = std::env::temp_dir();
     let target_dir = temp_dir.join(format!("{bundle_name}-cargo/"));
     let output = Command::new("cargo")
-        // set `no_global_oom_handling` feature to disable code in `core` and `alloc` crates 
+        // set `no_global_oom_handling` feature to disable code in `core` and `alloc` crates
         // that panicks on OOM (`Vec::push`, `reserve`, etc.)
         .env("RUSTFLAGS", "--cfg no_global_oom_handling")
         .arg("build")
@@ -652,4 +652,13 @@ fn dlmalloc() {
         expect_file!["./expected/dlmalloc.wat"],
         expect_file!["./expected/dlmalloc.mir"],
     )
+}
+
+#[test]
+fn signed_arith() {
+    check_ir_files(
+        include_str!("rust_source/signed_arith.rs"),
+        expect_file!["./expected/signed_arith.wat"],
+        expect_file!["./expected/signed_arith.mir"],
+    );
 }

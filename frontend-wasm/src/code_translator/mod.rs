@@ -175,6 +175,9 @@ pub fn translate_operator(
 
         /******************************* Unary Operators *************************************/
         Operator::I32Clz | Operator::I32Ctz => {
+            // Temporary workaround to allow further code translations
+            // until clz and ctz are available in Miden IR
+            // TODO: use the `clz` and `ctz` instructions when they are available
             let val = state.pop1();
             state.push1(builder.ins().popcnt(val, span));
         }
