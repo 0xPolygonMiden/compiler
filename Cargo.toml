@@ -9,7 +9,8 @@ members = [
   "hir-transform",
   "hir-type",
   "tools/*",
-  "frontend-wasm"
+  "frontend-wasm",
+  "tests/rust-wasm-tests"
 ]
 
 [workspace.package]

@@ -1,4 +1,9 @@
 use expect_test::expect;
+use expect_test::expect_file;
+use std::fs;
+use std::io::Read;
+use std::path::Path;
+use std::process::Command;
 use std::sync::Arc;
 
 use miden_diagnostics::term::termcolor::ColorChoice;
@@ -22,8 +27,6 @@ fn hash_string(inputs: &[&str]) -> String {
 }
 
 fn compile_wasm(rust_source: &str) -> Vec<u8> {
-    use std::fs;
-    use std::process::Command;
     let rustc_opts = [
         "-C",
         "opt-level=z", // optimize for size
@@ -50,6 +53,55 @@ fn compile_wasm(rust_source: &str) -> Vec<u8> {
     fs::remove_file(&input_file).unwrap();
     fs::remove_file(&output_file).unwrap();
     return wasm;
+}
+
+pub fn check_ir_files_cargo(
+    bin_name: &str,
+    expected_wat_file: expect_test::ExpectFile,
+    expected_ir_file: expect_test::ExpectFile,
+) {
+    let bundle_name = "rust-wasm-tests";
+    let manifest_path = format!("../tests/{}/Cargo.toml", bundle_name);
+    // dbg!(&pwd);
+    let temp_dir = std::env::temp_dir();
+    let target_dir = temp_dir.join(format!("{bundle_name}-cargo/"));
+    let output = Command::new("cargo")
+        // set `no_global_oom_handling` feature to disable code in `core` and `alloc` crates 
+        // that panicks on OOM (`Vec::push`, `reserve`, etc.)
+        .env("RUSTFLAGS", "--cfg no_global_oom_handling")
+        .arg("build")
+        .arg("--manifest-path")
+        .arg(manifest_path)
+        .arg("--release")
+        .arg("--bins")
+        .arg("--target=wasm32-unknown-unknown")
+        .arg("--features=wasm-target")
+        .arg("--target-dir")
+        .arg(target_dir.clone())
+        .arg("-Z")
+        // compile std as part of crate graph compilation (needed for `--cfg no_global_oom_handling`)
+        // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+        .arg("build-std=core,alloc")
+        .output()
+        .expect("Failed to execute cargo build.");
+    if !output.status.success() {
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+        panic!("Rust to Wasm compilation failed!");
+    }
+    let target_bin_file_path = Path::new(&target_dir)
+        .join("wasm32-unknown-unknown")
+        .join("release")
+        .join(bin_name)
+        .with_extension("wasm");
+    let mut target_bin_file = fs::File::open(target_bin_file_path).unwrap();
+    let mut wasm_bytes = vec![];
+    Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
+    fs::remove_dir_all(target_dir).unwrap();
+
+    let wat = wasm_to_wat(&wasm_bytes);
+    expected_wat_file.assert_eq(&wat);
+    let module = translate(wasm_bytes);
+    expected_ir_file.assert_eq(&module.to_string());
 }
 
 fn check_ir(
@@ -591,4 +643,13 @@ fn rust_static_mut() {
             }
         "#]],
     );
+}
+
+#[test]
+fn dlmalloc() {
+    check_ir_files_cargo(
+        "dlmalloc_app",
+        expect_file!["./expected/dlmalloc.wat"],
+        expect_file!["./expected/dlmalloc.mir"],
+    )
 }
