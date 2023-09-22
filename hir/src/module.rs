@@ -648,15 +648,19 @@ impl<'m> ModuleFunctionBuilder<'m> {
         self.data_flow_graph().first_result(inst)
     }
 
-    pub fn import_function(
+    pub fn import_function<M, F>(
         &mut self,
-        module: Ident,
-        function: Ident,
+        module: M,
+        function: F,
         signature: Signature,
-    ) -> Result<FunctionIdent, ()> {
+    ) -> Result<FunctionIdent, ()>
+    where
+        M: Into<Ident>,
+        F: Into<Ident>,
+    {
         self.function
             .dfg
-            .import_function(module, function, signature)
+            .import_function(module.into(), function.into(), signature)
     }
 
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> DefaultInstBuilder<'a> {
