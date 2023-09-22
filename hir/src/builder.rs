@@ -553,6 +553,30 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         ))
     }
 
+    /// Get a [GlobalValue] which represents the address of a global variable whose symbol is `name`
+    ///
+    /// On it's own, this does nothing, you must use the resulting [GlobalValue] with a builder
+    /// that expects one as an argument, or use `global_value` to obtain a [Value] from it.
+    fn symbol<S: AsRef<str>>(self, name: S, span: SourceSpan) -> GlobalValue {
+        self.symbol_relative(name, 0, span)
+    }
+
+    /// Same semantics as `symbol`, but applies a constant offset to the address of the given symbol.
+    ///
+    /// If the offset is zero, this is equivalent to `symbol`
+    fn symbol_relative<S: AsRef<str>>(
+        mut self,
+        name: S,
+        offset: i32,
+        span: SourceSpan,
+    ) -> GlobalValue {
+        self.data_flow_graph_mut()
+            .create_global_value(GlobalValueData::Symbol {
+                name: Ident::new(Symbol::intern(name.as_ref()), span),
+                offset,
+            })
+    }
+
     /// Get the address of a global variable whose symbol is `name`
     ///
     /// The type of the value will be `*mut u8`, i.e. a raw pointer to the first byte of the memory
