@@ -748,7 +748,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             addr,
             ty: ty.clone(),
         });
-        into_first_result!(self.build(data, ty, span))
+        into_first_result!(self.build(data, Type::Ptr(Box::new(ty)), span))
     }
 
     /// Stores `value` to the address given by `ptr`
