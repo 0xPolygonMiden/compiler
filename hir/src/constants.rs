@@ -79,6 +79,11 @@ impl From<Vec<u8>> for ConstantData {
         Self(v)
     }
 }
+impl<const N: usize> From<[u8; N]> for ConstantData {
+    fn from(v: [u8; N]) -> Self {
+        Self(v.to_vec())
+    }
+}
 impl From<&[u8]> for ConstantData {
     fn from(v: &[u8]) -> Self {
         Self(v.to_vec())
