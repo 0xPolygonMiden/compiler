@@ -579,10 +579,11 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
 
     /// Get the address of a global variable whose symbol is `name`
     ///
-    /// The type of the value will be `*mut u8`, i.e. a raw pointer to the first byte of the memory
-    /// where the symbol is allocated.
-    fn symbol_addr<S: AsRef<str>>(self, name: S, span: SourceSpan) -> Value {
-        self.symbol_relative_addr(name, 0, span)
+    /// The type of the pointer produced is given as `ty`. It is up to the caller
+    /// to ensure that loading memory from that pointer is valid for the provided
+    /// type.
+    fn symbol_addr<S: AsRef<str>>(self, name: S, ty: Type, span: SourceSpan) -> Value {
+        self.symbol_relative_addr(name, 0, ty, span)
     }
 
     /// Same semantics as `symbol_addr`, but applies a constant offset to the address of the given symbol.
@@ -592,15 +593,17 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         mut self,
         name: S,
         offset: i32,
+        ty: Type,
         span: SourceSpan,
     ) -> Value {
+        assert!(ty.is_pointer(), "expected pointer type, got '{}'", &ty);
         let gv = self
             .data_flow_graph_mut()
             .create_global_value(GlobalValueData::Symbol {
                 name: Ident::new(Symbol::intern(name.as_ref()), span),
                 offset,
             });
-        into_first_result!(self.Global(gv, Type::Ptr(Box::new(Type::I8)), span))
+        into_first_result!(self.Global(gv, ty, span))
     }
 
     /// Loads a value of type `ty` from the global variable whose symbol is `name`.
