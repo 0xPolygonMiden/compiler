@@ -88,6 +88,7 @@ impl<'a> fmt::Display for DisplayOp<'a> {
         match self.op {
             MasmOp::Padw => f.write_str("padw"),
             MasmOp::Push(imm) => write!(f, "push.{}", imm),
+            MasmOp::Push2([a, b]) => write!(f, "push.{}.{}", a, b),
             MasmOp::Pushw(word) => write!(
                 f,
                 "push.{}.{}.{}.{}",

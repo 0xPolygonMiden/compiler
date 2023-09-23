@@ -1613,6 +1613,10 @@ fn apply_op_stack_effects(
         MasmOp::Push(_) => {
             stack.push(Type::Felt);
         }
+        MasmOp::Push2(_) => {
+            stack.push(Type::Felt);
+            stack.push(Type::Felt);
+        }
         MasmOp::Pushw(_) => {
             stack.padw();
         }

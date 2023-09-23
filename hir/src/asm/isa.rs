@@ -51,6 +51,8 @@ pub enum MasmOp {
     Padw,
     /// Pushes the given field element constant on top of the stack
     Push(Felt),
+    /// Pushes a pair of field elements on top of the stack
+    Push2([Felt; 2]),
     /// Pushes the given word constant on top of the stack
     Pushw([Felt; 4]),
     /// Pushes the given 8-bit constant on top of the stack
@@ -584,6 +586,7 @@ impl fmt::Display for MasmOp {
         match self {
             Self::Padw => f.write_str("padw"),
             Self::Push(_)
+            | Self::Push2(_)
             | Self::Pushw(_)
             | Self::PushU8(_)
             | Self::PushU16(_)
