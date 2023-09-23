@@ -147,20 +147,26 @@ impl DataFlowGraph {
         self.values[v].clone()
     }
 
-    /// Get a reference to the data for an instruction
+    /// Get a reference to the metadata for an instruction
     #[inline(always)]
-    pub fn inst(&self, inst: Inst) -> &InstNode {
+    pub fn inst_node(&self, inst: Inst) -> &InstNode {
         &self.insts[inst]
     }
 
-    /// Get a mutable reference to the data for an instruction
+    /// Get a reference to the data for an instruction
     #[inline(always)]
-    pub fn inst_mut(&mut self, inst: Inst) -> &mut InstNode {
-        &mut self.insts[inst]
+    pub fn inst(&self, inst: Inst) -> &Instruction {
+        &self.insts[inst].data
+    }
+
+    /// Get a mutable reference to the metadata for an instruction
+    #[inline(always)]
+    pub fn inst_mut(&mut self, inst: Inst) -> &mut Instruction {
+        &mut self.insts[inst].data
     }
 
     pub fn inst_span(&self, inst: Inst) -> SourceSpan {
-        self.inst(inst).span()
+        self.inst_node(inst).span()
     }
 
     pub fn inst_args(&self, inst: Inst) -> &[Value] {

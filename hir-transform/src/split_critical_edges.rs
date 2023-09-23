@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
-use miden_diagnostics::Spanned;
 use miden_hir::{self as hir, Block as BlockId, *};
 use miden_hir_analysis::FunctionAnalysis;
 
@@ -82,10 +81,10 @@ impl RewritePass for SplitCriticalEdges {
                 // * Recompute the control flow graph for affected blocks
                 let split = function.dfg.create_block_after(p);
                 let terminator = function.dfg.last_inst(p).unwrap();
+                let span = function.dfg.inst_span(terminator);
                 let ix = function.dfg.inst_mut(terminator);
-                let span = ix.span();
                 let args: ValueList;
-                match &mut ix.data.item {
+                match ix {
                     Instruction::Br(hir::Br {
                         ref mut destination,
                         args: ref mut orig_args,
