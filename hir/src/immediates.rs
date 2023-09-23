@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use super::Type;
+use super::{Felt, FieldElement, StarkField, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Immediate {
@@ -18,7 +18,7 @@ pub enum Immediate {
     I64(i64),
     I128(i128),
     F64(f64),
-    Felt(u64),
+    Felt(Felt),
 }
 impl Immediate {
     pub fn ty(&self) -> Type {
@@ -38,22 +38,56 @@ impl Immediate {
         }
     }
 
+    /// Returns true if this immediate is a non-negative value
+    pub fn is_non_negative(&self) -> bool {
+        match self {
+            Self::I1(i) => *i,
+            Self::I8(i) => *i > 0,
+            Self::U8(i) => *i > 0,
+            Self::I16(i) => *i > 0,
+            Self::U16(i) => *i > 0,
+            Self::I32(i) => *i > 0,
+            Self::U32(i) => *i > 0,
+            Self::I64(i) => *i > 0,
+            Self::U64(i) => *i > 0,
+            Self::I128(i) => *i > 0,
+            Self::F64(f) => f.is_sign_positive(),
+            Self::Felt(_) => true,
+        }
+    }
+
+    /// Returns true if this immediate can represent negative values
+    pub fn is_signed(&self) -> bool {
+        matches!(
+            self,
+            Self::I8(_) | Self::I16(_) | Self::I32(_) | Self::I64(_) | Self::I128(_) | Self::F64(_)
+        )
+    }
+
+    /// Returns true if this immediate can only represent non-negative values
+    pub fn is_unsigned(&self) -> bool {
+        matches!(
+            self,
+            Self::I1(_) | Self::U8(_) | Self::U16(_) | Self::U32(_) | Self::U64(_) | Self::Felt(_)
+        )
+    }
+
     /// Returns true if this immediate is an odd integer, otherwise false
     ///
     /// If the immediate is not an integer, returns `None`
-    pub fn is_odd(self) -> Option<bool> {
+    pub fn is_odd(&self) -> Option<bool> {
         match self {
-            Self::I1(b) => Some(b),
-            Self::U8(i) => Some(i % 2 == 0),
-            Self::I8(i) => Some(i % 2 == 0),
-            Self::U16(i) => Some(i % 2 == 0),
-            Self::I16(i) => Some(i % 2 == 0),
-            Self::U32(i) => Some(i % 2 == 0),
-            Self::I32(i) => Some(i % 2 == 0),
-            Self::U64(i) => Some(i % 2 == 0),
-            Self::I64(i) => Some(i % 2 == 0),
-            Self::Felt(i) => Some(i % 2 == 0),
-            Self::I128(i) => Some(i % 2 == 0),
+            Self::I1(b) => Some(*b),
+            Self::U8(i) => Some(*i % 2 == 0),
+            Self::I8(i) => Some(*i % 2 == 0),
+            Self::U16(i) => Some(*i % 2 == 0),
+            Self::I16(i) => Some(*i % 2 == 0),
+            Self::U32(i) => Some(*i % 2 == 0),
+            Self::I32(i) => Some(*i % 2 == 0),
+            Self::U64(i) => Some(*i % 2 == 0),
+            Self::I64(i) => Some(*i % 2 == 0),
+            Self::Felt(i) => Some(i.as_int() % 2 == 0),
+            Self::I128(i) => Some(*i % 2 == 0),
             Self::F64(_) => None,
         }
     }
@@ -72,12 +106,31 @@ impl Immediate {
             Self::I32(i) => Some(*i != 0),
             Self::U64(i) => Some(*i != 0),
             Self::I64(i) => Some(*i != 0),
-            Self::Felt(i) => Some(*i != 0),
+            Self::Felt(i) => Some(i.as_int() != 0),
             Self::I128(i) => Some(*i != 0),
             Self::F64(_) => None,
         }
     }
 
+    /// Attempts to convert this value to a field element
+    pub fn as_felt(&self) -> Option<Felt> {
+        match self {
+            Self::I1(b) => Some(Felt::new(*b as u64)),
+            Self::U8(b) => Some(Felt::new(*b as u64)),
+            Self::I8(b) => u64::try_from(*b).ok().map(Felt::new),
+            Self::U16(b) => Some(Felt::new(*b as u64)),
+            Self::I16(b) => u64::try_from(*b).ok().map(Felt::new),
+            Self::U32(b) => Some(Felt::new(*b as u64)),
+            Self::I32(b) => u64::try_from(*b).ok().map(Felt::new),
+            Self::U64(b) => Some(Felt::new(*b)),
+            Self::I64(b) => u64::try_from(*b).ok().map(Felt::new),
+            Self::Felt(i) => Some(*i),
+            Self::I128(b) => u64::try_from(*b).ok().map(Felt::new),
+            Self::F64(f) => FloatToInt::<Felt>::to_int(*f).ok(),
+        }
+    }
+
+    /// Attempts to convert this value to i64
     pub fn as_i64(&self) -> Option<i64> {
         match self {
             Self::I1(b) => Some(*b as i64),
@@ -89,9 +142,27 @@ impl Immediate {
             Self::I32(i) => Some(*i as i64),
             Self::U64(i) => (*i).try_into().ok(),
             Self::I64(i) => Some(*i),
-            Self::Felt(i) => (*i).try_into().ok(),
+            Self::Felt(i) => i.as_int().try_into().ok(),
             Self::I128(i) => (*i).try_into().ok(),
-            Self::F64(_) => None,
+            Self::F64(f) => FloatToInt::<i64>::to_int(*f).ok(),
+        }
+    }
+
+    /// Attempts to convert this value to i128
+    pub fn as_i128(&self) -> Option<i128> {
+        match self {
+            Self::I1(b) => Some(*b as i128),
+            Self::U8(i) => Some(*i as i128),
+            Self::I8(i) => Some(*i as i128),
+            Self::U16(i) => Some(*i as i128),
+            Self::I16(i) => Some(*i as i128),
+            Self::U32(i) => Some(*i as i128),
+            Self::I32(i) => Some(*i as i128),
+            Self::U64(i) => Some(*i as i128),
+            Self::I64(i) => Some(*i as i128),
+            Self::Felt(i) => Some(i.as_int() as i128),
+            Self::I128(i) => Some(*i),
+            Self::F64(f) => FloatToInt::<i128>::to_int(*f).ok(),
         }
     }
 }
@@ -132,7 +203,7 @@ impl Hash for Immediate {
                 let bytes = f.to_be_bytes();
                 bytes.hash(state)
             }
-            Self::Felt(i) => i.hash(state),
+            Self::Felt(i) => i.as_int().hash(state),
         }
     }
 }
@@ -156,50 +227,90 @@ impl PartialEq for Immediate {
 }
 impl PartialOrd for Immediate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Immediate {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering;
 
         match (self, other) {
-            (Self::I128(x), Self::I128(y)) => x.partial_cmp(y),
-            (Self::I128(x), Self::F64(y)) => {
-                assert!(!y.is_finite());
-                let y = unsafe { y.to_int_unchecked::<i128>() };
-                x.partial_cmp(&y)
-            }
-            (Self::I128(x), y) => {
-                let y = y.as_i64().unwrap() as i128;
-                x.partial_cmp(&y)
-            }
-            (Self::F64(x), Self::I128(y)) => {
-                assert!(!x.is_finite());
-                let x = unsafe { x.to_int_unchecked::<i128>() };
-                x.partial_cmp(y)
-            }
-            (Self::F64(x), Self::F64(y)) => x.partial_cmp(y),
+            // Floats require special treatment
+            (Self::F64(x), Self::F64(y)) => x.total_cmp(y),
+            // Here we're attempting to compare against any integer immediate,
+            // so we must attempt to convert the float to the largest possible
+            // integer representation, i128, and then promote the integer immediate
+            // to i128 for comparison
+            //
+            // If the float is not an integer value, truncate it and compare, then
+            // adjust the result to account for the truncation
             (Self::F64(x), y) => {
-                let y = y.as_i64().unwrap() as f64;
-                match x.total_cmp(&y) {
-                    Ordering::Equal => Some(Ordering::Equal),
-                    ord => Some(ord),
+                let y = y
+                    .as_i128()
+                    .expect("expected rhs to be an integer capable of fitting in an i128");
+                if let Ok(x) = FloatToInt::<i128>::to_int(*x) {
+                    x.cmp(&y)
+                } else {
+                    let is_positive = x.is_sign_positive();
+                    if let Ok(x) = FloatToInt::<i128>::to_int((*x).trunc()) {
+                        // Edge case for equality: the float must be bigger due to truncation
+                        match x.cmp(&y) {
+                            Ordering::Equal if is_positive => Ordering::Greater,
+                            Ordering::Equal => Ordering::Less,
+                            o => o,
+                        }
+                    } else {
+                        // The float is larger than i128 can represent, the sign tells us in what direction
+                        if is_positive {
+                            Ordering::Greater
+                        } else {
+                            Ordering::Less
+                        }
+                    }
                 }
             }
-            (x, Self::F64(y)) => {
-                let x = x.as_i64().unwrap() as f64;
-                match x.total_cmp(y) {
-                    Ordering::Equal => Some(Ordering::Equal),
-                    ord => Some(ord),
-                }
+            (x, y @ Self::F64(_)) => y.cmp(x).reverse(),
+            // i128 immediates require separate treatment
+            (Self::I128(x), Self::I128(y)) => x.cmp(y),
+            // We're only comparing against values here which are u64, i64, or smaller than 64-bits
+            (Self::I128(x), y) => {
+                let y = y
+                    .as_i128()
+                    .expect("expected rhs to be an integer smaller than i128");
+                x.cmp(&y)
             }
             (x, Self::I128(y)) => {
-                let x = x.as_i64().unwrap() as i128;
-                x.partial_cmp(y)
+                let x = x
+                    .as_i128()
+                    .expect("expected rhs to be an integer smaller than i128");
+                x.cmp(&y)
             }
+            // u64 immediates may not fit in an i64
+            (Self::U64(x), Self::U64(y)) => x.cmp(y),
+            // We're only comparing against values here which are i64, or smaller than 64-bits
+            (Self::U64(x), y) => {
+                let y = y
+                    .as_i64()
+                    .expect("expected rhs to be an integer capable of fitting in an i64")
+                    as u64;
+                x.cmp(&y)
+            }
+            (x, Self::U64(y)) => {
+                let x = x
+                    .as_i64()
+                    .expect("expected rhs to be an integer capable of fitting in an i64")
+                    as u64;
+                x.cmp(&y)
+            }
+            // All immediates at this point are i64 or smaller
             (x, y) => {
-                let x = x.as_i64().unwrap();
-                let y = y.as_i64().unwrap();
-                match x.cmp(&y) {
-                    Ordering::Equal => Some(Ordering::Equal),
-                    ord => Some(ord),
-                }
+                let x = x
+                    .as_i64()
+                    .expect("expected rhs to be an integer capable of fitting in an i64");
+                let y = y
+                    .as_i64()
+                    .expect("expected rhs to be an integer capable of fitting in an i64");
+                x.cmp(&y)
             }
         }
     }
@@ -274,5 +385,197 @@ impl From<char> for Immediate {
     #[inline(always)]
     fn from(value: char) -> Self {
         Self::I32(value as u32 as i32)
+    }
+}
+
+trait FloatToInt<T: Sized + Copy>: Sized {
+    const ZERO: T;
+
+    fn upper_bound() -> Self;
+    fn lower_bound() -> Self;
+    fn to_int(self) -> Result<T, ()>;
+    unsafe fn to_int_unchecked(self) -> T;
+}
+impl FloatToInt<i8> for f64 {
+    const ZERO: i8 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(i8::MAX) + 1.0
+    }
+    fn lower_bound() -> Self {
+        f64::from(i8::MIN) - 1.0
+    }
+    fn to_int(self) -> Result<i8, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> i8 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<u8> for f64 {
+    const ZERO: u8 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(u8::MAX) + 1.0
+    }
+    fn lower_bound() -> Self {
+        0.0
+    }
+    fn to_int(self) -> Result<u8, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> u8 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<i16> for f64 {
+    const ZERO: i16 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(i16::MAX) + 1.0
+    }
+    fn lower_bound() -> Self {
+        f64::from(i16::MIN) - 1.0
+    }
+    fn to_int(self) -> Result<i16, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> i16 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<u16> for f64 {
+    const ZERO: u16 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(u16::MAX) + 1.0
+    }
+    fn lower_bound() -> Self {
+        0.0
+    }
+    fn to_int(self) -> Result<u16, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> u16 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<i32> for f64 {
+    const ZERO: i32 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(i32::MAX) + 1.0
+    }
+    fn lower_bound() -> Self {
+        f64::from(i32::MIN) - 1.0
+    }
+    fn to_int(self) -> Result<i32, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> i32 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<u32> for f64 {
+    const ZERO: u32 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(u32::MAX) + 1.0
+    }
+    fn lower_bound() -> Self {
+        0.0
+    }
+    fn to_int(self) -> Result<u32, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> u32 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<i64> for f64 {
+    const ZERO: i64 = 0;
+
+    fn upper_bound() -> Self {
+        63.0f64.exp2()
+    }
+    fn lower_bound() -> Self {
+        (63.0f64.exp2() * -1.0) - 1.0
+    }
+    fn to_int(self) -> Result<i64, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> i64 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<u64> for f64 {
+    const ZERO: u64 = 0;
+
+    fn upper_bound() -> Self {
+        64.0f64.exp2()
+    }
+    fn lower_bound() -> Self {
+        0.0
+    }
+    fn to_int(self) -> Result<u64, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> u64 {
+        f64::to_int_unchecked(self)
+    }
+}
+impl FloatToInt<Felt> for f64 {
+    const ZERO: Felt = Felt::ZERO;
+
+    fn upper_bound() -> Self {
+        64.0f64.exp2() - 32.0f64.exp2() + 1.0
+    }
+    fn lower_bound() -> Self {
+        0.0
+    }
+    fn to_int(self) -> Result<Felt, ()> {
+        float_to_int(self).map(Felt::new)
+    }
+    unsafe fn to_int_unchecked(self) -> Felt {
+        Felt::new(f64::to_int_unchecked::<u64>(self))
+    }
+}
+impl FloatToInt<i128> for f64 {
+    const ZERO: i128 = 0;
+
+    fn upper_bound() -> Self {
+        f64::from(i128::BITS - 1).exp2()
+    }
+    fn lower_bound() -> Self {
+        (f64::from(i128::BITS - 1) * -1.0).exp2() - 1.0
+    }
+    fn to_int(self) -> Result<i128, ()> {
+        float_to_int(self)
+    }
+    unsafe fn to_int_unchecked(self) -> i128 {
+        f64::to_int_unchecked(self)
+    }
+}
+
+fn float_to_int<I>(f: f64) -> Result<I, ()>
+where
+    I: Copy,
+    f64: FloatToInt<I>,
+{
+    use std::num::FpCategory;
+    match f.classify() {
+        FpCategory::Nan | FpCategory::Infinite | FpCategory::Subnormal => Err(()),
+        FpCategory::Zero => Ok(<f64 as FloatToInt<I>>::ZERO),
+        FpCategory::Normal => {
+            if f == f.trunc()
+                && f > <f64 as FloatToInt<I>>::lower_bound()
+                && f < <f64 as FloatToInt<I>>::upper_bound()
+            {
+                // SAFETY: We know that x must be integral, and within the bounds of its type
+                Ok(unsafe { <f64 as FloatToInt<I>>::to_int_unchecked(f) })
+            } else {
+                Err(())
+            }
+        }
     }
 }

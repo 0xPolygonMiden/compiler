@@ -4,6 +4,7 @@ pub use intrusive_collections::UnsafeRef;
 pub use miden_diagnostics::SourceSpan;
 pub use miden_hir_symbol::{symbols, Symbol};
 pub use miden_hir_type::{Alignable, FunctionType, Type, TypeRepr};
+pub use winter_math::{FieldElement, StarkField};
 
 /// Represents a field element in Miden
 pub type Felt = winter_math::fields::f64::BaseElement;

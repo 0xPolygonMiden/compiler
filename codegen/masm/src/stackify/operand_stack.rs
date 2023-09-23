@@ -3,21 +3,31 @@ use core::{
     ops::{Index, IndexMut},
 };
 
-use miden_hir::{Felt, Stack, StackElement, Value};
+use miden_hir::{Felt, FieldElement, Immediate, Stack, StackElement, Value};
 
 /// Represents a value on the operand stack
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone)]
 pub enum Operand {
     /// The operand is a literal, unassociated with any value in the SSA representation
-    Const(Felt),
+    Const(Immediate),
     /// The operand is an SSA value
     Value(Value),
 }
 impl fmt::Debug for Operand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Const(value) => write!(f, "Const({value})"),
+            Self::Const(value) => write!(f, "Const({value:?})"),
             Self::Value(value) => write!(f, "Value({value})"),
+        }
+    }
+}
+impl Eq for Operand {}
+impl PartialEq for Operand {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Value(a), Self::Value(b)) => a == b,
+            (Self::Value(_), _) | (_, Self::Value(_)) => false,
+            (Self::Const(ref a), Self::Const(ref b)) => a.cmp(b).is_eq(),
         }
     }
 }
@@ -34,29 +44,44 @@ impl From<Value> for Operand {
         Self::Value(value)
     }
 }
+impl From<bool> for Operand {
+    fn from(value: bool) -> Self {
+        Self::Const(Immediate::I1(value))
+    }
+}
 impl From<u8> for Operand {
     fn from(value: u8) -> Self {
-        Self::Const(Felt::new(value as u64))
+        Self::Const(Immediate::U8(value))
     }
 }
 impl From<u16> for Operand {
     fn from(value: u16) -> Self {
-        Self::Const(Felt::new(value as u64))
+        Self::Const(Immediate::U16(value))
     }
 }
 impl From<u32> for Operand {
     fn from(value: u32) -> Self {
-        Self::Const(Felt::new(value as u64))
+        Self::Const(Immediate::U32(value))
+    }
+}
+impl From<u64> for Operand {
+    fn from(value: u64) -> Self {
+        Self::Const(Immediate::U64(value))
     }
 }
 impl From<Felt> for Operand {
     fn from(value: Felt) -> Self {
+        Self::Const(Immediate::Felt(value))
+    }
+}
+impl From<Immediate> for Operand {
+    fn from(value: Immediate) -> Self {
         Self::Const(value)
     }
 }
 impl StackElement for Operand {
     /// A value of this type which represents the "zero" value for the type
-    const DEFAULT: Self = Self::Const(Felt::new(0));
+    const DEFAULT: Self = Self::Const(Immediate::Felt(Felt::ZERO));
 }
 
 /// This structure emulates the state of the VM's operand stack while
@@ -89,21 +114,6 @@ impl Stack for OperandStack {
     }
 }
 impl OperandStack {
-    /// Pushes `value` on top of the stack, with an optional set of aliases
-    pub fn push_u8(&mut self, value: u8) {
-        self.stack.push(value.into());
-    }
-
-    /// Pushes `value` on top of the stack, with an optional set of aliases
-    pub fn push_u16(&mut self, value: u16) {
-        self.stack.push(value.into());
-    }
-
-    /// Pushes `value` on top of the stack, with an optional set of aliases
-    pub fn push_u32(&mut self, value: u32) {
-        self.stack.push(value.into());
-    }
-
     /// Renames the `n`th value from the top of the stack to `value`
     pub fn rename(&mut self, n: usize, value: Value) {
         let _ = core::mem::replace(&mut self[n], Operand::Value(value));
