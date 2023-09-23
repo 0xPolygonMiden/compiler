@@ -532,7 +532,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     integer_literal!(32);
     integer_literal!(64);
 
-    fn felt(self, i: u64, span: SourceSpan) -> Value {
+    fn felt(self, i: Felt, span: SourceSpan) -> Value {
         into_first_result!(self.UnaryImm(Opcode::ImmFelt, Type::Felt, Immediate::Felt(i), span))
     }
 
