@@ -527,8 +527,10 @@ dependencies = [
 name = "miden-codegen-masm"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cranelift-entity",
  "intrusive-collections",
+ "miden-diagnostics",
  "miden-hir",
  "miden-hir-analysis",
  "miden-hir-pass",
