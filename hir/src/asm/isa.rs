@@ -1,6 +1,7 @@
 use std::fmt;
 
 use cranelift_entity::entity_impl;
+use smallvec::SmallVec;
 
 use crate::{Felt, FunctionIdent, LocalId};
 
@@ -13,7 +14,7 @@ entity_impl!(MasmBlockId, "blk");
 #[derive(Debug, Clone)]
 pub struct MasmBlock {
     pub id: MasmBlockId,
-    pub ops: Vec<MasmOp>,
+    pub ops: SmallVec<[MasmOp; 4]>,
 }
 impl MasmBlock {
     /// Returns true if there are no instructions in this block
@@ -36,7 +37,10 @@ impl MasmBlock {
 
     /// Appends instructions from `other` to the end of this block
     #[inline]
-    pub fn append(&mut self, other: &mut Vec<MasmOp>) {
+    pub fn append<B>(&mut self, other: &mut SmallVec<B>)
+    where
+        B: smallvec::Array<Item = MasmOp>,
+    {
         self.ops.append(other);
     }
 }
