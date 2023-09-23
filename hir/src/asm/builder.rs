@@ -3,6 +3,8 @@ use crate::{
     SourceSpan, Type, TypeRepr, Value,
 };
 
+use smallvec::smallvec;
+
 use super::*;
 
 /// Used to construct an [InlineAsm] instruction, while checking the input/output types,
@@ -1449,8 +1451,13 @@ impl<'f> LoopBuilder<'f> {
                 // Since that is the case, we literally do that transformation here, to simplify
                 // the IR as much as possible during construction.
                 let id = self.body;
-                let mut block =
-                    core::mem::replace(&mut self.asm.blocks[id], MasmBlock { id, ops: vec![] });
+                let mut block = core::mem::replace(
+                    &mut self.asm.blocks[id],
+                    MasmBlock {
+                        id,
+                        ops: smallvec![],
+                    },
+                );
                 self.asm.blocks[self.ip].append(&mut block.ops);
             }
             LoopType::Repeat(n) => {

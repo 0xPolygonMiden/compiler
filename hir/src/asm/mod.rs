@@ -9,6 +9,7 @@ pub use self::isa::*;
 pub use self::stack::{OperandStack, Stack, StackElement};
 
 use cranelift_entity::PrimaryMap;
+use smallvec::smallvec;
 
 use super::{DataFlowGraph, Opcode, Type, ValueList};
 
@@ -50,7 +51,10 @@ impl InlineAsm {
     pub fn new(results: Vec<Type>) -> Self {
         let mut blocks = PrimaryMap::<MasmBlockId, MasmBlock>::new();
         let id = blocks.next_key();
-        let body = blocks.push(MasmBlock { id, ops: vec![] });
+        let body = blocks.push(MasmBlock {
+            id,
+            ops: smallvec![],
+        });
         Self {
             op: Opcode::InlineAsm,
             args: ValueList::default(),
@@ -63,7 +67,10 @@ impl InlineAsm {
     /// Create a new code block for use with this inline assembly
     pub fn create_block(&mut self) -> MasmBlockId {
         let id = self.blocks.next_key();
-        self.blocks.push(MasmBlock { id, ops: vec![] });
+        self.blocks.push(MasmBlock {
+            id,
+            ops: smallvec![],
+        });
         id
     }
 
