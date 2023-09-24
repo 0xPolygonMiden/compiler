@@ -29,7 +29,7 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
     let wasm = wat::parse_str(wat).unwrap();
     let diagnostics = test_diagnostics();
     let module = translate_module(&wasm, &WasmTranslationConfig::default(), &diagnostics).unwrap();
-    let func = module.function(Ident::from_str("test_wrapper")).unwrap();
+    let func = module.function(Ident::from("test_wrapper")).unwrap();
     // let fref = module.get_funcref_by_name("test_wrapper").unwrap();
     // let func = module.get_function(fref).unwrap();
     let entry_block = func.dfg.entry_block();
@@ -339,20 +339,20 @@ fn global_var() {
     "#,
         expect![[r#"
             module noname
+            global external MyGlobalVal : i32 = 0x0000002a { id = gvar0 };
+
 
             pub fn main() {
             block0:
                 v0 = global.load (@MyGlobalVal) as *mut i8  : i32
                 v1 = const.i32 9  : i32
                 v2 = add v0, v1  : i32
-                v3 = global.symbol @MyGlobalVal  : *mut i8
-                v4 = ptrtoint v3  : i32
-                v5 = inttoptr v4  : *mut i32
-                store v5, v2
+                v3 = global.symbol @MyGlobalVal  : *mut i32
+                store v3, v2
                 br block1
 
             block1:
-                v6 = ret   : ()
+                v4 = ret   : ()
             }
         "#]],
     );

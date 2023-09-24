@@ -168,17 +168,15 @@ impl<'a> ModuleEnvironment<'a> {
     ) -> Result<(), WasmError> {
         Ok(for (global_idx, global) in &self.info.globals {
             let global_name = self.info.global_name(global_idx).clone();
-            let global_var = module_builder
-                .declare_global_variable(
-                    &global_name,
-                    global.ty.clone(),
-                    Linkage::External,
-                    SourceSpan::default(),
-                )
-                .unwrap();
             let init = ConstantData::from(global.init.to_le_bytes(&self.info.globals));
-            if let Err(e) = module_builder.set_global_initializer(global_var, init.clone()) {
-                let message = format!("Failed to set global initializer {init} for global variable {global_var} with error: {:?}", e);
+            if let Err(e) = module_builder.declare_global_variable(
+                &global_name,
+                global.ty.clone(),
+                Linkage::External,
+                Some(init.clone()),
+                SourceSpan::default(),
+            ) {
+                let message = format!("Failed to declare global variable '{global_name}' with initializer '{init}' with error: {:?}", e);
                 diagnostics
                     .diagnostic(miden_diagnostics::Severity::Error)
                     .with_message(message.clone())
@@ -190,24 +188,25 @@ impl<'a> ModuleEnvironment<'a> {
 
     fn build_data_segments(
         &self,
-        _module_builder: &mut ModuleBuilder,
+        module_builder: &mut ModuleBuilder,
         diagnostics: &DiagnosticsHandler,
     ) -> Result<(), WasmError> {
         for (data_segment_idx, data_segment) in &self.data_segments {
             let data_segment_name = self.data_segment_names[data_segment_idx].clone();
-            let _readonly = data_segment_name.contains(".rodata");
-            let _init = ConstantData::from(data_segment.data);
-            let _offset = data_segment
+            let readonly = data_segment_name.contains(".rodata");
+            let init = ConstantData::from(data_segment.data);
+            let offset = data_segment
                 .offset
-                .as_i32(&self.info.globals, diagnostics)?;
-            // if let Err(e) = module_builder.declare_data_segment(offset, size, init, readonly) {
-            //     let message = format!("Failed to declare data segment {init} for data segment size {size} at {offset} with error: {:?}", e);
-            //     diagnostics
-            //         .diagnostic(miden_diagnostics::Severity::Error)
-            //         .with_message(message.clone())
-            //         .emit();
-            //     return Err(WasmError::Unexpected(message));
-            // }
+                .as_i32(&self.info.globals, diagnostics)? as u32;
+            let size = init.len() as u32;
+            if let Err(e) = module_builder.declare_data_segment(offset, size, init, readonly) {
+                let message = format!("Failed to declare data segment '{data_segment_name}' with size '{size}' at '{offset}' with error: {:?}", e);
+                diagnostics
+                    .diagnostic(miden_diagnostics::Severity::Error)
+                    .with_message(message.clone())
+                    .emit();
+                return Err(WasmError::Unexpected(message));
+            }
         }
         Ok(())
     }

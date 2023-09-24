@@ -192,6 +192,10 @@ fn rust_add() {
             )"#]],
         expect![[r#"
             module noname
+            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
+            global external gv1 : i32 = 0x00100000 { id = gvar1 };
+            global external gv2 : i32 = 0x00100000 { id = gvar2 };
+
 
             pub fn add(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
@@ -268,6 +272,10 @@ fn rust_fib() {
             )"#]],
         expect![[r#"
             module noname
+            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
+            global external gv1 : i32 = 0x00100000 { id = gvar1 };
+            global external gv2 : i32 = 0x00100000 { id = gvar2 };
+
 
             pub fn fib(i32) -> i32 {
             block0(v0: i32):
@@ -367,6 +375,10 @@ fn rust_enum() {
             )"#]],
         expect![[r#"
             module noname
+            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
+            global external gv1 : i32 = 0x00100000 { id = gvar1 };
+            global external gv2 : i32 = 0x00100000 { id = gvar2 };
+
 
             pub fn match_enum(i32, i32, i32) -> i32 {
             block0(v0: i32, v1: i32, v2: i32):
@@ -472,6 +484,15 @@ fn rust_array() {
             )"#]],
         expect![[r#"
             module noname
+
+            memory {
+                segment @0x100000 x 40 = 0x0000000a000000090000000800000007000000060000000500000004000000030000000200000001;
+            }
+
+            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
+            global external gv1 : i32 = 0x00100028 { id = gvar1 };
+            global external gv2 : i32 = 0x00100030 { id = gvar2 };
+
 
             pub fn sum_arr(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
@@ -586,6 +607,15 @@ fn rust_static_mut() {
             )"#]],
         expect![[r#"
             module noname
+
+            memory {
+                segment @0x100000 x 9 = 0x090807060504030201;
+            }
+
+            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
+            global external gv1 : i32 = 0x00100009 { id = gvar1 };
+            global external gv2 : i32 = 0x00100010 { id = gvar2 };
+
 
             pub fn global_var_update() {
             block0:
