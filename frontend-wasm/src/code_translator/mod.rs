@@ -81,11 +81,11 @@ pub fn translate_operator(
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = mod_info.global_name(global_index);
             let ty = (&mod_info.globals[global_index]).ty.clone();
-            let ptr_u8 = builder.ins().symbol_addr(name, span);
-            let int_ptr = builder.ins().ptrtoint(ptr_u8, I32, span);
-            let ptr_typed = builder.ins().inttoptr(int_ptr, Ptr(ty.into()), span);
+            let ptr = builder
+                .ins()
+                .symbol_addr(name, Ptr(ty.clone().into()), span);
             let val = state.pop1();
-            builder.ins().store(ptr_typed, val, span);
+            builder.ins().store(ptr, val, span);
         }
         /********************************* Stack misc **************************************/
         Operator::Drop => _ = state.pop1(),
