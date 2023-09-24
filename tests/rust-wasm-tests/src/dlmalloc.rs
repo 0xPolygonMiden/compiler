@@ -2,13 +2,8 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 #[no_mangle]
-pub fn vec_alloc() {
+pub fn vec_alloc() -> u32 {
     let mut v = Vec::new();
-    if let Err(_) = v.try_reserve(4) {
-        unreachable!();
-    }
-    if let Err(_) = v.push_within_capacity(1) {
-        unreachable!();
-    }
-    v.pop();
+    v.push(1);
+    v.pop().unwrap()
 }

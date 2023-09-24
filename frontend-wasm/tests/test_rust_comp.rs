@@ -66,9 +66,6 @@ pub fn check_ir_files_cargo(
     let temp_dir = std::env::temp_dir();
     let target_dir = temp_dir.join(format!("{bundle_name}-cargo/"));
     let output = Command::new("cargo")
-        // set `no_global_oom_handling` feature to disable code in `core` and `alloc` crates
-        // that panicks on OOM (`Vec::push`, `reserve`, etc.)
-        .env("RUSTFLAGS", "--cfg no_global_oom_handling")
         .arg("build")
         .arg("--manifest-path")
         .arg(manifest_path)
@@ -78,10 +75,13 @@ pub fn check_ir_files_cargo(
         .arg("--features=wasm-target")
         .arg("--target-dir")
         .arg(target_dir.clone())
-        .arg("-Z")
-        // compile std as part of crate graph compilation (needed for `--cfg no_global_oom_handling`)
+        // compile std as part of crate graph compilation
         // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+        .arg("-Z")
         .arg("build-std=core,alloc")
+        .arg("-Z")
+        // abort on panic without message formatting (core::fmt uses call_indirect)
+        .arg("build-std-features=panic_immediate_abort")
         .output()
         .expect("Failed to execute cargo build.");
     if !output.status.success() {

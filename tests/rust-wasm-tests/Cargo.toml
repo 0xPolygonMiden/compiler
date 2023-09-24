@@ -16,3 +16,7 @@ required-features = ["wasm-target"]
 
 [features]
 wasm-target = []
+
+[profile.release]
+panic = 'abort'     # Abort on panic
+opt-level = 'z'     # Optimize for size
