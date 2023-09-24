@@ -213,8 +213,8 @@ impl GlobalVariableTable {
     /// If the offset for a given global variable is obtained, and the heap layout is
     /// subsequently changed in such a way that the original offset is no longer
     /// accurate, bad things will happen.
-    pub unsafe fn offset_of(&self, id: GlobalVariable) -> usize {
-        let mut size = 0;
+    pub unsafe fn offset_of(&self, id: GlobalVariable) -> u32 {
+        let mut size = 0usize;
         for gv in self.layout.iter() {
             let layout = gv.layout();
             let align_offset = layout.size().align_offset(layout.align());
@@ -229,7 +229,7 @@ impl GlobalVariableTable {
 
             size += layout.size();
         }
-        size
+        size.try_into().expect("data segment table is invalid")
     }
 
     /// Get the constant data associated with `id`
@@ -606,5 +606,28 @@ impl GlobalValueData {
     /// address is not known until runtime.
     pub fn is_constant_addr(&self) -> bool {
         !matches!(self, Self::Load { .. })
+    }
+
+    /// Return the computed offset for this global value (relative to it's position in the global table)
+    pub fn offset(&self) -> i32 {
+        match self {
+            Self::Symbol { offset, .. } => *offset,
+            Self::Load { offset, .. } => *offset,
+            Self::IAddImm { ref ty, offset, .. } => {
+                let offset = *offset as usize * ty.size_in_bytes();
+                offset
+                    .try_into()
+                    .expect("invalid iadd expression: expected computed offset to fit in i32 range")
+            }
+        }
+    }
+
+    /// Get the type associated with this value, if applicable
+    pub fn ty(&self) -> Option<&Type> {
+        match self {
+            Self::Symbol { .. } => None,
+            Self::Load { ref ty, .. } => Some(ty),
+            Self::IAddImm { ref ty, .. } => Some(ty),
+        }
     }
 }

@@ -1327,7 +1327,7 @@ impl<'a> MasmEmitter<'a> {
             ix
         );
         match ix {
-            Instruction::GlobalValue(_) => todo!("global values are not yet implemented"),
+            Instruction::GlobalValue(op) => self.emit_global_value(inst, op, stack),
             Instruction::UnaryOpImm(op) => self.emit_unary_imm_op(inst, op, stack),
             Instruction::UnaryOp(op) => self.emit_unary_op(inst, op, stack),
             Instruction::BinaryOpImm(op) => self.emit_binary_imm_op(inst, op, stack),
@@ -1339,6 +1339,7 @@ impl<'a> MasmEmitter<'a> {
             Instruction::Call(op) => self.emit_call_op(inst, op, stack),
             Instruction::MemCpy(op) => self.emit_memcpy(inst, op, stack),
             Instruction::InlineAsm(op) => self.emit_inline_asm(inst, op, stack),
+            // Control flow instructions are handled before `emit_op` is called
             Instruction::RetImm(_)
             | Instruction::Ret(_)
             | Instruction::Br(_)
@@ -1350,6 +1351,34 @@ impl<'a> MasmEmitter<'a> {
         let inst_results = self.f.dfg.inst_results(inst);
         for value in inst_results.iter().rev().copied() {
             stack.push(value.into());
+        }
+    }
+
+    fn emit_global_value(
+        &mut self,
+        inst: hir::Inst,
+        op: &hir::GlobalValueOp,
+        stack: &mut OperandStack,
+    ) {
+        assert_eq!(op.op, hir::Opcode::GlobalValue);
+        let result = self.f.dfg.first_result(inst);
+        let addr = self.calculate_global_value_addr(op.global);
+        match self.f.dfg.global_value(op.global) {
+            hir::GlobalValueData::Load { ty, .. } => {
+                let block = self.current_block();
+                match ty.size_in_felts() {
+                    1 => {
+                        block.push(MasmOp::MemLoadImm(addr));
+                        stack.push(result);
+                    }
+                    n => todo!("handle {n}-element operands in a later patch"),
+                }
+            }
+            hir::GlobalValueData::Symbol { .. } | hir::GlobalValueData::IAddImm { .. } => {
+                let block = self.current_block();
+                block.push(MasmOp::PushU32(addr));
+                stack.push(result);
+            }
         }
     }
 
@@ -1417,13 +1446,43 @@ impl<'a> MasmEmitter<'a> {
         todo!()
     }
 
-    // Get a mutable reference to the current block of code in the stack machine IR
+    /// Computes the absolute offset (address) represented by the given global value
+    fn calculate_global_value_addr(&self, mut gv: GlobalValue) -> u32 {
+        let global_table_offset = self.program.segments().next_available_offset();
+        let mut relative_offset = 0;
+        let globals = self.program.globals();
+        loop {
+            let gv_data = self.f.dfg.global_value(gv);
+            relative_offset += gv_data.offset();
+            match gv_data {
+                hir::GlobalValueData::Symbol { name, .. } => {
+                    let var = globals
+                        .find(*name)
+                        .expect("linker should have caught undefined global variables");
+                    let base_offset = unsafe { globals.offset_of(var) };
+                    if relative_offset >= 0 {
+                        return (global_table_offset + base_offset) + relative_offset as u32;
+                    } else {
+                        return (global_table_offset + base_offset) - relative_offset.abs() as u32;
+                    }
+                }
+                hir::GlobalValueData::IAddImm { base, .. } => {
+                    gv = *base;
+                }
+                hir::GlobalValueData::Load { base, .. } => {
+                    gv = *base;
+                }
+            }
+        }
+    }
+
+    /// Get a mutable reference to the current block of code in the stack machine IR
     #[inline(always)]
     fn current_block(&mut self) -> &mut masm::Block {
         &mut self.f_prime.blocks[self.current_block]
     }
 
-    // Get a mutable reference to a specific block of code in the stack machine IR
+    /// Get a mutable reference to a specific block of code in the stack machine IR
     #[inline(always)]
     fn block(&mut self, block: masm::BlockId) -> &mut masm::Block {
         &mut self.f_prime.blocks[block]

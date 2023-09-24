@@ -46,14 +46,6 @@ impl Default for Program {
     }
 }
 impl Program {
-    /// The `__MIDEN_PAGES` symbol contains the number of 64KiB pages allocated from
-    /// the linear memory of the Miden VM, beginning at address 0x0. It's type is `i32`.
-    ///
-    /// This symbol is required by, and managed by, the `memory.grow` instruction.
-    ///
-    /// This global is only available in the root context, accessed by syscall
-    pub const SYMBOL_PAGES: &'static str = "__MIDEN_PAGES";
-
     /// Create a new, empty [Program].
     ///
     /// NOTE: An empty program will be missing some builtin global variables
@@ -103,15 +95,9 @@ impl Program {
         entry
     }
 
-    /// Return an iterator over the data segments allocated in this program
-    ///
-    /// The iterator is double-ended, so can be used to traverse the segments in either direction.
-    ///
-    /// Data segments are ordered by the address at which are are allocated, in ascending order.
-    pub fn segments<'a, 'b: 'a>(
-        &'b self,
-    ) -> intrusive_collections::linked_list::Iter<'a, DataSegmentAdapter> {
-        self.segments.iter()
+    /// Return a reference to the data segment table for this program
+    pub fn segments(&self) -> &DataSegmentTable {
+        &self.segments
     }
 
     /// Get a reference to the global variable table for this program
