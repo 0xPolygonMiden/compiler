@@ -287,3 +287,38 @@ fn if_then_else() {
         "#]],
     );
 }
+
+#[test]
+fn global_var() {
+    check_ir(
+        r#"
+        (module
+            (global $MyGlobalVal (mut i32) i32.const 42)
+            (func $main
+                global.get $MyGlobalVal
+                i32.const 9
+                i32.add
+                global.set $MyGlobalVal
+            )
+        )
+    "#,
+        expect![[r#"
+            module noname
+
+            pub fn main() {
+            block0:
+                v0 = global.load (@MyGlobalVal) as *mut i8  : i32
+                v1 = const.i32 9  : i32
+                v2 = add v0, v1  : i32
+                v3 = global.symbol @MyGlobalVal  : *mut i8
+                v4 = ptrtoint v3  : i32
+                v5 = inttoptr v4  : *mut i32
+                store v5, v2
+                br block1
+
+            block1:
+                v6 = ret   : ()
+            }
+        "#]],
+    );
+}

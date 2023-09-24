@@ -549,6 +549,10 @@ impl ModuleBuilder {
         self
     }
 
+    pub fn name(&self) -> Ident {
+        self.module.name
+    }
+
     pub fn declare_global_variable<S: AsRef<str>>(
         &mut self,
         name: S,

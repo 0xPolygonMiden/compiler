@@ -1,10 +1,8 @@
 use miden_diagnostics::SourceSpan;
 use miden_hir::CallConv;
-use miden_hir::Ident;
 use miden_hir::Linkage;
 use miden_hir::ModuleBuilder;
 use miden_hir::Signature;
-use miden_hir::Symbol;
 
 use wasmparser::MemArg;
 use wasmparser::Operator;
@@ -21,7 +19,8 @@ use super::translate_operator;
 
 fn check_unsupported(op: &Operator) {
     let diagnostics = test_diagnostics();
-    let module_info = ModuleInfo::new(Ident::with_empty_span(Symbol::intern("noname")));
+    let mod_builder = ModuleBuilder::new("noname");
+    let module_info = ModuleInfo::new(mod_builder.name());
     let mut module_builder = ModuleBuilder::new(module_info.name.as_str());
     let sig = Signature {
         params: vec![],
@@ -33,9 +32,10 @@ fn check_unsupported(op: &Operator) {
         .build_function("func_name", sig.clone(), SourceSpan::default())
         .unwrap();
     let mut fb_ctx = FunctionBuilderContext::new();
-    let mut builder_ext = FunctionBuilderExt::new(module_func_builder.func_builder(), &mut fb_ctx);
     let mut state = FuncTranslationState::new();
     let mut func_environ = FuncEnvironment::new(&module_info);
+    let func_builder = module_func_builder.func_builder();
+    let mut builder_ext = FunctionBuilderExt::new(func_builder, &mut fb_ctx);
     let result = translate_operator(
         op,
         &mut builder_ext,

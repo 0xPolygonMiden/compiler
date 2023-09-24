@@ -1,6 +1,7 @@
 //! Internal types for parsed WebAssembly.
 
 use miden_hir::cranelift_entity::entity_impl;
+use miden_hir::cranelift_entity::PrimaryMap;
 use miden_hir_type::FunctionType;
 use miden_hir_type::Type;
 
@@ -40,6 +41,8 @@ pub struct Global {
     pub ty: Type,
     /// A flag indicating whether the value may change at runtime.
     pub mutability: bool,
+    /// The initializer expression (constant).
+    pub init: GlobalInit,
 }
 
 /// Globals are initialized via the `const` operators or by referring to another import.
@@ -55,6 +58,22 @@ pub enum GlobalInit {
     F64Const(u64),
     /// A `global.get` of another global.
     GetGlobal(GlobalIndex),
+}
+
+impl GlobalInit {
+    /// Serialize the initializer constant expression into bytes (little-endian order).
+    pub fn to_le_bytes(self, globals: &PrimaryMap<GlobalIndex, Global>) -> Vec<u8> {
+        match self {
+            GlobalInit::I32Const(x) => x.to_le_bytes().to_vec(),
+            GlobalInit::I64Const(x) => x.to_le_bytes().to_vec(),
+            GlobalInit::F32Const(x) => x.to_le_bytes().to_vec(),
+            GlobalInit::F64Const(x) => x.to_le_bytes().to_vec(),
+            GlobalInit::GetGlobal(global_idx) => {
+                let global = &globals[global_idx];
+                global.init.to_le_bytes(globals)
+            }
+        }
+    }
 }
 
 /// WebAssembly linear memory.
@@ -106,10 +125,11 @@ impl BlockType {
     }
 }
 
-pub fn convert_global_type(ty: &wasmparser::GlobalType) -> WasmResult<Global> {
+pub fn convert_global_type(ty: &wasmparser::GlobalType, init: GlobalInit) -> WasmResult<Global> {
     Ok(Global {
         ty: valtype_to_type(&ty.content_type)?,
         mutability: ty.mutable,
+        init,
     })
 }
 
