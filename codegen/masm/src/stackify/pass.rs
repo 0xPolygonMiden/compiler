@@ -1437,13 +1437,20 @@ impl<'a> MasmEmitter<'a> {
         todo!()
     }
 
-    fn emit_inline_asm(
-        &mut self,
-        _inst: hir::Inst,
-        _op: &hir::InlineAsm,
-        _stack: &mut OperandStack,
-    ) {
-        todo!()
+    fn emit_inline_asm(&mut self, _inst: hir::Inst, op: &hir::InlineAsm, stack: &mut OperandStack) {
+        // Port over the blocks from the inline assembly chunk, except the body block, which will
+        // be inlined at the current block
+        let mut mapped = FxHashMap::<MasmBlockId, MasmBlockId>::default();
+        for (inline_blk, inline_block) in op.blocks.iter() {
+            if inline_blk == op.body {
+                continue;
+            }
+            let mapped_blk = self.f_prime.create_block();
+            mapped.insert(inline_blk, mapped_blk);
+        }
+
+        // Inline the body, rewriting any references to other blocks
+        rewrite_inline_assembly_block(self.f_prime, op, op.body, self.current_block, &mapped);
     }
 
     /// Computes the absolute offset (address) represented by the given global value
@@ -1502,6 +1509,36 @@ impl<'a> MasmEmitter<'a> {
         } else {
             self.loops.loop_level(self.emitting).level()
         }
+    }
+}
+
+fn rewrite_inline_assembly_block(
+    f_prime: &mut masm::Function,
+    asm: &hir::InlineAsm,
+    prev: masm::BlockId,
+    new: masm::BlockId,
+    rewrites: &FxHashMap<masm::BlockId, masm::BlockId>,
+) {
+    let body = asm.blocks[prev].ops.clone();
+    for mut op in body.into_iter() {
+        match op {
+            Op::If(ref mut then_blk, ref mut else_blk) => {
+                let prev_then_blk = *then_blk;
+                let prev_else_blk = *else_blk;
+                *then_blk = rewrites[prev_then_blk];
+                *else_blk = rewrites[prev_else_blk];
+                rewrite_inline_assembly_block(f_prime, asm, prev_then_blk, *then_blk, rewrites);
+                rewrite_inline_assembly_block(f_prime, asm, prev_else_blk, *else_blk, rewrites);
+            }
+            Op::While(ref mut body_blk) | Op::Repeat(ref mut body_blk, _) => {
+                let prev_body_blk = *body_blk;
+                *body_blk = rewrites[*body_blk];
+                rewrite_inline_assembly_block(f_prime, asm, prev_body_blk, *body_blk, rewrites);
+            }
+            Op::LocAddr(_) => todo!(),
+            _ => (),
+        }
+        f_prime.blocks[new].push(op);
     }
 }
 
