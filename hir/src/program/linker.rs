@@ -458,12 +458,7 @@ impl Linker {
     fn populate_builtins(&mut self) {
         // We provide three globals for managing the heap, based on the layout
         // of the data segments and these globals.
-        let mut globals_offset = 0;
-        if let Some(last_segment) = self.program.segments.last() {
-            let next_offset = last_segment.offset() + last_segment.size();
-            // Ensure the start of the globals segment is word-aligned
-            globals_offset = next_offset.align_up(32);
-        }
+        let mut globals_offset = self.program.segments.next_available_offset();
         // Compute the start of the heap by finding the end of the globals segment, aligned to the nearest word boundary
         let heap_base = globals_offset
             .checked_add(

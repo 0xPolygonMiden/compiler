@@ -54,6 +54,17 @@ impl DataSegmentTable {
         self.segments.is_empty()
     }
 
+    /// Returns the offset in linear memory where the last data segment ends
+    pub fn next_available_offset(&self) -> u32 {
+        if let Some(last_segment) = self.last() {
+            let next_offset = last_segment.offset() + last_segment.size();
+            // Ensure the start of the globals segment is word-aligned
+            next_offset.align_up(32)
+        } else {
+            0
+        }
+    }
+
     /// Declare a new [DataSegment], with the given offset, size, and data.
     ///
     /// Returns `Err` if the declared segment overlaps/conflicts with an existing segment.
