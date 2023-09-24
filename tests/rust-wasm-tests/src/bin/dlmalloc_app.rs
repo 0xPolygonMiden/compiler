@@ -15,6 +15,5 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn __main() -> u32 {
-    vec_alloc();
-    0
+    vec_alloc()
 }
