@@ -16,7 +16,7 @@ use crate::translation_utils::emit_zero;
 use crate::wasm_types::valtype_to_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::EntityRef;
-use miden_hir::{Block, FunctionBuilder, InstBuilder};
+use miden_hir::{Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
 /// WebAssembly to Miden IR function translator.
@@ -42,7 +42,7 @@ impl FuncTranslator {
     pub fn translate_body(
         &mut self,
         body: &FunctionBody<'_>,
-        func_builder: FunctionBuilder,
+        mod_func_builder: &mut ModuleFunctionBuilder,
         environ: &mut FuncEnvironment,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
@@ -55,8 +55,8 @@ impl FuncTranslator {
         //     func.signature
         // );
 
-        let mut builder = FunctionBuilderExt::new(func_builder, &mut self.func_ctx);
-        // entry block is created by `FunctionBuilder::new`
+        let mut builder =
+            FunctionBuilderExt::new(mod_func_builder.func_builder(), &mut self.func_ctx);
         let entry_block = builder.inner.current_block();
         builder.seal_block(entry_block); // Declare all predecessors known.
 

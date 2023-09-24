@@ -121,8 +121,8 @@ pub fn parse_global_section<'a>(
                 );
             }
         };
-        let ty = convert_global_type(&ty)?;
-        environ.declare_global(ty, initializer);
+        let global = convert_global_type(&ty, initializer)?;
+        environ.declare_global(global);
     }
 
     Ok(())
@@ -177,10 +177,17 @@ pub fn parse_name_section<'a>(
                     }
                 }
             }
+            wasmparser::Name::Global(names) => {
+                for name in names {
+                    let Naming { index, name } = name?;
+                    if index != u32::max_value() {
+                        environ.declare_global_name(GlobalIndex::from_u32(index), name);
+                    }
+                }
+            }
             wasmparser::Name::Label(_)
             | wasmparser::Name::Type(_)
             | wasmparser::Name::Table(_)
-            | wasmparser::Name::Global(_)
             | wasmparser::Name::Memory(_)
             | wasmparser::Name::Element(_)
             | wasmparser::Name::Data(_)

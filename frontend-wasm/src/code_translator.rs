@@ -23,7 +23,7 @@ use crate::function_builder_ext::FunctionBuilderExt;
 use crate::ssa::Variable;
 use crate::translation_utils::{block_with_params, f64_translation};
 use crate::unsupported_diag;
-use crate::wasm_types::BlockType;
+use crate::wasm_types::{BlockType, GlobalIndex};
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::Type;
@@ -70,6 +70,23 @@ pub fn translate_operator(
         Operator::LocalTee { local_index } => {
             let val = state.peek1();
             builder.def_var(Variable::from_u32(*local_index), val);
+        }
+        /********************************** Globals ****************************************/
+        Operator::GlobalGet { global_index } => {
+            let global_index = GlobalIndex::from_u32(*global_index);
+            let name = environ.mod_info.global_name(global_index);
+            let ty = environ.mod_info.globals[global_index].ty.clone();
+            state.push1(builder.ins().load_symbol(name, ty, span));
+        }
+        Operator::GlobalSet { global_index } => {
+            let global_index = GlobalIndex::from_u32(*global_index);
+            let name = environ.mod_info.global_name(global_index);
+            let ty = (&environ.mod_info.globals[global_index]).ty.clone();
+            let ptr_u8 = builder.ins().symbol_addr(name, span);
+            let int_ptr = builder.ins().ptrtoint(ptr_u8, I32, span);
+            let ptr_typed = builder.ins().inttoptr(int_ptr, Ptr(ty.into()), span);
+            let val = state.pop1();
+            builder.ins().store(ptr_typed, val, span);
         }
         /********************************* Stack misc **************************************/
         Operator::Drop => _ = state.pop1(),

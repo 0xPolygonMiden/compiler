@@ -4,12 +4,13 @@ use crate::error::{WasmError, WasmResult};
 use crate::func_translator::FuncTranslator;
 use crate::translation_utils::sig_from_funct_type;
 use crate::wasm_types::{
-    DefinedFuncIndex, FuncIndex, Global, GlobalInit, Memory, MemoryIndex, TypeIndex,
+    DefinedFuncIndex, FuncIndex, Global, GlobalIndex, Memory, MemoryIndex, TypeIndex,
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
-use miden_hir::{CallConv, Ident, Linkage, Module, ModuleBuilder, Symbol};
+use miden_hir::{CallConv, ConstantData, Ident, Linkage, Module, ModuleBuilder, Symbol};
 use miden_hir_type::FunctionType;
+
 use std::string::String;
 use std::vec::Vec;
 use wasmparser::{FunctionBody, Validator};
@@ -38,6 +39,12 @@ pub struct ModuleInfo {
     /// Memories as provided by `declare_memory`.
     pub memories: PrimaryMap<MemoryIndex, Memory>,
 
+    /// Globals as provided by `declare_global`.
+    pub globals: PrimaryMap<GlobalIndex, Global>,
+
+    /// Global names.
+    global_names: SecondaryMap<GlobalIndex, String>,
+
     /// The start function.
     pub start_func: Option<FuncIndex>,
 }
@@ -51,7 +58,22 @@ impl ModuleInfo {
             functions: PrimaryMap::new(),
             memories: PrimaryMap::new(),
             start_func: None,
+            globals: PrimaryMap::new(),
             function_names: SecondaryMap::new(),
+            global_names: SecondaryMap::new(),
+        }
+    }
+
+    pub fn declare_global_name(&mut self, global_index: GlobalIndex, name: String) {
+        self.global_names[global_index] = name;
+    }
+
+    pub fn global_name(&self, global_index: GlobalIndex) -> String {
+        let stored_name = self.global_names[global_index].clone();
+        if stored_name.is_empty() {
+            format!("gv{}", global_index.index())
+        } else {
+            stored_name
         }
     }
 }
@@ -99,6 +121,7 @@ impl<'a> ModuleEnvironment<'a> {
         validator: &mut Validator,
     ) -> WasmResult<Module> {
         let mut module_builder = ModuleBuilder::new(self.info.name.as_str());
+        self.build_globals(&mut module_builder, diagnostics)?;
         let get_num_func_imports = self.get_num_func_imports();
         for (def_func_index, body) in &self.function_bodies {
             let func_index = FuncIndex::new(get_num_func_imports + def_func_index.index());
@@ -109,26 +132,53 @@ impl<'a> ModuleEnvironment<'a> {
                 .unwrap_or(&format!("func{}", func_index.index()))
                 .to_string();
             let sig = sig_from_funct_type(func_ty, CallConv::SystemV, Linkage::External);
+            let mut func_environ = FuncEnvironment::new(&self.info);
             let mut module_func_builder =
                 module_builder.build_function(func_name, sig.clone(), SourceSpan::default())?;
-            let func_builder = module_func_builder.func_builder();
-            let mut func_environ = FuncEnvironment::new(&self.info);
             let mut func_validator = validator
                 .code_section_entry(&body)?
                 .into_validator(Default::default());
             self.trans.translate_body(
                 body,
-                func_builder,
+                &mut module_func_builder,
                 &mut func_environ,
                 diagnostics,
                 &mut func_validator,
             )?;
+            // TODO: add diagnostics
             module_func_builder
                 .build(diagnostics)
                 .map_err(|_| WasmError::InvalidFunctionError)?;
         }
         let module = module_builder.build();
         Ok(*module)
+    }
+
+    fn build_globals(
+        &mut self,
+        module_builder: &mut ModuleBuilder,
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), WasmError> {
+        Ok(for (global_idx, global) in &self.info.globals {
+            let global_name = self.info.global_name(global_idx).clone();
+            let global_var = module_builder
+                .declare_global_variable(
+                    &global_name,
+                    global.ty.clone(),
+                    Linkage::External,
+                    SourceSpan::default(),
+                )
+                .unwrap();
+            let init = ConstantData::from(global.init.to_le_bytes(&self.info.globals));
+            if let Err(e) = module_builder.set_global_initializer(global_var, init.clone()) {
+                let message = format!("Failed to set global initializer {init} for global variable {global_var} with error: {:?}", e);
+                diagnostics
+                    .diagnostic(miden_diagnostics::Severity::Error)
+                    .with_message(message.clone())
+                    .emit();
+                return Err(WasmError::Unexpected(message));
+            }
+        })
     }
 
     /// Declares a function signature to the environment.
@@ -155,8 +205,13 @@ impl<'a> ModuleEnvironment<'a> {
     }
 
     /// Declares a global to the environment.
-    pub fn declare_global(&mut self, _global: Global, _init: GlobalInit) {
-        // TODO: store global and global inits
+    pub fn declare_global(&mut self, global: Global) {
+        self.info.globals.push(global);
+    }
+
+    pub fn declare_global_name(&mut self, global_index: GlobalIndex, name: &'a str) {
+        self.info
+            .declare_global_name(global_index, String::from(name));
     }
 
     /// Declares a memory to the environment
@@ -197,6 +252,6 @@ impl<'a> ModuleEnvironment<'a> {
         _local_index: u32,
         _name: &'a str,
     ) {
-        // Do we need a local's name?
+        // TODO: Do we need a local's name?
     }
 }
