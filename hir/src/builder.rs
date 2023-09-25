@@ -576,6 +576,16 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         ))
     }
 
+    fn mem_grow(mut self, value: Value, span: SourceSpan) -> Value {
+        require_integer!(self, value, Type::I32);
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.push(value, pool);
+        }
+        into_first_result!(self.PrimOp(Opcode::MemGrow, Type::I32, vlist, span,))
+    }
+
     /// Get a [GlobalValue] which represents the address of a global variable whose symbol is `name`
     ///
     /// On it's own, this does nothing, you must use the resulting [GlobalValue] with a builder
