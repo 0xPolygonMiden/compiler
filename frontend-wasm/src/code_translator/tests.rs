@@ -368,7 +368,7 @@ fn memory_grow() {
         "#,
         expect![[r#"
             v0 = const.i32 1  : i32
-            v1 = const.i32 1048575  : i32
+            v1 = memory.grow v0  : i32
         "#]],
     )
 }

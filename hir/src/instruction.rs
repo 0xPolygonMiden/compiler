@@ -616,7 +616,6 @@ impl Opcode {
             | Self::Assertz
             | Self::AssertEq
             | Self::Store
-            | Self::MemGrow
             | Self::MemCpy
             | Self::Br
             | Self::CondBr
@@ -678,7 +677,8 @@ impl Opcode {
             | Self::Shl
             | Self::Shr
             | Self::Rotl
-            | Self::Rotr => {
+            | Self::Rotr
+            | Self::MemGrow => {
                 smallvec![ctrl_ty]
             }
             // The result type of a load is derived from the pointee type

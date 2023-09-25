@@ -120,10 +120,11 @@ pub fn translate_operator(
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            // Do nothing and return total Miden memory size
-            state.push1(builder.ins().i32(mem_total_pages(), span));
+            let arg = state.pop1();
+            state.push1(builder.ins().mem_grow(arg, span));
         }
         Operator::MemorySize { .. } => {
+            // Return total Miden memory size
             state.push1(builder.ins().i32(mem_total_pages(), span));
         }
         /******************************* Load instructions ***********************************/
