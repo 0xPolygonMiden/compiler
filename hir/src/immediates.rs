@@ -95,74 +95,120 @@ impl Immediate {
     /// Returns true if this immediate is a non-zero integer, otherwise false
     ///
     /// If the immediate is not an integer, returns `None`
-    pub fn as_bool(&self) -> Option<bool> {
+    pub fn as_bool(self) -> Option<bool> {
         match self {
-            Self::I1(b) => Some(*b),
-            Self::U8(i) => Some(*i != 0),
-            Self::I8(i) => Some(*i != 0),
-            Self::U16(i) => Some(*i != 0),
-            Self::I16(i) => Some(*i != 0),
-            Self::U32(i) => Some(*i != 0),
-            Self::I32(i) => Some(*i != 0),
-            Self::U64(i) => Some(*i != 0),
-            Self::I64(i) => Some(*i != 0),
+            Self::I1(b) => Some(b),
+            Self::U8(i) => Some(i != 0),
+            Self::I8(i) => Some(i != 0),
+            Self::U16(i) => Some(i != 0),
+            Self::I16(i) => Some(i != 0),
+            Self::U32(i) => Some(i != 0),
+            Self::I32(i) => Some(i != 0),
+            Self::U64(i) => Some(i != 0),
+            Self::I64(i) => Some(i != 0),
             Self::Felt(i) => Some(i.as_int() != 0),
-            Self::I128(i) => Some(*i != 0),
+            Self::I128(i) => Some(i != 0),
             Self::F64(_) => None,
         }
     }
 
-    /// Attempts to convert this value to a field element
-    pub fn as_felt(&self) -> Option<Felt> {
+    /// Attempts to convert this value to a u32
+    pub fn as_u32(self) -> Option<u32> {
         match self {
-            Self::I1(b) => Some(Felt::new(*b as u64)),
-            Self::U8(b) => Some(Felt::new(*b as u64)),
-            Self::I8(b) => u64::try_from(*b).ok().map(Felt::new),
-            Self::U16(b) => Some(Felt::new(*b as u64)),
-            Self::I16(b) => u64::try_from(*b).ok().map(Felt::new),
-            Self::U32(b) => Some(Felt::new(*b as u64)),
-            Self::I32(b) => u64::try_from(*b).ok().map(Felt::new),
-            Self::U64(b) => Some(Felt::new(*b)),
-            Self::I64(b) => u64::try_from(*b).ok().map(Felt::new),
-            Self::Felt(i) => Some(*i),
-            Self::I128(b) => u64::try_from(*b).ok().map(Felt::new),
-            Self::F64(f) => FloatToInt::<Felt>::to_int(*f).ok(),
+            Self::I1(b) => Some(b as u32),
+            Self::U8(b) => Some(b as u32),
+            Self::I8(b) if b >= 0 => Some(b as u32),
+            Self::I8(_) => None,
+            Self::U16(b) => Some(b as u32),
+            Self::I16(b) if b >= 0 => Some(b as u32),
+            Self::I16(_) => None,
+            Self::U32(b) => Some(b),
+            Self::I32(b) if b >= 0 => Some(b as u32),
+            Self::I32(_) => None,
+            Self::U64(b) => u32::try_from(b).ok(),
+            Self::I64(b) if b >= 0 => u32::try_from(b as u64).ok(),
+            Self::I64(_) => None,
+            Self::Felt(i) => u32::try_from(i.as_int()).ok(),
+            Self::I128(b) if b >= 0 && b <= (u32::MAX as u64 as i128) => Some(b as u32),
+            Self::I128(_) => None,
+            Self::F64(f) => FloatToInt::<u32>::to_int(f).ok(),
+        }
+    }
+
+    /// Attempts to convert this value to a field element
+    pub fn as_felt(self) -> Option<Felt> {
+        match self {
+            Self::I1(b) => Some(Felt::new(b as u64)),
+            Self::U8(b) => Some(Felt::new(b as u64)),
+            Self::I8(b) => u64::try_from(b).ok().map(Felt::new),
+            Self::U16(b) => Some(Felt::new(b as u64)),
+            Self::I16(b) => u64::try_from(b).ok().map(Felt::new),
+            Self::U32(b) => Some(Felt::new(b as u64)),
+            Self::I32(b) => u64::try_from(b).ok().map(Felt::new),
+            Self::U64(b) => Some(Felt::new(b)),
+            Self::I64(b) => u64::try_from(b).ok().map(Felt::new),
+            Self::Felt(i) => Some(i),
+            Self::I128(b) => u64::try_from(b).ok().map(Felt::new),
+            Self::F64(f) => FloatToInt::<Felt>::to_int(f).ok(),
+        }
+    }
+
+    /// Attempts to convert this value to u64
+    pub fn as_u64(self) -> Option<u64> {
+        match self {
+            Self::I1(b) => Some(b as u64),
+            Self::U8(i) => Some(i as u64),
+            Self::I8(i) if i >= 0 => Some(i as u64),
+            Self::I8(_) => None,
+            Self::U16(i) => Some(i as u64),
+            Self::I16(i) if i >= 0 => Some(i as u16 as u64),
+            Self::I16(_) => None,
+            Self::U32(i) => Some(i as u64),
+            Self::I32(i) if i >= 0 => Some(i as u32 as u64),
+            Self::I32(_) => None,
+            Self::U64(i) => Some(i),
+            Self::I64(i) if i >= 0 => Some(i as u64),
+            Self::I64(_) => None,
+            Self::Felt(i) => Some(i.as_int()),
+            Self::I128(i) if i >= 0 => (i).try_into().ok(),
+            Self::I128(_) => None,
+            Self::F64(f) => FloatToInt::<u64>::to_int(f).ok(),
         }
     }
 
     /// Attempts to convert this value to i64
-    pub fn as_i64(&self) -> Option<i64> {
+    pub fn as_i64(self) -> Option<i64> {
         match self {
-            Self::I1(b) => Some(*b as i64),
-            Self::U8(i) => Some(*i as i64),
-            Self::I8(i) => Some(*i as i64),
-            Self::U16(i) => Some(*i as i64),
-            Self::I16(i) => Some(*i as i64),
-            Self::U32(i) => Some(*i as i64),
-            Self::I32(i) => Some(*i as i64),
-            Self::U64(i) => (*i).try_into().ok(),
-            Self::I64(i) => Some(*i),
+            Self::I1(b) => Some(b as i64),
+            Self::U8(i) => Some(i as i64),
+            Self::I8(i) => Some(i as i64),
+            Self::U16(i) => Some(i as i64),
+            Self::I16(i) => Some(i as i64),
+            Self::U32(i) => Some(i as i64),
+            Self::I32(i) => Some(i as i64),
+            Self::U64(i) => (i).try_into().ok(),
+            Self::I64(i) => Some(i),
             Self::Felt(i) => i.as_int().try_into().ok(),
-            Self::I128(i) => (*i).try_into().ok(),
-            Self::F64(f) => FloatToInt::<i64>::to_int(*f).ok(),
+            Self::I128(i) => (i).try_into().ok(),
+            Self::F64(f) => FloatToInt::<i64>::to_int(f).ok(),
         }
     }
 
     /// Attempts to convert this value to i128
-    pub fn as_i128(&self) -> Option<i128> {
+    pub fn as_i128(self) -> Option<i128> {
         match self {
-            Self::I1(b) => Some(*b as i128),
-            Self::U8(i) => Some(*i as i128),
-            Self::I8(i) => Some(*i as i128),
-            Self::U16(i) => Some(*i as i128),
-            Self::I16(i) => Some(*i as i128),
-            Self::U32(i) => Some(*i as i128),
-            Self::I32(i) => Some(*i as i128),
-            Self::U64(i) => Some(*i as i128),
-            Self::I64(i) => Some(*i as i128),
+            Self::I1(b) => Some(b as i128),
+            Self::U8(i) => Some(i as i128),
+            Self::I8(i) => Some(i as i128),
+            Self::U16(i) => Some(i as i128),
+            Self::I16(i) => Some(i as i128),
+            Self::U32(i) => Some(i as i128),
+            Self::I32(i) => Some(i as i128),
+            Self::U64(i) => Some(i as i128),
+            Self::I64(i) => Some(i as i128),
             Self::Felt(i) => Some(i.as_int() as i128),
-            Self::I128(i) => Some(*i),
-            Self::F64(f) => FloatToInt::<i128>::to_int(*f).ok(),
+            Self::I128(i) => Some(i),
+            Self::F64(f) => FloatToInt::<i128>::to_int(f).ok(),
         }
     }
 }
@@ -283,7 +329,7 @@ impl Ord for Immediate {
                 let x = x
                     .as_i128()
                     .expect("expected rhs to be an integer smaller than i128");
-                x.cmp(&y)
+                x.cmp(y)
             }
             // u64 immediates may not fit in an i64
             (Self::U64(x), Self::U64(y)) => x.cmp(y),
@@ -300,7 +346,7 @@ impl Ord for Immediate {
                     .as_i64()
                     .expect("expected rhs to be an integer capable of fitting in an i64")
                     as u64;
-                x.cmp(&y)
+                x.cmp(y)
             }
             // All immediates at this point are i64 or smaller
             (x, y) => {

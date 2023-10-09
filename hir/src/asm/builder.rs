@@ -1,6 +1,6 @@
 use crate::{
     CallConv, DataFlowGraph, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow,
-    SourceSpan, Type, TypeRepr, Value,
+    SourceSpan, Type, Value,
 };
 
 use smallvec::smallvec;
@@ -101,8 +101,7 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
         } else {
             let mut len = 0;
             for ty in self.asm.results.iter() {
-                let repr = ty.repr().expect("invalid result type");
-                len += repr.size();
+                len += ty.size_in_felts();
             }
             assert_eq!(
                 len,
@@ -1517,7 +1516,7 @@ macro_rules! assert_compatible_u32_operands {
     ($lty:ident, $rty:ident) => {
         assert_matches!(
             $lty,
-            Type::U8 | Type::U16 | Type::U32 | Type::Usize | Type::Ptr(_) | Type::NativePtr(_),
+            Type::U8 | Type::U16 | Type::U32 | Type::Ptr(_),
             "expected controlling type to be u32-compatible, got {}",
             $lty
         );
@@ -1527,7 +1526,7 @@ macro_rules! assert_compatible_u32_operands {
     ($lty:ident, $rty:ident, $op:expr) => {
         assert_matches!(
             $lty,
-            Type::U8 | Type::U16 | Type::U32 | Type::Usize | Type::Ptr(_) | Type::NativePtr(_),
+            Type::U8 | Type::U16 | Type::U32 | Type::Ptr(_),
             "expected controlling type for {} to be u32-compatible, got {}",
             $op,
             $lty
@@ -1561,15 +1560,7 @@ macro_rules! assert_compatible_felt_operands {
     ($lty:ident, $rty:ident) => {
         assert_matches!(
             $lty,
-            Type::U8
-                | Type::I8
-                | Type::U16
-                | Type::I16
-                | Type::U32
-                | Type::I32
-                | Type::Usize
-                | Type::Isize
-                | Type::Felt,
+            Type::U8 | Type::I8 | Type::U16 | Type::I16 | Type::U32 | Type::I32 | Type::Felt,
             "expected controlling type to be felt-compatible, got {}",
             $lty
         );
@@ -1579,15 +1570,7 @@ macro_rules! assert_compatible_felt_operands {
     ($lty:ident, $rty:ident, $op:expr) => {
         assert_matches!(
             $lty,
-            Type::U8
-                | Type::I8
-                | Type::U16
-                | Type::I16
-                | Type::U32
-                | Type::I32
-                | Type::Usize
-                | Type::Isize
-                | Type::Felt,
+            Type::U8 | Type::I8 | Type::U16 | Type::I16 | Type::U32 | Type::I32 | Type::Felt,
             "expected controlling type for {} to be felt-compatible, got {}",
             $op,
             $lty
@@ -1694,7 +1677,7 @@ fn apply_op_stack_effects(
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(
                 ty,
-                Type::Ptr(_) | Type::NativePtr(_),
+                Type::Ptr(_) | Type::NativePtr(_, _),
                 "invalid load: expected pointer operand"
             );
             stack.push(ty.pointee().unwrap().clone());
@@ -1707,7 +1690,7 @@ fn apply_op_stack_effects(
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(
                 ty,
-                Type::Ptr(_) | Type::NativePtr(_),
+                Type::Ptr(_) | Type::NativePtr(_, _),
                 "invalid load: expected pointer operand"
             );
             // We're always loading a raw word with this op
@@ -1721,7 +1704,7 @@ fn apply_op_stack_effects(
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(
                 ty,
-                Type::Ptr(_) | Type::NativePtr(_),
+                Type::Ptr(_) | Type::NativePtr(_, _),
                 "invalid store: expected pointer operand"
             );
             stack.drop();
@@ -1733,7 +1716,7 @@ fn apply_op_stack_effects(
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(
                 ty,
-                Type::Ptr(_) | Type::NativePtr(_),
+                Type::Ptr(_) | Type::NativePtr(_, _),
                 "invalid store: expected pointer operand"
             );
             stack.dropw();
@@ -2052,8 +2035,7 @@ fn execute_call(
             // is the first argument), and allocate elements based on the argument types.
             let mut elements_needed = 0;
             for param in import.signature.params().iter().rev() {
-                let repr = param.repr().expect("invalid parameter type");
-                elements_needed += repr.size();
+                elements_needed += param.ty.size_in_felts();
             }
 
             // Verify that we have `elements_needed` values on the operand stack
@@ -2063,22 +2045,17 @@ fn execute_call(
 
             // Update the operand stack to reflect the results
             for result in import.signature.results().iter().rev() {
-                let repr = result.repr().expect("invalid result type");
-                match repr {
-                    TypeRepr::Zst(_) => continue,
-                    TypeRepr::Default(ty) => stack.push(ty),
-                    TypeRepr::Sparse(_, n) => {
-                        for _ in 0..n.get() {
-                            stack.push(Type::Felt);
-                        }
-                    }
-                    TypeRepr::Packed(ty) => {
-                        for _ in 0..ty.size_in_felts() {
-                            stack.push(Type::Felt);
-                        }
-                    }
-                }
+                push_type_on_stack(result.ty.clone(), stack);
             }
         }
+    }
+}
+
+fn push_type_on_stack(ty: Type, stack: &mut OperandStack<Type>) {
+    let parts = ty
+        .to_raw_parts()
+        .expect("invalid unknown type: cannot proceed");
+    for part in parts.into_iter().rev() {
+        stack.push(part);
     }
 }

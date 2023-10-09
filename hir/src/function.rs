@@ -122,9 +122,13 @@ impl AbiParam {
         }
     }
 
-    /// Returns the [TypeRepr] for this function parameter
-    pub fn repr(&self) -> Option<TypeRepr> {
-        self.ty.repr()
+    pub fn sret(ty: Type) -> Self {
+        assert!(ty.is_pointer(), "sret parameters must be pointers");
+        Self {
+            ty,
+            purpose: ArgumentPurpose::StructReturn,
+            extension: ArgumentExtension::default(),
+        }
     }
 }
 

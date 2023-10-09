@@ -253,6 +253,18 @@ macro_rules! require_matching_operands {
     }};
 }
 
+macro_rules! require_unsigned_integer {
+    ($this:ident, $val:ident) => {{
+        let ty = $this.data_flow_graph().value_type($val);
+        assert!(
+            ty.is_unsigned_integer(),
+            "expected {} to be an unsigned integral type",
+            stringify!($val)
+        );
+        ty
+    }};
+}
+
 macro_rules! require_integer {
     ($this:ident, $val:ident) => {{
         let ty = $this.data_flow_graph().value_type($val);
@@ -661,10 +673,14 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             );
             let base_ty = base_ty.clone();
             let base = self.ins().load_global(base, base_ty.clone(), span);
-            let addr = self.ins().ptrtoint(base, Type::I32, span);
-            let offset_addr = self
-                .ins()
-                .add_imm_checked(addr, Immediate::I32(offset), span);
+            let addr = self.ins().ptrtoint(base, Type::U32, span);
+            let offset_addr = if offset >= 0 {
+                self.ins()
+                    .add_imm_checked(addr, Immediate::U32(offset as u32), span)
+            } else {
+                self.ins()
+                    .sub_imm_checked(addr, Immediate::U32(offset.unsigned_abs()), span)
+            };
             let ptr = self.ins().inttoptr(offset_addr, base_ty, span);
             self.load(ptr, span)
         } else {
@@ -706,21 +722,18 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             );
             let base_ty = base_ty.clone();
             let base = self.ins().load_global(base, base_ty.clone(), span);
-            let addr = self.ins().ptrtoint(base, Type::I32, span);
-            let computed_offset = unit_ty.layout().size() as isize * (offset as isize);
-            let offset_addr = if computed_offset < 0 {
-                let offset: i32 = computed_offset
-                    .abs()
-                    .try_into()
-                    .expect("invalid offset: out of range for i32 immediates");
+            let addr = self.ins().ptrtoint(base, Type::U32, span);
+            let unit_size: i32 = unit_ty
+                .size_in_bytes()
+                .try_into()
+                .expect("invalid type: size is larger than 2^32");
+            let computed_offset = unit_size * offset;
+            let offset_addr = if computed_offset >= 0 {
                 self.ins()
-                    .sub_imm_checked(addr, Immediate::I32(offset), span)
+                    .add_imm_checked(addr, Immediate::U32(offset as u32), span)
             } else {
-                let offset: i32 = computed_offset
-                    .try_into()
-                    .expect("invalid offset: out of range for i32 immediates");
                 self.ins()
-                    .add_imm_checked(addr, Immediate::I32(offset), span)
+                    .sub_imm_checked(addr, Immediate::U32(offset.unsigned_abs()), span)
             };
             let ptr = self.ins().inttoptr(offset_addr, base_ty, span);
             self.load(ptr, span)
@@ -754,7 +767,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     /// Stores `value` to the address given by `ptr`
     ///
     /// NOTE: This function will panic if the pointer and pointee types do not match
-    fn store(self, ptr: Value, value: Value, span: SourceSpan) -> Inst {
+    fn store(mut self, ptr: Value, value: Value, span: SourceSpan) -> Inst {
         let pointee_ty = require_pointee!(self, ptr);
         let value_ty = self.data_flow_graph().value_type(value);
         assert_eq!(
@@ -794,7 +807,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     /// In both cases, use of the resulting pointer must not violate the semantics
     /// of the higher level language being represented in Miden IR.
     fn inttoptr(self, arg: Value, ty: Type, span: SourceSpan) -> Value {
-        require_integer!(self, arg);
+        require_unsigned_integer!(self, arg);
         assert!(ty.is_pointer(), "expected pointer type, got {}", &ty);
         into_first_result!(self.Unary(Opcode::IntToPtr, ty, arg, span))
     }
@@ -838,38 +851,16 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
                     ty = element_ty;
                     offset += padded_element_size * index;
                 }
-                Type::Struct(ref fields) if index == 0 => {
+                Type::Struct(ref struct_ty) => {
                     assert!(
-                        index < fields.len(),
+                        index < struct_ty.len(),
                         "invalid getelementptr: index of {} is out of bounds for {}",
                         index,
                         ty
                     );
-                    ty = &fields[0];
-                }
-                Type::Struct(ref fields) => {
-                    assert!(
-                        index < fields.len(),
-                        "invalid getelementptr: index of {} is out of bounds for {}",
-                        index,
-                        ty
-                    );
-                    // Calculate the offset to the start of the desired field in its layout
-                    //
-                    // First, skip over all of the fields that come before `index`
-                    let mut skipped = 0;
-                    for (i, ty) in fields.iter().take(index).enumerate() {
-                        // Add alignment padding for all but the first field
-                        if i > 0 {
-                            skipped = skipped.align_up(ty.min_alignment());
-                        }
-                        skipped += ty.size_in_bytes();
-                    }
-                    // Second, make sure the alignment padding is added for the selected field
-                    let min_align = fields[index].min_alignment();
-                    // The offset is increased by the number of bytes skipped
-                    offset += skipped.align_up(min_align);
-                    ty = &fields[index];
+                    let field = struct_ty.get(index);
+                    offset += field.offset as usize;
+                    ty = &field.ty;
                 }
                 other => panic!(
                     "invalid getelementptr: cannot index values of type {}",
@@ -935,7 +926,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             return arg;
         }
         assert!(
-            arg_ty.bitwidth() <= ty.bitwidth(),
+            arg_ty.size_in_bits() <= ty.size_in_bits(),
             "invalid extension: target type ({:?}) is smaller than the argument type ({:?})",
             &ty,
             &arg_ty
@@ -956,7 +947,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             return arg;
         }
         assert!(
-            arg_ty.bitwidth() <= ty.bitwidth(),
+            arg_ty.size_in_bits() <= ty.size_in_bits(),
             "invalid extension: target type ({:?}) is smaller than the argument type ({:?})",
             &ty,
             &arg_ty
@@ -1162,7 +1153,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     }
 
     fn switch(self, arg: Value, arms: Vec<(u32, Block)>, default: Block, span: SourceSpan) -> Inst {
-        require_integer!(self, arg, Type::I32);
+        require_integer!(self, arg, Type::U32);
         self.Switch(arg, arms, default, span).0
     }
 

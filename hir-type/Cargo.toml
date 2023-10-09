@@ -11,3 +11,4 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
+smallvec.workspace = true
