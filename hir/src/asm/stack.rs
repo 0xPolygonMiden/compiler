@@ -3,9 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use winter_math::FieldElement;
-
-use crate::{Felt, Type};
+use crate::{Felt, FieldElement, StarkField, Type};
 
 /// This trait is used to represent the basic plumbing of the operand stack in
 /// Miden Assembly.
@@ -32,7 +30,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     fn stack_mut(&mut self) -> &mut Vec<Self::Element>;
 
     /// Display this stack using its debugging representation
-    fn display(&self) -> DebugStack<Self> {
+    fn debug(&self) -> DebugStack<Self> {
         DebugStack(self)
     }
 
@@ -55,6 +53,8 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     }
 
     /// Returns the word on top of the stack, without consuming it
+    ///
+    /// The top of the stack will be the first element of the word
     #[inline]
     fn peekw(&self) -> Option<[Self::Element; 4]> {
         let stack = self.stack();
@@ -83,11 +83,11 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     }
 
     /// Pushes `word` on top of the stack
-    fn pushw(&mut self, word: [Self::Element; 4]) {
-        let stack = self.stack_mut();
-        for value in word.into_iter().rev() {
-            stack.push(value);
-        }
+    ///
+    /// The first element of `word` will be on top of the stack
+    fn pushw(&mut self, mut word: [Self::Element; 4]) {
+        word.reverse();
+        self.stack_mut().extend(word);
     }
 
     /// Pops the value on top of the stack
@@ -96,6 +96,8 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     }
 
     /// Pops the first word on top of the stack
+    ///
+    /// The top of the stack will be the first element in the result
     fn popw(&mut self) -> Option<[Self::Element; 4]> {
         let stack = self.stack_mut();
         let a = stack.pop()?;
@@ -208,11 +210,12 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
             index,
             len
         );
+        let end = len - 1;
         for offset in 0..4 {
             // The index of the element in the top word
-            let a = len - 1 - offset;
+            let a = end - offset;
             // The index of the element in the `n`th word
-            let b = len - index - offset;
+            let b = end - offset - index;
             stack.swap(a, b);
         }
     }
@@ -233,8 +236,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
             len
         );
         // Pick the midpoint by counting backwards from the end
-        let end = len - 1;
-        let mid = end - n;
+        let mid = len - (n + 1);
         // Split the stack, and rotate the half that
         // contains our desired value to place it on top.
         let (_, r) = stack.split_at_mut(mid);
@@ -250,17 +252,15 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
         assert_ne!(n, 0, "invalid move, index must be in the range 1..=3");
         let stack = self.stack_mut();
         let len = stack.len();
-        let index = n * 4;
-        let last_index = index - 4;
+        let index = (n * 4) + 4;
         assert!(
-            last_index < len,
+            index < len,
             "invalid operand stack index ({}), only {} elements are available",
-            last_index,
+            index,
             len
         );
-        // Pick the midpoint by counting backwards from the end
-        let end = len - 1;
-        let mid = end - last_index;
+        // Pick the midpoint index by counting backwards from the end
+        let mid = len - index;
         // Split the stack, and rotate the half that
         // contains our desired word to place it on top.
         let (_, r) = stack.split_at_mut(mid);
@@ -273,7 +273,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     ///
     /// NOTE: This function will panic if `n` is 0, or out of bounds.
     fn movdn(&mut self, n: usize) {
-        assert_ne!(n, 0, "invalid move, index must be in the range 1..=15");
+        assert_ne!(n, 0, "invalid move: index must be in the range 1..=15");
         let stack = self.stack_mut();
         let len = stack.len();
         assert!(
@@ -283,8 +283,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
             len
         );
         // Split the stack so that the desired position is in the top half
-        let end = len - 1;
-        let mid = end - n;
+        let mid = len - (n + 1);
         let (_, r) = stack.split_at_mut(mid);
         // Move all elements above the `n`th position up by one, moving the top element to the `n`th position
         r.rotate_right(1);
@@ -299,17 +298,15 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
         assert_ne!(n, 0, "invalid move, index must be in the range 1..=3");
         let stack = self.stack_mut();
         let len = stack.len();
-        let index = n * 4;
-        let last_index = index - 4;
+        let index = (n * 4) + 4;
         assert!(
-            last_index < len,
+            index < len,
             "invalid operand stack index ({}), only {} elements are available",
-            last_index,
+            index,
             len
         );
         // Split the stack so that the desired position is in the top half
-        let end = len - 1;
-        let mid = end - last_index;
+        let mid = len - index;
         let (_, r) = stack.split_at_mut(mid);
         // Move all elements above the `n`th word up by one word, moving the top word to the `n`th position
         r.rotate_right(4);
@@ -318,16 +315,35 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
 
 /// This trait is used to represent expected behavior/properties of elements
 /// that can be used in conjunction with the [Stack] trait.
-pub trait StackElement: Clone + fmt::Debug {
+pub trait StackElement: Clone {
+    type Debug: fmt::Debug;
+
     /// A value of this type which represents the "zero" value for the type
     const DEFAULT: Self;
+
+    /// Format this stack element for display
+    fn debug(&self) -> Self::Debug;
 }
 
 impl StackElement for Felt {
+    type Debug = u64;
+
     const DEFAULT: Self = Felt::ZERO;
+
+    #[inline]
+    fn debug(&self) -> Self::Debug {
+        self.as_int()
+    }
 }
 impl StackElement for Type {
+    type Debug = Type;
+
     const DEFAULT: Self = Type::Felt;
+
+    #[inline]
+    fn debug(&self) -> Self::Debug {
+        self.clone()
+    }
 }
 
 /// This structure is a concrete implementation of the [Stack] trait, implemented
@@ -417,13 +433,20 @@ impl<T: StackElement> IndexMut<usize> for OperandStack<T> {
 
 #[doc(hidden)]
 pub struct DebugStack<'a, T: ?Sized + Stack>(&'a T);
-impl<'a, T: ?Sized + Stack> fmt::Debug for DebugStack<'a, T> {
+impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> fmt::Debug for DebugStack<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[derive(Debug)]
         #[allow(unused)]
-        struct StackEntry<'a, E: fmt::Debug> {
+        struct StackEntry<'a, E: StackElement> {
             index: usize,
             value: &'a E,
+        }
+        impl<'a, E: StackElement> fmt::Debug for StackEntry<'a, E> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_struct("StackEntry")
+                    .field("index", &self.index)
+                    .field("value", &self.value.debug())
+                    .finish()
+            }
         }
 
         f.debug_list()
@@ -436,5 +459,172 @@ impl<'a, T: ?Sized + Stack> fmt::Debug for DebugStack<'a, T> {
                     .map(|(index, value)| StackEntry { index, value }),
             )
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Felt;
+
+    #[test]
+    fn operand_stack_primitive_ops_test() {
+        let mut stack = OperandStack::<Felt>::default();
+
+        let zero = Felt::new(0);
+        let one = Felt::new(1);
+        let two = Felt::new(2);
+        let three = Felt::new(3);
+        let four = Felt::new(4);
+        let five = Felt::new(5);
+        let six = Felt::new(6);
+        let seven = Felt::new(7);
+
+        // push
+        stack.push(zero);
+        stack.push(one);
+        stack.push(two);
+        stack.push(three);
+        assert_eq!(stack.len(), 4);
+        assert_eq!(stack[0].as_int(), 3);
+        assert_eq!(stack[1].as_int(), 2);
+        assert_eq!(stack[2].as_int(), 1);
+        assert_eq!(stack[3].as_int(), 0);
+
+        #[inline(always)]
+        fn as_int(word: [Felt; 4]) -> [u64; 4] {
+            [
+                word[0].as_int(),
+                word[1].as_int(),
+                word[2].as_int(),
+                word[3].as_int(),
+            ]
+        }
+
+        // peekw
+        assert_eq!(stack.peekw().map(as_int), Some([3, 2, 1, 0]));
+
+        // dupw
+        stack.dupw(0);
+        assert_eq!(stack.len(), 8);
+        assert_eq!(stack.peekw().map(as_int), Some([3, 2, 1, 0]));
+
+        // padw
+        stack.padw();
+        assert_eq!(stack.len(), 12);
+        assert_eq!(stack.peekw().map(as_int), Some([0; 4]));
+
+        // swapw
+        stack.swapw(1);
+        assert_eq!(stack.len(), 12);
+        assert_eq!(stack.peekw().map(as_int), Some([3, 2, 1, 0]));
+
+        // popw
+        let word = stack.popw();
+        assert_eq!(stack.len(), 8);
+        assert_eq!(word.map(as_int), Some([3, 2, 1, 0]));
+
+        // pushw
+        stack.pushw(word.unwrap());
+        stack.pushw([seven, six, five, four]);
+        assert_eq!(stack.len(), 16);
+        assert_eq!(stack.peekw().map(as_int), Some([7, 6, 5, 4]));
+
+        // movupw
+        stack.movupw(2);
+        assert_eq!(stack.len(), 16);
+        assert_eq!(stack.peekw().map(as_int), Some([0; 4]));
+        assert_eq!(stack[8].as_int(), 3);
+        assert_eq!(stack[9].as_int(), 2);
+        assert_eq!(stack[10].as_int(), 1);
+        assert_eq!(stack[11].as_int(), 0);
+
+        // movdnw
+        stack.movdnw(2);
+        assert_eq!(stack.len(), 16);
+        assert_eq!(stack.peekw().map(as_int), Some([7, 6, 5, 4]));
+        assert_eq!(stack[8].as_int(), 0);
+        assert_eq!(stack[9].as_int(), 0);
+        assert_eq!(stack[10].as_int(), 0);
+        assert_eq!(stack[11].as_int(), 0);
+
+        // dropw
+        stack.movupw(2);
+        stack.dropw();
+        assert_eq!(stack.len(), 12);
+        assert_eq!(stack.peekw().map(as_int), Some([7, 6, 5, 4]));
+
+        // dup(n)
+        stack.dup(0);
+        assert_eq!(stack.len(), 13);
+        assert_eq!(stack[0].as_int(), 7);
+        assert_eq!(stack[1].as_int(), 7);
+        assert_eq!(stack[2].as_int(), 6);
+        assert_eq!(stack[3].as_int(), 5);
+        assert_eq!(stack[4].as_int(), 4);
+        stack.dup(3);
+        assert_eq!(stack.len(), 14);
+        assert_eq!(stack[0].as_int(), 5);
+        assert_eq!(stack[1].as_int(), 7);
+        assert_eq!(stack[2].as_int(), 7);
+        assert_eq!(stack[3].as_int(), 6);
+        assert_eq!(stack[4].as_int(), 5);
+        assert_eq!(stack[5].as_int(), 4);
+
+        // swap(n)
+        stack.swap(1);
+        assert_eq!(stack.len(), 14);
+        assert_eq!(stack[0].as_int(), 7);
+        assert_eq!(stack[1].as_int(), 5);
+        assert_eq!(stack[2].as_int(), 7);
+        assert_eq!(stack[3].as_int(), 6);
+        assert_eq!(stack[4].as_int(), 5);
+        assert_eq!(stack[5].as_int(), 4);
+
+        // movup(n)
+        stack.movup(3);
+        assert_eq!(stack.len(), 14);
+        assert_eq!(stack[0].as_int(), 6);
+        assert_eq!(stack[1].as_int(), 7);
+        assert_eq!(stack[2].as_int(), 5);
+        assert_eq!(stack[3].as_int(), 7);
+        assert_eq!(stack[4].as_int(), 5);
+        assert_eq!(stack[5].as_int(), 4);
+
+        // movdn(n)
+        stack.movdn(3);
+        assert_eq!(stack.len(), 14);
+        assert_eq!(stack[0].as_int(), 7);
+        assert_eq!(stack[1].as_int(), 5);
+        assert_eq!(stack[2].as_int(), 7);
+        assert_eq!(stack[3].as_int(), 6);
+        assert_eq!(stack[4].as_int(), 5);
+        assert_eq!(stack[5].as_int(), 4);
+
+        // drop
+        stack.drop();
+        assert_eq!(stack.len(), 13);
+        assert_eq!(stack[0].as_int(), 5);
+        assert_eq!(stack[1].as_int(), 7);
+        assert_eq!(stack[2].as_int(), 6);
+        assert_eq!(stack[3].as_int(), 5);
+        assert_eq!(stack[4].as_int(), 4);
+
+        // dropn
+        stack.dropn(2);
+        assert_eq!(stack.len(), 11);
+        assert_eq!(stack[0].as_int(), 6);
+        assert_eq!(stack[1].as_int(), 5);
+        assert_eq!(stack[2].as_int(), 4);
+
+        // push
+        stack.push(six);
+        stack.push(seven);
+        assert_eq!(stack.len(), 13);
+        assert_eq!(stack[0].as_int(), 7);
+        assert_eq!(stack[1].as_int(), 6);
+        assert_eq!(stack[2].as_int(), 6);
+        assert_eq!(stack[3].as_int(), 5);
+        assert_eq!(stack[4].as_int(), 4);
     }
 }
