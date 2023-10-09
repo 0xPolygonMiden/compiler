@@ -538,6 +538,17 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.PrimOp(Opcode::AssertEq, Type::Unit, vlist, span).0
     }
 
+    fn assert_eq_imm(mut self, lhs: Immediate, rhs: Value, span: SourceSpan) -> Inst {
+        require_integer!(self, rhs);
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.push(rhs, pool);
+        }
+        self.PrimOpImm(Opcode::AssertEq, Type::Unit, lhs, vlist, span)
+            .0
+    }
+
     signed_integer_literal!(1, bool);
     integer_literal!(8);
     integer_literal!(16);
