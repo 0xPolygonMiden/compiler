@@ -345,8 +345,8 @@ impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
     /// happens when the map is dropped. To perform early garbage collection, you can
     /// clone the map, and drop the original.
     pub fn remove(&mut self, key: K) {
-        if let Some(nn) = self.map.take(key) {
-            let mut cursor = unsafe { self.list.cursor_mut_from_ptr(nn.as_ptr()) };
+        if let Some(value) = self.map.get(key) {
+            let mut cursor = unsafe { self.list.cursor_mut_from_ptr(value) };
             cursor.remove();
         }
     }
