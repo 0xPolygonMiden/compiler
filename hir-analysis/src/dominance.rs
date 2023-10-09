@@ -307,7 +307,7 @@ impl DominatorTree {
                                     }
                                 }
                                 BranchInfo::MultiDest(ref jt) => {
-                                    for dest in jt.iter().map(|entry| entry.destination) {
+                                    for dest in jt.iter().rev().map(|entry| entry.destination) {
                                         if self.nodes[dest].rpo_number == 0 {
                                             self.stack.push((Visit::First, dest));
                                         }
@@ -678,5 +678,261 @@ where
         } else {
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::FunctionAnalysis;
+    use miden_hir::{
+        AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
+    };
+
+    #[test]
+    fn domtree_empty() {
+        let id = "test::empty".parse().unwrap();
+        let function = Function::new(id, Signature::new([], []));
+        let entry = function.dfg.entry_block();
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        assert!(analysis.cfg().is_valid());
+        analysis.ensure_domtree(&function);
+        let domtree = analysis.domtree();
+
+        assert_eq!(1, domtree.nodes.keys().count());
+        assert_eq!(domtree.cfg_postorder(), &[entry]);
+
+        let mut dtpo = DominatorTreePreorder::new();
+        dtpo.compute(&domtree, &function);
+    }
+
+    #[test]
+    fn domtree_unreachable_node() {
+        let id = "test::unreachable_node".parse().unwrap();
+        let mut function = Function::new(id, Signature::new([AbiParam::new(Type::I32)], []));
+        let block0 = function.dfg.entry_block();
+        let block1 = function.dfg.create_block();
+        let block2 = function.dfg.create_block();
+        let trap_block = function.dfg.create_block();
+        let v2 = {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let v0 = {
+                let args = builder.block_params(block0);
+                args[0]
+            };
+
+            builder.switch_to_block(block0);
+            let cond = builder
+                .ins()
+                .neq_imm(v0, Immediate::I32(0), SourceSpan::UNKNOWN);
+            builder
+                .ins()
+                .cond_br(cond, block2, &[], trap_block, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(trap_block);
+            builder.ins().unreachable(SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block1);
+            let v1 = builder.ins().i32(1, SourceSpan::UNKNOWN);
+            let v2 = builder.ins().add(v0, v1, SourceSpan::UNKNOWN);
+            builder.ins().br(block0, &[v2], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block2);
+            builder.ins().ret(Some(v0), SourceSpan::UNKNOWN);
+            v2
+        };
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        analysis.ensure_domtree(&function);
+        let domtree = analysis.domtree();
+
+        // Fall-through-first, prune-at-source DFT:
+        //
+        // block0 {
+        //   brif block2 {
+        //     trap
+        //     block2 {
+        //       return
+        //     } block2
+        // } block0
+        assert_eq!(domtree.cfg_postorder(), &[block2, trap_block, block0]);
+
+        let v2_inst = function.dfg.value_data(v2).unwrap_inst();
+        assert!(!domtree.dominates(v2_inst, block0, &function.dfg));
+        assert!(!domtree.dominates(block0, v2_inst, &function.dfg));
+
+        let mut dtpo = DominatorTreePreorder::new();
+        dtpo.compute(&domtree, &function);
+        assert!(dtpo.dominates(block0, block0));
+        assert!(!dtpo.dominates(block0, block1));
+        assert!(dtpo.dominates(block0, block2));
+        assert!(!dtpo.dominates(block1, block0));
+        assert!(dtpo.dominates(block1, block1));
+        assert!(!dtpo.dominates(block1, block2));
+        assert!(!dtpo.dominates(block2, block0));
+        assert!(!dtpo.dominates(block2, block1));
+        assert!(dtpo.dominates(block2, block2));
+    }
+
+    #[test]
+    fn domtree_non_zero_entry_block() {
+        let id = "test::non_zero_entry".parse().unwrap();
+        let mut function = Function::new(id, Signature::new([], []));
+        let block0 = function.dfg.entry_block();
+        let block1 = function.dfg.create_block();
+        let block2 = function.dfg.create_block();
+        let block3 = function.dfg.create_block();
+        let cond = function
+            .dfg
+            .append_block_param(block3, Type::I1, SourceSpan::UNKNOWN);
+        function.dfg.entry = block3;
+        function.signature.params.push(AbiParam::new(Type::I1));
+        let (br_block3_block1, br_block1_block0_block2) = {
+            let mut builder = FunctionBuilder::new(&mut function);
+
+            builder.switch_to_block(block3);
+            let br_block3_block1 = builder.ins().br(block1, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block1);
+            let br_block1_block0_block2 =
+                builder
+                    .ins()
+                    .cond_br(cond, block0, &[], block2, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block2);
+            builder.ins().br(block0, &[], SourceSpan::UNKNOWN);
+
+            (br_block3_block1, br_block1_block0_block2)
+        };
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        analysis.ensure_domtree(&function);
+        let domtree = analysis.domtree();
+
+        // Fall-through-first, prune-at-source DFT:
+        //
+        // block3 {
+        //   block3:jump block1 {
+        //     block1 {
+        //       block1:brif block0 {
+        //         block1:jump block2 {
+        //           block2 {
+        //             block2:jump block0 (seen)
+        //           } block2
+        //         } block1:jump block2
+        //         block0 {
+        //         } block0
+        //       } block1:brif block0
+        //     } block1
+        //   } block3:jump block1
+        // } block3
+
+        assert_eq!(domtree.cfg_postorder(), &[block0, block2, block1, block3]);
+
+        assert_eq!(function.dfg.entry_block(), block3);
+        assert_eq!(domtree.idom(block3), None);
+        assert_eq!(domtree.idom(block1).unwrap(), br_block3_block1);
+        assert_eq!(domtree.idom(block2).unwrap(), br_block1_block0_block2);
+        assert_eq!(domtree.idom(block0).unwrap(), br_block1_block0_block2);
+
+        assert!(domtree.dominates(
+            br_block1_block0_block2,
+            br_block1_block0_block2,
+            &function.dfg
+        ));
+        assert!(!domtree.dominates(br_block1_block0_block2, br_block3_block1, &function.dfg));
+        assert!(domtree.dominates(br_block3_block1, br_block1_block0_block2, &function.dfg));
+
+        assert_eq!(
+            domtree.rpo_cmp(block3, block3, &function.dfg),
+            Ordering::Equal
+        );
+        assert_eq!(
+            domtree.rpo_cmp(block3, block1, &function.dfg),
+            Ordering::Less
+        );
+        assert_eq!(
+            domtree.rpo_cmp(block3, br_block3_block1, &function.dfg),
+            Ordering::Less
+        );
+        assert_eq!(
+            domtree.rpo_cmp(br_block3_block1, br_block1_block0_block2, &function.dfg),
+            Ordering::Less
+        );
+    }
+
+    #[test]
+    fn domtree_backwards_layout() {
+        let id = "test::backwards_layout".parse().unwrap();
+        let mut function = Function::new(id, Signature::new([], []));
+        let block0 = function.dfg.entry_block();
+        let block1 = function.dfg.create_block();
+        let block2 = function.dfg.create_block();
+        let (jmp02, trap, jmp21) = {
+            let mut builder = FunctionBuilder::new(&mut function);
+
+            builder.switch_to_block(block0);
+            let jmp02 = builder.ins().br(block2, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block1);
+            let trap = builder.ins().unreachable(SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block2);
+            let jmp21 = builder.ins().br(block1, &[], SourceSpan::UNKNOWN);
+
+            (jmp02, trap, jmp21)
+        };
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        analysis.ensure_domtree(&function);
+        let domtree = analysis.domtree();
+
+        assert_eq!(function.dfg.entry_block(), block0);
+        assert_eq!(domtree.idom(block0), None);
+        assert_eq!(domtree.idom(block1), Some(jmp21));
+        assert_eq!(domtree.idom(block2), Some(jmp02));
+
+        assert!(domtree.dominates(block0, block0, &function.dfg));
+        assert!(domtree.dominates(block0, jmp02, &function.dfg));
+        assert!(domtree.dominates(block0, block1, &function.dfg));
+        assert!(domtree.dominates(block0, trap, &function.dfg));
+        assert!(domtree.dominates(block0, block2, &function.dfg));
+        assert!(domtree.dominates(block0, jmp21, &function.dfg));
+
+        assert!(!domtree.dominates(jmp02, block0, &function.dfg));
+        assert!(domtree.dominates(jmp02, jmp02, &function.dfg));
+        assert!(domtree.dominates(jmp02, block1, &function.dfg));
+        assert!(domtree.dominates(jmp02, trap, &function.dfg));
+        assert!(domtree.dominates(jmp02, block2, &function.dfg));
+        assert!(domtree.dominates(jmp02, jmp21, &function.dfg));
+
+        assert!(!domtree.dominates(block1, block0, &function.dfg));
+        assert!(!domtree.dominates(block1, jmp02, &function.dfg));
+        assert!(domtree.dominates(block1, block1, &function.dfg));
+        assert!(domtree.dominates(block1, trap, &function.dfg));
+        assert!(!domtree.dominates(block1, block2, &function.dfg));
+        assert!(!domtree.dominates(block1, jmp21, &function.dfg));
+
+        assert!(!domtree.dominates(trap, block0, &function.dfg));
+        assert!(!domtree.dominates(trap, jmp02, &function.dfg));
+        assert!(!domtree.dominates(trap, block1, &function.dfg));
+        assert!(domtree.dominates(trap, trap, &function.dfg));
+        assert!(!domtree.dominates(trap, block2, &function.dfg));
+        assert!(!domtree.dominates(trap, jmp21, &function.dfg));
+
+        assert!(!domtree.dominates(block2, block0, &function.dfg));
+        assert!(!domtree.dominates(block2, jmp02, &function.dfg));
+        assert!(domtree.dominates(block2, block1, &function.dfg));
+        assert!(domtree.dominates(block2, trap, &function.dfg));
+        assert!(domtree.dominates(block2, block2, &function.dfg));
+        assert!(domtree.dominates(block2, jmp21, &function.dfg));
+
+        assert!(!domtree.dominates(jmp21, block0, &function.dfg));
+        assert!(!domtree.dominates(jmp21, jmp02, &function.dfg));
+        assert!(domtree.dominates(jmp21, block1, &function.dfg));
+        assert!(domtree.dominates(jmp21, trap, &function.dfg));
+        assert!(!domtree.dominates(jmp21, block2, &function.dfg));
+        assert!(domtree.dominates(jmp21, jmp21, &function.dfg));
     }
 }

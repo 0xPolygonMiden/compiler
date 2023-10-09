@@ -87,6 +87,13 @@ impl ValueData {
             } => *prev_ty = ty,
         }
     }
+
+    pub fn unwrap_inst(&self) -> Inst {
+        match self {
+            Self::Inst { inst, .. } => *inst,
+            _ => panic!("expected instruction result value, got block parameter"),
+        }
+    }
 }
 
 pub struct Values<'a> {

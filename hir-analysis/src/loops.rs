@@ -190,6 +190,11 @@ impl LoopAnalysis {
             .map_or(LoopLevel(0), |lp| self.loops[lp].level)
     }
 
+    /// Returns the loop level of the given level
+    pub fn level(&self, lp: Loop) -> LoopLevel {
+        self.loops[lp].level
+    }
+
     // Traverses the CFG in reverse postorder and create a loop object for every block having a
     // back edge.
     fn find_loop_headers(
@@ -313,5 +318,250 @@ impl LoopAnalysis {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::FunctionAnalysis;
+    use miden_hir::{
+        AbiParam, Function, FunctionBuilder, InstBuilder, Signature, SourceSpan, Type,
+    };
+
+    #[test]
+    fn nested_loops_variant1_detection() {
+        let id = "test::nested_loops_test".parse().unwrap();
+        let mut function = Function::new(id, Signature::new([AbiParam::new(Type::I1)], []));
+
+        let block0 = function.dfg.entry_block();
+        let block1 = function.dfg.create_block();
+        let block2 = function.dfg.create_block();
+        let block3 = function.dfg.create_block();
+        let block4 = function.dfg.create_block();
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let cond = {
+                let args = builder.block_params(block0);
+                args[0]
+            };
+
+            builder.switch_to_block(block0);
+            builder.ins().br(block1, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block1);
+            builder.ins().br(block2, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block2);
+            builder
+                .ins()
+                .cond_br(cond, block1, &[], block3, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block3);
+            builder
+                .ins()
+                .cond_br(cond, block0, &[], block4, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block4);
+            builder.ins().ret(None, SourceSpan::UNKNOWN);
+        }
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        analysis.ensure_loops(&function);
+        let loop_analysis = analysis.loops();
+
+        let loops = loop_analysis.loops().collect::<Vec<Loop>>();
+        assert_eq!(loops.len(), 2);
+        assert_eq!(loop_analysis.loop_header(loops[0]), block0);
+        assert_eq!(loop_analysis.loop_header(loops[1]), block1);
+        assert_eq!(loop_analysis.loop_parent(loops[1]), Some(loops[0]));
+        assert_eq!(loop_analysis.loop_parent(loops[0]), None);
+        assert_eq!(loop_analysis.is_in_loop(block0, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block0, loops[1]), false);
+        assert_eq!(loop_analysis.is_in_loop(block1, loops[1]), true);
+        assert_eq!(loop_analysis.is_in_loop(block1, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block2, loops[1]), true);
+        assert_eq!(loop_analysis.is_in_loop(block2, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block3, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block0, loops[1]), false);
+        assert_eq!(loop_analysis.loop_level(block0).level(), 1);
+        assert_eq!(loop_analysis.loop_level(block1).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block2).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block3).level(), 1);
+    }
+
+    #[test]
+    fn nested_loops_variant2_detection() {
+        let id = "test::nested_loops_test".parse().unwrap();
+        let mut function = Function::new(id, Signature::new([AbiParam::new(Type::I1)], []));
+
+        let block0 = function.dfg.entry_block();
+        let block1 = function.dfg.create_block();
+        let block2 = function.dfg.create_block();
+        let block3 = function.dfg.create_block();
+        let block4 = function.dfg.create_block();
+        let block5 = function.dfg.create_block();
+        let block6 = function.dfg.create_block();
+        let exit = function.dfg.create_block();
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let cond = {
+                let args = builder.block_params(block0);
+                args[0]
+            };
+
+            // block0 is outside of any loop
+            builder.switch_to_block(block0);
+            builder
+                .ins()
+                .cond_br(cond, block1, &[], exit, &[], SourceSpan::UNKNOWN);
+
+            // block1 simply branches to a loop header
+            builder.switch_to_block(block1);
+            builder.ins().br(block2, &[], SourceSpan::UNKNOWN);
+
+            // block2 is the outer loop, which is conditionally entered
+            builder.switch_to_block(block2);
+            builder
+                .ins()
+                .cond_br(cond, block3, &[], exit, &[], SourceSpan::UNKNOWN);
+
+            // block3 simply branches to a nested loop header
+            builder.switch_to_block(block3);
+            builder.ins().br(block4, &[], SourceSpan::UNKNOWN);
+
+            // block4 is the inner loop, which is conditionally escaped to the outer loop
+            builder.switch_to_block(block4);
+            builder
+                .ins()
+                .cond_br(cond, block5, &[], block6, &[], SourceSpan::UNKNOWN);
+
+            // block5 is the loop body of the inner loop
+            builder.switch_to_block(block5);
+            builder.ins().br(block4, &[], SourceSpan::UNKNOWN);
+
+            // block6 is a block along the exit edge of the inner loop to the outer loop
+            builder.switch_to_block(block6);
+            builder.ins().br(block2, &[], SourceSpan::UNKNOWN);
+
+            // the exit loop leaves the function
+            builder.switch_to_block(exit);
+            builder.ins().ret(None, SourceSpan::UNKNOWN);
+        }
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        analysis.ensure_loops(&function);
+        let loop_analysis = analysis.loops();
+        let domtree = analysis.domtree();
+
+        let loops = loop_analysis.loops().collect::<Vec<Loop>>();
+        assert_eq!(loops.len(), 2);
+        assert_eq!(loop_analysis.loop_header(loops[0]), block2);
+        assert_eq!(loop_analysis.loop_header(loops[1]), block4);
+        assert_eq!(loop_analysis.loop_parent(loops[1]), Some(loops[0]));
+        assert_eq!(loop_analysis.loop_parent(loops[0]), None);
+        assert_eq!(loop_analysis.is_in_loop(block0, loops[0]), false);
+        assert_eq!(loop_analysis.is_in_loop(block0, loops[1]), false);
+        assert_eq!(loop_analysis.is_in_loop(block1, loops[0]), false);
+        assert_eq!(loop_analysis.is_in_loop(block1, loops[1]), false);
+        assert_eq!(loop_analysis.is_in_loop(block2, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block2, loops[1]), false);
+        assert_eq!(loop_analysis.is_in_loop(block3, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block3, loops[1]), false);
+        assert_eq!(loop_analysis.is_in_loop(block4, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block4, loops[1]), true);
+        assert_eq!(loop_analysis.is_in_loop(block5, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block5, loops[1]), true);
+        assert_eq!(loop_analysis.is_in_loop(block6, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block6, loops[1]), false);
+        assert!(domtree.dominates(block4, block6, &function.dfg));
+        assert_eq!(loop_analysis.is_in_loop(exit, loops[0]), false);
+        assert_eq!(loop_analysis.is_in_loop(exit, loops[1]), false);
+        assert_eq!(loop_analysis.loop_level(block0).level(), 0);
+        assert_eq!(loop_analysis.loop_level(block1).level(), 0);
+        assert_eq!(loop_analysis.loop_level(block2).level(), 1);
+        assert_eq!(loop_analysis.loop_level(block3).level(), 1);
+        assert_eq!(loop_analysis.loop_level(block4).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block5).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block6).level(), 1);
+    }
+
+    #[test]
+    fn complex_loop_detection() {
+        let id = "test::complex_loop_test".parse().unwrap();
+        let mut function = Function::new(id, Signature::new([AbiParam::new(Type::I1)], []));
+
+        let entry = function.dfg.entry_block();
+        let block1 = function.dfg.create_block();
+        let block2 = function.dfg.create_block();
+        let block3 = function.dfg.create_block();
+        let block4 = function.dfg.create_block();
+        let block5 = function.dfg.create_block();
+        let block6 = function.dfg.create_block();
+        let block7 = function.dfg.create_block();
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let cond = {
+                let args = builder.block_params(entry);
+                args[0]
+            };
+
+            builder.switch_to_block(entry);
+            builder.ins().br(block1, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block1);
+            builder
+                .ins()
+                .cond_br(cond, block2, &[], block4, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block2);
+            builder.ins().br(block3, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block3);
+            builder
+                .ins()
+                .cond_br(cond, block2, &[], block6, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block4);
+            builder.ins().br(block5, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block5);
+            builder
+                .ins()
+                .cond_br(cond, block4, &[], block6, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block6);
+            builder
+                .ins()
+                .cond_br(cond, block1, &[], block7, &[], SourceSpan::UNKNOWN);
+
+            builder.switch_to_block(block7);
+            builder.ins().ret(None, SourceSpan::UNKNOWN);
+        }
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        analysis.ensure_loops(&function);
+        let loop_analysis = analysis.loops();
+
+        let loops = loop_analysis.loops().collect::<Vec<Loop>>();
+        assert_eq!(loops.len(), 3);
+        assert_eq!(loop_analysis.loop_header(loops[0]), block1);
+        assert_eq!(loop_analysis.loop_header(loops[1]), block4);
+        assert_eq!(loop_analysis.loop_header(loops[2]), block2);
+        assert_eq!(loop_analysis.loop_parent(loops[1]), Some(loops[0]));
+        assert_eq!(loop_analysis.loop_parent(loops[2]), Some(loops[0]));
+        assert_eq!(loop_analysis.loop_parent(loops[0]), None);
+        assert_eq!(loop_analysis.is_in_loop(block1, loops[0]), true);
+        assert_eq!(loop_analysis.is_in_loop(block2, loops[2]), true);
+        assert_eq!(loop_analysis.is_in_loop(block3, loops[2]), true);
+        assert_eq!(loop_analysis.is_in_loop(block4, loops[1]), true);
+        assert_eq!(loop_analysis.is_in_loop(block5, loops[1]), true);
+        assert_eq!(loop_analysis.is_in_loop(block6, loops[0]), true);
+        assert_eq!(loop_analysis.loop_level(block1).level(), 1);
+        assert_eq!(loop_analysis.loop_level(block2).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block3).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block4).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block5).level(), 2);
+        assert_eq!(loop_analysis.loop_level(block6).level(), 1);
     }
 }
