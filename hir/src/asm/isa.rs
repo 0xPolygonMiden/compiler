@@ -35,6 +35,39 @@ impl MasmBlock {
         self.ops.push(op);
     }
 
+    /// Append `n` copies of `op` to the current block
+    #[inline]
+    pub fn push_n(&mut self, count: usize, op: MasmOp) {
+        for _ in 0..count {
+            self.ops.push(op);
+        }
+    }
+
+    /// Append `n` copies of the sequence `ops` to this block
+    #[inline]
+    pub fn push_repeat(&mut self, ops: &[MasmOp], count: usize) {
+        for _ in 0..count {
+            self.ops.extend_from_slice(ops);
+        }
+    }
+
+    /// Append `n` copies of the sequence `ops` to this block
+    #[inline]
+    pub fn push_template<const N: usize, F>(&mut self, count: usize, template: F)
+    where
+        F: Fn(usize) -> [MasmOp; N],
+    {
+        for n in 0..count {
+            self.ops.extend_from_slice(&template(n));
+        }
+    }
+
+    /// Appends instructions from `slice` to the end of this block
+    #[inline]
+    pub fn extend_from_slice(&mut self, slice: &[MasmOp]) {
+        self.ops.extend_from_slice(slice);
+    }
+
     /// Appends instructions from `other` to the end of this block
     #[inline]
     pub fn append<B>(&mut self, other: &mut SmallVec<B>)

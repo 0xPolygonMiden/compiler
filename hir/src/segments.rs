@@ -48,6 +48,17 @@ pub enum DataSegmentError {
 pub struct DataSegmentTable {
     segments: LinkedList<DataSegmentAdapter>,
 }
+impl Clone for DataSegmentTable {
+    fn clone(&self) -> Self {
+        let mut table = Self::default();
+        for segment in self.segments.iter() {
+            table
+                .segments
+                .push_back(UnsafeRef::from_box(Box::new(segment.clone())));
+        }
+        table
+    }
+}
 impl DataSegmentTable {
     /// Returns true if the table has no segments defined
     pub fn is_empty(&self) -> bool {

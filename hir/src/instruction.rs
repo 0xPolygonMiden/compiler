@@ -218,12 +218,14 @@ impl Instruction {
     }
 }
 
+#[derive(Debug)]
 pub enum BranchInfo<'a> {
     NotABranch,
     SingleDest(Block, &'a [Value]),
     MultiDest(Vec<JumpTable<'a>>),
 }
 
+#[derive(Debug)]
 pub struct JumpTable<'a> {
     pub destination: Block,
     pub args: &'a [Value],
@@ -718,7 +720,7 @@ impl fmt::Display for Opcode {
 /// Always check the documentation of the specific instruction involved to see if there
 /// are any specific differences in how this enum is interpreted compared to the default
 /// meaning of each variant.
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum Overflow {
     /// Typically, this means the operation is performed using the equivalent field element operation, rather
     /// than a dedicated operation for the given type. Because of this, the result of the operation may exceed
@@ -747,6 +749,11 @@ impl Overflow {
     /// Returns true if overflow will cause a trap
     pub fn is_checked(&self) -> bool {
         matches!(self, Self::Checked)
+    }
+
+    /// Returns true if overflow will add an extra boolean on top of the stack
+    pub fn is_overflowing(&self) -> bool {
+        matches!(self, Self::Overflowing)
     }
 }
 

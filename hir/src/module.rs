@@ -154,13 +154,28 @@ macro_rules! assert_valid_function {
 
 impl Module {
     /// Create a new, empty [Module]
-    pub fn new<S: AsRef<str>>(name: S) -> Self {
-        Self::new_with_span(name, SourceSpan::UNKNOWN)
+    pub fn new<S: Into<Ident>>(name: S) -> Self {
+        Self::make(name.into(), /*is_kernel=*/ false)
     }
 
     /// Create a new, empty [Module] with the given source location
     pub fn new_with_span<S: AsRef<str>>(name: S, span: SourceSpan) -> Self {
         let name = Ident::new(Symbol::intern(name.as_ref()), span);
+        Self::make(name, /*is_kernel=*/ false)
+    }
+
+    /// Create a new, empty kernel [Module]
+    pub fn new_kernel<S: Into<Ident>>(name: S) -> Self {
+        Self::make(name.into(), /*is_kernel=*/ true)
+    }
+
+    /// Create a new, empty kernel [Module] with the given source location
+    pub fn new_kernel_with_span<S: AsRef<str>>(name: S, span: SourceSpan) -> Self {
+        let name = Ident::new(Symbol::intern(name.as_ref()), span);
+        Self::make(name, /*is_kernel=*/ true)
+    }
+
+    fn make(name: Ident, is_kernel: bool) -> Self {
         Self {
             link: Default::default(),
             name,
@@ -168,20 +183,8 @@ impl Module {
             segments: Default::default(),
             globals: GlobalVariableTable::new(ConflictResolutionStrategy::None),
             functions: Default::default(),
-            is_kernel: false,
+            is_kernel,
         }
-    }
-
-    /// Create a new, empty kernel [Module]
-    pub fn new_kernel<S: AsRef<str>>(name: S) -> Self {
-        Self::new_kernel_with_span(name, SourceSpan::UNKNOWN)
-    }
-
-    /// Create a new, empty kernel [Module] with the given source location
-    pub fn new_kernel_with_span<S: AsRef<str>>(name: S, span: SourceSpan) -> Self {
-        let mut module = Self::new_with_span(name, span);
-        module.is_kernel = true;
-        module
     }
 
     /// Returns true if this module is a kernel module
@@ -518,14 +521,19 @@ impl<'a> ModuleCursor<'a> {
 pub struct ModuleBuilder {
     module: Box<Module>,
 }
+impl From<Box<Module>> for ModuleBuilder {
+    fn from(module: Box<Module>) -> Self {
+        Self { module }
+    }
+}
 impl ModuleBuilder {
-    pub fn new<S: AsRef<str>>(name: S) -> Self {
+    pub fn new<S: Into<Ident>>(name: S) -> Self {
         Self {
             module: Box::new(Module::new(name)),
         }
     }
 
-    pub fn new_kernel<S: AsRef<str>>(name: S) -> Self {
+    pub fn new_kernel<S: Into<Ident>>(name: S) -> Self {
         Self {
             module: Box::new(Module::new_kernel(name)),
         }
@@ -573,13 +581,12 @@ impl ModuleBuilder {
     }
 
     /// Start building a new function in this module
-    pub fn build_function<'a, 'b: 'a, S: AsRef<str>>(
+    pub fn function<'a, 'b: 'a, S: Into<Ident>>(
         &'b mut self,
         name: S,
         signature: Signature,
-        span: SourceSpan,
     ) -> Result<ModuleFunctionBuilder<'a>, SymbolConflictError> {
-        let name = Ident::new(Symbol::intern(name.as_ref()), span);
+        let name = name.into();
         if let Some(prev) = self.module.function(name) {
             return Err(SymbolConflictError(prev.id));
         }
