@@ -70,6 +70,7 @@ mod locals;
 mod module;
 mod program;
 mod segments;
+pub mod testing;
 #[cfg(test)]
 mod tests;
 mod value;
