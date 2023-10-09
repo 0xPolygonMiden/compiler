@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
 
 use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 
-use miden_hir::{self as hir, Block as BlockId, *};
+use miden_hir::{self as hir, *};
 use miden_hir_analysis::{ControlFlowGraph, FunctionAnalysis};
 
-use super::RewritePass;
+use crate::{adt::ScopedMap, RewritePass};
 
 /// This pass operates on the SSA IR, and inlines superfluous blocks which serve no
 /// purpose. Such blocks have no block arguments, and have a single predecessor.
@@ -35,10 +36,12 @@ impl RewritePass for InlineBlocks {
     ) -> Result<(), Self::Error> {
         let cfg = analysis.cfg_mut();
 
+        let entry = function.dfg.entry_block();
         let mut changed = false;
-        let mut visited = FxHashSet::<BlockId>::default();
-        let mut worklist = VecDeque::<BlockId>::default();
-        worklist.push_back(function.dfg.entry_block());
+        let mut rewrites = ScopedMap::<Value, Value>::default();
+        let mut visited = FxHashSet::<Block>::default();
+        let mut worklist = VecDeque::<Block>::default();
+        worklist.push_back(entry);
 
         // First, search down the CFG for non-loop header blocks with only a single successor.
         // These blocks form possible roots of a chain of blocks that can be inlined.
@@ -86,15 +89,26 @@ impl RewritePass for InlineBlocks {
                 // is left as a future extension of this pass should we find that it is
                 // valuable as an optimization.
                 if !args.is_empty() {
-                    break;
+                    // Compute the set of values to rewrite
+                    for (from, to) in function
+                        .dfg
+                        .block_params(b)
+                        .iter()
+                        .copied()
+                        .zip(args.iter().copied())
+                    {
+                        rewrites.insert(from, to);
+                    }
                 }
 
-                inline(b, p, function, cfg);
+                inline(b, p, function, &mut worklist, &rewrites, cfg);
 
                 // Mark that the control flow graph as modified
                 changed = true;
             }
         }
+
+        rewrite_uses(entry, function, &rewrites);
 
         if changed {
             analysis.cfg_changed(function);
@@ -104,28 +118,344 @@ impl RewritePass for InlineBlocks {
     }
 }
 
-fn inline(from: BlockId, to: BlockId, function: &mut hir::Function, cfg: &mut ControlFlowGraph) {
+fn inline(
+    from: Block,
+    to: Block,
+    function: &mut hir::Function,
+    worklist: &mut VecDeque<Block>,
+    rewrites: &ScopedMap<Value, Value>,
+    cfg: &mut ControlFlowGraph,
+) {
     assert_ne!(from, to);
+    let mut from_terminator = None;
     {
         let mut from_insts = function.dfg.block_mut(from).insts.take();
-        let to_insts = &mut function.dfg.block_mut(to).insts;
+        let to_insts = &mut function.dfg.blocks[to].insts;
         // Remove the original terminator
         to_insts.pop_back();
         // Move all instructions from their original block to the parent,
         // updating the instruction data along the way to reflect the change
         // in location
         while let Some(unsafe_ix_ref) = from_insts.pop_front() {
-            let ix_ptr = UnsafeRef::into_raw(unsafe_ix_ref);
-            unsafe {
-                let ix = &mut *ix_ptr;
-                ix.block = to;
+            let mut ix = unsafe { UnsafeRef::into_box(unsafe_ix_ref) };
+            ix.block = to;
+            rewrite_use(ix.as_mut(), &mut function.dfg.value_lists, rewrites);
+            // We need to clone the original terminator so we can continue to
+            // navigate the control flow graph
+            if ix.opcode().is_terminator() {
+                assert!(
+                    from_terminator.replace(ix.clone()).is_none(),
+                    "a block can only have one terminator"
+                );
             }
-            to_insts.push_back(unsafe { UnsafeRef::from_raw(ix_ptr) });
+            to_insts.push_back(UnsafeRef::from_box(ix));
         }
     }
+    // Append the cloned terminator back to the inlined block before we detach it
+    let from_terminator = from_terminator.expect("a block must have a terminator");
+    match (*from_terminator).as_ref() {
+        Instruction::Br(Br { destination, .. }) => {
+            worklist.push_back(*destination);
+        }
+        Instruction::CondBr(CondBr {
+            then_dest: (then_blk, _),
+            else_dest: (else_blk, _),
+            ..
+        }) => {
+            worklist.push_back(*then_blk);
+            worklist.push_back(*else_blk);
+        }
+        _ => (),
+    }
+    function.dfg.blocks[from]
+        .insts
+        .push_back(UnsafeRef::from_box(from_terminator));
     // Detach the original block from the function
     function.dfg.detach_block(from);
     // Update the control flow graph to reflect the changes
     cfg.detach_block(from);
     cfg.recompute_block(&function.dfg, to);
+}
+
+fn rewrite_uses(root: Block, function: &mut hir::Function, rewrites: &ScopedMap<Value, Value>) {
+    let mut visited = FxHashSet::<Block>::default();
+    let mut worklist = VecDeque::<Block>::default();
+    worklist.push_back(root);
+
+    while let Some(b) = worklist.pop_front() {
+        // Do not visit the same block twice
+        if !visited.insert(b) {
+            continue;
+        }
+
+        let block = &mut function.dfg.blocks[b];
+        // Take the list of instructions away from the block to simplify traversing the block
+        let mut insts = block.insts.take();
+        // Take each instruction out of the list, top to bottom, modify it, then
+        // add it back to the instruction list of the block directly. This ensures
+        // we traverse the list and rewrite instructions in a single pass without
+        // any additional overhead
+        while let Some(inst) = insts.pop_front() {
+            let mut inst = unsafe { UnsafeRef::into_box(inst) };
+            let to_visit = rewrite_use(inst.as_mut(), &mut function.dfg.value_lists, rewrites);
+            if !to_visit.is_empty() {
+                worklist.extend(to_visit);
+            }
+
+            block.insts.push_back(UnsafeRef::from_box(inst));
+        }
+    }
+}
+
+fn rewrite_use(
+    inst: &mut Instruction,
+    pool: &mut hir::ValueListPool,
+    rewrites: &ScopedMap<Value, Value>,
+) -> SmallVec<[Block; 2]> {
+    let mut worklist = SmallVec::<[Block; 2]>::default();
+    match inst {
+        Instruction::Br(Br {
+            destination,
+            ref mut args,
+            ..
+        }) => {
+            worklist.push(*destination);
+            for arg in args.as_mut_slice(pool) {
+                if let Some(replacement) = rewrites.get(arg).copied() {
+                    *arg = replacement;
+                }
+            }
+        }
+        Instruction::CondBr(CondBr {
+            ref mut cond,
+            then_dest: (then_dest, ref mut then_args),
+            else_dest: (else_dest, ref mut else_args),
+            ..
+        }) => {
+            worklist.push(*then_dest);
+            worklist.push(*else_dest);
+            if let Some(replacement) = rewrites.get(cond).copied() {
+                *cond = replacement;
+            }
+            for arg in then_args.as_mut_slice(pool) {
+                if let Some(replacement) = rewrites.get(arg).copied() {
+                    *arg = replacement;
+                }
+            }
+            for arg in else_args.as_mut_slice(pool) {
+                if let Some(replacement) = rewrites.get(arg).copied() {
+                    *arg = replacement;
+                }
+            }
+        }
+        op => {
+            for arg in op.arguments_mut(pool) {
+                if let Some(replacement) = rewrites.get(arg).copied() {
+                    *arg = replacement;
+                }
+            }
+        }
+    }
+
+    worklist
+}
+
+#[cfg(test)]
+mod tests {
+    use miden_hir::{
+        AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
+    };
+    use miden_hir_analysis::FunctionAnalysis;
+
+    use crate::{InlineBlocks, RewritePass};
+
+    /// Run the inlining pass on the following IR:
+    ///
+    /// The following IR is unnecessarily verbose:
+    ///
+    /// ```text,ignore
+    /// pub fn test(*mut u8, i32) -> *mut u8 {
+    /// entry(ptr0: *mut u8, offset: i32):
+    ///    zero = const.u32 0
+    ///    ptr1 = ptrtoint ptr0 : u32
+    ///    is_null = eq ptr1, zero
+    ///    br blk0(ptr1, is_null)
+    ///
+    /// blk0(ptr2: u32, is_null1: i1):
+    ///    condbr is_null1, blk2(ptr0), blk1(ptr2)
+    ///
+    /// blk1(ptr3: u32):
+    ///    ptr4 = add ptr3, offset
+    ///    is_null2 = eq ptr4, zero
+    ///    condbr is_null2, blk4(ptr0), blk5(ptr4)
+    ///
+    /// blk2(result0: *mut u8)
+    ///    br blk3
+    ///
+    /// blk3:
+    ///    ret result0
+    ///
+    /// blk4(result1: *mut u8)
+    ///    ret result1
+    ///
+    /// blk5(ptr5: u32):
+    ///    ptr6 = inttoptr ptr5 : *mut u8
+    ///    ret ptr6
+    /// }
+    /// ```
+    ///
+    /// We want the inlining pass to result in something like:
+    ///
+    /// ```text,ignore
+    /// pub fn test(*mut u8, i32) -> *mut u8 {
+    /// entry(ptr0: *mut u8, offset: i32):
+    ///   zero = const.u32 0
+    ///   ptr1 = ptrtoint ptr0 : u32
+    ///   is_null = eq ptr1, zero
+    ///   condbr is_null, blk2, blk1
+    ///
+    /// blk1:
+    ///   ptr2 = add ptr1, offset
+    ///   is_null1 = eq ptr2, zero
+    ///   condbr is_null1, blk3, blk4
+    ///
+    /// blk2:
+    ///   ret ptr0
+    ///
+    /// blk3:
+    ///   ret ptr0
+    ///
+    /// blk4:
+    ///   ptr3 = inttoptr ptr2 : *mut u8
+    ///   ret ptr3
+    /// ```
+    ///
+    /// In short, regardless of block arguments, control flow edges between blocks
+    /// where the predecessor is the only predecessor, and the successor is the only
+    /// successor, represent edges which can be removed by inlining the successor
+    /// block into the predecessor block. Any uses of values introduced as block
+    /// parameters of the successor block, must be rewritten to use the values
+    /// provided in the predecessor block for those parameters.
+    #[test]
+    fn inline_blocks_simple_tree_cfg_test() {
+        let id = "test::inlining_test".parse().unwrap();
+        let mut function = Function::new(
+            id,
+            Signature::new(
+                [
+                    AbiParam::new(Type::Ptr(Box::new(Type::U8))),
+                    AbiParam::new(Type::I32),
+                ],
+                [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
+            ),
+        );
+
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let entry = builder.current_block();
+            let (ptr0, offset) = {
+                let args = builder.block_params(entry);
+                (args[0], args[1])
+            };
+
+            let a = builder.create_block(); // blk0(ptr2: u32, is_null1: i1)
+            let ptr2 = builder.append_block_param(a, Type::U32, SourceSpan::UNKNOWN);
+            let is_null1 = builder.append_block_param(a, Type::I1, SourceSpan::UNKNOWN);
+            let b = builder.create_block(); // blk1(ptr3: u32)
+            let ptr3 = builder.append_block_param(b, Type::U32, SourceSpan::UNKNOWN);
+            let c = builder.create_block(); // blk2(result0: *mut u8)
+            let result0 =
+                builder.append_block_param(c, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
+            let d = builder.create_block(); // blk3
+            let e = builder.create_block(); // blk4(result1: *mut u8)
+            let result1 =
+                builder.append_block_param(e, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
+            let f = builder.create_block(); // blk5(ptr5: u32)
+            let ptr5 = builder.append_block_param(f, Type::U32, SourceSpan::UNKNOWN);
+
+            // entry
+            let ptr1 = builder.ins().ptrtoint(ptr0, Type::U32, SourceSpan::UNKNOWN);
+            let is_null = builder
+                .ins()
+                .eq_imm(ptr1, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder.ins().br(a, &[ptr1, is_null], SourceSpan::UNKNOWN);
+
+            // blk0
+            builder.switch_to_block(a);
+            builder
+                .ins()
+                .cond_br(is_null1, c, &[ptr0], b, &[ptr2], SourceSpan::UNKNOWN);
+
+            // blk1
+            builder.switch_to_block(b);
+            let ptr3_i32 = builder.ins().cast(ptr3, Type::I32, SourceSpan::UNKNOWN);
+            let ptr4_i32 = builder.ins().add(ptr3_i32, offset, SourceSpan::UNKNOWN);
+            let ptr4 = builder.ins().cast(ptr4_i32, Type::U32, SourceSpan::UNKNOWN);
+            let is_null2 = builder
+                .ins()
+                .eq_imm(ptr4, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder
+                .ins()
+                .cond_br(is_null2, e, &[ptr0], f, &[ptr4], SourceSpan::UNKNOWN);
+
+            // blk2
+            builder.switch_to_block(c);
+            builder.ins().br(d, &[], SourceSpan::UNKNOWN);
+
+            // blk3
+            builder.switch_to_block(d);
+            builder.ins().ret(Some(result0), SourceSpan::UNKNOWN);
+
+            // blk4
+            builder.switch_to_block(e);
+            builder.ins().ret(Some(result1), SourceSpan::UNKNOWN);
+
+            // blk5
+            builder.switch_to_block(f);
+            let ptr6 =
+                builder
+                    .ins()
+                    .inttoptr(ptr5, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
+            builder.ins().ret(Some(ptr6), SourceSpan::UNKNOWN);
+        }
+
+        let mut original = String::with_capacity(1024);
+        miden_hir::write_function(&mut original, &function).expect("formatting failed");
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        let mut pass = InlineBlocks;
+        pass.run(&mut function, &mut analysis)
+            .expect("inlining failed");
+
+        let expected = "pub fn inlining_test(*mut u8, i32) -> *mut u8 {
+block0(v0: *mut u8, v1: i32):
+    v8 = ptrtoint v0  : u32
+    v9 = eq v8, 0  : i1
+    condbr v9, block3(v0), block2(v8)
+
+block2(v4: u32):
+    v10 = cast v4  : i32
+    v11 = add v10, v1  : i32
+    v12 = cast v11  : u32
+    v13 = eq v12, 0  : i1
+    condbr v13, block5(v0), block6(v12)
+
+block3(v5: *mut u8):
+    ret v5
+
+block5(v6: *mut u8):
+    ret v6
+
+block6(v7: u32):
+    v14 = inttoptr v7  : *mut u8
+    ret v14
+}
+";
+
+        let mut inlined = String::with_capacity(1024);
+        miden_hir::write_function(&mut inlined, &function).expect("formatting failed");
+
+        assert_changed!(original, inlined);
+        assert_formatter_output!(expected, inlined.as_str());
+    }
 }
