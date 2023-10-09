@@ -540,7 +540,7 @@ pub enum MasmOp {
     U32CheckedLt,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a < b`, else 0
     ///
-    /// Traps if either `a` or `b` are >= 2^32
+    /// The behavior is undefined if either `a` or `b` are >= 2^32
     U32UncheckedLt,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a <= b`, else 0
     ///
@@ -548,7 +548,7 @@ pub enum MasmOp {
     U32CheckedLte,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a <= b`, else 0
     ///
-    /// Traps if either `a` or `b` are >= 2^32
+    /// The behavior is undefined if either `a` or `b` are >= 2^32
     U32UncheckedLte,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a > b`, else 0
     ///

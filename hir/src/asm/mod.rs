@@ -1,10 +1,12 @@
 mod builder;
 mod display;
+mod import;
 mod isa;
 mod stack;
 
 pub use self::builder::*;
 pub use self::display::{DisplayInlineAsm, DisplayMasmBlock};
+pub use self::import::{MasmImport, ModuleImportInfo};
 pub use self::isa::*;
 pub use self::stack::{OperandStack, Stack, StackElement};
 
