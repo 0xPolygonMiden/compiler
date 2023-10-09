@@ -234,7 +234,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn empty() {
+    fn cfg_empty() {
         let dfg = DataFlowGraph::default();
 
         let mut cfg = ControlFlowGraph::new();
@@ -242,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    fn no_predecessors() {
+    fn cfg_no_predecessors() {
         let mut dfg = DataFlowGraph::default();
 
         let _block0 = dfg.create_block();
@@ -261,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    fn branches_and_jumps() {
+    fn cfg_branches_and_jumps() {
         let codemap = Arc::new(CodeMap::new());
         let emitter = Arc::new(DefaultEmitter::new(ColorChoice::Auto));
         let diagnostics = DiagnosticsHandler::new(Default::default(), codemap.clone(), emitter);
