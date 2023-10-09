@@ -149,6 +149,20 @@ pub struct Signature {
     pub linkage: Linkage,
 }
 impl Signature {
+    /// Create a new signature with the given parameter and result types,
+    /// for a public function using the `SystemV` calling convention
+    pub fn new<P: IntoIterator<Item = AbiParam>, R: IntoIterator<Item = AbiParam>>(
+        params: P,
+        results: R,
+    ) -> Self {
+        Self {
+            params: params.into_iter().collect(),
+            results: results.into_iter().collect(),
+            cc: CallConv::SystemV,
+            linkage: Linkage::External,
+        }
+    }
+
     /// Returns true if this function is externally visible
     pub fn is_public(&self) -> bool {
         matches!(self.linkage, Linkage::External)
@@ -211,9 +225,21 @@ impl PartialEq for Signature {
 /// At link time, we make sure all external function references are either defined in
 /// the current program, or are well-known functions that are provided as part of a kernel
 /// or standard library in the Miden VM.
+#[derive(PartialEq, Eq)]
 pub struct ExternalFunction {
     pub id: FunctionIdent,
     pub signature: Signature,
+}
+impl Ord for ExternalFunction {
+    #[inline]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+impl PartialOrd for ExternalFunction {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 intrusive_adapter!(pub FunctionListAdapter = Box<Function>: Function { link: LinkedListLink });

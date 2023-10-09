@@ -111,6 +111,12 @@ impl Ident {
         self.name
     }
 }
+impl std::borrow::Borrow<Symbol> for Ident {
+    #[inline]
+    fn borrow(&self) -> &Symbol {
+        &self.name
+    }
+}
 impl std::borrow::Borrow<str> for Ident {
     #[inline]
     fn borrow(&self) -> &str {

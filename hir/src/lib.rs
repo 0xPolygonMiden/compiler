@@ -12,6 +12,7 @@ pub type Felt = winter_math::fields::f64::BaseElement;
 /// Represents an offset from the base of linear memory in Miden
 pub type Offset = u32;
 
+#[macro_export]
 macro_rules! assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $left {

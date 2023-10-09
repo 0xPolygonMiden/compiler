@@ -277,7 +277,7 @@ mod tests {
             linkage: Linkage::External,
         };
         let mut fb = builder
-            .build_function("branches_and_jumps", sig, SourceSpan::UNKNOWN)
+            .function("branches_and_jumps", sig)
             .expect("unexpected symbol conflict");
 
         let block0 = fb.entry_block();
