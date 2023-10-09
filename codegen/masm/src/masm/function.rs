@@ -107,6 +107,14 @@ impl Function {
     pub fn block_mut(&mut self, id: BlockId) -> &mut Block {
         &mut self.blocks[id]
     }
+
+    /// Return an implementation of [std::fmt::Display] for this function
+    pub fn display<'a, 'b: 'a>(&'b self, imports: &'b ModuleImportInfo) -> DisplayMasmFunction<'a> {
+        DisplayMasmFunction {
+            function: self,
+            imports,
+        }
+    }
 }
 impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -117,13 +125,42 @@ impl fmt::Debug for Function {
             .finish()
     }
 }
-impl fmt::Display for Function {
+
+#[doc(hidden)]
+pub struct DisplayMasmFunction<'a> {
+    function: &'a Function,
+    imports: &'a ModuleImportInfo,
+}
+impl<'a> fmt::Display for DisplayMasmFunction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use miden_hir::DisplayMasmBlock;
 
-        writeln!(f, "fn {}/{} {{", &self.name, self.signature.arity())?;
-        writeln!(f, "{}", DisplayMasmBlock::new(&self.blocks, self.body, 1))?;
+        let visibility = if self.function.signature.is_public() {
+            "export"
+        } else {
+            "proc"
+        };
+        let name = self.function.name;
+        match self.function.locals.len() {
+            0 => {
+                writeln!(f, "{visibility}.{}", &name.function)?;
+            }
+            n => {
+                writeln!(f, "{visibility}.{}.{}", &name.function, n)?;
+            }
+        }
 
-        f.write_str("}\n")
+        writeln!(
+            f,
+            "{}",
+            DisplayMasmBlock::new(
+                Some(self.imports),
+                &self.function.blocks,
+                self.function.body,
+                1
+            )
+        )?;
+
+        f.write_str("end")
     }
 }
