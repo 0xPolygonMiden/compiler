@@ -566,6 +566,7 @@ impl Opcode {
             | Self::Br
             | Self::CondBr
             | Self::Switch
+            | Self::Ret
             | Self::Unreachable => smallvec![],
             // These ops have fixed result types
             Self::Test
@@ -600,7 +601,6 @@ impl Opcode {
             | Self::Trunc
             | Self::Zext
             | Self::Sext
-            | Self::Ret
             | Self::Select
             | Self::Add
             | Self::Sub
