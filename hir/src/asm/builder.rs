@@ -97,7 +97,7 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
     /// held by the underlying [InstBuilderBase].
     pub fn build(self) -> Inst {
         if self.asm.results.is_empty() {
-            assert!(self.stack.is_empty(), "invalid inline assembly: expected operand stack to be empty upon exit, found: {:?}", self.stack.display());
+            assert!(self.stack.is_empty(), "invalid inline assembly: expected operand stack to be empty upon exit, found: {:?}", self.stack.debug());
         } else {
             let mut len = 0;
             for ty in self.asm.results.iter() {
@@ -108,7 +108,7 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
                 self.stack.len(),
                 "invalid inline assembly: needed {} elements on the operand stack, found: {:?}",
                 len,
-                self.stack.display()
+                self.stack.debug()
             );
         }
 
@@ -1127,7 +1127,7 @@ impl<'a> MasmOpBuilder<'a> {
 
     #[inline(never)]
     fn build(&mut self, ip: MasmBlockId, op: MasmOp) {
-        apply_op_stack_effects(&op, &mut self.stack, self.dfg, self.asm);
+        apply_op_stack_effects(&op, self.stack, self.dfg, self.asm);
         self.asm.push(ip, op);
     }
 }
@@ -1154,7 +1154,7 @@ enum IfBranch {
 /// The general usage here looks like this, where `masm_builder` is an instance of
 /// [MasmBuilder]:
 ///
-/// ```rust,ignore
+/// ```text,ignore
 /// // If the current top of the stack is > 0, decrement the next stack element, which
 /// is a counter, and then call a function, otherwise, pop the counter, push 0, and proceed.
 /// masm_builder.ins().gt_imm(Felt::ZERO);
@@ -1318,7 +1318,7 @@ enum LoopType {
 /// The general usage here looks like this, where `masm_builder` is an instance of
 /// [MasmBuilder]:
 ///
-/// ```rust,ignore
+/// ```text,ignore
 /// // For our example here, we're generating inline assembly that performs
 /// // the equivalent of `for (i = 0; i < len; i++) sum += array[i / 4][i % 4]`,
 /// // where `array` is a pointer to words, and we're attempting to sum `len`
@@ -2013,7 +2013,7 @@ fn execute_call(
     dfg: &DataFlowGraph,
 ) {
     let import = dfg
-        .get_import(&id)
+        .get_import(id)
         .expect("unknown function, are you missing an import?");
     if is_syscall {
         assert_eq!(
