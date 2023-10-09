@@ -92,7 +92,7 @@ pub use self::instruction::*;
 pub use self::layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap};
 pub use self::locals::{Local, LocalId};
 pub use self::module::*;
-pub use self::program::{Linker, LinkerError, Program};
+pub use self::program::{Linker, LinkerError, Program, ProgramBuilder};
 pub use self::segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable};
 pub use self::value::{Value, ValueData, ValueList, ValueListPool};
 pub use self::write::{write_external_function, write_function};
