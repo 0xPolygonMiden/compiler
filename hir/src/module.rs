@@ -6,6 +6,7 @@ use intrusive_collections::{
     LinkedList, RBTreeLink,
 };
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
+use rustc_hash::FxHashSet;
 
 use super::*;
 
@@ -283,6 +284,26 @@ impl Module {
     /// Get a [Function] in this module by name, if available
     pub fn function<'a, 'b: 'a>(&'b self, id: Ident) -> Option<&'a Function> {
         self.cursor_at(id).get()
+    }
+
+    /// Compute the set of imports for this module, automatically aliasing modules when there
+    /// are namespace conflicts
+    pub fn imports(&self) -> ModuleImportInfo {
+        let mut imports = ModuleImportInfo::default();
+        let locals = self
+            .functions
+            .iter()
+            .map(|f| f.id)
+            .collect::<FxHashSet<FunctionIdent>>();
+
+        for function in self.functions.iter() {
+            for import in function.imports() {
+                if !locals.contains(&import.id) {
+                    imports.add(import.id);
+                }
+            }
+        }
+        imports
     }
 
     /// Returns true if this module contains the function `name`
