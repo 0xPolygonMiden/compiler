@@ -132,3 +132,155 @@ impl RewritePass for SplitCriticalEdges {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use miden_hir::{
+        AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
+    };
+    use miden_hir_analysis::FunctionAnalysis;
+
+    use crate::{RewritePass, SplitCriticalEdges};
+
+    /// Run the split critical edges pass on the following IR:
+    ///
+    /// The following IR is contains a critical edge to split, specifically
+    /// `blk0` is critical because it has multiple predecessors, and multiple
+    /// successors:
+    ///
+    /// ```text,ignore
+    /// pub fn test(*mut u8, u32) -> *mut u8 {
+    /// entry(ptr0: *mut u8, n0: u32):
+    ///    ptr1 = ptrtoint ptr0 : u32
+    ///    br blk0(ptr1, n0)
+    ///
+    /// blk0(ptr2: u32, n1: u32):
+    ///    is_null = eq ptr2, 0
+    ///    condbr is_null, blk2(ptr0), blk1(ptr2, n1)
+    ///
+    /// blk1(ptr3: u32, n2: u32):
+    ///    ptr4 = sub ptr3, n2
+    ///    n3 = sub n2, 1
+    ///    is_zero = eq n3, 0
+    ///    condbr is_zero, blk2(ptr4), blk0(ptr4, n3)
+    ///
+    /// blk2(result0: *mut u8)
+    ///    ret result0
+    /// }
+    /// ```
+    ///
+    /// We expect this pass to introduce new blocks along all control flow paths
+    /// where the successor has multiple predecessors. This may result in some
+    /// superfluous blocks after the pass is run, but this can be addressed by
+    /// running the [InlineBlocks] pass afterwards, which will flatten the CFG.
+    #[test]
+    fn split_critical_edges_simple_test() {
+        let id = "test::sce".parse().unwrap();
+        let mut function = Function::new(
+            id,
+            Signature::new(
+                [
+                    AbiParam::new(Type::Ptr(Box::new(Type::U8))),
+                    AbiParam::new(Type::U32),
+                ],
+                [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
+            ),
+        );
+
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let entry = builder.current_block();
+            let (ptr0, n0) = {
+                let args = builder.block_params(entry);
+                (args[0], args[1])
+            };
+
+            let a = builder.create_block(); // blk0(ptr2: u32, n1: u32)
+            let ptr2 = builder.append_block_param(a, Type::U32, SourceSpan::UNKNOWN);
+            let n1 = builder.append_block_param(a, Type::U32, SourceSpan::UNKNOWN);
+            let b = builder.create_block(); // blk1(ptr3: u32, n2: u32)
+            let ptr3 = builder.append_block_param(b, Type::U32, SourceSpan::UNKNOWN);
+            let n2 = builder.append_block_param(b, Type::U32, SourceSpan::UNKNOWN);
+            let c = builder.create_block(); // blk2(result0: u32)
+            let result0 = builder.append_block_param(c, Type::U32, SourceSpan::UNKNOWN);
+
+            // entry
+            let ptr1 = builder.ins().ptrtoint(ptr0, Type::U32, SourceSpan::UNKNOWN);
+            builder.ins().br(a, &[ptr1, n0], SourceSpan::UNKNOWN);
+
+            // blk0
+            builder.switch_to_block(a);
+            let is_null = builder
+                .ins()
+                .eq_imm(ptr2, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder
+                .ins()
+                .cond_br(is_null, c, &[ptr0], b, &[ptr2, n1], SourceSpan::UNKNOWN);
+
+            // blk1
+            builder.switch_to_block(b);
+            let ptr4 = builder.ins().sub(ptr3, n2, SourceSpan::UNKNOWN);
+            let n3 = builder
+                .ins()
+                .sub_imm(n2, Immediate::U32(1), SourceSpan::UNKNOWN);
+            let is_zero = builder
+                .ins()
+                .eq_imm(n3, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder
+                .ins()
+                .cond_br(is_zero, c, &[ptr4], a, &[ptr4, n3], SourceSpan::UNKNOWN);
+
+            // blk2
+            builder.switch_to_block(c);
+            let result1 =
+                builder
+                    .ins()
+                    .inttoptr(result0, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
+            builder.ins().ret(Some(result1), SourceSpan::UNKNOWN);
+        }
+
+        let mut original = String::with_capacity(1024);
+        miden_hir::write_function(&mut original, &function).expect("formatting failed");
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        let mut pass = SplitCriticalEdges;
+        pass.run(&mut function, &mut analysis)
+            .expect("splitting critical edges failed");
+
+        let expected = "pub fn sce(*mut u8, u32) -> *mut u8 {
+block0(v0: *mut u8, v1: u32):
+    v7 = ptrtoint v0  : u32
+    br block1(v7, v1)
+
+block1(v2: u32, v3: u32):
+    v8 = eq v2, 0  : i1
+    condbr v8, block4, block2(v2, v3)
+
+block4:
+    br block3(v0)
+
+block2(v4: u32, v5: u32):
+    v9 = sub v4, v5  : u32
+    v10 = sub v5, 1  : u32
+    v11 = eq v10, 0  : i1
+    condbr v11, block6, block5
+
+block6:
+    br block3(v9)
+
+block5:
+    br block1(v9, v10)
+
+block3(v6: u32):
+    v12 = inttoptr v6  : *mut u8
+    ret v12
+}
+";
+
+        let mut inlined = String::with_capacity(1024);
+        miden_hir::write_function(&mut inlined, &function).expect("formatting failed");
+
+        assert_changed!(original, inlined);
+        assert_formatter_output!(expected, inlined.as_str());
+    }
+}
