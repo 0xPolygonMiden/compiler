@@ -1,5 +1,9 @@
 mod linker;
 
+use core::{
+    convert::{AsMut, AsRef},
+    ops::{Deref, DerefMut},
+};
 use intrusive_collections::RBTree;
 
 pub use self::linker::{Linker, LinkerError};
@@ -39,21 +43,7 @@ pub struct Program {
     globals: GlobalVariableTable,
 }
 impl Default for Program {
-    /// A default [Program] is equivalent to calling [Program::new], i.e. it
-    /// is preloaded with builtin globals and functions.
     fn default() -> Self {
-        Self::new()
-    }
-}
-impl Program {
-    /// Create a new, empty [Program].
-    ///
-    /// NOTE: An empty program will be missing some builtin global variables
-    /// and functions that are expected to be linked when generating code for
-    /// the Miden VM. It is expected that these will be provided manually, or
-    /// that the generated code does not rely on them.
-    #[inline]
-    pub fn empty() -> Self {
         Self {
             modules: Default::default(),
             entrypoint: None,
@@ -61,12 +51,12 @@ impl Program {
             globals: Default::default(),
         }
     }
-
-    /// Create a new [Program] with the set of builtin globals and functions
-    /// needed to support some key functionality on the Miden VM.
+}
+impl Program {
+    /// Create a new, empty [Program].
+    #[inline(always)]
     pub fn new() -> Self {
-        // TODO: Flesh this out with the kernel
-        Self::empty()
+        Self::default()
     }
 
     /// Returns true if this program has a defined entrypoint
@@ -82,17 +72,19 @@ impl Program {
         self.has_entrypoint()
     }
 
-    /// Returns the [Function] representing the entrypoint of this program
-    pub fn entrypoint(&self) -> Option<&Function> {
-        let id = self.entrypoint?;
-        let module = self
-            .modules
-            .find(&id.module)
-            .get()
-            .expect("invalid entrypoint: unknown module");
-        let entry = module.function(id.function);
-        debug_assert!(entry.is_some(), "invalid entrypoint: unknown function");
-        entry
+    /// Returns the [FunctionIdent] corresponding to the program entrypoint
+    pub fn entrypoint(&self) -> Option<FunctionIdent> {
+        self.entrypoint
+    }
+
+    /// Return a reference to the module table for this program
+    pub fn modules(&self) -> &RBTree<ModuleTreeAdapter> {
+        &self.modules
+    }
+
+    /// Return a mutable reference to the module table for this program
+    pub fn modules_mut(&mut self) -> &mut RBTree<ModuleTreeAdapter> {
+        &mut self.modules
     }
 
     /// Return a reference to the data segment table for this program
@@ -113,5 +105,187 @@ impl Program {
     /// Returns true if `name` is defined in this program.
     pub fn contains(&self, name: Ident) -> bool {
         !self.modules.find(&name).is_null()
+    }
+
+    /// Look up the signature of a function in this program by `id`
+    pub fn signature(&self, id: &FunctionIdent) -> Option<&Signature> {
+        let module = self.modules.find(&id.module).get()?;
+        module.function(id.function).map(|f| &f.signature)
+    }
+}
+
+/// This struct provides an ergonomic way to construct a [Program] in an imperative fashion.
+///
+/// Simply create the builder, add/build one or more modules, then call `link` to obtain a [Program].
+pub struct ProgramBuilder<'a> {
+    modules: std::collections::BTreeMap<Ident, Box<Module>>,
+    entry: Option<FunctionIdent>,
+    diagnostics: &'a miden_diagnostics::DiagnosticsHandler,
+}
+impl<'a> ProgramBuilder<'a> {
+    pub fn new(diagnostics: &'a miden_diagnostics::DiagnosticsHandler) -> Self {
+        Self {
+            modules: Default::default(),
+            entry: None,
+            diagnostics,
+        }
+    }
+
+    /// Set the entrypoint for the [Program] being built.
+    #[inline]
+    pub fn with_entrypoint(mut self, id: FunctionIdent) -> Self {
+        self.entry = Some(id);
+        self
+    }
+
+    /// Add `module` to the set of modules to link into the final [Program]
+    ///
+    /// Unlike `add_module`, this function consumes the current builder state
+    /// and returns a new one, to allow for chaining builder calls together.
+    ///
+    /// Returns `Err` if a module with the same name already exists
+    pub fn with_module(mut self, module: Box<Module>) -> Result<Self, ModuleConflictError> {
+        self.add_module(module).map(|_| self)
+    }
+
+    /// Add `module` to the set of modules to link into the final [Program]
+    ///
+    /// Returns `Err` if a module with the same name already exists
+    pub fn add_module(&mut self, module: Box<Module>) -> Result<(), ModuleConflictError> {
+        let module_name = module.name;
+        if self.modules.contains_key(&module_name) {
+            return Err(ModuleConflictError(module_name));
+        }
+
+        self.modules.insert(module_name, module);
+
+        Ok(())
+    }
+
+    /// Start building a [Module] with the given name.
+    ///
+    /// When the builder is done, the resulting [Module] will be inserted
+    /// into the set of modules to be linked into the final [Program].
+    pub fn module<S: Into<Ident>>(&mut self, name: S) -> ProgramModuleBuilder<'_, 'a> {
+        let name = name.into();
+        let module = match self.modules.remove(&name) {
+            None => Box::new(Module::new(name)),
+            Some(module) => module,
+        };
+        ProgramModuleBuilder {
+            pb: self,
+            mb: ModuleBuilder::from(module),
+        }
+    }
+
+    /// Link a [Program] from the current [ProgramBuilder] state
+    pub fn link(self) -> Result<Box<Program>, LinkerError> {
+        let mut linker = Linker::new();
+        if let Some(entry) = self.entry {
+            linker.with_entrypoint(entry)?;
+        }
+
+        for (_, module) in self.modules.into_iter() {
+            linker.add(module)?;
+        }
+
+        linker.link()
+    }
+}
+
+/// This is used to build a [Module] from a [ProgramBuilder].
+///
+/// It is basically just a wrapper around [ModuleBuilder], but overrides two things:
+///
+/// * `build` will add the module to the [ProgramBuilder] directly, rather than returning it
+/// * `function` will delegate to [ProgramFunctionBuilder] which plays a similar role to this
+/// struct, but for [ModuleFunctionBuilder].
+pub struct ProgramModuleBuilder<'a, 'b: 'a> {
+    pb: &'a mut ProgramBuilder<'b>,
+    mb: ModuleBuilder,
+}
+impl<'a, 'b: 'a> ProgramModuleBuilder<'a, 'b> {
+    /// Start building a [Function] wwith the given name and signature.
+    pub fn function<'c, 'd: 'c, S: Into<Ident>>(
+        &'d mut self,
+        name: S,
+        signature: Signature,
+    ) -> Result<ProgramFunctionBuilder<'c, 'd>, SymbolConflictError> {
+        Ok(ProgramFunctionBuilder {
+            diagnostics: self.pb.diagnostics,
+            fb: self.mb.function(name, signature)?,
+        })
+    }
+
+    /// Build the current [Module], adding it to the [ProgramBuilder].
+    ///
+    /// Returns `err` if a module with that name already exists.
+    pub fn build(self) -> Result<(), ModuleConflictError> {
+        let pb = self.pb;
+        let mb = self.mb;
+
+        pb.add_module(mb.build())?;
+        Ok(())
+    }
+}
+impl<'a, 'b: 'a> Deref for ProgramModuleBuilder<'a, 'b> {
+    type Target = ModuleBuilder;
+
+    fn deref(&self) -> &Self::Target {
+        &self.mb
+    }
+}
+impl<'a, 'b: 'a> DerefMut for ProgramModuleBuilder<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mb
+    }
+}
+impl<'a, 'b: 'a> AsRef<ModuleBuilder> for ProgramModuleBuilder<'a, 'b> {
+    fn as_ref(&self) -> &ModuleBuilder {
+        &self.mb
+    }
+}
+impl<'a, 'b: 'a> AsMut<ModuleBuilder> for ProgramModuleBuilder<'a, 'b> {
+    fn as_mut(&mut self) -> &mut ModuleBuilder {
+        &mut self.mb
+    }
+}
+
+/// This is used to build a [Function] from a [ProgramModuleBuilder].
+///
+/// It is basically just a wrapper around [ModuleFunctionBuilder], but overrides
+/// `build` to use the [miden_diagnostics::DiagnosticsHandler] of the parent
+/// [ProgramBuilder].
+pub struct ProgramFunctionBuilder<'a, 'b: 'a> {
+    diagnostics: &'b miden_diagnostics::DiagnosticsHandler,
+    fb: ModuleFunctionBuilder<'a>,
+}
+impl<'a, 'b: 'a> ProgramFunctionBuilder<'a, 'b> {
+    /// Build the current function
+    pub fn build(self) -> Result<FunctionIdent, InvalidFunctionError> {
+        let diagnostics = self.diagnostics;
+        self.fb.build(diagnostics)
+    }
+}
+impl<'a, 'b: 'a> Deref for ProgramFunctionBuilder<'a, 'b> {
+    type Target = ModuleFunctionBuilder<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.fb
+    }
+}
+impl<'a, 'b: 'a> DerefMut for ProgramFunctionBuilder<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.fb
+    }
+}
+impl<'a, 'b: 'a> AsRef<ModuleFunctionBuilder<'a>> for ProgramFunctionBuilder<'a, 'b> {
+    fn as_ref(&self) -> &ModuleFunctionBuilder<'a> {
+        &self.fb
+    }
+}
+impl<'a, 'b: 'a> AsMut<ModuleFunctionBuilder<'a>> for ProgramFunctionBuilder<'a, 'b> {
+    fn as_mut(&mut self) -> &mut ModuleFunctionBuilder<'a> {
+        &mut self.fb
     }
 }
