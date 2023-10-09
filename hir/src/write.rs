@@ -160,7 +160,7 @@ fn write_operands(
     indent: usize,
 ) -> fmt::Result {
     let pool = &dfg.value_lists;
-    match dfg[inst].as_ref() {
+    match &dfg[inst] {
         Instruction::BinaryOp(BinaryOp { args, .. }) => write!(w, " {}, {}", args[0], args[1]),
         Instruction::BinaryOpImm(BinaryOpImm { arg, imm, .. }) => write!(w, " {}, {}", arg, imm),
         Instruction::UnaryOp(UnaryOp { arg, .. }) => write!(w, " {}", arg),
@@ -308,12 +308,10 @@ impl fmt::Display for DisplayOffset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.0 == 0 {
             Ok(())
+        } else if self.0 >= 0 {
+            write!(f, "+{}", self.0)
         } else {
-            if self.0 >= 0 {
-                write!(f, "+{}", self.0)
-            } else {
-                write!(f, "{}", self.0)
-            }
+            write!(f, "{}", self.0)
         }
     }
 }
@@ -321,7 +319,7 @@ impl fmt::Display for DisplayOffset {
 pub struct DisplayIndent(pub usize);
 impl fmt::Display for DisplayIndent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        const INDENT: &'static str = "  ";
+        const INDENT: &str = "  ";
         for _ in 0..self.0 {
             f.write_str(INDENT)?;
         }

@@ -28,7 +28,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// This example demonstrates how the DAG of a function with multiple returns gets transformed:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |
 ///  v
@@ -45,7 +45,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// Becomes:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |
 ///  v
@@ -64,7 +64,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// This is an example of a function with multiple returns and a simple loop:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |                -------
 ///  v               v       |
@@ -81,7 +81,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// Becomes:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |                -------
 ///  v               v       |
@@ -100,7 +100,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// This is an example of a function with a complex loop (i.e. multiple exit points):
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |
 ///  v
@@ -118,7 +118,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// Becomes:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |
 ///  v
@@ -145,7 +145,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// This is an extension of the example above, but with nested loops:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |
 ///  v
@@ -182,7 +182,7 @@ use crate::{adt::ScopedMap, RewritePass};
 ///
 /// After transformation, this becomes:
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 ///  |
 ///  v
@@ -212,7 +212,7 @@ use crate::{adt::ScopedMap, RewritePass};
 /// * Emit a combination of the above on control flow edges exiting an inner loop for an outer loop,
 /// depending on what depths the predecessor and successor blocks are at
 ///
-/// ```ignore
+/// ```text,ignore
 /// blk0
 /// blk1
 /// if.true
@@ -548,7 +548,7 @@ fn copy_instructions(
         // First, we're going to be placing it in b', so make sure the instruction is aware of that
         data.block = b_prime;
         // Second, we need to rewrite value/block references contained in the instruction
-        match &mut data.item {
+        match data.as_mut() {
             Instruction::Br(hir::Br {
                 ref mut destination,
                 ref mut args,

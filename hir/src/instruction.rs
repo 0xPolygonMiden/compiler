@@ -1,4 +1,5 @@
 use std::{
+    convert::{AsMut, AsRef},
     fmt,
     ops::{Deref, DerefMut},
 };
@@ -29,6 +30,11 @@ pub struct InstNode {
     #[span]
     pub data: Span<Instruction>,
 }
+impl fmt::Debug for InstNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", &self.data)
+    }
+}
 impl InstNode {
     pub fn new(key: Inst, block: Block, data: Span<Instruction>) -> Self {
         Self {
@@ -44,7 +50,7 @@ impl InstNode {
     }
 }
 impl Deref for InstNode {
-    type Target = Span<Instruction>;
+    type Target = Instruction;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -54,6 +60,18 @@ impl Deref for InstNode {
 impl DerefMut for InstNode {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
+}
+impl AsRef<Instruction> for InstNode {
+    #[inline]
+    fn as_ref(&self) -> &Instruction {
+        &self.data
+    }
+}
+impl AsMut<Instruction> for InstNode {
+    #[inline]
+    fn as_mut(&mut self) -> &mut Instruction {
         &mut self.data
     }
 }
@@ -167,10 +185,7 @@ impl Instruction {
 
     pub fn analyze_branch<'a>(&'a self, pool: &'a ValueListPool) -> BranchInfo<'a> {
         match self {
-            Self::Br(ref b) if b.op == Opcode::Br => {
-                BranchInfo::SingleDest(b.destination, b.args.as_slice(pool))
-            }
-            Self::Br(ref b) => BranchInfo::SingleDest(b.destination, &b.args.as_slice(pool)[1..]),
+            Self::Br(ref b) => BranchInfo::SingleDest(b.destination, b.args.as_slice(pool)),
             Self::CondBr(CondBr {
                 ref then_dest,
                 ref else_dest,
@@ -349,35 +364,36 @@ pub enum Opcode {
 }
 impl Opcode {
     pub fn is_terminator(&self) -> bool {
-        match self {
-            Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Unreachable => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Unreachable
+        )
     }
 
     pub fn is_branch(&self) -> bool {
-        match self {
-            Self::Br | Self::CondBr | Self::Switch => true,
-            _ => false,
-        }
+        matches!(self, Self::Br | Self::CondBr | Self::Switch)
+    }
+
+    pub fn is_call(&self) -> bool {
+        matches!(self, Self::Call | Self::Syscall)
     }
 
     pub fn is_commutative(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::Add
-            | Self::Mul
-            | Self::Min
-            | Self::Max
-            | Self::Eq
-            | Self::Neq
-            | Self::And
-            | Self::Band
-            | Self::Or
-            | Self::Bor
-            | Self::Xor
-            | Self::Bxor => true,
-            _ => false,
-        }
+                | Self::Mul
+                | Self::Min
+                | Self::Max
+                | Self::Eq
+                | Self::Neq
+                | Self::And
+                | Self::Band
+                | Self::Or
+                | Self::Bor
+                | Self::Xor
+                | Self::Bxor
+        )
     }
 
     pub fn has_side_effects(&self) -> bool {

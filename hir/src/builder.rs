@@ -77,7 +77,7 @@ impl<'f> FunctionBuilder<'f> {
         function: F,
         signature: Signature,
         span: SourceSpan,
-    ) -> Result<FunctionIdent, ()> {
+    ) -> Result<FunctionIdent, SymbolConflictError> {
         let module = Ident::with_empty_span(Symbol::intern(module.as_ref()));
         let function = Ident::new(Symbol::intern(function.as_ref()), span);
         self.func.dfg.import_function(module, function, signature)
@@ -1087,6 +1087,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.BinaryImm(Opcode::Lte, Type::I1, lhs, imm, span))
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn is_odd(self, value: Value, span: SourceSpan) -> Value {
         require_integer!(self, value);
         into_first_result!(self.Unary(Opcode::IsOdd, Type::I1, value, span))
