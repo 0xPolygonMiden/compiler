@@ -537,6 +537,7 @@ dependencies = [
  "miden-hir-transform",
  "rustc-hash",
  "smallvec",
+ "thiserror",
 ]
 
 [[package]]

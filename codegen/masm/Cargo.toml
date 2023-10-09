@@ -12,6 +12,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+thiserror.workspace = true
 cranelift-entity.workspace = true
 intrusive-collections.workspace = true
 miden-diagnostics.workspace = true
