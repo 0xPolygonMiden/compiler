@@ -75,7 +75,6 @@ pub enum Instruction {
     Ret(Ret),
     RetImm(RetImm),
     Load(LoadOp),
-    MemCpy(MemCpy),
     PrimOp(PrimOp),
     PrimOpImm(PrimOpImm),
     Test(Test),
@@ -96,7 +95,6 @@ impl Instruction {
             | Self::Ret(Ret { ref op, .. })
             | Self::RetImm(RetImm { ref op, .. })
             | Self::Load(LoadOp { ref op, .. })
-            | Self::MemCpy(MemCpy { ref op, .. })
             | Self::PrimOp(PrimOp { ref op, .. })
             | Self::PrimOpImm(PrimOpImm { ref op, .. })
             | Self::Test(Test { ref op, .. })
@@ -141,7 +139,6 @@ impl Instruction {
             Self::Switch(Switch { ref arg, .. }) => core::slice::from_ref(arg),
             Self::Ret(Ret { ref args, .. }) => args.as_slice(pool),
             Self::Load(LoadOp { ref addr, .. }) => core::slice::from_ref(addr),
-            Self::MemCpy(MemCpy { ref args, .. }) => args.as_slice(),
             Self::PrimOp(PrimOp { ref args, .. }) => args.as_slice(pool),
             Self::PrimOpImm(PrimOpImm { ref args, .. }) => args.as_slice(pool),
             Self::Test(Test { ref arg, .. }) => core::slice::from_ref(arg),
@@ -160,7 +157,6 @@ impl Instruction {
             Self::Switch(Switch { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::Ret(Ret { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::Load(LoadOp { ref mut addr, .. }) => core::slice::from_mut(addr),
-            Self::MemCpy(MemCpy { ref mut args, .. }) => args.as_mut_slice(),
             Self::PrimOp(PrimOp { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::PrimOpImm(PrimOpImm { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::Test(Test { ref mut arg, .. }) => core::slice::from_mut(arg),
@@ -833,13 +829,6 @@ pub struct Test {
 pub struct LoadOp {
     pub op: Opcode,
     pub addr: Value,
-    pub ty: Type,
-}
-
-#[derive(Debug, Clone)]
-pub struct MemCpy {
-    pub op: Opcode,
-    pub args: [Value; 3],
     pub ty: Type,
 }
 

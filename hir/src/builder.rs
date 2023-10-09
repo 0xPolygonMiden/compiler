@@ -775,21 +775,34 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             "expected value to be a {}, got {}",
             pointee_ty, value_ty
         );
-        self.Binary(Opcode::Store, Type::Unit, ptr, value, span).0
+        let mut vlist = ValueList::default();
+        {
+            let dfg = self.data_flow_graph_mut();
+            vlist.extend([ptr, value], &mut dfg.value_lists);
+        }
+        self.PrimOp(Opcode::Store, Type::Unit, vlist, span).0
     }
 
-    /// Copies `count` values of type `ty` from the memory at address `src`, to the
-    /// memory at address `dst`.
-    fn memcpy(self, src: Value, dst: Value, count: Value, ty: Type, span: SourceSpan) -> Inst {
-        require_pointer!(self, src);
-        require_pointer!(self, dst);
+    /// Copies `count` values from the memory at address `src`, to the memory at address `dst`.
+    ///
+    /// The unit size for `count` is determined by the `src` pointer type, i.e. a pointer to u8
+    /// will copy one `count` bytes, a pointer to u16 will copy `count * 2` bytes, and so on.
+    ///
+    /// NOTE: The source and destination pointer types must match, or this function will panic.
+    fn memcpy(mut self, src: Value, dst: Value, count: Value, span: SourceSpan) -> Inst {
         require_integer!(self, count);
-        let data = Instruction::MemCpy(MemCpy {
-            op: Opcode::MemCpy,
-            args: [src, dst, count],
-            ty,
-        });
-        self.build(data, Type::Unit, span).0
+        let src_ty = require_pointer!(self, src);
+        let dst_ty = require_pointer!(self, dst);
+        assert_eq!(
+            src_ty, dst_ty,
+            "the source and destination pointers must be the same type"
+        );
+        let mut vlist = ValueList::default();
+        {
+            let dfg = self.data_flow_graph_mut();
+            vlist.extend([src, dst, count], &mut dfg.value_lists);
+        }
+        self.PrimOp(Opcode::MemCpy, Type::Unit, vlist, span).0
     }
 
     /// This is a cast operation that permits performing arithmetic on pointer values
