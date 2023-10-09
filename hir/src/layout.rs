@@ -104,6 +104,11 @@ impl<K: EntityRef, V: Clone> ArenaMap<K, V> {
         }
     }
 
+    /// Returns true if this [ArenaMap] is empty
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty()
+    }
+
     /// Returns the total number of actively linked items in the map
     pub fn len(&self) -> usize {
         self.keys.iter().filter(|item| item.is_some()).count()
@@ -145,7 +150,7 @@ impl<K: EntityRef, V: Clone> ArenaMap<K, V> {
 
     /// Returns a raw pointer to the value associated with the given key
     ///
-    /// # SAFETY
+    /// # Safety
     ///
     /// This function is unsafe, since the resulting pointer could outlive the arena itself,
     /// or be used to incorrectly alias a value for which a mutable reference exists.
@@ -163,7 +168,7 @@ impl<K: EntityRef, V: Clone> ArenaMap<K, V> {
         self.keys[key.index()].take()
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = Option<NonNull<V>>> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = Option<NonNull<V>>> + '_ {
         self.keys.iter().copied()
     }
 
@@ -255,6 +260,11 @@ impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
             map: ArenaMap::new(),
             list: LinkedList::new(LayoutAdapter::new()),
         }
+    }
+
+    /// Returns true if this [OrderedArenaMap] is empty
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
     }
 
     /// Returns the total number of actively linked items in the map
@@ -383,12 +393,12 @@ impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
     }
 
     /// Returns an iterator over the keys in the map, in order (front to back)
-    pub fn keys<'a>(&'a self) -> impl Iterator<Item = K> + 'a {
+    pub fn keys(&self) -> impl Iterator<Item = K> + '_ {
         self.list.iter().map(|item| item.key())
     }
 
     /// Returns an iterator over the values in the map, in order (front to back)
-    pub fn values<'a>(&'a self) -> impl Iterator<Item = &'a V> {
+    pub fn values(&self) -> impl Iterator<Item = &V> {
         self.list.iter().map(|item| item.value())
     }
 

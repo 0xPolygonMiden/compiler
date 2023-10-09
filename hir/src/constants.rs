@@ -120,6 +120,11 @@ pub struct ConstantPool {
     cache: BTreeMap<ConstantData, Constant>,
 }
 impl ConstantPool {
+    /// Returns true if the pool is empty
+    pub fn is_empty(&self) -> bool {
+        self.constants.is_empty()
+    }
+
     /// Returns the number of constants in this pool
     pub fn len(&self) -> usize {
         self.constants.len()

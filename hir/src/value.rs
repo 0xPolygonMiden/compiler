@@ -57,7 +57,7 @@ impl ValueData {
     ///
     /// NOTE: This function will panic if the value is not a block parameter
     ///
-    /// # SAFETY
+    /// # Safety
     ///
     /// This function is marked unsafe because changing the block associated
     /// with a value could cause unexpected results if the other pieces of the

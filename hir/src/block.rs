@@ -34,7 +34,7 @@ impl Clone for BlockData {
     fn clone(&self) -> Self {
         Self {
             link: LinkedListLink::default(),
-            params: self.params.clone(),
+            params: self.params,
             insts: LinkedList::new(InstAdapter::new()),
         }
     }
@@ -58,7 +58,7 @@ impl BlockData {
         self.params.as_slice(pool)
     }
 
-    pub fn insts<'f>(&'f self) -> impl Iterator<Item = Inst> + 'f {
+    pub fn insts(&self) -> impl Iterator<Item = Inst> + '_ {
         Insts {
             cursor: self.insts.front(),
         }

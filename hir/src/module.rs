@@ -674,7 +674,7 @@ impl<'m> ModuleFunctionBuilder<'m> {
         module: M,
         function: F,
         signature: Signature,
-    ) -> Result<FunctionIdent, ()>
+    ) -> Result<FunctionIdent, SymbolConflictError>
     where
         M: Into<Ident>,
         F: Into<Ident>,

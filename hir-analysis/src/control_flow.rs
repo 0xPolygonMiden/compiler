@@ -189,7 +189,7 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
     use miden_hir::{Br, CondBr, Switch};
 
     if let Some(inst) = dfg.last_inst(block) {
-        match &*dfg[inst] {
+        match &dfg[inst] {
             Instruction::Br(Br {
                 destination: dest, ..
             }) => {

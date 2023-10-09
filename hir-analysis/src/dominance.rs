@@ -566,7 +566,7 @@ impl<'a> Iterator for ChildIter<'a> {
 /// Consider the following example:
 ///
 ///
-/// ```ignore
+/// ```text,ignore
 /// block0(v0):
 ///   v1 = ...
 ///   cond_br v0, block1, block2
@@ -636,7 +636,9 @@ impl DominanceFrontier {
                 let mut i = i;
                 while i != idom {
                     dfs[p].insert(id);
-                    let Some(idom_p) = domtree.idom(p) else { break; };
+                    let Some(idom_p) = domtree.idom(p) else {
+                        break;
+                    };
                     i = idom_p;
                     p = function.dfg.inst_block(idom_p).unwrap();
                 }

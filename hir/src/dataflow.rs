@@ -70,7 +70,7 @@ impl DataFlowGraph {
         module: Ident,
         name: Ident,
         signature: Signature,
-    ) -> Result<FunctionIdent, ()> {
+    ) -> Result<FunctionIdent, SymbolConflictError> {
         use std::collections::hash_map::Entry;
 
         let id = FunctionIdent {
@@ -84,7 +84,7 @@ impl DataFlowGraph {
             }
             Entry::Occupied(entry) => {
                 if entry.get().signature != signature {
-                    Err(())
+                    Err(SymbolConflictError(id))
                 } else {
                     Ok(id)
                 }
@@ -467,7 +467,7 @@ impl DataFlowGraph {
         self.insts[inst].analyze_branch(&self.value_lists)
     }
 
-    pub fn blocks<'f>(&'f self) -> impl Iterator<Item = (Block, &'f BlockData)> {
+    pub fn blocks(&self) -> impl Iterator<Item = (Block, &BlockData)> {
         Blocks {
             cursor: self.blocks.cursor(),
         }
@@ -513,7 +513,7 @@ impl DataFlowGraph {
         self.blocks[block].params.as_slice(&self.value_lists)
     }
 
-    pub fn block_insts<'f>(&'f self, block: Block) -> impl Iterator<Item = Inst> + 'f {
+    pub fn block_insts(&self, block: Block) -> impl Iterator<Item = Inst> + '_ {
         self.blocks[block].insts()
     }
 
@@ -605,7 +605,7 @@ impl DataFlowGraph {
     }
 }
 impl Index<Inst> for DataFlowGraph {
-    type Output = Span<Instruction>;
+    type Output = Instruction;
 
     fn index(&self, inst: Inst) -> &Self::Output {
         &self.insts[inst]
