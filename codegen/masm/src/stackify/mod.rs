@@ -1,4 +1,5 @@
 mod dependency_graph;
+pub(crate) mod emit;
 mod operand_stack;
 mod pass;
 mod treegraph;
