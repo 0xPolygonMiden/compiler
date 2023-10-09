@@ -4,7 +4,7 @@ use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, Unsaf
 
 intrusive_adapter!(pub DataSegmentAdapter = UnsafeRef<DataSegment>: DataSegment { link: LinkedListLink });
 
-use super::{ConstantData, Offset};
+use super::{Alignable, ConstantData, Offset};
 
 /// This error is raised when attempting to declare a [DataSegment]
 /// that in some way conflicts with previously declared data segments.

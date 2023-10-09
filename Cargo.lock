@@ -627,6 +627,9 @@ dependencies = [
 [[package]]
 name = "miden-hir-type"
 version = "0.1.0"
+dependencies = [
+ "smallvec",
+]
 
 [[package]]
 name = "midenc"
