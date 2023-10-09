@@ -663,3 +663,101 @@ where
         _ => unreachable!(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use miden_hir::{
+        testing::{self, TestContext},
+        ModuleBuilder,
+    };
+    use miden_hir_analysis::FunctionAnalysis;
+
+    use crate::{RewritePass, Treeify};
+
+    /// Run the treeify pass on the IR of the [testing::sum_matrix] function.
+    ///
+    /// This function corresponds forms a directed, cyclic graph; containing a loop
+    /// two levels deep, with control flow paths that join multiple predecessors.
+    /// It has no critical edges, as if we had already run the [SplitCriticalEdges]
+    /// pass, and doesn't contain any superfluous blocks:
+    ///
+    /// We expect this pass to identify that the exit block, `blk0` has multiple predecessors
+    /// and is not a loop header, and thus a candidate for treeification. We expect `blk0`
+    /// to be duplicated, so that each of it's predecessors, `entry` and `blk2` respectively,
+    /// have their own copies of the block. The terminators of those blocks should be
+    /// updated accordingly. Additionally, because the new versions of `blk0` have only
+    /// a single predecessor, the block arguments previously needed, should be removed
+    /// and the `ret` instruction should directly reference the return value originally
+    /// provided via `entry`/`blk2`.
+    #[test]
+    fn treeify_simple_test() {
+        let context = TestContext::default();
+
+        // Define the 'test' module
+        let mut builder = ModuleBuilder::new("test");
+        let id = testing::sum_matrix(&mut builder, &context.diagnostics);
+        let mut module = builder.build();
+        let mut function = module
+            .cursor_mut_at(id.function)
+            .remove()
+            .expect("undefined function");
+
+        let mut original = String::with_capacity(1024);
+        miden_hir::write_function(&mut original, &function).expect("formatting failed");
+
+        let mut analysis = FunctionAnalysis::new(&function);
+        let mut pass = Treeify;
+        pass.run(&mut function, &mut analysis)
+            .expect("treeification failed");
+
+        let expected = "pub fn sum_matrix(*mut u32, u32, u32) -> u32 {
+block0(v0: *mut u32, v1: u32, v2: u32):
+    v10 = const.u32 0  : u32
+    v11 = ptrtoint v0  : u32
+    v12 = neq v11, 0  : i1
+    condbr v12, block2, block7
+
+block7:
+    ret v10
+
+block2:
+    v13 = const.u32 0  : u32
+    v14 = const.u32 0  : u32
+    v15 = mul v2, 4  : u32
+    br block3(v10, v13, v14)
+
+block3(v4: u32, v5: u32, v6: u32):
+    v16 = lt v5, v1  : i1
+    v17 = mul v5, v15  : u32
+    condbr v16, block4(v4, v5, v6), block8
+
+block8:
+    ret v10
+
+block4(v7: u32, v8: u32, v9: u32):
+    v18 = lt v9, v2  : i1
+    condbr v18, block5, block6
+
+block5:
+    v19 = mul v9, 4  : u32
+    v20 = add v17, v19  : u32
+    v21 = add v11, v20  : u32
+    v22 = inttoptr v21  : *mut u32
+    v23 = load v22  : u32
+    v24 = add v7, v23  : u32
+    v25 = incr v9  : u32
+    br block4(v24, v8, v25)
+
+block6:
+    v26 = incr v8  : u32
+    br block3(v7, v26, v9)
+}
+";
+
+        let mut inlined = String::with_capacity(1024);
+        miden_hir::write_function(&mut inlined, &function).expect("formatting failed");
+
+        assert_changed!(original, inlined);
+        assert_formatter_output!(expected, inlined.as_str());
+    }
+}
