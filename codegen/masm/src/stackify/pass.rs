@@ -1,17 +1,18 @@
 use std::{collections::VecDeque, fmt, rc::Rc};
 
 use cranelift_entity::packed_option::ReservedValue;
-use miden_hir::{
-    self as hir, BranchInfo, Felt, FieldElement, Immediate, Instruction, ProgramPoint, Stack,
-};
-use miden_hir_analysis::{ControlFlowGraph, FunctionAnalysis, LivenessAnalysis, LoopAnalysis};
+use miden_hir::{self as hir, assert_matches, BranchInfo, Immediate, Instruction, ProgramPoint};
+use miden_hir_analysis::{FunctionAnalysis, LivenessAnalysis, LoopAnalysis};
 use miden_hir_pass::Pass;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use crate::masm::{self, Op};
 
-use super::*;
+use super::{
+    emit::{InstOpEmitter, OpEmitter},
+    *,
+};
 
 /// This pass transforms Miden IR to MASM IR, which is a representation of Miden
 /// Assembly we use a subset of in Miden IR already for inline assembly, but is
@@ -294,13 +295,13 @@ impl<'a> Stackify<'a> {
 }
 impl<'p> Pass for Stackify<'p> {
     type Input<'a> = &'a hir::Function;
-    type Output<'a> = masm::Function;
+    type Output<'a> = Box<masm::Function>;
     type Error = anyhow::Error;
 
     fn run<'a>(&mut self, f: Self::Input<'a>) -> Result<Self::Output<'a>, Self::Error> {
         self.analysis.require_all()?;
 
-        let mut f_prime = masm::Function::new(f.id, f.signature.clone());
+        let mut f_prime = Box::new(masm::Function::new(f.id, f.signature.clone()));
 
         // Start at the function entry
         {
@@ -313,7 +314,8 @@ impl<'p> Pass for Stackify<'p> {
 
             let mut stack = OperandStack::default();
             for arg in f.dfg.block_args(entry).iter().rev().copied() {
-                stack.push(arg.into());
+                let ty = f.dfg.value_type(arg).clone();
+                stack.push(TypedValue { value: arg, ty });
             }
 
             emitter.emit(entry, entry_prime, stack);
@@ -383,7 +385,7 @@ impl<'a> MasmEmitter<'a> {
             liveness,
             controlling: None,
             emitting: Default::default(),
-            current_block: masm::BlockId::from_u32(u32::MAX),
+            current_block: masm::BlockId::reserved_value(),
             cached: Default::default(),
             visited: Default::default(),
         }
@@ -490,6 +492,8 @@ impl<'a> MasmEmitter<'a> {
         mut stack: OperandStack,
         is_first_visit: bool,
     ) {
+        let mut emit_schedule = schedule.to_vec();
+        emit_schedule.reverse();
         // In reverse topological order, visit each node of the treegraph..
         //
         // Nodes in the schedule appear in program order when no other constraints
@@ -501,7 +505,6 @@ impl<'a> MasmEmitter<'a> {
                 depgraph,
                 treegraph,
                 &mut stack,
-                0,
                 is_first_visit,
                 None,
             );
@@ -568,7 +571,6 @@ impl<'a> MasmEmitter<'a> {
         depgraph: &DependencyGraph,
         treegraph: &TreeGraph,
         stack: &mut OperandStack,
-        stack_index: usize,
         is_first_visit: bool,
         dependent: Option<Node>,
     ) {
@@ -595,7 +597,6 @@ impl<'a> MasmEmitter<'a> {
                     depgraph,
                     treegraph,
                     stack,
-                    stack_index,
                     is_first_visit,
                     dependent,
                     inst,
@@ -623,14 +624,7 @@ impl<'a> MasmEmitter<'a> {
             Node::Stack(value) => {
                 if let Some(dependent) = dependent {
                     self.emit_stack_dependency(
-                        node,
-                        schedule,
-                        depgraph,
-                        treegraph,
-                        stack,
-                        stack_index,
-                        dependent,
-                        value,
+                        node, schedule, depgraph, treegraph, stack, dependent, value,
                     );
                 } else {
                     let pos = stack
@@ -641,9 +635,9 @@ impl<'a> MasmEmitter<'a> {
                         &value,
                         ProgramPoint::Inst(self.f.dfg.last_inst(self.emitting).unwrap()),
                     );
-                    let block = self.current_block();
+                    let mut emitter = self.emitter(stack);
                     if num_dependents == 0 && !is_live_after_block {
-                        drop_operand_at_position(pos, stack, block);
+                        emitter.drop_operand_at_position(pos);
                     }
                 }
             }
@@ -663,20 +657,19 @@ impl<'a> MasmEmitter<'a> {
         depgraph: &DependencyGraph,
         treegraph: &TreeGraph,
         stack: &mut OperandStack,
-        stack_index: usize,
         dependent: Node,
         value: hir::Value,
     ) {
-        let pos = stack
-            .find(&value)
-            .expect("value not found on operand stack");
-        let num_dependents = treegraph.num_dependents(&node);
         // We want to know if `value` is live at the end of the current block,
         // because if so, we must copy it for use within this block.
         let is_live_after_block = self.liveness.is_live_after(
             &value,
             ProgramPoint::Inst(self.f.dfg.last_inst(self.emitting).unwrap()),
         );
+        let pos = stack
+            .find(&value)
+            .expect("value not found on operand stack");
+        let num_dependents = treegraph.num_dependents(&node);
         // This is the last use of `value` if:
         //
         // 1. There is only a single dependent in this block, and `value` is not
@@ -702,7 +695,6 @@ impl<'a> MasmEmitter<'a> {
                 dependent_tree,
                 node,
                 node,
-                stack_index,
                 treegraph,
                 depgraph,
                 self.f,
@@ -719,14 +711,14 @@ impl<'a> MasmEmitter<'a> {
             let ix = self.f.dfg.inst(dependent_inst);
             ix.is_binary() && ix.is_commutative()
         };
-        let block = self.current_block();
+        let mut emitter = self.emitter(stack);
         if is_last_dependent {
             // This is the last usage, so move, rather than copy the value
-            move_operand_to_position(pos, stack_index, is_operand_order_flexible, stack, block);
+            emitter.move_operand_to_position(pos, 0, is_operand_order_flexible);
         } else {
             // There are more usages of this value to come, so copy it to leave
             // it on the operand stack for the next usage
-            copy_operand_to_position(pos, stack_index, is_operand_order_flexible, stack, block);
+            emitter.copy_operand_to_position(pos, 0, is_operand_order_flexible);
         }
     }
 
@@ -743,7 +735,6 @@ impl<'a> MasmEmitter<'a> {
         depgraph: &DependencyGraph,
         treegraph: &TreeGraph,
         stack: &mut OperandStack,
-        stack_index: usize,
         is_first_visit: bool,
         dependent: Node,
         inst: hir::Inst,
@@ -772,7 +763,23 @@ impl<'a> MasmEmitter<'a> {
         // we simply need to copy/move the values we need into position on
         // the stack
         let dependent_tree = treegraph.root(&dependent);
+        let dependency = depgraph.edge(depgraph.edge_id(&dependent, &node));
+        debug_assert_eq!(dependency.dependent, dependent);
+
         if treegraph.is_member_of(&node, &dependent_tree) {
+            // We still have to check if the desired value(s) are live after this
+            // block, and if so, duplicate them.
+            //
+            // Determine which values we need copies of, and how many
+            let mut copies = SmallVec::<[(hir::Value, u32); 2]>::default();
+            let current_pp = ProgramPoint::Inst(self.f.dfg.last_inst(self.emitting).unwrap());
+            for used in dependency.used().iter() {
+                let is_live_after_block = self.liveness.is_live_after(&used.value, current_pp);
+                if is_live_after_block {
+                    copies.push((used.value, used.count));
+                }
+            }
+            // Emit the instruction
             self.emit_inst(
                 inst,
                 schedule,
@@ -781,10 +788,33 @@ impl<'a> MasmEmitter<'a> {
                 stack,
                 is_first_visit,
                 node,
-            )
+            );
+            // Handle copies before we proceed
+            let results = self.f.dfg.inst_results(inst);
+            let mut stack_index = 0u8;
+            let mut num_results = results.len();
+            let mut emitter = self.emitter(stack);
+            for result in results.iter().rev() {
+                if let Some((_, count)) = copies.iter().find(|(v, _)| v == result) {
+                    let count = *count as usize;
+                    match num_results {
+                        1 => emitter.dup(stack_index),
+                        n => {
+                            for _ in 0..count {
+                                emitter.dup(stack_index);
+                                emitter.movdn(n as u8);
+                            }
+                        }
+                    }
+                }
+                if !dependency.is_used(result) {
+                    num_results -= 1;
+                    emitter.drop_operand_at_position(stack_index as usize);
+                } else {
+                    stack_index += 1;
+                }
+            }
         } else {
-            let dependency = depgraph.edge(depgraph.edge_id(&dependent, &node));
-            debug_assert_eq!(dependency.dependent, dependent);
             // If `inst` is a root in the treegraph, then `num_dependents`
             // is equal to the number of dependencies on `inst`, as it has no
             // predecessors (dependents) in its own tree.
@@ -835,7 +865,6 @@ impl<'a> MasmEmitter<'a> {
                     dependent_tree,
                     node,
                     inst_tree,
-                    stack_index,
                     treegraph,
                     depgraph,
                     self.f,
@@ -853,7 +882,7 @@ impl<'a> MasmEmitter<'a> {
                 let ix = self.f.dfg.inst(dependent.as_instruction().unwrap());
                 ix.is_binary() && ix.is_commutative()
             };
-            let block = self.current_block();
+            let mut emitter = self.emitter(stack);
             match inst_results.len() {
                 // This case represents situations in which control/data dependencies on
                 // an instruction are introduced, in order to affect the order in which code
@@ -862,25 +891,14 @@ impl<'a> MasmEmitter<'a> {
                 // Currently, instructions only produce 1 or no results
                 1 => {
                     let operand = inst_results[0];
-                    let pos = stack
+                    let pos = emitter
+                        .stack()
                         .find(&operand)
                         .expect("could not find value on operand stack");
                     if is_last_dependent {
-                        move_operand_to_position(
-                            pos,
-                            stack_index,
-                            is_operand_order_flexible,
-                            stack,
-                            block,
-                        );
+                        emitter.move_operand_to_position(pos, 0, is_operand_order_flexible);
                     } else {
-                        copy_operand_to_position(
-                            pos,
-                            stack_index,
-                            is_operand_order_flexible,
-                            stack,
-                            block,
-                        );
+                        emitter.copy_operand_to_position(pos, 0, is_operand_order_flexible);
                     }
                 }
                 // This is intended to handle instructions with multiple results in the future,
@@ -889,25 +907,14 @@ impl<'a> MasmEmitter<'a> {
                     // Place values on the stack in LIFO order
                     for used in dependency.used().iter().rev() {
                         assert!(inst_results.contains(&used.value));
-                        let pos = stack
+                        let pos = emitter
+                            .stack()
                             .find(&used.value)
                             .expect("could not find value on operand stack");
                         if is_last_dependent {
-                            move_operand_to_position(
-                                pos,
-                                stack_index,
-                                is_operand_order_flexible,
-                                stack,
-                                block,
-                            );
+                            emitter.move_operand_to_position(pos, 0, is_operand_order_flexible);
                         } else {
-                            copy_operand_to_position(
-                                pos,
-                                stack_index,
-                                is_operand_order_flexible,
-                                stack,
-                                block,
-                            );
+                            emitter.copy_operand_to_position(pos, 0, is_operand_order_flexible);
                         }
                     }
                 }
@@ -940,14 +947,13 @@ impl<'a> MasmEmitter<'a> {
         // handled when emitting the instruction itself.
         let dependencies =
             SmallVec::<[Node; 2]>::from_iter(depgraph.successors(&node).map(|d| d.dependency));
-        for (stack_index, dependency) in dependencies.into_iter().rev().enumerate() {
+        for dependency in dependencies.into_iter().rev() {
             self.emit_node(
                 dependency,
                 schedule,
                 depgraph,
                 treegraph,
                 stack,
-                stack_index,
                 is_first_visit,
                 Some(node),
             );
@@ -961,18 +967,15 @@ impl<'a> MasmEmitter<'a> {
         match self.f.dfg.inst(inst) {
             Instruction::RetImm(hir::RetImm { arg, .. }) => {
                 let level = self.controlling_loop_level();
-                let block = self.current_block();
+                let mut emitter = self.emitter(stack);
                 // Upon return, the operand stack should only contain the function result(s),
                 // so empty the stack before proceeding.
-                truncate_stack(0, stack, block);
+                emitter.truncate_stack(0);
                 // Push the result on the stack
-                // TODO(layout)
-                block.push(immediate_to_push_op(*arg));
-                stack.push((*arg).into());
+                emitter.literal(*arg);
                 // If we're in a loop, push N zeroes on the stack, where N is the current loop depth
                 for _ in 0..level {
-                    block.push(Op::Push(Felt::ZERO));
-                    stack.push(false.into());
+                    emitter.literal(false);
                 }
             }
             Instruction::Ret(hir::Ret { args, .. }) => {
@@ -981,29 +984,28 @@ impl<'a> MasmEmitter<'a> {
                     assert_eq!(args.len(), 1);
                     args[0]
                 };
-                assert_eq!(
-                    stack.peek(),
-                    Some(Operand::Value(arg)),
-                    "expected {arg} on top of the stack here"
-                );
-                let level = self.controlling_loop_level();
-                let block = self.current_block();
-                // Similar to above, we need to ensure that only the return value is on the operand
-                // stack on return. However, we can't use the same approach as above to empty the stack
-                // since the return value is also on the stack. Instead, we move the return value to the
-                // end of the stack, and then
-                let stack_size = stack.len();
-                if stack_size > 1 {
-                    let extra = stack_size - 1;
-                    // Move our return value to the back of the stack
-                    block.push(Op::Swap(extra.try_into().expect("too many items on stack")));
-                    stack.swap(extra);
-                    truncate_stack(1, stack, block);
+                let returning = stack
+                    .peek()
+                    .map(|o| o.value())
+                    .expect("operand stack is empty");
+                match returning {
+                    OperandType::Value(TypedValue { value, .. }) => {
+                        assert_eq!(*value, arg, "expected {arg} on top of the stack here");
+                    }
+                    operand => {
+                        panic!(
+                            "expected operand for {arg} on top of the stack here, got {operand:#?}"
+                        );
+                    }
                 }
+                let level = self.controlling_loop_level();
+                let mut emitter = self.emitter(stack);
+                // Upon return, the operand stack should only contain the function result(s),
+                // so empty the stack, except for the return value, before proceeding.
+                emitter.truncate_stack(1);
                 // If we're in a loop, push N zeroes on the stack, where N is the current loop depth
                 for _ in 0..level {
-                    block.push(Op::Push(Felt::ZERO));
-                    stack.push(false.into());
+                    emitter.literal(false);
                 }
             }
             // When we hit an unconditional branch instruction for the first time, one of the following
@@ -1055,30 +1057,29 @@ impl<'a> MasmEmitter<'a> {
                 ref args,
                 ..
             }) if is_first_visit => {
+                let destination = *destination;
                 {
-                    let block = &mut self.f_prime.blocks[self.current_block];
-                    let args = args.as_slice(&self.f.dfg.value_lists);
-                    drop_unused_operands_at(
-                        ProgramPoint::Block(*destination),
-                        args,
-                        stack,
-                        block,
-                        self.liveness,
-                    );
-                    prepare_stack_arguments(inst, args, stack, block, self.liveness);
+                    let args = args
+                        .as_slice(&self.f.dfg.value_lists)
+                        .iter()
+                        .copied()
+                        .collect::<SmallVec<[hir::Value; 2]>>();
+                    let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
+                    drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
+                    prepare_stack_arguments(inst, &args, &mut emitter, self.liveness);
                 }
                 if let Some(_current_loop_id) = self.loops.is_loop_header(self.emitting) {
                     // We're in a loop header, emit the target block inside a while loop
                     let body_blk = self.f_prime.create_block();
                     let block = self.current_block();
                     {
-                        block.push(Op::Push(Felt::ONE));
+                        block.push(Op::PushU8(1));
                         block.push(Op::While(body_blk));
                     }
-                    self.emit(*destination, body_blk, stack.clone());
+                    self.emit(destination, body_blk, stack.clone());
                 } else {
                     // We're in a normal block, emit the target block inline
-                    self.emit(*destination, self.current_block, stack.clone());
+                    self.emit(destination, self.current_block, stack.clone());
                 }
             }
             // When we reach an unconditional branch a second time, it is because a first-visit branch instruction
@@ -1096,37 +1097,29 @@ impl<'a> MasmEmitter<'a> {
             // loop. In such cases we emit a `push.1` to continue the target loop, but we must also emit a `push.0`
             // for each loop level between the level of the controlling block, and that of the target block, to break
             // out of each intermediate loop.
-            Instruction::Br(hir::Br {
-                destination,
-                ref args,
-                ..
-            }) => {
+            Instruction::Br(hir::Br { ref args, .. }) => {
                 // We should only be emitting code for a block more than once if that block
                 // is a loop header. All other blocks should only be visited a single time.
                 assert!(
                     self.loops.is_loop_header(self.emitting).is_some(),
                     "unexpected cycle"
                 );
-                let block = &mut self.f_prime.blocks[self.current_block];
-                let args = args.as_slice(&self.f.dfg.value_lists);
-                drop_unused_operands_at(
-                    ProgramPoint::Block(*destination),
-                    args,
-                    stack,
-                    block,
-                    self.liveness,
-                );
-                prepare_stack_arguments(inst, args, stack, block, self.liveness);
+                let args = args
+                    .as_slice(&self.f.dfg.value_lists)
+                    .iter()
+                    .copied()
+                    .collect::<SmallVec<[hir::Value; 2]>>();
+                let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
+                drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
+                prepare_stack_arguments(inst, &args, &mut emitter, self.liveness);
                 let controlling = self
                     .controlling
                     .expect("expected controlling block to be set");
                 let current_level = self.loops.loop_level(controlling).level();
                 let target_level = self.loops.loop_level(self.emitting).level();
-                block.push(Op::Push(Felt::ONE));
-                stack.push(true.into());
+                emitter.literal(true);
                 for _ in 0..(current_level - target_level) {
-                    block.push(Op::Push(Felt::ZERO));
-                    stack.push(false.into());
+                    emitter.literal(false);
                 }
             }
             // When visiting a conditional branch for the first time, the process is much the same
@@ -1160,61 +1153,60 @@ impl<'a> MasmEmitter<'a> {
             }) if is_first_visit => {
                 let then_blk = self.f_prime.create_block();
                 let else_blk = self.f_prime.create_block();
-                if let Some(_current_loop_id) = self.loops.is_loop_header(self.emitting) {
+                if let Some(current_loop_id) = self.loops.is_loop_header(self.emitting) {
                     // We need to emit a loop here
                     let body_blk = self.f_prime.create_block();
                     {
                         let block = self.current_block();
                         // We always unconditionally enter the loop the first time
-                        block.push(Op::Push(Felt::ONE));
-                        block.push(Op::While(body_blk));
+                        block.extend_from_slice(&[Op::PushU8(1), Op::While(body_blk)]);
                         let block = self.block(body_blk);
                         block.push(Op::If(then_blk, else_blk));
                     }
                     // The code we're going to emit for handling block arguments and cleaning
                     // up the stack happens after the loop is entered and the conditional has
                     // been evaluated, so ensure the stack state reflects this
-                    stack.pop();
+                    stack.pop().expect("operand stack is empty");
                     // if.true
                     let mut then_stack = stack.clone();
                     {
-                        let block = &mut self.f_prime.blocks[then_blk];
-                        let then_args = then_args.as_slice(&self.f.dfg.value_lists);
-                        drop_unused_operands_at(
-                            ProgramPoint::Block(*then_dest),
-                            then_args,
-                            &mut then_stack,
-                            block,
-                            self.liveness,
-                        );
-                        prepare_stack_arguments(
-                            inst,
-                            then_args,
-                            &mut then_stack,
-                            block,
-                            self.liveness,
-                        );
+                        let then_args = then_args
+                            .as_slice(&self.f.dfg.value_lists)
+                            .iter()
+                            .copied()
+                            .collect::<SmallVec<[hir::Value; 2]>>();
+                        let mut emitter = OpEmitter::new(self.f_prime, then_blk, &mut then_stack);
+                        // Drop unused operands only if this edge is exiting the loop we're in
+                        if !self.loops.is_in_loop(*then_dest, current_loop_id) {
+                            drop_unused_operands_after(
+                                self.emitting,
+                                &then_args,
+                                &mut emitter,
+                                self.liveness,
+                            );
+                        }
+                        prepare_stack_arguments(inst, &then_args, &mut emitter, self.liveness);
                     }
                     self.emit(*then_dest, then_blk, then_stack);
                     // if.false
                     let mut else_stack = stack.clone();
                     {
-                        let block = &mut self.f_prime.blocks[else_blk];
-                        let else_args = else_args.as_slice(&self.f.dfg.value_lists);
-                        drop_unused_operands_at(
-                            ProgramPoint::Block(*else_dest),
-                            else_args,
-                            &mut else_stack,
-                            block,
-                            self.liveness,
-                        );
-                        prepare_stack_arguments(
-                            inst,
-                            else_args,
-                            &mut else_stack,
-                            block,
-                            self.liveness,
-                        );
+                        let else_args = else_args
+                            .as_slice(&self.f.dfg.value_lists)
+                            .iter()
+                            .copied()
+                            .collect::<SmallVec<[hir::Value; 2]>>();
+                        let mut emitter = OpEmitter::new(self.f_prime, else_blk, &mut else_stack);
+                        // Drop unused operands only if this edge is exiting the loop we're in
+                        if !self.loops.is_in_loop(*else_dest, current_loop_id) {
+                            drop_unused_operands_after(
+                                self.emitting,
+                                &else_args,
+                                &mut emitter,
+                                self.liveness,
+                            );
+                        }
+                        prepare_stack_arguments(inst, &else_args, &mut emitter, self.liveness);
                     }
                     self.emit(*else_dest, else_blk, else_stack);
                 } else {
@@ -1223,47 +1215,41 @@ impl<'a> MasmEmitter<'a> {
                         let block = self.current_block();
                         block.push(Op::If(then_blk, else_blk));
                     }
-                    stack.pop();
+                    stack.pop().expect("operand stack is empty");
                     // if.true
                     let mut then_stack = stack.clone();
                     {
-                        let block = &mut self.f_prime.blocks[then_blk];
-                        let then_args = then_args.as_slice(&self.f.dfg.value_lists);
-                        drop_unused_operands_at(
-                            ProgramPoint::Block(*then_dest),
-                            then_args,
-                            &mut then_stack,
-                            block,
+                        let then_args = then_args
+                            .as_slice(&self.f.dfg.value_lists)
+                            .iter()
+                            .copied()
+                            .collect::<SmallVec<[hir::Value; 2]>>();
+                        let mut emitter = OpEmitter::new(self.f_prime, then_blk, &mut then_stack);
+                        drop_unused_operands_after(
+                            self.emitting,
+                            &then_args,
+                            &mut emitter,
                             self.liveness,
                         );
-                        prepare_stack_arguments(
-                            inst,
-                            then_args,
-                            &mut then_stack,
-                            block,
-                            self.liveness,
-                        );
+                        prepare_stack_arguments(inst, &then_args, &mut emitter, self.liveness);
                     }
                     self.emit(*then_dest, then_blk, then_stack);
                     // if.false
                     let mut else_stack = stack.clone();
                     {
-                        let block = &mut self.f_prime.blocks[else_blk];
-                        let else_args = else_args.as_slice(&self.f.dfg.value_lists);
-                        drop_unused_operands_at(
-                            ProgramPoint::Block(*else_dest),
-                            else_args,
-                            &mut else_stack,
-                            block,
+                        let else_args = else_args
+                            .as_slice(&self.f.dfg.value_lists)
+                            .iter()
+                            .copied()
+                            .collect::<SmallVec<[hir::Value; 2]>>();
+                        let mut emitter = OpEmitter::new(self.f_prime, else_blk, &mut else_stack);
+                        drop_unused_operands_after(
+                            self.emitting,
+                            &else_args,
+                            &mut emitter,
                             self.liveness,
                         );
-                        prepare_stack_arguments(
-                            inst,
-                            else_args,
-                            &mut else_stack,
-                            block,
-                            self.liveness,
-                        );
+                        prepare_stack_arguments(inst, &else_args, &mut emitter, self.liveness);
                     }
                     self.emit(*else_dest, else_blk, else_stack);
                 }
@@ -1284,7 +1270,11 @@ impl<'a> MasmEmitter<'a> {
             // NOTE: It must be the case that the state of the stack here matches that of the first visit
             // to the block being emitted, as code will have been emitted inside the `if.true` to manipulate
             // the stack based on that first visit.
-            Instruction::CondBr(_) => {
+            Instruction::CondBr(hir::CondBr {
+                then_dest: (_then_blk, _),
+                else_dest: (_else_blk, _),
+                ..
+            }) => {
                 // We should only be emitting code for a block more than once if that block
                 // is a loop header. All other blocks should only be visited a single time.
                 assert!(
@@ -1299,15 +1289,13 @@ impl<'a> MasmEmitter<'a> {
                     .expect("expected controlling block to be set");
                 let current_level = self.loops.loop_level(controlling).level();
                 let target_level = self.loops.loop_level(self.emitting).level();
-                let block = self.current_block();
+                let mut emitter = self.emitter(stack);
                 // Continue the target loop when it is reached, the top of the stack
                 // prior to this push.1 instruction holds the actual conditional, which
                 // will be evaluated by the `if.true` nested inside the target `while.true`
-                block.push(Op::Push(Felt::ONE));
-                stack.push(true.into());
+                emitter.literal(true);
                 for _ in 0..(current_level - target_level) {
-                    block.push(Op::Push(Felt::ZERO));
-                    stack.push(false.into());
+                    emitter.literal(false);
                 }
             }
             Instruction::Switch(_) => {
@@ -1337,7 +1325,6 @@ impl<'a> MasmEmitter<'a> {
             Instruction::PrimOp(op) => self.emit_primop(inst, op, stack),
             Instruction::PrimOpImm(op) => self.emit_primop_imm(inst, op, stack),
             Instruction::Call(op) => self.emit_call_op(inst, op, stack),
-            Instruction::MemCpy(op) => self.emit_memcpy(inst, op, stack),
             Instruction::InlineAsm(op) => self.emit_inline_asm(inst, op, stack),
             // Control flow instructions are handled before `emit_op` is called
             Instruction::RetImm(_)
@@ -1345,12 +1332,6 @@ impl<'a> MasmEmitter<'a> {
             | Instruction::Br(_)
             | Instruction::CondBr(_)
             | Instruction::Switch(_) => unreachable!(),
-        }
-
-        // Account for instruction results that are now on the operand stack
-        let inst_results = self.f.dfg.inst_results(inst);
-        for value in inst_results.iter().rev().copied() {
-            stack.push(value.into());
         }
     }
 
@@ -1361,87 +1342,291 @@ impl<'a> MasmEmitter<'a> {
         stack: &mut OperandStack,
     ) {
         assert_eq!(op.op, hir::Opcode::GlobalValue);
-        let result = self.f.dfg.first_result(inst);
         let addr = self.calculate_global_value_addr(op.global);
         match self.f.dfg.global_value(op.global) {
-            hir::GlobalValueData::Load { ty, .. } => {
-                let block = self.current_block();
-                match ty.size_in_felts() {
-                    1 => {
-                        block.push(MasmOp::MemLoadImm(addr));
-                        stack.push(result);
-                    }
-                    n => todo!("handle {n}-element operands in a later patch"),
-                }
+            hir::GlobalValueData::Load { ref ty, .. } => {
+                let mut emitter = self.inst_emitter(inst, stack);
+                emitter.load_imm(addr, ty.clone());
             }
-            hir::GlobalValueData::Symbol { .. } | hir::GlobalValueData::IAddImm { .. } => {
-                let block = self.current_block();
-                block.push(MasmOp::PushU32(addr));
-                stack.push(result);
+            hir::GlobalValueData::IAddImm { .. } | hir::GlobalValueData::Symbol { .. } => {
+                let mut emitter = self.inst_emitter(inst, stack);
+                emitter.stack_mut().push(addr);
             }
         }
     }
 
     fn emit_unary_imm_op(
         &mut self,
-        _inst: hir::Inst,
-        _op: &hir::UnaryOpImm,
-        _stack: &mut OperandStack,
+        inst: hir::Inst,
+        op: &hir::UnaryOpImm,
+        stack: &mut OperandStack,
     ) {
-        todo!()
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            hir::Opcode::ImmI1 => {
+                assert_matches!(op.imm, Immediate::I1(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmI8 => {
+                assert_matches!(op.imm, Immediate::I8(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmU8 => {
+                assert_matches!(op.imm, Immediate::U8(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmI16 => {
+                assert_matches!(op.imm, Immediate::I16(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmU16 => {
+                assert_matches!(op.imm, Immediate::U16(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmI32 => {
+                assert_matches!(op.imm, Immediate::I32(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmU32 => {
+                assert_matches!(op.imm, Immediate::U32(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmI64 => {
+                assert_matches!(op.imm, Immediate::I64(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmU64 => {
+                assert_matches!(op.imm, Immediate::U64(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmFelt => {
+                assert_matches!(op.imm, Immediate::Felt(_));
+                emitter.literal(op.imm);
+            }
+            hir::Opcode::ImmF64 => {
+                assert_matches!(op.imm, Immediate::F64(_));
+                emitter.literal(op.imm);
+            }
+            opcode => unimplemented!("unrecognized unary with immediate opcode: '{opcode}'"),
+        }
     }
 
-    fn emit_unary_op(&mut self, _inst: hir::Inst, _op: &hir::UnaryOp, _stack: &mut OperandStack) {
-        todo!()
+    fn emit_unary_op(&mut self, inst: hir::Inst, op: &hir::UnaryOp, stack: &mut OperandStack) {
+        let result = self.f.dfg.first_result(inst);
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            hir::Opcode::Neg => emitter.neg(),
+            hir::Opcode::Inv => emitter.inv(),
+            hir::Opcode::Incr => emitter.incr(),
+            hir::Opcode::Pow2 => emitter.pow2(),
+            hir::Opcode::Not => emitter.not(),
+            hir::Opcode::Bnot => emitter.bnot(),
+            hir::Opcode::Popcnt => emitter.popcnt(),
+            // This opcode is a no-op
+            hir::Opcode::PtrToInt => {
+                let result_ty = emitter.value_type(result).clone();
+                let stack = emitter.stack_mut();
+                stack.pop().expect("operand stack is empty");
+                stack.push(result_ty);
+            }
+            // We lower this cast to an assertion, to ensure the value is a valid pointer
+            hir::Opcode::IntToPtr => {
+                let ptr_ty = emitter.value_type(result).clone();
+                emitter.inttoptr(&ptr_ty);
+            }
+            // The semantics of cast for now are basically your standard integer coercion rules
+            //
+            // We may eliminate this in favor of more specific casts in the future
+            hir::Opcode::Cast => {
+                let dst_ty = emitter.value_type(result).clone();
+                emitter.cast(&dst_ty);
+            }
+            hir::Opcode::Trunc => {
+                let dst_ty = emitter.value_type(result).clone();
+                emitter.trunc(&dst_ty);
+            }
+            hir::Opcode::Zext => {
+                let dst_ty = emitter.value_type(result).clone();
+                emitter.zext(&dst_ty);
+            }
+            hir::Opcode::Sext => {
+                let dst_ty = emitter.value_type(result).clone();
+                emitter.sext(&dst_ty);
+            }
+            hir::Opcode::IsOdd => emitter.is_odd(),
+            opcode => unimplemented!("unrecognized unary opcode: '{opcode}'"),
+        }
     }
 
     fn emit_binary_imm_op(
         &mut self,
-        _inst: hir::Inst,
-        _op: &hir::BinaryOpImm,
-        _stack: &mut OperandStack,
+        inst: hir::Inst,
+        op: &hir::BinaryOpImm,
+        stack: &mut OperandStack,
     ) {
-        todo!()
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            hir::Opcode::Eq => emitter.eq_imm(op.imm),
+            hir::Opcode::Neq => emitter.neq_imm(op.imm),
+            hir::Opcode::Gt => emitter.gt_imm(op.imm),
+            hir::Opcode::Gte => emitter.gte_imm(op.imm),
+            hir::Opcode::Lt => emitter.lt_imm(op.imm),
+            hir::Opcode::Lte => emitter.lte_imm(op.imm),
+            hir::Opcode::Add => emitter.add_imm(op.imm, op.overflow),
+            hir::Opcode::Sub => emitter.sub_imm(op.imm, op.overflow),
+            hir::Opcode::Mul => emitter.mul_imm(op.imm, op.overflow),
+            hir::Opcode::Div if op.overflow.is_checked() => emitter.checked_div_imm(op.imm),
+            hir::Opcode::Div => emitter.unchecked_div_imm(op.imm),
+            hir::Opcode::Min => emitter.min_imm(op.imm),
+            hir::Opcode::Max => emitter.max_imm(op.imm),
+            hir::Opcode::Mod if op.overflow.is_checked() => emitter.checked_mod_imm(op.imm),
+            hir::Opcode::Mod => emitter.unchecked_mod_imm(op.imm),
+            hir::Opcode::DivMod if op.overflow.is_checked() => emitter.checked_divmod_imm(op.imm),
+            hir::Opcode::DivMod => emitter.unchecked_divmod_imm(op.imm),
+            hir::Opcode::Exp => emitter.exp_imm(op.imm),
+            hir::Opcode::And => emitter.and_imm(op.imm),
+            hir::Opcode::Band => emitter.band_imm(op.imm),
+            hir::Opcode::Or => emitter.or_imm(op.imm),
+            hir::Opcode::Bor => emitter.bor_imm(op.imm),
+            hir::Opcode::Xor => emitter.xor_imm(op.imm),
+            hir::Opcode::Bxor => emitter.bxor_imm(op.imm),
+            hir::Opcode::Shl => emitter.shl_imm(op.imm),
+            hir::Opcode::Shr => emitter.shr_imm(op.imm),
+            hir::Opcode::Rotl => emitter.rotl_imm(op.imm),
+            hir::Opcode::Rotr => emitter.rotr_imm(op.imm),
+            opcode => unimplemented!("unrecognized binary with immediate opcode: '{opcode}'"),
+        }
     }
 
-    fn emit_binary_op(&mut self, _inst: hir::Inst, _op: &hir::BinaryOp, _stack: &mut OperandStack) {
-        todo!()
+    fn emit_binary_op(&mut self, inst: hir::Inst, op: &hir::BinaryOp, stack: &mut OperandStack) {
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            hir::Opcode::Eq => emitter.eq(),
+            hir::Opcode::Neq => emitter.neq(),
+            hir::Opcode::Gt => emitter.gt(),
+            hir::Opcode::Gte => emitter.gte(),
+            hir::Opcode::Lt => emitter.lt(),
+            hir::Opcode::Lte => emitter.lte(),
+            hir::Opcode::Add => emitter.add(op.overflow),
+            hir::Opcode::Sub => emitter.sub(op.overflow),
+            hir::Opcode::Mul => emitter.mul(op.overflow),
+            hir::Opcode::Div if op.overflow.is_checked() => emitter.checked_div(),
+            hir::Opcode::Div => emitter.unchecked_div(),
+            hir::Opcode::Min => emitter.min(),
+            hir::Opcode::Max => emitter.max(),
+            hir::Opcode::Mod if op.overflow.is_checked() => emitter.checked_mod(),
+            hir::Opcode::Mod => emitter.unchecked_mod(),
+            hir::Opcode::DivMod if op.overflow.is_checked() => emitter.checked_divmod(),
+            hir::Opcode::DivMod => emitter.unchecked_divmod(),
+            hir::Opcode::Exp => emitter.exp(),
+            hir::Opcode::And => emitter.and(),
+            hir::Opcode::Band => emitter.band(),
+            hir::Opcode::Or => emitter.or(),
+            hir::Opcode::Bor => emitter.bor(),
+            hir::Opcode::Xor => emitter.xor(),
+            hir::Opcode::Bxor => emitter.bxor(),
+            hir::Opcode::Shl => emitter.shl(),
+            hir::Opcode::Shr => emitter.shr(),
+            hir::Opcode::Rotl => emitter.rotl(),
+            hir::Opcode::Rotr => emitter.rotr(),
+            opcode => unimplemented!("unrecognized binary opcode: '{opcode}'"),
+        }
     }
 
-    fn emit_test_op(&mut self, _inst: hir::Inst, _op: &hir::Test, _stack: &mut OperandStack) {
-        todo!()
+    fn emit_test_op(&mut self, _inst: hir::Inst, op: &hir::Test, _stack: &mut OperandStack) {
+        unimplemented!("unrecognized test opcode: '{}'", &op.op);
     }
 
-    fn emit_load_op(&mut self, _inst: hir::Inst, _op: &hir::LoadOp, _stack: &mut OperandStack) {
-        todo!()
+    fn emit_load_op(&mut self, inst: hir::Inst, op: &hir::LoadOp, stack: &mut OperandStack) {
+        let mut emitter = self.inst_emitter(inst, stack);
+        emitter.load(op.ty.clone());
     }
 
-    fn emit_primop(&mut self, _inst: hir::Inst, _op: &hir::PrimOp, _stack: &mut OperandStack) {
-        todo!()
+    fn emit_primop_imm(&mut self, inst: hir::Inst, op: &hir::PrimOpImm, stack: &mut OperandStack) {
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            hir::Opcode::AssertEq => {
+                emitter.assert_eq_imm(op.imm);
+            }
+            // Store a value at a constant address
+            hir::Opcode::Store => {
+                emitter.store_imm(
+                    op.imm
+                        .as_u32()
+                        .expect("invalid address immediate: out of range"),
+                );
+            }
+            opcode => unimplemented!("unrecognized primop with immediate opcode: '{opcode}'"),
+        }
     }
 
-    fn emit_primop_imm(
-        &mut self,
-        _inst: hir::Inst,
-        _op: &hir::PrimOpImm,
-        _stack: &mut OperandStack,
-    ) {
-        todo!()
+    fn emit_primop(&mut self, inst: hir::Inst, op: &hir::PrimOp, stack: &mut OperandStack) {
+        let args = op.args.as_slice(&self.f.dfg.value_lists);
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            // Pop a value of the given type off the stack and assert it's value is one
+            hir::Opcode::Assert => {
+                assert_eq!(args.len(), 1);
+                emitter.assert();
+            }
+            // Pop a value of the given type off the stack and assert it's value is zero
+            hir::Opcode::Assertz => {
+                assert_eq!(args.len(), 1);
+                emitter.assertz();
+            }
+            // Pop two values of the given type off the stack and assert equality
+            hir::Opcode::AssertEq => {
+                assert_eq!(args.len(), 2);
+                emitter.assert_eq();
+            }
+            // Allocate a local and push its address on the operand stack
+            hir::Opcode::Alloca => {
+                assert!(args.is_empty());
+                let result = emitter.dfg().first_result(inst);
+                let ty = emitter.value_type(result).clone();
+                emitter.alloca(&ty);
+            }
+            // Store a value at a given pointer
+            hir::Opcode::Store => {
+                assert_eq!(args.len(), 2);
+                emitter.store();
+            }
+            // Copy `count * sizeof(ctrl_ty)` bytes from source to destination address
+            hir::Opcode::MemCpy => {
+                assert_eq!(args.len(), 3);
+                emitter.memcpy();
+            }
+            // Conditionally select between two values
+            hir::Opcode::Select => {
+                assert_eq!(args.len(), 3);
+                emitter.select();
+            }
+            // This instruction should not be reachable at runtime, so we emit an assertion
+            // that will always fail if for some reason it is reached
+            hir::Opcode::Unreachable => {
+                // assert(false)
+                emitter.emit_all(&[Op::PushU32(0), Op::Assert]);
+            }
+            opcode => unimplemented!("unrecognized primop with immediate opcode: '{opcode}'"),
+        }
     }
 
-    fn emit_call_op(&mut self, _inst: hir::Inst, _op: &hir::Call, _stack: &mut OperandStack) {
-        todo!()
+    fn emit_call_op(&mut self, inst: hir::Inst, op: &hir::Call, stack: &mut OperandStack) {
+        assert_ne!(op.callee, self.f.id, "unexpected recursive call");
+
+        let mut emitter = self.inst_emitter(inst, stack);
+        match op.op {
+            hir::Opcode::Syscall => emitter.syscall(op.callee),
+            hir::Opcode::Call => emitter.exec(op.callee),
+            opcode => unimplemented!("unrecognized procedure call opcode: '{opcode}'"),
+        }
     }
 
-    fn emit_memcpy(&mut self, _inst: hir::Inst, _op: &hir::MemCpy, _stack: &mut OperandStack) {
-        todo!()
-    }
-
-    fn emit_inline_asm(&mut self, _inst: hir::Inst, op: &hir::InlineAsm, stack: &mut OperandStack) {
+    fn emit_inline_asm(&mut self, inst: hir::Inst, op: &hir::InlineAsm, stack: &mut OperandStack) {
         // Port over the blocks from the inline assembly chunk, except the body block, which will
         // be inlined at the current block
-        let mut mapped = FxHashMap::<MasmBlockId, MasmBlockId>::default();
-        for (inline_blk, inline_block) in op.blocks.iter() {
+        let mut mapped = FxHashMap::<masm::BlockId, masm::BlockId>::default();
+        for (inline_blk, _) in op.blocks.iter() {
             if inline_blk == op.body {
                 continue;
             }
@@ -1451,10 +1636,17 @@ impl<'a> MasmEmitter<'a> {
 
         // Inline the body, rewriting any references to other blocks
         rewrite_inline_assembly_block(self.f_prime, op, op.body, self.current_block, &mapped);
+
+        // Pop arguments, push results
+        stack.dropn(op.args.len(&self.f.dfg.value_lists));
+        for result in self.f.dfg.inst_results(inst).iter().copied().rev() {
+            let ty = self.f.dfg.value_type(result).clone();
+            stack.push(TypedValue { value: result, ty });
+        }
     }
 
     /// Computes the absolute offset (address) represented by the given global value
-    fn calculate_global_value_addr(&self, mut gv: GlobalValue) -> u32 {
+    fn calculate_global_value_addr(&self, mut gv: hir::GlobalValue) -> u32 {
         let global_table_offset = self.program.segments().next_available_offset();
         let mut relative_offset = 0;
         let globals = self.program.globals();
@@ -1495,6 +1687,20 @@ impl<'a> MasmEmitter<'a> {
         &mut self.f_prime.blocks[block]
     }
 
+    #[inline(always)]
+    fn inst_emitter<'c, 'b: 'c>(
+        &'b mut self,
+        inst: hir::Inst,
+        stack: &'c mut OperandStack,
+    ) -> InstOpEmitter<'c> {
+        InstOpEmitter::new(self.f_prime, &self.f.dfg, inst, self.current_block, stack)
+    }
+
+    #[inline(always)]
+    fn emitter<'c, 'b: 'c>(&'b mut self, stack: &'c mut OperandStack) -> OpEmitter<'c> {
+        OpEmitter::new(self.f_prime, self.current_block, stack)
+    }
+
     /// Get the loop level of the block we're currently emitting code for
     ///
     /// When emitting trailing loop headers, the block in which we are emitting
@@ -1525,14 +1731,14 @@ fn rewrite_inline_assembly_block(
             Op::If(ref mut then_blk, ref mut else_blk) => {
                 let prev_then_blk = *then_blk;
                 let prev_else_blk = *else_blk;
-                *then_blk = rewrites[prev_then_blk];
-                *else_blk = rewrites[prev_else_blk];
+                *then_blk = rewrites[&prev_then_blk];
+                *else_blk = rewrites[&prev_else_blk];
                 rewrite_inline_assembly_block(f_prime, asm, prev_then_blk, *then_blk, rewrites);
                 rewrite_inline_assembly_block(f_prime, asm, prev_else_blk, *else_blk, rewrites);
             }
-            Op::While(ref mut body_blk) | Op::Repeat(ref mut body_blk, _) => {
+            Op::While(ref mut body_blk) | Op::Repeat(_, ref mut body_blk) => {
                 let prev_body_blk = *body_blk;
-                *body_blk = rewrites[*body_blk];
+                *body_blk = rewrites[&prev_body_blk];
                 rewrite_inline_assembly_block(f_prime, asm, prev_body_blk, *body_blk, rewrites);
             }
             Op::LocAddr(_) => todo!(),
@@ -1552,8 +1758,7 @@ fn rewrite_inline_assembly_block(
 fn prepare_stack_arguments(
     inst: hir::Inst,
     args: &[hir::Value],
-    stack: &mut OperandStack,
-    block: &mut masm::Block,
+    emitter: &mut OpEmitter<'_>,
     liveness: &LivenessAnalysis,
 ) {
     match args.len() {
@@ -1564,14 +1769,15 @@ fn prepare_stack_arguments(
         // of the stack
         1 => {
             let arg = &args[0];
-            let pos = stack
+            let pos = emitter
+                .stack()
                 .find(arg)
                 .expect("could not find value on the operand stack");
             let is_used_later = liveness.is_live_after(&arg, ProgramPoint::Inst(inst));
             if is_used_later {
-                copy_operand_to_position(pos, 0, false, stack, block);
+                emitter.copy_operand_to_position(pos, 0, false);
             } else {
-                move_operand_to_position(pos, 0, false, stack, block);
+                emitter.move_operand_to_position(pos, 0, false);
             }
         }
         // There are multiple arguments, and we need to determine what the most
@@ -1583,6 +1789,7 @@ fn prepare_stack_arguments(
             // into position on top of the stack.
             let mut ops = SmallVec::<[Op; 2]>::default();
             let mut visited = FxHashSet::<usize>::default();
+            let stack = emitter.stack();
             for i in 0..n {
                 if visited.insert(i) {
                     let expected = &args[i];
@@ -1620,16 +1827,13 @@ fn prepare_stack_arguments(
             for op in ops.into_iter() {
                 match op {
                     Op::Dup(i) => {
-                        stack.dup(i as usize);
-                        block.push(Op::Dup(i));
+                        emitter.dup(i);
                     }
                     Op::Movup(i) => {
-                        stack.movup(i as usize);
-                        block.push(Op::Movup(i));
+                        emitter.movup(i);
                     }
                     Op::Swap(i) => {
-                        stack.swap(i as usize);
-                        block.push(Op::Swap(i));
+                        emitter.swap(i);
                     }
                     _ => unreachable!(),
                 }
@@ -1638,212 +1842,36 @@ fn prepare_stack_arguments(
     }
 }
 
-/// Emit code to remove values on the operand stack which are no longer live at `pp`,
+/// Emit code to remove values on the operand stack which are no longer live after `block`,
 /// while preserving those values which are in `used`.
 ///
 /// This function visits values on the operand stack top to bottom, keeping values in
 /// order, while grouping drops to the extent possible.
-fn drop_unused_operands_at(
-    pp: ProgramPoint,
+fn drop_unused_operands_after(
+    block: hir::Block,
     used: &[hir::Value],
-    stack: &mut OperandStack,
-    block: &mut masm::Block,
+    emitter: &mut OpEmitter<'_>,
     liveness: &LivenessAnalysis,
 ) {
+    let pp = ProgramPoint::Block(block);
     let mut index = 0;
-    let mut ops = SmallVec::<[Op; 2]>::default();
-    let mut seen = FxHashSet::<hir::Value>::default();
-    while !stack.is_empty() && index < stack.len() {
-        match &stack[index] {
-            Operand::Value(ref v) => {
-                let keep = used.contains(v) || liveness.is_live_at(v, pp);
-                let is_duplicate = !seen.insert(*v);
+    while index < emitter.stack_len() {
+        match emitter.stack()[index].value() {
+            OperandType::Value(TypedValue { value: ref v, .. }) => {
+                let keep = used.contains(v) || liveness.is_live_after(v, pp);
+                let is_duplicate = false; // TODO: !seen.insert(*v);
                 if is_duplicate || !keep {
-                    match index {
-                        0 => {
-                            stack.pop();
-                            ops.push(Op::Drop);
-                        }
-                        1 => {
-                            stack.swap(1);
-                            stack.pop();
-                            ops.push(Op::Swap(1));
-                            ops.push(Op::Drop);
-                        }
-                        n => {
-                            stack.movup(n);
-                            stack.pop();
-                            ops.push(Op::Movup(n as u8));
-                            ops.push(Op::Drop);
-                        }
-                    }
+                    emitter.drop_operand_at_position(index);
                 } else {
                     index += 1;
                 }
             }
-            Operand::Const(_) => match index {
-                0 => {
-                    stack.pop();
-                    ops.push(Op::Drop);
-                }
-                1 => {
-                    stack.swap(1);
-                    stack.pop();
-                    ops.push(Op::Swap(1));
-                    ops.push(Op::Drop);
-                }
-                n => {
-                    stack.movup(n);
-                    stack.pop();
-                    ops.push(Op::Movup(n as u8));
-                    ops.push(Op::Drop);
-                }
-            },
-        }
-    }
-    let mut iter = ops.into_iter();
-    let mut dropw = SmallVec::<[Op; 4]>::default();
-    while let Some(op) = iter.next() {
-        match op {
-            Op::Drop => {
-                if dropw.len() < 4 {
-                    dropw.push(op);
-                } else {
-                    block.push(Op::Dropw);
-                    dropw.clear();
-                }
+            OperandType::Const(_) => {
+                emitter.drop_operand_at_position(index);
             }
-            op => {
-                block.append(&mut dropw);
-                block.push(op);
+            operand @ OperandType::Type(_) => {
+                panic!("unexpected operand type on stack: {operand:?}")
             }
-        }
-    }
-    if !dropw.is_empty() {
-        block.append(&mut dropw);
-    }
-}
-
-/// Copy the `n`th operand on the stack, and make it the `m`th operand on the stack.
-///
-/// If the operand is for a commutative, binary operator, indicated by `is_commutative_binary_operand`,
-/// and the desired position is just below the top of stack, this function may leave it on top of the
-/// stack instead, since the order of the operands is not strict. This can result in fewer stack
-/// manipulation instructions in some scenarios.
-fn copy_operand_to_position(
-    n: usize,
-    m: usize,
-    is_commutative_binary_operand: bool,
-    stack: &mut OperandStack,
-    block: &mut masm::Block,
-) {
-    match (n, m) {
-        (0, 0) => {
-            block.push(Op::Dup(0));
-            stack.dup(0);
-        }
-        (actual, 0) => {
-            block.push(Op::Dup(actual as u8));
-            stack.dup(actual);
-        }
-        (actual, 1) => {
-            block.push(Op::Dup(actual as u8));
-            stack.dup(actual);
-            // If the dependent is binary+commutative, we can
-            // leave operands in either the 0th or 1st position,
-            // as long as both operands are on top of the stack
-            if !is_commutative_binary_operand {
-                block.push(Op::Swap(1));
-                stack.swap(1);
-            }
-        }
-        (actual, expected) => {
-            block.push(Op::Dup(actual as u8));
-            block.push(Op::Movdn(expected as u8));
-            stack.dup(actual);
-            stack.movdn(expected);
-        }
-    }
-}
-
-/// Make the `n`th operand on the stack, the `m`th operand on the stack.
-///
-/// If the operand is for a commutative, binary operator, indicated by `is_commutative_binary_operand`,
-/// and the desired position is one of the first two items on the stack, this function may leave the
-/// operand in it's current position if it is already one of the first two items on the stack,
-/// since the order of the operands is not strict. This can result in fewer stack manipulation
-/// instructions in some scenarios.
-fn move_operand_to_position(
-    n: usize,
-    m: usize,
-    is_commutative_binary_operand: bool,
-    stack: &mut OperandStack,
-    block: &mut masm::Block,
-) {
-    match (n, m) {
-        (n, m) if n == m => return,
-        (1, 0) | (0, 1) => {
-            // If the dependent is binary+commutative, we can
-            // leave operands in either the 0th or 1st position,
-            // as long as both operands are on top of the stack
-            if !is_commutative_binary_operand {
-                block.push(Op::Swap(1));
-                stack.swap(1);
-            }
-        }
-        (actual, 0) => {
-            block.push(Op::Movup(actual as u8));
-            stack.movup(actual);
-        }
-        (actual, 1) => {
-            block.push(Op::Movup(actual as u8));
-            block.push(Op::Swap(1));
-            stack.movup(actual);
-            stack.swap(1);
-        }
-        (actual, expected) => {
-            block.push(Op::Movup(actual as u8));
-            block.push(Op::Movdn(expected as u8));
-            stack.movup(actual);
-            stack.movdn(expected);
-        }
-    }
-}
-
-/// Remove all but the top `n` values on the operand stack
-fn truncate_stack(n: usize, stack: &mut OperandStack, block: &mut masm::Block) {
-    let m = stack.len().saturating_sub(n);
-    if m > 0 {
-        let w = m / 4;
-        let x = m % 4;
-        for _ in 0..w {
-            block.push(Op::Dropw);
-        }
-        for _ in 0..x {
-            block.push(Op::Drop);
-        }
-        stack.dropn(m);
-    }
-}
-
-/// Remove the `n`th value from the top of the operand stack
-fn drop_operand_at_position(n: usize, stack: &mut OperandStack, block: &mut masm::Block) {
-    match n {
-        0 => {
-            block.push(Op::Drop);
-            stack.pop();
-        }
-        1 => {
-            block.push(Op::Swap(1));
-            block.push(Op::Drop);
-            stack.swap(1);
-            stack.pop();
-        }
-        n => {
-            block.push(Op::Movup(n as u8));
-            block.push(Op::Drop);
-            stack.movup(n);
-            stack.pop();
         }
     }
 }
@@ -1857,7 +1885,6 @@ fn is_last_dependent_visited(
     dependent_tree: Node,
     dependency: Node,
     dependency_tree: Node,
-    _dependency_rev_index: usize,
     treegraph: &TreeGraph,
     depgraph: &DependencyGraph,
     _function: &hir::Function,
@@ -2014,34 +2041,6 @@ fn add_data_dependency(
         hir::ValueData::Param { .. } => {
             let dep_node = graph.add_node(Node::Stack(value));
             graph.add_dependency(node, dep_node);
-        }
-    }
-}
-
-/// Convert an immediate value to an op which pushes that immediate on the operand stack
-fn immediate_to_push_op(imm: Immediate) -> Op {
-    match imm {
-        Immediate::I1(i) => Op::PushU8(i as u8),
-        Immediate::U8(i) => Op::PushU8(i),
-        Immediate::U16(i) => Op::PushU32(i as u32),
-        Immediate::U32(i) => Op::PushU32(i),
-        Immediate::U64(i) => {
-            const N: u64 = 1 << 32;
-            let lo = i % N;
-            let hi = i / N;
-            // The u64 representation requires the hi bits on top of the stack, followed by lo
-            Op::Push2([Felt::new(lo), Felt::new(hi)])
-        }
-        Immediate::Felt(i) => Op::Push(i),
-        Immediate::I8(_)
-        | Immediate::I16(_)
-        | Immediate::I32(_)
-        | Immediate::I64(_)
-        | Immediate::I128(_) => {
-            unimplemented!("support for signed integers is not yet implemented: {imm:?}")
-        }
-        Immediate::F64(_) => {
-            unimplemented!("support for floating-point values is not yet implemented: {imm:?}")
         }
     }
 }
