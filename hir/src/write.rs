@@ -219,13 +219,6 @@ fn write_operands(
         Instruction::Load(LoadOp { addr, .. }) => {
             write!(w, " {}", addr)
         }
-        Instruction::MemCpy(MemCpy {
-            args: [src, dst, count],
-            ty,
-            ..
-        }) => {
-            write!(w, ".{} {}, {}, {}", ty, src, dst, count)
-        }
         Instruction::InlineAsm(ref asm) => {
             write!(w, " {}", asm.display(dfg, indent))
         }
