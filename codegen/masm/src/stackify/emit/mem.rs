@@ -91,25 +91,25 @@ impl<'a> OpEmitter<'a> {
             // Obtain the absolute offset
             //
             // [abs_offset, addr]
-            Op::U32CheckedModImm(128),
+            Op::U32CheckedModImm(16),
             // Obtain the byte offset
             //
             // [abs_offset, abs_offset, addr]
             Op::Dup(0),
             // [offset, abs_offset, addr]
-            Op::U32CheckedModImm(32),
+            Op::U32CheckedModImm(4),
             // Obtain the element index
             //
             // [abs_offset, offset, addr]
             Op::Swap(1),
             // [index, byte_offset, addr]
-            Op::U32CheckedDivImm(32),
+            Op::U32CheckedDivImm(4),
             // Translate the address to Miden's address space
             //
             // [addr, index, offset]
             Op::Movup(2),
             // [waddr, index, offset]
-            Op::U32CheckedDivImm(128),
+            Op::U32CheckedDivImm(16),
         ]);
     }
 
