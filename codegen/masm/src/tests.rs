@@ -83,6 +83,43 @@ impl TestByEmulationHarness {
         pass.run(function)
     }
 
+    pub fn set_cycle_budget(&mut self, budget: usize) {
+        self.emulator.set_max_cycles(budget);
+    }
+
+    #[allow(unused)]
+    pub fn set_breakpoint(&mut self, bp: Breakpoint) {
+        self.emulator.set_breakpoint(bp);
+    }
+
+    #[allow(unused)]
+    pub fn clear_breakpoint(&mut self) {
+        self.emulator.clear_breakpoint();
+    }
+
+    #[allow(unused)]
+    pub fn step(&mut self) {
+        match self.resume() {
+            Ok(_) | Err(EmulationError::BreakpointHit) => return,
+            Err(other) => panic!("unexpected emulation error: {other}"),
+        }
+    }
+
+    #[allow(unused)]
+    pub fn step_with_info(&mut self) {
+        match self.emulator.resume() {
+            Ok(_) | Err(EmulationError::BreakpointHit) => {
+                dbg!(self.emulator.info());
+            }
+            Err(other) => panic!("unexpected emulation error: {other}"),
+        }
+    }
+
+    #[allow(unused)]
+    pub fn resume(&mut self) -> Result<OperandStack<Felt>, EmulationError> {
+        self.emulator.resume()
+    }
+
     pub fn malloc(&mut self, size: usize) -> u32 {
         self.emulator.malloc(size)
     }
@@ -93,7 +130,7 @@ impl TestByEmulationHarness {
     }
 
     pub fn execute(
-        mut self,
+        &mut self,
         program: Program,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
@@ -105,7 +142,7 @@ impl TestByEmulationHarness {
     }
 
     pub fn execute_module(
-        mut self,
+        &mut self,
         module: Module,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
@@ -120,7 +157,7 @@ impl TestByEmulationHarness {
 /// Test the emulator on the fibonacci function
 #[test]
 fn fib_emulator() {
-    let harness = TestByEmulationHarness::default();
+    let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
     let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
@@ -149,7 +186,7 @@ fn fib_emulator() {
 /// Test the [Stackify] pass on a very simple program with a conditional as a sanity check
 #[test]
 fn stackify_fundamental_if() {
-    let harness = TestByEmulationHarness::default();
+    let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
     let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
@@ -232,7 +269,7 @@ fn stackify_fundamental_if() {
 /// Test the [Stackify] pass on a very simple program with a loop as a sanity check
 #[test]
 fn stackify_fundamental_loops() {
-    let harness = TestByEmulationHarness::default();
+    let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
     let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
@@ -382,7 +419,7 @@ fn stackify_sum_matrix() {
     module.entry = Some(id);
 
     let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
-    let ptr = Felt::new(addr as u64);
+    let ptr = Felt::new(addr as u64 * 16);
     let rows = Felt::new(3);
     let cols = Felt::new(3);
 

@@ -4,7 +4,7 @@ mod stackify;
 #[cfg(test)]
 mod tests;
 
-pub use self::emulator::{EmulationError, Emulator};
+pub use self::emulator::{Breakpoint, DebugInfo, EmulationError, Emulator};
 pub use self::masm::*;
 pub use self::stackify::Stackify;
 
