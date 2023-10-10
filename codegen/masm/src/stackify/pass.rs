@@ -2,7 +2,7 @@ use std::{collections::VecDeque, fmt, rc::Rc};
 
 use cranelift_entity::packed_option::ReservedValue;
 use miden_hir::{self as hir, assert_matches, BranchInfo, Immediate, Instruction, ProgramPoint};
-use miden_hir_analysis::{FunctionAnalysis, LivenessAnalysis, LoopAnalysis};
+use miden_hir_analysis::{DominatorTree, FunctionAnalysis, LivenessAnalysis, Loop, LoopAnalysis};
 use miden_hir_pass::Pass;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -308,9 +308,11 @@ impl<'p> Pass for Stackify<'p> {
             let entry = f.dfg.entry_block();
             let entry_prime = f_prime.body;
 
+            let domtree = self.analysis.domtree();
             let loops = self.analysis.loops();
             let liveness = self.analysis.liveness();
-            let mut emitter = MasmEmitter::new(self.program, f, &mut f_prime, loops, liveness);
+            let mut emitter =
+                MasmEmitter::new(self.program, f, &mut f_prime, domtree, loops, liveness);
 
             let mut stack = OperandStack::default();
             for arg in f.dfg.block_args(entry).iter().rev().copied() {
@@ -333,16 +335,16 @@ struct MasmEmitter<'a> {
     f: &'a hir::Function,
     /// The resulting stack machine function being emitted
     f_prime: &'a mut masm::Function,
+    domtree: &'a DominatorTree,
     loops: &'a LoopAnalysis,
     liveness: &'a LivenessAnalysis,
-    /// The "controlling" block is the block from which a loopback edge
-    /// in the control flow graph has caused emission of a trailing loop
-    /// header. We must track the origin block in order to determine whether
-    /// the edge is within the same loop as the origin block, or an outer
-    /// loop, and thus requiring additional instructions to break out of
-    /// the intermediate loops. We call it the controlling block because it
-    /// controls how we emit code for the terminator in the trailing loop header.
-    controlling: Option<hir::Block>,
+    /// The "controlling" loop corresponds to the current maximum loop depth
+    /// reached along the current control flow path. When we reach a loopback
+    /// edge in the control flow graph, we emit a trailing duplicate of the
+    /// instructions in the loop header to which we are branching. The controlling
+    /// loop is used during this process to determine what action, if any, must
+    /// be taken to exit the current loop in order to reach the target loop.
+    controlling_loop: Option<Loop>,
     /// This is the block we're currently emitting code for
     emitting: hir::Block,
     /// This is the code block in `f_prime` which we're emitting code to currently
@@ -374,6 +376,7 @@ impl<'a> MasmEmitter<'a> {
         program: &'a hir::Program,
         f: &'a hir::Function,
         f_prime: &'a mut masm::Function,
+        domtree: &'a DominatorTree,
         loops: &'a LoopAnalysis,
         liveness: &'a LivenessAnalysis,
     ) -> Self {
@@ -381,9 +384,10 @@ impl<'a> MasmEmitter<'a> {
             program,
             f,
             f_prime,
+            domtree,
             loops,
             liveness,
-            controlling: None,
+            controlling_loop: None,
             emitting: Default::default(),
             current_block: masm::BlockId::reserved_value(),
             cached: Default::default(),
@@ -399,15 +403,73 @@ impl<'a> MasmEmitter<'a> {
     /// visiting a block for the first time, as well as what block we were in when we started
     /// emitting code for `b`, so that we can properly emit code for loopback edges.
     fn emit(&mut self, b: hir::Block, b_prime: masm::BlockId, mut stack: OperandStack) {
+        let is_first_visit = self.visited.insert(b);
         // Update the current, controlling, and emitting blocks, but saving the previous
         // values so we can restore them when this function returns.
         let prev_block = core::mem::replace(&mut self.current_block, b_prime);
         let emitting = core::mem::replace(&mut self.emitting, b);
-        // If we were not previously emitting code, there is no controlling block
-        let controlling = if emitting.is_reserved_value() {
-            None
+        let controlling_loop = if !emitting.is_reserved_value() {
+            let current_loop = self.loops.innermost_loop(emitting);
+            let target_loop = self.loops.innermost_loop(b);
+            match (current_loop, target_loop) {
+                // No loops involved
+                (None, None) => {
+                    assert!(is_first_visit);
+                    assert_eq!(self.controlling_loop, None);
+                    None
+                }
+                // Entering a top-level loop, set the controlling loop
+                (None, Some(dst)) => {
+                    assert!(is_first_visit);
+                    assert_eq!(self.controlling_loop.replace(dst), None);
+                    None
+                }
+                // Escaping a loop
+                (Some(_), None) => {
+                    assert!(is_first_visit);
+                    // We're emitting a block along an exit edge of a loop, it must be the
+                    // case here that the source block dominates the target block, so we
+                    // leave the controlling loop alone, since it will be used to calculate
+                    // the depth we're exiting from
+                    assert!(
+                        self.domtree.dominates(emitting, b, &self.f.dfg),
+                        "expected {emitting} to dominate {b} here"
+                    );
+                    assert_matches!(self.controlling_loop, Some(_));
+                    self.controlling_loop
+                }
+                (Some(src), Some(dst)) => {
+                    let src_level = self.loops.level(src);
+                    let dst_level = self.loops.level(dst);
+                    if is_first_visit {
+                        // We have not visited the target block before..
+                        if src_level > dst_level {
+                            // We're emitting a block along an exit edge of a loop, so we
+                            // expect that the source block dominates the target block, and
+                            // as such we will leave the controlling loop alone as it will
+                            // be used to calculate the depth we're exiting to
+                            assert!(
+                                self.domtree.dominates(emitting, b, &self.f.dfg),
+                                "expected {emitting} to dominate {b} here"
+                            );
+                            self.controlling_loop
+                        } else if src_level < dst_level {
+                            // If we're entering a nested loop, then we need to update the controlling loop
+                            // to reflect the loop we've entered
+                            self.controlling_loop.replace(dst)
+                        } else {
+                            self.controlling_loop
+                        }
+                    } else {
+                        // We're looping back to the loop header, or a parent loop header,
+                        // so leave the controlling loop unmodified, it will be reset by
+                        // the emit_inst handling
+                        self.controlling_loop
+                    }
+                }
+            }
         } else {
-            self.controlling.replace(emitting)
+            None
         };
 
         // Block arguments are already on the operand stack, but they are still named
@@ -418,7 +480,6 @@ impl<'a> MasmEmitter<'a> {
             stack.rename(i, arg);
         }
 
-        let is_first_visit = self.visited.insert(b);
         // If the block to be emitted is a loop header, we want to cache the results
         // of computing the dependency graph, tree graph, and schedule, as they will
         // be reused for every block which loops back to this block.
@@ -466,7 +527,7 @@ impl<'a> MasmEmitter<'a> {
         }
 
         // Restore the state of the emitter to where it was in the caller
-        self.controlling = controlling;
+        self.controlling_loop = controlling_loop;
         self.emitting = emitting;
         self.current_block = prev_block;
     }
@@ -966,6 +1027,7 @@ impl<'a> MasmEmitter<'a> {
         // e.g. `x, y = inst` implies that `x` is top of stack, followed by `y`.
         match self.f.dfg.inst(inst) {
             Instruction::RetImm(hir::RetImm { arg, .. }) => {
+                assert!(is_first_visit);
                 let level = self.controlling_loop_level();
                 let mut emitter = self.emitter(stack);
                 // Upon return, the operand stack should only contain the function result(s),
@@ -979,6 +1041,7 @@ impl<'a> MasmEmitter<'a> {
                 }
             }
             Instruction::Ret(hir::Ret { args, .. }) => {
+                assert!(is_first_visit);
                 let arg = {
                     let args = args.as_slice(&self.f.dfg.value_lists);
                     assert_eq!(args.len(), 1);
@@ -1068,7 +1131,7 @@ impl<'a> MasmEmitter<'a> {
                     drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
                     prepare_stack_arguments(inst, &args, &mut emitter, self.liveness);
                 }
-                if let Some(_current_loop_id) = self.loops.is_loop_header(self.emitting) {
+                if self.loops.is_loop_header(self.emitting).is_some() {
                     // We're in a loop header, emit the target block inside a while loop
                     let body_blk = self.f_prime.create_block();
                     let block = self.current_block();
@@ -1083,11 +1146,12 @@ impl<'a> MasmEmitter<'a> {
                 }
             }
             // When we reach an unconditional branch a second time, it is because a first-visit branch instruction
-            // was reached which loops back to a block that was previously visited. We refer to the block containing
-            // that loopback edge as the "controlling" block. Loopback edges, due to how we emit code for loops, require
-            // us to emit a copy of the loop header instructions (sans terminator) in the controlling block, as loop
-            // headers are always outside the body of the corresponding `while.true` instruction, so any continuation of
-            // the loop requires a separate copy of the header.
+            // was reached which loops back to a block that was previously visited. We refer to the loop in which
+            // the originating block belongs, as the "controlling" loop, and the originating block itself as the
+            // "controlling" block. Loopback edges, due to how we emit code for loops, require us to emit a copy of
+            // the loop header instructions (sans terminator) in the controlling block, as loop headers are always
+            // outside the body of the corresponding `while.true` instruction, so any continuation of the loop requires
+            // a separate copy of the header.
             //
             // In the simple case of the loopback edge targeting the loop header of the current loop, we simply emit
             // a `push.1` to continue the loop, after ensuring that the state of the stack matches the expected state.
@@ -1095,8 +1159,8 @@ impl<'a> MasmEmitter<'a> {
             //
             // However, we must also handle the case when the loopback edge is actually to a loop header of an outer
             // loop. In such cases we emit a `push.1` to continue the target loop, but we must also emit a `push.0`
-            // for each loop level between the level of the controlling block, and that of the target block, to break
-            // out of each intermediate loop.
+            // for each loop level between the controlling loop and the emitting block, to break out of each
+            // intermediate loop.
             Instruction::Br(hir::Br { ref args, .. }) => {
                 // We should only be emitting code for a block more than once if that block
                 // is a loop header. All other blocks should only be visited a single time.
@@ -1112,10 +1176,10 @@ impl<'a> MasmEmitter<'a> {
                 let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
                 drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
                 prepare_stack_arguments(inst, &args, &mut emitter, self.liveness);
-                let controlling = self
-                    .controlling
-                    .expect("expected controlling block to be set");
-                let current_level = self.loops.loop_level(controlling).level();
+                let current_loop = self
+                    .controlling_loop
+                    .expect("expected controlling loop to be set");
+                let current_level = self.loops.level(current_loop).level();
                 let target_level = self.loops.loop_level(self.emitting).level();
                 emitter.literal(true);
                 for _ in 0..(current_level - target_level) {
@@ -1263,31 +1327,25 @@ impl<'a> MasmEmitter<'a> {
             // Unlike the unconditional case however, a conditional branch indicates that we emitted a
             // loop which has a conditional nested inside it's body. So we always continue the loop, and
             // let the nested `if.true` handle the code for this branch. We must also handle the case where
-            // the loop level of the controlling block is deeper than the block containing this instruction,
-            // which indicates that we must first break out of the intermediate loop(s) before continuing
-            // the target loop.
+            // the loop level of the controlling loop is deeper than the emitting block, which indicates
+            // that we must first break out of the intermediate loop(s) before continuing the target loop.
             //
             // NOTE: It must be the case that the state of the stack here matches that of the first visit
             // to the block being emitted, as code will have been emitted inside the `if.true` to manipulate
             // the stack based on that first visit.
-            Instruction::CondBr(hir::CondBr {
-                then_dest: (_then_blk, _),
-                else_dest: (_else_blk, _),
-                ..
-            }) => {
+            Instruction::CondBr(_) => {
                 // We should only be emitting code for a block more than once if that block
                 // is a loop header. All other blocks should only be visited a single time.
                 assert!(
                     self.loops.is_loop_header(self.emitting).is_some(),
-                    "unexpected cycle caused by edge from {:?} to {}",
-                    self.controlling,
+                    "unexpected cycle caused by branch to {}",
                     self.emitting,
                 );
 
-                let controlling = self
-                    .controlling
-                    .expect("expected controlling block to be set");
-                let current_level = self.loops.loop_level(controlling).level();
+                let current_loop = self
+                    .controlling_loop
+                    .expect("expected controlling loop to be set");
+                let current_level = self.loops.level(current_loop).level();
                 let target_level = self.loops.loop_level(self.emitting).level();
                 let mut emitter = self.emitter(stack);
                 // Continue the target loop when it is reached, the top of the stack
@@ -1710,8 +1768,8 @@ impl<'a> MasmEmitter<'a> {
     /// In all other circumstances, it is the loop level of the block we're emitting.
     #[inline]
     fn controlling_loop_level(&self) -> usize {
-        if let Some(src_block) = self.controlling {
-            self.loops.loop_level(src_block).level()
+        if let Some(lp) = self.controlling_loop {
+            self.loops.level(lp).level()
         } else {
             self.loops.loop_level(self.emitting).level()
         }
