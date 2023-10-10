@@ -1,4 +1,4 @@
-use std::{cell::RefCell, cmp, rc::Rc};
+use std::{cell::RefCell, cmp, fmt, rc::Rc};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -16,7 +16,7 @@ type Addr = u32;
 /// This type represents the various sorts of errors which can occur when
 /// running the emulator on a MASM program. Some errors may result in panics,
 /// but those which we can handle are represented here.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq)]
 pub enum EmulationError {
     /// The given module is already loaded
     #[error("unable to load module: '{0}' is already loaded")]
@@ -30,6 +30,12 @@ pub enum EmulationError {
     /// The emulator ran out of available memory
     #[error("system limit: out of memory")]
     OutOfMemory,
+    /// The emulator was terminated due to a program failing to terminate in its budgeted time
+    #[error("execution terminated prematurely: maximum cycle count reached")]
+    CycleBudgetExceeded,
+    /// A breakpoint was reached, so execution was suspended and can be resumed
+    #[error("execution suspended by breakpoint")]
+    BreakpointHit,
 }
 
 /// We allow functions in the emulator to be defined in either MASM IR, or native Rust.
@@ -43,6 +49,18 @@ enum Stub {
     Asm(Rc<Function>),
     /// This function has a native Rust implementation
     Native(Rc<RefCell<Box<NativeFn>>>),
+}
+
+#[derive(Copy, Clone)]
+pub enum Breakpoint {
+    /// Break after one cycle
+    Step,
+    /// Break after `n` cycles
+    StepN(usize),
+    /// Break when the given function is called
+    Call(FunctionIdent),
+    /// Break when a write touches the region specified
+    MemoryWrite { addr: usize, size: usize },
 }
 
 /// [Emulator] provides us with a means to execute our MASM IR directly
@@ -65,10 +83,144 @@ pub struct Emulator {
     modules_pending: FxHashSet<Ident>,
     memory: Vec<[Felt; 4]>,
     stack: OperandStack<Felt>,
+    callstack: Vec<Activation>,
     hp: u32,
     lp: u32,
+    bp: Option<Breakpoint>,
     clk: usize,
+    clk_limit: usize,
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct InstructionPointer {
+    /// The block in which the instruction pointer is located
+    pub block: BlockId,
+    /// The index of the instruction pointed to
+    pub index: usize,
+}
+impl InstructionPointer {
+    pub const fn new(block: BlockId) -> Self {
+        Self { block, index: 0 }
+    }
+}
+
+/// Represents the current state of the program being executed for use in debugging/troubleshooting
+pub struct DebugInfo<'a> {
+    /// The current function being executed
+    pub function: FunctionIdent,
+    /// The address at which locals for the current function begin
+    pub fp: Addr,
+    /// The current instruction pointer value
+    pub ip: InstructionPointer,
+    /// The instruction under the instruction pointer
+    pub ix: Option<Op>,
+    /// The current state of the operand stack
+    pub stack: &'a OperandStack<Felt>,
+}
+impl<'a> fmt::Debug for DebugInfo<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DebugInfo")
+            .field("function", &self.function)
+            .field("fp", &self.fp)
+            .field("ip", &self.ip)
+            .field("ix", &self.ix)
+            .field("stack", &self.stack.debug())
+            .finish()
+    }
+}
+
+struct Activation {
+    function: Rc<Function>,
+    ip: InstructionPointer,
+    fp: Addr,
+    repeat_stack: SmallVec<[Option<usize>; 2]>,
+    ip_stack: SmallVec<[InstructionPointer; 2]>,
+}
+impl Activation {
+    pub fn new(function: Rc<Function>, fp: Addr) -> Self {
+        let block = function.body;
+        Self {
+            function,
+            ip: InstructionPointer::new(block),
+            fp,
+            repeat_stack: Default::default(),
+            ip_stack: Default::default(),
+        }
+    }
+
+    // Peek at the next instruction to be executed
+    fn peek_instruction(&self) -> Option<Op> {
+        // Get code for this activation record
+        let code = self.function.blocks[self.ip.block].ops.as_slice();
+        // If we've reached the end of the current code block, attempt
+        // to resume execution of the parent code block, if there is one
+        if self.ip.index == code.len() {
+            if let Some(Some(count)) = self.repeat_stack.last().copied() {
+                if count > 0 {
+                    let next = code.get(0).copied();
+                    return next;
+                }
+            }
+            let ip = self.ip_stack.last().copied()?;
+            self.function.blocks[ip.block].ops.get(ip.index).copied()
+        } else {
+            code.get(self.ip.index).copied()
+        }
+    }
+
+    // Get the instruction under the instruction pointer, and move the instruction pointer forward
+    fn next_instruction(&mut self) -> Option<Op> {
+        // Get code for this activation record
+        let code = self.function.blocks[self.ip.block].ops.as_slice();
+        // If we've reached the end of the current code block, attempt
+        // to resume execution of the parent code block, if there is one
+        if self.ip.index == code.len() {
+            if let Some(Some(count)) = self.repeat_stack.pop() {
+                if count > 0 {
+                    self.repeat_stack.push(Some(count - 1));
+                    self.ip.index = 1;
+                    return code.get(0).copied();
+                }
+            }
+            self.ip = self.ip_stack.pop()?;
+            let next = self.function.blocks[self.ip.block]
+                .ops
+                .get(self.ip.index)
+                .copied();
+            self.ip.index += 1;
+            next
+        } else {
+            let next = code.get(self.ip.index).copied();
+            self.ip.index += 1;
+            next
+        }
+    }
+
+    fn enter_block(&mut self, block: BlockId) {
+        self.ip_stack.push(self.ip);
+        self.repeat_stack.push(None);
+        self.ip = InstructionPointer::new(block);
+    }
+
+    fn enter_while_loop(&mut self, block: BlockId) {
+        // We must revisit the while.true instruction on each iteration,
+        // so move the instruction pointer back one
+        let ip = InstructionPointer {
+            block: self.ip.block,
+            index: self.ip.index - 1,
+        };
+        self.ip_stack.push(ip);
+        self.repeat_stack.push(None);
+        self.ip = InstructionPointer::new(block);
+    }
+
+    fn repeat_block(&mut self, block: BlockId, count: usize) {
+        self.ip_stack.push(self.ip);
+        self.repeat_stack.push(Some(count - 1));
+        self.ip = InstructionPointer::new(block);
+    }
+}
+
 impl Default for Emulator {
     fn default() -> Self {
         Self::new(
@@ -99,10 +251,40 @@ impl Emulator {
             modules_pending: Default::default(),
             memory,
             stack: Default::default(),
+            callstack: vec![],
             hp,
             lp,
+            bp: None,
             clk: 0,
+            clk_limit: usize::MAX,
         }
+    }
+
+    /// Place a cap on the number of cycles the emulator will execute before failing with an error
+    pub fn set_max_cycles(&mut self, max: usize) {
+        self.clk_limit = max;
+    }
+
+    /// Sets the next breakpoint for the emulator
+    pub fn set_breakpoint(&mut self, bp: Breakpoint) {
+        self.bp = Some(bp);
+    }
+
+    /// Clears any active breakpoint
+    pub fn clear_breakpoint(&mut self) {
+        self.bp = None;
+    }
+
+    /// Get's debug information about the current emulator state
+    pub fn info(&self) -> Option<DebugInfo<'_>> {
+        let current = self.callstack.last()?;
+        Some(DebugInfo {
+            function: current.function.name,
+            fp: current.fp,
+            ip: current.ip,
+            ix: current.peek_instruction(),
+            stack: &self.stack,
+        })
     }
 
     /// Load `program` into this emulator
@@ -256,7 +438,7 @@ impl Emulator {
             .cloned()
             .ok_or(EmulationError::UndefinedFunction(callee))?;
         match fun {
-            Stub::Asm(ref function) => self.invoke_function(function, args),
+            Stub::Asm(ref function) => self.invoke_function(function.clone(), args),
             Stub::Native(function) => {
                 let mut function = function.borrow_mut();
                 function(self, args)?;
@@ -270,7 +452,7 @@ impl Emulator {
     #[inline]
     fn invoke_function(
         &mut self,
-        function: &Function,
+        function: Rc<Function>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         // Place the arguments on the operand stack
@@ -279,56 +461,29 @@ impl Emulator {
             self.stack.push(arg);
         }
 
-        self.run(function)?;
+        // Schedule `function`
+        let fp = self.locals[&function.name];
+        let state = Activation::new(function.clone(), fp);
+        self.callstack.push(state);
 
-        assert_eq!(
-            function.num_results(),
-            self.stack.len(),
-            "mismatch between expected number of function results and actual results"
-        );
+        self.resume()
+    }
+
+    /// Resume execution when the emulator suspended due to a breakpoint
+    pub fn resume(&mut self) -> Result<OperandStack<Felt>, EmulationError> {
+        self.run()?;
 
         Ok(self.stack.clone())
     }
 
-    fn exec(&mut self, callee: &FunctionIdent) -> Result<(), EmulationError> {
-        dbg!(callee);
-        dbg!(self.stack.debug());
-        let fun = self
-            .functions
-            .get(callee)
-            .cloned()
-            .ok_or(EmulationError::UndefinedFunction(*callee))?;
-        match fun {
-            Stub::Asm(ref function) => {
-                self.run(function)?;
-
-                assert!(
-                    self.stack.len() >= function.num_results(),
-                    "mismatch between expected number of function results and actual results after exec of {callee}"
-                );
-
-                Ok(())
-            }
-            Stub::Native(_function) => unimplemented!(),
-        }
-    }
-
-    /// Run the emulator on the code in the given MASM function
+    /// Run the emulator until all calls are completed, the cycle budget is exhausted,
+    /// or a breakpoint is hit.
     ///
     /// It is expected that the caller has set up the operand stack with the correct
     /// number of arguments. If not, undefined behavior (from the perspective of the
     /// MASM program) will result.
     #[inline(never)]
-    fn run(&mut self, function: &Function) -> Result<(), EmulationError> {
-        const U32_P: u64 = 2u64.pow(32);
-        const U32_BITS: u64 = 32;
-
-        let fp = self.locals[&function.name];
-        let mut current_block = function.body;
-        let mut code = function.blocks[current_block].ops.as_slice();
-        let mut index = 0;
-        let mut block_stack = SmallVec::<[(BlockId, usize); 2]>::default();
-
+    fn run(&mut self) -> Result<(), EmulationError> {
         // This is the core interpreter loop for MASM IR, it runs until one of the
         // following occurs:
         //
@@ -337,41 +492,83 @@ impl Emulator {
         // * Execution traps due to a MASM invariant being violated, indicating the
         // code is malformed.
         // * Execution traps due to a runtime system error, e.g. out of memory
-        loop {
-            // If we've reached the end of the current code block, attempt
-            // to resume execution of the parent code block, if there is one
-            if index == code.len() {
-                if let Some((parent_block, parent_index)) = block_stack.pop() {
-                    current_block = parent_block;
-                    code = function.blocks[current_block].ops.as_slice();
-                    index = parent_index;
-                    continue;
-                }
-                break;
+        'outer: loop {
+            // Terminate execution early if we reach a predetermined number of cycles
+            self.clk += 1;
+            if self.clk > self.clk_limit {
+                return Err(EmulationError::CycleBudgetExceeded);
             }
 
-            match &code[index] {
+            match self.bp {
+                None => {
+                    if self.step()? {
+                        break;
+                    }
+                }
+                Some(Breakpoint::Step) => {
+                    if self.step()? {
+                        break;
+                    } else {
+                        return Err(EmulationError::BreakpointHit);
+                    }
+                }
+                Some(Breakpoint::StepN(count)) => {
+                    // Execute `count` instructions unless we reach the end or an error
+                    let mut count = count;
+                    while count > 0 {
+                        count -= 1;
+                        if self.step()? {
+                            break 'outer;
+                        }
+                        self.clk += 1;
+                    }
+                    return Err(EmulationError::BreakpointHit);
+                }
+                Some(_) => {
+                    // Handled by the step function
+                    if self.step()? {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn step(&mut self) -> Result<bool, EmulationError> {
+        const U32_P: u64 = 2u64.pow(32);
+        const U32_BITS: u64 = 32;
+
+        // If there are no more activation records, we're done
+        if self.callstack.is_empty() {
+            return Ok(true);
+        }
+
+        let mut state = self.callstack.pop().unwrap();
+        if let Some(ix) = state.next_instruction() {
+            match ix {
                 Op::Padw => {
                     self.stack.padw();
                 }
                 Op::Push(v) => {
-                    self.stack.push(*v);
+                    self.stack.push(v);
                 }
                 Op::Push2([a, b]) => {
-                    self.stack.push(*a);
-                    self.stack.push(*b);
+                    self.stack.push(a);
+                    self.stack.push(b);
                 }
                 Op::Pushw(word) => {
-                    self.stack.pushw(*word);
+                    self.stack.pushw(word);
                 }
                 Op::PushU8(i) => {
-                    self.stack.push_u8(*i);
+                    self.stack.push_u8(i);
                 }
                 Op::PushU16(i) => {
-                    self.stack.push_u16(*i);
+                    self.stack.push_u16(i);
                 }
                 Op::PushU32(i) => {
-                    self.stack.push_u32(*i);
+                    self.stack.push_u32(i);
                 }
                 Op::Drop => {
                     self.stack.drop();
@@ -380,28 +577,28 @@ impl Emulator {
                     self.stack.dropw();
                 }
                 Op::Dup(pos) => {
-                    self.stack.dup(*pos as usize);
+                    self.stack.dup(pos as usize);
                 }
                 Op::Dupw(pos) => {
-                    self.stack.dupw(*pos as usize);
+                    self.stack.dupw(pos as usize);
                 }
                 Op::Swap(pos) => {
-                    self.stack.swap(*pos as usize);
+                    self.stack.swap(pos as usize);
                 }
                 Op::Swapw(pos) => {
-                    self.stack.swapw(*pos as usize);
+                    self.stack.swapw(pos as usize);
                 }
                 Op::Movup(pos) => {
-                    self.stack.movup(*pos as usize);
+                    self.stack.movup(pos as usize);
                 }
                 Op::Movupw(pos) => {
-                    self.stack.movupw(*pos as usize);
+                    self.stack.movupw(pos as usize);
                 }
                 Op::Movdn(pos) => {
-                    self.stack.movdn(*pos as usize);
+                    self.stack.movdn(pos as usize);
                 }
                 Op::Movdnw(pos) => {
-                    self.stack.movdnw(*pos as usize);
+                    self.stack.movdnw(pos as usize);
                 }
                 Op::Cswap => {
                     let cond = self.stack.pop().expect("operand stack is empty");
@@ -464,7 +661,7 @@ impl Emulator {
                     assert_eq!(a, b, "equality assertion failed");
                 }
                 Op::LocAddr(id) => {
-                    let addr = fp + id.as_usize() as u32;
+                    let addr = state.fp + id.as_usize() as u32;
                     debug_assert!(addr < self.memory.len() as u32);
                     self.stack.push_u32(addr);
                 }
@@ -492,13 +689,13 @@ impl Emulator {
                     self.stack.push(self.memory[addr][offset]);
                 }
                 Op::MemLoadImm(addr) => {
-                    let addr = *addr as usize;
+                    let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.stack.push(self.memory[addr][0]);
                 }
                 Op::MemLoadOffsetImm(addr, offset) => {
-                    let addr = *addr as usize;
-                    let offset = *offset as usize;
+                    let addr = addr as usize;
+                    let offset = offset as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.stack.push(self.memory[addr][offset]);
                 }
@@ -513,7 +710,7 @@ impl Emulator {
                     self.stack.pushw(self.memory[addr]);
                 }
                 Op::MemLoadwImm(addr) => {
-                    let addr = *addr as usize;
+                    let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
                     self.stack.pushw(self.memory[addr]);
                 }
@@ -543,14 +740,14 @@ impl Emulator {
                     self.memory[addr][offset] = value;
                 }
                 Op::MemStoreImm(addr) => {
-                    let addr = *addr as usize;
+                    let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     let value = self.stack.pop().expect("operand stack is empty");
                     self.memory[addr][0] = value;
                 }
                 Op::MemStoreOffsetImm(addr, offset) => {
-                    let addr = *addr as usize;
-                    let offset = *offset as usize;
+                    let addr = addr as usize;
+                    let offset = offset as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     let value = self.stack.pop().expect("operand stack is empty");
                     self.memory[addr][offset] = value;
@@ -567,7 +764,7 @@ impl Emulator {
                     self.memory[addr] = word;
                 }
                 Op::MemStorewImm(addr) => {
-                    let addr = *addr as usize;
+                    let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
                     let word = self.stack.popw().expect("operand stack is empty");
                     self.memory[addr] = word;
@@ -576,16 +773,11 @@ impl Emulator {
                     let cond = self.stack.pop().expect("operand stack is empty");
                     let is_true = cond == Felt::ONE;
                     assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
-
-                    block_stack.push((current_block, index + 1));
                     if is_true {
-                        current_block = *then_blk;
+                        state.enter_block(then_blk);
                     } else {
-                        current_block = *else_blk;
+                        state.enter_block(else_blk);
                     }
-                    code = function.blocks[current_block].ops.as_slice();
-                    index = 0;
-                    continue;
                 }
                 Op::While(body_blk) => {
                     let cond = self.stack.pop().expect("operand stack is empty");
@@ -593,15 +785,37 @@ impl Emulator {
                     assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
 
                     if is_true {
-                        block_stack.push((current_block, index));
-                        current_block = *body_blk;
-                        code = function.blocks[current_block].ops.as_slice();
-                        index = 0;
-                        continue;
+                        state.enter_while_loop(body_blk);
                     }
                 }
-                Op::Repeat(_n, _body_blk) => unimplemented!(),
-                Op::Exec(callee) => self.exec(callee)?,
+                Op::Repeat(n, body_blk) => {
+                    state.repeat_block(body_blk, n as usize);
+                }
+                Op::Exec(callee) => {
+                    let callee = callee;
+                    let fun = self
+                        .functions
+                        .get(&callee)
+                        .cloned()
+                        .ok_or(EmulationError::UndefinedFunction(callee))?;
+                    match fun {
+                        Stub::Asm(ref function) => {
+                            let fp = self.locals[&function.name];
+                            let callee_state = Activation::new(function.clone(), fp);
+                            // Suspend caller
+                            self.callstack.push(state);
+                            // Schedule callee next
+                            self.callstack.push(callee_state);
+                            if let Some(Breakpoint::Call(bp)) = self.bp {
+                                if callee == bp {
+                                    return Err(EmulationError::BreakpointHit);
+                                }
+                            }
+                            return Ok(false);
+                        }
+                        Stub::Native(_function) => unimplemented!(),
+                    }
+                }
                 Op::Syscall(_callee) => unimplemented!(),
                 Op::Add => {
                     let b = self.stack.pop().expect("operand stack is empty");
@@ -610,7 +824,7 @@ impl Emulator {
                 }
                 Op::AddImm(imm) => {
                     let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a + *imm);
+                    self.stack.push(a + imm);
                 }
                 Op::Sub => {
                     let b = self.stack.pop().expect("operand stack is empty");
@@ -619,7 +833,7 @@ impl Emulator {
                 }
                 Op::SubImm(imm) => {
                     let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a - *imm);
+                    self.stack.push(a - imm);
                 }
                 Op::Mul => {
                     let b = self.stack.pop().expect("operand stack is empty");
@@ -628,7 +842,7 @@ impl Emulator {
                 }
                 Op::MulImm(imm) => {
                     let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a * *imm);
+                    self.stack.push(a * imm);
                 }
                 Op::Div => {
                     let b = self.stack.pop().expect("operand stack is empty");
@@ -637,7 +851,7 @@ impl Emulator {
                 }
                 Op::DivImm(imm) => {
                     let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a / *imm);
+                    self.stack.push(a / imm);
                 }
                 Op::Neg => {
                     let a = self.stack.pop().expect("operand stack is empty");
@@ -670,7 +884,7 @@ impl Emulator {
                     self.stack.push(a.exp(b));
                 }
                 Op::ExpImm(pow) => {
-                    let pow = *pow as u64;
+                    let pow = pow as u64;
                     let a = self.stack.pop().expect("operand stack is empty");
                     assert!(
                         pow < 64,
@@ -693,7 +907,6 @@ impl Emulator {
                     self.stack.push_u8(result as u8);
                 }
                 Op::AndImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < 2, "invalid boolean value");
                     let result = (a == 1) & b;
@@ -708,7 +921,6 @@ impl Emulator {
                     self.stack.push_u8(result as u8);
                 }
                 Op::OrImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < 2, "invalid boolean value");
                     let a = a == 1;
@@ -724,7 +936,6 @@ impl Emulator {
                     self.stack.push_u8(result as u8);
                 }
                 Op::XorImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < 2, "invalid boolean value");
                     let result = (a == 1) ^ b;
@@ -737,7 +948,7 @@ impl Emulator {
                 }
                 Op::EqImm(imm) => {
                     let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push_u8((a == *imm) as u8);
+                    self.stack.push_u8((a == imm) as u8);
                 }
                 Op::Neq => {
                     let b = self.stack.pop().expect("operand stack is empty");
@@ -746,7 +957,7 @@ impl Emulator {
                 }
                 Op::NeqImm(imm) => {
                     let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push_u8((a != *imm) as u8);
+                    self.stack.push_u8((a != imm) as u8);
                 }
                 Op::Gt => {
                     let b = self.stack.pop().expect("operand stack is empty").as_int();
@@ -852,7 +1063,6 @@ impl Emulator {
                     self.stack.push(Felt::new(result));
                 }
                 Op::U32CheckedAddImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let result = a + b as u64;
@@ -872,7 +1082,6 @@ impl Emulator {
                     self.stack.push_u8(overflowed as u8);
                 }
                 Op::U32OverflowingAddImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let (result, overflowed) = (a as u32).overflowing_add(b);
@@ -888,7 +1097,6 @@ impl Emulator {
                     self.stack.push_u32(result);
                 }
                 Op::U32WrappingAddImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let result = (a as u32).wrapping_add(b);
@@ -905,7 +1113,7 @@ impl Emulator {
                     self.stack.push(Felt::new(a - b));
                 }
                 Op::U32CheckedSubImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     assert!(a > b, "assertion failed: subtraction underflow: {a} - {b}");
@@ -921,7 +1129,6 @@ impl Emulator {
                     self.stack.push_u8(underflowed as u8);
                 }
                 Op::U32OverflowingSubImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let (result, underflowed) = (a as u32).overflowing_sub(b);
@@ -937,7 +1144,6 @@ impl Emulator {
                     self.stack.push_u32(result);
                 }
                 Op::U32WrappingSubImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let result = (a as u32).wrapping_sub(b);
@@ -956,7 +1162,7 @@ impl Emulator {
                     self.stack.push(Felt::new(result));
                 }
                 Op::U32CheckedMulImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let result = a * b;
@@ -976,7 +1182,6 @@ impl Emulator {
                     self.stack.push_u8(overflowed as u8);
                 }
                 Op::U32OverflowingMulImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let (result, overflowed) = (a as u32).overflowing_mul(b);
@@ -992,7 +1197,6 @@ impl Emulator {
                     self.stack.push_u32(result);
                 }
                 Op::U32WrappingMulImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     let result = (a as u32).wrapping_mul(b);
@@ -1024,7 +1228,7 @@ impl Emulator {
                     self.stack.push(Felt::new(a / b));
                 }
                 Op::U32CheckedDivImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     assert_ne!(b, 0, "assertion failed: division by zero");
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
@@ -1037,7 +1241,7 @@ impl Emulator {
                     self.stack.push(a / b);
                 }
                 Op::U32UncheckedDivImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     assert_ne!(b, 0, "assertion failed: division by zero");
                     let a = self.stack.pop().expect("operand stack is empty");
                     let b = Felt::new(b);
@@ -1052,7 +1256,7 @@ impl Emulator {
                     self.stack.push(Felt::new(a % b));
                 }
                 Op::U32CheckedModImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     assert_ne!(b, 0, "assertion failed: division by zero");
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
@@ -1065,7 +1269,7 @@ impl Emulator {
                     self.stack.push(Felt::new(a % b));
                 }
                 Op::U32UncheckedModImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     assert_ne!(b, 0, "assertion failed: division by zero");
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     self.stack.push(Felt::new(a % b));
@@ -1080,7 +1284,7 @@ impl Emulator {
                     self.stack.push(Felt::new(a % b));
                 }
                 Op::U32CheckedDivModImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     assert_ne!(b, 0, "assertion failed: division by zero");
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
@@ -1095,7 +1299,7 @@ impl Emulator {
                     self.stack.push(Felt::new(a % b));
                 }
                 Op::U32UncheckedDivModImm(b) => {
-                    let b = *b as u64;
+                    let b = b as u64;
                     assert_ne!(b, 0, "assertion failed: division by zero");
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     self.stack.push(Felt::new(a / b));
@@ -1149,7 +1353,6 @@ impl Emulator {
                     self.stack.push_u32(a << b);
                 }
                 Op::U32CheckedShlImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
@@ -1164,7 +1367,6 @@ impl Emulator {
                     self.stack.push_u32(a << b);
                 }
                 Op::U32UncheckedShlImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     let a = a as u32;
                     self.stack.push_u32(a << b);
@@ -1183,7 +1385,6 @@ impl Emulator {
                     self.stack.push_u32(a >> b);
                 }
                 Op::U32CheckedShrImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
@@ -1198,7 +1399,6 @@ impl Emulator {
                     self.stack.push_u32(a >> b);
                 }
                 Op::U32UncheckedShrImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     let a = a as u32;
                     self.stack.push_u32(a >> b);
@@ -1217,7 +1417,6 @@ impl Emulator {
                     self.stack.push_u32(a.rotate_left(b));
                 }
                 Op::U32CheckedRotlImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
@@ -1232,7 +1431,6 @@ impl Emulator {
                     self.stack.push_u32(a.rotate_left(b));
                 }
                 Op::U32UncheckedRotlImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     let a = a as u32;
                     self.stack.push_u32(a.rotate_left(b));
@@ -1251,7 +1449,6 @@ impl Emulator {
                     self.stack.push_u32(a.rotate_right(b));
                 }
                 Op::U32CheckedRotrImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
                     assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
@@ -1266,7 +1463,6 @@ impl Emulator {
                     self.stack.push_u32(a.rotate_right(b));
                 }
                 Op::U32UncheckedRotrImm(b) => {
-                    let b = *b;
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     let a = a as u32;
                     self.stack.push_u32(a.rotate_right(b));
@@ -1301,7 +1497,7 @@ impl Emulator {
                         a.as_int() < U32_P,
                         "assertion failed: {a} is larger than 2^32"
                     );
-                    let b = Felt::new(*b as u64);
+                    let b = Felt::new(b as u64);
                     self.stack.push_u8((a == b) as u8);
                 }
                 Op::U32Neq => {
@@ -1323,7 +1519,7 @@ impl Emulator {
                         a.as_int() < U32_P,
                         "assertion failed: {a} is larger than 2^32"
                     );
-                    let b = Felt::new(*b as u64);
+                    let b = Felt::new(b as u64);
                     self.stack.push_u8((a != b) as u8);
                 }
                 Op::U32CheckedGt => {
@@ -1399,10 +1595,11 @@ impl Emulator {
                     self.stack.push(Felt::new(cmp::max(a, b)));
                 }
             }
-            self.clk += 1;
-            index += 1;
         }
 
-        Ok(())
+        // Suspend the current activation record
+        self.callstack.push(state);
+
+        Ok(false)
     }
 }
