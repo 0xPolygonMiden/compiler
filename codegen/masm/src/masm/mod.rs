@@ -44,16 +44,16 @@ impl NativePtr {
         // native address space represents 128 bits of byte-addressable
         // memory.
         //
-        // By dividing `addr` by 128, we get the word index (i.e. address)
+        // By dividing `addr` by 16, we get the word index (i.e. address)
         // where the data starts.
-        let waddr = addr / 128;
+        let waddr = addr / 16;
         // If our address is not word-aligned, we need to determine what
         // element index contains the 32-bit chunk where the data begins
-        let woffset = addr % 128;
-        let index = (woffset / 32) as u8;
+        let woffset = addr % 16;
+        let index = (woffset / 4) as u8;
         // If our address is not element-aligned, we need to determine
         // what byte offset contains the first byte of the data
-        let offset = (woffset % 32) as u8;
+        let offset = (woffset % 4) as u8;
         Self {
             waddr,
             index,
@@ -88,6 +88,6 @@ impl NativePtr {
 
     /// Converts this native pointer back to a byte-addressable pointer value
     pub const fn as_ptr(&self) -> u32 {
-        (self.waddr * 128) + (self.index as u32 * 32) + self.offset as u32
+        (self.waddr * 16) + (self.index as u32 * 4) + self.offset as u32
     }
 }

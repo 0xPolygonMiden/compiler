@@ -14,14 +14,14 @@ export.extract_element # [element_index, w0, w1, w2, w3]
     # drop w1 if the element index is zero; or drop w0 if the element index is non-zero
     cdrop
     # drop w2 if the element index is one; or drop w0 and w1 if the element index is > 1
-    movup.4, cdrop
+    movup.3, cdrop
     # drop w3 if the element index is two; or drop w0, w1, and w2 if the element index is 3
     #
     # after this point, the only value on the operand stack remaining will be
     # the element of the word indicated by the index that was on the top of the
     # stack on entry. We've consumed the word itself, as well as the element
     # index
-    movup.3, cdrop
+    movup.2, cdrop
 end
 
 # See `load_felt` for safe usage
@@ -30,7 +30,7 @@ proc.load_felt_unchecked # [waddr, index]
     mem_loadw  # [w0, w1, w2, w3, index]
 
     # select the desired element
-    movup.5
+    movup.4
     exec.extract_element
 end
 
@@ -73,11 +73,11 @@ export.load_sw # [waddr, index, offset]
             # load a word
             mem_loadw # [w0, w1, w2, w3, offset]
             # drop the unused elements
-            movup.4, movup.4, drop, drop
+            movup.3, movup.3, drop, drop
             # shift high bits left by the offset
             dup.2, u32.checked_shl  # [hi, w1, offset]
             # move the low bits to the top and shift them as well
-            swap.1, push.32, movup.2 # [offset, 32, w1, hi]
+            swap.1, push.32, movup.3 # [offset, 32, w1, hi]
             u32.checked_sub # [32 - offset, w1, hi]
             u32.checked_shr # [lo, hi]
             # combine the two halves
@@ -92,11 +92,11 @@ export.load_sw # [waddr, index, offset]
                 # load
                 mem_loadw # [w0, w1, w2, w3, offset]
                 # drop the unused elements
-                drop, movdn.3, movdn.3, drop # [w1, w2, offset]
+                drop, movdn.2, movdn.2, drop # [w1, w2, offset]
                 # shift the high bits
                 dup.2, u32.checked_shl  # [hi, w2, offset]
                 # shift the low bits
-                swap.1, push.32, movup.2  # [offset, 32, w2, hi]
+                swap.1, push.32, movup.3  # [offset, 32, w2, hi]
                 u32.checked_sub  # [32 - offset, w2, hi]
                 u32.checked_shr  # [lo, hi]
                 # combine the two halves
@@ -112,7 +112,7 @@ export.load_sw # [waddr, index, offset]
                     # shift the high bits
                     dup.2, u32.checked_shl  # [hi, w3, offset]
                     # shift the low bits
-                    swap.1, push.32, movup.2  # [offset, 32, w3, hi]
+                    swap.1, push.32, movup.3  # [offset, 32, w3, hi]
                     u32.checked_sub  # [32 - offset, w3, hi]
                     u32.checked_shr  # [lo, hi]
                     # combine the two halves

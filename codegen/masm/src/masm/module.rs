@@ -114,7 +114,7 @@ impl Module {
                 // # drop w1 if the element index is zero; or drop w0 if the element index is non-zero
                 Op::Cdrop,
                 // # drop w2 if the element index is one; or drop w0 and w1 if the element index is > 1
-                Op::Movup(4),
+                Op::Movup(3),
                 Op::Cdrop,
                 // # drop w3 if the element index is two; or drop w0, w1, and w2 if the element index is 3
                 // #
@@ -122,7 +122,7 @@ impl Module {
                 // # the element of the word indicated by the index that was on the top of the
                 // # stack on entry. We've consumed the word itself, as well as the element
                 // # index
-                Op::Movup(3),
+                Op::Movup(2),
                 Op::Cdrop,
             ]);
         }
@@ -146,7 +146,7 @@ impl Module {
                 // # [w0, w1, w2, w3, index]
                 Op::MemLoadw,
                 // # select the desired element
-                Op::Movup(5),
+                Op::Movup(4),
                 Op::Exec(extract_element),
             ]);
         }
@@ -255,8 +255,8 @@ impl Module {
                 // # [w0, w1, w2, w3, offset]
                 Op::MemLoadw,
                 // # drop the unused elements
-                Op::Movup(4),
-                Op::Movup(4),
+                Op::Movup(3),
+                Op::Movup(3),
                 Op::Drop,
                 Op::Drop,
                 // # shift high bits left by the offset
@@ -267,7 +267,7 @@ impl Module {
                 // # [offset, 32, w1, hi]
                 Op::Swap(1),
                 Op::PushU8(32),
-                Op::Movup(2),
+                Op::Movup(3),
                 // # [32 - offset, w1, hi]
                 Op::U32CheckedSub,
                 // # [lo, hi]
@@ -297,8 +297,8 @@ impl Module {
                 // # drop the unused elements
                 // # [w1, w2, offset]
                 Op::Drop,
-                Op::Movdn(3),
-                Op::Movdn(3),
+                Op::Movdn(2),
+                Op::Movdn(2),
                 Op::Drop,
                 // # shift the high bits
                 // # [hi, w2, offset]
@@ -308,7 +308,7 @@ impl Module {
                 // # [offset, 32, w2, hi]
                 Op::Swap(1),
                 Op::PushU8(32),
-                Op::Movup(2),
+                Op::Movup(3),
                 // # [32 - offset, w2, hi]
                 Op::U32CheckedSub,
                 // # [lo, hi]
@@ -343,7 +343,7 @@ impl Module {
                 // # [offset, 32, w3, hi]
                 Op::Swap(1),
                 Op::PushU8(32),
-                Op::Movup(2),
+                Op::Movup(3),
                 // # [32 - offset, w3, hi]
                 Op::U32CheckedSub,
                 // # [lo, hi]
