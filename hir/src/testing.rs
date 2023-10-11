@@ -300,7 +300,8 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler)
     // blk5
     fb.switch_to_block(f);
     let rows5 = fb.ins().incr(rows3, SourceSpan::UNKNOWN);
-    fb.ins().br(c, &[sum3, rows5, cols3], SourceSpan::UNKNOWN);
+    let cols5 = fb.ins().u32(0, SourceSpan::UNKNOWN);
+    fb.ins().br(c, &[sum3, rows5, cols5], SourceSpan::UNKNOWN);
 
     // We're done
     fb.build(diagnostics)
