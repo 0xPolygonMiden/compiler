@@ -125,10 +125,11 @@ impl TestByEmulationHarness {
     }
 
     #[inline(always)]
-    pub fn store(&mut self, addr: usize, index: usize, value: Felt) {
-        self.emulator.store(addr, index, value);
+    pub fn store(&mut self, addr: usize, value: Felt) {
+        self.emulator.store(addr, value);
     }
 
+    #[allow(unused)]
     pub fn execute(
         &mut self,
         program: Program,
@@ -164,7 +165,7 @@ fn fib_emulator() {
 
     // Build test module with fib function
     let mut mb = builder.module("test");
-    testing::fib1(mb.as_mut(), &harness.context.diagnostics);
+    let id = testing::fib1(mb.as_mut(), &harness.context.diagnostics);
     mb.build()
         .expect("unexpected error constructing test module");
 
@@ -174,13 +175,39 @@ fn fib_emulator() {
         .link()
         .expect("failed to link program");
 
-    // Compile to MASM IR
-    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
-    let masm = compiler.compile(&mut program).expect("compilation failed");
+    // Get the fib function
+    let (mut function, imports) = {
+        let modules = program.modules_mut();
+        let mut test = modules.find_mut("test").remove().expect("undefined module");
+        let function = test
+            .cursor_mut_at(id.function)
+            .remove()
+            .expect("undefined function");
+        let imports = test.imports();
+        modules.insert(test);
+        (function, imports)
+    };
+
+    let masm = harness
+        .stackify(&program, &mut function)
+        .expect("stackification failed");
+
+    let mut output = String::with_capacity(1024);
+    write!(&mut output, "{}", masm.display(&imports)).expect("formatting failed");
+
+    println!("{}", output.as_str());
+
+    let mut module = Module::new(id.module);
+    module.functions.push_back(masm);
+    module.entry = Some(id);
 
     // Test it via the emulator
     let n = Felt::new(10);
-    harness.execute(masm, &[n]).expect("execution failed");
+    let mut stack = harness
+        .execute_module(module, &[n])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop().map(|e| e.as_int()), Some(55));
 }
 
 /// Test the [Stackify] pass on a very simple program with a conditional as a sanity check
@@ -393,7 +420,7 @@ fn stackify_sum_matrix() {
         .expect("failed to link program");
 
     // Get the sum_matrix function
-    let (mut function, imports) = {
+    let (mut function, _imports) = {
         let modules = program.modules_mut();
         let mut test = modules.find_mut("test").remove().expect("undefined module");
         let function = test
@@ -409,17 +436,12 @@ fn stackify_sum_matrix() {
         .stackify(&program, &mut function)
         .expect("stackification failed");
 
-    let mut output = String::with_capacity(1024);
-    write!(&mut output, "{}", masm.display(&imports)).expect("formatting failed");
-
-    println!("{}", output.as_str());
-
     let mut module = Module::new(id.module);
     module.functions.push_back(masm);
     module.entry = Some(id);
 
     let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
-    let ptr = Felt::new(addr as u64 * 16);
+    let ptr = Felt::new(addr as u64);
     let rows = Felt::new(3);
     let cols = Felt::new(3);
 
@@ -427,24 +449,21 @@ fn stackify_sum_matrix() {
     //  0, 1, 0,
     //  1, 1, 1] == 6
     let addr = addr as usize;
-    harness.store(addr, 0, Felt::ONE);
-    harness.store(addr, 1, Felt::ZERO);
-    harness.store(addr, 2, Felt::ONE);
-    harness.store(addr, 3, Felt::ZERO);
-    harness.store(addr + 1, 0, Felt::ONE);
-    harness.store(addr + 1, 1, Felt::ZERO);
-    harness.store(addr + 1, 2, Felt::ONE);
-    harness.store(addr + 1, 3, Felt::ONE);
-    harness.store(addr + 2, 0, Felt::ONE);
+    harness.store(addr, Felt::ONE);
+    harness.store(addr + 4, Felt::ZERO);
+    harness.store(addr + 8, Felt::ONE);
+    harness.store(addr + 12, Felt::ZERO);
+    harness.store(addr + 16, Felt::ONE);
+    harness.store(addr + 20, Felt::ZERO);
+    harness.store(addr + 24, Felt::ONE);
+    harness.store(addr + 28, Felt::ONE);
+    harness.store(addr + 32, Felt::ONE);
 
-    assert_eq!(3 % 2, 0);
+    harness.set_cycle_budget(1000);
+
     let mut stack = harness
         .execute_module(module, &[ptr, rows, cols])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(6));
-
-    //let expected = "";
-
-    //assert_masm_output!(expected, output.as_str());
 }
