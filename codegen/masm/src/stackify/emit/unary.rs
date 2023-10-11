@@ -1,4 +1,4 @@
-use miden_hir::{assert_matches, Overflow, Type};
+use miden_hir::{Overflow, Type};
 
 use crate::masm::Op;
 
@@ -303,9 +303,16 @@ impl<'a> OpEmitter<'a> {
         assert!(ty.is_pointer(), "exected pointer typed argument");
         // For now, we're strict about the types of values we'll allow casting from
         let arg = self.stack.pop().expect("operand stack is empty");
-        assert_matches!(arg.ty(), Type::U32 | Type::Felt);
-        self.emit(Op::U32Assert);
-        self.stack.push(ty.clone());
+        match arg.ty() {
+            Type::U32 => {
+                self.stack.push(ty.clone());
+            }
+            Type::Felt => {
+                self.emit(Op::U32Assert);
+                self.stack.push(ty.clone());
+            }
+            int => panic!("invalid inttoptr cast: cannot cast value of type {int} to {ty}"),
+        }
     }
 
     /// Check if an integral value on the operand stack is an odd number.
