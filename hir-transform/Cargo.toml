@@ -19,3 +19,6 @@ miden-hir-analysis = { path = "../hir-analysis" }
 miden-hir-pass = { path = "../hir-pass" }
 rustc-hash.workspace = true
 smallvec.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

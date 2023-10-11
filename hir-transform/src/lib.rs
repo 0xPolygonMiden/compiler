@@ -1,37 +1,3 @@
-#[cfg(test)]
-macro_rules! assert_formatter_output {
-    ($lhs:expr, $rhs:expr) => {{
-        let lhs = $lhs;
-        let rhs = $rhs;
-        if lhs != rhs {
-            panic!(
-                r#"
-assertion failed: `(left matches right)`
-left: `{}`,
-right: `{}`"#,
-                lhs, rhs
-            );
-        }
-    }};
-}
-
-#[cfg(test)]
-macro_rules! assert_changed {
-    ($lhs:expr, $rhs:expr) => {{
-        let lhs = &$lhs;
-        let rhs = &$rhs;
-        if lhs == rhs {
-            panic!(
-                r#"
-assertion failed: `(expected ir to change, but it did not)`
-output: `
-{}`"#,
-                lhs
-            );
-        }
-    }};
-}
-
 pub(crate) mod adt;
 mod inline_blocks;
 mod split_critical_edges;
