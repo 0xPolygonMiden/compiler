@@ -541,6 +541,7 @@ dependencies = [
  "miden-hir-analysis",
  "miden-hir-pass",
  "miden-hir-transform",
+ "paste",
  "rustc-hash",
  "smallvec",
  "thiserror",

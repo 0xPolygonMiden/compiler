@@ -574,7 +574,286 @@ impl Emulator {
 
         Ok(self.stack.clone())
     }
+}
 
+/// Pops the top element off the stack
+macro_rules! pop {
+    ($emu:ident) => {
+        $emu.stack.pop().expect("operand stack is empty")
+    };
+
+    ($emu:ident, $msg:literal) => {
+        $emu.stack.pop().expect($msg)
+    };
+
+    ($emu:ident, $msg:literal, $($arg:expr),+) => {
+        match $emu.stack.pop() {
+            Some(value) => value,
+            None => panic!($msg, $($arg),*),
+        }
+    }
+}
+
+/// Pops the top word off the stack
+macro_rules! popw {
+    ($emu:ident) => {
+        $emu.stack.popw().expect("operand stack does not contain a full word")
+    };
+
+    ($emu:ident, $msg:literal) => {
+        $emu.stack.popw().expect($msg)
+    };
+
+    ($emu:ident, $msg:literal, $($arg:expr),+) => {{
+        match $emu.stack.popw() {
+            Some(value) => value,
+            None => panic!($msg, $($arg),*),
+        }
+    }}
+}
+
+/// Pops the top two elements off the stack, returning them in order of appearance
+macro_rules! pop2 {
+    ($emu:ident) => {{
+        let b = pop!($emu);
+        let a = pop!($emu);
+        (b, a)
+    }};
+}
+
+/// Pops a u32 value from the top of the stack, and asserts if it is out of range
+macro_rules! pop_u32 {
+    ($emu:ident) => {{
+        let value = pop!($emu).as_int();
+        assert!(value < 2u64.pow(32), "assertion failed: {value} is not a valid u32, value is out of range");
+        value as u32
+    }};
+
+    ($emu:ident, $format:literal $(, $args:expr)*) => {{
+        let value = pop!($emu).as_int();
+        assert!(value < 2u64.pow(32), $format, value, $($args),*);
+        value as u32
+    }}
+}
+
+/// Pops a pointer value from the top of the stack, and asserts if it is not a valid boolean
+macro_rules! pop_addr {
+    ($emu:ident) => {{
+        let addr = pop_u32!($emu, "expected valid 32-bit address, got {}") as usize;
+        assert!(addr < $emu.memory.len(), "out of bounds memory access");
+        addr
+    }};
+}
+
+/// Pops a boolean value from the top of the stack, and asserts if it is not a valid boolean
+macro_rules! pop_bool {
+    ($emu:ident) => {{
+        let value = pop!($emu).as_int();
+        assert!(
+            value < 2,
+            "assertion failed: {value} is not a valid boolean, value must be either 1 or 0"
+        );
+        value == 1
+    }};
+}
+
+/// Applies a binary operator that produces a result of the same input type:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! binop {
+    ($emu:ident, $op:ident) => {{
+        use core::ops::*;
+        let b = pop!($emu);
+        let a = pop!($emu);
+        $emu.stack.push(a.$op(b));
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        use core::ops::*;
+        let a = pop!($emu);
+        $emu.stack.push(a.$op($imm));
+    }};
+}
+
+/// Applies a binary operator to two u32 values, either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! binop32 {
+    ($emu:ident, $op:ident) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let b = pop_u32!($emu);
+        let a = pop_u32!($emu);
+        $emu.stack.push_u32(a.$op(b));
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let a = pop_u32!($emu);
+        $emu.stack.push_u32(a.$op($imm));
+    }};
+}
+
+/// Applies a checked binary operator to two u32 values, either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! binop_checked_u32 {
+    ($emu:ident, $op:ident) => {{
+        paste::paste! {
+            binop_checked_u32_impl!($emu, [<checked_ $op>]);
+        }
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        paste::paste! {
+            binop_checked_u32_impl!($emu, [<checked_ $op>], $imm);
+        }
+    }};
+}
+
+#[doc(hidden)]
+macro_rules! binop_checked_u32_impl {
+    ($emu:ident, $op:ident) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let b = pop_u32!($emu);
+        let a = pop_u32!($emu);
+        let result = a
+            .$op(b)
+            .expect("checked operation failed: result has overflowed the u32 range");
+        $emu.stack.push(Felt::new(result as u64));
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let a = pop_u32!($emu);
+        let result = a
+            .$op($imm)
+            .expect("checked operation failed: result has overflowed the u32 range");
+        $emu.stack.push(Felt::new(result as u64));
+    }};
+}
+
+/// Applies an overflowing binary operator to two u32 values, either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! binop_overflowing_u32 {
+    ($emu:ident, $op:ident) => {{
+        paste::paste! {
+            binop_overflowing_u32_impl!($emu, [<overflowing_ $op>]);
+        }
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        paste::paste! {
+            binop_overflowing_u32_impl!($emu, [<overflowing_ $op>], $imm);
+        }
+    }};
+}
+
+#[doc(hidden)]
+macro_rules! binop_overflowing_u32_impl {
+    ($emu:ident, $op:ident) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let b = pop_u32!($emu);
+        let a = pop_u32!($emu);
+        let (result, overflowed) = a.$op(b);
+        $emu.stack.push_u32(result);
+        $emu.stack.push_u8(overflowed as u8);
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let a = pop_u32!($emu);
+        let (result, overflowed) = a.$op($imm);
+        $emu.stack.push_u32(result);
+        $emu.stack.push_u8(overflowed as u8);
+    }};
+}
+
+/// Applies a wrapping binary operator to two u32 values, either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! binop_wrapping_u32 {
+    ($emu:ident, $op:ident) => {{
+        paste::paste! {
+            binop_wrapping_u32_impl!($emu, [<wrapping_ $op>]);
+        }
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        paste::paste! {
+            binop_wrapping_u32_impl!($emu, [<wrapping_ $op>], $imm);
+        }
+    }};
+}
+
+#[doc(hidden)]
+macro_rules! binop_wrapping_u32_impl {
+    ($emu:ident, $op:ident) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let b = pop_u32!($emu);
+        let a = pop_u32!($emu);
+        $emu.stack.push_u32(a.$op(b));
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let a = pop_u32!($emu);
+        $emu.stack.push_u32(a.$op($imm));
+    }};
+}
+
+/// Applies a binary comparison operator, to either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! comparison {
+    ($emu:ident, $op:ident) => {{
+        let b = pop!($emu).as_int();
+        let a = pop!($emu).as_int();
+        let result: bool = a.$op(&b);
+        $emu.stack.push_u8(result as u8);
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        let a = pop!($emu).as_int();
+        let result: bool = a.$op(&$imm);
+        $emu.stack.push_u8(result as u8);
+    }};
+}
+
+/// Applies a binary comparison operator to two u32 values, either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
+macro_rules! comparison32 {
+    ($emu:ident, $op:ident) => {{
+        let b = pop_u32!($emu);
+        let a = pop_u32!($emu);
+        let result: bool = a.$op(&b);
+        $emu.stack.push_u8(result as u8);
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        let a = pop_u32!($emu);
+        let result: bool = a.$op(&$imm);
+        $emu.stack.push_u8(result as u8);
+    }};
+}
+
+impl Emulator {
     /// Run the emulator until all calls are completed, the cycle budget is exhausted,
     /// or a breakpoint is hit.
     ///
@@ -693,7 +972,6 @@ impl Emulator {
 
     fn step(&mut self) -> Result<Action, EmulationError> {
         const U32_P: u64 = 2u64.pow(32);
-        const U32_BITS: u64 = 32;
 
         // If there are no more activation records, we're done
         if self.callstack.is_empty() {
@@ -774,91 +1052,66 @@ impl Emulator {
                     self.stack.movdnw(pos as usize);
                 }
                 Op::Cswap => {
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
-                    if is_true {
+                    let cond = pop_bool!(self);
+                    if cond {
                         self.stack.swap(1);
                     }
                 }
                 Op::Cswapw => {
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
-                    if is_true {
+                    let cond = pop_bool!(self);
+                    if cond {
                         self.stack.swapw(1);
                     }
                 }
                 Op::Cdrop => {
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    if is_true {
+                    let cond = pop_bool!(self);
+                    let (b, a) = pop2!(self);
+                    if cond {
                         self.stack.push(b);
                     } else {
                         self.stack.push(a);
                     }
                 }
                 Op::Cdropw => {
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
-                    let b = self.stack.popw().expect("operand stack is empty");
-                    let a = self.stack.popw().expect("operand stack is empty");
-                    if is_true {
+                    let cond = pop_bool!(self);
+                    let b = popw!(self);
+                    let a = popw!(self);
+                    if cond {
                         self.stack.pushw(b);
                     } else {
                         self.stack.pushw(a);
                     }
                 }
                 Op::Assert => {
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(is_true, "assertion failed: got {cond}");
+                    let cond = pop_bool!(self);
+                    assert!(cond, "assertion failed: expected true, got false");
                 }
                 Op::Assertz => {
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_false = cond == Felt::ZERO;
-                    assert!(is_false, "assertion failed: got {cond}");
+                    let cond = pop_bool!(self);
+                    assert!(!cond, "assertion failed: expected false, got true");
                 }
                 Op::AssertEq => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
+                    let (b, a) = pop2!(self);
                     assert_eq!(a, b, "equality assertion failed");
                 }
                 Op::AssertEqw => {
-                    let b = self.stack.popw().expect("operand stack is empty");
-                    let a = self.stack.popw().expect("operand stack is empty");
+                    let b = popw!(self);
+                    let a = popw!(self);
                     assert_eq!(a, b, "equality assertion failed");
                 }
                 Op::LocAddr(id) => {
                     let addr = state.fp + id.as_usize() as u32;
                     debug_assert!(addr < self.memory.len() as u32);
-                    self.stack.push_u32(addr);
+                    self.stack.push_u32(addr * 16);
                 }
                 Op::MemLoad => {
-                    let addr = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(
-                        addr < u32::MAX as u64,
-                        "expected valid 32-bit address, got {addr}"
-                    );
-                    let addr = addr as usize;
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
+                    let addr = pop_addr!(self);
                     self.stack.push(self.memory[addr][0]);
                 }
                 Op::MemLoadOffset => {
-                    let offset = self.stack.pop().expect("operand stack is empty").as_int();
-                    let addr = self.stack.pop().expect("operand stack is empty").as_int();
+                    let offset = pop_u32!(self) as usize;
                     assert!(offset < 4, "expected valid element offset, got {offset}");
-                    assert!(
-                        addr < u32::MAX as u64,
-                        "expected valid 32-bit address, got {addr}"
-                    );
-                    let addr = addr as usize;
-                    let offset = offset as usize;
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
+                    let addr = pop_addr!(self);
                     self.stack.push(self.memory[addr][offset]);
                 }
                 Op::MemLoadImm(addr) => {
@@ -873,13 +1126,7 @@ impl Emulator {
                     self.stack.push(self.memory[addr][offset]);
                 }
                 Op::MemLoadw => {
-                    let addr = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(
-                        addr < u32::MAX as u64,
-                        "expected valid 32-bit address, got {addr}"
-                    );
-                    let addr = addr as usize;
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
+                    let addr = pop_addr!(self);
                     self.stack.dropw();
                     self.stack.pushw(self.memory[addr]);
                 }
@@ -890,9 +1137,8 @@ impl Emulator {
                     self.stack.pushw(self.memory[addr]);
                 }
                 Op::MemStore => {
-                    let addr = self.stack.pop().expect("operand stack is empty").as_int();
-                    let value = self.stack.pop().expect("operand stack is empty");
-                    let addr = addr as usize;
+                    let addr = pop_addr!(self);
+                    let value = pop!(self);
                     if let Some(Breakpoint::MemoryWrite {
                         addr: min_addr,
                         size,
@@ -909,18 +1155,13 @@ impl Emulator {
                             return Err(EmulationError::BreakpointHit);
                         }
                     }
-                    assert!(
-                        addr < u32::MAX as usize,
-                        "expected valid 32-bit address, got {addr}"
-                    );
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.memory[addr][0] = value;
                 }
                 Op::MemStoreOffset => {
-                    let offset = self.stack.pop().expect("operand stack is empty").as_int();
-                    let addr = self.stack.pop().expect("operand stack is empty").as_int();
-                    let value = self.stack.pop().expect("operand stack is empty");
-                    let addr = addr as usize;
+                    let offset = pop_u32!(self);
+                    assert!(offset < 4, "expected valid element offset, got {offset}");
+                    let addr = pop_addr!(self);
+                    let value = pop!(self);
                     let offset = offset as usize;
                     if let Some(Breakpoint::MemoryWrite {
                         addr: min_addr,
@@ -939,12 +1180,6 @@ impl Emulator {
                             return Err(EmulationError::BreakpointHit);
                         }
                     }
-                    assert!(
-                        addr < u32::MAX as usize,
-                        "expected valid 32-bit address, got {addr}"
-                    );
-                    assert!(offset < 4, "expected valid element offset, got {offset}");
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.memory[addr][offset] = value;
                 }
                 Op::MemStoreImm(addr) => {
@@ -987,8 +1222,11 @@ impl Emulator {
                     self.memory[addr][offset] = value;
                 }
                 Op::MemStorew => {
-                    let addr = self.stack.pop().expect("operand stack is empty").as_int();
-                    let word = self.stack.peekw().expect("operand stack is empty");
+                    let addr = pop_addr!(self);
+                    let word = self
+                        .stack
+                        .peekw()
+                        .expect("operand stack does not contain a full word");
                     let addr = addr as usize;
                     if let Some(Breakpoint::MemoryWrite {
                         addr: min_addr,
@@ -1005,11 +1243,6 @@ impl Emulator {
                             return Err(EmulationError::BreakpointHit);
                         }
                     }
-                    assert!(
-                        addr < u32::MAX as usize,
-                        "expected valid 32-bit address, got {addr}"
-                    );
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.memory[addr] = word;
                 }
                 Op::MemStorewImm(addr) => {
@@ -1028,21 +1261,18 @@ impl Emulator {
                         }
                     }
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
-                    let word = self.stack.peekw().expect("operand stack is empty");
+                    let word = self
+                        .stack
+                        .peekw()
+                        .expect("operand stack does not contain a full word");
                     self.memory[addr] = word;
                 }
                 Op::If(then_blk, else_blk) => {
                     if let Some(Breakpoint::StepOver) = self.bp {
                         self.bp = Some(Breakpoint::StepUntil(state.pending_ip().0));
                     }
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(
-                        is_true || cond == Felt::ZERO,
-                        "invalid boolean value: {}",
-                        cond.as_int()
-                    );
-                    if is_true {
+                    let cond = pop_bool!(self);
+                    if cond {
                         state.enter_block(then_blk);
                     } else {
                         state.enter_block(else_blk);
@@ -1060,11 +1290,8 @@ impl Emulator {
                         }
                         _ => (),
                     }
-                    let cond = self.stack.pop().expect("operand stack is empty");
-                    let is_true = cond == Felt::ONE;
-                    assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
-
-                    if is_true {
+                    let cond = pop_bool!(self);
+                    if cond {
                         state.enter_while_loop(body_blk);
                     }
                 }
@@ -1119,42 +1346,14 @@ impl Emulator {
                     }
                 }
                 Op::Syscall(_callee) => unimplemented!(),
-                Op::Add => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a + b);
-                }
-                Op::AddImm(imm) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a + imm);
-                }
-                Op::Sub => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a - b);
-                }
-                Op::SubImm(imm) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a - imm);
-                }
-                Op::Mul => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a * b);
-                }
-                Op::MulImm(imm) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a * imm);
-                }
-                Op::Div => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a / b);
-                }
-                Op::DivImm(imm) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a / imm);
-                }
+                Op::Add => binop!(self, add),
+                Op::AddImm(imm) => binop!(self, add, imm),
+                Op::Sub => binop!(self, sub),
+                Op::SubImm(imm) => binop!(self, sub, imm),
+                Op::Mul => binop!(self, mul),
+                Op::MulImm(imm) => binop!(self, mul, imm),
+                Op::Div => binop!(self, div),
+                Op::DivImm(imm) => binop!(self, div, imm),
                 Op::Neg => {
                     let a = self.stack.pop().expect("operand stack is empty");
                     self.stack.push(-a);
@@ -1163,22 +1362,19 @@ impl Emulator {
                     let a = self.stack.pop().expect("operand stack is empty");
                     self.stack.push(a.inv());
                 }
-                Op::Incr => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push(a + Felt::ONE);
-                }
+                Op::Incr => binop!(self, add, Felt::ONE),
                 Op::Pow2 => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let two = Felt::new(2);
+                    let a = pop!(self).as_int();
                     assert!(
                         a < 64,
                         "invalid power of two: expected {a} to be a value less than 64"
                     );
+                    let two = Felt::new(2);
                     self.stack.push(two.exp(a));
                 }
                 Op::Exp => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty");
+                    let (b, a) = pop2!(self);
+                    let b = b.as_int();
                     assert!(
                         b < 64,
                         "invalid power of two: expected {b} to be a value less than 64"
@@ -1187,7 +1383,7 @@ impl Emulator {
                 }
                 Op::ExpImm(pow) => {
                     let pow = pow as u64;
-                    let a = self.stack.pop().expect("operand stack is empty");
+                    let a = pop!(self);
                     assert!(
                         pow < 64,
                         "invalid power of two: expected {pow} to be a value less than 64"
@@ -1195,119 +1391,55 @@ impl Emulator {
                     self.stack.push(a.exp(pow));
                 }
                 Op::Not => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    let a = a != 0;
+                    let a = pop_bool!(self);
                     self.stack.push_u8(!a as u8);
                 }
                 Op::And => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    assert!(b < 2, "invalid boolean value");
-                    let result = (a == 1) & (b == 1);
-                    self.stack.push_u8(result as u8);
+                    let b = pop_bool!(self);
+                    let a = pop_bool!(self);
+                    self.stack.push_u8((b & a) as u8);
                 }
                 Op::AndImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    let result = (a == 1) & b;
-                    self.stack.push_u8(result as u8);
+                    let a = pop_bool!(self);
+                    self.stack.push_u8((a & b) as u8);
                 }
                 Op::Or => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    assert!(b < 2, "invalid boolean value");
-                    let result = (a == 1) | (b == 1);
-                    self.stack.push_u8(result as u8);
+                    let b = pop_bool!(self);
+                    let a = pop_bool!(self);
+                    self.stack.push_u8((b | a) as u8);
                 }
                 Op::OrImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    let a = a == 1;
-                    let result = a | b;
-                    self.stack.push_u8(result as u8);
+                    let a = pop_bool!(self);
+                    self.stack.push_u8((a | b) as u8);
                 }
                 Op::Xor => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    assert!(b < 2, "invalid boolean value");
-                    let result = (a == 1) ^ (b == 1);
-                    self.stack.push_u8(result as u8);
+                    let b = pop_bool!(self);
+                    let a = pop_bool!(self);
+                    self.stack.push_u8((b ^ a) as u8);
                 }
                 Op::XorImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < 2, "invalid boolean value");
-                    let result = (a == 1) ^ b;
-                    self.stack.push_u8(result as u8);
+                    let a = pop_bool!(self);
+                    self.stack.push_u8((a ^ b) as u8);
                 }
-                Op::Eq => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push_u8((a == b) as u8);
-                }
-                Op::EqImm(imm) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push_u8((a == imm) as u8);
-                }
-                Op::Neq => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push_u8((a != b) as u8);
-                }
-                Op::NeqImm(imm) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    self.stack.push_u8((a != imm) as u8);
-                }
-                Op::Gt => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a > b) as u8);
-                }
-                Op::GtImm(b) => {
-                    let b = b.as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a > b) as u8);
-                }
-                Op::Gte => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a >= b) as u8);
-                }
-                Op::GteImm(b) => {
-                    let b = b.as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a >= b) as u8);
-                }
-                Op::Lt => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a < b) as u8);
-                }
-                Op::LtImm(b) => {
-                    let b = b.as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a < b) as u8);
-                }
-                Op::Lte => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a <= b) as u8);
-                }
-                Op::LteImm(b) => {
-                    let b = b.as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a <= b) as u8);
-                }
+                Op::Eq => comparison!(self, eq),
+                Op::EqImm(imm) => comparison!(self, eq, imm.as_int()),
+                Op::Neq => comparison!(self, ne),
+                Op::NeqImm(imm) => comparison!(self, ne, imm.as_int()),
+                Op::Gt => comparison!(self, gt),
+                Op::GtImm(imm) => comparison!(self, gt, imm.as_int()),
+                Op::Gte => comparison!(self, ge),
+                Op::GteImm(imm) => comparison!(self, ge, imm.as_int()),
+                Op::Lt => comparison!(self, lt),
+                Op::LtImm(imm) => comparison!(self, lt, imm.as_int()),
+                Op::Lte => comparison!(self, le),
+                Op::LteImm(imm) => comparison!(self, le, imm.as_int()),
                 Op::IsOdd => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push_u8((a % 2 == 0) as u8);
                 }
                 Op::Eqw => {
-                    let b = self.stack.popw().expect("operand stack is empty");
-                    let a = self.stack.popw().expect("operand stack is empty");
+                    let b = popw!(self);
+                    let a = popw!(self);
                     self.stack.push_u8((a == b) as u8);
                 }
                 Op::Clk => {
@@ -1342,558 +1474,166 @@ impl Emulator {
                     }
                 }
                 Op::U32Cast => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a % U32_P));
                 }
                 Op::U32Split => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
+                    let a = pop!(self).as_int();
                     let hi = a / U32_P;
                     let lo = a % U32_P;
                     self.stack.push(Felt::new(lo));
                     self.stack.push(Felt::new(hi));
                 }
-                Op::U32CheckedAdd => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let result = a + b;
-                    assert!(
-                        result < U32_P,
-                        "assertion failed: {result} is larger than 2^32"
-                    );
-                    self.stack.push(Felt::new(result));
-                }
-                Op::U32CheckedAddImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let result = a + b as u64;
-                    assert!(
-                        result < U32_P,
-                        "assertion failed: {result} is larger than 2^32"
-                    );
-                    self.stack.push(Felt::new(result));
-                }
-                Op::U32OverflowingAdd => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let (result, overflowed) = (a as u32).overflowing_add(b as u32);
-                    self.stack.push_u32(result);
-                    self.stack.push_u8(overflowed as u8);
-                }
-                Op::U32OverflowingAddImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let (result, overflowed) = (a as u32).overflowing_add(b);
-                    self.stack.push_u32(result);
-                    self.stack.push_u8(overflowed as u8);
-                }
-                Op::U32WrappingAdd => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let result = (a as u32).wrapping_add(b as u32);
-                    self.stack.push_u32(result);
-                }
-                Op::U32WrappingAddImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let result = (a as u32).wrapping_add(b);
-                    self.stack.push_u32(result);
-                }
+                Op::U32CheckedAdd => binop_checked_u32!(self, add),
+                Op::U32CheckedAddImm(imm) => binop_checked_u32!(self, add, imm),
+                Op::U32OverflowingAdd => binop_overflowing_u32!(self, add),
+                Op::U32OverflowingAddImm(imm) => binop_overflowing_u32!(self, add, imm),
+                Op::U32WrappingAdd => binop_wrapping_u32!(self, add),
+                Op::U32WrappingAddImm(imm) => binop_wrapping_u32!(self, add, imm),
                 Op::U32OverflowingAdd3 => todo!(),
                 Op::U32WrappingAdd3 => todo!(),
-                Op::U32CheckedSub => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert!(a > b, "assertion failed: subtraction underflow: {a} - {b}");
-                    self.stack.push(Felt::new(a - b));
-                }
-                Op::U32CheckedSubImm(b) => {
-                    let b = b as u64;
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(a > b, "assertion failed: subtraction underflow: {a} - {b}");
-                    self.stack.push(Felt::new(a - b));
-                }
-                Op::U32OverflowingSub => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let (result, underflowed) = (a as u32).overflowing_sub(b as u32);
-                    self.stack.push_u32(result);
-                    self.stack.push_u8(underflowed as u8);
-                }
-                Op::U32OverflowingSubImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let (result, underflowed) = (a as u32).overflowing_sub(b);
-                    self.stack.push_u32(result);
-                    self.stack.push_u8(underflowed as u8);
-                }
-                Op::U32WrappingSub => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let result = (a as u32).wrapping_sub(b as u32);
-                    self.stack.push_u32(result);
-                }
-                Op::U32WrappingSubImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let result = (a as u32).wrapping_sub(b);
-                    self.stack.push_u32(result);
-                }
-                Op::U32CheckedMul => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let result = a * b;
-                    assert!(
-                        result < U32_P,
-                        "assertion failed: {result} is larger than 2^32"
-                    );
-                    self.stack.push(Felt::new(result));
-                }
-                Op::U32CheckedMulImm(b) => {
-                    let b = b as u64;
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let result = a * b;
-                    assert!(
-                        result < U32_P,
-                        "assertion failed: {result} is larger than 2^32"
-                    );
-                    self.stack.push(Felt::new(result));
-                }
-                Op::U32OverflowingMul => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let (result, overflowed) = (a as u32).overflowing_mul(b as u32);
-                    self.stack.push_u32(result);
-                    self.stack.push_u8(overflowed as u8);
-                }
-                Op::U32OverflowingMulImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let (result, overflowed) = (a as u32).overflowing_mul(b);
-                    self.stack.push_u32(result);
-                    self.stack.push_u8(overflowed as u8);
-                }
-                Op::U32WrappingMul => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let result = (a as u32).wrapping_mul(b as u32);
-                    self.stack.push_u32(result);
-                }
-                Op::U32WrappingMulImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let result = (a as u32).wrapping_mul(b);
-                    self.stack.push_u32(result);
-                }
+                Op::U32CheckedSub => binop_checked_u32!(self, sub),
+                Op::U32CheckedSubImm(imm) => binop_checked_u32!(self, sub, imm),
+                Op::U32OverflowingSub => binop_overflowing_u32!(self, sub),
+                Op::U32OverflowingSubImm(imm) => binop_overflowing_u32!(self, sub, imm),
+                Op::U32WrappingSub => binop_wrapping_u32!(self, sub),
+                Op::U32WrappingSubImm(imm) => binop_wrapping_u32!(self, sub, imm),
+                Op::U32CheckedMul => binop_checked_u32!(self, mul),
+                Op::U32CheckedMulImm(imm) => binop_checked_u32!(self, mul, imm),
+                Op::U32OverflowingMul => binop_overflowing_u32!(self, mul),
+                Op::U32OverflowingMulImm(imm) => binop_overflowing_u32!(self, mul, imm),
+                Op::U32WrappingMul => binop_wrapping_u32!(self, mul),
+                Op::U32WrappingMulImm(imm) => binop_wrapping_u32!(self, mul, imm),
                 Op::U32OverflowingMadd => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let c = self.stack.pop().expect("operand stack is empty").as_int();
+                    let b = pop_u32!(self) as u64;
+                    let a = pop_u32!(self) as u64;
+                    let c = pop_u32!(self) as u64;
                     let result = a * b + c;
                     let d = result % 2u64.pow(32);
                     let e = result / 2u64.pow(32);
-                    self.stack.push_u32(d as u32);
-                    self.stack.push_u32(e as u32);
+                    self.stack.push(Felt::new(d));
+                    self.stack.push(Felt::new(e));
                 }
                 Op::U32WrappingMadd => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let c = self.stack.pop().expect("operand stack is empty").as_int();
+                    let b = pop_u32!(self) as u64;
+                    let a = pop_u32!(self) as u64;
+                    let c = pop_u32!(self) as u64;
                     let d = (a * b + c) % 2u64.pow(32);
-                    self.stack.push_u32(d as u32);
+                    self.stack.push(Felt::new(d));
                 }
-                Op::U32CheckedDiv => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    self.stack.push(Felt::new(a / b));
-                }
-                Op::U32CheckedDivImm(b) => {
-                    let b = b as u64;
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    self.stack.push(Felt::new(a / b));
-                }
-                Op::U32UncheckedDiv => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    assert_ne!(b, Felt::ZERO, "assertion failed: division by zero");
-                    self.stack.push(a / b);
-                }
-                Op::U32UncheckedDivImm(b) => {
-                    let b = b as u64;
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    let b = Felt::new(b);
-                    self.stack.push(a / b);
-                }
-                Op::U32CheckedMod => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    self.stack.push(Felt::new(a % b));
-                }
-                Op::U32CheckedModImm(b) => {
-                    let b = b as u64;
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    self.stack.push(Felt::new(a % b));
-                }
+                Op::U32CheckedDiv => binop_checked_u32!(self, div),
+                Op::U32CheckedDivImm(imm) => binop_checked_u32!(self, div, imm),
+                Op::U32UncheckedDiv => binop!(self, div),
+                Op::U32UncheckedDivImm(imm) => binop!(self, div, Felt::new(imm as u64)),
+                Op::U32CheckedMod => binop_checked_u32!(self, rem),
+                Op::U32CheckedModImm(imm) => binop_checked_u32!(self, rem, imm),
                 Op::U32UncheckedMod => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert_ne!(b, 0, "assertion failed: division by zero");
+                    let b = pop!(self).as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a % b));
                 }
-                Op::U32UncheckedModImm(b) => {
-                    let b = b as u64;
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push(Felt::new(a % b));
+                Op::U32UncheckedModImm(imm) => {
+                    let a = pop!(self).as_int();
+                    self.stack.push(Felt::new(a % imm as u64));
                 }
                 Op::U32CheckedDivMod => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    self.stack.push(Felt::new(a / b));
-                    self.stack.push(Felt::new(a % b));
+                    let b = pop_u32!(self);
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a / b);
+                    self.stack.push_u32(a % b);
                 }
-                Op::U32CheckedDivModImm(b) => {
-                    let b = b as u64;
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    self.stack.push(Felt::new(a / b));
-                    self.stack.push(Felt::new(a % b));
+                Op::U32CheckedDivModImm(imm) => {
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a / imm);
+                    self.stack.push_u32(a % imm);
                 }
                 Op::U32UncheckedDivMod => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert_ne!(b, 0, "assertion failed: division by zero");
+                    let b = pop!(self).as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a / b));
                     self.stack.push(Felt::new(a % b));
                 }
                 Op::U32UncheckedDivModImm(b) => {
                     let b = b as u64;
-                    assert_ne!(b, 0, "assertion failed: division by zero");
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a / b));
                     self.stack.push(Felt::new(a % b));
                 }
-                Op::U32And => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a & b);
-                }
-                Op::U32Or => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a | b);
-                }
-                Op::U32Xor => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert!(b < U32_BITS, "assertion failed: {b} is larger than 2^32");
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a ^ b);
-                }
+                Op::U32And => binop32!(self, bitand),
+                Op::U32Or => binop32!(self, bitor),
+                Op::U32Xor => binop32!(self, bitxor),
                 Op::U32Not => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let a = a as u32;
+                    let a = pop_u32!(self);
                     self.stack.push_u32(!a);
                 }
-                Op::U32CheckedShl => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert!(
-                        b < U32_BITS,
-                        "assertion failed: {b} exceeds maximum shift of 31"
-                    );
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a << b);
-                }
-                Op::U32CheckedShlImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
-                    let a = a as u32;
-                    self.stack.push_u32(a << b);
-                }
-                Op::U32UncheckedShl => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a << b);
-                }
-                Op::U32UncheckedShlImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    self.stack.push_u32(a << b);
-                }
-                Op::U32CheckedShr => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert!(
-                        b < U32_BITS,
-                        "assertion failed: {b} exceeds maximum shift of 31"
-                    );
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a >> b);
-                }
-                Op::U32CheckedShrImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
-                    let a = a as u32;
-                    self.stack.push_u32(a >> b);
-                }
-                Op::U32UncheckedShr => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a >> b);
-                }
-                Op::U32UncheckedShrImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    self.stack.push_u32(a >> b);
-                }
-                Op::U32CheckedRotl => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert!(
-                        b < U32_BITS,
-                        "assertion failed: {b} exceeds maximum shift of 31"
-                    );
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a.rotate_left(b));
-                }
-                Op::U32CheckedRotlImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
-                    let a = a as u32;
-                    self.stack.push_u32(a.rotate_left(b));
-                }
+                Op::U32CheckedShl => binop_checked_u32!(self, shl),
+                Op::U32CheckedShlImm(imm) => binop_checked_u32!(self, shl, imm),
+                Op::U32UncheckedShl => binop_wrapping_u32!(self, shl),
+                Op::U32UncheckedShlImm(imm) => binop_wrapping_u32!(self, shl, imm),
+                Op::U32CheckedShr => binop_checked_u32!(self, shr),
+                Op::U32CheckedShrImm(imm) => binop_checked_u32!(self, shr, imm),
+                Op::U32UncheckedShr => binop_wrapping_u32!(self, shr),
+                Op::U32UncheckedShrImm(imm) => binop_wrapping_u32!(self, shr, imm),
+                Op::U32CheckedRotl => binop32!(self, rotate_left),
+                Op::U32CheckedRotlImm(imm) => binop32!(self, rotate_left, imm),
                 Op::U32UncheckedRotl => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a.rotate_left(b));
+                    let b = pop_u32!(self);
+                    let a = pop!(self).as_int();
+                    self.stack.push(Felt::new(a.rotate_left(b)));
                 }
-                Op::U32UncheckedRotlImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    self.stack.push_u32(a.rotate_left(b));
+                Op::U32UncheckedRotlImm(imm) => {
+                    let a = pop!(self).as_int();
+                    self.stack.push(Felt::new(a.rotate_left(imm)));
                 }
-                Op::U32CheckedRotr => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    assert!(
-                        b < U32_BITS,
-                        "assertion failed: {b} exceeds maximum shift of 31"
-                    );
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a.rotate_right(b));
-                }
-                Op::U32CheckedRotrImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < 32, "assertion failed: {b} exceeds maximum shift of 31");
-                    let a = a as u32;
-                    self.stack.push_u32(a.rotate_right(b));
-                }
+                Op::U32CheckedRotr => binop32!(self, rotate_right),
+                Op::U32CheckedRotrImm(imm) => binop32!(self, rotate_right, imm),
                 Op::U32UncheckedRotr => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    let b = b as u32;
-                    self.stack.push_u32(a.rotate_right(b));
+                    let b = pop_u32!(self);
+                    let a = pop!(self).as_int();
+                    self.stack.push(Felt::new(a.rotate_right(b)));
                 }
-                Op::U32UncheckedRotrImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
-                    self.stack.push_u32(a.rotate_right(b));
+                Op::U32UncheckedRotrImm(imm) => {
+                    let a = pop!(self).as_int();
+                    self.stack.push(Felt::new(a.rotate_right(imm)));
                 }
                 Op::U32CheckedPopcnt => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    let a = a as u32;
+                    let a = pop_u32!(self);
                     self.stack.push_u32(a.count_ones());
                 }
                 Op::U32UncheckedPopcnt => {
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = a as u32;
+                    let a = pop!(self).as_int();
                     self.stack.push_u32(a.count_ones());
                 }
-                Op::U32Eq => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    assert!(
-                        a.as_int() < U32_P,
-                        "assertion failed: {a} is larger than 2^32"
-                    );
-                    assert!(
-                        b.as_int() < U32_P,
-                        "assertion failed: {b} is larger than 2^32"
-                    );
-                    self.stack.push_u8((a == b) as u8);
-                }
-                Op::U32EqImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    assert!(
-                        a.as_int() < U32_P,
-                        "assertion failed: {a} is larger than 2^32"
-                    );
-                    let b = Felt::new(b as u64);
-                    self.stack.push_u8((a == b) as u8);
-                }
-                Op::U32Neq => {
-                    let b = self.stack.pop().expect("operand stack is empty");
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    assert!(
-                        a.as_int() < U32_P,
-                        "assertion failed: {a} is larger than 2^32"
-                    );
-                    assert!(
-                        b.as_int() < U32_P,
-                        "assertion failed: {b} is larger than 2^32"
-                    );
-                    self.stack.push_u8((a != b) as u8);
-                }
-                Op::U32NeqImm(b) => {
-                    let a = self.stack.pop().expect("operand stack is empty");
-                    assert!(
-                        a.as_int() < U32_P,
-                        "assertion failed: {a} is larger than 2^32"
-                    );
-                    let b = Felt::new(b as u64);
-                    self.stack.push_u8((a != b) as u8);
-                }
-                Op::U32CheckedGt => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    self.stack.push_u8((a > b) as u8);
-                }
-                Op::U32UncheckedGt => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a > b) as u8);
-                }
-                Op::U32CheckedGte => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    self.stack.push_u8((a >= b) as u8);
-                }
-                Op::U32UncheckedGte => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a >= b) as u8);
-                }
-                Op::U32CheckedLt => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    self.stack.push_u8((a < b) as u8);
-                }
-                Op::U32UncheckedLt => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a < b) as u8);
-                }
-                Op::U32CheckedLte => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    self.stack.push_u8((a <= b) as u8);
-                }
-                Op::U32UncheckedLte => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    self.stack.push_u8((a <= b) as u8);
-                }
+                Op::U32Eq => comparison32!(self, eq),
+                Op::U32EqImm(imm) => comparison32!(self, eq, imm),
+                Op::U32Neq => comparison32!(self, ne),
+                Op::U32NeqImm(imm) => comparison32!(self, ne, imm),
+                Op::U32CheckedGt => comparison32!(self, gt),
+                Op::U32UncheckedGt => comparison!(self, gt),
+                Op::U32CheckedGte => comparison32!(self, ge),
+                Op::U32UncheckedGte => comparison!(self, ge),
+                Op::U32CheckedLt => comparison32!(self, lt),
+                Op::U32UncheckedLt => comparison!(self, lt),
+                Op::U32CheckedLte => comparison32!(self, le),
+                Op::U32UncheckedLte => comparison!(self, le),
                 Op::U32CheckedMin => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    self.stack.push(Felt::new(cmp::min(a, b)));
+                    let b = pop_u32!(self);
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(cmp::min(a, b));
                 }
                 Op::U32UncheckedMin => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
+                    let b = pop!(self).as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push(Felt::new(cmp::min(a, b)));
                 }
                 Op::U32CheckedMax => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
-                    assert!(a < U32_P, "assertion failed: {a} is larger than 2^32");
-                    assert!(b < U32_P, "assertion failed: {b} is larger than 2^32");
-                    self.stack.push(Felt::new(cmp::max(a, b)));
+                    let b = pop_u32!(self);
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(cmp::max(a, b));
                 }
                 Op::U32UncheckedMax => {
-                    let b = self.stack.pop().expect("operand stack is empty").as_int();
-                    let a = self.stack.pop().expect("operand stack is empty").as_int();
+                    let b = pop!(self).as_int();
+                    let a = pop!(self).as_int();
                     self.stack.push(Felt::new(cmp::max(a, b)));
                 }
             }

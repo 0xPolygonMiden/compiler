@@ -17,8 +17,8 @@ intrusive-collections.workspace = true
 miden-diagnostics.workspace = true
 miden-hir-symbol = { path = "../hir-symbol" }
 miden-hir-type = { path = "../hir-type" }
-paste = "1.0"
 petgraph = "0.6"
+paste.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
