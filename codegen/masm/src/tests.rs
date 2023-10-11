@@ -71,9 +71,7 @@ impl TestByEmulationHarness {
         // Apply pre-codegen transformations
         self.apply_rewrite_passes(function, &mut analysis)?;
 
-        let mut original = String::with_capacity(1024);
-        miden_hir::write_function(&mut original, &function).expect("formatting failed");
-        println!("{}", &original);
+        println!("{}", function);
 
         // Make sure all analyses are available
         analysis.ensure_all(&function);

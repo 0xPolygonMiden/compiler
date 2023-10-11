@@ -267,6 +267,7 @@ mod tests {
         AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
     };
     use miden_hir_analysis::FunctionAnalysis;
+    use pretty_assertions::{assert_eq, assert_ne};
 
     use crate::{InlineBlocks, RewritePass};
 
@@ -420,9 +421,7 @@ mod tests {
             builder.ins().ret(Some(ptr6), SourceSpan::UNKNOWN);
         }
 
-        let mut original = String::with_capacity(1024);
-        miden_hir::write_function(&mut original, &function).expect("formatting failed");
-
+        let original = function.to_string();
         let mut analysis = FunctionAnalysis::new(&function);
         let mut pass = InlineBlocks;
         pass.run(&mut function, &mut analysis)
@@ -453,10 +452,8 @@ block6(v7: u32):
 }
 ";
 
-        let mut inlined = String::with_capacity(1024);
-        miden_hir::write_function(&mut inlined, &function).expect("formatting failed");
-
-        assert_changed!(original, inlined);
-        assert_formatter_output!(expected, inlined.as_str());
+        let inlined = function.to_string();
+        assert_ne!(inlined, original);
+        assert_eq!(inlined.as_str(), expected);
     }
 }

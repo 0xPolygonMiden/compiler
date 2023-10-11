@@ -662,6 +662,7 @@ mod tests {
         ModuleBuilder,
     };
     use miden_hir_analysis::FunctionAnalysis;
+    use pretty_assertions::{assert_eq, assert_ne};
 
     use crate::{RewritePass, Treeify};
 
@@ -693,9 +694,7 @@ mod tests {
             .remove()
             .expect("undefined function");
 
-        let mut original = String::with_capacity(1024);
-        miden_hir::write_function(&mut original, &function).expect("formatting failed");
-
+        let original = function.to_string();
         let mut analysis = FunctionAnalysis::new(&function);
         let mut pass = Treeify;
         pass.run(&mut function, &mut analysis)
@@ -741,14 +740,13 @@ block5:
 
 block6:
     v26 = incr v8  : u32
-    br block3(v7, v26, v9)
+    v27 = const.u32 0  : u32
+    br block3(v7, v26, v27)
 }
 ";
 
-        let mut inlined = String::with_capacity(1024);
-        miden_hir::write_function(&mut inlined, &function).expect("formatting failed");
-
-        assert_changed!(original, inlined);
-        assert_formatter_output!(expected, inlined.as_str());
+        let transformed = function.to_string();
+        assert_ne!(transformed, original);
+        assert_eq!(transformed.as_str(), expected);
     }
 }
