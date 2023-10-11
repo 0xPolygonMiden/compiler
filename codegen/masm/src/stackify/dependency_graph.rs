@@ -332,21 +332,20 @@ impl DependencyGraph {
     }
 
     /// Get an oracle structure which assigns indices to nodes in the
-    /// graph in the order in which they will be visited from `root`
-    /// during code generation.
+    /// graph in the order in which they will be emitted during code generation.
     ///
     /// To illustrate here is a sketch of the data that would be associated
     /// for a simple graph where `root` has three dependencies, each of which
     /// has zero or more dependencies of their own:
     ///
     /// ```text,ignore
-    ///    0
+    ///    6
     ///  / | \
     /// v  v  v
-    /// 6  4  1
+    /// 5  3  0
     ///    |  | \
     ///    v  v  v
-    ///    5  3  2
+    ///    4  2  1
     /// ```
     ///
     /// During code generation, we visit arguments of an instruction in LIFO order,
@@ -361,7 +360,9 @@ impl DependencyGraph {
     pub fn indexed(&self, root: &Node) -> DependencyGraphIndices {
         let mut indices = DependencyGraphIndices::default();
         let mut counter = 0;
-        let mut worklist = SmallVec::<[Node; 4]>::from_iter([*root]);
+        let mut worklist = SmallVec::<[Node; 4]>::from_iter(
+            self.successors(root).into_iter().map(|n| n.dependency),
+        );
         while let Some(n) = worklist.pop() {
             if indices.insert(n, counter) {
                 counter += 1;
@@ -370,6 +371,10 @@ impl DependencyGraph {
                 worklist.push(succ.dependency);
             }
         }
+
+        // The root node is always last to be emitted
+        indices.insert(*root, counter);
+
         indices
     }
 
