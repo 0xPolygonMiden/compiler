@@ -4,12 +4,12 @@
 # The element index must be in the range 0..=3.
 export.extract_element # [element_index, w0, w1, w2, w3]
     # assert the index given is valid
-    dup.0, push.3, lte, assert
+    dup.0, lte.3, assert
     # compute a set of three booleans which used in conjunction with cdrop will
     # extract the desired element of the given word
-    dup.0, push.3, lt, movdn.6   # [element_index, w0, ..w3, element_index < 3]
-    dup.0, push.2, lt, movdn.6   # [element_index, w0, ..w3, element_index < 2, ..]
-    push.1, lt                   # [element_index < 1, w0, ..w3, ..]
+    dup.0, lt.3, movdn.5   # [element_index, w0, ..w3, element_index < 3]
+    dup.0, lt.2, movdn.5   # [element_index, w0, ..w3, element_index < 2, ..]
+    lt.1                   # [element_index < 1, w0, ..w3, ..]
 
     # drop w1 if the element index is zero; or drop w0 if the element index is non-zero
     cdrop
@@ -26,6 +26,9 @@ end
 
 # See `load_felt` for safe usage
 proc.load_felt_unchecked # [waddr, index]
+    # prepare the stack to receive the loaded word
+    # [waddr, 0, 0, 0, 0, index]
+    padw, movup.4
     # load the word which contains the desired element
     mem_loadw  # [w0, w1, w2, w3, index]
 
@@ -70,8 +73,8 @@ export.load_sw # [waddr, index, offset]
             # the load is across both the first and second elements
             # drop the element index
             swap.1, drop
-            # load a word
-            mem_loadw # [w0, w1, w2, w3, offset]
+            # load
+            padw, movup.4, mem_loadw # [w0, w1, w2, w3, offset]
             # drop the unused elements
             movup.3, movup.3, drop, drop
             # shift high bits left by the offset
@@ -90,7 +93,7 @@ export.load_sw # [waddr, index, offset]
                 # drop the element idnex
                 swap.1, drop
                 # load
-                mem_loadw # [w0, w1, w2, w3, offset]
+                padw, movup.4, mem_loadw # [w0, w1, w2, w3, offset]
                 # drop the unused elements
                 drop, movdn.2, movdn.2, drop # [w1, w2, offset]
                 # shift the high bits
@@ -106,7 +109,7 @@ export.load_sw # [waddr, index, offset]
                 swap.1, eq.2
                 if.true
                     # the load is across both the third and fourth elements
-                    mem_loadw  # [w0, w1, w2, w3, offset]
+                    padw, movup.4, mem_loadw  # [w0, w1, w2, w3, offset]
                     # drop first two unused
                     drop, drop # [w2, w3, offset]
                     # shift the high bits
@@ -123,13 +126,13 @@ export.load_sw # [waddr, index, offset]
                     dup.0  # [waddr, waddr, offset]
                     u32.checked_add.1 # [waddr + 1, waddr, offset]
                     # load the word and drop the unused elements
-                    mem_loadw, movdn.4, drop, drop, drop # [w0, waddr, offset]
+                    padw, movup.4, mem_loadw, movdn.4, drop, drop, drop # [w0, waddr, offset]
                     # shift the low bits
                     push.32, dup.3  # [offset, 32, w0, waddr, offset]
                     u32.checked_sub # [32 - offset, w0, waddr, offset]
                     u32.checked_shr # [lo, waddr, offset]
                     # load the word with the high bits, drop unused elements
-                    swap.1, mem_loadw, drop, drop, drop # [w3, lo, offset]
+                    swap.1, padw, movup.4, mem_loadw, drop, drop, drop # [w3, lo, offset]
                     # shift high bits
                     movup.2, u32.checked_shl  # [hi, lo]
                     # combine the two halves
@@ -257,7 +260,7 @@ export.load_dw # [waddr, index, offset]
             # drop index
             swap.1, drop
             # load first two elements
-            mem_loadw
+            padw, movup.4, mem_loadw
             # drop last two elements, and we're done
             movup.4, movup.4, drop, drop
         else
@@ -266,21 +269,21 @@ export.load_dw # [waddr, index, offset]
               # drop index
               swap.1, drop
               # load second and third elements
-              mem_loadw
+              padw, movup.4, mem_loadw
               # drop unused elements, and we're done
               drop, movup.3, drop
           else
               swap.1, eq.2
               if.true
                 # load third and fourth elements, drop unused, and we're done
-                mem_loadw, drop, drop
+                padw, movup.4, mem_loadw, drop, drop
               else
                 # load first element of next word, drop the rest
-                dup.0, u32.checked_add.1, mem_loadw
+                dup.0, u32.checked_add.1, padw, movup.4, mem_loadw
                 movup.4, movup.4, movup.4
                 drop, drop, drop
                 # load fourth element, and we're done
-                movup.4, mem_loadw, drop, drop, drop
+                movup.4, padw, movup.4, mem_loadw, drop, drop, drop
               end
           end
         end
@@ -291,7 +294,7 @@ export.load_dw # [waddr, index, offset]
             # drop the index
             swap.1, drop
             # load three elements containing the double-word on the stack
-            mem_loadw, movup.4, drop
+            padw, movup.4, mem_loadw, movup.4, drop
             # re-align it, and we're done; realign_dw gets [w0, w1, w2, offset]
             exec.realign_dw
         else
@@ -301,7 +304,7 @@ export.load_dw # [waddr, index, offset]
                 # drop the index
                 swap.1, drop
                 # load three elements containing the double-word on the stack
-                mem_loadw, drop
+                padw, movup.4, mem_loadw, drop
                 # re-align it, and we're done; realign_dw gets [w1, w2, w3, offset]
                 exec.realign_dw
             else
@@ -309,18 +312,18 @@ export.load_dw # [waddr, index, offset]
                 swap.1, eq.2
                 if.true
                     # load one element from the next word
-                    dup.0, u32.checked_add.1, mem_loadw
+                    dup.0, u32.checked_add.1, padw, movup.4, mem_loadw
                     movup.4, movup.4, movup.4, drop, drop, drop
                     # load two elements from the first word
-                    swap.1, mem_loadw, drop, drop
+                    swap.1, padw, movup.4, mem_loadw, drop, drop
                     # re-align it, and we're done; realign_dw gets [w2, w3, w0, offset]
                     exec.realign_dw
                 else
                     # load the two least-significant elements from the next word first
-                    dup.0, u32.checked_add.1, mem_loadw
+                    dup.0, u32.checked_add.1, padw, movup.4, mem_loadw
                     movup.4, movup.4, drop, drop
                     # load the most significant element from the first word
-                    movup.2, mem_loadw, drop, drop, drop
+                    movup.2, padw, movup.4, mem_loadw, drop, drop, drop
                     # re-align it, and we're done; realign_dw gets [w3, w1, w0, offset]
                     exec.realign_dw
                 end

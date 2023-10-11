@@ -133,6 +133,7 @@ impl<'a> OpEmitter<'a> {
             0 => self.emit(Op::MemLoadImm(ptr.waddr)),
             1 => {
                 self.emit_all(&[
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     Op::Movup(4),
                     Op::Movup(4),
@@ -143,6 +144,7 @@ impl<'a> OpEmitter<'a> {
             }
             2 => {
                 self.emit_all(&[
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     Op::Drop,
                     Op::Drop,
@@ -151,7 +153,13 @@ impl<'a> OpEmitter<'a> {
                 ]);
             }
             3 => {
-                self.emit_all(&[Op::MemLoadwImm(ptr.waddr), Op::Drop, Op::Drop, Op::Drop]);
+                self.emit_all(&[
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    Op::Drop,
+                    Op::Drop,
+                    Op::Drop,
+                ]);
             }
             _ => unreachable!(),
         }
@@ -177,6 +185,7 @@ impl<'a> OpEmitter<'a> {
             0 => {
                 self.emit_all(&[
                     // Load a quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Move the two elements across which the desired machine word spans
                     // to the bottom of the stack temporarily
@@ -196,6 +205,7 @@ impl<'a> OpEmitter<'a> {
             }
             1 if is_aligned => self.emit_all(&[
                 // Load a quad-word
+                Op::Padw,
                 Op::MemLoadwImm(ptr.waddr),
                 // Drop the first unused element
                 Op::Drop,
@@ -208,6 +218,7 @@ impl<'a> OpEmitter<'a> {
             1 => {
                 self.emit_all(&[
                     // Load a quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the first unused element
                     Op::Drop,
@@ -228,6 +239,7 @@ impl<'a> OpEmitter<'a> {
             }
             2 if is_aligned => self.emit_all(&[
                 // Load a quad-word
+                Op::Padw,
                 Op::MemLoadwImm(ptr.waddr),
                 // Drop the first two unused elements
                 Op::Drop,
@@ -239,6 +251,7 @@ impl<'a> OpEmitter<'a> {
             2 => {
                 self.emit_all(&[
                     // Load a quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the first two unused elements
                     Op::Drop,
@@ -254,6 +267,7 @@ impl<'a> OpEmitter<'a> {
             }
             3 if is_aligned => self.emit_all(&[
                 // Load a quad-word
+                Op::Padw,
                 Op::MemLoadwImm(ptr.waddr),
                 // Drop the three unused elements
                 Op::Drop,
@@ -263,6 +277,7 @@ impl<'a> OpEmitter<'a> {
             3 => {
                 self.emit_all(&[
                     // Load the quad-word containing the low bits
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Move the element we need to the bottom temporarily
                     Op::Movdn(4),
@@ -273,6 +288,7 @@ impl<'a> OpEmitter<'a> {
                     // Shift the low bits right by the offset
                     Op::U32CheckedShrImm(rshift),
                     // Load the quad-word containing the high bits
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the unused elements
                     Op::Drop,
@@ -303,6 +319,7 @@ impl<'a> OpEmitter<'a> {
             0 if aligned => {
                 self.emit_all(&[
                     // Load quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Move the two elements we need to the bottom temporarily
                     Op::Movdn(4),
@@ -316,6 +333,7 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned double-word load spans three elements
                 self.emit_all(&[
                     // Load quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Move the unused element to the top and drop it
                     Op::Movup(4),
@@ -326,6 +344,7 @@ impl<'a> OpEmitter<'a> {
             1 if aligned => {
                 self.emit_all(&[
                     // Load quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the first word, its unused
                     Op::Drop,
@@ -338,6 +357,7 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned double-word load spans three elements
                 self.emit_all(&[
                     // Load a quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the unused element
                     Op::Drop,
@@ -347,6 +367,7 @@ impl<'a> OpEmitter<'a> {
             2 if aligned => {
                 self.emit_all(&[
                     // Load quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop unused words
                     Op::Drop,
@@ -359,6 +380,7 @@ impl<'a> OpEmitter<'a> {
                 // element is across a quad-word boundary
                 self.emit_all(&[
                     // Load the second quad-word first
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Move the element we need to the bottom temporarily
                     Op::Movdn(4),
@@ -367,6 +389,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Load the first quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the two unused elements
                     Op::Drop,
@@ -377,12 +400,14 @@ impl<'a> OpEmitter<'a> {
             3 if aligned => {
                 self.emit_all(&[
                     // Load second word, drop unused elements
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     Op::Movup(4),
                     Op::Drop,
                     Op::Movup(3),
                     Op::Drop,
                     // Load first word, drop unused elements
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     Op::Drop,
                     Op::Drop,
@@ -392,10 +417,12 @@ impl<'a> OpEmitter<'a> {
             3 => {
                 self.emit_all(&[
                     // Load second word, drop unused element
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     Op::Movup(4),
                     Op::Drop,
                     // Load first word, drop unused elements
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     Op::Drop,
                     Op::Drop,
@@ -420,11 +447,12 @@ impl<'a> OpEmitter<'a> {
         let aligned = ptr.is_element_aligned();
         match ptr.index {
             // Naturally-aligned
-            0 if aligned => self.emit(Op::MemLoadwImm(ptr.waddr)),
+            0 if aligned => self.emit_all(&[Op::Padw, Op::MemLoadwImm(ptr.waddr)]),
             0 => {
                 // An unaligned quad-word load spans five elements
                 self.emit_all(&[
                     // Load second quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Drop all but the first element
                     Op::Movdn(4),
@@ -432,6 +460,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Load first quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                 ]);
                 self.realign_quad_word(ptr);
@@ -439,11 +468,13 @@ impl<'a> OpEmitter<'a> {
             1 if aligned => {
                 self.emit_all(&[
                     // Load second quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Drop last element
                     Op::Movup(4),
                     Op::Drop,
                     // Load first quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop first element
                     Op::Drop,
@@ -453,6 +484,7 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned double-word load spans five elements
                 self.emit_all(&[
                     // Load second quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Drop all but the first two elements
                     Op::Movdn(4),
@@ -460,6 +492,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Load first quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the first word
                     Op::Drop,
@@ -469,6 +502,7 @@ impl<'a> OpEmitter<'a> {
             2 if aligned => {
                 self.emit_all(&[
                     // Load second quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop last two elements
                     Op::Movup(4),
@@ -476,6 +510,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Load first quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop first two elements
                     Op::Drop,
@@ -486,11 +521,13 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned double-word load spans five elements
                 self.emit_all(&[
                     // Load the second quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Drop the last element
                     Op::Movup(4),
                     Op::Drop,
                     // Load the first quad-word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop the two unused elements
                     Op::Drop,
@@ -501,10 +538,12 @@ impl<'a> OpEmitter<'a> {
             3 if aligned => {
                 self.emit_all(&[
                     // Load second word, drop last element
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     Op::Movup(4),
                     Op::Drop,
                     // Load first word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop first three elements
                     Op::Drop,
@@ -516,8 +555,10 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned quad-word load spans five elements,
                 self.emit_all(&[
                     // Load second word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr + 1),
                     // Load first word
+                    Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
                     // Drop unused elements
                     Op::Drop,
@@ -551,7 +592,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// The data, on the stack, is shown below:
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// # If we visualize which bytes are contained in each 32-bit chunk on the stack, we get:
     /// [0..=4, 5..=8, 9..=12]
     ///

@@ -707,11 +707,13 @@ impl Emulator {
                     );
                     let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
+                    self.stack.dropw();
                     self.stack.pushw(self.memory[addr]);
                 }
                 Op::MemLoadwImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
+                    self.stack.dropw();
                     self.stack.pushw(self.memory[addr]);
                 }
                 Op::MemStore => {
@@ -754,7 +756,7 @@ impl Emulator {
                 }
                 Op::MemStorew => {
                     let addr = self.stack.pop().expect("operand stack is empty").as_int();
-                    let word = self.stack.popw().expect("operand stack is empty");
+                    let word = self.stack.peekw().expect("operand stack is empty");
                     assert!(
                         addr < u32::MAX as u64,
                         "expected valid 32-bit address, got {addr}"
@@ -766,7 +768,7 @@ impl Emulator {
                 Op::MemStorewImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
-                    let word = self.stack.popw().expect("operand stack is empty");
+                    let word = self.stack.peekw().expect("operand stack is empty");
                     self.memory[addr] = word;
                 }
                 Op::If(then_blk, else_blk) => {
