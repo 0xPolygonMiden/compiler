@@ -22,7 +22,7 @@ entity_impl!(Inst, "inst");
 /// Specifically, this represents a leaf node in the control flow graph of
 /// a function, i.e. it links a specific instruction in to the sequence of
 /// instructions belonging to a specific block.
-#[derive(Clone, Spanned)]
+#[derive(Spanned)]
 pub struct InstNode {
     pub link: LinkedListLink,
     pub key: Inst,
@@ -42,6 +42,16 @@ impl InstNode {
             key,
             block,
             data,
+        }
+    }
+
+    pub fn deep_clone(&self, value_lists: &mut ValueListPool) -> Self {
+        let span = self.data.span();
+        Self {
+            link: LinkedListLink::default(),
+            key: self.key,
+            block: self.block,
+            data: Span::new(span, self.data.deep_clone(value_lists)),
         }
     }
 
@@ -79,7 +89,7 @@ impl AsMut<Instruction> for InstNode {
 intrusive_adapter!(pub InstAdapter = UnsafeRef<InstNode>: InstNode { link: LinkedListLink });
 
 /// Represents the type of instruction associated with a particular opcode
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Instruction {
     GlobalValue(GlobalValueOp),
     BinaryOp(BinaryOp),
@@ -99,6 +109,49 @@ pub enum Instruction {
     InlineAsm(InlineAsm),
 }
 impl Instruction {
+    pub fn deep_clone(&self, value_lists: &mut ValueListPool) -> Self {
+        match self {
+            Self::GlobalValue(gv) => Self::GlobalValue(gv.clone()),
+            Self::BinaryOp(op) => Self::BinaryOp(op.clone()),
+            Self::BinaryOpImm(op) => Self::BinaryOpImm(op.clone()),
+            Self::UnaryOp(op) => Self::UnaryOp(op.clone()),
+            Self::UnaryOpImm(op) => Self::UnaryOpImm(op.clone()),
+            Self::Call(call) => Self::Call(Call {
+                args: call.args.deep_clone(value_lists),
+                ..call.clone()
+            }),
+            Self::Br(br) => Self::Br(Br {
+                args: br.args.deep_clone(value_lists),
+                ..br.clone()
+            }),
+            Self::CondBr(br) => Self::CondBr(CondBr {
+                then_dest: (br.then_dest.0, br.then_dest.1.deep_clone(value_lists)),
+                else_dest: (br.else_dest.0, br.else_dest.1.deep_clone(value_lists)),
+                ..br.clone()
+            }),
+            Self::Switch(op) => Self::Switch(op.clone()),
+            Self::Ret(op) => Self::Ret(Ret {
+                args: op.args.deep_clone(value_lists),
+                ..op.clone()
+            }),
+            Self::RetImm(op) => Self::RetImm(op.clone()),
+            Self::Load(op) => Self::Load(op.clone()),
+            Self::PrimOp(op) => Self::PrimOp(PrimOp {
+                args: op.args.deep_clone(value_lists),
+                ..op.clone()
+            }),
+            Self::PrimOpImm(op) => Self::PrimOpImm(PrimOpImm {
+                args: op.args.deep_clone(value_lists),
+                ..op.clone()
+            }),
+            Self::Test(op) => Self::Test(op.clone()),
+            Self::InlineAsm(op) => Self::InlineAsm(InlineAsm {
+                args: op.args.deep_clone(value_lists),
+                ..op.clone()
+            }),
+        }
+    }
+
     pub fn opcode(&self) -> Opcode {
         match self {
             Self::GlobalValue(GlobalValueOp { ref op, .. })

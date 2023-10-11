@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
 
@@ -53,5 +54,17 @@ where
         I: IntoIterator<Item = (K, V)>,
     {
         self.map.extend(iter);
+    }
+}
+impl<K, V> fmt::Debug for ScopedMap<K, V>
+where
+    K: Eq + Hash + fmt::Debug,
+    V: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ScopedMap")
+            .field("parent", &self.parent)
+            .field("map", &self.map)
+            .finish()
     }
 }
