@@ -57,6 +57,29 @@ pub enum Breakpoint {
     Step,
     /// Break after `n` cycles
     StepN(usize),
+    /// Break after one cycle, clearing the breakpoint in the process
+    StepOnce,
+    /// Break when leaving a block
+    StepOut,
+    /// Break after the next instruction is executed.
+    ///
+    /// For calls and control flow instructions, "executed" is defined as
+    /// having executed all instructions nested within that instruction, i.e.
+    /// stepping over a `while.true` will execute until the next instruction
+    /// after the loop is reached.
+    StepOver,
+    /// Step until control reaches the given instruction pointer value
+    StepUntil(InstructionPointer),
+    /// Break at loop instructions
+    ///
+    /// The break will start on the looping instruction itself, and when
+    /// execution resumes, will break either at the next nested loop, or
+    /// if a complete iteration is reached, one of two places depending on
+    /// the type of looping instruction we're in:
+    ///
+    /// * `while.true` will break at the `while.true` on each iteration
+    /// * `repeat.n` will break at the top of the loop body on each iteration
+    Loop,
     /// Break when the given function is called
     Call(FunctionIdent),
     /// Break when a write touches the region specified
@@ -114,6 +137,8 @@ pub struct DebugInfo<'a> {
     pub ip: InstructionPointer,
     /// The instruction under the instruction pointer
     pub ix: Option<Op>,
+    /// Indicates whether any control flow actions occur during this cycle
+    pub action: Jump,
     /// The current state of the operand stack
     pub stack: &'a OperandStack<Felt>,
 }
@@ -124,16 +149,29 @@ impl<'a> fmt::Debug for DebugInfo<'a> {
             .field("fp", &self.fp)
             .field("ip", &self.ip)
             .field("ix", &self.ix)
+            .field("action", &self.action)
             .field("stack", &self.stack.debug())
             .finish()
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Jump {
+    /// No jumps made during this cycle
+    None,
+    /// We returned from the current function during this cycle
+    Return,
+    /// We jumped to another block during this cycle
+    Branch,
+    /// This cycle will start the `n`th iteration of a repeat block
+    Repeat(u8),
 }
 
 struct Activation {
     function: Rc<Function>,
     ip: InstructionPointer,
     fp: Addr,
-    repeat_stack: SmallVec<[Option<usize>; 2]>,
+    repeat_stack: SmallVec<[Option<(u8, u8)>; 2]>,
     ip_stack: SmallVec<[InstructionPointer; 2]>,
 }
 impl Activation {
@@ -148,52 +186,85 @@ impl Activation {
         }
     }
 
-    // Peek at the next instruction to be executed
-    fn peek_instruction(&self) -> Option<Op> {
+    fn pending_ip(&self) -> (InstructionPointer, Jump) {
         // Get code for this activation record
         let code = self.function.blocks[self.ip.block].ops.as_slice();
         // If we've reached the end of the current code block, attempt
         // to resume execution of the parent code block, if there is one
         if self.ip.index == code.len() {
-            if let Some(Some(count)) = self.repeat_stack.last().copied() {
-                if count > 0 {
-                    let next = code.get(0).copied();
-                    return next;
+            if let Some(Some((count, n))) = self.repeat_stack.last().copied() {
+                if count <= n {
+                    return (InstructionPointer::new(self.ip.block), Jump::Repeat(count));
                 }
             }
-            let ip = self.ip_stack.last().copied()?;
-            self.function.blocks[ip.block].ops.get(ip.index).copied()
+            for ip in self.ip_stack.iter().rev().copied() {
+                match self.function.blocks[ip.block].ops.get(ip.index).copied() {
+                    Some(_) => {
+                        return (ip, Jump::Branch);
+                    }
+                    None => continue,
+                }
+            }
+
+            (self.ip, Jump::Return)
         } else {
-            code.get(self.ip.index).copied()
+            (self.ip, Jump::None)
         }
     }
 
+    // Peek at the next instruction to be executed, as well as what the state
+    // of the instruction pointer will be at this step.
+    fn peek_instruction(&self) -> (Option<Op>, Jump, InstructionPointer) {
+        let (ip, jump) = self.pending_ip();
+        let ix = self.function.blocks[ip.block].ops.get(ip.index).copied();
+        (ix, jump, ip)
+    }
+
     // Get the instruction under the instruction pointer, and move the instruction pointer forward
-    fn next_instruction(&mut self) -> Option<Op> {
+    //
+    // Also returns a value indicating whether or not, and what kind of jump was performed if we
+    // reached the end of a block
+    fn next_instruction(&mut self) -> (Option<Op>, Jump) {
         // Get code for this activation record
         let code = self.function.blocks[self.ip.block].ops.as_slice();
         // If we've reached the end of the current code block, attempt
         // to resume execution of the parent code block, if there is one
         if self.ip.index == code.len() {
-            if let Some(Some(count)) = self.repeat_stack.pop() {
-                if count > 0 {
-                    self.repeat_stack.push(Some(count - 1));
+            if let Some(Some((count, n))) = self.repeat_stack.pop() {
+                if count <= n {
+                    self.repeat_stack.push(Some((count + 1, n)));
                     self.ip.index = 1;
-                    return code.get(0).copied();
+                    return (Some(code[0]), Jump::Repeat(count));
                 }
             }
-            self.ip = self.ip_stack.pop()?;
-            let next = self.function.blocks[self.ip.block]
-                .ops
-                .get(self.ip.index)
-                .copied();
-            self.ip.index += 1;
-            next
+
+            // Find the next instruction to execute
+            while let Some(ip) = self.ip_stack.pop() {
+                self.ip = ip;
+                match self.current_op() {
+                    ix @ Some(_) => {
+                        self.ip.index += 1;
+                        return (ix, Jump::Branch);
+                    }
+                    None => continue,
+                }
+            }
+
+            // If we reach here, there was no more code to execute in this function
+            (None, Jump::Return)
         } else {
-            let next = code.get(self.ip.index).copied();
+            let ix = code.get(self.ip.index).copied();
             self.ip.index += 1;
-            next
+            (ix, Jump::None)
         }
+    }
+
+    #[inline(always)]
+    fn current_op(&self) -> Option<Op> {
+        self.function.blocks[self.ip.block]
+            .ops
+            .get(self.ip.index)
+            .copied()
     }
 
     fn enter_block(&mut self, block: BlockId) {
@@ -214,9 +285,9 @@ impl Activation {
         self.ip = InstructionPointer::new(block);
     }
 
-    fn repeat_block(&mut self, block: BlockId, count: usize) {
+    fn repeat_block(&mut self, block: BlockId, count: u8) {
         self.ip_stack.push(self.ip);
-        self.repeat_stack.push(Some(count - 1));
+        self.repeat_stack.push(Some((1, count)));
         self.ip = InstructionPointer::new(block);
     }
 }
@@ -231,9 +302,10 @@ impl Default for Emulator {
     }
 }
 impl Emulator {
-    const DEFAULT_HEAP_SIZE: u32 = (64 * 1024 * 4) / 32;
-    const DEFAULT_HEAP_START: u32 = (64 * 1024 * 2) / 32;
-    const DEFAULT_LOCALS_START: u32 = (64 * 1024 * 3) / 32;
+    const PAGE_SIZE: u32 = 64 * 1024;
+    const DEFAULT_HEAP_SIZE: u32 = (4 * Self::PAGE_SIZE) / 16;
+    const DEFAULT_HEAP_START: u32 = (2 * Self::PAGE_SIZE) / 16;
+    const DEFAULT_LOCALS_START: u32 = (3 * Self::PAGE_SIZE) / 16;
     const EMPTY_WORD: [Felt; 4] = [Felt::ZERO; 4];
 
     /// Construct a new, empty emulator with:
@@ -278,13 +350,23 @@ impl Emulator {
     /// Get's debug information about the current emulator state
     pub fn info(&self) -> Option<DebugInfo<'_>> {
         let current = self.callstack.last()?;
+        let (ix, action, ip) = current.peek_instruction();
         Some(DebugInfo {
             function: current.function.name,
             fp: current.fp,
-            ip: current.ip,
-            ix: current.peek_instruction(),
+            ip,
+            ix,
+            action,
             stack: &self.stack,
         })
+    }
+
+    pub fn current_ip(&self) -> Option<InstructionPointer> {
+        self.callstack.last().map(|cur| cur.pending_ip().0)
+    }
+
+    fn pending_ip(&self) -> Option<(InstructionPointer, Jump)> {
+        self.callstack.last().map(|cur| cur.pending_ip())
     }
 
     /// Load `program` into this emulator
@@ -393,6 +475,8 @@ impl Emulator {
     }
 
     /// Allocate enough words to hold `size` bytes of memory
+    ///
+    /// Returns the pointer as a byte-addressable address
     pub fn malloc(&mut self, size: usize) -> u32 {
         let addr = self.hp;
 
@@ -409,13 +493,19 @@ impl Emulator {
         );
         self.hp += words;
 
-        addr
+        addr * 16
     }
 
     /// Write `value` to the word at `addr`, and element `index`
-    pub fn store(&mut self, addr: usize, index: usize, value: Felt) {
+    pub fn store(&mut self, addr: usize, value: Felt) {
+        use crate::NativePtr;
+
+        let ptr = NativePtr::from_ptr(addr.try_into().expect("invalid address"));
+        let addr = ptr.waddr as usize;
+        assert_eq!(ptr.offset, 0, "invalid store: unaligned address {addr:#?}");
         assert!(addr < self.memory.len(), "invalid address");
-        self.memory[addr][index] = value;
+
+        self.memory[addr][ptr.index as usize] = value;
     }
 
     /// Run the emulator by invoking `callee` with `args` placed on the
@@ -462,16 +552,25 @@ impl Emulator {
         }
 
         // Schedule `function`
-        let fp = self.locals[&function.name];
-        let state = Activation::new(function.clone(), fp);
+        let name = function.name;
+        let fp = self.locals[&name];
+        let state = Activation::new(function, fp);
         self.callstack.push(state);
 
-        self.resume()
+        match self.bp {
+            // Break on the first instruction, if applicable
+            Some(Breakpoint::Step) => return Err(EmulationError::BreakpointHit),
+            // Break on the first instruction, if applicable
+            Some(Breakpoint::Call(ref callee)) if callee == &name => {
+                return Err(EmulationError::BreakpointHit)
+            }
+            _ => self.resume(),
+        }
     }
 
     /// Resume execution when the emulator suspended due to a breakpoint
     pub fn resume(&mut self) -> Result<OperandStack<Felt>, EmulationError> {
-        self.run()?;
+        self.run(true)?;
 
         Ok(self.stack.clone())
     }
@@ -483,7 +582,15 @@ impl Emulator {
     /// number of arguments. If not, undefined behavior (from the perspective of the
     /// MASM program) will result.
     #[inline(never)]
-    fn run(&mut self) -> Result<(), EmulationError> {
+    fn run(&mut self, mut resuming: bool) -> Result<(), EmulationError> {
+        // If a breakpoint is set for a certain number of cycles, set
+        // the value of the cycle counter we should up to
+        let step_until_cycle = if let Some(Breakpoint::StepN(count)) = self.bp {
+            self.clk + (count - 1)
+        } else {
+            usize::MAX
+        };
+
         // This is the core interpreter loop for MASM IR, it runs until one of the
         // following occurs:
         //
@@ -492,6 +599,8 @@ impl Emulator {
         // * Execution traps due to a MASM invariant being violated, indicating the
         // code is malformed.
         // * Execution traps due to a runtime system error, e.g. out of memory
+        // * Execution traps due to exceeding the predefined execution budget
+        // * Execution breaks due to a breakpoint
         'outer: loop {
             // Terminate execution early if we reach a predetermined number of cycles
             self.clk += 1;
@@ -499,35 +608,81 @@ impl Emulator {
                 return Err(EmulationError::CycleBudgetExceeded);
             }
 
-            match self.bp {
-                None => {
-                    if self.step()? {
-                        break;
-                    }
+            // The "resuming" flag is reset after one step
+            let resuming = core::mem::take(&mut resuming);
+            let mut action = match self.bp {
+                // When resuming, certain breakpoints break at the instruction that
+                // we'll be resuming with, which would just cause execution to break
+                // immediately again. In order to solve this, we disable such breakpoints
+                // for one step, then re-enable them afterwards.
+                Some(Breakpoint::Loop | Breakpoint::MemoryWrite { .. }) if resuming => {
+                    let bp = self.bp.take();
+                    let action = self.step()?;
+                    self.bp = bp;
+                    action
                 }
-                Some(Breakpoint::Step) => {
-                    if self.step()? {
-                        break;
-                    } else {
-                        return Err(EmulationError::BreakpointHit);
-                    }
-                }
-                Some(Breakpoint::StepN(count)) => {
-                    // Execute `count` instructions unless we reach the end or an error
-                    let mut count = count;
-                    while count > 0 {
-                        count -= 1;
-                        if self.step()? {
-                            break 'outer;
+                None | Some(_) => self.step()?,
+            };
+
+            'handle_action: loop {
+                match action {
+                    // There is no more code to execute, so halt the emulator
+                    Action::Halt => break 'outer,
+                    // Execution was suspended after dispatching an instruction normally
+                    Action::Suspend => match self.bp {
+                        // Execution should break immediately
+                        Some(Breakpoint::Step) | Some(Breakpoint::StepOver) => {
+                            return Err(EmulationError::BreakpointHit)
                         }
-                        self.clk += 1;
-                    }
-                    return Err(EmulationError::BreakpointHit);
-                }
-                Some(_) => {
-                    // Handled by the step function
-                    if self.step()? {
-                        break;
+                        Some(Breakpoint::StepOnce) => {
+                            self.bp.take();
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                        Some(Breakpoint::StepN(_)) if self.clk >= step_until_cycle => {
+                            return Err(EmulationError::BreakpointHit)
+                        }
+                        Some(Breakpoint::StepUntil(ip)) => {
+                            if let Some((pending_ip, _)) = self.pending_ip() {
+                                if pending_ip == ip {
+                                    self.bp = None;
+                                    return Err(EmulationError::BreakpointHit);
+                                }
+                            }
+                            continue 'outer;
+                        }
+                        // Execution should resume with the next instruction
+                        _ => continue 'outer,
+                    },
+                    // There was no code remaining in the current function, effectively
+                    // returning from it. Since no instructions were dispatched, we don't
+                    // count the cycle, and resume immediately at the continuation point
+                    // in the caller
+                    Action::Return => {
+                        loop {
+                            match self.pending_ip() {
+                                // Step forward as the next instruction is also a return
+                                Some((_, Jump::Return)) => {
+                                    action = self.step()?;
+                                    continue 'handle_action;
+                                }
+                                // This step will resume control in a previous caller,
+                                // so handle this as a suspension
+                                Some(_) => {
+                                    action = Action::Suspend;
+                                    continue 'handle_action;
+                                }
+                                // There is no code remaining in the caller either, so
+                                // pop them off the call stack and try again until we
+                                // either reach the bottom of the callstack, or a caller
+                                // with more instructions
+                                None => {
+                                    if self.callstack.pop().is_none() {
+                                        break 'outer;
+                                    }
+                                    continue;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -536,17 +691,35 @@ impl Emulator {
         Ok(())
     }
 
-    fn step(&mut self) -> Result<bool, EmulationError> {
+    fn step(&mut self) -> Result<Action, EmulationError> {
         const U32_P: u64 = 2u64.pow(32);
         const U32_BITS: u64 = 32;
 
         // If there are no more activation records, we're done
         if self.callstack.is_empty() {
-            return Ok(true);
+            return Ok(Action::Halt);
         }
-
         let mut state = self.callstack.pop().unwrap();
-        if let Some(ix) = state.next_instruction() {
+
+        let (ix, jump) = state.next_instruction();
+        if let Some(ix) = ix {
+            if jump != Jump::None {
+                match self.bp {
+                    Some(Breakpoint::StepOut) => {
+                        if jump == Jump::Branch {
+                            state.ip.index -= 1;
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
+                    Some(Breakpoint::Loop) => {
+                        if let Jump::Repeat(_) = jump {
+                            state.ip.index -= 1;
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
+                    _ => (),
+                }
+            }
             match ix {
                 Op::Padw => {
                     self.stack.padw();
@@ -719,11 +892,27 @@ impl Emulator {
                 Op::MemStore => {
                     let addr = self.stack.pop().expect("operand stack is empty").as_int();
                     let value = self.stack.pop().expect("operand stack is empty");
+                    let addr = addr as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Push operands back on the stack
+                            self.stack.push(value);
+                            self.stack.push(Felt::new(addr as u64));
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
                     assert!(
-                        addr < u32::MAX as u64,
+                        addr < u32::MAX as usize,
                         "expected valid 32-bit address, got {addr}"
                     );
-                    let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.memory[addr][0] = value;
                 }
@@ -731,18 +920,48 @@ impl Emulator {
                     let offset = self.stack.pop().expect("operand stack is empty").as_int();
                     let addr = self.stack.pop().expect("operand stack is empty").as_int();
                     let value = self.stack.pop().expect("operand stack is empty");
+                    let addr = addr as usize;
+                    let offset = offset as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Push operands back on the stack
+                            self.stack.push(Felt::new(offset as u64));
+                            self.stack.push(value);
+                            self.stack.push(Felt::new(addr as u64));
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
                     assert!(
-                        addr < u32::MAX as u64,
+                        addr < u32::MAX as usize,
                         "expected valid 32-bit address, got {addr}"
                     );
                     assert!(offset < 4, "expected valid element offset, got {offset}");
-                    let addr = addr as usize;
-                    let offset = offset as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.memory[addr][offset] = value;
                 }
                 Op::MemStoreImm(addr) => {
                     let addr = addr as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     let value = self.stack.pop().expect("operand stack is empty");
                     self.memory[addr][0] = value;
@@ -750,6 +969,19 @@ impl Emulator {
                 Op::MemStoreOffsetImm(addr, offset) => {
                     let addr = addr as usize;
                     let offset = offset as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     let value = self.stack.pop().expect("operand stack is empty");
                     self.memory[addr][offset] = value;
@@ -757,24 +989,59 @@ impl Emulator {
                 Op::MemStorew => {
                     let addr = self.stack.pop().expect("operand stack is empty").as_int();
                     let word = self.stack.peekw().expect("operand stack is empty");
+                    let addr = addr as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Push operands back on the stack
+                            self.stack.push(Felt::new(addr as u64));
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
                     assert!(
-                        addr < u32::MAX as u64,
+                        addr < u32::MAX as usize,
                         "expected valid 32-bit address, got {addr}"
                     );
-                    let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.memory[addr] = word;
                 }
                 Op::MemStorewImm(addr) => {
                     let addr = addr as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
                     let word = self.stack.peekw().expect("operand stack is empty");
                     self.memory[addr] = word;
                 }
                 Op::If(then_blk, else_blk) => {
+                    if let Some(Breakpoint::StepOver) = self.bp {
+                        self.bp = Some(Breakpoint::StepUntil(state.pending_ip().0));
+                    }
                     let cond = self.stack.pop().expect("operand stack is empty");
                     let is_true = cond == Felt::ONE;
-                    assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
+                    assert!(
+                        is_true || cond == Felt::ZERO,
+                        "invalid boolean value: {}",
+                        cond.as_int()
+                    );
                     if is_true {
                         state.enter_block(then_blk);
                     } else {
@@ -782,6 +1049,17 @@ impl Emulator {
                     }
                 }
                 Op::While(body_blk) => {
+                    match self.bp {
+                        Some(Breakpoint::Loop) => {
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                        Some(Breakpoint::StepOver) => {
+                            self.bp = Some(Breakpoint::StepUntil(state.pending_ip().0));
+                        }
+                        _ => (),
+                    }
                     let cond = self.stack.pop().expect("operand stack is empty");
                     let is_true = cond == Felt::ONE;
                     assert!(is_true || cond == Felt::ZERO, "invalid boolean value");
@@ -791,7 +1069,18 @@ impl Emulator {
                     }
                 }
                 Op::Repeat(n, body_blk) => {
-                    state.repeat_block(body_blk, n as usize);
+                    match self.bp {
+                        Some(Breakpoint::Loop) => {
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                        Some(Breakpoint::StepOver) => {
+                            self.bp = Some(Breakpoint::StepUntil(state.pending_ip().0));
+                        }
+                        _ => (),
+                    }
+                    state.repeat_block(body_blk, n);
                 }
                 Op::Exec(callee) => {
                     let callee = callee;
@@ -804,16 +1093,27 @@ impl Emulator {
                         Stub::Asm(ref function) => {
                             let fp = self.locals[&function.name];
                             let callee_state = Activation::new(function.clone(), fp);
+                            match self.bp {
+                                Some(Breakpoint::Call(bp)) => {
+                                    // Suspend caller
+                                    self.callstack.push(state);
+                                    // Schedule callee next
+                                    self.callstack.push(callee_state);
+                                    if callee == bp {
+                                        return Err(EmulationError::BreakpointHit);
+                                    }
+                                    return Ok(Action::Suspend);
+                                }
+                                Some(Breakpoint::StepOver) => {
+                                    self.bp = Some(Breakpoint::StepUntil(state.pending_ip().0));
+                                }
+                                _ => (),
+                            }
                             // Suspend caller
                             self.callstack.push(state);
                             // Schedule callee next
                             self.callstack.push(callee_state);
-                            if let Some(Breakpoint::Call(bp)) = self.bp {
-                                if callee == bp {
-                                    return Err(EmulationError::BreakpointHit);
-                                }
-                            }
-                            return Ok(false);
+                            return Ok(Action::Suspend);
                         }
                         Stub::Native(_function) => unimplemented!(),
                     }
@@ -1599,9 +1899,33 @@ impl Emulator {
             }
         }
 
-        // Suspend the current activation record
-        self.callstack.push(state);
+        match jump {
+            Jump::Return => {
+                if self.callstack.is_empty() {
+                    Ok(Action::Halt)
+                } else {
+                    Ok(Action::Return)
+                }
+            }
+            _ => {
+                // Suspend the current activation record
+                self.callstack.push(state);
 
-        Ok(false)
+                Ok(Action::Suspend)
+            }
+        }
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Action {
+    /// All code has been executed, so stop the emulator
+    Halt,
+    /// The step function executed an instruction in the current
+    /// function and suspended the execution state until the next resumption.
+    Suspend,
+    /// The step function returned from a callee function without
+    /// executing any new instructions, so the emulator loop
+    /// should resume the caller immediately
+    Return,
 }
