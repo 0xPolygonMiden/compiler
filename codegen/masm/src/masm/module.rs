@@ -93,24 +93,20 @@ impl Module {
             body.extend_from_slice(&[
                 // assert the index given is valid
                 Op::Dup(0),
-                Op::PushU8(3),
-                Op::Lte,
+                Op::LteImm(Felt::new(3)),
                 Op::Assert,
                 // compute a set of three booleans which used in conjunction with cdrop will
                 // extract the desired element of the given word
                 // # [element_index, w0, ..w3, element_index < 3]
                 Op::Dup(0),
-                Op::PushU8(3),
-                Op::Lt,
-                Op::Movdn(6),
+                Op::LtImm(Felt::new(3)),
+                Op::Movdn(5),
                 // # [element_index, w0, ..w3, element_index < 2, ..]
                 Op::Dup(0),
-                Op::PushU8(2),
-                Op::Lt,
-                Op::Movdn(6),
+                Op::LtImm(Felt::new(2)),
+                Op::Movdn(5),
                 // # [element_index < 1, w0, ..w3, ..]
-                Op::PushU8(1),
-                Op::Lt,
+                Op::LtImm(Felt::ONE),
                 // # drop w1 if the element index is zero; or drop w0 if the element index is non-zero
                 Op::Cdrop,
                 // # drop w2 if the element index is one; or drop w0 and w1 if the element index is > 1
@@ -142,6 +138,10 @@ impl Module {
         {
             let body = f.block_mut(f.body);
             body.extend_from_slice(&[
+                // Prepare the stack to receive the loaded word
+                // # [waddr, 0, 0, 0, 0, index]
+                Op::Padw,
+                Op::Movup(4),
                 // # load the word which contains the desired element
                 // # [w0, w1, w2, w3, index]
                 Op::MemLoadw,
@@ -253,6 +253,8 @@ impl Module {
                 Op::Drop,
                 // # load a word
                 // # [w0, w1, w2, w3, offset]
+                Op::Padw,
+                Op::Movup(4),
                 Op::MemLoadw,
                 // # drop the unused elements
                 Op::Movup(3),
@@ -293,6 +295,8 @@ impl Module {
                 Op::Drop,
                 // # load
                 // # [w0, w1, w2, w3, offset]
+                Op::Padw,
+                Op::Movup(4),
                 Op::MemLoadw,
                 // # drop the unused elements
                 // # [w1, w2, offset]
@@ -330,6 +334,8 @@ impl Module {
             is_third_element.extend_from_slice(&[
                 // # the load is across both the third and fourth elements
                 // # [w0, w1, w2, w3, offset]
+                Op::Padw,
+                Op::Movup(4),
                 Op::MemLoadw,
                 // # drop first two unused
                 // # [w2, w3, offset]
@@ -363,6 +369,8 @@ impl Module {
                 Op::U32CheckedAddImm(1),
                 // # load the word and drop the unused elements
                 // # [w0, waddr, offset]
+                Op::Padw,
+                Op::Movup(4),
                 Op::MemLoadw,
                 Op::Movdn(4),
                 Op::Drop,
@@ -379,6 +387,8 @@ impl Module {
                 // # load the word with the high bits, drop unused elements
                 // # [w3, lo, offset]
                 Op::Swap(1),
+                Op::Padw,
+                Op::Movup(4),
                 Op::MemLoadw,
                 Op::Drop,
                 Op::Drop,
