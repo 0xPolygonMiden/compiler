@@ -20,5 +20,6 @@ miden-hir = { path = "../../hir" }
 miden-hir-analysis = { path = "../../hir-analysis" }
 miden-hir-pass = { path = "../../hir-pass" }
 miden-hir-transform = { path = "../../hir-transform" }
+paste.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
