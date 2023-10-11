@@ -361,3 +361,8 @@ impl fmt::Debug for Function {
             .finish()
     }
 }
+impl fmt::Display for Function {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        crate::write_function(f, self)
+    }
+}
