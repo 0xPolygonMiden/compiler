@@ -454,7 +454,7 @@ fn detach_tree(root: BlockId, function: &mut hir::Function, cfg: &ControlFlowGra
     visited.insert(root);
     while let Some(block) = delete_q.pop_front() {
         function.dfg.detach_block(block);
-        for b in cfg.succ_iter(block).into_iter() {
+        for b in cfg.succ_iter(block) {
             // Skip blocks we've already seen
             if visited.insert(b) {
                 delete_q.push_back(b);

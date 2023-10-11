@@ -370,9 +370,8 @@ impl DependencyGraph {
     pub fn indexed(&self, root: &Node) -> DependencyGraphIndices {
         let mut indices = DependencyGraphIndices::default();
         let mut counter = 0;
-        let mut worklist = SmallVec::<[Node; 4]>::from_iter(
-            self.successors(root).into_iter().map(|n| n.dependency),
-        );
+        let mut worklist =
+            SmallVec::<[Node; 4]>::from_iter(self.successors(root).map(|n| n.dependency));
         while let Some(n) = worklist.pop() {
             if indices.insert(n, counter) {
                 counter += 1;
@@ -421,13 +420,13 @@ impl DependencyGraph {
             edge.remove_use(&value);
             // If removing the dependency makes the edge meaningless, remove the edge
             if edge.is_dead() {
-                self.edges.get_mut(&a).unwrap().remove(&b);
-                self.edges.get_mut(&b).unwrap().remove(&a);
+                self.edges.get_mut(a).unwrap().remove(b);
+                self.edges.get_mut(b).unwrap().remove(a);
             }
         } else {
             // We're removing the edge
-            self.edges.get_mut(&a).unwrap().remove(&b);
-            self.edges.get_mut(&b).unwrap().remove(&a);
+            self.edges.get_mut(a).unwrap().remove(b);
+            self.edges.get_mut(b).unwrap().remove(a);
         }
     }
 
@@ -496,11 +495,13 @@ impl DependencyGraphIndices {
 
     /// Assign `index` to `node`
     fn insert(&mut self, node: Node, index: usize) -> bool {
-        if self.0.contains_key(&node) {
-            false
-        } else {
-            self.0.insert(node, index);
+        use std::collections::hash_map::Entry;
+
+        if let Entry::Vacant(entry) = self.0.entry(node) {
+            entry.insert(index);
             true
+        } else {
+            false
         }
     }
 }
@@ -515,7 +516,7 @@ impl<'a> Iterator for Successors<'a> {
     type Item = &'a Dependency;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((_, id)) = self.iter.next() {
+        for (_, id) in self.iter.by_ref() {
             let data = &self.graph.data[id.as_usize()];
             if data.dependent == self.node {
                 return Some(data);
@@ -554,7 +555,7 @@ impl<'a> Iterator for Predecessors<'a> {
     type Item = &'a Dependency;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((_, id)) = self.iter.next() {
+        for (_, id) in self.iter.by_ref() {
             let data = &self.graph.data[id.as_usize()];
             if data.dependency == self.node {
                 return Some(data);

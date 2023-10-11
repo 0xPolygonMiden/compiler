@@ -44,7 +44,7 @@ impl<'a> OpEmitter<'a> {
     pub fn assert_unsigned_smallint(&mut self, n: u32) {
         match n {
             // i1 is always unsigned
-            1 => return,
+            1 => (),
             n => {
                 self.is_signed_smallint(n);
                 self.emit(Op::Assert);
@@ -61,9 +61,8 @@ impl<'a> OpEmitter<'a> {
     /// Convert an unsigned N-bit integer to a field element
     #[inline(always)]
     pub fn uint_to_felt(&mut self, n: u32) {
-        assert_valid_integer_size!(n, 1, 32);
         // Conversion to felt is a no-op
-        return;
+        assert_valid_integer_size!(n, 1, 32);
     }
 
     /// Convert a signed N-bit integer to u64

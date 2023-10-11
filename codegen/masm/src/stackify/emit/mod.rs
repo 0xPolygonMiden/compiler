@@ -498,7 +498,7 @@ impl<'a> OpEmitter<'a> {
         is_commutative_binary_operand: bool,
     ) {
         match (n, m) {
-            (n, m) if n == m => return,
+            (n, m) if n == m => (),
             (1, 0) | (0, 1) => {
                 // If the dependent is binary+commutative, we can
                 // leave operands in either the 0th or 1st position,

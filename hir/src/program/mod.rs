@@ -26,6 +26,7 @@ use super::*;
 /// The intuition is that, in general, changes at the [Program] level are relatively infrequent, i.e.
 /// only when declaring a new [Module], or [GlobalVariable], do we actually need to mutate the structure.
 /// In all other situations, changes are scoped at the [Module] level.
+#[derive(Default)]
 pub struct Program {
     /// This tree stores all of the modules being compiled as part of the current program.
     modules: RBTree<ModuleTreeAdapter>,
@@ -41,16 +42,6 @@ pub struct Program {
     /// modules in this program. The layout of this table corresponds to the layout of
     /// global variables in the linear memory heap at runtime.
     globals: GlobalVariableTable,
-}
-impl Default for Program {
-    fn default() -> Self {
-        Self {
-            modules: Default::default(),
-            entrypoint: None,
-            segments: Default::default(),
-            globals: Default::default(),
-        }
-    }
 }
 impl Program {
     /// Create a new, empty [Program].

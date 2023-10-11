@@ -35,7 +35,7 @@ impl<'a> OpEmitter<'a> {
         match ptr.ty() {
             Type::Ptr(_) => {
                 // Converet the pointer to a native pointer representation
-                self.to_native_ptr();
+                self.emit_native_ptr();
                 match &ty {
                     Type::I128 => self.load_quad_word(None),
                     Type::I64 | Type::U64 => self.load_double_word(None),
@@ -82,7 +82,7 @@ impl<'a> OpEmitter<'a> {
     /// Instructions which must act on a pointer will expect the stack to have
     /// these values in that order so that they can perform any necessary
     /// re-alignment.
-    fn to_native_ptr(&mut self) {
+    fn emit_native_ptr(&mut self) {
         self.emit_all(&[
             // Copy the address
             //
@@ -840,7 +840,7 @@ impl<'a> OpEmitter<'a> {
         match ptr_ty {
             Type::Ptr(_) => {
                 // Converet the pointer to a native pointer representation
-                self.to_native_ptr();
+                self.emit_native_ptr();
                 match value_ty {
                     Type::I128 => self.store_quad_word(None),
                     Type::I64 | Type::U64 => self.store_double_word(None),

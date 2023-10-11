@@ -132,7 +132,7 @@ impl<'a> OpEmitter<'a> {
         assert_valid_integer_size!(n, 1, 32);
         self.emit(Op::Drop);
         match n {
-            32 => return,
+            32 => (),
             n => self.trunc_int32(n),
         }
     }
@@ -214,7 +214,7 @@ impl<'a> OpEmitter<'a> {
     pub fn move_int64_up(&mut self, n: u8) {
         assert_valid_stack_index!(n + 1);
         match n {
-            0 => return,
+            0 => (),
             1 => {
                 // Move the top of the stack past the 64 bit value
                 self.emit(Op::Movdn(2));

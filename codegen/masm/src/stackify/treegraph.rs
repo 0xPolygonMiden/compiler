@@ -305,7 +305,7 @@ impl TreeGraph {
             .nodes
             .iter()
             .copied()
-            .filter(|n| treegraph.num_predecessors(&n) == 0)
+            .filter(|n| treegraph.num_predecessors(n) == 0)
             .collect::<VecDeque<_>>();
 
         let mut successors = SmallVec::<[Node; 4]>::default();

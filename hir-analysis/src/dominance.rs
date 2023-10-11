@@ -405,6 +405,7 @@ impl DominatorTree {
 /// - Traversal of the dominator tree in pre-order
 /// - Ordering of blocks in dominator tree pre-order
 /// - Constant-time dominance checks per-block
+#[derive(Default)]
 pub struct DominatorTreePreorder {
     nodes: SecondaryMap<Block, PreorderNode>,
     stack: Vec<Block>,
@@ -426,13 +427,9 @@ struct PreorderNode {
     /// This is always greater than or equal to `pre_number`
     pre_max: u32,
 }
-
 impl DominatorTreePreorder {
     pub fn new() -> Self {
-        Self {
-            nodes: Default::default(),
-            stack: vec![],
-        }
+        Self::default()
     }
 
     pub fn with_function(domtree: &DominatorTree, function: &Function) -> Self {

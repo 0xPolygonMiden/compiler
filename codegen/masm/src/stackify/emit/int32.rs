@@ -311,7 +311,7 @@ impl<'a> OpEmitter<'a> {
         // Mask out any bits between N and 32.
         let unused_bits = 32 - n;
         if unused_bits > 0 {
-            self.const_mask_u32(1 << (32 - unused_bits) - 1);
+            self.const_mask_u32(1 << ((32 - unused_bits) - 1));
         }
     }
 
@@ -474,7 +474,7 @@ impl<'a> OpEmitter<'a> {
             0 => {
                 self.emit_all(&[Op::Drop, Op::PushU32(0)]);
             }
-            1 => return,
+            1 => (),
             imm => {
                 self.emit(match overflow {
                     Overflow::Unchecked => Op::MulImm(Felt::new(imm as u64)),

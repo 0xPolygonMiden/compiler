@@ -559,10 +559,10 @@ impl Emulator {
 
         match self.bp {
             // Break on the first instruction, if applicable
-            Some(Breakpoint::Step) => return Err(EmulationError::BreakpointHit),
+            Some(Breakpoint::Step) => Err(EmulationError::BreakpointHit),
             // Break on the first instruction, if applicable
             Some(Breakpoint::Call(ref callee)) if callee == &name => {
-                return Err(EmulationError::BreakpointHit)
+                Err(EmulationError::BreakpointHit)
             }
             _ => self.resume(),
         }
@@ -1197,8 +1197,8 @@ impl Emulator {
                 Op::Not => {
                     let a = self.stack.pop().expect("operand stack is empty").as_int();
                     assert!(a < 2, "invalid boolean value");
-                    let a = !(a == 1);
-                    self.stack.push_u8(a as u8);
+                    let a = a != 0;
+                    self.stack.push_u8(!a as u8);
                 }
                 Op::And => {
                     let b = self.stack.pop().expect("operand stack is empty").as_int();
