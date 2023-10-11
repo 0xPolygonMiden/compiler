@@ -9,13 +9,21 @@ use intrusive_collections::{intrusive_adapter, LinkedListLink, UnsafeRef};
 use typed_arena::Arena;
 
 /// This struct holds the data for each node in an ArenaMap/OrderedArenaMap
-#[derive(Clone)]
-pub struct LayoutNode<K: EntityRef, V: Clone> {
+pub struct LayoutNode<K: EntityRef, V> {
     pub link: LinkedListLink,
     key: K,
     value: V,
 }
-impl<K: EntityRef, V: Clone> LayoutNode<K, V> {
+impl<K: EntityRef, V: Clone> Clone for LayoutNode<K, V> {
+    fn clone(&self) -> Self {
+        Self {
+            link: LinkedListLink::new(),
+            key: self.key.clone(),
+            value: self.value.clone(),
+        }
+    }
+}
+impl<K: EntityRef, V> LayoutNode<K, V> {
     pub fn new(key: K, value: V) -> Self {
         Self {
             link: LinkedListLink::default(),
@@ -40,7 +48,7 @@ impl<K: EntityRef, V: Clone> LayoutNode<K, V> {
     }
 }
 
-intrusive_adapter!(pub LayoutAdapter<K, V> = UnsafeRef<LayoutNode<K, V>>: LayoutNode<K, V> { link: LinkedListLink } where K: EntityRef, V: Clone);
+intrusive_adapter!(pub LayoutAdapter<K, V> = UnsafeRef<LayoutNode<K, V>>: LayoutNode<K, V> { link: LinkedListLink } where K: EntityRef);
 
 /// ArenaMap provides similar functionality to other kinds of maps:
 ///
@@ -63,12 +71,12 @@ intrusive_adapter!(pub LayoutAdapter<K, V> = UnsafeRef<LayoutNode<K, V>>: Layout
 /// is increased memory usage for maps that stick around for a long time. In our case, these maps are
 /// relatively short-lived, so it isn't a problem in practice.
 /// * It doesn't provide as rich of an API as HashMap and friends
-pub struct ArenaMap<K: EntityRef, V: Clone> {
+pub struct ArenaMap<K: EntityRef, V> {
     keys: Vec<Option<NonNull<V>>>,
     arena: Arena<V>,
     _marker: core::marker::PhantomData<K>,
 }
-impl<K: EntityRef, V: Clone> Drop for ArenaMap<K, V> {
+impl<K: EntityRef, V> Drop for ArenaMap<K, V> {
     fn drop(&mut self) {
         self.keys.clear()
     }
@@ -88,13 +96,13 @@ impl<K: EntityRef, V: Clone> Clone for ArenaMap<K, V> {
         cloned
     }
 }
-impl<K: EntityRef, V: Clone> Default for ArenaMap<K, V> {
+impl<K: EntityRef, V> Default for ArenaMap<K, V> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
-impl<K: EntityRef, V: Clone> ArenaMap<K, V> {
+impl<K: EntityRef, V> ArenaMap<K, V> {
     /// Creates a new, empty ArenaMap
     pub fn new() -> Self {
         Self {
@@ -193,7 +201,7 @@ impl<K: EntityRef, V: Clone> ArenaMap<K, V> {
         nn
     }
 }
-impl<K: EntityRef, V: Clone> Index<K> for ArenaMap<K, V> {
+impl<K: EntityRef, V> Index<K> for ArenaMap<K, V> {
     type Output = V;
 
     #[inline]
@@ -201,7 +209,7 @@ impl<K: EntityRef, V: Clone> Index<K> for ArenaMap<K, V> {
         self.get(index).unwrap()
     }
 }
-impl<K: EntityRef, V: Clone> IndexMut<K> for ArenaMap<K, V> {
+impl<K: EntityRef, V> IndexMut<K> for ArenaMap<K, V> {
     #[inline]
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
         self.get_mut(index).unwrap()
@@ -222,11 +230,11 @@ impl<K: EntityRef, V: Clone> IndexMut<K> for ArenaMap<K, V> {
 /// * It is a doubly-linked list, so you can traverse equally efficiently front-to-back or back-to-front,
 /// * It has O(1) indexing; given a key, we can directly obtain a reference to a node, and with that,
 /// obtain a cursor over the list starting at that node.
-pub struct OrderedArenaMap<K: EntityRef, V: Clone> {
+pub struct OrderedArenaMap<K: EntityRef, V> {
     list: LinkedList<LayoutAdapter<K, V>>,
     map: ArenaMap<K, LayoutNode<K, V>>,
 }
-impl<K: EntityRef, V: Clone> Drop for OrderedArenaMap<K, V> {
+impl<K: EntityRef, V> Drop for OrderedArenaMap<K, V> {
     fn drop(&mut self) {
         self.list.fast_clear();
     }
@@ -248,13 +256,13 @@ impl<K: EntityRef, V: Clone> Clone for OrderedArenaMap<K, V> {
         cloned
     }
 }
-impl<K: EntityRef, V: Clone> Default for OrderedArenaMap<K, V> {
+impl<K: EntityRef, V> Default for OrderedArenaMap<K, V> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
-impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
+impl<K: EntityRef, V> OrderedArenaMap<K, V> {
     pub fn new() -> Self {
         Self {
             map: ArenaMap::new(),
@@ -412,7 +420,7 @@ impl<K: EntityRef, V: Clone> OrderedArenaMap<K, V> {
         unsafe { UnsafeRef::from_raw(nn.as_ptr()) }
     }
 }
-impl<K: EntityRef, V: Clone> Index<K> for OrderedArenaMap<K, V> {
+impl<K: EntityRef, V> Index<K> for OrderedArenaMap<K, V> {
     type Output = V;
 
     #[inline]
@@ -420,7 +428,7 @@ impl<K: EntityRef, V: Clone> Index<K> for OrderedArenaMap<K, V> {
         self.get(index).unwrap()
     }
 }
-impl<K: EntityRef, V: Clone> IndexMut<K> for OrderedArenaMap<K, V> {
+impl<K: EntityRef, V> IndexMut<K> for OrderedArenaMap<K, V> {
     #[inline]
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
         self.get_mut(index).unwrap()
@@ -431,12 +439,10 @@ pub struct OrderedArenaMapIter<'a, K, V>(
     intrusive_collections::linked_list::Iter<'a, LayoutAdapter<K, V>>,
 )
 where
-    K: EntityRef,
-    V: Clone;
+    K: EntityRef;
 impl<'a, K, V> Iterator for OrderedArenaMapIter<'a, K, V>
 where
     K: EntityRef,
-    V: Clone,
 {
     type Item = (K, &'a V);
 
@@ -448,7 +454,6 @@ where
 impl<'a, K, V> DoubleEndedIterator for OrderedArenaMapIter<'a, K, V>
 where
     K: EntityRef,
-    V: Clone,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {

@@ -275,9 +275,12 @@ impl DataFlowGraph {
     /// instruction is updated appropriately once inserted.
     pub fn clone_inst(&mut self, inst: Inst) -> Inst {
         let id = self.insts.alloc_key();
-        let data = self.insts[inst].data.clone();
-        self.insts
-            .append(id, InstNode::new(id, Block::default(), data));
+        let span = self.insts[inst].data.span();
+        let data = self.insts[inst].data.deep_clone(&mut self.value_lists);
+        self.insts.append(
+            id,
+            InstNode::new(id, Block::default(), Span::new(span, data)),
+        );
 
         // Derive results for the cloned instruction using the results
         // of the original instruction

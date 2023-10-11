@@ -355,16 +355,6 @@ fn treeify(
     // 2. Initialize a lookup table of old value defs to new value defs, seed it by mapping the
     //    block arguments of `b` to the values passed from the predecessor
     match function.dfg.analyze_branch(p.inst) {
-        BranchInfo::NotABranch => {
-            value_map.extend(
-                function
-                    .dfg
-                    .block_args(b)
-                    .iter()
-                    .copied()
-                    .zip(function.dfg.inst_args(p.inst).iter().copied()),
-            );
-        }
         BranchInfo::SingleDest(_, args) => {
             value_map.extend(
                 function
@@ -390,6 +380,7 @@ fn treeify(
                 }
             }
         }
+        BranchInfo::NotABranch => unreachable!(),
     }
     // 3. Update the predecessor instruction to reference the new block, remove block arguments.
     update_predecessor(function, p, |dest, dest_args, pool| {
@@ -732,7 +723,7 @@ block3(v4: u32, v5: u32, v6: u32):
     condbr v16, block4(v4, v5, v6), block8
 
 block8:
-    ret v10
+    ret v4
 
 block4(v7: u32, v8: u32, v9: u32):
     v18 = lt v9, v2  : i1

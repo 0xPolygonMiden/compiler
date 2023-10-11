@@ -143,8 +143,9 @@ fn inline(
             // We need to clone the original terminator so we can continue to
             // navigate the control flow graph
             if ix.opcode().is_terminator() {
+                let replacement = Box::new(ix.deep_clone(&mut function.dfg.value_lists));
                 assert!(
-                    from_terminator.replace(ix.clone()).is_none(),
+                    from_terminator.replace(replacement).is_none(),
                     "a block can only have one terminator"
                 );
             }
