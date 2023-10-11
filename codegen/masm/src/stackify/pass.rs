@@ -402,7 +402,7 @@ impl<'a> MasmEmitter<'a> {
     /// control to another block in the function. Thus we must keep track of when we're
     /// visiting a block for the first time, as well as what block we were in when we started
     /// emitting code for `b`, so that we can properly emit code for loopback edges.
-    fn emit(&mut self, b: hir::Block, b_prime: masm::BlockId, mut stack: OperandStack) {
+    fn emit(&mut self, b: hir::Block, b_prime: masm::BlockId, stack: OperandStack) {
         let is_first_visit = self.visited.insert(b);
         // Update the current, controlling, and emitting blocks, but saving the previous
         // values so we can restore them when this function returns.
@@ -471,14 +471,6 @@ impl<'a> MasmEmitter<'a> {
         } else {
             None
         };
-
-        // Block arguments are already on the operand stack, but they are still named
-        // after the values in the predecessor block. We rename them here with their
-        // names as used in the current block. Renamed values are aliased, so it is
-        // still possible to look them up by their original name.
-        for (i, arg) in self.f.dfg.block_args(b).iter().copied().enumerate() {
-            stack.rename(i, arg);
-        }
 
         // If the block to be emitted is a loop header, we want to cache the results
         // of computing the dependency graph, tree graph, and schedule, as they will
@@ -727,9 +719,6 @@ impl<'a> MasmEmitter<'a> {
             &value,
             ProgramPoint::Inst(self.f.dfg.last_inst(self.emitting).unwrap()),
         );
-        let pos = stack
-            .find(&value)
-            .expect("value not found on operand stack");
         let num_dependents = treegraph.num_dependents(&node);
         // This is the last use of `value` if:
         //
@@ -772,6 +761,9 @@ impl<'a> MasmEmitter<'a> {
             let ix = self.f.dfg.inst(dependent_inst);
             ix.is_binary() && ix.is_commutative()
         };
+        let pos = stack
+            .find(&value)
+            .expect("value not found on operand stack");
         let mut emitter = self.emitter(stack);
         if is_last_dependent {
             // This is the last usage, so move, rather than copy the value
@@ -1127,9 +1119,10 @@ impl<'a> MasmEmitter<'a> {
                         .iter()
                         .copied()
                         .collect::<SmallVec<[hir::Value; 2]>>();
+                    let params = self.f.dfg.block_params(destination);
                     let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
                     drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
-                    prepare_stack_arguments(inst, &args, &mut emitter, self.liveness);
+                    prepare_stack_arguments(&args, params, &mut emitter);
                 }
                 if self.loops.is_loop_header(self.emitting).is_some() {
                     // We're in a loop header, emit the target block inside a while loop
@@ -1161,7 +1154,11 @@ impl<'a> MasmEmitter<'a> {
             // loop. In such cases we emit a `push.1` to continue the target loop, but we must also emit a `push.0`
             // for each loop level between the controlling loop and the emitting block, to break out of each
             // intermediate loop.
-            Instruction::Br(hir::Br { ref args, .. }) => {
+            Instruction::Br(hir::Br {
+                destination,
+                ref args,
+                ..
+            }) => {
                 // We should only be emitting code for a block more than once if that block
                 // is a loop header. All other blocks should only be visited a single time.
                 assert!(
@@ -1173,9 +1170,10 @@ impl<'a> MasmEmitter<'a> {
                     .iter()
                     .copied()
                     .collect::<SmallVec<[hir::Value; 2]>>();
+                let params = self.f.dfg.block_params(*destination);
                 let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
                 drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
-                prepare_stack_arguments(inst, &args, &mut emitter, self.liveness);
+                prepare_stack_arguments(&args, params, &mut emitter);
                 let current_loop = self
                     .controlling_loop
                     .expect("expected controlling loop to be set");
@@ -1211,10 +1209,20 @@ impl<'a> MasmEmitter<'a> {
             // the general solution.
             //
             Instruction::CondBr(hir::CondBr {
+                cond,
                 then_dest: (then_dest, ref then_args),
                 else_dest: (else_dest, ref else_args),
                 ..
             }) if is_first_visit => {
+                // Make sure conditional is on top of stack here
+                {
+                    let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
+                    let pos = emitter
+                        .stack()
+                        .find(cond)
+                        .expect("could not find operand on stack");
+                    emitter.move_operand_to_position(pos, 0, false);
+                }
                 let then_blk = self.f_prime.create_block();
                 let else_blk = self.f_prime.create_block();
                 if let Some(current_loop_id) = self.loops.is_loop_header(self.emitting) {
@@ -1249,7 +1257,8 @@ impl<'a> MasmEmitter<'a> {
                                 self.liveness,
                             );
                         }
-                        prepare_stack_arguments(inst, &then_args, &mut emitter, self.liveness);
+                        let params = self.f.dfg.block_params(*then_dest);
+                        prepare_stack_arguments(&then_args, params, &mut emitter);
                     }
                     self.emit(*then_dest, then_blk, then_stack);
                     // if.false
@@ -1270,7 +1279,8 @@ impl<'a> MasmEmitter<'a> {
                                 self.liveness,
                             );
                         }
-                        prepare_stack_arguments(inst, &else_args, &mut emitter, self.liveness);
+                        let params = self.f.dfg.block_params(*else_dest);
+                        prepare_stack_arguments(&else_args, params, &mut emitter);
                     }
                     self.emit(*else_dest, else_blk, else_stack);
                 } else {
@@ -1295,7 +1305,8 @@ impl<'a> MasmEmitter<'a> {
                             &mut emitter,
                             self.liveness,
                         );
-                        prepare_stack_arguments(inst, &then_args, &mut emitter, self.liveness);
+                        let params = self.f.dfg.block_params(*then_dest);
+                        prepare_stack_arguments(&then_args, params, &mut emitter);
                     }
                     self.emit(*then_dest, then_blk, then_stack);
                     // if.false
@@ -1313,7 +1324,8 @@ impl<'a> MasmEmitter<'a> {
                             &mut emitter,
                             self.liveness,
                         );
-                        prepare_stack_arguments(inst, &else_args, &mut emitter, self.liveness);
+                        let params = self.f.dfg.block_params(*else_dest);
+                        prepare_stack_arguments(&else_args, params, &mut emitter);
                     }
                     self.emit(*else_dest, else_blk, else_stack);
                 }
@@ -1333,7 +1345,7 @@ impl<'a> MasmEmitter<'a> {
             // NOTE: It must be the case that the state of the stack here matches that of the first visit
             // to the block being emitted, as code will have been emitted inside the `if.true` to manipulate
             // the stack based on that first visit.
-            Instruction::CondBr(_) => {
+            Instruction::CondBr(hir::CondBr { cond, .. }) => {
                 // We should only be emitting code for a block more than once if that block
                 // is a loop header. All other blocks should only be visited a single time.
                 assert!(
@@ -1348,6 +1360,11 @@ impl<'a> MasmEmitter<'a> {
                 let current_level = self.loops.level(current_loop).level();
                 let target_level = self.loops.loop_level(self.emitting).level();
                 let mut emitter = self.emitter(stack);
+                let pos = emitter
+                    .stack()
+                    .find(cond)
+                    .expect("could not find operand on stack");
+                emitter.move_operand_to_position(pos, 0, false);
                 // Continue the target loop when it is reached, the top of the stack
                 // prior to this push.1 instruction holds the actual conditional, which
                 // will be evaluated by the `if.true` nested inside the target `while.true`
@@ -1814,11 +1831,11 @@ fn rewrite_inline_assembly_block(
 /// by `inst` are consumed, but values used by later instructions are duplicated
 /// so that they remain available on the stack.
 fn prepare_stack_arguments(
-    inst: hir::Inst,
     args: &[hir::Value],
+    params: &[hir::Value],
     emitter: &mut OpEmitter<'_>,
-    liveness: &LivenessAnalysis,
 ) {
+    assert_eq!(args.len(), params.len());
     match args.len() {
         // No alignment needed
         0 => return,
@@ -1826,75 +1843,41 @@ fn prepare_stack_arguments(
         // of the stack, we're done, otherwise we should fetch it to the top
         // of the stack
         1 => {
-            let arg = &args[0];
+            let arg = args[0];
+            let param = params[0];
             let pos = emitter
                 .stack()
-                .find(arg)
+                .find(&arg)
                 .expect("could not find value on the operand stack");
-            let is_used_later = liveness.is_live_after(&arg, ProgramPoint::Inst(inst));
-            if is_used_later {
-                emitter.copy_operand_to_position(pos, 0, false);
-            } else {
-                emitter.move_operand_to_position(pos, 0, false);
-            }
+            emitter.move_operand_to_position(pos, 0, false);
+            // Rename value to it's alias in the destination block
+            emitter.stack_mut().rename(0, param);
         }
         // There are multiple arguments, and we need to determine what the most
         // efficient set of swaps is needed to get the stack in the state we want
         // it. We must also factor in values which are used later vs consumed by
         // the destination block.
-        n => {
-            // Compute the minimal set of ops needed to get the block arguments
-            // into position on top of the stack.
-            let mut ops = SmallVec::<[Op; 2]>::default();
-            let mut visited = FxHashSet::<usize>::default();
-            let stack = emitter.stack();
-            for i in 0..n {
-                if visited.insert(i) {
-                    let expected = &args[i];
-                    let mut j = stack.find(expected).unwrap();
-                    while visited.insert(j) {
-                        let is_used_later =
-                            liveness.is_live_after(expected, ProgramPoint::Inst(inst));
-                        if j >= n {
-                            // The expected value is not within a permutation
-                            // of the top of the stack, so we must either fetch
-                            // it or move it to the top of the stack, depending
-                            // on liveness
-                            if is_used_later {
-                                ops.push(Op::Dup(j as u8));
-                            } else {
-                                ops.push(Op::Movup(j as u8));
-                            }
-                            // There is no cycle to break here, so go back
-                            // to the outer loop
-                            break;
-                        } else {
-                            // We've found a cycle, so perform the swap, and follow
-                            // the location of the swapped value to check for additional
-                            // members of the cycle.
-                            ops.push(Op::Swap(j as u8));
-                            // The next item to visit is given by the position on the stack
-                            // containing the value which is supposed to be the `j`th item.
-                            j = stack.find(&args[j]).unwrap();
-                        }
-                    }
+        _ => {
+            // Get all arguments to the top of the stack, in the correct order,
+            // and copied/moved as appropriate.
+            for (i, arg) in args.iter().enumerate() {
+                let is_last_use = args.iter().skip(i + 1).all(|v| v != arg);
+                let pos = emitter
+                    .stack()
+                    .find(arg)
+                    .expect("could nto find value on the operand stack");
+                if is_last_use {
+                    // We can consume this operand
+                    emitter.move_operand_to_position(pos, i, false);
+                } else {
+                    // We must make a copy
+                    emitter.copy_operand_to_position(pos, i, false);
                 }
             }
 
-            // Emit the stack ops we determined were needed
-            for op in ops.into_iter() {
-                match op {
-                    Op::Dup(i) => {
-                        emitter.dup(i);
-                    }
-                    Op::Movup(i) => {
-                        emitter.movup(i);
-                    }
-                    Op::Swap(i) => {
-                        emitter.swap(i);
-                    }
-                    _ => unreachable!(),
-                }
+            // Rename values to their aliases in the destination block
+            for (i, param) in params.iter().copied().enumerate() {
+                emitter.stack_mut().rename(i, param);
             }
         }
     }
@@ -1952,7 +1935,8 @@ fn is_last_dependent_visited(
     for succ in treegraph.edges(&dependent_tree, &dependency_tree) {
         if succ.dependent != dependent && succ.dependency == dependency {
             let index = indices.get(&succ.dependent);
-            // We've found another dependent that comes after `dependent` in the dependency graph
+            // If `succ` has a higher index than `dependent`, then it is visited after
+            // `dependent`, thus `dependent` is not the last dependent in the tree
             if index > dependent_index {
                 return false;
             }
