@@ -44,6 +44,16 @@ impl Node {
             _ => None,
         }
     }
+
+    /// Unwraps this node as an [hir::Inst]
+    #[allow(unused)]
+    #[inline]
+    pub fn unwrap_inst(self) -> hir::Inst {
+        match self {
+            Self::Inst(inst, _) => inst,
+            _ => panic!("expected inst node, but got {self}"),
+        }
+    }
 }
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
