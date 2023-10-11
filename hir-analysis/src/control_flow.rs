@@ -142,7 +142,7 @@ impl ControlFlowGraph {
     fn invalidate_block_successors(&mut self, block: Block) {
         use core::mem;
 
-        let mut successors = mem::replace(&mut self.data[block].successors, Default::default());
+        let mut successors = mem::take(&mut self.data[block].successors);
         for succ in successors.iter(&self.succ_forest) {
             self.data[succ]
                 .predecessors

@@ -18,7 +18,7 @@ impl<K: EntityRef, V: Clone> Clone for LayoutNode<K, V> {
     fn clone(&self) -> Self {
         Self {
             link: LinkedListLink::new(),
-            key: self.key.clone(),
+            key: self.key,
             value: self.value.clone(),
         }
     }

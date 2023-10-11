@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fmt, rc::Rc};
+use std::{cmp::Ordering, collections::VecDeque, fmt, rc::Rc};
 
 use cranelift_entity::packed_option::ReservedValue;
 use miden_hir::{self as hir, assert_matches, BranchInfo, Immediate, Instruction, ProgramPoint};
@@ -443,22 +443,22 @@ impl<'a> MasmEmitter<'a> {
                     let dst_level = self.loops.level(dst);
                     if is_first_visit {
                         // We have not visited the target block before..
-                        if src_level > dst_level {
+                        match src_level.cmp(&dst_level) {
                             // We're emitting a block along an exit edge of a loop, so we
                             // expect that the source block dominates the target block, and
                             // as such we will leave the controlling loop alone as it will
                             // be used to calculate the depth we're exiting to
-                            assert!(
-                                self.domtree.dominates(emitting, b, &self.f.dfg),
-                                "expected {emitting} to dominate {b} here"
-                            );
-                            self.controlling_loop
-                        } else if src_level < dst_level {
+                            Ordering::Greater => {
+                                assert!(
+                                    self.domtree.dominates(emitting, b, &self.f.dfg),
+                                    "expected {emitting} to dominate {b} here"
+                                );
+                                self.controlling_loop
+                            }
                             // If we're entering a nested loop, then we need to update the controlling loop
                             // to reflect the loop we've entered
-                            self.controlling_loop.replace(dst)
-                        } else {
-                            self.controlling_loop
+                            Ordering::Less => self.controlling_loop.replace(dst),
+                            Ordering::Equal => self.controlling_loop,
                         }
                     } else {
                         // We're looping back to the loop header, or a parent loop header,
@@ -940,7 +940,7 @@ impl<'a> MasmEmitter<'a> {
                 // This case represents situations in which control/data dependencies on
                 // an instruction are introduced, in order to affect the order in which code
                 // is emitted, while not actually emitting any code for the dependency itself.
-                0 => return,
+                0 => (),
                 // Currently, instructions only produce 1 or no results
                 1 => {
                     let operand = inst_results[0];
@@ -1737,7 +1737,8 @@ impl<'a> MasmEmitter<'a> {
                     if relative_offset >= 0 {
                         return (global_table_offset + base_offset) + relative_offset as u32;
                     } else {
-                        return (global_table_offset + base_offset) - relative_offset.abs() as u32;
+                        return (global_table_offset + base_offset)
+                            - relative_offset.unsigned_abs();
                     }
                 }
                 hir::GlobalValueData::IAddImm { base, .. } => {
@@ -1838,7 +1839,7 @@ fn prepare_stack_arguments(
     assert_eq!(args.len(), params.len());
     match args.len() {
         // No alignment needed
-        0 => return,
+        0 => (),
         // If there is only one argument, then if that argument is on top
         // of the stack, we're done, otherwise we should fetch it to the top
         // of the stack
