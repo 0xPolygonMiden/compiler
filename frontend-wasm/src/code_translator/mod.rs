@@ -426,6 +426,11 @@ fn translate_br_table(
         }
     };
     let val = state.pop1();
+    let val = if builder.func().dfg.value_type(val) != &U32 {
+        builder.ins().cast(val, U32, span)
+    } else {
+        val
+    };
     let mut data = Vec::with_capacity(targets.len() as usize);
     if jump_args_count == 0 {
         // No jump arguments
@@ -566,11 +571,16 @@ fn prepare_addr(
     builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) -> Value {
-    let full_addr_int = if memarg.offset != 0 {
-        let offset = builder.ins().i32(memarg.offset as i32, span);
-        builder.ins().add(addr_int, offset, span)
-    } else {
+    let addr_int_ty = builder.func().dfg.value_type(addr_int);
+    let addr_u32 = if *addr_int_ty == U32 {
         addr_int
+    } else {
+        builder.ins().cast(addr_int, U32, span)
+    };
+    let full_addr_int = if memarg.offset != 0 {
+        builder.ins().add_imm(addr_u32, memarg.offset.into(), span)
+    } else {
+        addr_u32
     };
     builder
         .ins()

@@ -396,9 +396,10 @@ fn i32_load8_u() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i8
-            v2 = load v1  : i8
-            v3 = zext v2  : i32
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i8
+            v3 = load v2  : i8
+            v4 = zext v3  : i32
         "#]],
     )
 }
@@ -413,9 +414,10 @@ fn i32_load16_u() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i16
-            v2 = load v1  : i16
-            v3 = zext v2  : i32
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i16
+            v3 = load v2  : i16
+            v4 = zext v3  : i32
         "#]],
     )
 }
@@ -430,9 +432,10 @@ fn i32_load8_s() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i8
-            v2 = load v1  : i8
-            v3 = sext v2  : i32
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i8
+            v3 = load v2  : i8
+            v4 = sext v3  : i32
         "#]],
     )
 }
@@ -447,9 +450,10 @@ fn i32_load16_s() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i16
-            v2 = load v1  : i16
-            v3 = sext v2  : i32
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i16
+            v3 = load v2  : i16
+            v4 = sext v3  : i32
         "#]],
     )
 }
@@ -464,9 +468,10 @@ fn i64_load8_u() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i8
-            v2 = load v1  : i8
-            v3 = zext v2  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i8
+            v3 = load v2  : i8
+            v4 = zext v3  : i64
         "#]],
     )
 }
@@ -481,9 +486,10 @@ fn i64_load16_u() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i16
-            v2 = load v1  : i16
-            v3 = zext v2  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i16
+            v3 = load v2  : i16
+            v4 = zext v3  : i64
         "#]],
     )
 }
@@ -498,9 +504,10 @@ fn i64_load8_s() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i8
-            v2 = load v1  : i8
-            v3 = sext v2  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i8
+            v3 = load v2  : i8
+            v4 = sext v3  : i64
         "#]],
     )
 }
@@ -515,9 +522,10 @@ fn i64_load16_s() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i16
-            v2 = load v1  : i16
-            v3 = sext v2  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i16
+            v3 = load v2  : i16
+            v4 = sext v3  : i64
         "#]],
     )
 }
@@ -532,9 +540,10 @@ fn i64_load32_s() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i32
-            v2 = load v1  : i32
-            v3 = sext v2  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i32
+            v3 = load v2  : i32
+            v4 = sext v3  : i64
         "#]],
     )
 }
@@ -549,9 +558,10 @@ fn i64_load32_u() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i32
-            v2 = load v1  : i32
-            v3 = zext v2  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i32
+            v3 = load v2  : i32
+            v4 = zext v3  : i64
         "#]],
     )
 }
@@ -601,8 +611,9 @@ fn i32_store() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = const.i32 1  : i32
-            v2 = inttoptr v0  : *mut i32
-            store v2, v1
+            v2 = cast v0  : u32
+            v3 = inttoptr v2  : *mut i32
+            store v3, v1
         "#]],
     )
 }
@@ -618,8 +629,9 @@ fn i64_store() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = const.i64 1  : i64
-            v2 = inttoptr v0  : *mut i64
-            store v2, v1
+            v2 = cast v0  : u32
+            v3 = inttoptr v2  : *mut i64
+            store v3, v1
         "#]],
     )
 }
@@ -636,8 +648,9 @@ fn i32_store8() {
             v0 = const.i32 1024  : i32
             v1 = const.i32 1  : i32
             v2 = trunc v1  : i8
-            v3 = inttoptr v0  : *mut i8
-            store v3, v2
+            v3 = cast v0  : u32
+            v4 = inttoptr v3  : *mut i8
+            store v4, v2
         "#]],
     )
 }
@@ -654,8 +667,9 @@ fn i32_store16() {
             v0 = const.i32 1024  : i32
             v1 = const.i32 1  : i32
             v2 = trunc v1  : i16
-            v3 = inttoptr v0  : *mut i16
-            store v3, v2
+            v3 = cast v0  : u32
+            v4 = inttoptr v3  : *mut i16
+            store v4, v2
         "#]],
     )
 }
@@ -672,8 +686,9 @@ fn i64_store32() {
             v0 = const.i32 1024  : i32
             v1 = const.i64 1  : i64
             v2 = trunc v1  : i32
-            v3 = inttoptr v0  : *mut i32
-            store v3, v2
+            v3 = cast v0  : u32
+            v4 = inttoptr v3  : *mut i32
+            store v4, v2
         "#]],
     )
 }
