@@ -203,7 +203,7 @@ fn rust_add() {
                 br block1(v3)
 
             block1(v2: i32):
-                v4 = ret v2  : ()
+                ret v2
             }
 
             pub fn __main() -> i32 {
@@ -214,7 +214,7 @@ fn rust_add() {
                 br block1(v3)
 
             block1(v0: i32):
-                v4 = ret v0  : ()
+                ret v0
             }
         "#]],
     );
@@ -294,13 +294,13 @@ fn rust_fib() {
             block3(v5: i32):
 
             block4:
-                v12 = const.i32 -1  : i32
-                v13 = add v7, v12  : i32
-                v14 = add v10, v6  : i32
-                br block2(v14, v13, v6)
+                v11 = const.i32 -1  : i32
+                v12 = add v7, v11  : i32
+                v13 = add v10, v6  : i32
+                br block2(v13, v12, v6)
 
             block5:
-                v11 = ret v10  : ()
+                ret v10
             }
 
             pub fn __main() -> i32 {
@@ -310,7 +310,7 @@ fn rust_fib() {
                 br block1(v2)
 
             block1(v0: i32):
-                v3 = ret v0  : ()
+                ret v0
             }
         "#]],
     );
@@ -384,22 +384,23 @@ fn rust_enum() {
             block0(v0: i32, v1: i32, v2: i32):
                 v4 = const.i32 255  : i32
                 v5 = band v2, v4  : i32
-                switch v5, 0 => block4, 1 => block3, 2 => block2, block4
+                v6 = cast v5  : u32
+                switch v6, 0 => block4, 1 => block3, 2 => block2, block4
 
             block1(v3: i32):
-                v11 = ret v3  : ()
+                ret v3
 
             block2:
-                v10 = mul v1, v0  : i32
-                br block1(v10)
+                v9 = mul v1, v0  : i32
+                br block1(v9)
 
             block3:
                 v8 = sub v0, v1  : i32
-                v9 = ret v8  : ()
+                ret v8
 
             block4:
-                v6 = add v1, v0  : i32
-                v7 = ret v6  : ()
+                v7 = add v1, v0  : i32
+                ret v7
             }
 
             pub fn __main() -> i32 {
@@ -421,7 +422,7 @@ fn rust_enum() {
                 br block1(v14)
 
             block1(v0: i32):
-                v15 = ret v0  : ()
+                ret v0
             }
         "#]],
     )
@@ -506,28 +507,29 @@ fn rust_array() {
                 condbr v9, block2(v4), block3
 
             block1(v2: i32):
-                v23 = ret v2  : ()
+                ret v2
 
-            block2(v22: i32):
-                br block1(v22)
+            block2(v23: i32):
+                br block1(v23)
 
             block3:
                 br block4(v0, v4, v1)
 
-            block4(v10: i32, v13: i32, v17: i32):
-                v11 = inttoptr v10  : *mut i32
-                v12 = load v11  : i32
-                v14 = add v12, v13  : i32
-                v15 = const.i32 4  : i32
-                v16 = add v10, v15  : i32
-                v18 = const.i32 -1  : i32
-                v19 = add v17, v18  : i32
-                v20 = const.i32 0  : i32
-                v21 = neq v19, v20  : i1
-                condbr v21, block4(v16, v14, v19), block6
+            block4(v10: i32, v14: i32, v18: i32):
+                v11 = cast v10  : u32
+                v12 = inttoptr v11  : *mut i32
+                v13 = load v12  : i32
+                v15 = add v13, v14  : i32
+                v16 = const.i32 4  : i32
+                v17 = add v10, v16  : i32
+                v19 = const.i32 -1  : i32
+                v20 = add v18, v19  : i32
+                v21 = const.i32 0  : i32
+                v22 = neq v20, v21  : i1
+                condbr v22, block4(v17, v15, v20), block6
 
             block5:
-                br block2(v14)
+                br block2(v15)
 
             block6:
                 br block5
@@ -545,7 +547,7 @@ fn rust_array() {
                 br block1(v7)
 
             block1(v0: i32):
-                v8 = ret v0  : ()
+                ret v0
             }
         "#]],
     )
@@ -621,22 +623,22 @@ fn rust_static_mut() {
             block0:
                 v0 = const.i32 0  : i32
                 v1 = const.i32 0  : i32
-                v2 = const.i32 1048577  : i32
-                v3 = add v1, v2  : i32
+                v2 = cast v1  : u32
+                v3 = add v2, 1048577  : u32
                 v4 = inttoptr v3  : *mut i8
                 v5 = load v4  : i8
                 v6 = zext v5  : i32
                 v7 = const.i32 1  : i32
                 v8 = add v6, v7  : i32
                 v9 = trunc v8  : i8
-                v10 = const.i32 1048576  : i32
-                v11 = add v0, v10  : i32
+                v10 = cast v0  : u32
+                v11 = add v10, 1048576  : u32
                 v12 = inttoptr v11  : *mut i8
                 store v12, v9
                 br block1
 
             block1:
-                v13 = ret   : ()
+                ret 
             }
 
             pub fn __main() -> i32 {
@@ -648,25 +650,26 @@ fn rust_static_mut() {
                 br block2(v3, v2)
 
             block1(v0: i32):
-                v18 = ret v0  : ()
+                ret v0
 
-            block2(v4: i32, v10: i32):
+            block2(v4: i32, v11: i32):
                 v5 = const.i32 1048585  : i32
                 v6 = add v4, v5  : i32
-                v7 = inttoptr v6  : *mut i8
-                v8 = load v7  : i8
-                v9 = zext v8  : i32
-                v11 = add v9, v10  : i32
-                v12 = const.i32 1  : i32
-                v13 = add v4, v12  : i32
-                v14 = const.i32 0  : i32
-                v15 = neq v13, v14  : i1
-                condbr v15, block2(v13, v11), block4
+                v7 = cast v6  : u32
+                v8 = inttoptr v7  : *mut i8
+                v9 = load v8  : i8
+                v10 = zext v9  : i32
+                v12 = add v10, v11  : i32
+                v13 = const.i32 1  : i32
+                v14 = add v4, v13  : i32
+                v15 = const.i32 0  : i32
+                v16 = neq v14, v15  : i1
+                condbr v16, block2(v14, v12), block4
 
             block3:
-                v16 = const.i32 255  : i32
-                v17 = band v11, v16  : i32
-                br block1(v17)
+                v17 = const.i32 255  : i32
+                v18 = band v12, v17  : i32
+                br block1(v18)
 
             block4:
                 br block3
