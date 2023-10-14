@@ -162,12 +162,6 @@ impl<'a> FunctionBuilderExt<'a> {
         self.func_ctx.status[self.inner.current_block()] = BlockStatus::Filled;
     }
 
-    fn declare_successor(&mut self, dest_block: Block, jump_inst: Inst) {
-        self.func_ctx
-            .ssa
-            .declare_block_predecessor(dest_block, jump_inst);
-    }
-
     fn handle_ssa_side_effects(&mut self, side_effects: SideEffects) {
         for modified_block in side_effects.instructions_added_to_blocks {
             if self.is_pristine(modified_block) {
@@ -446,19 +440,22 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
     fn build(self, data: Instruction, ty: Type, span: SourceSpan) -> (Inst, &'a mut DataFlowGraph) {
         // We only insert the Block in the layout when an instruction is added to it
         self.builder.ensure_inserted_block();
-
+        let opcode = data.opcode();
         let inst = self
             .builder
             .inner
             .func
             .dfg
-            .insert_inst(self.ip, data.clone(), ty, span);
+            .insert_inst(self.ip, data, ty, span);
 
-        match &self.builder.inner.func.dfg.insts[inst].data.item.clone() {
+        match &self.builder.inner.func.dfg.insts[inst].data.item {
             Instruction::Br(Br { destination, .. }) => {
                 // If the user has supplied jump arguments we must adapt the arguments of
                 // the destination block
-                self.builder.declare_successor(*destination, inst);
+                self.builder
+                    .func_ctx
+                    .ssa
+                    .declare_block_predecessor(*destination, inst);
             }
 
             Instruction::CondBr(CondBr {
@@ -466,15 +463,21 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
                 else_dest: (block_else, _),
                 ..
             }) => {
-                self.builder.declare_successor(*block_then, inst);
+                self.builder
+                    .func_ctx
+                    .ssa
+                    .declare_block_predecessor(*block_then, inst);
                 if block_then != block_else {
-                    self.builder.declare_successor(*block_else, inst);
+                    self.builder
+                        .func_ctx
+                        .ssa
+                        .declare_block_predecessor(*block_else, inst);
                 }
             }
             Instruction::Switch(Switch {
                 op: _,
                 arg: _,
-                arms,
+                ref arms,
                 default: _,
             }) => {
                 // Unlike all other jumps/branches, arms are
@@ -485,9 +488,6 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
                     if !unique.insert(*dest_block) {
                         continue;
                     }
-
-                    // Call `declare_block_predecessor` instead of `declare_successor` for
-                    // avoiding the borrow checker.
                     self.builder
                         .func_ctx
                         .ssa
@@ -497,7 +497,7 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
             inst => debug_assert!(!inst.opcode().is_branch()),
         }
 
-        if data.opcode().is_terminator() {
+        if opcode.is_terminator() {
             self.builder.fill_current_block()
         }
         (inst, &mut self.builder.inner.func.dfg)

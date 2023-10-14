@@ -14,13 +14,11 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilder) -> Value {
         Type::I64 => builder.ins().i64(0, SourceSpan::default()),
         Type::I128 => todo!(),
         Type::U256 => todo!(),
-        Type::Isize => todo!(),
         Type::U8 => todo!(),
         Type::U16 => todo!(),
         Type::U32 => todo!(),
         Type::U64 => todo!(),
         Type::U128 => todo!(),
-        Type::Usize => todo!(),
         Type::F64 => builder.ins().f64(0.0, SourceSpan::default()),
         Type::Felt => todo!(),
         Type::Ptr(_) => panic!("cannot emit zero for pointer type"),
@@ -29,7 +27,7 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilder) -> Value {
         Type::Unknown => panic!("cannot emit zero for unknown type"),
         Type::Unit => panic!("cannot emit zero for unit type"),
         Type::Never => panic!("cannot emit zero for never type"),
-        Type::NativePtr(_) => todo!(),
+        Type::NativePtr(_, _) => todo!(),
     }
 }
 
