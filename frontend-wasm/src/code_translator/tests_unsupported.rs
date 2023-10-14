@@ -27,9 +27,7 @@ fn check_unsupported(op: &Operator) {
         cc: CallConv::SystemV,
         linkage: Linkage::External,
     };
-    let mut module_func_builder = module_builder
-        .build_function("func_name", sig.clone(), SourceSpan::default())
-        .unwrap();
+    let mut module_func_builder = module_builder.function("func_name", sig.clone()).unwrap();
     let mut fb_ctx = FunctionBuilderContext::new();
     let mut state = FuncTranslationState::new();
     let func_builder = module_func_builder.func_builder();

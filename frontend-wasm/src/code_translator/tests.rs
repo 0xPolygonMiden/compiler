@@ -66,7 +66,7 @@ fn module() {
                 br block1
 
             block1:
-                v1 = ret   : ()
+                ret 
             }
         "#]],
     );
@@ -95,7 +95,7 @@ fn locals() {
                 br block1
 
             block1:
-                v2 = ret   : ()
+                ret 
             }
         "#]],
     );
@@ -133,7 +133,7 @@ fn locals_inter_block() {
                 br block2
 
             block1(v0: i32):
-                v7 = ret v0  : ()
+                ret v0
 
             block2:
                 v3 = const.i32 5  : i32
@@ -175,7 +175,7 @@ fn func_call() {
                 br block1(v3)
 
             block1(v2: i32):
-                v4 = ret v2  : ()
+                ret v2
             }
 
             pub fn main() -> i32 {
@@ -186,7 +186,7 @@ fn func_call() {
                 br block1(v3)
 
             block1(v0: i32):
-                v4 = ret v0  : ()
+                ret v0
             }
         "#]],
     );
@@ -217,7 +217,7 @@ fn br() {
                 br block2
 
             block1(v0: i32):
-                v3 = ret v0  : ()
+                ret v0
 
             block2:
                 br block1(v2)
@@ -260,7 +260,7 @@ fn loop_br_if() {
                 br block2(v2, v1)
 
             block1(v0: i32):
-                v10 = ret v0  : ()
+                ret v0
 
             block2(v3: i32, v4: i32):
                 v5 = add v3, v4  : i32
@@ -306,7 +306,7 @@ fn if_then_else() {
                 condbr v3, block2, block4
 
             block1(v0: i32):
-                v7 = ret v0  : ()
+                ret v0
 
             block2:
                 v5 = const.i32 3  : i32
@@ -352,7 +352,7 @@ fn global_var() {
                 br block1
 
             block1:
-                v4 = ret   : ()
+                ret 
             }
         "#]],
     );
@@ -566,8 +566,9 @@ fn i32_load() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i32
-            v2 = load v1  : i32
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i32
+            v3 = load v2  : i32
         "#]],
     )
 }
@@ -582,8 +583,9 @@ fn i64_load() {
         "#,
         expect![[r#"
             v0 = const.i32 1024  : i32
-            v1 = inttoptr v0  : *mut i64
-            v2 = load v1  : i64
+            v1 = cast v0  : u32
+            v2 = inttoptr v1  : *mut i64
+            v3 = load v2  : i64
         "#]],
     )
 }

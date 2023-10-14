@@ -141,7 +141,7 @@ impl<'a> ModuleEnvironment<'a> {
                 .to_string();
             let sig = sig_from_funct_type(func_ty, CallConv::SystemV, Linkage::External);
             let mut module_func_builder =
-                module_builder.build_function(func_name, sig.clone(), SourceSpan::default())?;
+                module_builder.function(func_name.as_str(), sig.clone())?;
             let mut func_validator = validator
                 .code_section_entry(&body)?
                 .into_validator(Default::default());
