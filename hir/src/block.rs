@@ -21,6 +21,7 @@ impl Default for Block {
 ///
 /// Blocks have arguments, and consist of a sequence of instructions.
 pub struct BlockData {
+    pub id: Block,
     pub link: LinkedListLink,
     pub params: ValueList,
     pub insts: LinkedList<InstAdapter>,
@@ -33,6 +34,7 @@ impl Drop for BlockData {
 impl Clone for BlockData {
     fn clone(&self) -> Self {
         Self {
+            id: self.id,
             link: LinkedListLink::default(),
             params: self.params,
             insts: LinkedList::new(InstAdapter::new()),
@@ -40,8 +42,9 @@ impl Clone for BlockData {
     }
 }
 impl BlockData {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(id: Block) -> Self {
         Self {
+            id,
             link: LinkedListLink::default(),
             params: ValueList::new(),
             insts: LinkedList::new(InstAdapter::new()),
