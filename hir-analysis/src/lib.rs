@@ -2,11 +2,13 @@ mod control_flow;
 mod dominance;
 mod liveness;
 mod loops;
+mod validation;
 
 pub use self::control_flow::{BlockPredecessor, ControlFlowGraph};
 pub use self::dominance::{DominanceFrontier, DominatorTree, DominatorTreePreorder};
 pub use self::liveness::LivenessAnalysis;
 pub use self::loops::{Loop, LoopAnalysis, LoopLevel};
+pub use self::validation::{ModuleValidator, Rule};
 
 use anyhow::anyhow;
 
@@ -164,11 +166,15 @@ impl FunctionAnalysis {
     pub fn cfg_changed(&mut self, function: &miden_hir::Function) {
         // If the dominator tree hasn't been computed, no other
         // analyses could possibly have been computed yet.
-        let Some(domtree) = self.domtree.as_mut() else { return; };
+        let Some(domtree) = self.domtree.as_mut() else {
+            return;
+        };
         domtree.compute(function, &self.cfg);
 
         // Likewise for loop analysis - we can't compute liveness without it
-        let Some(loops) = self.loops.as_mut() else { return; };
+        let Some(loops) = self.loops.as_mut() else {
+            return;
+        };
         loops.compute(function, &self.cfg, domtree);
 
         if let Some(liveness) = self.liveness.as_mut() {
