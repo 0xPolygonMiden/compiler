@@ -361,6 +361,18 @@ impl Ord for Immediate {
         }
     }
 }
+impl Into<Type> for Immediate {
+    #[inline]
+    fn into(self) -> Type {
+        self.ty()
+    }
+}
+impl Into<Type> for &Immediate {
+    #[inline(always)]
+    fn into(self) -> Type {
+        self.ty()
+    }
+}
 impl From<bool> for Immediate {
     #[inline(always)]
     fn from(value: bool) -> Self {
