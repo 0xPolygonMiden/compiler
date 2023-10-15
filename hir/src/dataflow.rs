@@ -23,7 +23,8 @@ pub struct DataFlowGraph {
 impl Default for DataFlowGraph {
     fn default() -> Self {
         let mut blocks = OrderedArenaMap::<Block, BlockData>::new();
-        let entry = blocks.push(BlockData::new());
+        let entry = blocks.create();
+        blocks.append(entry, BlockData::new(entry));
         Self {
             entry,
             blocks,
@@ -533,12 +534,18 @@ impl DataFlowGraph {
     }
 
     pub fn create_block(&mut self) -> Block {
-        self.blocks.push(BlockData::new())
+        let id = self.blocks.create();
+        let data = BlockData::new(id);
+        self.blocks.append(id, data);
+        id
     }
 
     /// Creates a new block, inserted into the function layout just after `block`
     pub fn create_block_after(&mut self, block: Block) -> Block {
-        self.blocks.push_after(block, BlockData::new())
+        let id = self.blocks.create();
+        let data = BlockData::new(id);
+        self.blocks.insert_after(id, block, data);
+        id
     }
 
     /// Removes `block` from the body of this function, without destroying it's data
