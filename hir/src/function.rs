@@ -54,6 +54,15 @@ pub enum CallConv {
     /// In all other respects, this calling convention is the same as `SystemV`
     Kernel,
 }
+impl fmt::Display for CallConv {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Fast => f.write_str("fast"),
+            Self::SystemV => f.write_str("C"),
+            Self::Kernel => f.write_str("kernel"),
+        }
+    }
+}
 
 /// Represents whether an argument or return value has a special purpose in
 /// the calling convention of a function.
