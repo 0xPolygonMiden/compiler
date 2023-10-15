@@ -687,7 +687,7 @@ mod tests {
 
         // Define the 'test' module
         let mut builder = ModuleBuilder::new("test");
-        let id = testing::sum_matrix(&mut builder, &context.diagnostics);
+        let id = testing::sum_matrix(&mut builder, &context);
         let mut module = builder.build();
         let mut function = module
             .cursor_mut_at(id.function)

@@ -1,4 +1,4 @@
-use std::{mem, slice, sync::Arc};
+use std::{mem, path::Path, slice, sync::Arc};
 
 use miden_diagnostics::{
     term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler,
@@ -24,6 +24,62 @@ impl Default for TestContext {
             diagnostics,
         }
     }
+}
+impl TestContext {
+    /// Add a source file to this context
+    pub fn add<P: AsRef<Path>>(&mut self, path: P) -> miden_diagnostics::SourceId {
+        self.codemap.add_file(path).expect("invalid source file")
+    }
+
+    /// Get a [SourceSpan] corresponding to the callsite of this function
+    #[track_caller]
+    #[inline(never)]
+    pub fn current_span(&self) -> miden_diagnostics::SourceSpan {
+        let caller = core::panic::Location::caller();
+        let caller_file = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join(caller.file());
+        let source_id = self
+            .codemap
+            .add_file(caller_file)
+            .expect("invalid source file");
+        self.span(source_id, caller.line(), caller.column())
+    }
+
+    /// Get a [SourceSpan] representing the location in the given source file (by id), line and column
+    ///
+    /// It is expected that line and column are 1-indexed, so they will be shifted to be 0-indexed, make
+    /// sure to add 1 if you already have a 0-indexed line/column on hand
+    pub fn span(
+        &self,
+        source_id: miden_diagnostics::SourceId,
+        line: u32,
+        column: u32,
+    ) -> miden_diagnostics::SourceSpan {
+        self.codemap
+            .line_column_to_span(source_id, line - 1, column - 1)
+            .expect("invalid source location")
+    }
+}
+
+#[macro_export]
+macro_rules! current_file {
+    () => {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join(file!())
+    };
+}
+
+#[macro_export]
+macro_rules! span {
+    ($codemap:ident, $src:ident) => {
+        $codemap
+            .line_column_to_span($src, line!() - 1, column!() - 1)
+            .unwrap()
+    };
 }
 
 /// Construct an implementation of a function which computes the sum
@@ -73,7 +129,7 @@ impl Default for TestContext {
 ///   ret result
 /// }
 /// ```
-pub fn fib1(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler) -> FunctionIdent {
+pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent {
     // Declare the `fib` function, with the appropriate type signature
     let sig = Signature {
         params: vec![AbiParam::new(Type::U32)],
@@ -94,45 +150,47 @@ pub fn fib1(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler) -> Fu
 
     // This block corresponds to `blk0` in the example
     let loop_header = fb.create_block();
-    let a1 = fb.append_block_param(loop_header, Type::U32, SourceSpan::UNKNOWN);
-    let b1 = fb.append_block_param(loop_header, Type::U32, SourceSpan::UNKNOWN);
-    let i1 = fb.append_block_param(loop_header, Type::U32, SourceSpan::UNKNOWN);
+    let a1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+    let b1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+    let i1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
 
     // This block corresponds to `blk1` in the example
     let loop_body = fb.create_block();
 
     // This block corresponds to `blk2` in the example
     let loop_exit = fb.create_block();
-    let result = fb.append_block_param(loop_exit, Type::U32, SourceSpan::UNKNOWN);
+    let result = fb.append_block_param(loop_exit, Type::U32, context.current_span());
 
     // Now, starting from the entry block, we build out the rest of the function in control flow order
     fb.switch_to_block(entry);
-    let a0 = fb.ins().u32(0, SourceSpan::UNKNOWN);
-    let b0 = fb.ins().u32(1, SourceSpan::UNKNOWN);
-    let i0 = fb.ins().u32(0, SourceSpan::UNKNOWN);
-    fb.ins().br(loop_header, &[a0, b0, i0], SourceSpan::UNKNOWN);
+    let a0 = fb.ins().u32(0, context.current_span());
+    let b0 = fb.ins().u32(1, context.current_span());
+    let i0 = fb.ins().u32(0, context.current_span());
+    fb.ins()
+        .br(loop_header, &[a0, b0, i0], context.current_span());
 
     fb.switch_to_block(loop_header);
-    let continue_flag = fb.ins().lt(i1, n, SourceSpan::UNKNOWN);
+    let continue_flag = fb.ins().lt(i1, n, context.current_span());
     fb.ins().cond_br(
         continue_flag,
         loop_body,
         &[],
         loop_exit,
         &[a1],
-        SourceSpan::UNKNOWN,
+        context.current_span(),
     );
 
     fb.switch_to_block(loop_body);
-    let b2 = fb.ins().add(a1, b1, SourceSpan::UNKNOWN);
-    let i2 = fb.ins().incr(i1, SourceSpan::UNKNOWN);
-    fb.ins().br(loop_header, &[b1, b2, i2], SourceSpan::UNKNOWN);
+    let b2 = fb.ins().add(a1, b1, context.current_span());
+    let i2 = fb.ins().incr(i1, context.current_span());
+    fb.ins()
+        .br(loop_header, &[b1, b2, i2], context.current_span());
 
     fb.switch_to_block(loop_exit);
-    fb.ins().ret(Some(result), SourceSpan::UNKNOWN);
+    fb.ins().ret(Some(result), context.current_span());
 
     // We're done
-    fb.build(diagnostics)
+    fb.build(&context.diagnostics)
         .expect("unexpected validation error, see diagnostics output")
 }
 
@@ -206,7 +264,7 @@ pub fn fib1(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler) -> Fu
 ///     br blk2(sum3, rows5, cols3)
 /// }
 /// ```
-pub fn sum_matrix(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler) -> FunctionIdent {
+pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent {
     let sig = Signature::new(
         [
             AbiParam::new(Type::Ptr(Box::new(Type::U32))),
@@ -215,23 +273,24 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler)
         ],
         [AbiParam::new(Type::U32)],
     );
+    let id = Ident::new(Symbol::intern("sum_matrix"), context.current_span());
     let mut fb = builder
-        .function("sum_matrix", sig)
+        .function(id, sig)
         .expect("unexpected symbol conflict");
 
     let entry = fb.current_block();
 
     let a = fb.create_block(); // blk0(result0: u32)
-    let result0 = fb.append_block_param(a, Type::U32, SourceSpan::UNKNOWN);
+    let result0 = fb.append_block_param(a, Type::U32, context.current_span());
     let b = fb.create_block(); // blk1
     let c = fb.create_block(); // blk2(sum1: u32, rows1: u32, cols1: u32)
-    let sum1 = fb.append_block_param(c, Type::U32, SourceSpan::UNKNOWN);
-    let rows1 = fb.append_block_param(c, Type::U32, SourceSpan::UNKNOWN);
-    let cols1 = fb.append_block_param(c, Type::U32, SourceSpan::UNKNOWN);
+    let sum1 = fb.append_block_param(c, Type::U32, context.current_span());
+    let rows1 = fb.append_block_param(c, Type::U32, context.current_span());
+    let cols1 = fb.append_block_param(c, Type::U32, context.current_span());
     let d = fb.create_block(); // blk3(sum3: u32, rows3: u32, cols3: u32)
-    let sum3 = fb.append_block_param(d, Type::U32, SourceSpan::UNKNOWN);
-    let rows3 = fb.append_block_param(d, Type::U32, SourceSpan::UNKNOWN);
-    let cols3 = fb.append_block_param(d, Type::U32, SourceSpan::UNKNOWN);
+    let sum3 = fb.append_block_param(d, Type::U32, context.current_span());
+    let rows3 = fb.append_block_param(d, Type::U32, context.current_span());
+    let cols3 = fb.append_block_param(d, Type::U32, context.current_span());
     let e = fb.create_block(); // blk4
     let f = fb.create_block(); // blk5
 
@@ -240,71 +299,78 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler)
         (args[0], args[1], args[2])
     };
     // entry
-    let sum0 = fb.ins().u32(0, SourceSpan::UNKNOWN);
-    let ptr1 = fb.ins().ptrtoint(ptr0, Type::U32, SourceSpan::UNKNOWN);
+    let sum0 = fb.ins().u32(0, context.current_span());
+    let ptr1 = fb.ins().ptrtoint(ptr0, Type::U32, context.current_span());
     let not_null = fb
         .ins()
-        .neq_imm(ptr1, Immediate::U32(0), SourceSpan::UNKNOWN);
+        .neq_imm(ptr1, Immediate::U32(0), context.current_span());
     fb.ins()
-        .cond_br(not_null, b, &[], a, &[sum0], SourceSpan::UNKNOWN);
+        .cond_br(not_null, b, &[], a, &[sum0], context.current_span());
 
     // blk0
     fb.switch_to_block(a);
-    fb.ins().ret(Some(result0), SourceSpan::UNKNOWN);
+    fb.ins().ret(Some(result0), context.current_span());
 
     // blk1
     fb.switch_to_block(b);
-    let rows0 = fb.ins().u32(0, SourceSpan::UNKNOWN);
-    let cols0 = fb.ins().u32(0, SourceSpan::UNKNOWN);
+    let rows0 = fb.ins().u32(0, context.current_span());
+    let cols0 = fb.ins().u32(0, context.current_span());
     let row_size = fb
         .ins()
-        .mul_imm_checked(cols, Immediate::U32(4), SourceSpan::UNKNOWN);
-    fb.ins().br(c, &[sum0, rows0, cols0], SourceSpan::UNKNOWN);
+        .mul_imm_checked(cols, Immediate::U32(4), context.current_span());
+    fb.ins()
+        .br(c, &[sum0, rows0, cols0], context.current_span());
 
     // blk2(sum1, rows1, cols1)
     fb.switch_to_block(c);
-    let has_more_rows = fb.ins().lt(rows1, rows, SourceSpan::UNKNOWN);
-    let row_skip = fb.ins().mul_checked(rows1, row_size, SourceSpan::UNKNOWN);
+    let has_more_rows = fb.ins().lt(rows1, rows, context.current_span());
+    let row_skip = fb
+        .ins()
+        .mul_checked(rows1, row_size, context.current_span());
     fb.ins().cond_br(
         has_more_rows,
         d,
         &[sum1, rows1, cols1],
         a,
         &[sum1],
-        SourceSpan::UNKNOWN,
+        context.current_span(),
     );
 
     // blk3(sum3, rows3, cols3)
     fb.switch_to_block(d);
-    let has_more_cols = fb.ins().lt(cols3, cols, SourceSpan::UNKNOWN);
+    let has_more_cols = fb.ins().lt(cols3, cols, context.current_span());
     fb.ins()
-        .cond_br(has_more_cols, e, &[], f, &[], SourceSpan::UNKNOWN);
+        .cond_br(has_more_cols, e, &[], f, &[], context.current_span());
 
     // blk4
     fb.switch_to_block(e);
     let col_skip = fb
         .ins()
-        .mul_imm_checked(cols3, Immediate::U32(4), SourceSpan::UNKNOWN);
+        .mul_imm_checked(cols3, Immediate::U32(4), context.current_span());
     let skip = fb
         .ins()
-        .add_checked(row_skip, col_skip, SourceSpan::UNKNOWN);
-    let ptr4i = fb.ins().add_checked(ptr1, skip, SourceSpan::UNKNOWN);
-    let ptr4 = fb
-        .ins()
-        .inttoptr(ptr4i, Type::Ptr(Box::new(Type::U32)), SourceSpan::UNKNOWN);
-    let value = fb.ins().load(ptr4, SourceSpan::UNKNOWN);
-    let sum4 = fb.ins().add_checked(sum3, value, SourceSpan::UNKNOWN);
-    let cols4 = fb.ins().incr(cols3, SourceSpan::UNKNOWN);
-    fb.ins().br(d, &[sum4, rows3, cols4], SourceSpan::UNKNOWN);
+        .add_checked(row_skip, col_skip, context.current_span());
+    let ptr4i = fb.ins().add_checked(ptr1, skip, context.current_span());
+    let ptr4 = fb.ins().inttoptr(
+        ptr4i,
+        Type::Ptr(Box::new(Type::U32)),
+        context.current_span(),
+    );
+    let value = fb.ins().load(ptr4, context.current_span());
+    let sum4 = fb.ins().add_checked(sum3, value, context.current_span());
+    let cols4 = fb.ins().incr(cols3, context.current_span());
+    fb.ins()
+        .br(d, &[sum4, rows3, cols4], context.current_span());
 
     // blk5
     fb.switch_to_block(f);
-    let rows5 = fb.ins().incr(rows3, SourceSpan::UNKNOWN);
-    let cols5 = fb.ins().u32(0, SourceSpan::UNKNOWN);
-    fb.ins().br(c, &[sum3, rows5, cols5], SourceSpan::UNKNOWN);
+    let rows5 = fb.ins().incr(rows3, context.current_span());
+    let cols5 = fb.ins().u32(0, context.current_span());
+    fb.ins()
+        .br(c, &[sum3, rows5, cols5], context.current_span());
 
     // We're done
-    fb.build(diagnostics)
+    fb.build(&context.diagnostics)
         .expect("unexpected validation error, see diagnostics output")
 }
 
@@ -317,9 +383,9 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, diagnostics: &DiagnosticsHandler)
 ///   see [mem_intrinsics] for details.
 /// * The `str` module, containing string-related intrinsics,
 ///   see [str_intrinsics] for details
-pub fn intrinsics(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
-    mem_intrinsics(builder)?;
-    str_intrinsics(builder)
+pub fn intrinsics(builder: &mut ProgramBuilder, context: &TestContext) -> anyhow::Result<()> {
+    mem_intrinsics(builder, context)?;
+    str_intrinsics(builder, context)
 }
 
 /// Adds a `mem` module to the given [ProgramBuilder], containing a handful of
@@ -389,7 +455,7 @@ pub fn intrinsics(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
 ///     }
 /// }
 /// ```
-pub fn mem_intrinsics(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
+pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> anyhow::Result<()> {
     // Next up, the `mem` module
     let mut mb = builder.module("mem");
 
@@ -690,7 +756,7 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
 ///     }
 /// }
 /// ```
-pub fn str_intrinsics(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
+pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> anyhow::Result<()> {
     // Next up, the `str` module
     let mut mb = builder.module("str");
 
@@ -875,7 +941,7 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
 ///   0
 /// }
 /// ```
-pub fn hello_world(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
+pub fn hello_world(builder: &mut ProgramBuilder, context: &TestContext) -> anyhow::Result<()> {
     let mut mb = builder.module("test");
 
     // Every module is going to have the same data segment for the shadow stack,
@@ -985,7 +1051,7 @@ pub fn hello_world(builder: &mut ProgramBuilder) -> anyhow::Result<()> {
     mb.build()?;
 
     // Add intrinsics
-    intrinsics(builder)
+    intrinsics(builder, context)
 }
 
 #[inline]

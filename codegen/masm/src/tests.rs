@@ -163,7 +163,7 @@ fn fib_emulator() {
 
     // Build test module with fib function
     let mut mb = builder.module("test");
-    let id = testing::fib1(mb.as_mut(), &harness.context.diagnostics);
+    let id = testing::fib1(mb.as_mut(), &harness.context);
     mb.build()
         .expect("unexpected error constructing test module");
 
@@ -407,7 +407,7 @@ fn stackify_sum_matrix() {
 
     // Build test module with fib function
     let mut mb = builder.module("test");
-    let id = testing::sum_matrix(mb.as_mut(), &harness.context.diagnostics);
+    let id = testing::sum_matrix(mb.as_mut(), &harness.context);
     mb.build()
         .expect("unexpected error constructing test module");
 
