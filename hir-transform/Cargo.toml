@@ -14,9 +14,9 @@ edition.workspace = true
 anyhow.workspace = true
 cranelift-entity.workspace = true
 miden-diagnostics.workspace = true
-miden-hir = { path = "../hir" }
-miden-hir-analysis = { path = "../hir-analysis" }
-miden-hir-pass = { path = "../hir-pass" }
+miden-hir.workspace = true
+miden-hir-analysis.workspace = true
+miden-hir-pass.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
 

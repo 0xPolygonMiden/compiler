@@ -15,8 +15,8 @@ anyhow.workspace = true
 cranelift-entity.workspace = true
 intrusive-collections.workspace = true
 miden-diagnostics.workspace = true
-miden-hir-symbol = { path = "../hir-symbol" }
-miden-hir-type = { path = "../hir-type" }
+miden-hir-symbol.workspace = true
+miden-hir-type.workspace = true
 petgraph = "0.6"
 paste.workspace = true
 rustc-hash.workspace = true
