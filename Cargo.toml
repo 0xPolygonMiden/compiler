@@ -43,7 +43,14 @@ rustc-hash = "1.1"
 smallvec = { version = "1.9", features = ["union", "const_generics", "const_new"] }
 smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
+miden-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = { git = "https://github.com/0xpolygonmiden/miden-diagnostics" }
+miden-hir = { path = "hir" }
+miden-hir-analysis = { path = "hir-analysis" }
+miden-hir-pass = { path = "hir-pass" }
+miden-hir-symbol = { path = "hir-symbol" }
+miden-hir-transform = { path = "hir-transform" }
+miden-hir-type = { path = "hir-type" }
 miden-parsing = { git = "https://github.com/0xpolygonmiden/miden-parsing" }
 
 [profile.release]
