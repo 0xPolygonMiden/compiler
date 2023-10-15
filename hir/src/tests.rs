@@ -13,7 +13,7 @@ fn simple_builder_test() {
     let mut builder = ProgramBuilder::new(&context.diagnostics);
     {
         let mut mb = builder.module("test");
-        testing::fib1(mb.as_mut(), &context.diagnostics);
+        testing::fib1(mb.as_mut(), &context);
         mb.build().expect("unexpected error building test module");
     }
     builder.link().expect("failed to link program");
@@ -146,7 +146,8 @@ fn linker_test() {
     let context = TestContext::default();
 
     let mut builder = ProgramBuilder::new(&context.diagnostics);
-    testing::hello_world(&mut builder).expect("unexpected error constructing test modules");
+    testing::hello_world(&mut builder, &context)
+        .expect("unexpected error constructing test modules");
 
     let _program = builder
         .with_entrypoint("test::main".parse().unwrap())
