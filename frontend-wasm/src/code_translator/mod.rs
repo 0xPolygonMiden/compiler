@@ -120,7 +120,7 @@ pub fn translate_operator(
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            let arg = state.pop1();
+            let arg = state.pop1_casted(U32, builder, span);
             state.push1(builder.ins().mem_grow(arg, span));
         }
         Operator::MemorySize { .. } => {
@@ -129,10 +129,10 @@ pub fn translate_operator(
         }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
-            translate_load_zext(I8, I32, memarg, state, builder, span)
+            translate_load_zext(U8, I32, memarg, state, builder, span)
         }
         Operator::I32Load16U { memarg } => {
-            translate_load_zext(I16, I32, memarg, state, builder, span)
+            translate_load_zext(U16, I32, memarg, state, builder, span)
         }
         Operator::I32Load8S { memarg } => {
             translate_load_sext(I8, I32, memarg, state, builder, span);
@@ -141,10 +141,10 @@ pub fn translate_operator(
             translate_load_sext(I16, I32, memarg, state, builder, span);
         }
         Operator::I64Load8U { memarg } => {
-            translate_load_zext(I8, I64, memarg, state, builder, span)
+            translate_load_zext(U8, I64, memarg, state, builder, span)
         }
         Operator::I64Load16U { memarg } => {
-            translate_load_zext(I16, I64, memarg, state, builder, span)
+            translate_load_zext(U16, I64, memarg, state, builder, span)
         }
         Operator::I64Load8S { memarg } => {
             translate_load_sext(I8, I64, memarg, state, builder, span);
@@ -156,7 +156,7 @@ pub fn translate_operator(
             translate_load_sext(I32, I64, memarg, state, builder, span)
         }
         Operator::I64Load32U { memarg } => {
-            translate_load_zext(I32, I64, memarg, state, builder, span)
+            translate_load_zext(U32, I64, memarg, state, builder, span)
         }
         Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
         Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
@@ -164,12 +164,12 @@ pub fn translate_operator(
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
-            translate_store(I8, memarg, state, builder, span);
+            translate_store(U8, memarg, state, builder, span);
         }
         Operator::I32Store16 { memarg } | Operator::I64Store16 { memarg } => {
-            translate_store(I16, memarg, state, builder, span);
+            translate_store(U16, memarg, state, builder, span);
         }
-        Operator::I64Store32 { memarg } => translate_store(I32, memarg, state, builder, span),
+        Operator::I64Store32 { memarg } => translate_store(U32, memarg, state, builder, span),
         /****************************** Nullary Operators **********************************/
         Operator::I32Const { value } => state.push1(builder.ins().i32(*value, span)),
         Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
@@ -539,6 +539,7 @@ fn translate_load_zext(
     builder: &mut FunctionBuilderExt<'_>,
     span: SourceSpan,
 ) {
+    assert!(ptr_ty.is_unsigned_integer());
     let addr_int = state.pop1();
     let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
     let val = builder.ins().load(addr, span);

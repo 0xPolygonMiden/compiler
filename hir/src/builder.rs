@@ -577,7 +577,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     }
 
     fn mem_grow(mut self, value: Value, span: SourceSpan) -> Value {
-        require_integer!(self, value, Type::I32);
+        require_integer!(self, value, Type::U32);
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
