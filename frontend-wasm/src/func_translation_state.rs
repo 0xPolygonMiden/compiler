@@ -287,6 +287,20 @@ impl FuncTranslationState {
             .expect("attempted to pop a value from an empty stack")
     }
 
+    /// Pop one value and cast it to the specified type.
+    pub(crate) fn pop1_casted(
+        &mut self,
+        ty: Type,
+        builder: &mut FunctionBuilderExt,
+        span: SourceSpan,
+    ) -> Value {
+        let val = self
+            .stack
+            .pop()
+            .expect("attempted to pop a value from an empty stack");
+        builder.ins().cast(val, ty.clone(), span)
+    }
+
     /// Peek at the top of the stack without popping it.
     pub(crate) fn peek1(&self) -> Value {
         *self

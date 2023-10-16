@@ -250,10 +250,10 @@ block0(v0: i32, v1: i32):
     v17 = inttoptr v16  : *mut i32
     store v17, v14
     v18 = const.i32 1  : i32
-    v19 = trunc v18  : i8
+    v19 = trunc v18  : u8
     v20 = cast v5  : u32
     v21 = add v20, 28  : u32
-    v22 = inttoptr v21  : *mut i8
+    v22 = inttoptr v21  : *mut u8
     store v22, v19
     v23 = cast v5  : u32
     v24 = add v23, 20  : u32

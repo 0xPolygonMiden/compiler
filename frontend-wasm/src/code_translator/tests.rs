@@ -368,7 +368,8 @@ fn memory_grow() {
         "#,
         expect![[r#"
             v0 = const.i32 1  : i32
-            v1 = memory.grow v0  : i32
+            v1 = cast v0  : u32
+            v2 = memory.grow v1  : i32
         "#]],
     )
 }
@@ -397,8 +398,8 @@ fn i32_load8_u() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = cast v0  : u32
-            v2 = inttoptr v1  : *mut i8
-            v3 = load v2  : i8
+            v2 = inttoptr v1  : *mut u8
+            v3 = load v2  : u8
             v4 = zext v3  : i32
         "#]],
     )
@@ -415,8 +416,8 @@ fn i32_load16_u() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = cast v0  : u32
-            v2 = inttoptr v1  : *mut i16
-            v3 = load v2  : i16
+            v2 = inttoptr v1  : *mut u16
+            v3 = load v2  : u16
             v4 = zext v3  : i32
         "#]],
     )
@@ -469,8 +470,8 @@ fn i64_load8_u() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = cast v0  : u32
-            v2 = inttoptr v1  : *mut i8
-            v3 = load v2  : i8
+            v2 = inttoptr v1  : *mut u8
+            v3 = load v2  : u8
             v4 = zext v3  : i64
         "#]],
     )
@@ -487,8 +488,8 @@ fn i64_load16_u() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = cast v0  : u32
-            v2 = inttoptr v1  : *mut i16
-            v3 = load v2  : i16
+            v2 = inttoptr v1  : *mut u16
+            v3 = load v2  : u16
             v4 = zext v3  : i64
         "#]],
     )
@@ -559,8 +560,8 @@ fn i64_load32_u() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = cast v0  : u32
-            v2 = inttoptr v1  : *mut i32
-            v3 = load v2  : i32
+            v2 = inttoptr v1  : *mut u32
+            v3 = load v2  : u32
             v4 = zext v3  : i64
         "#]],
     )
@@ -647,9 +648,9 @@ fn i32_store8() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = const.i32 1  : i32
-            v2 = trunc v1  : i8
+            v2 = trunc v1  : u8
             v3 = cast v0  : u32
-            v4 = inttoptr v3  : *mut i8
+            v4 = inttoptr v3  : *mut u8
             store v4, v2
         "#]],
     )
@@ -666,9 +667,9 @@ fn i32_store16() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = const.i32 1  : i32
-            v2 = trunc v1  : i16
+            v2 = trunc v1  : u16
             v3 = cast v0  : u32
-            v4 = inttoptr v3  : *mut i16
+            v4 = inttoptr v3  : *mut u16
             store v4, v2
         "#]],
     )
@@ -685,9 +686,9 @@ fn i64_store32() {
         expect![[r#"
             v0 = const.i32 1024  : i32
             v1 = const.i64 1  : i64
-            v2 = trunc v1  : i32
+            v2 = trunc v1  : u32
             v3 = cast v0  : u32
-            v4 = inttoptr v3  : *mut i32
+            v4 = inttoptr v3  : *mut u32
             store v4, v2
         "#]],
     )
