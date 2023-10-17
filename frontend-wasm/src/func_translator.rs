@@ -48,12 +48,6 @@ impl FuncTranslator {
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
         let mut reader = body.get_binary_reader();
-        // log::trace!(
-        //     "translate({} bytes, {}{:?})",
-        //     reader.bytes_remaining(),
-        //     func.signature.name,
-        //     func.signature
-        // );
 
         let mut builder = FunctionBuilderExt::new(mod_func_builder, &mut self.func_ctx);
         let entry_block = builder.current_block();
