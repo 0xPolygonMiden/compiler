@@ -446,27 +446,18 @@ impl SSABuilder {
         sentinel: Value,
         dest_block: Block,
     ) -> Value {
-        // Determine how many predecessors are yielding unique, non-temporary Values. If a variable
-        // is live and unmodified across several control-flow join points, earlier blocks will
-        // introduce aliases for that variable's definition, so we resolve aliases eagerly here to
-        // ensure that we can tell when the same definition has reached this block via multiple
-        // paths. Doing so also detects cyclic references to the sentinel, which can occur in
-        // unreachable code.
+        // Determine how many predecessors are yielding unique, non-temporary Values.
         let num_predecessors = self.predecessors(dest_block).len();
         // When this `Drain` is dropped, these elements will get truncated.
         let results = self.results.drain(self.results.len() - num_predecessors..);
 
         let pred_val = {
-            let mut iter = results
-                .as_slice()
-                .iter()
-                .map(|&val| dfg.resolve_aliases(val))
-                .filter(|&val| val != sentinel);
+            let mut iter = results.as_slice().iter().filter(|&val| val != &sentinel);
             if let Some(val) = iter.next() {
                 // This variable has at least one non-temporary definition. If they're all the same
                 // value, we can remove the block parameter and reference that value instead.
                 if iter.all(|other| other == val) {
-                    Some(val)
+                    Some(*val)
                 } else {
                     None
                 }
@@ -491,10 +482,7 @@ impl SSABuilder {
         if let Some(pred_val) = pred_val {
             // Here all the predecessors use a single value to represent our variable
             // so we don't need to have it as a block argument.
-            // We need to replace all the occurrences of val with pred_val but since
-            // we can't afford a re-writing pass right now we just declare an alias.
             dfg.remove_block_param(sentinel);
-            dfg.change_to_alias(sentinel, pred_val);
             pred_val
         } else {
             // There is disagreement in the predecessors on which value to use so we have

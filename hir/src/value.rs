@@ -38,20 +38,11 @@ pub enum ValueData {
         block: Block,
         span: SourceSpan,
     },
-    /// Value is an alias of another value.
-    /// An alias value can't be linked as an instruction result or block parameter. It is used as a
-    /// placeholder when the original instruction or block has been rewritten or modified.
-    Alias {
-        ty: Type,
-        original: Value,
-    },
 }
 impl ValueData {
     pub fn ty(&self) -> &Type {
         match self {
-            Self::Inst { ref ty, .. } | Self::Param { ref ty, .. } | Self::Alias { ref ty, .. } => {
-                ty
-            }
+            Self::Inst { ref ty, .. } | Self::Param { ref ty, .. } => ty,
         }
     }
 
@@ -59,7 +50,6 @@ impl ValueData {
         match self {
             Self::Inst { .. } => SourceSpan::UNKNOWN,
             Self::Param { span, .. } => *span,
-            Self::Alias { .. } => SourceSpan::UNKNOWN,
         }
     }
 
@@ -92,10 +82,6 @@ impl ValueData {
                 ..
             } => *prev_ty = ty,
             Self::Param {
-                ty: ref mut prev_ty,
-                ..
-            } => *prev_ty = ty,
-            Self::Alias {
                 ty: ref mut prev_ty,
                 ..
             } => *prev_ty = ty,

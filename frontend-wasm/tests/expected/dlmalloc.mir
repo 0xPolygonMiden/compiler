@@ -16,7 +16,7 @@ block0(v0: i32, v1: i32, v2: i32):
 block1:
     ret 
 
-block2(v221: i32):
+block2(v221: i32, v229: i32, v230: i32):
     v222 = const.i32 256  : i32
     v223 = cast v221  : u32
     v224 = cast v222  : u32
@@ -179,7 +179,7 @@ block16:
 
 block17:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v103, v104, v96)
-    br block2(v104)
+    br block2(v104, v105, v103)
 
 block18:
     v210 = cast v105  : u32
@@ -253,7 +253,7 @@ block21:
 
 block22:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v103, v123)
-    v167 = cast v0  : u32
+    v167 = cast v105  : u32
     v168 = add v167, 424  : u32
     v169 = inttoptr v168  : *mut i32
     v170 = load v169  : i32
@@ -261,7 +261,7 @@ block22:
     v172 = cast v171  : i32
     v173 = const.i32 0  : i32
     v174 = neq v172, v173  : i1
-    condbr v174, block2(v165), block27
+    condbr v174, block2(v165, v166, v164), block27
 
 block23:
     v131 = cast v96  : u32
@@ -358,14 +358,14 @@ block29:
     condbr v252, block32, block33
 
 block30:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v0, v103, v221)
+    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v229, v230, v221)
     ret 
 
 block31(v266: i32):
     v263 = cast v235  : u32
     v264 = add v263, 8  : u32
     v265 = inttoptr v264  : *mut i32
-    store v265, v103
+    store v265, v230
     v267 = cast v266  : u32
     v268 = add v267, 12  : u32
     v269 = inttoptr v268  : *mut i32
@@ -525,8 +525,8 @@ block12:
     v128 = cast v107  : u32
     v129 = add v128, 24  : u32
     v130 = inttoptr v129  : *mut i32
-    store v130, v6
-    v132 = cast v1  : u32
+    store v130, v70
+    v132 = cast v79  : u32
     v133 = add v132, 16  : u32
     v134 = inttoptr v133  : *mut i32
     v135 = load v134  : i32
@@ -584,7 +584,7 @@ block16:
 
 block17:
     v148 = const.i32 20  : i32
-    v149 = add v1, v148  : i32
+    v149 = add v131, v148  : i32
     v150 = cast v149  : u32
     v151 = inttoptr v150  : *mut i32
     v152 = load v151  : i32
@@ -608,7 +608,7 @@ block18:
 
 block19:
     v159 = const.i32 20  : i32
-    v160 = add v107, v159  : i32
+    v160 = add v126, v159  : i32
     v161 = cast v160  : u32
     v162 = inttoptr v161  : *mut i32
     store v162, v152
@@ -696,8 +696,8 @@ block4:
     v38 = add v36, v37  : i32
     br block2(v38)
 
-block5:
-    v135 = cast v52  : u32
+block5(v134: i32):
+    v135 = cast v134  : u32
     v136 = add v135, 8  : u32
     v137 = inttoptr v136  : *mut i32
     store v137, v134
@@ -720,7 +720,7 @@ block6:
     v132 = cast v51  : u32
     v133 = inttoptr v132  : *mut i32
     store v133, v39
-    br block5
+    br block5(v52)
 
 block7:
     v65 = cast v51  : u32
@@ -747,7 +747,7 @@ block9:
     v123 = add v122, 24  : u32
     v124 = inttoptr v123  : *mut i32
     store v124, v71
-    br block5
+    br block5(v84)
 
 block10:
     v103 = const.i32 29  : i32
@@ -817,7 +817,7 @@ block0(v0: i32):
 block1(v1: i32):
     ret v1
 
-block2(v136: i32, v149: i32):
+block2(v135: i32, v136: i32, v149: i32):
     v137 = const.i32 4095  : i32
     v138 = const.i32 4095  : i32
     v139 = cast v136  : u32
@@ -827,7 +827,7 @@ block2(v136: i32, v149: i32):
     v143 = const.i32 0  : i32
     v144 = neq v142, v143  : i1
     v145 = select v144, v136, v137  : i32
-    v146 = cast v0  : u32
+    v146 = cast v135  : u32
     v147 = add v146, 448  : u32
     v148 = inttoptr v147  : *mut i32
     store v148, v145
@@ -838,14 +838,14 @@ block3:
     v13 = add v0, v12  : i32
     v14 = const.i32 0  : i32
     v15 = const.i32 0  : i32
-    br block5(v7, v13, v14, v15)
+    br block5(v7, v0, v13, v14, v15)
 
 block4:
     v10 = const.i32 0  : i32
     v11 = const.i32 0  : i32
-    br block2(v10, v11)
+    br block2(v0, v10, v11)
 
-block5(v16: i32, v110: i32, v116: i32, v122: i32):
+block5(v16: i32, v28: i32, v110: i32, v116: i32, v122: i32):
     v17 = cast v16  : u32
     v18 = add v17, 8  : u32
     v19 = inttoptr v18  : *mut i32
@@ -872,26 +872,26 @@ block5(v16: i32, v110: i32, v116: i32, v122: i32):
     v41 = cast v40  : i32
     v42 = const.i32 0  : i32
     v43 = neq v41, v42  : i1
-    condbr v43, block8, block9
+    condbr v43, block8(v122, v20, v28, v116), block9
 
 block6:
-    br block2(v125, v133)
+    br block2(v130, v125, v133)
 
-block7(v132: i32, v133: i32):
+block7(v120: i32, v126: i32, v130: i32, v132: i32, v133: i32):
     v124 = const.i32 1  : i32
-    v125 = add v122, v124  : i32
+    v125 = add v120, v124  : i32
     v128 = const.i32 0  : i32
-    v129 = neq v20, v128  : i1
-    condbr v129, block5(v126, v132, v133, v125), block18
+    v129 = neq v126, v128  : i1
+    condbr v129, block5(v126, v130, v132, v133, v125), block18
 
-block8:
-    br block7(v16, v116)
+block8(v123: i32, v127: i32, v131: i32, v134: i32):
+    br block7(v123, v127, v131, v16, v134)
 
 block9:
     v44 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v16)  : i32
     v45 = const.i32 0  : i32
     v46 = neq v44, v45  : i1
-    condbr v46, block8, block10
+    condbr v46, block8(v122, v20, v28, v116), block10
 
 block10:
     v47 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v27)  : i32
@@ -912,7 +912,7 @@ block10:
     v62 = call noname::_ZN8dlmalloc8dlmalloc5Chunk5inuse17h2d327e4c36b84dfeE(v51)  : i32
     v63 = const.i32 0  : i32
     v64 = neq v62, v63  : i1
-    condbr v64, block8, block11
+    condbr v64, block8(v122, v20, v28, v116), block11
 
 block11:
     v65 = add v51, v52  : i32
@@ -927,7 +927,7 @@ block11:
     v74 = cast v73  : i32
     v75 = const.i32 0  : i32
     v76 = neq v74, v75  : i1
-    condbr v76, block8, block12
+    condbr v76, block8(v122, v20, v28, v116), block12
 
 block12:
     v77 = cast v28  : u32
@@ -978,11 +978,11 @@ block16:
     v114 = inttoptr v113  : *mut i32
     store v114, v20
     v117 = add v95, v116  : i32
-    br block7(v109, v117)
+    br block7(v122, v111, v93, v109, v117)
 
 block17:
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v93, v51, v52)
-    br block8
+    br block8(v121, v111, v93, v115)
 
 block18:
     br block6
@@ -1142,7 +1142,7 @@ block14:
     store v96, v93
     ret 
 
-block15(v513: i32):
+block15(v513: i32, v521: i32, v522: i32):
     v514 = const.i32 256  : i32
     v515 = cast v513  : u32
     v516 = cast v514  : u32
@@ -1165,10 +1165,10 @@ block16:
 
 block17:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v104, v105, v97)
-    br block15(v105)
+    br block15(v105, v106, v104)
 
 block18:
-    v224 = cast v0  : u32
+    v224 = cast v106  : u32
     v225 = add v224, 440  : u32
     v226 = inttoptr v225  : *mut i32
     v227 = load v226  : i32
@@ -1265,7 +1265,7 @@ block23:
 
 block24:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v104, v124)
-    v168 = cast v0  : u32
+    v168 = cast v106  : u32
     v169 = add v168, 424  : u32
     v170 = inttoptr v169  : *mut i32
     v171 = load v170  : i32
@@ -1273,7 +1273,7 @@ block24:
     v173 = cast v172  : i32
     v174 = const.i32 0  : i32
     v175 = neq v173, v174  : i1
-    condbr v175, block15(v166), block29
+    condbr v175, block15(v166, v167, v165), block29
 
 block25:
     v132 = cast v97  : u32
@@ -1410,10 +1410,10 @@ block33:
     v300 = cast v299  : i32
     v301 = const.i32 0  : i32
     v302 = neq v300, v301  : i1
-    condbr v302, block34(v289), block35
+    condbr v302, block34(v223, v289), block35
 
-block34(v489: i32):
-    v487 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$23release_unused_segments17h25622465f0742468E(v0)  : i32
+block34(v486: i32, v489: i32):
+    v487 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$23release_unused_segments17h25622465f0742468E(v486)  : i32
     v488 = const.i32 0  : i32
     v490 = sub v488, v489  : i32
     v491 = neq v487, v490  : i1
@@ -1434,12 +1434,12 @@ block35:
     v311 = add v223, v310  : i32
     br block37(v311)
 
-block36(v340: i32):
+block36(v340: i32, v345: i32, v368: i32, v392: i32, v451: i32):
     v339 = const.i32 0  : i32
     v341 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v340)  : i32
     v342 = const.i32 0  : i32
     v343 = neq v341, v342  : i1
-    condbr v343, block34(v339), block43
+    condbr v343, block34(v345, v339), block43
 
 block37(v312: i32):
     v313 = cast v312  : u32
@@ -1455,7 +1455,7 @@ block37(v312: i32):
 
 block38:
     v338 = const.i32 0  : i32
-    br block36(v338)
+    br block36(v338, v347, v370, v394, v453)
 
 block39:
     v331 = cast v312  : u32
@@ -1474,7 +1474,7 @@ block40:
     v327 = cast v326  : i32
     v328 = const.i32 0  : i32
     v329 = neq v327, v328  : i1
-    condbr v329, block36(v312), block41
+    condbr v329, block36(v312, v223, v309, v311, v307), block41
 
 block41:
     br block39
@@ -1493,13 +1493,13 @@ block43:
     v354 = cast v352  : u32
     v355 = shr v353, v354  : u32
     v356 = cast v355  : i32
-    v357 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$16can_release_part17h43bfb7d8666fcc31E(v0, v356)  : i32
+    v357 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$16can_release_part17h43bfb7d8666fcc31E(v345, v356)  : i32
     v358 = const.i32 0  : i32
     v359 = eq v357, v358  : i1
     v360 = cast v359  : i32
     v361 = const.i32 0  : i32
     v362 = neq v360, v361  : i1
-    condbr v362, block34(v344), block44
+    condbr v362, block34(v345, v344), block44
 
 block44:
     v363 = const.i32 0  : i32
@@ -1508,15 +1508,15 @@ block44:
     v366 = inttoptr v365  : *mut i32
     v367 = load v366  : i32
     v371 = cast v367  : u32
-    v372 = cast v309  : u32
+    v372 = cast v368  : u32
     v373 = lt v371, v372  : i1
     v374 = cast v373  : i32
     v375 = const.i32 0  : i32
     v376 = neq v374, v375  : i1
-    condbr v376, block34(v363), block45
+    condbr v376, block34(v345, v363), block45
 
 block45:
-    br block46(v311)
+    br block46(v392)
 
 block46(v378: i32):
     v379 = call noname::_ZN8dlmalloc8dlmalloc7Segment5holds17h8f6de4ee6718009bE(v377, v378)  : i32
@@ -1535,15 +1535,15 @@ block47:
     v400 = add v399, 4  : u32
     v401 = inttoptr v400  : *mut i32
     v402 = load v401  : i32
-    v404 = sub v402, v309  : i32
-    v405 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$9free_part17h74489c9e7a3aa967E(v0, v398, v402, v404)  : i32
+    v404 = sub v402, v368  : i32
+    v405 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$9free_part17h74489c9e7a3aa967E(v345, v398, v402, v404)  : i32
     v406 = const.i32 0  : i32
     v407 = const.i32 0  : i32
     v408 = eq v403, v407  : i1
     v409 = cast v408  : i32
     v410 = const.i32 0  : i32
     v411 = neq v409, v410  : i1
-    condbr v411, block34(v406), block51
+    condbr v411, block34(v395, v406), block51
 
 block48:
     v386 = cast v378  : u32
@@ -1556,7 +1556,7 @@ block48:
 
 block49:
     v385 = const.i32 0  : i32
-    br block34(v385)
+    br block34(v395, v385)
 
 block50:
     br block47
@@ -1568,7 +1568,7 @@ block51:
     v415 = cast v414  : i32
     v416 = const.i32 0  : i32
     v417 = neq v415, v416  : i1
-    condbr v417, block34(v412), block52
+    condbr v417, block34(v395, v412), block52
 
 block52:
     v418 = cast v377  : u32
@@ -1606,7 +1606,7 @@ block52:
     v448 = add v447, 428  : u32
     v449 = inttoptr v448  : *mut i32
     store v449, v446
-    v454 = add v307, v445  : i32
+    v454 = add v451, v445  : i32
     v455 = sub v437, v454  : i32
     v456 = const.i32 65536  : i32
     v457 = add v455, v456  : i32
@@ -1642,7 +1642,7 @@ block52:
     v484 = add v483, 4  : u32
     v485 = inttoptr v484  : *mut i32
     store v485, v482
-    br block34(v403)
+    br block34(v395, v403)
 
 block53:
     v495 = cast v486  : u32
@@ -1695,7 +1695,7 @@ block55:
     condbr v556, block59, block60
 
 block56:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v0, v104, v513)
+    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v521, v522, v513)
     v523 = cast v521  : u32
     v524 = add v523, 448  : u32
     v525 = inttoptr v524  : *mut i32
@@ -1718,7 +1718,7 @@ block58(v570: i32):
     v567 = cast v539  : u32
     v568 = add v567, 8  : u32
     v569 = inttoptr v568  : *mut i32
-    store v569, v104
+    store v569, v522
     v571 = cast v570  : u32
     v572 = add v571, 12  : u32
     v573 = inttoptr v572  : *mut i32
@@ -1790,7 +1790,7 @@ block3(v709: i32, v717: i32, v739: i32):
     v728 = neq v726, v727  : i1
     condbr v728, block83, block84
 
-block4(v607: i32, v613: i32, v628: i32, v749: i32):
+block4(v607: i32, v613: i32, v621: i32, v628: i32, v749: i32):
     v608 = const.i32 0  : i32
     v609 = eq v607, v608  : i1
     v610 = cast v609  : i32
@@ -1798,10 +1798,10 @@ block4(v607: i32, v613: i32, v628: i32, v749: i32):
     v612 = neq v610, v611  : i1
     condbr v612, block3(v613, v621, v749), block63
 
-block5(v598: i32, v599: i32, v604: i32, v616: i32, v752: i32):
+block5(v598: i32, v599: i32, v601: i32, v604: i32, v616: i32, v752: i32):
     br block60(v598, v599, v604)
 
-block6(v531: i32, v533: i32, v540: i32, v545: i32, v555: i32, v606: i32, v745: i32):
+block6(v531: i32, v533: i32, v540: i32, v545: i32, v555: i32, v603: i32, v606: i32, v745: i32):
     v536 = bor v531, v533  : i32
     v537 = const.i32 0  : i32
     v538 = neq v536, v537  : i1
@@ -1972,7 +1972,7 @@ block14:
 
 block15:
     v117 = const.i32 0  : i32
-    br block6(v68, v117, v108, v62, v107, v106, v7)
+    br block6(v68, v117, v108, v62, v107, v105, v106, v7)
 
 block16(v122: i32, v133: i32, v150: i32, v152: i32, v535: i32, v542: i32, v548: i32, v557: i32, v748: i32):
     v123 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v122)  : i32
@@ -2021,7 +2021,7 @@ block18(v182: i32, v534: i32):
     v178 = cast v177  : i32
     v179 = const.i32 0  : i32
     v180 = neq v178, v179  : i1
-    condbr v180, block6(v173, v534, v542, v548, v557, v182, v748), block22
+    condbr v180, block6(v173, v534, v542, v548, v557, v181, v182, v748), block22
 
 block19:
     v132 = sub v124, v125  : i32
@@ -2040,7 +2040,7 @@ block20:
 
 block21:
     v142 = const.i32 0  : i32
-    br block5(v122, v122, v142, v557, v748)
+    br block5(v122, v122, v125, v142, v557, v748)
 
 block22:
     br block16(v165, v182, v173, v175, v534, v541, v547, v556, v747)
@@ -2117,17 +2117,17 @@ block28:
     v271 = neq v212, v270  : i1
     condbr v271, block35, block36
 
-block29:
+block29(v710: i32, v740: i32):
     v525 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v319)  : i32
     v526 = const.i32 0  : i32
     v527 = eq v525, v526  : i1
     v528 = cast v527  : i32
     v529 = const.i32 0  : i32
     v530 = neq v528, v529  : i1
-    condbr v530, block3(v0, v199, v7), block55
+    condbr v530, block3(v710, v320, v740), block55
 
 block30:
-    v514 = cast v0  : u32
+    v514 = cast v322  : u32
     v515 = add v514, 424  : u32
     v516 = inttoptr v515  : *mut i32
     store v516, v334
@@ -2135,10 +2135,10 @@ block30:
     v520 = add v519, 416  : u32
     v521 = inttoptr v520  : *mut i32
     store v521, v324
-    br block29
+    br block29(v510, v741)
 
-block31:
-    v499 = cast v0  : u32
+block31(v1573: i32):
+    v499 = cast v390  : u32
     v500 = add v499, 424  : u32
     v501 = inttoptr v500  : *mut i32
     store v501, v385
@@ -2146,8 +2146,8 @@ block31:
     v505 = add v504, 416  : u32
     v506 = inttoptr v505  : *mut i32
     store v506, v389
-    v509 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v358)  : i32
-    br block2(v7, v509)
+    v509 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v383)  : i32
+    br block2(v1573, v509)
 
 block32:
     v448 = const.i32 -8  : i32
@@ -2179,7 +2179,7 @@ block32:
 block33:
     v446 = add v324, v320  : i32
     call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(v319, v446)
-    br block29
+    br block29(v322, v7)
 
 block34:
     v397 = const.i32 -8  : i32
@@ -2269,11 +2269,11 @@ block37:
     v295 = cast v294  : i32
     v296 = const.i32 0  : i32
     v297 = neq v295, v296  : i1
-    condbr v297, block38(v288, v291), block39
+    condbr v297, block38(v288, v199, v291), block39
 
-block38(v318: i32, v324: i32):
+block38(v318: i32, v320: i32, v324: i32):
     v319 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v318)  : i32
-    v321 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v319, v199)  : i32
+    v321 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v319, v320)  : i32
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v0, v318)
     v325 = const.i32 16  : i32
     v326 = const.i32 8  : i32
@@ -2309,7 +2309,7 @@ block40(v298: i32, v303: i32, v311: i32):
     condbr v317, block40(v315, v310, v314), block42
 
 block41:
-    br block38(v314, v310)
+    br block38(v314, v301, v310)
 
 block42:
     br block41
@@ -2370,7 +2370,7 @@ block47:
     br block45
 
 block48:
-    br block31
+    br block31(v7)
 
 block49(v436: i32):
     v433 = cast v401  : u32
@@ -2423,7 +2423,7 @@ block52(v485: i32):
     v493 = add v492, 8  : u32
     v494 = inttoptr v493  : *mut i32
     store v494, v485
-    br block31
+    br block31(v1574)
 
 block53:
     v476 = bor v458, v465  : i32
@@ -2449,7 +2449,7 @@ block56(v567: i32, v600: i32):
     v570 = cast v569  : i32
     v571 = const.i32 0  : i32
     v572 = neq v570, v571  : i1
-    condbr v572, block4(v600, v555, v605, v745), block59
+    condbr v572, block4(v600, v555, v602, v605, v745), block59
 
 block57:
     v539 = const.i32 1  : i32
@@ -2476,7 +2476,7 @@ block58:
     br block56(v565, v566)
 
 block59:
-    br block5(v567, v600, v606, v614, v750)
+    br block5(v567, v600, v603, v606, v614, v750)
 
 block60(v573: i32, v574: i32, v583: i32):
     v575 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v573)  : i32
@@ -2503,7 +2503,7 @@ block60(v573: i32, v574: i32, v583: i32):
     condbr v597, block60(v595, v591, v594), block62
 
 block61:
-    br block4(v591, v616, v594, v752)
+    br block4(v591, v616, v577, v594, v752)
 
 block62:
     br block61
@@ -2514,7 +2514,7 @@ block63:
     v619 = inttoptr v618  : *mut i32
     v620 = load v619  : i32
     v622 = cast v620  : u32
-    v623 = cast v58  : u32
+    v623 = cast v621  : u32
     v624 = lt v622, v623  : i1
     v625 = cast v624  : i32
     v626 = const.i32 0  : i32
@@ -2523,7 +2523,7 @@ block63:
 
 block64:
     v637 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v607)  : i32
-    v639 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v637, v58)  : i32
+    v639 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v637, v621)  : i32
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v613, v636)
     v642 = const.i32 16  : i32
     v643 = const.i32 8  : i32
@@ -2549,7 +2549,7 @@ block65:
 block66:
     br block64
 
-block67:
+block67(v753: i32):
     v706 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v637)  : i32
     v707 = const.i32 0  : i32
     v708 = neq v706, v707  : i1
@@ -2558,7 +2558,7 @@ block67:
 block68:
     v703 = add v641, v638  : i32
     call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(v637, v703)
-    br block67
+    br block67(v754)
 
 block69:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v637, v638)
@@ -2599,7 +2599,7 @@ block70:
 
 block71:
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v640, v639, v641)
-    br block67
+    br block67(v749)
 
 block72(v693: i32):
     v690 = cast v662  : u32
@@ -2618,7 +2618,7 @@ block72(v693: i32):
     v701 = add v700, 8  : u32
     v702 = inttoptr v701  : *mut i32
     store v702, v693
-    br block67
+    br block67(v754)
 
 block73:
     v684 = bor v666, v673  : i32
@@ -2636,31 +2636,31 @@ block74:
     br block72(v683)
 
 block75:
-    br block3(v613, v58, v749)
+    br block3(v640, v638, v753)
 
-block76:
-    v1533 = cast v709  : u32
+block76(v1531: i32, v1537: i32, v1582: i32, v1596: i32):
+    v1533 = cast v1531  : u32
     v1534 = add v1533, 420  : u32
     v1535 = inttoptr v1534  : *mut i32
     v1536 = load v1535  : i32
     v1547 = cast v1536  : u32
-    v1548 = cast v717  : u32
+    v1548 = cast v1537  : u32
     v1549 = lte v1547, v1548  : i1
     v1550 = cast v1549  : i32
     v1551 = const.i32 0  : i32
     v1552 = neq v1550, v1551  : i1
-    condbr v1552, block2(v739, v775), block144
+    condbr v1552, block2(v1582, v1596), block144
 
-block77:
+block77(v1413: i32, v1418: i32):
     v1414 = const.i32 4095  : i32
-    v1415 = cast v709  : u32
+    v1415 = cast v1413  : u32
     v1416 = add v1415, 448  : u32
     v1417 = inttoptr v1416  : *mut i32
     store v1417, v1414
     v1419 = cast v1413  : u32
     v1420 = add v1419, 128  : u32
     v1421 = inttoptr v1420  : *mut i32
-    store v1421, v779
+    store v1421, v1418
     v1422 = const.i32 140  : i32
     v1423 = add v1413, v1422  : i32
     v1426 = cast v1423  : u32
@@ -2742,14 +2742,14 @@ block81:
     v1323 = load v1322  : i32
     v1324 = add v1323, v885  : i32
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8init_top17he4cefe3b36a3bd87E(v860, v1319, v1324)
-    br block76
+    br block76(v860, v1175, v1578, v1603)
 
 block82:
     v1305 = cast v709  : u32
     v1306 = add v1305, 444  : u32
     v1307 = inttoptr v1306  : *mut i32
     store v1307, v779
-    br block77
+    br block77(v1303, v1304)
 
 block83:
     v1281 = cast v709  : u32
@@ -2907,9 +2907,9 @@ block90:
     condbr v835, block82, block91
 
 block91:
-    br block77
+    br block77(v709, v779)
 
-block92:
+block92(v884: i32, v887: i32, v1174: i32, v1577: i32, v1602: i32):
     v869 = cast v868  : u32
     v870 = add v869, 444  : u32
     v871 = inttoptr v870  : *mut i32
@@ -2920,19 +2920,19 @@ block92:
     v877 = cast v876  : i32
     v878 = const.i32 0  : i32
     v879 = neq v877, v878  : i1
-    v880 = select v879, v872, v779  : i32
-    v881 = cast v709  : u32
+    v880 = select v879, v872, v838  : i32
+    v881 = cast v860  : u32
     v882 = add v881, 444  : u32
     v883 = inttoptr v882  : *mut i32
     store v883, v880
-    v886 = add v873, v796  : i32
-    br block104(v837)
+    v886 = add v873, v884  : i32
+    br block104(v887)
 
 block93:
     v851 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v839)  : i32
     v852 = const.i32 0  : i32
     v853 = neq v851, v852  : i1
-    condbr v853, block92, block98
+    condbr v853, block92(v885, v888, v1175, v1578, v1603), block98
 
 block94(v839: i32):
     v840 = call noname::_ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(v839)  : i32
@@ -2954,7 +2954,7 @@ block96:
     condbr v850, block94(v848), block97
 
 block97:
-    br block92
+    br block92(v796, v837, v717, v739, v775)
 
 block98:
     v854 = call noname::_ZN8dlmalloc8dlmalloc7Segment9sys_flags17h224550055bf7775bE(v839)  : i32
@@ -2962,7 +2962,7 @@ block98:
     v857 = cast v856  : i32
     v858 = const.i32 0  : i32
     v859 = neq v857, v858  : i1
-    condbr v859, block92, block99
+    condbr v859, block92(v885, v888, v1175, v1578, v1603), block99
 
 block99:
     v861 = cast v709  : u32
@@ -2975,7 +2975,7 @@ block99:
     condbr v867, block81, block100
 
 block100:
-    br block92
+    br block92(v885, v888, v1175, v1578, v1603)
 
 block101:
     v1152 = cast v889  : u32
@@ -3001,7 +3001,7 @@ block101:
     v1170 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1168, v1169)  : i32
     v1171 = sub v1167, v1165  : i32
     v1172 = add v991, v1171  : i32
-    v1176 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1172, v717)  : i32
+    v1176 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1172, v1174)  : i32
     call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v1172, v1173)
     v1177 = sub v1170, v1168  : i32
     v1178 = add v1154, v1177  : i32
@@ -3017,18 +3017,18 @@ block101:
     v1188 = neq v1186, v1187  : i1
     condbr v1188, block126, block127
 
-block102:
-    v916 = cast v709  : u32
+block102(v914: i32, v920: i32, v990: i32, v1003: i32, v1600: i32):
+    v916 = cast v914  : u32
     v917 = add v916, 428  : u32
     v918 = inttoptr v917  : *mut i32
     v919 = load v918  : i32
-    br block111(v837)
+    br block111(v920)
 
 block103:
     v904 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v889)  : i32
     v905 = const.i32 0  : i32
     v906 = neq v904, v905  : i1
-    condbr v906, block102, block108
+    condbr v906, block102(v915, v921, v991, v1004, v1601), block108
 
 block104(v889: i32):
     v890 = cast v889  : u32
@@ -3052,20 +3052,20 @@ block106:
     condbr v903, block104(v901), block107
 
 block107:
-    br block102
+    br block102(v868, v887, v873, v884, v1602)
 
 block108:
     v907 = call noname::_ZN8dlmalloc8dlmalloc7Segment9sys_flags17h224550055bf7775bE(v889)  : i32
-    v910 = eq v907, v788  : i1
+    v910 = eq v907, v855  : i1
     v911 = cast v910  : i32
     v912 = const.i32 0  : i32
     v913 = neq v911, v912  : i1
     condbr v913, block101, block109
 
 block109:
-    br block102
+    br block102(v915, v921, v991, v1004, v1601)
 
-block110(v949: i32):
+block110(v949: i32, v957: i32, v985: i32, v988: i32, v1001: i32, v1039: i32, v1058: i32, v1539: i32, v1584: i32, v1598: i32):
     v950 = call noname::_ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(v949)  : i32
     v951 = const.i32 20  : i32
     v952 = const.i32 8  : i32
@@ -3088,7 +3088,7 @@ block110(v949: i32):
     v970 = cast v969  : i32
     v971 = const.i32 0  : i32
     v972 = neq v970, v971  : i1
-    v973 = select v972, v919, v962  : i32
+    v973 = select v972, v957, v962  : i32
     v974 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v973)  : i32
     v975 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v973, v953)  : i32
     v976 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
@@ -3104,12 +3104,12 @@ block110(v949: i32):
     v994 = const.i32 8  : i32
     v995 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v993, v994)  : i32
     v996 = sub v995, v993  : i32
-    v997 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v779, v996)  : i32
-    v998 = cast v709  : u32
+    v997 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v988, v996)  : i32
+    v998 = cast v985  : u32
     v999 = add v998, 428  : u32
     v1000 = inttoptr v999  : *mut i32
     store v1000, v997
-    v1006 = add v976, v796  : i32
+    v1006 = add v976, v1001  : i32
     v1007 = add v978, v981  : i32
     v1008 = add v984, v1007  : i32
     v1009 = add v1008, v996  : i32
@@ -3147,7 +3147,7 @@ block110(v949: i32):
     v1038 = inttoptr v1037  : *mut i32
     store v1038, v1035
     call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v973, v953)
-    v1042 = cast v837  : u32
+    v1042 = cast v1039  : u32
     v1043 = inttoptr v1042  : *mut i64
     v1044 = load v1043  : i64
     v1045 = const.i32 8  : i32
@@ -3167,7 +3167,7 @@ block110(v949: i32):
     v1057 = add v985, v1056  : i32
     v1062 = cast v1057  : u32
     v1063 = inttoptr v1062  : *mut i32
-    store v1063, v788
+    store v1063, v1058
     v1064 = const.i32 132  : i32
     v1065 = add v985, v1064  : i32
     v1066 = cast v1065  : u32
@@ -3198,7 +3198,7 @@ block111(v922: i32):
 
 block112:
     v948 = const.i32 0  : i32
-    br block110(v948)
+    br block110(v948, v947, v987, v992, v1005, v1041, v1061, v1542, v1587, v1604)
 
 block113:
     v941 = cast v922  : u32
@@ -3217,7 +3217,7 @@ block114:
     v937 = cast v936  : i32
     v938 = const.i32 0  : i32
     v939 = neq v937, v938  : i1
-    condbr v939, block110(v922), block115
+    condbr v939, block110(v922, v926, v914, v990, v1003, v920, v908, v1173, v1576, v1600), block115
 
 block115:
     br block113
@@ -3244,11 +3244,11 @@ block117(v1075: i32):
     condbr v1090, block117(v1077), block119
 
 block118:
-    v1093 = eq v973, v919  : i1
+    v1093 = eq v973, v957  : i1
     v1094 = cast v1093  : i32
     v1095 = const.i32 0  : i32
     v1096 = neq v1094, v1095  : i1
-    condbr v1096, block76, block120
+    condbr v1096, block76(v1106, v1539, v1584, v1598), block120
 
 block119:
     br block118
@@ -3292,14 +3292,14 @@ block121:
     condbr v1128, block124, block125
 
 block122:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v709, v1092, v1097)
-    br block76
+    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v985, v1092, v1097)
+    br block76(v1106, v1538, v1583, v1597)
 
 block123(v1142: i32):
     v1139 = cast v1111  : u32
     v1140 = add v1139, 8  : u32
     v1141 = inttoptr v1140  : *mut i32
-    store v1141, v919
+    store v1141, v1092
     v1143 = cast v1142  : u32
     v1144 = add v1143, 12  : u32
     v1145 = inttoptr v1144  : *mut i32
@@ -3312,7 +3312,7 @@ block123(v1142: i32):
     v1150 = add v1149, 8  : u32
     v1151 = inttoptr v1150  : *mut i32
     store v1151, v1142
-    br block76
+    br block76(v1106, v1538, v1583, v1597)
 
 block124:
     v1133 = bor v1115, v1122  : i32
@@ -3350,7 +3350,7 @@ block126:
     v1261 = inttoptr v1260  : *mut i32
     store v1261, v1258
     v1262 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1172)  : i32
-    br block2(v739, v1262)
+    br block2(v1577, v1262)
 
 block127:
     v1189 = cast v915  : u32
@@ -3475,15 +3475,15 @@ block136:
     condbr v1387, block139, block140
 
 block137:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v709, v1350, v1352)
+    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v915, v1350, v1352)
     v1365 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1172)  : i32
-    br block2(v739, v1365)
+    br block2(v1576, v1365)
 
 block138(v1401: i32):
     v1398 = cast v1370  : u32
     v1399 = add v1398, 8  : u32
     v1400 = inttoptr v1399  : *mut i32
-    store v1400, v1176
+    store v1400, v1350
     v1402 = cast v1401  : u32
     v1403 = add v1402, 12  : u32
     v1404 = inttoptr v1403  : *mut i32
@@ -3496,8 +3496,8 @@ block138(v1401: i32):
     v1409 = add v1408, 8  : u32
     v1410 = inttoptr v1409  : *mut i32
     store v1410, v1401
-    v1412 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1172)  : i32
-    br block2(v739, v1412)
+    v1412 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1363)  : i32
+    br block2(v1579, v1412)
 
 block139:
     v1392 = bor v1374, v1381  : i32
@@ -3581,12 +3581,12 @@ block142:
     v1490 = const.i32 8  : i32
     v1491 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1489, v1490)  : i32
     v1492 = sub v1491, v1489  : i32
-    v1493 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v779, v1492)  : i32
+    v1493 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1418, v1492)  : i32
     v1494 = cast v1435  : u32
     v1495 = add v1494, 428  : u32
     v1496 = inttoptr v1495  : *mut i32
     store v1496, v1493
-    v1498 = add v1479, v796  : i32
+    v1498 = add v1479, v1430  : i32
     v1499 = add v1481, v1484  : i32
     v1500 = add v1487, v1499  : i32
     v1501 = add v1500, v1492  : i32
@@ -3623,7 +3623,7 @@ block142:
     v1529 = add v1528, 4  : u32
     v1530 = inttoptr v1529  : *mut i32
     store v1530, v1527
-    br block76
+    br block76(v1435, v717, v739, v775)
 
 block143:
     br block142
@@ -3896,7 +3896,7 @@ block14:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v129, v137)
     v146 = sub v133, v137  : i32
     call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v145, v146)
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v0, v145, v146)
+    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v59, v145, v146)
     br block12
 }
 
@@ -4002,9 +4002,9 @@ block0(v0: i32, v1: i32, v2: i32, v3: i32):
 block1(v4: i32):
     ret v4
 
-block2(v416: i32):
+block2(v404: i32, v416: i32):
     v411 = const.i32 15  : i32
-    v412 = add v8, v411  : i32
+    v412 = add v404, v411  : i32
     call noname::_ZN68_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..drop..Drop$GT$4drop17he19d8d9c8ea92454E(v412)
     v413 = const.i32 16  : i32
     v414 = add v404, v413  : i32
@@ -4012,19 +4012,19 @@ block2(v416: i32):
     store v415, v414
     br block1(v416)
 
-block3(v401: i32):
+block3(v401: i32, v410: i32):
     v402 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v401)  : i32
     v403 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v401)  : i32
-    br block2(v403)
+    br block2(v410, v403)
 
-block4:
-    v373 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$6malloc17h1ae2390053e3628cE(v12, v3)  : i32
+block4(v366: i32, v368: i32, v379: i32, v384: i32, v405: i32, v417: i32):
+    v373 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$6malloc17h1ae2390053e3628cE(v366, v368)  : i32
     v374 = const.i32 0  : i32
     v375 = eq v373, v374  : i1
     v376 = cast v375  : i32
     v377 = const.i32 0  : i32
     v378 = neq v376, v377  : i1
-    condbr v378, block2(v33), block45
+    condbr v378, block2(v405, v417), block45
 
 block5:
     v351 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v80, v79)  : i32
@@ -4046,7 +4046,7 @@ block5:
     store v363, v355
     v364 = const.i32 0  : i32
     v365 = neq v80, v364  : i1
-    condbr v365, block3(v80), block44
+    condbr v365, block3(v80, v8), block44
 
 block6:
     v343 = cast v1  : u32
@@ -4058,7 +4058,7 @@ block6:
     v349 = select v348, v1, v3  : i32
     v350 = call noname::memcpy(v20, v0, v349)  : i32
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$4free17h501de2a6604ba1ffE(v12, v0)
-    br block2(v20)
+    br block2(v8, v20)
 
 block7:
     v24 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
@@ -4100,7 +4100,7 @@ block7:
     v60 = cast v59  : i32
     v61 = const.i32 0  : i32
     v62 = neq v60, v61  : i1
-    condbr v62, block2(v33), block10
+    condbr v62, block2(v8, v33), block10
 
 block8:
     v20 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8memalign17he8794c5d1cb954f9E(v12, v2, v3)  : i32
@@ -4110,7 +4110,7 @@ block8:
 
 block9:
     v23 = const.i32 0  : i32
-    br block2(v23)
+    br block2(v8, v23)
 
 block10:
     v63 = const.i32 16  : i32
@@ -4155,7 +4155,7 @@ block11:
 block12:
     v330 = const.i32 0  : i32
     v331 = neq v80, v330  : i1
-    condbr v331, block3(v329), block42
+    condbr v331, block3(v329, v409), block42
 
 block13:
     v318 = sub v81, v79  : i32
@@ -4182,7 +4182,7 @@ block14:
     v289 = cast v288  : i32
     v290 = const.i32 0  : i32
     v291 = neq v289, v290  : i1
-    condbr v291, block4, block36
+    condbr v291, block4(v12, v3, v0, v80, v8, v33), block36
 
 block15:
     v263 = const.i32 16  : i32
@@ -4220,7 +4220,7 @@ block17:
     v132 = cast v131  : i32
     v133 = const.i32 0  : i32
     v134 = neq v132, v133  : i1
-    condbr v134, block4, block25
+    condbr v134, block4(v12, v3, v0, v80, v8, v33), block25
 
 block18:
     v86 = cast v81  : u32
@@ -4257,7 +4257,7 @@ block21:
     v108 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6cinuse17h58499de57c2d37e2E(v82)  : i32
     v109 = const.i32 0  : i32
     v110 = neq v108, v109  : i1
-    condbr v110, block4, block22
+    condbr v110, block4(v12, v3, v0, v80, v8, v33), block22
 
 block22:
     v111 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v82)  : i32
@@ -4268,7 +4268,7 @@ block22:
     v116 = cast v115  : i32
     v117 = const.i32 0  : i32
     v118 = neq v116, v117  : i1
-    condbr v118, block4, block23
+    condbr v118, block4(v12, v3, v0, v80, v8, v33), block23
 
 block23:
     v119 = sub v112, v79  : i32
@@ -4315,7 +4315,7 @@ block26:
     v170 = cast v169  : i32
     v171 = const.i32 0  : i32
     v172 = neq v170, v171  : i1
-    condbr v172, block4, block29
+    condbr v172, block4(v151, v3, v0, v152, v8, v33), block29
 
 block27:
     v143 = sub v127, v79  : i32
@@ -4394,7 +4394,7 @@ block29:
     v227 = add v226, 436  : u32
     v228 = inttoptr v227  : *mut i32
     store v228, v225
-    br block3(v173)
+    br block3(v173, v406)
 
 block30:
     v247 = cast v12  : u32
@@ -4430,7 +4430,7 @@ block32:
     call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v272, v112)
     v279 = const.i32 0  : i32
     v280 = neq v272, v279  : i1
-    condbr v280, block3(v272), block35
+    condbr v280, block3(v272, v407), block35
 
 block33:
     v274 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v80, v79)  : i32
@@ -4439,13 +4439,13 @@ block33:
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v12, v274, v262)
     v276 = const.i32 0  : i32
     v277 = neq v272, v276  : i1
-    condbr v277, block3(v272), block34
+    condbr v277, block3(v272, v407), block34
 
 block34:
-    br block4
+    br block4(v275, v3, v0, v272, v8, v33)
 
 block35:
-    br block4
+    br block4(v275, v370, v381, v272, v407, v419)
 
 block36:
     v292 = sub v285, v79  : i32
@@ -4471,7 +4471,7 @@ block37(v307: i32, v311: i32):
     store v314, v311
     v316 = const.i32 0  : i32
     v317 = neq v80, v316  : i1
-    condbr v317, block3(v315), block40
+    condbr v317, block3(v315, v408), block40
 
 block38:
     v304 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v80, v79)  : i32
@@ -4488,7 +4488,7 @@ block39:
     br block37(v303, v302)
 
 block40:
-    br block4
+    br block4(v306, v3, v0, v315, v8, v33)
 
 block41:
     v328 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v80, v79)  : i32
@@ -4498,16 +4498,16 @@ block41:
     br block12
 
 block42:
-    br block4
+    br block4(v12, v3, v0, v329, v8, v33)
 
 block43:
-    br block4
+    br block4(v12, v3, v0, v80, v8, v33)
 
 block44:
-    br block4
+    br block4(v12, v3, v0, v80, v8, v33)
 
 block45:
-    v385 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v80)  : i32
+    v385 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v384)  : i32
     v386 = const.i32 -8  : i32
     v387 = const.i32 -4  : i32
     v388 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v384)  : i32
@@ -4522,9 +4522,9 @@ block45:
     v397 = const.i32 0  : i32
     v398 = neq v396, v397  : i1
     v399 = select v398, v392, v368  : i32
-    v400 = call noname::memcpy(v373, v0, v399)  : i32
+    v400 = call noname::memcpy(v373, v379, v399)  : i32
     call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$4free17h501de2a6604ba1ffE(v366, v379)
-    br block2(v400)
+    br block2(v405, v400)
 }
 
 pub fn __rust_alloc_error_handler(i32, i32) {
@@ -4548,9 +4548,9 @@ block0(v0: i32, v1: i32, v2: i32, v3: i32):
 block1:
     ret 
 
-block2:
+block2(v93: i32):
     v94 = const.i32 1  : i32
-    v95 = cast v0  : u32
+    v95 = cast v93  : u32
     v96 = inttoptr v95  : *mut i32
     store v96, v94
     br block1
@@ -4561,7 +4561,7 @@ block3:
     v91 = add v90, 4  : u32
     v92 = inttoptr v91  : *mut i32
     store v92, v89
-    br block2
+    br block2(v0)
 
 block4:
     v81 = const.i32 0  : i32
@@ -4574,7 +4574,7 @@ block4:
     v87 = cast v86  : u32
     v88 = inttoptr v87  : *mut i32
     store v88, v2
-    br block2
+    br block2(v0)
 
 block5:
     v10 = const.i32 -1  : i32
@@ -4596,7 +4596,7 @@ block6:
     v23 = neq v21, v22  : i1
     condbr v23, block9, block10
 
-block7(v54: i32):
+block7(v54: i32, v67: i32, v73: i32):
     v55 = const.i32 0  : i32
     v56 = eq v54, v55  : i1
     v57 = cast v56  : i32
@@ -4606,7 +4606,7 @@ block7(v54: i32):
 
 block8:
     v53 = call noname::__rust_alloc(v2, v1)  : i32
-    br block7(v53)
+    br block7(v53, v51, v52)
 
 block9:
     v43 = const.i32 0  : i32
@@ -4628,7 +4628,7 @@ block11:
     v40 = inttoptr v39  : *mut i32
     v41 = load v40  : i32
     v42 = call noname::__rust_realloc(v41, v28, v1, v2)  : i32
-    br block7(v42)
+    br block7(v42, v2, v1)
 
 block12:
     v31 = const.i32 0  : i32
@@ -4645,7 +4645,7 @@ block13:
     br block8
 
 block14:
-    br block7(v1)
+    br block7(v1, v2, v1)
 
 block15:
     v45 = const.i32 0  : i32
@@ -4657,19 +4657,19 @@ block15:
     br block8
 
 block16:
-    br block7(v1)
+    br block7(v1, v2, v1)
 
 block17:
     v74 = cast v60  : u32
     v75 = add v74, 4  : u32
     v76 = inttoptr v75  : *mut i32
-    store v76, v1
+    store v76, v73
     v77 = const.i32 8  : i32
     v78 = add v60, v77  : i32
     v79 = cast v78  : u32
     v80 = inttoptr v79  : *mut i32
     store v80, v67
-    br block2
+    br block2(v60)
 
 block18:
     v62 = cast v0  : u32
@@ -4680,7 +4680,7 @@ block18:
     v66 = add v60, v65  : i32
     v68 = cast v66  : u32
     v69 = inttoptr v68  : *mut i32
-    store v69, v2
+    store v69, v67
     v70 = const.i32 0  : i32
     v71 = cast v60  : u32
     v72 = inttoptr v71  : *mut i32
@@ -4779,7 +4779,7 @@ block4:
 
 block5:
     v94 = const.i32 32  : i32
-    v95 = add v4, v94  : i32
+    v95 = add v54, v94  : i32
     v96 = global.symbol @__stack_pointer  : *mut i32
     store v96, v95
     br block1
@@ -5540,7 +5540,7 @@ block0(v0: i32, v1: i32, v2: i32):
 block1(v3: i32):
     ret v3
 
-block2(v143: i32, v149: i32, v172: i32):
+block2(v143: i32, v149: i32, v172: i32, v174: i32):
     v144 = const.i32 0  : i32
     v145 = eq v143, v144  : i1
     v146 = cast v145  : i32
@@ -5559,16 +5559,16 @@ block3:
     v19 = cast v18  : i32
     v20 = const.i32 0  : i32
     v21 = neq v19, v20  : i1
-    condbr v21, block5, block6
+    condbr v21, block5(v16), block6
 
 block4:
-    br block2(v2, v0, v1)
+    br block2(v2, v0, v1, v0)
 
-block5:
+block5(v42: i32):
     v47 = sub v2, v15  : i32
     v48 = const.i32 -4  : i32
     v49 = band v47, v48  : i32
-    v50 = add v16, v49  : i32
+    v50 = add v42, v49  : i32
     v53 = add v1, v45  : i32
     v54 = const.i32 3  : i32
     v55 = band v53, v54  : i32
@@ -5604,16 +5604,16 @@ block7(v22: i32, v23: i32):
     condbr v41, block7(v34, v32), block9
 
 block8:
-    br block5
+    br block5(v35)
 
 block9:
     br block8
 
-block10:
+block10(v150: i32, v175: i32):
     v134 = const.i32 3  : i32
     v135 = band v47, v134  : i32
     v142 = add v53, v49  : i32
-    br block2(v135, v50, v142)
+    br block2(v135, v150, v142, v175)
 
 block11:
     v108 = const.i32 1  : i32
@@ -5621,7 +5621,7 @@ block11:
     v110 = cast v109  : i32
     v111 = const.i32 0  : i32
     v112 = neq v110, v111  : i1
-    condbr v112, block10, block17
+    condbr v112, block10(v50, v176), block17
 
 block12:
     v61 = const.i32 1  : i32
@@ -5629,7 +5629,7 @@ block12:
     v63 = cast v62  : i32
     v64 = const.i32 0  : i32
     v65 = neq v63, v64  : i1
-    condbr v65, block10, block13
+    condbr v65, block10(v50, v0), block13
 
 block13:
     v66 = const.i32 3  : i32
@@ -5677,7 +5677,7 @@ block14(v81: i32, v82: i32, v88: i32):
 block15:
 
 block16:
-    br block10
+    br block10(v101, v176)
 
 block17:
     br block18(v42, v53)
@@ -5702,13 +5702,13 @@ block18(v113: i32, v114: i32):
     condbr v130, block18(v123, v121), block20
 
 block19:
-    br block10
+    br block10(v124, v176)
 
 block20:
     br block19
 
 block21:
-    br block1(v0)
+    br block1(v174)
 
 block22:
     v151 = add v149, v143  : i32
