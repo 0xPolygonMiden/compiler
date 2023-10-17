@@ -1,11 +1,13 @@
 //! Helper functions and structures for the translation.
 
 use miden_diagnostics::SourceSpan;
-use miden_hir::{AbiParam, CallConv, FunctionBuilder, InstBuilder, Linkage, Signature, Value};
+use miden_hir::{AbiParam, CallConv, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
 
+use crate::function_builder_ext::FunctionBuilderExt;
+
 /// Emit instructions to produce a zero value in the given type.
-pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilder) -> Value {
+pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> Value {
     match ty {
         Type::I1 => builder.ins().i1(false, SourceSpan::default()),
         Type::I8 => builder.ins().i8(0, SourceSpan::default()),

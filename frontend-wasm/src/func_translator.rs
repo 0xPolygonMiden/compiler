@@ -55,9 +55,8 @@ impl FuncTranslator {
         //     func.signature
         // );
 
-        let mut builder =
-            FunctionBuilderExt::new(mod_func_builder.func_builder(), &mut self.func_ctx);
-        let entry_block = builder.inner.current_block();
+        let mut builder = FunctionBuilderExt::new(mod_func_builder, &mut self.func_ctx);
+        let entry_block = builder.current_block();
         builder.seal_block(entry_block); // Declare all predecessors known.
 
         let num_params = declare_parameters(&mut builder, entry_block);
@@ -66,7 +65,7 @@ impl FuncTranslator {
         // function and its return values.
         let exit_block = builder.create_block();
         builder.append_block_params_for_function_returns(exit_block);
-        self.state.initialize(&builder.func().signature, exit_block);
+        self.state.initialize(&builder.signature(), exit_block);
 
         parse_local_decls(&mut reader, &mut builder, num_params, func_validator)?;
         parse_function_body(
@@ -87,10 +86,10 @@ impl FuncTranslator {
 ///
 /// Return the number of local variables declared.
 fn declare_parameters(builder: &mut FunctionBuilderExt, entry_block: Block) -> usize {
-    let sig_len = builder.func().signature.params().len();
+    let sig_len = builder.signature().params().len();
     let mut next_local = 0;
     for i in 0..sig_len {
-        let abi_param = &builder.func().signature.params()[i];
+        let abi_param = &builder.signature().params()[i];
         let local = Variable::new(next_local);
         builder.declare_var(local, abi_param.ty.clone());
         next_local += 1;
@@ -135,7 +134,7 @@ fn declare_locals(
 ) -> WasmResult<()> {
     let ty = valtype_to_type(&wasm_type)?;
     // All locals are initialized to 0.
-    let init = emit_zero(&ty, &mut builder.inner);
+    let init = emit_zero(&ty, builder);
     for _ in 0..count {
         let local = Variable::new(*next_local);
         builder.declare_var(local, ty.clone());

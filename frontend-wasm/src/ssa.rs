@@ -13,7 +13,7 @@ use core::mem;
 use miden_diagnostics::SourceSpan;
 use miden_hir::cranelift_entity::packed_option::PackedOption;
 use miden_hir::cranelift_entity::{entity_impl, EntityList, EntitySet, ListPool, SecondaryMap};
-use miden_hir::{Block, Function, Inst, Value};
+use miden_hir::{Block, DataFlowGraph, Inst, Value};
 use miden_hir_type::Type;
 
 /// Structure containing the data relevant the construction of SSA for a given function.
@@ -173,7 +173,7 @@ impl SSABuilder {
     /// responsible for making sure that you initialize your variables.
     pub fn use_var(
         &mut self,
-        func: &mut Function,
+        dfg: &mut DataFlowGraph,
         var: Variable,
         ty: Type,
         block: Block,
@@ -183,8 +183,8 @@ impl SSABuilder {
         debug_assert!(self.side_effects.is_empty());
 
         // Prepare the 'calls' and 'results' stacks for the state machine.
-        self.use_var_nonlocal(func, var, ty.clone(), block);
-        let value = self.run_state_machine(func, var, ty);
+        self.use_var_nonlocal(dfg, var, ty.clone(), block);
+        let value = self.run_state_machine(dfg, var, ty);
 
         let side_effects = mem::take(&mut self.side_effects);
         (value, side_effects)
@@ -193,7 +193,13 @@ impl SSABuilder {
     /// Resolve the minimal SSA Value of `var` in `block` by traversing predecessors.
     ///
     /// This function sets up state for `run_state_machine()` but does not execute it.
-    fn use_var_nonlocal(&mut self, func: &mut Function, var: Variable, ty: Type, mut block: Block) {
+    fn use_var_nonlocal(
+        &mut self,
+        dfg: &mut DataFlowGraph,
+        var: Variable,
+        ty: Type,
+        mut block: Block,
+    ) {
         // First, try Local Value Numbering (Algorithm 1 in the paper).
         // If the variable already has a known Value in this block, use that.
         if let Some(val) = self.variables[var][block].expand() {
@@ -204,7 +210,7 @@ impl SSABuilder {
         // Otherwise, use Global Value Numbering (Algorithm 2 in the paper).
         // This resolves the Value with respect to its predecessors.
         // Find the most recent definition of `var`, and the block the definition comes from.
-        let (val, from) = self.find_var(func, var, ty, block);
+        let (val, from) = self.find_var(dfg, var, ty, block);
 
         // The `from` block returned from `find_var` is guaranteed to be on the path we follow by
         // traversing only single-predecessor edges. It might be equal to `block` if there is no
@@ -257,7 +263,7 @@ impl SSABuilder {
     /// gives us a definition we can reuse throughout the rest of the cycle.
     fn find_var(
         &mut self,
-        func: &mut Function,
+        dfg: &mut DataFlowGraph,
         var: Variable,
         ty: Type,
         mut block: Block,
@@ -278,9 +284,7 @@ impl SSABuilder {
 
         // We've promised to return the most recent block where `var` was defined, but we didn't
         // find a usable definition. So create one.
-        let val = func
-            .dfg
-            .append_block_param(block, ty, SourceSpan::default());
+        let val = dfg.append_block_param(block, ty, SourceSpan::default());
         var_defs[block] = PackedOption::from(val);
 
         // Now every predecessor needs to pass its definition of this variable to the newly added
@@ -349,18 +353,18 @@ impl SSABuilder {
     /// take into account the Phi function placed by the SSA algorithm.
     ///
     /// Returns the list of newly created blocks for critical edge splitting.
-    pub fn seal_block(&mut self, block: Block, func: &mut Function) -> SideEffects {
+    pub fn seal_block(&mut self, block: Block, dfg: &mut DataFlowGraph) -> SideEffects {
         debug_assert!(
             !self.is_sealed(block),
             "Attempting to seal {} which is already sealed.",
             block
         );
-        self.seal_one_block(block, func);
+        self.seal_one_block(block, dfg);
         mem::take(&mut self.side_effects)
     }
 
     /// Helper function for `seal_block`
-    fn seal_one_block(&mut self, block: Block, func: &mut Function) {
+    fn seal_one_block(&mut self, block: Block, dfg: &mut DataFlowGraph) {
         // For each undef var we look up values in the predecessors and create a block parameter
         // only if necessary.
         let mut undef_variables =
@@ -372,7 +376,7 @@ impl SSABuilder {
 
         let predecessors = self.predecessors(block);
         if predecessors.len() == 1 {
-            let pred = func.dfg.insts[predecessors[0]].block;
+            let pred = dfg.insts[predecessors[0]].block;
             self.ssa_blocks[block].single_predecessor = PackedOption::from(pred);
         }
 
@@ -386,7 +390,7 @@ impl SSABuilder {
             // up as a result from any of our predecessors, then it never got assigned on the loop
             // through that block. We get the value from the next block param, where it was first
             // allocated in find_var.
-            let block_params = func.dfg.block_params(block);
+            let block_params = dfg.block_params(block);
 
             // On each iteration through this loop, there are (ssa_params - idx) undefined variables
             // left to process. Previous iterations through the loop may have removed earlier block
@@ -399,7 +403,7 @@ impl SSABuilder {
             // self.side_effects may be non-empty here so that callers can
             // accumulate side effects over multiple calls.
             self.begin_predecessors_lookup(val, block);
-            self.run_state_machine(func, var, func.dfg.value_type(val).clone());
+            self.run_state_machine(dfg, var, dfg.value_type(val).clone());
         }
 
         undef_variables.clear(&mut self.variable_pool);
@@ -438,7 +442,7 @@ impl SSABuilder {
     /// block parameters as needed.
     fn finish_predecessors_lookup(
         &mut self,
-        func: &mut Function,
+        dfg: &mut DataFlowGraph,
         sentinel: Value,
         dest_block: Block,
     ) -> Value {
@@ -456,7 +460,7 @@ impl SSABuilder {
             let mut iter = results
                 .as_slice()
                 .iter()
-                .map(|&val| func.dfg.resolve_aliases(val))
+                .map(|&val| dfg.resolve_aliases(val))
                 .filter(|&val| val != sentinel);
             if let Some(val) = iter.next() {
                 // This variable has at least one non-temporary definition. If they're all the same
@@ -470,14 +474,14 @@ impl SSABuilder {
                 // The variable is used but never defined before. This is an irregularity in the
                 // code, but rather than throwing an error we silently initialize the variable to
                 // 0. This will have no effect since this situation happens in unreachable code.
-                if !func.dfg.is_block_inserted(dest_block) {
-                    func.dfg.append_block(dest_block);
+                if !dfg.is_block_inserted(dest_block) {
+                    dfg.append_block(dest_block);
                 }
                 self.side_effects
                     .instructions_added_to_blocks
                     .push(dest_block);
                 let zero = emit_zero(
-                    func.dfg.value_type(sentinel),
+                    dfg.value_type(sentinel),
                     // FuncCursor::new(func).at_first_insertion_point(dest_block),
                 );
                 Some(zero)
@@ -489,14 +493,13 @@ impl SSABuilder {
             // so we don't need to have it as a block argument.
             // We need to replace all the occurrences of val with pred_val but since
             // we can't afford a re-writing pass right now we just declare an alias.
-            func.dfg.remove_block_param(sentinel);
-            func.dfg.change_to_alias(sentinel, pred_val);
+            dfg.remove_block_param(sentinel);
+            dfg.change_to_alias(sentinel, pred_val);
             pred_val
         } else {
             // There is disagreement in the predecessors on which value to use so we have
             // to keep the block argument.
             let mut preds = self.ssa_blocks[dest_block].predecessors;
-            let dfg = &mut func.dfg;
             for (idx, &val) in results.as_slice().iter().enumerate() {
                 let pred = preds.get_mut(idx, &mut self.inst_pool).unwrap();
                 let branch = *pred;
@@ -532,12 +535,12 @@ impl SSABuilder {
     /// `use_var` in each predecessor. To avoid risking running out of callstack
     /// space, we keep an explicit stack and use a small state machine rather
     /// than literal recursion.
-    fn run_state_machine(&mut self, func: &mut Function, var: Variable, ty: Type) -> Value {
+    fn run_state_machine(&mut self, func: &mut DataFlowGraph, var: Variable, ty: Type) -> Value {
         // Process the calls scheduled in `self.calls` until it is empty.
         while let Some(call) = self.calls.pop() {
             match call {
                 Call::UseVar(branch) => {
-                    let block = func.dfg.insts[branch].block;
+                    let block = func.insts[branch].block;
                     self.use_var_nonlocal(func, var, ty.clone(), block);
                 }
                 Call::FinishPredecessorsLookup(sentinel, dest_block) => {

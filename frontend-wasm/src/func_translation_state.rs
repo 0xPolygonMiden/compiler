@@ -14,7 +14,7 @@ use crate::{
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{
-    cranelift_entity::EntityRef, Block, CallConv, Function, FunctionIdent, Ident, Inst,
+    cranelift_entity::EntityRef, Block, CallConv, DataFlowGraph, FunctionIdent, Ident, Inst,
     InstBuilder, Linkage, Signature, Symbol, Value,
 };
 use miden_hir_type::Type;
@@ -451,7 +451,7 @@ impl FuncTranslationState {
     /// Import the callee into `func`'s DFG if it is not already present.
     pub(crate) fn get_direct_func(
         &mut self,
-        func: &mut Function,
+        dfg: &mut DataFlowGraph,
         index: u32,
         mod_info: &ModuleInfo,
         diagnostics: &DiagnosticsHandler,
@@ -469,11 +469,9 @@ impl FuncTranslationState {
                     .unwrap_or_else(|| format!("func{}", index.index()));
                 let func_name_id = Ident::with_empty_span(Symbol::intern(&func_name));
                 let sig = sig_from_funct_type(&func_type, CallConv::SystemV, Linkage::External);
-                let Ok(func_id) =
-                    func.dfg
-                        .import_function(mod_info.name, func_name_id, sig.clone())
+                let Ok(func_id) = dfg.import_function(mod_info.name, func_name_id, sig.clone())
                 else {
-                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature (function {})", func_name_id, mod_info.name, func.id);
+                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature", func_name_id, mod_info.name);
                     diagnostics
                         .diagnostic(miden_diagnostics::Severity::Error)
                         .with_message(message.clone())

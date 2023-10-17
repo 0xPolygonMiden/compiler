@@ -630,8 +630,9 @@ impl<'m> ModuleFunctionBuilder<'m> {
         self.function.id
     }
 
-    pub fn func_builder(&mut self) -> FunctionBuilder {
-        FunctionBuilder::new(&mut self.function)
+    /// Get the signature of the underlying function
+    pub fn signature(&self) -> &Signature {
+        &self.function.signature
     }
 
     pub fn module<'a, 'b: 'a>(&'b mut self) -> &'a mut ModuleBuilder {
