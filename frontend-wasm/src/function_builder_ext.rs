@@ -5,12 +5,11 @@ use miden_hir::Block;
 use miden_hir::Br;
 use miden_hir::CondBr;
 use miden_hir::DataFlowGraph;
-use miden_hir::Function;
-use miden_hir::FunctionBuilder;
 use miden_hir::InsertionPoint;
 use miden_hir::Inst;
 use miden_hir::InstBuilderBase;
 use miden_hir::Instruction;
+use miden_hir::ModuleFunctionBuilder;
 use miden_hir::ProgramPoint;
 use miden_hir::Switch;
 use miden_hir::Value;
@@ -60,25 +59,44 @@ enum BlockStatus {
 
 /// A wrapper around Miden's `FunctionBuilder` and `SSABuilder` which provides
 /// additional API for dealing with variables and SSA construction.
-pub struct FunctionBuilderExt<'a> {
-    pub inner: FunctionBuilder<'a>,
+pub struct FunctionBuilderExt<'a, 'b, 'c: 'b> {
+    inner: &'b mut ModuleFunctionBuilder<'c>,
     func_ctx: &'a mut FunctionBuilderContext,
 }
 
-impl<'a> FunctionBuilderExt<'a> {
-    pub fn new(inner: FunctionBuilder<'a>, func_ctx: &'a mut FunctionBuilderContext) -> Self {
+impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
+    pub fn new(
+        inner: &'b mut ModuleFunctionBuilder<'c>,
+        func_ctx: &'a mut FunctionBuilderContext,
+    ) -> Self {
         debug_assert!(func_ctx.is_empty());
-        // func_ctx.ssa.declare_block(inner.entry);
         Self { inner, func_ctx }
     }
 
-    pub fn ins<'short>(&'short mut self) -> FuncInstBuilderExt<'short, 'a> {
+    pub fn data_flow_graph(&self) -> &DataFlowGraph {
+        &self.inner.data_flow_graph()
+    }
+
+    pub fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
+        self.inner.data_flow_graph_mut()
+    }
+
+    pub fn signature(&self) -> &miden_hir::Signature {
+        self.inner.signature()
+    }
+
+    pub fn ins<'short>(&'short mut self) -> FuncInstBuilderExt<'short, 'a, 'b, 'c> {
         let block = self.inner.current_block();
         FuncInstBuilderExt::new(self, block)
     }
 
-    pub fn func(&'a self) -> &'a Function {
-        self.inner.func
+    #[inline]
+    pub fn current_block(&self) -> Block {
+        self.inner.current_block()
+    }
+
+    pub fn inst_results(&self, inst: Inst) -> &[Value] {
+        self.inner.inst_results(inst)
     }
 
     pub fn create_block(&mut self) -> Block {
@@ -111,7 +129,7 @@ impl<'a> FunctionBuilderExt<'a> {
             "You can't add block parameters after adding any instruction"
         );
 
-        for argtyp in self.inner.func.signature.results().to_vec() {
+        for argtyp in self.signature().results().to_vec() {
             self.inner
                 .append_block_param(block, argtyp.ty.clone(), SourceSpan::default());
         }
@@ -153,7 +171,10 @@ impl<'a> FunctionBuilderExt<'a> {
     /// created. Forgetting to call this method on every block will cause inconsistencies in the
     /// produced functions.
     pub fn seal_block(&mut self, block: Block) {
-        let side_effects = self.func_ctx.ssa.seal_block(block, self.inner.func);
+        let side_effects = self
+            .func_ctx
+            .ssa
+            .seal_block(block, self.inner.data_flow_graph_mut());
         self.handle_ssa_side_effects(side_effects);
     }
 
@@ -252,9 +273,10 @@ impl<'a> FunctionBuilderExt<'a> {
                 "variable {:?} is used but its type has not been declared",
                 var
             );
+            let current_block = self.inner.current_block();
             self.func_ctx
                 .ssa
-                .use_var(self.inner.func, var, ty, self.inner.current_block())
+                .use_var(self.inner.data_flow_graph_mut(), var, ty, current_block)
         };
         self.handle_ssa_side_effects(side_effects);
         Ok(val)
@@ -280,7 +302,7 @@ impl<'a> FunctionBuilderExt<'a> {
             .types
             .get(var)
             .ok_or(DefVariableError::DefinedBeforeDeclared(var))?;
-        if var_ty != self.inner.func.dfg.value_type(val) {
+        if var_ty != self.data_flow_graph().value_type(val) {
             return Err(DefVariableError::TypeMismatch(var, val));
         }
 
@@ -298,7 +320,7 @@ impl<'a> FunctionBuilderExt<'a> {
                 DefVariableError::TypeMismatch(var, val) => {
                     assert_eq!(
                         &self.func_ctx.types[var],
-                        self.inner.func.dfg.value_type(val),
+                        self.data_flow_graph().value_type(val),
                         "declared type of variable {:?} doesn't match type of value {}",
                         var,
                         val
@@ -329,7 +351,7 @@ impl<'a> FunctionBuilderExt<'a> {
     ///
     /// The entry block of a function is never unreachable.
     pub fn is_unreachable(&self) -> bool {
-        let is_entry = self.inner.current_block() == self.inner.func.dfg.entry_block();
+        let is_entry = self.inner.current_block() == self.data_flow_graph().entry_block();
         !is_entry
             && self.func_ctx.ssa.is_sealed(self.inner.current_block())
             && !self
@@ -344,7 +366,7 @@ impl<'a> FunctionBuilderExt<'a> {
     /// other jump instructions.
     pub fn change_jump_destination(&mut self, inst: Inst, old_block: Block, new_block: Block) {
         self.func_ctx.ssa.remove_block_predecessor(old_block, inst);
-        match self.inner.func.dfg.insts[inst].data.item {
+        match self.data_flow_graph_mut().insts[inst].data.item {
             Instruction::Br(Br {
                 ref mut destination,
                 ..
@@ -408,26 +430,26 @@ pub enum DefVariableError {
     DefinedBeforeDeclared(Variable),
 }
 
-pub struct FuncInstBuilderExt<'a, 'b: 'a> {
-    builder: &'a mut FunctionBuilderExt<'b>,
+pub struct FuncInstBuilderExt<'a, 'b: 'a, 'c, 'd: 'c> {
+    builder: &'a mut FunctionBuilderExt<'b, 'c, 'd>,
     ip: InsertionPoint,
 }
-impl<'a, 'b> FuncInstBuilderExt<'a, 'b> {
-    fn new(builder: &'a mut FunctionBuilderExt<'b>, block: Block) -> Self {
-        assert!(builder.inner.func.dfg.is_block_inserted(block));
+impl<'a, 'b, 'c, 'd> FuncInstBuilderExt<'a, 'b, 'c, 'd> {
+    fn new(builder: &'a mut FunctionBuilderExt<'b, 'c, 'd>, block: Block) -> Self {
+        assert!(builder.data_flow_graph().is_block_inserted(block));
         Self {
             builder,
             ip: InsertionPoint::after(ProgramPoint::Block(block)),
         }
     }
 }
-impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
+impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> {
     fn data_flow_graph(&self) -> &DataFlowGraph {
-        &self.builder.inner.func.dfg
+        &self.builder.data_flow_graph()
     }
 
     fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
-        &mut self.builder.inner.func.dfg
+        self.builder.data_flow_graph_mut()
     }
 
     fn insertion_point(&self) -> InsertionPoint {
@@ -443,12 +465,10 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
         let opcode = data.opcode();
         let inst = self
             .builder
-            .inner
-            .func
-            .dfg
+            .data_flow_graph_mut()
             .insert_inst(self.ip, data, ty, span);
 
-        match &self.builder.inner.func.dfg.insts[inst].data.item {
+        match &self.builder.inner.data_flow_graph().insts[inst].data.item {
             Instruction::Br(Br { destination, .. }) => {
                 // If the user has supplied jump arguments we must adapt the arguments of
                 // the destination block
@@ -500,6 +520,6 @@ impl<'a, 'b> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b> {
         if opcode.is_terminator() {
             self.builder.fill_current_block()
         }
-        (inst, &mut self.builder.inner.func.dfg)
+        (inst, self.builder.data_flow_graph_mut())
     }
 }

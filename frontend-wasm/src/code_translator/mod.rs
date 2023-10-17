@@ -405,7 +405,7 @@ pub fn translate_operator(
 fn translate_br_table(
     targets: &wasmparser::BrTable<'_>,
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) -> Result<(), WasmError> {
     let default = targets.default();
@@ -426,7 +426,7 @@ fn translate_br_table(
         }
     };
     let val = state.pop1();
-    let val = if builder.func().dfg.value_type(val) != &U32 {
+    let val = if builder.data_flow_graph().value_type(val) != &U32 {
         builder.ins().cast(val, U32, span)
     } else {
         val
@@ -508,7 +508,7 @@ fn translate_load(
     ptr_ty: Type,
     memarg: &MemArg,
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) {
     let addr_int = state.pop1();
@@ -521,7 +521,7 @@ fn translate_load_sext(
     sext_ty: Type,
     memarg: &MemArg,
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) {
     let addr_int = state.pop1();
@@ -536,7 +536,7 @@ fn translate_load_zext(
     zext_ty: Type,
     memarg: &MemArg,
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) {
     assert!(ptr_ty.is_unsigned_integer());
@@ -551,11 +551,11 @@ fn translate_store(
     ptr_ty: Type,
     memarg: &MemArg,
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) {
     let (addr_int, val) = state.pop2();
-    let val_ty = builder.func().dfg.value_type(val);
+    let val_ty = builder.data_flow_graph().value_type(val);
     let arg = if ptr_ty != *val_ty {
         builder.ins().trunc(val, ptr_ty.clone(), span)
     } else {
@@ -572,7 +572,7 @@ fn prepare_addr(
     builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) -> Value {
-    let addr_int_ty = builder.func().dfg.value_type(addr_int);
+    let addr_int_ty = builder.data_flow_graph().value_type(addr_int);
     let addr_u32 = if *addr_int_ty == U32 {
         addr_int
     } else {
@@ -590,17 +590,21 @@ fn prepare_addr(
 
 fn translate_call(
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     function_index: &u32,
     mod_info: &ModuleInfo,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let (fident, num_args) =
-        state.get_direct_func(builder.inner.func, *function_index, mod_info, diagnostics)?;
+    let (fident, num_args) = state.get_direct_func(
+        builder.data_flow_graph_mut(),
+        *function_index,
+        mod_info,
+        diagnostics,
+    )?;
     let args = state.peekn_mut(num_args);
     let call = builder.ins().call(fident, &args, span);
-    let inst_results = builder.inner.inst_results(call);
+    let inst_results = builder.inst_results(call);
     state.popn(num_args);
     state.pushn(inst_results);
     Ok(())
@@ -608,7 +612,7 @@ fn translate_call(
 
 fn translate_return(
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
@@ -635,7 +639,7 @@ fn translate_return(
 fn translate_br(
     state: &mut FuncTranslationState,
     relative_depth: &u32,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) {
     let i = state.control_stack.len() - 1 - (*relative_depth as usize);
@@ -701,7 +705,7 @@ fn translate_br_if_args(
 
 fn translate_block(
     blockty: &wasmparser::BlockType,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     module_info: &ModuleInfo,
     span: SourceSpan,
@@ -824,7 +828,7 @@ fn translate_else(
 fn translate_if(
     blockty: &wasmparser::BlockType,
     state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     module_info: &ModuleInfo,
     span: SourceSpan,
 ) -> WasmResult<()> {
@@ -886,7 +890,7 @@ fn translate_if(
 
 fn translate_loop(
     blockty: &wasmparser::BlockType,
-    builder: &mut FunctionBuilderExt<'_>,
+    builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     module_info: &ModuleInfo,
     span: SourceSpan,

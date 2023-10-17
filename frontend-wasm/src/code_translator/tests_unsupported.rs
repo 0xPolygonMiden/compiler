@@ -30,8 +30,7 @@ fn check_unsupported(op: &Operator) {
     let mut module_func_builder = module_builder.function("func_name", sig.clone()).unwrap();
     let mut fb_ctx = FunctionBuilderContext::new();
     let mut state = FuncTranslationState::new();
-    let func_builder = module_func_builder.func_builder();
-    let mut builder_ext = FunctionBuilderExt::new(func_builder, &mut fb_ctx);
+    let mut builder_ext = FunctionBuilderExt::new(&mut module_func_builder, &mut fb_ctx);
     let result = translate_operator(
         op,
         &mut builder_ext,
