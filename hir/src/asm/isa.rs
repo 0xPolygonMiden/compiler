@@ -1,9 +1,10 @@
 use std::fmt;
 
 use cranelift_entity::entity_impl;
-use smallvec::SmallVec;
+use rustc_hash::FxHashMap;
+use smallvec::{smallvec, SmallVec};
 
-use crate::{Felt, FunctionIdent, LocalId};
+use crate::{Felt, FunctionIdent, Ident, LocalId};
 
 /// A handle that refers to a MASM code block
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -615,6 +616,364 @@ pub enum MasmOp {
     ///
     /// The behavior is undefined if either `a` or `b` are >= 2^32
     U32UncheckedMax,
+}
+impl MasmOp {
+    pub fn into_node(
+        self,
+        _codemap: &miden_diagnostics::CodeMap,
+        imports: &super::ModuleImportInfo,
+        local_ids: &FxHashMap<FunctionIdent, u16>,
+        proc_ids: &FxHashMap<FunctionIdent, miden_assembly::ProcedureId>,
+    ) -> SmallVec<[miden_assembly::ast::Node; 2]> {
+        use miden_assembly::ast::{Instruction, Node};
+        let node = match self {
+            Self::Padw => Instruction::PadW,
+            Self::Push(v) => Instruction::PushFelt(v),
+            Self::Push2([a, b]) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(a)),
+                    Node::Instruction(Instruction::PushFelt(b))
+                ]
+            }
+            Self::Pushw(word) => Instruction::PushWord(word),
+            Self::PushU8(v) => Instruction::PushFelt(Felt::new(v as u64)),
+            Self::PushU16(v) => Instruction::PushFelt(Felt::new(v as u64)),
+            Self::PushU32(v) => Instruction::PushFelt(Felt::new(v as u64)),
+            Self::Drop => Instruction::Drop,
+            Self::Dropw => Instruction::DropW,
+            Self::Dup(0) => Instruction::Dup0,
+            Self::Dup(1) => Instruction::Dup1,
+            Self::Dup(2) => Instruction::Dup2,
+            Self::Dup(3) => Instruction::Dup3,
+            Self::Dup(4) => Instruction::Dup4,
+            Self::Dup(5) => Instruction::Dup5,
+            Self::Dup(6) => Instruction::Dup6,
+            Self::Dup(7) => Instruction::Dup7,
+            Self::Dup(8) => Instruction::Dup8,
+            Self::Dup(9) => Instruction::Dup9,
+            Self::Dup(10) => Instruction::Dup10,
+            Self::Dup(11) => Instruction::Dup11,
+            Self::Dup(12) => Instruction::Dup12,
+            Self::Dup(13) => Instruction::Dup13,
+            Self::Dup(14) => Instruction::Dup14,
+            Self::Dup(15) => Instruction::Dup15,
+            Self::Dup(n) => {
+                panic!("invalid dup instruction, valid index range is 0..=15, got {n}")
+            }
+            Self::Dupw(0) => Instruction::DupW0,
+            Self::Dupw(1) => Instruction::DupW1,
+            Self::Dupw(2) => Instruction::DupW2,
+            Self::Dupw(3) => Instruction::DupW3,
+            Self::Dupw(n) => {
+                panic!("invalid dupw instruction, valid index range is 0..=3, got {n}")
+            }
+            Self::Swap(1) => Instruction::Swap1,
+            Self::Swap(2) => Instruction::Swap2,
+            Self::Swap(3) => Instruction::Swap3,
+            Self::Swap(4) => Instruction::Swap4,
+            Self::Swap(5) => Instruction::Swap5,
+            Self::Swap(6) => Instruction::Swap6,
+            Self::Swap(7) => Instruction::Swap7,
+            Self::Swap(8) => Instruction::Swap8,
+            Self::Swap(9) => Instruction::Swap9,
+            Self::Swap(10) => Instruction::Swap10,
+            Self::Swap(11) => Instruction::Swap11,
+            Self::Swap(12) => Instruction::Swap12,
+            Self::Swap(13) => Instruction::Swap13,
+            Self::Swap(14) => Instruction::Swap14,
+            Self::Swap(15) => Instruction::Swap15,
+            Self::Swap(n) => {
+                panic!("invalid swap instruction, valid index range is 1..=15, got {n}")
+            }
+            Self::Swapw(1) => Instruction::SwapW1,
+            Self::Swapw(2) => Instruction::SwapW2,
+            Self::Swapw(3) => Instruction::SwapW3,
+            Self::Swapw(n) => {
+                panic!("invalid swapw instruction, valid index range is 1..=3, got {n}")
+            }
+            Self::Movup(2) => Instruction::MovUp2,
+            Self::Movup(3) => Instruction::MovUp3,
+            Self::Movup(4) => Instruction::MovUp4,
+            Self::Movup(5) => Instruction::MovUp5,
+            Self::Movup(6) => Instruction::MovUp6,
+            Self::Movup(7) => Instruction::MovUp7,
+            Self::Movup(8) => Instruction::MovUp8,
+            Self::Movup(9) => Instruction::MovUp9,
+            Self::Movup(10) => Instruction::MovUp10,
+            Self::Movup(11) => Instruction::MovUp11,
+            Self::Movup(12) => Instruction::MovUp12,
+            Self::Movup(13) => Instruction::MovUp13,
+            Self::Movup(14) => Instruction::MovUp14,
+            Self::Movup(15) => Instruction::MovUp15,
+            Self::Movup(n) => {
+                panic!("invalid movup instruction, valid index range is 2..=15, got {n}")
+            }
+            Self::Movupw(2) => Instruction::MovUpW2,
+            Self::Movupw(3) => Instruction::MovUpW3,
+            Self::Movupw(n) => {
+                panic!("invalid movupw instruction, valid index range is 2..=3, got {n}")
+            }
+            Self::Movdn(2) => Instruction::MovDn2,
+            Self::Movdn(3) => Instruction::MovDn3,
+            Self::Movdn(4) => Instruction::MovDn4,
+            Self::Movdn(5) => Instruction::MovDn5,
+            Self::Movdn(6) => Instruction::MovDn6,
+            Self::Movdn(7) => Instruction::MovDn7,
+            Self::Movdn(8) => Instruction::MovDn8,
+            Self::Movdn(9) => Instruction::MovDn9,
+            Self::Movdn(10) => Instruction::MovDn10,
+            Self::Movdn(11) => Instruction::MovDn11,
+            Self::Movdn(12) => Instruction::MovDn12,
+            Self::Movdn(13) => Instruction::MovDn13,
+            Self::Movdn(14) => Instruction::MovDn14,
+            Self::Movdn(15) => Instruction::MovDn15,
+            Self::Movdn(n) => {
+                panic!("invalid movdn instruction, valid index range is 2..=15, got {n}")
+            }
+            Self::Movdnw(2) => Instruction::MovDnW2,
+            Self::Movdnw(3) => Instruction::MovDnW3,
+            Self::Movdnw(n) => {
+                panic!("invalid movdnw instruction, valid index range is 2..=3, got {n}")
+            }
+            Self::Cswap => Instruction::CSwap,
+            Self::Cswapw => Instruction::CSwapW,
+            Self::Cdrop => Instruction::CDrop,
+            Self::Cdropw => Instruction::CDropW,
+            Self::Assert => Instruction::Assert,
+            Self::Assertz => Instruction::Assertz,
+            Self::AssertEq => Instruction::AssertEq,
+            Self::AssertEqw => Instruction::AssertEqw,
+            Self::LocAddr(id) => Instruction::Locaddr(id.as_usize() as u16),
+            Self::MemLoad => Instruction::MemLoad,
+            Self::MemLoadImm(addr) => Instruction::MemLoadImm(addr),
+            Self::MemLoadw => Instruction::MemLoadW,
+            Self::MemLoadwImm(addr) => Instruction::MemLoadWImm(addr),
+            Self::MemStore => Instruction::MemStore,
+            Self::MemStoreImm(addr) => Instruction::MemStoreImm(addr),
+            Self::MemStorew => Instruction::MemStoreW,
+            Self::MemStorewImm(addr) => Instruction::MemStoreWImm(addr),
+            Self::MemLoadOffset
+            | Self::MemLoadOffsetImm(_, _)
+            | Self::MemStoreOffset
+            | Self::MemStoreOffsetImm(_, _) => unimplemented!(
+                "this is an experimental instruction that is not supported by the Miden VM"
+            ),
+            Self::If(_, _) | Self::While(_) | Self::Repeat(_, _) => {
+                panic!("control flow instructions are meant to be handled specially by the caller")
+            }
+            Self::Exec(ref callee) => {
+                if let Some(idx) = local_ids.get(callee).copied() {
+                    Instruction::ExecLocal(idx)
+                } else {
+                    let aliased = if let Some(alias) = imports.alias(&callee.module) {
+                        FunctionIdent {
+                            module: alias,
+                            function: callee.function,
+                        }
+                    } else {
+                        let module_as_import = super::MasmImport::try_from(callee.module)
+                            .expect("invalid module name");
+                        FunctionIdent {
+                            module: Ident::with_empty_span(module_as_import.alias),
+                            function: callee.function,
+                        }
+                    };
+                    let id = proc_ids
+                        .get(&aliased)
+                        .copied()
+                        .unwrap_or_else(|| miden_assembly::ProcedureId::new(&aliased.to_string()));
+                    Instruction::ExecImported(id)
+                }
+            }
+            Self::Syscall(ref callee) => {
+                let aliased = if let Some(alias) = imports.alias(&callee.module) {
+                    FunctionIdent {
+                        module: alias,
+                        function: callee.function,
+                    }
+                } else {
+                    let module_as_import =
+                        super::MasmImport::try_from(callee.module).expect("invalid module name");
+                    FunctionIdent {
+                        module: Ident::with_empty_span(module_as_import.alias),
+                        function: callee.function,
+                    }
+                };
+                let id = proc_ids
+                    .get(&aliased)
+                    .copied()
+                    .unwrap_or_else(|| miden_assembly::ProcedureId::new(&aliased.to_string()));
+                Instruction::SysCall(id)
+            }
+            Self::Add => Instruction::Add,
+            Self::AddImm(imm) => Instruction::AddImm(imm),
+            Self::Sub => Instruction::Sub,
+            Self::SubImm(imm) => Instruction::SubImm(imm),
+            Self::Mul => Instruction::Mul,
+            Self::MulImm(imm) => Instruction::MulImm(imm),
+            Self::Div => Instruction::Div,
+            Self::DivImm(imm) => Instruction::DivImm(imm),
+            Self::Neg => Instruction::Neg,
+            Self::Inv => Instruction::Inv,
+            Self::Incr => Instruction::Incr,
+            Self::Pow2 => Instruction::Pow2,
+            Self::Exp => Instruction::Exp,
+            Self::ExpImm(imm) => Instruction::ExpBitLength(imm),
+            Self::Not => Instruction::Not,
+            Self::And => Instruction::And,
+            Self::AndImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(Felt::new(imm as u64))),
+                    Node::Instruction(Instruction::And)
+                ]
+            }
+            Self::Or => Instruction::Or,
+            Self::OrImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(Felt::new(imm as u64))),
+                    Node::Instruction(Instruction::Or)
+                ]
+            }
+            Self::Xor => Instruction::Xor,
+            Self::XorImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(Felt::new(imm as u64))),
+                    Node::Instruction(Instruction::Xor)
+                ]
+            }
+            Self::Eq => Instruction::Eq,
+            Self::EqImm(imm) => Instruction::EqImm(imm),
+            Self::Neq => Instruction::Neq,
+            Self::NeqImm(imm) => Instruction::NeqImm(imm),
+            Self::Gt => Instruction::Gt,
+            Self::GtImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(imm)),
+                    Node::Instruction(Instruction::Gt)
+                ]
+            }
+            Self::Gte => Instruction::Gte,
+            Self::GteImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(imm)),
+                    Node::Instruction(Instruction::Gte)
+                ]
+            }
+            Self::Lt => Instruction::Lt,
+            Self::LtImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(imm)),
+                    Node::Instruction(Instruction::Lt)
+                ]
+            }
+            Self::Lte => Instruction::Lte,
+            Self::LteImm(imm) => {
+                return smallvec![
+                    Node::Instruction(Instruction::PushFelt(imm)),
+                    Node::Instruction(Instruction::Lte)
+                ]
+            }
+            Self::IsOdd => Instruction::IsOdd,
+            Self::Eqw => Instruction::Eqw,
+            Self::Clk => Instruction::Clk,
+            Self::U32Test => Instruction::U32Test,
+            Self::U32Testw => Instruction::U32TestW,
+            Self::U32Assert => Instruction::U32Assert,
+            Self::U32Assert2 => Instruction::U32Assert2,
+            Self::U32Assertw => Instruction::U32AssertW,
+            Self::U32Cast => Instruction::U32Cast,
+            Self::U32Split => Instruction::U32Split,
+            Self::U32CheckedAdd => Instruction::U32CheckedAdd,
+            Self::U32CheckedAddImm(imm) => Instruction::U32CheckedAddImm(imm),
+            Self::U32OverflowingAdd => Instruction::U32OverflowingAdd,
+            Self::U32OverflowingAddImm(imm) => Instruction::U32OverflowingAddImm(imm),
+            Self::U32WrappingAdd => Instruction::U32WrappingAdd,
+            Self::U32WrappingAddImm(imm) => Instruction::U32WrappingAddImm(imm),
+            Self::U32OverflowingAdd3 => Instruction::U32OverflowingAdd3,
+            Self::U32WrappingAdd3 => Instruction::U32WrappingAdd3,
+            Self::U32CheckedSub => Instruction::U32CheckedSub,
+            Self::U32CheckedSubImm(imm) => Instruction::U32CheckedSubImm(imm),
+            Self::U32OverflowingSub => Instruction::U32OverflowingSub,
+            Self::U32OverflowingSubImm(imm) => Instruction::U32OverflowingSubImm(imm),
+            Self::U32WrappingSub => Instruction::U32WrappingSub,
+            Self::U32WrappingSubImm(imm) => Instruction::U32WrappingSubImm(imm),
+            Self::U32CheckedMul => Instruction::U32CheckedMul,
+            Self::U32CheckedMulImm(imm) => Instruction::U32CheckedMulImm(imm),
+            Self::U32OverflowingMul => Instruction::U32OverflowingMul,
+            Self::U32OverflowingMulImm(imm) => Instruction::U32OverflowingMulImm(imm),
+            Self::U32WrappingMul => Instruction::U32WrappingMul,
+            Self::U32WrappingMulImm(imm) => Instruction::U32WrappingMulImm(imm),
+            Self::U32OverflowingMadd => Instruction::U32OverflowingMadd,
+            Self::U32WrappingMadd => Instruction::U32WrappingMadd,
+            Self::U32CheckedDiv => Instruction::U32CheckedDiv,
+            Self::U32CheckedDivImm(imm) => Instruction::U32CheckedDivImm(imm),
+            Self::U32UncheckedDiv => Instruction::U32UncheckedDiv,
+            Self::U32UncheckedDivImm(imm) => Instruction::U32UncheckedDivImm(imm),
+            Self::U32CheckedMod => Instruction::U32CheckedMod,
+            Self::U32CheckedModImm(imm) => Instruction::U32CheckedModImm(imm),
+            Self::U32UncheckedMod => Instruction::U32UncheckedMod,
+            Self::U32UncheckedModImm(imm) => Instruction::U32UncheckedModImm(imm),
+            Self::U32CheckedDivMod => Instruction::U32CheckedDivMod,
+            Self::U32CheckedDivModImm(imm) => Instruction::U32CheckedDivModImm(imm),
+            Self::U32UncheckedDivMod => Instruction::U32UncheckedDivMod,
+            Self::U32UncheckedDivModImm(imm) => Instruction::U32UncheckedDivModImm(imm),
+            Self::U32And => Instruction::U32CheckedAnd,
+            Self::U32Or => Instruction::U32CheckedOr,
+            Self::U32Xor => Instruction::U32CheckedXor,
+            Self::U32Not => Instruction::U32CheckedNot,
+            Self::U32CheckedShl => Instruction::U32CheckedShl,
+            Self::U32CheckedShlImm(imm) => {
+                Instruction::U32CheckedShlImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32UncheckedShl => Instruction::U32UncheckedShl,
+            Self::U32UncheckedShlImm(imm) => {
+                Instruction::U32UncheckedShlImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32CheckedShr => Instruction::U32CheckedShr,
+            Self::U32CheckedShrImm(imm) => {
+                Instruction::U32CheckedShrImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32UncheckedShr => Instruction::U32UncheckedShr,
+            Self::U32UncheckedShrImm(imm) => {
+                Instruction::U32UncheckedShrImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32CheckedRotl => Instruction::U32CheckedRotl,
+            Self::U32CheckedRotlImm(imm) => {
+                Instruction::U32CheckedRotlImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32UncheckedRotl => Instruction::U32UncheckedRotl,
+            Self::U32UncheckedRotlImm(imm) => {
+                Instruction::U32UncheckedRotlImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32CheckedRotr => Instruction::U32CheckedRotr,
+            Self::U32CheckedRotrImm(imm) => {
+                Instruction::U32CheckedRotrImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32UncheckedRotr => Instruction::U32UncheckedRotr,
+            Self::U32UncheckedRotrImm(imm) => {
+                Instruction::U32UncheckedRotrImm(imm.try_into().expect("invalid rotation"))
+            }
+            Self::U32CheckedPopcnt => Instruction::U32CheckedPopcnt,
+            Self::U32UncheckedPopcnt => Instruction::U32UncheckedPopcnt,
+            Self::U32Eq => Instruction::U32CheckedEq,
+            Self::U32EqImm(imm) => Instruction::U32CheckedEqImm(imm),
+            Self::U32Neq => Instruction::U32CheckedNeq,
+            Self::U32NeqImm(imm) => Instruction::U32CheckedNeqImm(imm),
+            Self::U32CheckedLt => Instruction::U32CheckedLt,
+            Self::U32UncheckedLt => Instruction::U32UncheckedLt,
+            Self::U32CheckedLte => Instruction::U32CheckedLte,
+            Self::U32UncheckedLte => Instruction::U32UncheckedLte,
+            Self::U32CheckedGt => Instruction::U32CheckedGt,
+            Self::U32UncheckedGt => Instruction::U32UncheckedGt,
+            Self::U32CheckedGte => Instruction::U32CheckedGte,
+            Self::U32UncheckedGte => Instruction::U32UncheckedGte,
+            Self::U32CheckedMin => Instruction::U32CheckedMin,
+            Self::U32UncheckedMin => Instruction::U32UncheckedMin,
+            Self::U32CheckedMax => Instruction::U32CheckedMax,
+            Self::U32UncheckedMax => Instruction::U32UncheckedMax,
+        };
+        smallvec![Node::Instruction(node)]
+    }
 }
 
 /// This implementation displays the opcode name for the given [MasmOp]
