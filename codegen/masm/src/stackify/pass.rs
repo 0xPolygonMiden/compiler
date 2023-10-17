@@ -2085,9 +2085,6 @@ fn add_data_dependency(
             let dep_node = graph.add_node(Node::Stack(value));
             graph.add_dependency(node, dep_node);
         }
-        hir::ValueData::Alias { original, .. } => {
-            add_data_dependency(node, *original, pp, function, graph)
-        }
     }
 }
 

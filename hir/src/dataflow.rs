@@ -132,7 +132,6 @@ impl DataFlowGraph {
         match &self.values[v] {
             ValueData::Param { span, .. } => *span,
             ValueData::Inst { inst, .. } => self.inst_span(*inst),
-            ValueData::Alias { ty: _, original } => self.value_span(*original),
         }
     }
 
@@ -690,71 +689,6 @@ impl DataFlowGraph {
             }
             _ => panic!("{} must be a branch instruction", branch_inst),
         }
-    }
-
-    /// Resolve value aliases.
-    /// Find the original SSA value that `value` aliases.
-    pub fn resolve_aliases(&self, value: Value) -> Value {
-        let mut v = value;
-        // Note that values may be empty here.
-        for _ in 0..=self.values.len() {
-            if let ValueData::Alias { original, .. } = self.values[v] {
-                v = original;
-            } else {
-                return v;
-            }
-        }
-        panic!("Value alias loop detected for {}", value);
-    }
-
-    /// Determine if `v` is an attached instruction result / block parameter.
-    ///
-    /// An attached value can't be attached to something else without first being detached.
-    ///
-    /// Value aliases are not considered to be attached to anything. Use `resolve_aliases()` to
-    /// determine if the original aliased value is attached.
-    pub fn value_is_attached(&self, v: Value) -> bool {
-        use self::ValueData::*;
-        match self.values[v] {
-            Inst { inst, num, .. } => Some(&v) == self.inst_results(inst).get(num as usize),
-            Param { block, num, .. } => Some(&v) == self.block_params(block).get(num as usize),
-            Alias { .. } => false,
-        }
-    }
-
-    /// Turn a value into an alias of another.
-    ///
-    /// Change the `dest` value to behave as an alias of `src`. This means that all uses of `dest`
-    /// will behave as if they used that value `src`.
-    ///
-    /// The `dest` value can't be attached to an instruction or block.
-    pub fn change_to_alias(&mut self, dest: Value, src: Value) {
-        debug_assert!(!self.value_is_attached(dest));
-        // Try to create short alias chains by finding the original source value.
-        // This also avoids the creation of loops.
-        let original = self.resolve_aliases(src);
-        debug_assert_ne!(
-            dest, original,
-            "Aliasing {} to {} would create a loop",
-            dest, src
-        );
-        let ty = self.value_type(original);
-        debug_assert_eq!(
-            self.value_type(dest),
-            ty,
-            "Aliasing {} to {} would change its type {} to {}",
-            dest,
-            src,
-            self.value_type(dest),
-            ty
-        );
-        debug_assert_ne!(ty, &Type::Unknown);
-
-        self.values[dest] = ValueData::Alias {
-            ty: ty.clone(),
-            original,
-        }
-        .into();
     }
 }
 impl Index<Inst> for DataFlowGraph {
