@@ -23,13 +23,15 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> Value {
         Type::U128 => todo!(),
         Type::F64 => builder.ins().f64(0.0, SourceSpan::default()),
         Type::Felt => todo!(),
-        Type::Ptr(_) => panic!("cannot emit zero for pointer type"),
-        Type::Struct(_) => panic!("cannot emit zero for struct type"),
-        Type::Array(_, _) => panic!("cannot emit zero for array type"),
-        Type::Unknown => panic!("cannot emit zero for unknown type"),
-        Type::Unit => panic!("cannot emit zero for unit type"),
-        Type::Never => panic!("cannot emit zero for never type"),
-        Type::NativePtr(_, _) => todo!(),
+        Type::Ptr(_)
+        | Type::NativePtr(_, _)
+        | Type::Struct(_)
+        | Type::Array(_, _)
+        | Type::Unknown
+        | Type::Unit
+        | Type::Never => {
+            panic!("cannot emit zero for type: {:?}", ty);
+        }
     }
 }
 
