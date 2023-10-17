@@ -361,6 +361,10 @@ impl Function {
     pub fn imports<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a ExternalFunction> + 'a {
         self.dfg.imports().filter(|ext| ext.id != self.id)
     }
+
+    pub fn builder(&mut self) -> FunctionBuilder {
+        FunctionBuilder::new(self)
+    }
 }
 impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
