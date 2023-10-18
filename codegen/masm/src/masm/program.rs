@@ -30,6 +30,14 @@ impl Program {
         self.entrypoint.is_none()
     }
 
+    /// Returns true if this program contains a [Module] named `name`
+    pub fn contains<N>(&self, name: N) -> bool
+    where
+        Ident: PartialEq<N>,
+    {
+        self.modules.iter().any(|m| m.name == name)
+    }
+
     /// Write this [Program] to the given output directory.
     ///
     /// The provided [miden_diagnostics::CodeMap] is used for computing source locations.

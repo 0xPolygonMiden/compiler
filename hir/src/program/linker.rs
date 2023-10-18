@@ -369,16 +369,17 @@ impl Linker {
             // If the module is pending, it is being linked
             let is_linked = self.pending.contains_key(&node.module);
             let is_stdlib = node.module.as_str().starts_with("std::");
+            let is_intrinsic = node.module.as_str().starts_with("intrinsics::");
 
             // If a referenced module is not being linked, raise an error
             if !is_linked {
-                // However we ignore standard library modules in this check,
+                // However we ignore standard library/intrinsic modules in this check,
                 // as they are known to be provided at runtime.
                 //
                 // TODO: We need to validate that the given module/function
                 // is actually in the standard library though, and that the
                 // signature matches what is expected.
-                if is_stdlib {
+                if is_stdlib || is_intrinsic {
                     continue;
                 }
 

@@ -118,6 +118,14 @@ impl<'a> ProgramCompiler<'a> {
             self.output.modules.push(masm_module);
         }
 
+        // Ensure intrinsics modules are linked
+        self.output
+            .modules
+            .push(Module::load_intrinsic("intrinsics::mem").expect("parsing failed"));
+        self.output
+            .modules
+            .push(Module::load_intrinsic("intrinsics::i32").expect("parsing failed"));
+
         Ok(self.output)
     }
 
@@ -145,6 +153,23 @@ impl<'a> ProgramCompiler<'a> {
         if let Some(entry) = self.input.entrypoint() {
             if entry.module == module.name {
                 output.entry = Some(entry);
+            }
+        }
+
+        // If this module makes use of any intrinsics modules, add them to the program
+        for import in output
+            .imports
+            .iter()
+            .filter(|import| import.name.as_str().starts_with("intrinsics::"))
+        {
+            if self.output.contains(import.name) {
+                continue;
+            }
+            match Module::load_intrinsic(import.name.as_str()) {
+                Some(loaded) => {
+                    self.output.modules.push(loaded);
+                }
+                None => unimplemented!("unrecognized intrinsic module: '{}'", &import.name),
             }
         }
 

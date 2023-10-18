@@ -12,6 +12,12 @@ const I32_INTRINSICS: &'static str =
 const MEM_INTRINSICS: &'static str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"));
 
+/// This is a mapping of intrinsics module name to the raw MASM source for that module
+const INTRINSICS: [(&'static str, &'static str); 2] = [
+    ("intrinsics::i32", I32_INTRINSICS),
+    ("intrinsics::mem", MEM_INTRINSICS),
+];
+
 /// This represents a single compiled Miden Assembly module in a form that is
 /// designed to integrate well with the rest of our IR. You can think of this
 /// as an intermediate representation corresponding to the Miden Assembly AST,
@@ -225,13 +231,12 @@ impl fmt::Display for Module {
 }
 
 impl Module {
-    /// This is a helper that parses and returns the predefined `intrinsics::mem` module
-    pub fn mem_intrinsics() -> Self {
-        Self::parse_str(MEM_INTRINSICS, "intrinsics::mem").expect("invalid module")
-    }
-
-    /// This is a helper that parses and returns the predefined `intrinsics::i32` module
-    pub fn i32_intrinsics() -> Self {
-        Self::parse_str(I32_INTRINSICS, "intrinsics::i32").expect("invalid module")
+    /// This helper loads the named module from the set of intrinsics modules defined in this crate.
+    ///
+    /// Expects the fully-qualified name to be given, e.g. `intrinsics::mem`
+    pub fn load_intrinsic<N: AsRef<str>>(name: N) -> Option<Self> {
+        let name = name.as_ref();
+        let (_, source) = INTRINSICS.iter().find(|(n, _)| *n == name)?;
+        Some(Self::parse_str(source, name).expect("invalid module"))
     }
 }
