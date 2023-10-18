@@ -3,7 +3,7 @@ use std::fmt;
 use cranelift_entity::{EntityRef, PrimaryMap};
 use intrusive_collections::{intrusive_adapter, LinkedListLink};
 use miden_diagnostics::Spanned;
-use miden_hir::{FunctionIdent, Signature, Type};
+use miden_hir::{FunctionIdent, Ident, Signature, Type};
 use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -158,6 +158,75 @@ impl Function {
             body,
             start,
             is_export: self.signature.is_public(),
+        }
+    }
+
+    pub fn from_procedure_ast(
+        module: Ident,
+        proc: &miden_assembly::ast::ProcedureAst,
+        locals: &[FunctionIdent],
+        imported: &miden_assembly::ast::ModuleImports,
+    ) -> Box<Self> {
+        use miden_hir::{Linkage, Symbol};
+        let id = FunctionIdent {
+            module,
+            function: Ident::with_empty_span(Symbol::intern(proc.name.as_ref())),
+        };
+        let mut signature = Signature::new(vec![], vec![]);
+        if !proc.is_export {
+            signature.linkage = Linkage::Internal;
+        }
+        let mut function = Box::new(Self::new(id, signature));
+        for _ in 0..proc.num_locals {
+            function.alloc_local(Type::Felt);
+        }
+
+        function.from_code_body(function.body, &proc.body, locals, imported);
+
+        function
+    }
+
+    fn from_code_body(
+        &mut self,
+        current_block: BlockId,
+        code: &miden_assembly::ast::CodeBody,
+        locals: &[FunctionIdent],
+        imported: &miden_assembly::ast::ModuleImports,
+    ) {
+        use miden_assembly::ast::Node;
+
+        for node in code.nodes() {
+            match node {
+                Node::Instruction(ix) => {
+                    let current_block = self.block_mut(current_block);
+                    let mut ops = Op::from_masm(ix.clone(), locals, imported);
+                    current_block.append(&mut ops);
+                }
+                Node::IfElse {
+                    ref true_case,
+                    ref false_case,
+                } => {
+                    let then_blk = self.create_block();
+                    let else_blk = self.create_block();
+                    self.from_code_body(then_blk, true_case, locals, imported);
+                    self.from_code_body(else_blk, false_case, locals, imported);
+                    self.block_mut(current_block)
+                        .push(Op::If(then_blk, else_blk));
+                }
+                Node::Repeat { times, ref body } => {
+                    let body_blk = self.create_block();
+                    self.from_code_body(body_blk, body, locals, imported);
+                    self.block_mut(current_block).push(Op::Repeat(
+                        (*times).try_into().expect("too many repetitions"),
+                        body_blk,
+                    ));
+                }
+                Node::While { ref body } => {
+                    let body_blk = self.create_block();
+                    self.from_code_body(body_blk, body, locals, imported);
+                    self.block_mut(current_block).push(Op::While(body_blk));
+                }
+            }
         }
     }
 }

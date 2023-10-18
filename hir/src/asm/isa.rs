@@ -618,6 +618,294 @@ pub enum MasmOp {
     U32UncheckedMax,
 }
 impl MasmOp {
+    pub fn from_masm(
+        ix: miden_assembly::ast::Instruction,
+        locals: &[FunctionIdent],
+        imported: &miden_assembly::ast::ModuleImports,
+    ) -> SmallVec<[Self; 2]> {
+        use crate::{StarkField, Symbol};
+        use miden_assembly::ast::Instruction;
+
+        let op = match ix {
+            Instruction::Assert => Self::Assert,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::AssertWithError(_) => Self::Assert,
+            Instruction::AssertEq => Self::AssertEq,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::AssertEqWithError(_) => Self::AssertEq,
+            Instruction::AssertEqw => Self::AssertEqw,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::AssertEqwWithError(_) => Self::AssertEqw,
+            Instruction::Assertz => Self::Assertz,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::AssertzWithError(_) => Self::Assertz,
+            Instruction::Add => Self::Add,
+            Instruction::AddImm(imm) => Self::AddImm(imm),
+            Instruction::Sub => Self::Sub,
+            Instruction::SubImm(imm) => Self::SubImm(imm),
+            Instruction::Mul => Self::Mul,
+            Instruction::MulImm(imm) => Self::MulImm(imm),
+            Instruction::Div => Self::Div,
+            Instruction::DivImm(imm) => Self::DivImm(imm),
+            Instruction::Neg => Self::Neg,
+            Instruction::Inv => Self::Inv,
+            Instruction::Incr => Self::Incr,
+            Instruction::Pow2 => Self::Pow2,
+            Instruction::Exp => Self::Exp,
+            Instruction::ExpImm(imm) => {
+                Self::ExpImm(imm.as_int().try_into().expect("invalid exponent"))
+            }
+            Instruction::ExpBitLength(imm) => Self::ExpImm(imm),
+            Instruction::Not => Self::Not,
+            Instruction::And => Self::And,
+            Instruction::Or => Self::Or,
+            Instruction::Xor => Self::Xor,
+            Instruction::Eq => Self::Eq,
+            Instruction::EqImm(imm) => Self::EqImm(imm),
+            Instruction::Neq => Self::Neq,
+            Instruction::NeqImm(imm) => Self::NeqImm(imm),
+            Instruction::Eqw => Self::Eqw,
+            Instruction::Lt => Self::Lt,
+            Instruction::Lte => Self::Lte,
+            Instruction::Gt => Self::Gt,
+            Instruction::Gte => Self::Gte,
+            Instruction::IsOdd => Self::IsOdd,
+            Instruction::Ext2Add
+            | Instruction::Ext2Sub
+            | Instruction::Ext2Mul
+            | Instruction::Ext2Div
+            | Instruction::Ext2Neg
+            | Instruction::Ext2Inv => unimplemented!(),
+            Instruction::U32Test => Self::U32Test,
+            Instruction::U32TestW => Self::U32Testw,
+            Instruction::U32Assert => Self::U32Assert,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::U32AssertWithError(_) => Self::U32Assert,
+            Instruction::U32Assert2 => Self::U32Assert2,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::U32Assert2WithError(_) => Self::U32Assert2,
+            Instruction::U32AssertW => Self::U32Assertw,
+            // TODO: Handle assertion error code when support is added to the IR
+            Instruction::U32AssertWWithError(_) => Self::U32Assertw,
+            Instruction::U32Split => Self::U32Split,
+            Instruction::U32Cast => Self::U32Cast,
+            Instruction::U32CheckedAdd => Self::U32CheckedAdd,
+            Instruction::U32CheckedAddImm(imm) => Self::U32CheckedAddImm(imm),
+            Instruction::U32WrappingAdd => Self::U32WrappingAdd,
+            Instruction::U32WrappingAddImm(imm) => Self::U32WrappingAddImm(imm),
+            Instruction::U32OverflowingAdd => Self::U32OverflowingAdd,
+            Instruction::U32OverflowingAddImm(imm) => Self::U32OverflowingAddImm(imm),
+            Instruction::U32OverflowingAdd3 => Self::U32OverflowingAdd3,
+            Instruction::U32WrappingAdd3 => Self::U32WrappingAdd3,
+            Instruction::U32CheckedSub => Self::U32CheckedSub,
+            Instruction::U32CheckedSubImm(imm) => Self::U32CheckedSubImm(imm),
+            Instruction::U32WrappingSub => Self::U32WrappingSub,
+            Instruction::U32WrappingSubImm(imm) => Self::U32WrappingSubImm(imm),
+            Instruction::U32OverflowingSub => Self::U32OverflowingSub,
+            Instruction::U32OverflowingSubImm(imm) => Self::U32OverflowingSubImm(imm),
+            Instruction::U32CheckedMul => Self::U32CheckedMul,
+            Instruction::U32CheckedMulImm(imm) => Self::U32CheckedMulImm(imm),
+            Instruction::U32WrappingMul => Self::U32WrappingMul,
+            Instruction::U32WrappingMulImm(imm) => Self::U32WrappingMulImm(imm),
+            Instruction::U32OverflowingMul => Self::U32OverflowingMul,
+            Instruction::U32OverflowingMulImm(imm) => Self::U32OverflowingMulImm(imm),
+            Instruction::U32OverflowingMadd => Self::U32OverflowingMadd,
+            Instruction::U32WrappingMadd => Self::U32WrappingMadd,
+            Instruction::U32CheckedDiv => Self::U32CheckedDiv,
+            Instruction::U32CheckedDivImm(imm) => Self::U32CheckedDivImm(imm),
+            Instruction::U32UncheckedDiv => Self::U32UncheckedDiv,
+            Instruction::U32UncheckedDivImm(imm) => Self::U32UncheckedDivImm(imm),
+            Instruction::U32CheckedMod => Self::U32CheckedMod,
+            Instruction::U32CheckedModImm(imm) => Self::U32CheckedModImm(imm),
+            Instruction::U32UncheckedMod => Self::U32UncheckedMod,
+            Instruction::U32UncheckedModImm(imm) => Self::U32UncheckedModImm(imm),
+            Instruction::U32CheckedDivMod => Self::U32CheckedDivMod,
+            Instruction::U32CheckedDivModImm(imm) => Self::U32CheckedDivModImm(imm),
+            Instruction::U32UncheckedDivMod => Self::U32UncheckedDivMod,
+            Instruction::U32UncheckedDivModImm(imm) => Self::U32UncheckedDivModImm(imm),
+            Instruction::U32CheckedAnd => Self::U32And,
+            Instruction::U32CheckedOr => Self::U32Or,
+            Instruction::U32CheckedXor => Self::U32Xor,
+            Instruction::U32CheckedNot => Self::U32Not,
+            Instruction::U32CheckedShr => Self::U32CheckedShr,
+            Instruction::U32CheckedShrImm(imm) => Self::U32CheckedShrImm(imm as u32),
+            Instruction::U32UncheckedShr => Self::U32UncheckedShr,
+            Instruction::U32UncheckedShrImm(imm) => Self::U32UncheckedShrImm(imm as u32),
+            Instruction::U32CheckedShl => Self::U32CheckedShl,
+            Instruction::U32CheckedShlImm(imm) => Self::U32CheckedShlImm(imm as u32),
+            Instruction::U32UncheckedShl => Self::U32UncheckedShl,
+            Instruction::U32UncheckedShlImm(imm) => Self::U32UncheckedShlImm(imm as u32),
+            Instruction::U32CheckedRotr => Self::U32CheckedRotr,
+            Instruction::U32CheckedRotrImm(imm) => Self::U32CheckedRotrImm(imm as u32),
+            Instruction::U32UncheckedRotr => Self::U32UncheckedRotr,
+            Instruction::U32UncheckedRotrImm(imm) => Self::U32UncheckedRotrImm(imm as u32),
+            Instruction::U32CheckedRotl => Self::U32CheckedRotl,
+            Instruction::U32CheckedRotlImm(imm) => Self::U32CheckedRotlImm(imm as u32),
+            Instruction::U32UncheckedRotl => Self::U32UncheckedRotl,
+            Instruction::U32UncheckedRotlImm(imm) => Self::U32UncheckedRotlImm(imm as u32),
+            Instruction::U32CheckedPopcnt => Self::U32CheckedPopcnt,
+            Instruction::U32UncheckedPopcnt => Self::U32UncheckedPopcnt,
+            Instruction::U32CheckedEq => Self::U32Eq,
+            Instruction::U32CheckedEqImm(imm) => Self::U32EqImm(imm),
+            Instruction::U32CheckedNeq => Self::U32Neq,
+            Instruction::U32CheckedNeqImm(imm) => Self::U32NeqImm(imm),
+            Instruction::U32CheckedLt => Self::U32CheckedLt,
+            Instruction::U32UncheckedLt => Self::U32UncheckedLt,
+            Instruction::U32CheckedLte => Self::U32CheckedLte,
+            Instruction::U32UncheckedLte => Self::U32UncheckedLte,
+            Instruction::U32CheckedGt => Self::U32CheckedGt,
+            Instruction::U32UncheckedGt => Self::U32UncheckedGt,
+            Instruction::U32CheckedGte => Self::U32CheckedGte,
+            Instruction::U32UncheckedGte => Self::U32UncheckedGte,
+            Instruction::U32CheckedMin => Self::U32CheckedMin,
+            Instruction::U32UncheckedMin => Self::U32UncheckedMin,
+            Instruction::U32CheckedMax => Self::U32CheckedMax,
+            Instruction::U32UncheckedMax => Self::U32UncheckedMax,
+            Instruction::Drop => Self::Drop,
+            Instruction::DropW => Self::Dropw,
+            Instruction::PadW => Self::Padw,
+            Instruction::Dup0 => Self::Dup(0),
+            Instruction::Dup1 => Self::Dup(1),
+            Instruction::Dup2 => Self::Dup(2),
+            Instruction::Dup3 => Self::Dup(3),
+            Instruction::Dup4 => Self::Dup(4),
+            Instruction::Dup5 => Self::Dup(5),
+            Instruction::Dup6 => Self::Dup(6),
+            Instruction::Dup7 => Self::Dup(7),
+            Instruction::Dup8 => Self::Dup(8),
+            Instruction::Dup9 => Self::Dup(9),
+            Instruction::Dup10 => Self::Dup(10),
+            Instruction::Dup11 => Self::Dup(11),
+            Instruction::Dup12 => Self::Dup(12),
+            Instruction::Dup13 => Self::Dup(13),
+            Instruction::Dup14 => Self::Dup(14),
+            Instruction::Dup15 => Self::Dup(15),
+            Instruction::DupW0 => Self::Dupw(0),
+            Instruction::DupW1 => Self::Dupw(1),
+            Instruction::DupW2 => Self::Dupw(2),
+            Instruction::DupW3 => Self::Dupw(3),
+            Instruction::Swap1 => Self::Swap(1),
+            Instruction::Swap2 => Self::Swap(2),
+            Instruction::Swap3 => Self::Swap(3),
+            Instruction::Swap4 => Self::Swap(4),
+            Instruction::Swap5 => Self::Swap(5),
+            Instruction::Swap6 => Self::Swap(6),
+            Instruction::Swap7 => Self::Swap(7),
+            Instruction::Swap8 => Self::Swap(8),
+            Instruction::Swap9 => Self::Swap(9),
+            Instruction::Swap10 => Self::Swap(10),
+            Instruction::Swap11 => Self::Swap(11),
+            Instruction::Swap12 => Self::Swap(12),
+            Instruction::Swap13 => Self::Swap(13),
+            Instruction::Swap14 => Self::Swap(14),
+            Instruction::Swap15 => Self::Swap(15),
+            Instruction::SwapW1 => Self::Swapw(1),
+            Instruction::SwapW2 => Self::Swapw(2),
+            Instruction::SwapW3 => Self::Swapw(3),
+            Instruction::SwapDw => unimplemented!("swap double-word"),
+            Instruction::MovUp2 => Self::Movup(2),
+            Instruction::MovUp3 => Self::Movup(3),
+            Instruction::MovUp4 => Self::Movup(4),
+            Instruction::MovUp5 => Self::Movup(5),
+            Instruction::MovUp6 => Self::Movup(6),
+            Instruction::MovUp7 => Self::Movup(7),
+            Instruction::MovUp8 => Self::Movup(8),
+            Instruction::MovUp9 => Self::Movup(9),
+            Instruction::MovUp10 => Self::Movup(10),
+            Instruction::MovUp11 => Self::Movup(11),
+            Instruction::MovUp12 => Self::Movup(12),
+            Instruction::MovUp13 => Self::Movup(13),
+            Instruction::MovUp14 => Self::Movup(14),
+            Instruction::MovUp15 => Self::Movup(15),
+            Instruction::MovUpW2 => Self::Movupw(2),
+            Instruction::MovUpW3 => Self::Movupw(3),
+            Instruction::MovDn2 => Self::Movdn(2),
+            Instruction::MovDn3 => Self::Movdn(3),
+            Instruction::MovDn4 => Self::Movdn(4),
+            Instruction::MovDn5 => Self::Movdn(5),
+            Instruction::MovDn6 => Self::Movdn(6),
+            Instruction::MovDn7 => Self::Movdn(7),
+            Instruction::MovDn8 => Self::Movdn(8),
+            Instruction::MovDn9 => Self::Movdn(9),
+            Instruction::MovDn10 => Self::Movdn(10),
+            Instruction::MovDn11 => Self::Movdn(11),
+            Instruction::MovDn12 => Self::Movdn(12),
+            Instruction::MovDn13 => Self::Movdn(13),
+            Instruction::MovDn14 => Self::Movdn(14),
+            Instruction::MovDn15 => Self::Movdn(15),
+            Instruction::MovDnW2 => Self::Movdnw(2),
+            Instruction::MovDnW3 => Self::Movdnw(3),
+            Instruction::CSwap => Self::Cswap,
+            Instruction::CSwapW => Self::Cswapw,
+            Instruction::CDrop => Self::Cdrop,
+            Instruction::CDropW => Self::Cdropw,
+            Instruction::PushU8(elem) => Self::PushU8(elem),
+            Instruction::PushU16(elem) => Self::PushU32(elem as u32),
+            Instruction::PushU32(elem) => Self::PushU32(elem),
+            Instruction::PushFelt(elem) => Self::Push(elem),
+            Instruction::PushWord(word) => Self::Pushw(word),
+            Instruction::PushU8List(u8s) => return u8s.into_iter().map(Self::PushU8).collect(),
+            Instruction::PushU16List(u16s) => {
+                return u16s.into_iter().map(|i| Self::PushU32(i as u32)).collect()
+            }
+            Instruction::PushU32List(u32s) => return u32s.into_iter().map(Self::PushU32).collect(),
+            Instruction::PushFeltList(felts) => return felts.into_iter().map(Self::Push).collect(),
+            Instruction::Locaddr(id) => {
+                Self::LocAddr(LocalId::from_u8(id.try_into().expect("invalid local id")))
+            }
+            Instruction::Clk => Self::Clk,
+            Instruction::MemLoad => Self::MemLoad,
+            Instruction::MemLoadImm(addr) => Self::MemLoadImm(addr),
+            Instruction::MemLoadW => Self::MemLoadw,
+            Instruction::MemLoadWImm(addr) => Self::MemLoadwImm(addr),
+            Instruction::MemStore => Self::MemStore,
+            Instruction::MemStoreImm(addr) => Self::MemStoreImm(addr),
+            Instruction::MemStoreW => Self::MemStorew,
+            Instruction::MemStoreWImm(addr) => Self::MemStorewImm(addr),
+            Instruction::LocLoad(_)
+            | Instruction::LocLoadW(_)
+            | Instruction::LocStore(_)
+            | Instruction::LocStoreW(_) => unimplemented!("load/store by local id"),
+            Instruction::MemStream => unimplemented!("mem_stream"),
+            Instruction::AdvPipe
+            | Instruction::AdvPush(_)
+            | Instruction::AdvLoadW
+            | Instruction::AdvInject(_) => unimplemented!("advice provider operations"),
+            Instruction::Hash
+            | Instruction::HMerge
+            | Instruction::HPerm
+            | Instruction::MTreeGet
+            | Instruction::MTreeSet
+            | Instruction::MTreeMerge
+            | Instruction::MTreeVerify => unimplemented!("cryptographic operations"),
+            Instruction::ExecLocal(local_index) => Self::Exec(locals[local_index as usize]),
+            Instruction::ExecImported(ref proc_id) => {
+                let invoked = &imported.invoked_procs()[proc_id];
+                Self::Exec(FunctionIdent {
+                    module: Ident::with_empty_span(Symbol::intern(invoked.1.last())),
+                    function: Ident::with_empty_span(Symbol::intern(invoked.0.as_ref())),
+                })
+            }
+            Instruction::CallLocal(_)
+            | Instruction::CallMastRoot(_)
+            | Instruction::CallImported(_) => unimplemented!("contract calls"),
+            Instruction::SysCall(ref proc_id) => {
+                let invoked = &imported.invoked_procs()[proc_id];
+                Self::Syscall(FunctionIdent {
+                    module: Ident::with_empty_span(Symbol::intern(invoked.1.last())),
+                    function: Ident::with_empty_span(Symbol::intern(invoked.0.as_ref())),
+                })
+            }
+            Instruction::DynExec | Instruction::DynCall => unimplemented!("indirect calls"),
+            Instruction::Sdepth
+            | Instruction::Caller
+            | Instruction::FriExt2Fold4
+            | Instruction::Breakpoint
+            | Instruction::Debug(_) => unimplemented!("miscellaneous instructions"),
+        };
+        smallvec![op]
+    }
+
     pub fn into_node(
         self,
         _codemap: &miden_diagnostics::CodeMap,
