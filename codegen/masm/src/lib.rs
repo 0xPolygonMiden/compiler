@@ -59,7 +59,17 @@ impl<'a> MasmCompiler<'a> {
         use miden_hir::pass::ConversionPass;
 
         let mut convert_to_masm = ConvertHirToMasm::<hir::Program>::default();
-        Ok(convert_to_masm.convert(input, &mut self.analyses, &self.session)?)
+        let mut program = convert_to_masm.convert(input, &mut self.analyses, &self.session)?;
+
+        // Ensure intrinsics modules are linked
+        program.insert(Box::new(
+            Module::load_intrinsic("intrinsics::mem").expect("parsing failed"),
+        ));
+        program.insert(Box::new(
+            Module::load_intrinsic("intrinsics::i32").expect("parsing failed"),
+        ));
+
+        Ok(program)
     }
 
     /// Compile a single [hir::Module] as a program.

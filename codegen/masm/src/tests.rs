@@ -155,6 +155,18 @@ impl TestByEmulationHarness {
             .expect("failed to load module");
         self.emulator.invoke(entrypoint, args)
     }
+
+    pub fn execute_program(
+        &mut self,
+        program: Program,
+        args: &[Felt],
+    ) -> Result<OperandStack<Felt>, EmulationError> {
+        let entrypoint = program.entrypoint.expect("cannot execute a library");
+        self.emulator
+            .load_program(program)
+            .expect("failed to load program");
+        self.emulator.invoke(entrypoint, args)
+    }
 }
 
 /// Test the emulator on the fibonacci function
@@ -167,7 +179,7 @@ fn fib_emulator() {
 
     // Build test module with fib function
     let mut mb = builder.module("test");
-    let id = testing::fib1(mb.as_mut(), &harness.context);
+    testing::fib1(mb.as_mut(), &harness.context);
     mb.build()
         .expect("unexpected error constructing test module");
 
@@ -177,31 +189,8 @@ fn fib_emulator() {
         .link()
         .expect("failed to link program");
 
-    // Get the fib function
-    let (mut function, imports) = {
-        let modules = program.modules_mut();
-        let mut test = modules.find_mut("test").remove().expect("undefined module");
-        let function = test
-            .cursor_mut_at(id.function)
-            .remove()
-            .expect("undefined function");
-        let imports = test.imports();
-        modules.insert(test);
-        (function, imports)
-    };
-
-    let masm = harness
-        .stackify(&program, &mut function)
-        .expect("stackification failed");
-
-    let mut output = String::with_capacity(1024);
-    write!(&mut output, "{}", masm.display(&imports)).expect("formatting failed");
-
-    println!("{}", output.as_str());
-
-    let mut module = Box::new(Module::new(id.module));
-    module.push_back(masm);
-    module.entry = Some(id);
+    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
+    let program = compiler.compile(&mut program).expect("compilation failed");
 
     // Test it via the emulator
     let n = Felt::new(10);
@@ -265,25 +254,8 @@ fn stackify_fundamental_if() {
         .link()
         .expect("failed to link program");
 
-    // Get the sum_matrix function
-    let mut function = {
-        let modules = program.modules_mut();
-        let mut test = modules.find_mut("test").remove().expect("undefined module");
-        let function = test
-            .cursor_mut_at(id.function)
-            .remove()
-            .expect("undefined function");
-        modules.insert(test);
-        function
-    };
-
-    let masm = harness
-        .stackify(&program, &mut function)
-        .expect("stackification failed");
-
-    let mut module = Box::new(Module::new(id.module));
-    module.push_back(masm);
-    module.entry = Some(id);
+    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
+    let program = compiler.compile(&mut program).expect("compilation failed");
 
     let a = Felt::new(3);
     let b = Felt::new(4);
@@ -362,31 +334,8 @@ fn stackify_fundamental_loops() {
         .link()
         .expect("failed to link program");
 
-    // Get the sum_matrix function
-    let (mut function, imports) = {
-        let modules = program.modules_mut();
-        let mut test = modules.find_mut("test").remove().expect("undefined module");
-        let function = test
-            .cursor_mut_at(id.function)
-            .remove()
-            .expect("undefined function");
-        let imports = test.imports();
-        modules.insert(test);
-        (function, imports)
-    };
-
-    let masm = harness
-        .stackify(&program, &mut function)
-        .expect("stackification failed");
-
-    let mut output = String::with_capacity(1024);
-    write!(&mut output, "{}", masm.display(&imports)).expect("formatting failed");
-
-    println!("{}", output.as_str());
-
-    let mut module = Box::new(Module::new(id.module));
-    module.push_back(masm);
-    module.entry = Some(id);
+    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
+    let program = compiler.compile(&mut program).expect("compilation failed");
 
     let a = Felt::new(3);
     let n = Felt::new(4);
@@ -405,7 +354,7 @@ fn verify_i32_intrinsics_syntax() {
 
     harness
         .emulator
-        .load_module(Module::i32_intrinsics())
+        .load_module(Module::load_intrinsic("intrinsics::i32").expect("parsing failed"))
         .expect("failed to load intrinsics::i32");
 }
 
@@ -414,18 +363,12 @@ fn verify_i32_intrinsics_syntax() {
 fn stackify_sum_matrix() {
     let mut harness = TestByEmulationHarness::default();
 
-    let mem_intrinsics = Box::new(Module::mem_intrinsics()).freeze();
-    harness
-        .emulator
-        .load_module(mem_intrinsics)
-        .expect("failed to load intrinsics::mem");
-
     // Build a simple program
     let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
 
     // Build test module with fib function
     let mut mb = builder.module("test");
-    let id = testing::sum_matrix(mb.as_mut(), &harness.context);
+    testing::sum_matrix(mb.as_mut(), &harness.context);
     mb.build()
         .expect("unexpected error constructing test module");
 
@@ -435,27 +378,13 @@ fn stackify_sum_matrix() {
         .link()
         .expect("failed to link program");
 
-    // Get the sum_matrix function
-    let (mut function, _imports) = {
-        let modules = program.modules_mut();
-        let mut test = modules.find_mut("test").remove().expect("undefined module");
-        let function = test
-            .cursor_mut_at(id.function)
-            .remove()
-            .expect("undefined function");
-        let imports = test.imports();
-        modules.insert(test);
-        (function, imports)
-    };
+    // Compile
+    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
+    let program = compiler.compile(&mut program).expect("compilation failed");
 
-    let masm = harness
-        .stackify(&program, &mut function)
-        .expect("stackification failed");
+    dbg!(program.modules().iter().map(|m| m.name).collect::<Vec<_>>());
 
-    let mut module = Box::new(Module::new(id.module));
-    module.push_back(masm);
-    module.entry = Some(id);
-
+    // Prep emulator
     let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
     let ptr = Felt::new(addr as u64);
     let rows = Felt::new(3);
@@ -474,9 +403,9 @@ fn stackify_sum_matrix() {
     harness.store(addr + 24, Felt::ONE);
     harness.store(addr + 28, Felt::ONE);
     harness.store(addr + 32, Felt::ONE);
-
     harness.set_cycle_budget(1000);
 
+    // Execute test::sum_matrix
     let mut stack = harness
         .execute_module(module.freeze(), &[ptr, rows, cols])
         .expect("execution failed");
