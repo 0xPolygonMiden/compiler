@@ -55,7 +55,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::U32EqImm(imm.as_u32().unwrap()));
             }
             Type::I32 | Type::I16 | Type::I8 => {
-                self.emit(Op::U32EqImm(imm.as_i64().unwrap() as u64 as u32));
+                self.emit(Op::U32EqImm(imm.as_i32().unwrap() as u32));
             }
             ty => unimplemented!("eq is not yet implemented for {ty}"),
         }
@@ -112,7 +112,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::U32NeqImm(imm.as_u32().unwrap()));
             }
             Type::I32 | Type::I16 | Type::I8 => {
-                self.emit(Op::U32NeqImm(imm.as_i64().unwrap() as u64 as u32));
+                self.emit(Op::U32NeqImm(imm.as_i32().unwrap() as u32));
             }
             ty => unimplemented!("neq is not yet implemented for {ty}"),
         }
@@ -131,6 +131,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32CheckedGt);
             }
+            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_gt".parse().unwrap())),
             ty => unimplemented!("gt is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -146,6 +147,12 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedGt]);
+            }
+            Type::I32 => {
+                self.emit_all(&[
+                    Op::PushU32(imm.as_i32().unwrap() as u32),
+                    Op::Exec("intrinsics::i32::is_gt".parse().unwrap()),
+                ]);
             }
             ty => unimplemented!("gt is not yet implemented for {ty}"),
         }
@@ -164,6 +171,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32CheckedGte);
             }
+            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_gte".parse().unwrap())),
             ty => unimplemented!("gte is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -179,6 +187,12 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedGte]);
+            }
+            Type::I32 => {
+                self.emit_all(&[
+                    Op::PushU32(imm.as_i32().unwrap() as u32),
+                    Op::Exec("intrinsics::i32::is_gte".parse().unwrap()),
+                ]);
             }
             ty => unimplemented!("gte is not yet implemented for {ty}"),
         }
@@ -197,6 +211,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32CheckedLt);
             }
+            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_lt".parse().unwrap())),
             ty => unimplemented!("lt is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -212,6 +227,12 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedLt]);
+            }
+            Type::I32 => {
+                self.emit_all(&[
+                    Op::PushU32(imm.as_i32().unwrap() as u32),
+                    Op::Exec("intrinsics::i32::is_lt".parse().unwrap()),
+                ]);
             }
             ty => unimplemented!("lt is not yet implemented for {ty}"),
         }
@@ -230,6 +251,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32CheckedLte);
             }
+            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_lte".parse().unwrap())),
             ty => unimplemented!("lte is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -245,6 +267,12 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedLte]);
+            }
+            Type::I32 => {
+                self.emit_all(&[
+                    Op::PushU32(imm.as_i32().unwrap() as u32),
+                    Op::Exec("intrinsics::i32::is_lte".parse().unwrap()),
+                ]);
             }
             ty => unimplemented!("lte is not yet implemented for {ty}"),
         }
@@ -265,6 +293,9 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 => {
                 self.add_u32(overflow);
+            }
+            Type::I32 => {
+                self.add_i32(overflow);
             }
             ty @ (Type::U16 | Type::U8 | Type::I1) => {
                 self.add_uint(ty.size_in_bits() as u32, overflow);
@@ -292,6 +323,9 @@ impl<'a> OpEmitter<'a> {
             Type::U32 => {
                 self.add_imm_u32(imm.as_u32().unwrap(), overflow);
             }
+            Type::I32 => {
+                self.add_imm_i32(imm.as_i32().unwrap(), overflow);
+            }
             ty @ (Type::U16 | Type::U8 | Type::I1) => {
                 self.add_imm_uint(imm.as_u32().unwrap(), ty.size_in_bits() as u32, overflow);
             }
@@ -318,6 +352,9 @@ impl<'a> OpEmitter<'a> {
             Type::U32 => {
                 self.sub_u32(overflow);
             }
+            Type::I32 => {
+                self.sub_i32(overflow);
+            }
             ty @ (Type::U16 | Type::U8 | Type::I1) => {
                 self.sub_uint(ty.size_in_bits() as u32, overflow);
             }
@@ -343,6 +380,9 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 => {
                 self.sub_imm_u32(imm.as_u32().unwrap(), overflow);
+            }
+            Type::I32 => {
+                self.sub_imm_i32(imm.as_i32().unwrap(), overflow);
             }
             ty @ (Type::U16 | Type::U8 | Type::I1) => {
                 self.sub_imm_uint(imm.as_u32().unwrap(), ty.size_in_bits() as u32, overflow);
@@ -386,6 +426,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Mul);
             }
             Type::U32 => self.mul_u32(overflow),
+            Type::I32 => self.mul_i32(overflow),
             ty @ (Type::U16 | Type::U8) => {
                 self.mul_uint(ty.size_in_bits() as u32, overflow);
             }
@@ -418,6 +459,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::MulImm(imm.as_felt().unwrap()));
             }
             Type::U32 => self.mul_imm_u32(imm.as_u32().unwrap(), overflow),
+            Type::I32 => self.mul_imm_i32(imm.as_i32().unwrap(), overflow),
             ty @ (Type::U16 | Type::U8) => {
                 self.mul_imm_uint(imm.as_u32().unwrap(), ty.size_in_bits() as u32, overflow);
             }
@@ -443,6 +485,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Div);
             }
             Type::U32 => self.checked_div_u32(),
+            Type::I32 => self.checked_div_i32(),
             ty @ (Type::U16 | Type::U8) => {
                 self.checked_div_uint(ty.size_in_bits() as u32);
             }
@@ -468,6 +511,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Div);
             }
             Type::U32 => self.checked_div_imm_u32(imm.as_u32().unwrap()),
+            Type::I32 => self.checked_div_imm_i32(imm.as_i32().unwrap()),
             ty @ (Type::U16 | Type::U8) => {
                 self.checked_div_imm_uint(imm.as_u32().unwrap(), ty.size_in_bits() as u32);
             }
@@ -490,6 +534,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Div);
             }
             Type::U32 | Type::U16 | Type::U8 => self.unchecked_div_u32(),
+            Type::I32 => self.checked_div_i32(),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: div expects integer operands, got {ty}")
             }
@@ -512,6 +557,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Div);
             }
             Type::U32 => self.unchecked_div_imm_u32(imm.as_u32().unwrap()),
+            Type::I32 => self.checked_div_imm_i32(imm.as_i32().unwrap()),
             ty @ (Type::U16 | Type::U8) => {
                 self.unchecked_div_imm_uint(imm.as_u32().unwrap(), ty.size_in_bits() as u32);
             }
@@ -704,6 +750,9 @@ impl<'a> OpEmitter<'a> {
             Type::U32 => {
                 self.emit_all(&[Op::Exp, Op::U32Assert]);
             }
+            Type::I32 => {
+                self.emit(Op::Exec("intrinsics::i32::ipow".parse().unwrap()));
+            }
             ty @ (Type::U16 | Type::U8) => {
                 self.emit_all(&[Op::Exp, Op::U32Assert]);
                 self.int32_to_uint(ty.size_in_bits() as u32);
@@ -732,6 +781,12 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U32 => {
                 self.emit_all(&[Op::ExpImm(exp), Op::U32Assert]);
+            }
+            Type::I32 => {
+                self.emit_all(&[
+                    Op::PushU8(exp),
+                    Op::Exec("intrinsics::i32::ipow".parse().unwrap()),
+                ]);
             }
             ty @ (Type::U16 | Type::U8) => {
                 self.emit_all(&[Op::ExpImm(exp), Op::U32Assert]);
@@ -936,7 +991,7 @@ impl<'a> OpEmitter<'a> {
         assert_eq!(ty, rhs.ty(), "expected shl operands to be the same type");
         match &ty {
             Type::U64 => self.shl_u64(),
-            Type::U32 => self.shl_u32(),
+            Type::U32 | Type::I32 => self.shl_u32(),
             ty @ (Type::U16 | Type::U8) => {
                 self.shl_u32();
                 self.trunc_int32(ty.size_in_bits() as u32);
@@ -963,6 +1018,7 @@ impl<'a> OpEmitter<'a> {
                 self.shl_u64();
             }
             Type::U32 => self.shl_imm_u32(imm.as_u32().unwrap()),
+            Type::I32 => self.shl_imm_u32(imm.as_i32().unwrap() as u32),
             ty @ (Type::U16 | Type::U8) => {
                 self.shl_imm_u32(imm.as_u32().unwrap());
                 self.trunc_int32(ty.size_in_bits() as u32);
@@ -983,6 +1039,7 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::U64 => self.shr_u64(),
             Type::U32 | Type::U16 | Type::U8 => self.shr_u32(),
+            Type::I32 => self.shr_i32(),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: shr expects integer operands, got {ty}")
             }
@@ -1003,6 +1060,7 @@ impl<'a> OpEmitter<'a> {
                 self.shr_u64();
             }
             Type::U32 | Type::U16 | Type::U8 => self.shr_imm_u32(imm.as_u32().unwrap()),
+            Type::I32 => self.shr_imm_i32(imm.as_i32().unwrap()),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: shr expects integer operands, got {ty}")
             }
@@ -1087,6 +1145,7 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::U64 => self.min_u64(),
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.min_u32(),
+            Type::I32 => self.min_i32(),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: min expects integer operands, got {ty}")
             }
@@ -1105,6 +1164,7 @@ impl<'a> OpEmitter<'a> {
                 self.min_u64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.min_imm_u32(imm.as_u32().unwrap()),
+            Type::I32 => self.min_imm_i32(imm.as_i32().unwrap()),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: min expects integer operands, got {ty}")
             }
@@ -1121,6 +1181,7 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::U64 => self.max_u64(),
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.max_u32(),
+            Type::I32 => self.max_i32(),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: max expects integer operands, got {ty}")
             }
@@ -1139,6 +1200,7 @@ impl<'a> OpEmitter<'a> {
                 self.max_u64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.max_imm_u32(imm.as_u32().unwrap()),
+            Type::I32 => self.max_imm_i32(imm.as_i32().unwrap()),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: max expects integer operands, got {ty}")
             }

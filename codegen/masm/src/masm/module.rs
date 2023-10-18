@@ -7,6 +7,8 @@ use rustc_hash::FxHashMap;
 
 use super::{Function, FunctionListAdapter, Import, ModuleImportInfo};
 
+const I32_INTRINSICS: &'static str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/i32.masm"));
 const MEM_INTRINSICS: &'static str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"));
 
@@ -228,5 +230,8 @@ impl Module {
         Self::parse_str(MEM_INTRINSICS, "intrinsics::mem").expect("invalid module")
     }
 
+    /// This is a helper that parses and returns the predefined `intrinsics::i32` module
+    pub fn i32_intrinsics() -> Self {
+        Self::parse_str(I32_INTRINSICS, "intrinsics::i32").expect("invalid module")
     }
 }
