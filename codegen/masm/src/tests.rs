@@ -400,6 +400,17 @@ fn stackify_fundamental_loops() {
 
 /// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
 #[test]
+fn verify_i32_intrinsics_syntax() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(Module::i32_intrinsics())
+        .expect("failed to load intrinsics::i32");
+}
+
+/// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
+#[test]
 fn stackify_sum_matrix() {
     let mut harness = TestByEmulationHarness::default();
 
