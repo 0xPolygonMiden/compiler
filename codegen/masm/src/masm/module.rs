@@ -6,6 +6,11 @@ use rustc_hash::FxHashMap;
 
 use super::{FrozenFunctionListAdapter, Function, FunctionListAdapter, ModuleImportInfo, Op};
 
+const I32_INTRINSICS: &'static str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/i32.masm"));
+const MEM_INTRINSICS: &'static str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"));
+
 /// This represents a single compiled Miden Assembly module in a form that is
 /// designed to integrate well with the rest of our IR. You can think of this
 /// as an intermediate representation corresponding to the Miden Assembly AST,
@@ -613,5 +618,10 @@ impl Module {
         module.functions.push_back(f);
 
         module
+    }
+
+    /// This is a helper that parses and returns the predefined `intrinsics::i32` module
+    pub fn i32_intrinsics() -> Self {
+        Self::parse_str(I32_INTRINSICS, "intrinsics::i32").expect("invalid module")
     }
 }

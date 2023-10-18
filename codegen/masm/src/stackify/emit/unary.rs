@@ -486,6 +486,9 @@ impl<'a> OpEmitter<'a> {
             Type::U32 => {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);
             }
+            Type::I32 => {
+                self.emit_all(&[Op::Exec("intrinsics::i32::pow2".parse().unwrap())]);
+            }
             Type::U8 | Type::U16 => {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);
                 // Cast u32 to u8/u16

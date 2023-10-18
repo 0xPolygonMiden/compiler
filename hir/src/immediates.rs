@@ -135,6 +135,25 @@ impl Immediate {
         }
     }
 
+    /// Attempts to convert this value to i32
+    pub fn as_i32(self) -> Option<i32> {
+        match self {
+            Self::I1(b) => Some(b as i32),
+            Self::U8(i) => Some(i as i32),
+            Self::I8(i) => Some(i as i32),
+            Self::U16(i) => Some(i as i32),
+            Self::I16(i) => Some(i as i32),
+            Self::U32(i) => i.try_into().ok(),
+            Self::I32(i) => Some(i),
+            Self::U64(i) => i.try_into().ok(),
+            Self::I64(i) => i.try_into().ok(),
+            Self::Felt(i) => i.as_int().try_into().ok(),
+            Self::I128(i) if i >= (i32::MIN as i128) && i <= (i32::MAX as i128) => Some(i as i32),
+            Self::I128(_) => None,
+            Self::F64(f) => FloatToInt::<i32>::to_int(f).ok(),
+        }
+    }
+
     /// Attempts to convert this value to a field element
     pub fn as_felt(self) -> Option<Felt> {
         match self {
