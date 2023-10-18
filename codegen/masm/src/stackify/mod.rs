@@ -81,6 +81,24 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
             let mut convert_to_masm = ConvertHirToMasm::<hir::Module>::default();
             let mut masm_module = convert_to_masm.convert(module, analyses, session)?;
 
+            // If this module makes use of any intrinsics modules, and those modules are not
+            // already present, add them to the program.
+            for import in masm_module
+                .imports
+                .iter()
+                .filter(|import| import.name.as_str().starts_with("intrinsics::"))
+            {
+                if masm_program.contains(import.name) {
+                    continue;
+                }
+                match masm::Module::load_intrinsic(import.name.as_str()) {
+                    Some(loaded) => {
+                        masm_program.insert(Box::new(loaded));
+                    }
+                    None => unimplemented!("unrecognized intrinsic module: '{}'", &import.name),
+                }
+            }
+
             // Record the entrypoint, if applicable
             masm_module.entry = entry;
 
