@@ -145,20 +145,20 @@
     local.tee 2
     global.set $__stack_pointer
     local.get 2
-    local.get 0
+    i32.const 1
+    i32.store16 offset=28
+    local.get 2
+    local.get 1
     i32.store offset=24
+    local.get 2
+    local.get 0
+    i32.store offset=20
     local.get 2
     i32.const 1048896
     i32.store offset=16
     local.get 2
     i32.const 1048896
     i32.store offset=12
-    local.get 2
-    i32.const 1
-    i32.store8 offset=28
-    local.get 2
-    local.get 1
-    i32.store offset=20
     local.get 2
     i32.const 12
     i32.add
@@ -201,10 +201,10 @@
   )
   (func $<T as core::any::Any>::type_id (;11;) (type 3) (param i32 i32)
     local.get 0
-    i64.const -1688046730280208939
+    i64.const -8014429818408747214
     i64.store offset=8
     local.get 0
-    i64.const -2518113060735759681
+    i64.const 167320651382453006
     i64.store
   )
   (table (;0;) 3 3 funcref)

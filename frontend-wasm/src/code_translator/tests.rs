@@ -62,11 +62,15 @@ fn module() {
 
             pub fn main() {
             block0:
+            {
                 v0 = const.i32 0  : i32
                 br block1
+            }
 
             block1:
-                ret 
+            {
+                ret
+            }
             }
         "#]],
     );
@@ -90,12 +94,16 @@ fn locals() {
 
             pub fn main() {
             block0:
+            {
                 v0 = const.i32 0  : i32
                 v1 = const.i32 1  : i32
                 br block1
+            }
 
             block1:
-                ret 
+            {
+                ret
+            }
             }
         "#]],
     );
@@ -128,22 +136,30 @@ fn locals_inter_block() {
 
             pub fn main() -> i32 {
             block0:
+            {
                 v1 = const.i32 0  : i32
                 v2 = const.i32 3  : i32
                 br block2
+            }
 
             block1(v0: i32):
-                ret v0
+            {
+                ret (v0)
+            }
 
             block2:
+            {
                 v3 = const.i32 5  : i32
                 v4 = add v2, v3  : i32
                 br block3
+            }
 
             block3:
+            {
                 v5 = const.i32 7  : i32
                 v6 = add v5, v4  : i32
                 br block1(v6)
+            }
             }
         "#]],
     );
@@ -171,22 +187,30 @@ fn func_call() {
 
             pub fn add(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
+            {
                 v3 = add v0, v1  : i32
                 br block1(v3)
+            }
 
             block1(v2: i32):
-                ret v2
+            {
+                ret (v2)
+            }
             }
 
             pub fn main() -> i32 {
             block0:
+            {
                 v1 = const.i32 3  : i32
                 v2 = const.i32 5  : i32
                 v3 = call noname::add(v1, v2)  : i32
                 br block1(v3)
+            }
 
             block1(v0: i32):
-                ret v0
+            {
+                ret (v0)
+            }
             }
         "#]],
     );
@@ -212,15 +236,21 @@ fn br() {
 
             pub fn main() -> i32 {
             block0:
+            {
                 v1 = const.i32 0  : i32
                 v2 = const.i32 3  : i32
                 br block2
+            }
 
             block1(v0: i32):
-                ret v0
+            {
+                ret (v0)
+            }
 
             block2:
+            {
                 br block1(v2)
+            }
             }
         "#]],
     );
@@ -255,25 +285,35 @@ fn loop_br_if() {
 
             pub fn main() -> i32 {
             block0:
+            {
                 v1 = const.i32 0  : i32
                 v2 = const.i32 2  : i32
                 br block2(v2, v1)
+            }
 
             block1(v0: i32):
-                ret v0
+            {
+                ret (v0)
+            }
 
             block2(v3: i32, v4: i32):
+            {
                 v5 = add v3, v4  : i32
                 v6 = const.i32 1  : i32
                 v7 = sub v3, v6  : i32
                 v8 = neq v7, 0  : i1
                 condbr v8, block2(v7, v5), block4
+            }
 
             block3:
+            {
                 br block1(v5)
+            }
 
             block4:
+            {
                 br block3
+            }
             }
         "#]],
     );
@@ -299,23 +339,33 @@ fn if_then_else() {
 
             pub fn main() -> i32 {
             block0:
+            {
                 v1 = const.i32 2  : i32
                 v2 = neq v1, 0  : i1
                 condbr v2, block2, block4
+            }
 
             block1(v0: i32):
-                ret v0
+            {
+                ret (v0)
+            }
 
             block2:
+            {
                 v4 = const.i32 3  : i32
                 br block3(v4)
+            }
 
             block3(v3: i32):
+            {
                 br block1(v3)
+            }
 
             block4:
+            {
                 v5 = const.i32 5  : i32
                 br block3(v5)
+            }
             }
         "#]],
     );
@@ -342,15 +392,19 @@ fn global_var() {
 
             pub fn main() {
             block0:
+            {
                 v0 = global.load (@MyGlobalVal) as *mut i8  : i32
                 v1 = const.i32 9  : i32
                 v2 = add v0, v1  : i32
                 v3 = global.symbol @MyGlobalVal  : *mut i32
                 store v3, v2
                 br block1
+            }
 
             block1:
-                ret 
+            {
+                ret
+            }
             }
         "#]],
     );
