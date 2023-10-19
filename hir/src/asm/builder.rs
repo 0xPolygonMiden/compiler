@@ -1672,7 +1672,7 @@ fn apply_op_stack_effects(
         MasmOp::AssertEqw => {
             stack.dropn(8);
         }
-        MasmOp::LocAddr(_id) => unreachable!(),
+        MasmOp::LocAddr(_id) | MasmOp::LocStore(_id) | MasmOp::LocStorew(_id) => unreachable!(),
         MasmOp::MemLoad | MasmOp::MemLoadOffset => {
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(

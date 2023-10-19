@@ -170,6 +170,10 @@ pub enum MasmOp {
     AssertEqw,
     /// Places the memory address of the given local index on top of the stack
     LocAddr(LocalId),
+    /// Writes a value to the first element of the word at the address corresponding to the given local index
+    LocStore(LocalId),
+    /// Writes a word to the address corresponding to the given local index
+    LocStorew(LocalId),
     /// Pops `a`, representing a memory address, from the top of the stack, then loads the
     /// first element of the word starting at that address, placing it on top of the stack.
     ///
@@ -853,6 +857,12 @@ impl MasmOp {
             Instruction::Locaddr(id) => {
                 Self::LocAddr(LocalId::from_u8(id.try_into().expect("invalid local id")))
             }
+            Instruction::LocStore(id) => {
+                Self::LocStore(LocalId::from_u8(id.try_into().expect("invalid local id")))
+            }
+            Instruction::LocStoreW(id) => {
+                Self::LocStorew(LocalId::from_u8(id.try_into().expect("invalid local id")))
+            }
             Instruction::Clk => Self::Clk,
             Instruction::MemLoad => Self::MemLoad,
             Instruction::MemLoadImm(addr) => Self::MemLoadImm(addr),
@@ -862,10 +872,9 @@ impl MasmOp {
             Instruction::MemStoreImm(addr) => Self::MemStoreImm(addr),
             Instruction::MemStoreW => Self::MemStorew,
             Instruction::MemStoreWImm(addr) => Self::MemStorewImm(addr),
-            Instruction::LocLoad(_)
-            | Instruction::LocLoadW(_)
-            | Instruction::LocStore(_)
-            | Instruction::LocStoreW(_) => unimplemented!("load/store by local id"),
+            Instruction::LocLoad(_) | Instruction::LocLoadW(_) => {
+                unimplemented!("load by local id")
+            }
             Instruction::MemStream => unimplemented!("mem_stream"),
             Instruction::AdvPipe
             | Instruction::AdvPush(_)
@@ -1032,6 +1041,8 @@ impl MasmOp {
             Self::AssertEq => Instruction::AssertEq,
             Self::AssertEqw => Instruction::AssertEqw,
             Self::LocAddr(id) => Instruction::Locaddr(id.as_usize() as u16),
+            Self::LocStore(id) => Instruction::LocStore(id.as_usize() as u16),
+            Self::LocStorew(id) => Instruction::LocStoreW(id.as_usize() as u16),
             Self::MemLoad => Instruction::MemLoad,
             Self::MemLoadImm(addr) => Instruction::MemLoadImm(addr),
             Self::MemLoadw => Instruction::MemLoadW,
@@ -1294,6 +1305,8 @@ impl fmt::Display for MasmOp {
             Self::AssertEq => f.write_str("assert_eq"),
             Self::AssertEqw => f.write_str("assert_eqw"),
             Self::LocAddr(_) => f.write_str("locaddr"),
+            Self::LocStore(_) => f.write_str("loc_store"),
+            Self::LocStorew(_) => f.write_str("loc_storew"),
             Self::MemLoad
             | Self::MemLoadOffset
             | Self::MemLoadImm(_)
@@ -1317,7 +1330,8 @@ impl fmt::Display for MasmOp {
             Self::Inv => f.write_str("inv"),
             Self::Incr => f.write_str("incr"),
             Self::Pow2 => f.write_str("pow2"),
-            Self::Exp | Self::ExpImm(_) => f.write_str("exp.u64"),
+            Self::Exp => f.write_str("exp.u64"),
+            Self::ExpImm(imm) => write!(f, "exp.{imm}"),
             Self::Not => f.write_str("not"),
             Self::And | Self::AndImm(_) => f.write_str("and"),
             Self::Or | Self::OrImm(_) => f.write_str("or"),
@@ -1331,74 +1345,74 @@ impl fmt::Display for MasmOp {
             Self::IsOdd => f.write_str("is_odd"),
             Self::Eqw => f.write_str("eqw"),
             Self::Clk => f.write_str("clk"),
-            Self::U32Test => f.write_str("u32.test"),
-            Self::U32Testw => f.write_str("u32.testw"),
-            Self::U32Assert => f.write_str("u32.assert"),
-            Self::U32Assert2 => f.write_str("u32.assert2"),
-            Self::U32Assertw => f.write_str("u32.assertw"),
-            Self::U32Cast => f.write_str("u23.cast"),
-            Self::U32Split => f.write_str("u32.split"),
-            Self::U32CheckedAdd | Self::U32CheckedAddImm(_) => f.write_str("u32.add.checked"),
+            Self::U32Test => f.write_str("u32test"),
+            Self::U32Testw => f.write_str("u32testw"),
+            Self::U32Assert => f.write_str("u32assert"),
+            Self::U32Assert2 => f.write_str("u32assert2"),
+            Self::U32Assertw => f.write_str("u32assertw"),
+            Self::U32Cast => f.write_str("u23cast"),
+            Self::U32Split => f.write_str("u32split"),
+            Self::U32CheckedAdd | Self::U32CheckedAddImm(_) => f.write_str("u32checked_add"),
             Self::U32OverflowingAdd | Self::U32OverflowingAddImm(_) => {
-                f.write_str("u32.add.overflowing")
+                f.write_str("u32overflowing_add")
             }
-            Self::U32WrappingAdd | Self::U32WrappingAddImm(_) => f.write_str("u32.add.wrapping"),
-            Self::U32OverflowingAdd3 => f.write_str("u32.add3.overflowing"),
-            Self::U32WrappingAdd3 => f.write_str("u32.add3.wrapping"),
-            Self::U32CheckedSub | Self::U32CheckedSubImm(_) => f.write_str("u32.sub.checked"),
+            Self::U32WrappingAdd | Self::U32WrappingAddImm(_) => f.write_str("u32wrapping_add"),
+            Self::U32OverflowingAdd3 => f.write_str("u32overflowing_add3"),
+            Self::U32WrappingAdd3 => f.write_str("u32wrapping_add3"),
+            Self::U32CheckedSub | Self::U32CheckedSubImm(_) => f.write_str("u32checked_sub"),
             Self::U32OverflowingSub | Self::U32OverflowingSubImm(_) => {
-                f.write_str("u32.sub.overflowing")
+                f.write_str("u32overflowing_sub")
             }
-            Self::U32WrappingSub | Self::U32WrappingSubImm(_) => f.write_str("u32.sub.wrapping"),
-            Self::U32CheckedMul | Self::U32CheckedMulImm(_) => f.write_str("u32.mul.checked"),
+            Self::U32WrappingSub | Self::U32WrappingSubImm(_) => f.write_str("u32wrapping_sub"),
+            Self::U32CheckedMul | Self::U32CheckedMulImm(_) => f.write_str("u32checked_mul"),
             Self::U32OverflowingMul | Self::U32OverflowingMulImm(_) => {
-                f.write_str("u32.mul.overflowing")
+                f.write_str("u32overflowing_mul")
             }
-            Self::U32WrappingMul | Self::U32WrappingMulImm(_) => f.write_str("u32.mul.wrapping"),
-            Self::U32OverflowingMadd => f.write_str("u32.madd.overflowing"),
-            Self::U32WrappingMadd => f.write_str("u32.madd.wrapping"),
-            Self::U32CheckedDiv | Self::U32CheckedDivImm(_) => f.write_str("u32.div.checked"),
-            Self::U32UncheckedDiv | Self::U32UncheckedDivImm(_) => f.write_str("u32.div.unchecked"),
-            Self::U32CheckedMod | Self::U32CheckedModImm(_) => f.write_str("u32.mod.checked"),
-            Self::U32UncheckedMod | Self::U32UncheckedModImm(_) => f.write_str("u32.mod.unchecked"),
+            Self::U32WrappingMul | Self::U32WrappingMulImm(_) => f.write_str("u32wrapping_mul"),
+            Self::U32OverflowingMadd => f.write_str("u32overflowing_madd"),
+            Self::U32WrappingMadd => f.write_str("u32wrapping_madd"),
+            Self::U32CheckedDiv | Self::U32CheckedDivImm(_) => f.write_str("u32checked_div"),
+            Self::U32UncheckedDiv | Self::U32UncheckedDivImm(_) => f.write_str("u32unchecked_div"),
+            Self::U32CheckedMod | Self::U32CheckedModImm(_) => f.write_str("u32checked_mod"),
+            Self::U32UncheckedMod | Self::U32UncheckedModImm(_) => f.write_str("u32unchecked_mod"),
             Self::U32CheckedDivMod | Self::U32CheckedDivModImm(_) => {
-                f.write_str("u32.divmod.checked")
+                f.write_str("u32checked_divmod")
             }
             Self::U32UncheckedDivMod | Self::U32UncheckedDivModImm(_) => {
-                f.write_str("u32.divmod.unchecked")
+                f.write_str("u32unchecked_divmod")
             }
-            Self::U32And => f.write_str("u32.and"),
-            Self::U32Or => f.write_str("u32.or"),
-            Self::U32Xor => f.write_str("u32.xor"),
-            Self::U32Not => f.write_str("u32.not"),
-            Self::U32CheckedShl | Self::U32CheckedShlImm(_) => f.write_str("u32.shl.checked"),
-            Self::U32UncheckedShl | Self::U32UncheckedShlImm(_) => f.write_str("u32.shl.unchecked"),
-            Self::U32CheckedShr | Self::U32CheckedShrImm(_) => f.write_str("u32.shr.checked"),
-            Self::U32UncheckedShr | Self::U32UncheckedShrImm(_) => f.write_str("u32.shr.unchecked"),
-            Self::U32CheckedRotl | Self::U32CheckedRotlImm(_) => f.write_str("u32.rotl.checked"),
+            Self::U32And => f.write_str("u32checked_and"),
+            Self::U32Or => f.write_str("u32checked_or"),
+            Self::U32Xor => f.write_str("u32checked_xor"),
+            Self::U32Not => f.write_str("u32checked_not"),
+            Self::U32CheckedShl | Self::U32CheckedShlImm(_) => f.write_str("u32checked_shl"),
+            Self::U32UncheckedShl | Self::U32UncheckedShlImm(_) => f.write_str("u32unchecked_shl"),
+            Self::U32CheckedShr | Self::U32CheckedShrImm(_) => f.write_str("u32checked_shr"),
+            Self::U32UncheckedShr | Self::U32UncheckedShrImm(_) => f.write_str("u32unchecked_shr"),
+            Self::U32CheckedRotl | Self::U32CheckedRotlImm(_) => f.write_str("u32checked_rotl"),
             Self::U32UncheckedRotl | Self::U32UncheckedRotlImm(_) => {
-                f.write_str("u32.rotl.unchecked")
+                f.write_str("u32unchecked_rotl")
             }
-            Self::U32CheckedRotr | Self::U32CheckedRotrImm(_) => f.write_str("u32.rotr.checked"),
+            Self::U32CheckedRotr | Self::U32CheckedRotrImm(_) => f.write_str("u32checked_rotr"),
             Self::U32UncheckedRotr | Self::U32UncheckedRotrImm(_) => {
-                f.write_str("u32.rotr.unchecked")
+                f.write_str("u32unchecked_rotr")
             }
-            Self::U32CheckedPopcnt => f.write_str("u32.popcnt.checked"),
-            Self::U32UncheckedPopcnt => f.write_str("u32.popcnt.unchecked"),
-            Self::U32Eq | Self::U32EqImm(_) => f.write_str("u32.eq"),
-            Self::U32Neq | Self::U32NeqImm(_) => f.write_str("u32.neq"),
-            Self::U32CheckedLt => f.write_str("u32.lt.checked"),
-            Self::U32UncheckedLt => f.write_str("u32.lt.unchecked"),
-            Self::U32CheckedLte => f.write_str("u32.lte.checked"),
-            Self::U32UncheckedLte => f.write_str("u32.lte.unchecked"),
-            Self::U32CheckedGt => f.write_str("u32.gt.checked"),
-            Self::U32UncheckedGt => f.write_str("u32.gt.unchecked"),
-            Self::U32CheckedGte => f.write_str("u32.gte.checked"),
-            Self::U32UncheckedGte => f.write_str("u32.gte.unchecked"),
-            Self::U32CheckedMin => f.write_str("u32.min.checked"),
-            Self::U32UncheckedMin => f.write_str("u32.min.unchecked"),
-            Self::U32CheckedMax => f.write_str("u32.max.checked"),
-            Self::U32UncheckedMax => f.write_str("u32.max.unchecked"),
+            Self::U32CheckedPopcnt => f.write_str("u32checked_popcnt"),
+            Self::U32UncheckedPopcnt => f.write_str("u32unchecked_popcnt"),
+            Self::U32Eq | Self::U32EqImm(_) => f.write_str("u32checked_eq"),
+            Self::U32Neq | Self::U32NeqImm(_) => f.write_str("u32checked_neq"),
+            Self::U32CheckedLt => f.write_str("u32checked_lt"),
+            Self::U32UncheckedLt => f.write_str("u32unchecked_lt"),
+            Self::U32CheckedLte => f.write_str("u32checked_lte"),
+            Self::U32UncheckedLte => f.write_str("u32unchecked_lte"),
+            Self::U32CheckedGt => f.write_str("u32checked_gt"),
+            Self::U32UncheckedGt => f.write_str("u32unchecked_gt"),
+            Self::U32CheckedGte => f.write_str("u32checked_gte"),
+            Self::U32UncheckedGte => f.write_str("u32unchecked_gte"),
+            Self::U32CheckedMin => f.write_str("u32checked_min"),
+            Self::U32UncheckedMin => f.write_str("u32unchecked_min"),
+            Self::U32CheckedMax => f.write_str("u32checked_max"),
+            Self::U32UncheckedMax => f.write_str("u32unchecked_max"),
         }
     }
 }
