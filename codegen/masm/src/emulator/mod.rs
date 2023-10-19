@@ -1055,6 +1055,29 @@ impl Emulator {
                     debug_assert!(addr < self.memory.len() as u32);
                     self.stack.push_u32(addr * 16);
                 }
+                Op::LocStore(id) => {
+                    let addr = (state.fp() + id.as_usize() as u32) as usize;
+                    debug_assert!(addr < self.memory.len());
+                    let value = pop!(self);
+                    self.memory[addr][0] = value;
+                    return Ok(EmulatorEvent::MemoryWrite {
+                        addr: addr as u32,
+                        size: 4,
+                    });
+                }
+                Op::LocStorew(id) => {
+                    let addr = (state.fp() + id.as_usize() as u32) as usize;
+                    assert!(addr < self.memory.len() - 4, "out of bounds memory access");
+                    let word = self
+                        .stack
+                        .peekw()
+                        .expect("operand stack does not contain a full word");
+                    self.memory[addr] = word;
+                    return Ok(EmulatorEvent::MemoryWrite {
+                        addr: addr as u32,
+                        size: 16,
+                    });
+                }
                 Op::MemLoad => {
                     let addr = pop_addr!(self);
                     self.stack.push(self.memory[addr][0]);
