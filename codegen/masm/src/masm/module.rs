@@ -7,17 +7,6 @@ use rustc_hash::FxHashMap;
 
 use super::{Function, FunctionListAdapter, Import, ModuleImportInfo};
 
-const I32_INTRINSICS: &'static str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/i32.masm"));
-const MEM_INTRINSICS: &'static str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"));
-
-/// This is a mapping of intrinsics module name to the raw MASM source for that module
-const INTRINSICS: [(&'static str, &'static str); 2] = [
-    ("intrinsics::i32", I32_INTRINSICS),
-    ("intrinsics::mem", MEM_INTRINSICS),
-];
-
 /// This represents a single compiled Miden Assembly module in a form that is
 /// designed to integrate well with the rest of our IR. You can think of this
 /// as an intermediate representation corresponding to the Miden Assembly AST,
@@ -235,8 +224,6 @@ impl Module {
     ///
     /// Expects the fully-qualified name to be given, e.g. `intrinsics::mem`
     pub fn load_intrinsic<N: AsRef<str>>(name: N) -> Option<Self> {
-        let name = name.as_ref();
-        let (_, source) = INTRINSICS.iter().find(|(n, _)| *n == name)?;
-        Some(Self::parse_str(source, name).expect("invalid module"))
+        crate::masm::intrinsics::load(name)
     }
 }

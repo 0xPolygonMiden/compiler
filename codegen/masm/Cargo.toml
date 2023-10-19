@@ -24,3 +24,6 @@ miden-hir-transform.workspace = true
 paste.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
+
+[build-dependencies]
+walkdir = "2.4"

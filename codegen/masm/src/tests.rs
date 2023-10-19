@@ -340,7 +340,7 @@ fn stackify_fundamental_loops() {
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
 }
 
-/// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
+/// Verify that we can load the i32 intrinsics module
 #[test]
 fn verify_i32_intrinsics_syntax() {
     let mut harness = TestByEmulationHarness::default();
@@ -349,6 +349,17 @@ fn verify_i32_intrinsics_syntax() {
         .emulator
         .load_module(Module::load_intrinsic("intrinsics::i32").expect("parsing failed"))
         .expect("failed to load intrinsics::i32");
+}
+
+/// Verify that we can load the u32 intrinsics module
+#[test]
+fn verify_u32_intrinsics_syntax() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(Module::load_intrinsic("intrinsics::u32").expect("parsing failed"))
+        .expect("failed to load intrinsics::u32");
 }
 
 /// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].

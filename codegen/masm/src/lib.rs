@@ -119,12 +119,11 @@ impl<'a> ProgramCompiler<'a> {
         }
 
         // Ensure intrinsics modules are linked
-        self.output
-            .modules
-            .push(Module::load_intrinsic("intrinsics::mem").expect("parsing failed"));
-        self.output
-            .modules
-            .push(Module::load_intrinsic("intrinsics::i32").expect("parsing failed"));
+        for module_name in masm::intrinsics::modules() {
+            self.output
+                .modules
+                .push(Module::load_intrinsic(module_name).expect("parsing failed"));
+        }
 
         Ok(self.output)
     }

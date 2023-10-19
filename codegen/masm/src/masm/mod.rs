@@ -2,6 +2,18 @@ mod function;
 mod module;
 mod program;
 
+pub(crate) mod intrinsics {
+    include!(env!("MIDENC_INTRINSICS"));
+
+    /// Get an iterator over all the intrinsic module names
+    pub fn modules() -> impl Iterator<Item = &'static str> {
+        INTRINSICS
+            .iter()
+            .map(|(module_name, _)| module_name)
+            .copied()
+    }
+}
+
 pub use self::function::{Function, FunctionListAdapter};
 pub use self::module::Module;
 pub use self::program::Program;
