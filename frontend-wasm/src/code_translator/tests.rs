@@ -266,9 +266,8 @@ fn loop_br_if() {
                 v5 = add v3, v4  : i32
                 v6 = const.i32 1  : i32
                 v7 = sub v3, v6  : i32
-                v8 = const.i32 0  : i32
-                v9 = neq v7, v8  : i1
-                condbr v9, block2(v7, v5), block4
+                v8 = neq v7, 0  : i1
+                condbr v8, block2(v7, v5), block4
 
             block3:
                 br block1(v5)
@@ -301,23 +300,22 @@ fn if_then_else() {
             pub fn main() -> i32 {
             block0:
                 v1 = const.i32 2  : i32
-                v2 = const.i32 0  : i32
-                v3 = neq v1, v2  : i1
-                condbr v3, block2, block4
+                v2 = neq v1, 0  : i1
+                condbr v2, block2, block4
 
             block1(v0: i32):
                 ret v0
 
             block2:
-                v5 = const.i32 3  : i32
-                br block3(v5)
+                v4 = const.i32 3  : i32
+                br block3(v4)
 
-            block3(v4: i32):
-                br block1(v4)
+            block3(v3: i32):
+                br block1(v3)
 
             block4:
-                v6 = const.i32 5  : i32
-                br block3(v6)
+                v5 = const.i32 5  : i32
+                br block3(v5)
             }
         "#]],
     );
@@ -1622,9 +1620,8 @@ fn i32_eqz() {
         "#,
         expect![[r#"
             v0 = const.i32 2  : i32
-            v1 = const.i32 0  : i32
-            v2 = eq v0, v1  : i1
-            v3 = cast v2  : i32
+            v1 = eq v0, 0  : i1
+            v2 = cast v1  : i32
         "#]],
     )
 }
@@ -1639,9 +1636,8 @@ fn i64_eqz() {
         "#,
         expect![[r#"
             v0 = const.i64 2  : i64
-            v1 = const.i64 0  : i64
-            v2 = eq v0, v1  : i1
-            v3 = cast v2  : i32
+            v1 = eq v0, 0  : i1
+            v2 = cast v1  : i32
         "#]],
     )
 }
@@ -1732,9 +1728,8 @@ fn select_i32() {
             v0 = const.i64 3  : i64
             v1 = const.i64 7  : i64
             v2 = const.i32 42  : i32
-            v3 = const.i32 0  : i32
-            v4 = neq v2, v3  : i1
-            v5 = select v4, v0, v1  : i64
+            v3 = neq v2, 0  : i1
+            v4 = select v3, v0, v1  : i64
         "#]],
     )
 }

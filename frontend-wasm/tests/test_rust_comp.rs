@@ -286,21 +286,20 @@ fn rust_fib() {
 
             block1(v1: i32):
 
-            block2(v6: i32, v7: i32, v10: i32):
-                v8 = const.i32 0  : i32
-                v9 = neq v7, v8  : i1
-                condbr v9, block4, block5
+            block2(v6: i32, v7: i32, v9: i32):
+                v8 = neq v7, 0  : i1
+                condbr v8, block4, block5
 
             block3(v5: i32):
 
             block4:
-                v11 = const.i32 -1  : i32
-                v12 = add v7, v11  : i32
-                v13 = add v10, v6  : i32
-                br block2(v13, v12, v6)
+                v10 = const.i32 -1  : i32
+                v11 = add v7, v10  : i32
+                v12 = add v9, v6  : i32
+                br block2(v12, v11, v6)
 
             block5:
-                ret v10
+                ret v9
             }
 
             pub fn __main() -> i32 {
@@ -499,37 +498,34 @@ fn rust_array() {
             block0(v0: i32, v1: i32):
                 v3 = const.i32 0  : i32
                 v4 = const.i32 0  : i32
-                v5 = const.i32 0  : i32
-                v6 = eq v1, v5  : i1
-                v7 = cast v6  : i32
-                v8 = const.i32 0  : i32
-                v9 = neq v7, v8  : i1
-                condbr v9, block2(v4), block3
+                v5 = eq v1, 0  : i1
+                v6 = cast v5  : i32
+                v7 = neq v6, 0  : i1
+                condbr v7, block2(v4), block3
 
             block1(v2: i32):
                 ret v2
 
-            block2(v23: i32):
-                br block1(v23)
+            block2(v20: i32):
+                br block1(v20)
 
             block3:
                 br block4(v0, v4, v1)
 
-            block4(v10: i32, v14: i32, v18: i32):
-                v11 = cast v10  : u32
-                v12 = inttoptr v11  : *mut i32
-                v13 = load v12  : i32
-                v15 = add v13, v14  : i32
-                v16 = const.i32 4  : i32
-                v17 = add v10, v16  : i32
-                v19 = const.i32 -1  : i32
-                v20 = add v18, v19  : i32
-                v21 = const.i32 0  : i32
-                v22 = neq v20, v21  : i1
-                condbr v22, block4(v17, v15, v20), block6
+            block4(v8: i32, v12: i32, v16: i32):
+                v9 = cast v8  : u32
+                v10 = inttoptr v9  : *mut i32
+                v11 = load v10  : i32
+                v13 = add v11, v12  : i32
+                v14 = const.i32 4  : i32
+                v15 = add v8, v14  : i32
+                v17 = const.i32 -1  : i32
+                v18 = add v16, v17  : i32
+                v19 = neq v18, 0  : i1
+                condbr v19, block4(v15, v13, v18), block6
 
             block5:
-                br block2(v15)
+                br block2(v13)
 
             block6:
                 br block5
@@ -662,14 +658,13 @@ fn rust_static_mut() {
                 v12 = add v10, v11  : i32
                 v13 = const.i32 1  : i32
                 v14 = add v4, v13  : i32
-                v15 = const.i32 0  : i32
-                v16 = neq v14, v15  : i1
-                condbr v16, block2(v14, v12), block4
+                v15 = neq v14, 0  : i1
+                condbr v15, block2(v14, v12), block4
 
             block3:
-                v17 = const.i32 255  : i32
-                v18 = band v12, v17  : i32
-                br block1(v18)
+                v16 = const.i32 255  : i32
+                v17 = band v12, v16  : i32
+                br block1(v17)
 
             block4:
                 br block3
