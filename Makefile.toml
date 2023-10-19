@@ -205,3 +205,17 @@ category = "Build"
 description = "Builds the filecheck helper"
 command = "rustup"
 args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "-Z", "unstable-options", "build", "-p", "filecheck", "--release", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
+
+[tasks.book]
+category = "Build"
+description = "Builds the compiler documentation"
+install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = ["--help"] }
+command = "mdbook"
+args = ["build", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
+
+[tasks.serve-book]
+category = "Build"
+description = "Opens the compiler documentation"
+install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = ["--help"] }
+command = "mdbook"
+args = ["serve", "--open", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
