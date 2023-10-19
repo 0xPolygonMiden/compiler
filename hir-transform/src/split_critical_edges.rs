@@ -152,21 +152,29 @@ mod tests {
     /// ```text,ignore
     /// pub fn test(*mut u8, u32) -> *mut u8 {
     /// entry(ptr0: *mut u8, n0: u32):
+    /// {
     ///    ptr1 = ptrtoint ptr0 : u32
     ///    br blk0(ptr1, n0)
+    /// }
     ///
     /// blk0(ptr2: u32, n1: u32):
+    /// {
     ///    is_null = eq ptr2, 0
     ///    condbr is_null, blk2(ptr0), blk1(ptr2, n1)
+    /// }
     ///
     /// blk1(ptr3: u32, n2: u32):
+    /// {
     ///    ptr4 = sub ptr3, n2
     ///    n3 = sub n2, 1
     ///    is_zero = eq n3, 0
     ///    condbr is_zero, blk2(ptr4), blk0(ptr4, n3)
+    /// }
     ///
     /// blk2(result0: *mut u8)
-    ///    ret result0
+    /// {
+    ///    ret (result0)
+    /// }
     /// }
     /// ```
     ///
@@ -248,31 +256,45 @@ mod tests {
 
         let expected = "pub fn sce(*mut u8, u32) -> *mut u8 {
 block0(v0: *mut u8, v1: u32):
+{
     v7 = ptrtoint v0  : u32
     br block1(v7, v1)
+}
 
 block1(v2: u32, v3: u32):
+{
     v8 = eq v2, 0  : i1
     condbr v8, block4, block2(v2, v3)
+}
 
 block4:
+{
     br block3(v0)
+}
 
 block2(v4: u32, v5: u32):
+{
     v9 = sub v4, v5  : u32
     v10 = sub v5, 1  : u32
     v11 = eq v10, 0  : i1
     condbr v11, block6, block5
+}
 
 block6:
+{
     br block3(v9)
+}
 
 block5:
+{
     br block1(v9, v10)
+}
 
 block3(v6: u32):
+{
     v12 = inttoptr v6  : *mut u8
-    ret v12
+    ret (v12)
+}
 }
 ";
 

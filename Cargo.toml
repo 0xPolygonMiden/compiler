@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "codegen/*",
   "hir",
+  "hir-parser",
   "hir-analysis",
   "hir-pass",
   "hir-symbol",

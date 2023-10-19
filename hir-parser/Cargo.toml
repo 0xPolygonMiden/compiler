@@ -1,0 +1,26 @@
+[package]
+name = "miden-ir-parser"
+version = "0.4.0"
+description = "Parser for the Miden IR language"
+authors = ["miden contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/0xPolygonMiden/miden-ir"
+categories = ["Compilers"]
+keywords = ["compiler", "miden"]
+edition = "2021"
+rust-version = "1.67"
+
+[build-dependencies]
+lalrpop = { version = "0.20", default-features = false }
+
+[dependencies]
+miden-diagnostics = "0.1"
+miden-parsing = "0.1"
+lalrpop-util="0.20"
+lazy_static = "1.4"
+regex = "1"
+thiserror = "1.0"
+
+[dev-dependencies]
+pretty_assertions = "1.0"
