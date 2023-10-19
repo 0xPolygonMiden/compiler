@@ -1817,7 +1817,9 @@ fn rewrite_inline_assembly_block(
                 *body_blk = rewrites[&prev_body_blk];
                 rewrite_inline_assembly_block(f_prime, asm, prev_body_blk, *body_blk, rewrites);
             }
-            Op::LocAddr(_) => todo!(),
+            Op::LocAddr(_) | Op::LocStore(_) | Op::LocStorew(_) => {
+                unimplemented!("locals are not currently supported in inline assembly blocks")
+            }
             _ => (),
         }
         f_prime.blocks[new].push(op);

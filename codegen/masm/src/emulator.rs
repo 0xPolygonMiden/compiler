@@ -1104,6 +1104,49 @@ impl Emulator {
                     debug_assert!(addr < self.memory.len() as u32);
                     self.stack.push_u32(addr * 16);
                 }
+                Op::LocStore(id) => {
+                    let addr = (state.fp + id.as_usize() as u32) as usize;
+                    debug_assert!(addr < self.memory.len());
+                    let value = pop!(self);
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Push operands back on the stack
+                            self.stack.push(value);
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
+                    self.memory[addr][0] = value;
+                }
+                Op::LocStorew(id) => {
+                    let addr = (state.fp + id.as_usize() as u32) as usize;
+                    if let Some(Breakpoint::MemoryWrite {
+                        addr: min_addr,
+                        size,
+                    }) = self.bp
+                    {
+                        let max_addr = min_addr + size;
+                        if addr >= min_addr && addr < max_addr {
+                            // Suspend execution state
+                            state.ip.index -= 1;
+                            self.callstack.push(state);
+                            return Err(EmulationError::BreakpointHit);
+                        }
+                    }
+                    assert!(addr < self.memory.len() - 4, "out of bounds memory access");
+                    let word = self
+                        .stack
+                        .peekw()
+                        .expect("operand stack does not contain a full word");
+                    self.memory[addr] = word;
+                }
                 Op::MemLoad => {
                     let addr = pop_addr!(self);
                     self.stack.push(self.memory[addr][0]);
