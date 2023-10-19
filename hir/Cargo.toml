@@ -10,16 +10,22 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 
+[build-dependencies]
+lalrpop = { version = "0.20", default-features = false }
+
 [dependencies]
 anyhow.workspace = true
 cranelift-entity.workspace = true
 intrusive-collections.workspace = true
+lalrpop-util="0.20"
 miden-assembly.workspace = true
 miden-diagnostics.workspace = true
 miden-hir-symbol.workspace = true
 miden-hir-type.workspace = true
+miden-parsing = "0.1"
 petgraph = "0.6"
 paste.workspace = true
+pretty_assertions = "1.0"
 rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true

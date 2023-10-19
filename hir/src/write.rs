@@ -11,9 +11,11 @@ pub fn write_function(w: &mut dyn Write, func: &Function) -> fmt::Result {
         }
 
         write_block_header(w, func, block, 4)?;
+        writeln!(w, "{{")?;
         for inst in block_data.insts() {
             write_instruction(w, func, inst, 4)?;
         }
+        writeln!(w, "}}")?;
     }
     writeln!(w, "}}")
 }
@@ -170,7 +172,13 @@ fn write_operands(
         Instruction::BinaryOpImm(BinaryOpImm { arg, imm, .. }) => write!(w, " {}, {}", arg, imm),
         Instruction::UnaryOp(UnaryOp { arg, .. }) => write!(w, " {}", arg),
         Instruction::UnaryOpImm(UnaryOpImm { imm, .. }) => write!(w, " {}", imm),
-        Instruction::Ret(Ret { args, .. }) => write!(w, " {}", DisplayValues(args.as_slice(pool))),
+        Instruction::Ret(Ret { args, .. }) => {
+            if args.len(pool) > 0 {
+                write!(w, " ({})", DisplayValues(args.as_slice(pool)))
+            } else {
+                Ok(())
+            }
+        }
         Instruction::RetImm(RetImm { arg, .. }) => write!(w, " {arg}"),
         Instruction::Call(Call { callee, args, .. }) => {
             write!(w, " {}({})", callee, DisplayValues(args.as_slice(pool)))
@@ -188,20 +196,10 @@ fn write_operands(
             write_block_args(w, else_dest.1.as_slice(pool))
         }
         Instruction::Br(Br {
-            op,
-            destination,
-            args,
-            ..
-        }) if *op == Opcode::Br => {
-            write!(w, " {}", destination)?;
-            write_block_args(w, args.as_slice(pool))
-        }
-        Instruction::Br(Br {
             destination, args, ..
         }) => {
-            let args = args.as_slice(pool);
-            write!(w, " {}, {}", args[0], destination)?;
-            write_block_args(w, &args[1..])
+            write!(w, " {}", destination)?;
+            write_block_args(w, args.as_slice(pool))
         }
         Instruction::Switch(Switch {
             arg, arms, default, ..

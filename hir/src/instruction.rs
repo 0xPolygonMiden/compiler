@@ -809,6 +809,16 @@ impl Overflow {
         matches!(self, Self::Overflowing)
     }
 }
+impl fmt::Display for Overflow {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Unchecked => f.write_str("unchecked"),
+            Self::Checked => f.write_str("checked"),
+            Self::Wrapping => f.write_str("wrapping"),
+            Self::Overflowing => f.write_str("overflow"),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct GlobalValueOp {
