@@ -9,7 +9,7 @@
 //! using a set of common primitives. The only thing that changes are which bits are considered by
 //! those primitives.
 use crate::masm::Op;
-use miden_hir::Overflow;
+use miden_hir::{Felt, FieldElement, Overflow};
 
 use super::OpEmitter;
 
@@ -307,6 +307,47 @@ impl<'a> OpEmitter<'a> {
     #[inline(always)]
     pub fn unchecked_divmod_imm_uint(&mut self, imm: u32, _n: u32) {
         self.unchecked_divmod_imm_u32(imm)
+    }
+
+    /// Pops an N-bit integer value off the stack, `a`, and pushes the count of leading zeroes back on the stack.
+    ///
+    /// This operation will trap if the input is larger than u32
+    pub fn clz_uint(&mut self, n: u32) {
+        // Ensure the upper bits of the u32 are zero
+        self.trunc_int32(n);
+        // Count the number of leading zeroes in the 32-bit representation
+        self.clz_int32();
+        // Subtract the unused bits from the count, since we know they are zero,
+        // leaving us with only the count of zero bits in the N-bit representation
+        self.emit(Op::U32CheckedSubImm(32 - n));
+    }
+
+    /// Pops an N-bit integer value off the stack, `a`, and pushes the count of trailing zeroes back on the stack.
+    ///
+    /// This operation will trap if the input is larger than u32
+    pub fn ctz_uint(&mut self, n: u32) {
+        // Ensure the upper bits of the u32 are zero
+        //
+        // # [a]
+        self.trunc_int32(n);
+        // Make a copy of the input
+        //
+        // # [a, a]
+        self.emit(Op::Dup(0));
+        // Count the number of trailing zeros
+        //
+        // # [count, a]
+        self.ctz_int32();
+        // If the input value was zero, the result is the
+        // bitwidth of the integer, otherwise ctz_int32 gave
+        // us the correct count
+        self.emit_all(&[
+            Op::Swap(1),           // [a, count]
+            Op::EqImm(Felt::ZERO), // [is_zero, count]
+            Op::PushU32(n),        // [n, is_zero, count]
+            Op::Swap(1),           // [is_zero, n, count]
+            Op::Cdrop,             // [result]
+        ]);
     }
 
     pub fn handle_uint_overflow(&mut self, n: u32, overflow: Overflow) {

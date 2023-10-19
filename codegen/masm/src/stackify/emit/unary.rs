@@ -1,4 +1,4 @@
-use miden_hir::{Overflow, Type};
+use miden_hir::{Felt, FieldElement, Overflow, Type};
 
 use crate::masm::Op;
 
@@ -354,6 +354,60 @@ impl<'a> OpEmitter<'a> {
             ty => panic!("expected integral type for is_odd opcode, got {ty}"),
         }
         self.stack.push(Type::I1);
+    }
+
+    /// Count the number of leading zero bits in the integral value on top of the operand stack,
+    /// and place the count back on the stack as a u32 value.
+    ///
+    /// This operation consumes the input operand.
+    pub fn clz(&mut self) {
+        let arg = self.stack.pop().expect("operand stack is empty");
+        let ty = arg.ty();
+        match &ty {
+            Type::U32 | Type::I32 => self.clz_int32(),
+            Type::I16 | Type::U16 | Type::I8 | Type::U8 => self.clz_uint(ty.size_in_bits() as u32),
+            Type::I1 => {
+                self.emit_all(&[
+                    Op::EqImm(Felt::ZERO),
+                    Op::PushU8(0),
+                    Op::PushU8(1),
+                    Op::Movup(2),
+                    Op::Cdrop,
+                ]);
+            }
+            ty if !ty.is_integer() => {
+                panic!("invalid clz on {ty}: only integral types can be negated")
+            }
+            ty => unimplemented!("clz for {ty} is not supported"),
+        }
+        self.stack.push(ty);
+    }
+
+    /// Count the number of trailing zero bits in the integral value on top of the operand stack,
+    /// and place the count back on the stack as a u32 value.
+    ///
+    /// This operation consumes the input operand.
+    pub fn ctz(&mut self) {
+        let arg = self.stack.pop().expect("operand stack is empty");
+        let ty = arg.ty();
+        match &ty {
+            Type::U32 | Type::I32 => self.ctz_int32(),
+            Type::I16 | Type::U16 | Type::I8 | Type::U8 => self.ctz_uint(ty.size_in_bits() as u32),
+            Type::I1 => {
+                self.emit_all(&[
+                    Op::EqImm(Felt::ZERO),
+                    Op::PushU8(0),
+                    Op::PushU8(1),
+                    Op::Movup(2),
+                    Op::Cdrop,
+                ]);
+            }
+            ty if !ty.is_integer() => {
+                panic!("invalid clz on {ty}: only integral types can be negated")
+            }
+            ty => unimplemented!("clz for {ty} is not supported"),
+        }
+        self.stack.push(ty);
     }
 
     /// Count the number of non-zero bits in the integral value on top of the operand stack,

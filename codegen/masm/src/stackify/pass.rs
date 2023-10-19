@@ -1497,6 +1497,8 @@ impl<'a> MasmEmitter<'a> {
             hir::Opcode::Not => emitter.not(),
             hir::Opcode::Bnot => emitter.bnot(),
             hir::Opcode::Popcnt => emitter.popcnt(),
+            hir::Opcode::Clz => emitter.clz(),
+            hir::Opcode::Ctz => emitter.ctz(),
             // This opcode is a no-op
             hir::Opcode::PtrToInt => {
                 let result_ty = emitter.value_type(result).clone();

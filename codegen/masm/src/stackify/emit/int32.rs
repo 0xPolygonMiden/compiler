@@ -915,4 +915,18 @@ impl<'a> OpEmitter<'a> {
             Op::Exec("intrinsics::i32::max".parse().unwrap()),
         ]);
     }
+
+    /// Pops an int32 value off the stack, `a`, and puts the count of leading zero bits back on the stack
+    ///
+    /// This operation is checked, if the operand is not valid u32, execution traps.
+    pub fn clz_int32(&mut self) {
+        self.emit(Op::Exec("intrinsics::u32::clz".parse().unwrap()))
+    }
+
+    /// Pops an int32 value off the stack, `a`, and puts the count of trailing zero bits back on the stack
+    ///
+    /// This operation is checked, if the operand is not valid u32, execution traps.
+    pub fn ctz_int32(&mut self) {
+        self.emit(Op::Exec("intrinsics::u32::ctz".parse().unwrap()))
+    }
 }

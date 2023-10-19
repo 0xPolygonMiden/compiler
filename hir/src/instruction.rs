@@ -398,6 +398,11 @@ pub enum Opcode {
     Shr,
     Rotl,
     Rotr,
+    /// Count leading zeroes
+    Clz,
+    /// Count trailing zeroes
+    Ctz,
+    /// Count number of set bits
     Popcnt,
     Eq,
     Neq,
@@ -515,6 +520,8 @@ impl Opcode {
             | Self::Rotl
             | Self::Rotr
             | Self::Popcnt
+            | Self::Clz
+            | Self::Ctz
             | Self::Eq
             | Self::Neq
             | Self::Gt
@@ -585,6 +592,8 @@ impl Opcode {
             | Self::Incr
             | Self::Pow2
             | Self::Popcnt
+            | Self::Clz
+            | Self::Ctz
             | Self::Not
             | Self::Bnot
             | Self::IsOdd => 1,
@@ -667,6 +676,8 @@ impl Opcode {
             | Self::Incr
             | Self::Pow2
             | Self::Popcnt
+            | Self::Clz
+            | Self::Ctz
             | Self::Mod
             | Self::DivMod
             | Self::Exp
@@ -751,6 +762,8 @@ impl fmt::Display for Opcode {
             Self::Rotl => f.write_str("rotl"),
             Self::Rotr => f.write_str("rotr"),
             Self::Popcnt => f.write_str("popcnt"),
+            Self::Clz => f.write_str("clz"),
+            Self::Ctz => f.write_str("ctz"),
             Self::Eq => f.write_str("eq"),
             Self::Neq => f.write_str("neq"),
             Self::Gt => f.write_str("gt"),

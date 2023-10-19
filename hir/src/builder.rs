@@ -1014,6 +1014,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     unary_int_op!(pow2, Opcode::Pow2);
     unary_boolean_op!(not, Opcode::Not);
     unary_int_op!(bnot, Opcode::Bnot);
+    unary_int_op!(clz, Opcode::Clz);
+    unary_int_op!(ctz, Opcode::Ctz);
     unary_int_op!(popcnt, Opcode::Popcnt);
 
     fn eq(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {

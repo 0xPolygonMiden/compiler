@@ -1,0 +1,116 @@
+use.intrinsics::mem
+
+# Counts the number of leading zero bits in `a`, asserting that the input is a valid u32
+#
+# This function relies on an auxilary table in memory:
+#
+#     [0,
+#      4,
+#      3, 3,
+#      2, 2, 2, 2,
+#      1, 1, 1, 1, 1, 1, 1, 1]
+#
+export.clz.16 # [a]
+    u32assert
+
+    # initialize aux table
+    push.3.3.4.0 loc_storew.0
+    push.2.2.2.2 loc_storew.4
+    push.1.1.1.1 loc_storew.8
+    push.1.1.1.1 loc_storew.12
+
+    # if a == 0
+    dup.0 eq.0
+    if.true
+        push.32
+    else
+        # n = table[a >> (32 - 4)]
+        #
+        # index = a >> (32 - 4)
+        dup.0 push.28 u32checked_shr
+        # waddr = locals[0] + (index / 4)
+        dup.0 u32unchecked_div.4 locaddr.0 add
+        # index = index % 4
+        swap.1 u32unchecked_mod.4
+        # n = waddr[index]
+        swap.1 # [waddr, index, a]
+        exec.mem::load_felt_unchecked # [n, a]
+
+        dup.0 eq.0
+        if.true # [n, a]
+            # if ((a & 0xFFFF0000) == 0) { n = 16; a <<= 16 }
+            dup.1  # [a, n, a]
+            push.0xFFFF0000 u32checked_and eq.0 # [a & 0xFFFF0000 == 0, n, a]
+            swap.1 push.16 dup.2 cdrop # [n, a & 0xFFFF0000 == 0, a]
+            movup.2 dup.0 push.16 u32unchecked_shl movup.3 cdrop # [a, n]
+
+            # if ((a & 0xFF000000) == 0) { n += 8; a <<= 8 }
+            dup.0 # [a, a, n]
+            push.0xFF000000 u32checked_and eq.0 # [a & 0xFF000000 == 0, a, n]
+            swap.1 dup.0 push.8 u32unchecked_shl # [a << 8, a, a & 0xFF000000 == 0, n]
+            dup.2 cdrop # [a, a & .., n]
+            movup.2 dup.0 add.8 movup.3 cdrop # [n, a]
+
+            # if ((a & 0xF0000000) == 0) { n += 4; a << 4 }
+            dup.1 push.0xF0000000 u32checked_and eq.0 # [a & 0xF0000000 == 0, n, a]
+            swap.1 dup.0 add.8 dup.2 cdrop # [n, a & .., a]
+            movup.2 dup.0 push.4 u32unchecked_shl # [a << 8, a, n, a & ..]
+            movup.3 cdrop swap.1 # [n, a]
+
+            # n += table[a >> (32 - 4)]
+            swap.1 push.28 u32unchecked_shr # [index = a >> (32 - 4), n]
+            # waddr = locals[0] + (index / 4)
+            dup.0 u32unchecked_div.4 locaddr.0 add  # [waddr, index, n]
+            # index = index % 4
+            swap.1 u32unchecked_mod.4 # [index, waddr, n]
+            # n += waddr[index]
+            swap.1 exec.mem::load_felt_unchecked u32checked_add # [n += waddr[index]]
+            # return n - 1
+            sub.1            # [n - 1]
+        else
+            # return n - 1
+            u32checked_sub.1 # [n - 1, a]
+            swap.1 drop      # [n - 1]
+        end
+    end
+end
+
+# Counts the number of trailing zero bits in `a`, asserting that the input is a valid u32
+export.ctz # [a]
+    u32assert
+
+    # if odd
+    dup.0 push.1 u32checked_and
+    if.true
+        push.0
+    else
+        dup.0 eq.0
+        if.true
+            push.32
+        else
+            push.1 swap.1 # [a, n = 1]
+            # if ((a & 0x0000FFFF) == 0) { a >>= 16; n += 16 }
+            dup.0 push.0x0000FFFF u32checked_and eq.0 # [a & 0x0000FFFF == 0, a, n]
+            swap.1 dup.0 push.16 u32unchecked_shr dup.2 cdrop # [a, a & .., n]
+            movup.2 dup.0 add.16 movup.3 cdrop # [n, a]
+
+            # if ((a & 0x000000FF) == 0) { a >>= 8; n += 8 }
+            dup.1 push.0x000000FF u32checked_and eq.0 # [a & 0x000000FF == 0, n, a]
+            movup.2 dup.0 push.8 u32unchecked_shr dup.2 cdrop # [a, a & .., n]
+            movup.2 dup.0 add.8 movup.3 cdrop # [n, a]
+
+            # if ((a & 0x0000000F) == 0) { a >>= 4; n += 4 }
+            dup.1 push.0x0000000F u32checked_and eq.0 # [a & 0x0000000F == 0, n, a]
+            movup.2 dup.0 push.4 u32unchecked_shr dup.2 cdrop # [a, a & .., n]
+            movup.2 dup.0 add.4 movup.3 cdrop # [n, a]
+
+            # if ((a & 0x00000003) == 0) { a >>= 2; n += 2 }
+            dup.1 push.0x0000000F u32checked_and eq.0 # [a & 0x00000003 == 0, n, a]
+            movup.2 dup.0 push.2 u32unchecked_shr dup.2 cdrop # [a, a & .., n]
+            movup.2 dup.0 add.2 movup.3 cdrop # [n, a]
+
+            # n -= a & 0x00000001
+            swap.1 push.1 u32checked_and sub # [n]
+        end
+    end
+end
