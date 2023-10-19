@@ -324,7 +324,18 @@ impl SSABuilder {
     /// Callers are expected to avoid adding the same predecessor more than once in the case
     /// of a jump table.
     pub fn declare_block_predecessor(&mut self, block: Block, inst: Inst) {
-        debug_assert!(!self.is_sealed(block));
+        debug_assert!(
+            !self.is_sealed(block),
+            "you cannot add a predecessor to a sealed block"
+        );
+        debug_assert!(
+            self.ssa_blocks[block]
+                .predecessors
+                .as_slice(&self.inst_pool)
+                .iter()
+                .all(|&branch| branch != inst),
+            "you have declared the same predecessor twice!"
+        );
         self.ssa_blocks[block]
             .predecessors
             .push(inst, &mut self.inst_pool);
