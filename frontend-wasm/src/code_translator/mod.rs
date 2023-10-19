@@ -25,9 +25,9 @@ use crate::unsupported_diag;
 use crate::wasm_types::{BlockType, GlobalIndex};
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
-use miden_hir::Type;
 use miden_hir::Type::*;
 use miden_hir::{Block, Inst, InstBuilder, Value};
+use miden_hir::{Immediate, Type};
 use wasmparser::{MemArg, Operator};
 
 #[cfg(test)]
@@ -93,8 +93,7 @@ pub fn translate_operator(
             let (arg1, arg2, cond) = state.pop3();
             // if cond is not 0, return arg1, else return arg2
             // https://www.w3.org/TR/wasm-core-1/#-hrefsyntax-instr-parametricmathsfselect%E2%91%A0
-            let zero = builder.ins().i32(0, span);
-            let cond_i1 = builder.ins().neq(cond, zero, span);
+            let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
         Operator::Unreachable => {
@@ -365,14 +364,12 @@ pub fn translate_operator(
         }
         Operator::I32Eqz => {
             let arg = state.pop1();
-            let imm_zero = builder.ins().i32(0, span);
-            let val = builder.ins().eq(arg, imm_zero, span);
+            let val = builder.ins().eq_imm(arg, Immediate::I32(0), span);
             state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64Eqz => {
             let arg = state.pop1();
-            let imm_zero = builder.ins().i64(0, span);
-            let val = builder.ins().eq(arg, imm_zero, span);
+            let val = builder.ins().eq_imm(arg, Immediate::I64(0), span);
             state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I32Eq => {
@@ -579,7 +576,9 @@ fn prepare_addr(
         builder.ins().cast(addr_int, U32, span)
     };
     let full_addr_int = if memarg.offset != 0 {
-        builder.ins().add_imm(addr_u32, memarg.offset.into(), span)
+        builder
+            .ins()
+            .add_imm(addr_u32, Immediate::U32(memarg.offset as u32), span)
     } else {
         addr_u32
     };
@@ -673,8 +672,7 @@ fn translate_br_if(
     let then_args = inputs;
     let else_dest = next_block;
     let else_args = &[];
-    let zero = builder.ins().i32(0, span);
-    let cond_i1 = builder.ins().neq(cond, zero, span);
+    let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     builder
         .ins()
         .cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
@@ -834,8 +832,7 @@ fn translate_if(
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, module_info)?;
     let cond = state.pop1();
-    let zero = builder.ins().i32(0, span);
-    let cond_i1 = builder.ins().neq(cond, zero, span);
+    let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     let next_block = builder.create_block();
     let (destination, else_data) = if blockty.params.eq(&blockty.results) {
         // It is possible there is no `else` block, so we will only
