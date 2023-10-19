@@ -541,7 +541,7 @@ impl DataFlowGraph {
     }
 
     pub fn append_block(&mut self, block: Block) {
-        self.blocks.append(block, BlockData::new());
+        self.blocks.append(block, BlockData::new(block));
     }
 
     /// Creates a new block, inserted into the function layout just after `block`
