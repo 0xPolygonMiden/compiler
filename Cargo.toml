@@ -59,6 +59,7 @@ miden-hir-symbol = { path = "hir-symbol" }
 miden-hir-transform = { path = "hir-transform" }
 miden-hir-type = { path = "hir-type" }
 miden-parsing = "0.1"
+miden-frontend-wasm = { path = "frontend-wasm" }
 
 [profile.release]
 opt-level = 2
