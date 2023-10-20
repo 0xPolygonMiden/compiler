@@ -174,12 +174,13 @@ pub fn translate_operator(
         Operator::I64Const { value } => state.push1(builder.ins().i64(*value, span)),
 
         /******************************* Unary Operators *************************************/
-        Operator::I32Clz | Operator::I32Ctz => {
-            // Temporary workaround to allow further code translations
-            // until clz and ctz are available in Miden IR
-            // TODO: use the `clz` and `ctz` instructions when they are available
+        Operator::I32Clz => {
             let val = state.pop1();
-            state.push1(builder.ins().popcnt(val, span));
+            state.push1(builder.ins().clz(val, span));
+        }
+        Operator::I32Ctz => {
+            let val = state.pop1();
+            state.push1(builder.ins().ctz(val, span));
         }
         Operator::I32Popcnt | Operator::I64Popcnt => {
             let val = state.pop1();
