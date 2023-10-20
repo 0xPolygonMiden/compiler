@@ -5,10 +5,10 @@ use super::*;
 /// All intermediate values are named, and have an associated [Value].
 /// Value identifiers must be globally unique.
 pub struct Value {
-    pub name: Identifier,
+    pub name: Ident,
 }
 impl Value {
-    pub fn new(name: Identifier) -> Self {
+    pub fn new(name: Ident) -> Self {
         Self { name }
     }
 }
@@ -88,7 +88,7 @@ pub enum Operation {
     UnaryOp(UnaryOpCode, Value),
     UnaryImmOp(UnaryImmOpCode, Immediate),
     ReturnOp(Vec<Value>),
-    CallOp(CallOp, FunctionIdentifier, Vec<Value>),
+    CallOp(CallOp, FunctionIdent, Vec<Value>),
     CondOp(Value, Destination, Destination),
     BranchOp(Destination),
     SwitchOp(Value, Vec<SwitchBranch>),
@@ -485,7 +485,7 @@ impl fmt::Display for Offset {
 
 /// Used to distinguish between nested global value operations
 pub enum GlobalValueOpNested {
-    Symbol(Identifier, Offset),
+    Symbol(Ident, Offset),
     Load(Box<GlobalValueOpNested>, Offset),
     Cast(Box<GlobalValueOpNested>, Offset, Type),
 }
@@ -513,7 +513,7 @@ impl fmt::Display for GlobalValueOpNested {
 
 /// Used to distinguish between top-level global value operations
 pub enum GlobalValueOp {
-    Symbol(Identifier, Offset),
+    Symbol(Ident, Offset),
     Load(GlobalValueOpNested, Offset),
     Cast(GlobalValueOpNested, Offset, Type),
     IAddImm(u128, Type, GlobalValueOpNested),

@@ -6,10 +6,10 @@ const INDENT: &str = "    ";
 ///
 /// Labels must be unique within each function.
 pub struct Label {
-    pub name: Identifier,
+    pub name: Ident,
 }
 impl Label {
-    pub fn new(name: Identifier) -> Self {
+    pub fn new(name: Ident) -> Self {
         Self { name }
     }
 }

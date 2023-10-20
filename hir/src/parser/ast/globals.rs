@@ -5,7 +5,7 @@ use miden_diagnostics::{SourceSpan, Spanned};
 use super::*;
 
 /// This is a type alias used to clarify that an identifier refers to a global variable
-pub type GlobalVarId = Identifier;
+pub type GlobalVarId = Ident;
 
 /// A constant value in the form of a hexadecimal string
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

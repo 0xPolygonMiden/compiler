@@ -35,22 +35,12 @@ ColonColon<T>: Vec<T> = {
 // AST NODE
 // ================================================================================================
 
-pub Program: Program = {
-    <l:@L> <modules:Module*> <entry:FunctionIdentifier?> <globals:GlobalVarDeclaration*> <r:@R> => {
-        let mut p = Program::new(span!(l, r), modules, globals);
-        if let Some(name) = entry {
-            p.with_entry_point(name);
-        }
-        p
-    }
-}
-
 pub Module: Module = {
-    <l:@L> "kernel" <name:Identifier> <functions:FunctionDeclaration*> <externals:ExternalFunction*> <r:@R> => {
-        Module::new(span!(l, r), ModuleType::Kernel, name, functions, externals)
+    <l:@L> "kernel" <name:Identifier> <globals:GlobalVarDeclaration*> <functions:FunctionDeclaration*> <externals:ExternalFunction*> <r:@R> => {
+        Module::new(span!(l, r), ModuleType::Kernel, name, globals, functions, externals)
     },
-    <l:@L> "module" <name:Identifier> <functions:FunctionDeclaration*> <externals:ExternalFunction*> <r:@R> => {
-        Module::new(span!(l, r), ModuleType::Module, name, functions, externals)
+    <l:@L> "module" <name:Identifier> <globals:GlobalVarDeclaration*> <functions:FunctionDeclaration*> <externals:ExternalFunction*> <r:@R> => {
+        Module::new(span!(l, r), ModuleType::Module, name, globals, functions, externals)
     },
 }
 
@@ -115,24 +105,24 @@ ExternalFunction: FunctionSignature = {
     <signature:FunctionSignature> ";" => signature
 }
 
-CallConvention: CallConvention = {
-    "cc" "(" "fast" ")" => CallConvention::Fast,
-    "cc" "(" "kernel" ")" => CallConvention::Kernel,
+CallConvention: CallConv = {
+    "cc" "(" "fast" ")" => CallConv::Fast,
+    "cc" "(" "kernel" ")" => CallConv::Kernel,
 }
 
-ParamPurpose: ParameterPurpose = {
-    => ParameterPurpose::Standard,
-    "sret" => ParameterPurpose::Sret
+ParamPurpose: ArgumentPurpose = {
+    => ArgumentPurpose::Default,
+    "sret" => ArgumentPurpose::StructReturn,
 }
 
-ParamExtension: ParameterExtension = {
-    "zext" => ParameterExtension::Zero,
-    "sext" => ParameterExtension::Signed,
+ParamExtension: ArgumentExtension = {
+    "zext" => ArgumentExtension::Zext,
+    "sext" => ArgumentExtension::Sext,
 }
 
 FunctionReturn: FunctionReturn = {
     <extension:ParamExtension?> <ty:Type> => {
-        let ext = if let Some(e) = extension { e } else { ParameterExtension::None };
+        let ext = if let Some(e) = extension { e } else { ArgumentExtension::None };
         FunctionReturn::new(ext, ty)
     }
 }
@@ -143,7 +133,7 @@ FunctionReturnSignature: Vec<FunctionReturn> = {
 
 FunctionParam: FunctionParameter = {
      <purpose:ParamPurpose> <extension:ParamExtension?> <ty:Type> => {
-        let ext = if let Some(e) = extension { e } else { ParameterExtension::None };
+        let ext = if let Some(e) = extension { e } else { ArgumentExtension::None };
         FunctionParameter::new(purpose, ext, ty)
     }
 }
@@ -155,12 +145,12 @@ FunctionParams: Vec<FunctionParameter> = {
 
 FunctionSignature: FunctionSignature = {
     <l:@L> "pub" <call_convention:CallConvention?> "fn" <name:FunctionIdentifier> <params:FunctionParams> <returns:FunctionReturnSignature?> <r:@R> => {
-        let cc = if let Some(cc) = call_convention { cc } else { CallConvention::Default };
+        let cc = if let Some(cc) = call_convention { cc } else { CallConv::SystemV };
         let ret = if let Some(r) = returns { r } else { Vec::new() };
         FunctionSignature::new(span!(l, r), Visibility::Public, cc, name, params, ret)
     },
     <l:@L> <call_convention:CallConvention?> "fn" <name:FunctionIdentifier> <params:FunctionParams>  <returns:FunctionReturnSignature?> <r:@R> => {
-        let cc = if let Some(cc) = call_convention { cc } else { CallConvention::Default };
+        let cc = if let Some(cc) = call_convention { cc } else { CallConv::SystemV };
         let ret = if let Some(r) = returns { r } else { Vec::new() };
         FunctionSignature::new(span!(l, r), Visibility::Private, cc, name, params, ret)
     },
@@ -595,16 +585,16 @@ Immediate: Immediate = {
     "-" <val:Number> => Immediate::Neg(val),
 }
 
-Identifier: Identifier = {
-    <l:@L> <name:identifier> <r:@R> => Identifier::new(span!(l, r), name)
+Identifier: Ident = {
+    <l:@L> <name:identifier> <r:@R> => Ident::new(span!(l, r), name)
 }
 
 Value: Value = {
     <id:Identifier> => Value::new(id)
 }
     
-FunctionIdentifier: FunctionIdentifier = {
-    <l:@L> <names:ColonColon<Identifier>> <r:@R> => FunctionIdentifier::new(span!(l, r), names)
+FunctionIdentifier: FunctionIdent = {
+    <l:@L> <names:ColonColon<Identifier>> <r:@R> => FunctionIdent::new(span!(l, r), names)
 }
 
 
