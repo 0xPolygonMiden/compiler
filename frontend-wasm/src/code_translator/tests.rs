@@ -719,6 +719,36 @@ fn i64_const() {
 }
 
 #[test]
+fn i32_clz() {
+    check_op(
+        r#"
+            i32.const 1
+            i32.clz
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 1  : i32
+            v1 = clz v0  : i32
+        "#]],
+    )
+}
+
+#[test]
+fn i32_ctz() {
+    check_op(
+        r#"
+            i32.const 1
+            i32.ctz
+            drop
+        "#,
+        expect![[r#"
+            v0 = const.i32 1  : i32
+            v1 = ctz v0  : i32
+        "#]],
+    )
+}
+
+#[test]
 fn i32_popcnt() {
     check_op(
         r#"
