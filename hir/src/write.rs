@@ -175,11 +175,10 @@ fn write_operands(
         Instruction::Ret(Ret { args, .. }) => {
             if args.len(pool) > 0 {
                 write!(w, " ({})", DisplayValues(args.as_slice(pool)))
-            }
-            else {
+            } else {
                 Ok(())
             }
-        },
+        }
         Instruction::RetImm(RetImm { arg, .. }) => write!(w, " {arg}"),
         Instruction::Call(Call { callee, args, .. }) => {
             write!(w, " {}({})", callee, DisplayValues(args.as_slice(pool)))
@@ -197,9 +196,7 @@ fn write_operands(
             write_block_args(w, else_dest.1.as_slice(pool))
         }
         Instruction::Br(Br {
-            destination,
-            args,
-            ..
+            destination, args, ..
         }) => {
             write!(w, " {}", destination)?;
             write_block_args(w, args.as_slice(pool))

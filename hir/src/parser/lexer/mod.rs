@@ -891,8 +891,7 @@ where
 
         if self.skip_ident() {
             Token::FuncIdent(Symbol::intern(self.slice()))
-        }
-        else {
+        } else {
             Token::from_keyword_or_ident(self.slice())
         }
     }
@@ -904,8 +903,7 @@ where
 
         if self.skip_ident() {
             Token::FuncIdent(Symbol::intern(self.slice()))
-        }
-        else {
+        } else {
             Token::Ident(Symbol::intern(self.slice()))
         }
     }
@@ -917,20 +915,18 @@ where
             match self.read() {
                 '_' => self.skip(),
                 '0'..='9' => self.skip(),
-                ':' => {
-                    match self.peek() {
-                        ':' => {
-                            func_ident = true;
-                            self.skip();
-                            self.skip()
-                        },
-                        _ => break,
+                ':' => match self.peek() {
+                    ':' => {
+                        func_ident = true;
+                        self.skip();
+                        self.skip()
                     }
-                }
+                    _ => break,
+                },
                 c if c.is_ascii_alphabetic() => self.skip(),
                 _ => break,
             }
-        };
+        }
         func_ident
     }
 

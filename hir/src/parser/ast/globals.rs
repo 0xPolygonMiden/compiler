@@ -2,8 +2,8 @@ use std::fmt;
 
 use miden_diagnostics::{SourceSpan, Spanned};
 
-use crate::{Ident, Linkage, Type, };
 use super::*;
+use crate::{Ident, Linkage, Type};
 
 /// This is a type alias used to clarify that an identifier refers to a global variable
 pub type GlobalVarId = Ident;
@@ -48,10 +48,10 @@ impl GlobalVarDeclaration {
     ///
     pub fn new(span: SourceSpan, name: ModuleId, ty: Type, linkage: Linkage) -> Self {
         Self {
-            span: span,
-            name: name,
-            ty: ty,
-            linkage: linkage,
+            span,
+            name,
+            ty,
+            linkage,
             init: None,
         }
     }

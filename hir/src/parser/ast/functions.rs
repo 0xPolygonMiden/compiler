@@ -1,5 +1,5 @@
-use crate::{ArgumentPurpose, ArgumentExtension, CallConv, FunctionIdent, Type, };
 use super::*;
+use crate::{ArgumentExtension, ArgumentPurpose, CallConv, FunctionIdent, Type};
 
 /// The possible visibilities of a function
 pub enum Visibility {

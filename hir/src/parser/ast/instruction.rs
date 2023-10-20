@@ -1,5 +1,5 @@
-use crate::{FunctionIdent, Ident, Overflow, Type, };
 use super::*;
+use crate::{FunctionIdent, Ident, Overflow, Type};
 
 /// Represents a value in Miden IR.
 ///
@@ -59,7 +59,7 @@ impl Instruction {
 }
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.values.len() == 0 {
+        if self.values.is_empty() {
             write!(f, "{}", self.op)?;
         } else {
             for (i, v) in self.values.iter().enumerate() {
@@ -556,7 +556,7 @@ impl Destination {
 impl fmt::Display for Destination {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.label)?;
-        if self.args.len() > 0 {
+        if !self.args.is_empty() {
             f.write_str(" (")?;
             for (i, arg) in self.args.iter().enumerate() {
                 if i > 0 {

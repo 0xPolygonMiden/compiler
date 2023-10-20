@@ -1,5 +1,5 @@
-use crate::{Ident, Type, };
 use super::*;
+use crate::{Ident, Type};
 
 const INDENT: &str = "    ";
 
@@ -49,7 +49,7 @@ impl BlockHeader {
 impl fmt::Display for BlockHeader {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} ", self.label)?;
-        if self.args.len() == 0 {
+        if self.args.is_empty() {
             f.write_str(":\n")
         } else {
             f.write_str("(")?;
