@@ -23,15 +23,6 @@ Comma<T>: Vec<T> = {
     }
 };
 
-// ColonColon-delimited with at least one element
-ColonColon<T>: Vec<T> = {
-    <v:(<T> "::")*> <e:T> => {
-        let mut v = v;
-        v.push(e);
-        v
-    }
-};
-
 // AST NODE
 // ================================================================================================
 
@@ -594,7 +585,7 @@ Value: Value = {
 }
     
 FunctionIdentifier: FunctionIdent = {
-    <l:@L> <names:ColonColon<Identifier>> <r:@R> => FunctionIdent::new(span!(l, r), names)
+    <l:@L> <name:func_identifier> <r:@R> => FunctionIdent::new(span!(l, r), func_identifier)
 }
 
 
@@ -608,6 +599,7 @@ extern {
 
     enum Token {
         identifier => Token::Ident(<Symbol>),
+        func_identifier => Token::FuncIdent(<Symbol>),
         int => Token::Num(<u128>),
         hex => Token::Hex(<Vec<u8>>),
         "kernel" => Token::Kernel,
@@ -732,7 +724,6 @@ extern {
         "&" => Token::Ampersand,
         "!" => Token::Bang,
         ":" => Token::Colon,
-        "::" => Token::ColonColon,
         ";" => Token::Semicolon,
         "," => Token::Comma,
         "[" => Token::LBracket,

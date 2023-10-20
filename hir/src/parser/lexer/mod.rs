@@ -76,6 +76,8 @@ pub enum Token {
     /// Identifiers should start with alphabet followed by one or more alpha numeric characters
     /// or an underscore.
     Ident(Symbol),
+    /// Function identifiers should be a non-empty sequence of identifiers separated by double colons "::".
+    FuncIdent(Symbol),
     /// Integers should only contain numeric characters.
     Num(u128),
     /// Hex strings are used to initialize global variables
@@ -303,7 +305,6 @@ pub enum Token {
     // --------------------------------------------------------------------------------------------
     DoubleQuote,
     Colon,
-    ColonColon,
     Semicolon,
     Comma,
     Dot,
@@ -460,6 +461,11 @@ impl PartialEq for Token {
                     return i == i2;
                 }
             }
+            Self::FuncIdent(i) => {
+                if let Self::FuncIdent(i2) = other {
+                    return i == i2;
+                }
+            }
             _ => return mem::discriminant(self) == mem::discriminant(other),
         }
         false
@@ -472,6 +478,7 @@ impl fmt::Display for Token {
             Self::Error(_) => write!(f, "ERROR"),
             Self::Comment => write!(f, "COMMENT"),
             Self::Ident(ref id) => write!(f, "{}", id),
+            Self::FuncIdent(ref id) => write!(f, "{}", id),
             Self::Num(ref i) => write!(f, "{}", i),
             Self::Hex(ref data) => {
                 write!(f, "0x")?;
@@ -594,7 +601,6 @@ impl fmt::Display for Token {
             Self::Mut => write!(f, "mut"),
             Self::DoubleQuote => write!(f, "\""),
             Self::Colon => write!(f, ":"),
-            Self::ColonColon => write!(f, "::"),
             Self::Semicolon => write!(f, ";"),
             Self::Comma => write!(f, ","),
             Self::Dot => write!(f, "."),
@@ -819,10 +825,7 @@ where
         match self.read() {
             ',' => pop!(self, Token::Comma),
             '.' => pop!(self, Token::Dot),
-            ':' => match self.peek() {
-                ':' => pop2!(self, Token::ColonColon),
-                _ => pop!(self, Token::Colon),
-            },
+            ':' => pop!(self, Token::Colon),
             '"' => pop!(self, Token::DoubleQuote),
             '(' => pop!(self, Token::LParen),
             ')' => pop!(self, Token::RParen),
@@ -890,9 +893,12 @@ where
         let c = self.pop();
         debug_assert!(c.is_ascii_alphabetic() && c.is_lowercase());
 
-        self.skip_ident();
-
-        Token::from_keyword_or_ident(self.slice())
+        if self.skip_ident() {
+            Token::FuncIdent(Symbol::intern(self.slice()))
+        }
+        else {
+            Token::from_keyword_or_ident(self.slice())
+        }
     }
 
     #[inline]
@@ -900,19 +906,36 @@ where
         let c = self.pop();
         debug_assert!(c.is_ascii_alphabetic());
 
-        self.skip_ident();
-        Token::Ident(Symbol::intern(self.slice()))
+        if self.skip_ident() {
+            Token::FuncIdent(Symbol::intern(self.slice()))
+        }
+        else {
+            Token::Ident(Symbol::intern(self.slice()))
+        }
     }
 
-    fn skip_ident(&mut self) {
+    // Returns true if the identifier is a function identifier (contains double colons), false otherwise
+    fn skip_ident(&mut self) -> bool {
+        let mut func_ident = false;
         loop {
             match self.read() {
                 '_' => self.skip(),
                 '0'..='9' => self.skip(),
+                ':' => {
+                    match self.peek() {
+                        ':' => {
+                            func_ident = true;
+                            self.skip();
+                            self.skip()
+                        },
+                        _ => break,
+                    }
+                }
                 c if c.is_ascii_alphabetic() => self.skip(),
                 _ => break,
             }
-        }
+        };
+        func_ident
     }
 
     #[inline]
