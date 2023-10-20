@@ -1,4 +1,8 @@
 #![deny(warnings)]
+mod parser;
+
+#[macro_use]
+extern crate lalrpop_util;
 
 pub use intrusive_collections::UnsafeRef;
 pub use miden_diagnostics::SourceSpan;

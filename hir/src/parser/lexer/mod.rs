@@ -97,7 +97,7 @@ pub enum Token {
     External,
     /// Keyword to declare that a function is publicly visible.
     Pub,
-    /// Keyword to declare that a function is publicly visible.
+    /// Keyword to declare a function.
     Fn,
     /// Keyword to declare a function's calling convention.
     Cc,
@@ -295,8 +295,6 @@ pub enum Token {
     I128,
     U128,
     U256,
-    ISize,
-    USize,
     F64,
     Felt,
     Mut,
@@ -333,6 +331,7 @@ impl Token {
             "odr" => Self::Odr,
             "external" => Self::External,
             "pub" => Self::Pub,
+            "fn" => Self::Fn,
             "cc" => Self::Cc,
             "fast" => Self::Fast,
             "sret" => Self::Sret,
@@ -433,8 +432,6 @@ impl Token {
             "i128" => Self::I128,
             "u128" => Self::U128,
             "u256" => Self::U256,
-            "isize" => Self::ISize,
-            "usize" => Self::USize,
             "f64" => Self::F64,
             "felt" => Self::Felt,
             "mut" => Self::Mut,
@@ -594,8 +591,6 @@ impl fmt::Display for Token {
             Self::I128 => write!(f, "i128"),
             Self::U128 => write!(f, "u128"),
             Self::U256 => write!(f, "u256"),
-            Self::ISize => write!(f, "isize"),
-            Self::USize => write!(f, "usize"),
             Self::F64 => write!(f, "f64"),
             Self::Felt => write!(f, "felt"),
             Self::Mut => write!(f, "mut"),
@@ -826,6 +821,7 @@ where
             ',' => pop!(self, Token::Comma),
             '.' => pop!(self, Token::Dot),
             ':' => pop!(self, Token::Colon),
+            ';' => pop!(self, Token::Semicolon),
             '"' => pop!(self, Token::DoubleQuote),
             '(' => pop!(self, Token::LParen),
             ')' => pop!(self, Token::RParen),

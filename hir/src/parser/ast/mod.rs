@@ -10,9 +10,9 @@ pub use self::instruction::*;
 
 use std::fmt;
 
-use miden_diagnostics::{SourceSpan, Span, Spanned};
+use miden_diagnostics::{SourceSpan, Spanned};
 
-use crate::Symbol;
+use crate::Ident;
 
 /// This is a type alias used to clarify that an identifier refers to a module
 pub type ModuleId = Ident;

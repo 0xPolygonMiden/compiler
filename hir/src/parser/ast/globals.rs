@@ -2,6 +2,7 @@ use std::fmt;
 
 use miden_diagnostics::{SourceSpan, Spanned};
 
+use crate::{Ident, Linkage, Type, };
 use super::*;
 
 /// This is a type alias used to clarify that an identifier refers to a global variable
@@ -66,24 +67,5 @@ impl fmt::Display for GlobalVarDeclaration {
             write!(f, "= {}", self.init.as_ref().unwrap())?;
         }
         Ok(())
-    }
-}
-/// Represents the intended linkage for a global variable.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Linkage {
-    /// Global linkage
-    Internal,
-    /// "One definition rule" linkage
-    Odr,
-    /// External linkage
-    External,
-}
-impl fmt::Display for Linkage {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Internal => write!(f, "internal"),
-            Self::Odr => write!(f, "odr"),
-            Self::External => write!(f, "external"),
-        }
     }
 }

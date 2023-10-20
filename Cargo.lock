@@ -903,6 +903,7 @@ dependencies = [
  "miden-diagnostics",
  "miden-hir-symbol",
  "miden-hir-type",
+ "miden-parsing",
  "paste",
  "petgraph",
  "rustc-hash",
@@ -961,6 +962,16 @@ name = "miden-hir-type"
 version = "0.1.0"
 dependencies = [
  "smallvec",
+]
+
+[[package]]
+name = "miden-parsing"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d36dfec2c0319b3773a83627318f92a0212077bed80148c86e8b09af60cd1a88"
+dependencies = [
+ "miden-diagnostics",
+ "thiserror",
 ]
 
 [[package]]

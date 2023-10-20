@@ -11,7 +11,7 @@ macro_rules! span {
 lalrpop_mod!(
     #[allow(clippy::all)]
     grammar,
-    "/parser/grammar.rs"
+    "/parser/parser/grammar.rs"
 );
 
 use std::sync::Arc;
@@ -21,7 +21,7 @@ use miden_diagnostics::{
 };
 use miden_parsing::{Scanner, Source};
 
-use crate::{
+use crate::parser::{
     ast,
     lexer::{Lexed, Lexer, LexicalError, Token},
 };
@@ -166,49 +166,6 @@ impl ToDiagnostic for ParseError {
                 .with_message("extraneous token")
                 .with_labels(vec![Label::primary(span.source_id(), span)]),
             err => Diagnostic::error().with_message(err.to_string()),
-        }
-    }
-}
-
-impl miden_parsing::Parse for ast::Program {
-    type Parser = grammar::ProgramParser;
-    type Error = ParseError;
-    type Config = ();
-    type Token = Lexed;
-
-    fn root_file_error(source: std::io::Error, path: std::path::PathBuf) -> Self::Error {
-        ParseError::FileError { source, path }
-    }
-
-    fn parse<S>(
-        parser: &Parser,
-        diagnostics: &DiagnosticsHandler,
-        source: S,
-    ) -> Result<Self, Self::Error>
-    where
-        S: Source,
-    {
-        let scanner = Scanner::new(source);
-        let lexer = Lexer::new(scanner);
-        Self::parse_tokens(diagnostics, parser.codemap.clone(), lexer)
-    }
-
-    fn parse_tokens<S: IntoIterator<Item = Lexed>>(
-        diagnostics: &DiagnosticsHandler,
-        codemap: Arc<CodeMap>,
-        tokens: S,
-    ) -> Result<Self, Self::Error> {
-        let mut next_var = 0;
-        let result = Self::Parser::new().parse(diagnostics, &codemap, &mut next_var, tokens);
-        match result {
-            Ok(ast) => {
-                if diagnostics.has_errors() {
-                    return Err(ParseError::Failed);
-                }
-                Ok(ast)
-            }
-            Err(lalrpop_util::ParseError::User { error }) => Err(error),
-            Err(err) => Err(err.into()),
         }
     }
 }

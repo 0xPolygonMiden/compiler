@@ -1,13 +1,9 @@
-#[macro_use]
-extern crate lalrpop_util;
-
 pub mod ast;
 mod lexer;
 mod parser;
-pub mod symbols;
 
 pub use self::parser::{ParseError, Parser};
-pub use self::symbols::Symbol;
+use super::Symbol;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -19,9 +15,9 @@ pub fn parse(
     diagnostics: &DiagnosticsHandler,
     codemap: Arc<CodeMap>,
     source: &str,
-) -> Result<ast::Program, ParseError> {
+) -> Result<ast::Module, ParseError> {
     let parser = Parser::new((), codemap);
-    match parser.parse_string::<ast::Program, _, _>(diagnostics, source) {
+    match parser.parse_string::<ast::Module, _, _>(diagnostics, source) {
         Ok(ast) => Ok(ast),
         Err(ParseError::Lexer(err)) => {
             diagnostics.emit(err);
@@ -36,9 +32,9 @@ pub fn parse_file<P: AsRef<Path>>(
     diagnostics: &DiagnosticsHandler,
     codemap: Arc<CodeMap>,
     source: P,
-) -> Result<ast::Program, ParseError> {
+) -> Result<ast::Module, ParseError> {
     let parser = Parser::new((), codemap);
-    match parser.parse_file::<ast::Program, _, _>(diagnostics, source) {
+    match parser.parse_file::<ast::Module, _, _>(diagnostics, source) {
         Ok(ast) => Ok(ast),
         Err(ParseError::Lexer(err)) => {
             diagnostics.emit(err);
@@ -51,7 +47,7 @@ pub fn parse_file<P: AsRef<Path>>(
 /// Parses the provided source string with a default [CodeMap] and [DiagnosticsHandler].
 ///
 /// This is primarily provided for use in tests, you should generally prefer [parse]
-pub fn parse_str(source: &str) -> Result<ast::Program, ParseError> {
+pub fn parse_str(source: &str) -> Result<ast::Module, ParseError> {
     use miden_diagnostics::{
         term::termcolor::ColorChoice, DefaultEmitter, DiagnosticsConfig, Verbosity,
     };

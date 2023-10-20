@@ -1,3 +1,4 @@
+use crate::{FunctionIdent, Ident, Overflow, Type, };
 use super::*;
 
 /// Represents a value in Miden IR.
@@ -410,7 +411,6 @@ pub enum UnaryImmOpCode {
     I16,
     I32,
     I64,
-    ISize,
     Felt,
     F64,
 }
@@ -423,7 +423,6 @@ impl fmt::Display for UnaryImmOpCode {
             Self::I16 => f.write_str("i16"),
             Self::I32 => f.write_str("i32"),
             Self::I64 => f.write_str("i64"),
-            Self::ISize => f.write_str("isize"),
             Self::Felt => f.write_str("felt"),
             Self::F64 => f.write_str("f64"),
         }
@@ -540,24 +539,6 @@ impl fmt::Display for GlobalValueOp {
             Self::IAddImm(i, ty, nested) => {
                 write!(f, "iadd.{}.{} {}", i, ty, nested)
             }
-        }
-    }
-}
-
-/// Used to distinguish between top-level global value operations
-pub enum Overflow {
-    Checked,
-    Unchecked,
-    Overflowing,
-    Wrapping,
-}
-impl fmt::Display for Overflow {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Checked => f.write_str("checked"),
-            Self::Unchecked => f.write_str("unchecked"),
-            Self::Overflowing => f.write_str("overflowing"),
-            Self::Wrapping => f.write_str("wrapping"),
         }
     }
 }

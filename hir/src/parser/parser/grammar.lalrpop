@@ -1,8 +1,10 @@
 use std::sync::Arc;
+use std::str::FromStr;
 
 use miden_diagnostics::{CodeMap, DiagnosticsHandler};
 
-use crate::{
+use crate::{AddressSpace, ArgumentPurpose, ArgumentExtension, CallConv, FunctionIdent, Ident, Linkage, Overflow, StructType, Type, };
+use crate::parser::{
     ast::*,
     lexer::Token,
     parser::ParseError,
@@ -78,15 +80,13 @@ Type: Type = {
     "i128" => Type::I128,
     "u128" => Type::U128,
     "u256" => Type::U256,
-    "isize" => Type::ISize,
-    "usize" => Type::USize,
     "f64" => Type::F64,
     "felt" => Type::Felt,
     "*" "mut" <inner:Type> => Type::Ptr(Box::new(inner)),
-    "&" "mut" <inner:Type> => Type::NativePtr(Box::new(inner)),
-    "{" <field_types:Comma<Type>> "}" => Type::Struct(field_types),
-    "{" "}" => Type::Struct(Vec::new()),
-    "[" <inner:Type> ";" <length:Number> "]" => Type::Array(Box::new(inner), length),
+    "&" "mut" <inner:Type> => Type::NativePtr(Box::new(inner), AddressSpace::Unknown),
+    "{" <field_types:Comma<Type>> "}" => Type::Struct(StructType::new(field_types)),
+    "{" "}" => Type::Struct(StructType::new(Vec::new())),
+    "[" <inner:Type> ";" <length:Number> "]" => Type::Array(Box::new(inner), usize::try_from(length).unwrap()),
 }
 
 // FUNCTIONS
@@ -387,7 +387,6 @@ UnaryImmOpCode: UnaryImmOpCode = {
     "const" "." "i16" => UnaryImmOpCode::I16,
     "const" "." "i32" => UnaryImmOpCode::I32,
     "const" "." "i64" => UnaryImmOpCode::I64,
-    "const" "." "isize" => UnaryImmOpCode::ISize,
     "const" "." "felt" => UnaryImmOpCode::Felt,
     "const" "." "f64" => UnaryImmOpCode::F64,
 }
@@ -577,7 +576,7 @@ Immediate: Immediate = {
 }
 
 Identifier: Ident = {
-    <l:@L> <name:identifier> <r:@R> => Ident::new(span!(l, r), name)
+    <l:@L> <name:identifier> <r:@R> => Ident::new(name, span!(l, r))
 }
 
 Value: Value = {
@@ -585,7 +584,7 @@ Value: Value = {
 }
     
 FunctionIdentifier: FunctionIdent = {
-    <l:@L> <name:func_identifier> <r:@R> => FunctionIdent::new(span!(l, r), func_identifier)
+    <name:func_identifier> => FunctionIdent::from_str(name.as_str()).unwrap()
 }
 
 
@@ -705,8 +704,6 @@ extern {
 	"i128" => Token::I128,
 	"u128" => Token::U128,
 	"u256" => Token::U256,
-	"isize" => Token::ISize,
-	"usize" => Token::USize,
 	"f64" => Token::F64,
 	"felt" => Token::Felt,
 	"mut" => Token::Mut,
