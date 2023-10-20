@@ -897,6 +897,8 @@ dependencies = [
  "anyhow",
  "cranelift-entity",
  "intrusive-collections",
+ "lalrpop",
+ "lalrpop-util",
  "miden-assembly",
  "miden-diagnostics",
  "miden-hir-symbol",
@@ -959,30 +961,6 @@ name = "miden-hir-type"
 version = "0.1.0"
 dependencies = [
  "smallvec",
-]
-
-[[package]]
-name = "miden-ir-parser"
-version = "0.4.0"
-dependencies = [
- "lalrpop",
- "lalrpop-util",
- "lazy_static",
- "miden-diagnostics",
- "miden-parsing",
- "pretty_assertions",
- "regex",
- "thiserror",
-]
-
-[[package]]
-name = "miden-parsing"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d36dfec2c0319b3773a83627318f92a0212077bed80148c86e8b09af60cd1a88"
-dependencies = [
- "miden-diagnostics",
- "thiserror",
 ]
 
 [[package]]
