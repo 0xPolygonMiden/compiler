@@ -4,11 +4,11 @@ global external gv1 : i32 = 0x001001c8 { id = gvar1 };
 global external gv2 : i32 = 0x001001d0 { id = gvar2 };
 
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(i32, i32, i32) {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(i32, i32, i32) {
 block0(v0: i32, v1: i32, v2: i32):
     v3 = const.i32 0  : i32
-    v4 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1, v2)  : i32
-    v5 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6pinuse17h92d5107047b03ba7E(v1)  : i32
+    v4 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1, v2)  : i32
+    v5 = call noname::dlmalloc::dlmalloc::Chunk::pinuse(v1)  : i32
     v6 = neq v5, 0  : i1
     condbr v6, block4(v1, v2), block5
 
@@ -28,7 +28,7 @@ block3:
     ret 
 
 block4(v93: i32, v94: i32):
-    v89 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6cinuse17h58499de57c2d37e2E(v4)  : i32
+    v89 = call noname::dlmalloc::dlmalloc::Chunk::cinuse(v4)  : i32
     v90 = eq v89, 0  : i1
     v91 = cast v90  : i32
     v92 = neq v91, 0  : i1
@@ -38,7 +38,7 @@ block5:
     v7 = cast v1  : u32
     v8 = inttoptr v7  : *mut i32
     v9 = load v8  : i32
-    v10 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v1)  : i32
+    v10 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v1)  : i32
     v11 = neq v10, 0  : i1
     condbr v11, block6, block7
 
@@ -47,7 +47,7 @@ block6:
     v73 = add v2, v9  : i32
     v74 = const.i32 16  : i32
     v75 = add v73, v74  : i32
-    v76 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$4free17h993c5f05ba1214bcE(v0, v72, v75)  : i32
+    v76 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free(v0, v72, v75)  : i32
     v77 = eq v76, 0  : i1
     v78 = cast v77  : i32
     v79 = neq v78, 0  : i1
@@ -55,7 +55,7 @@ block6:
 
 block7:
     v12 = add v9, v2  : i32
-    v13 = call noname::_ZN8dlmalloc8dlmalloc5Chunk12minus_offset17h7c3eec81761249d9E(v1, v9)  : i32
+    v13 = call noname::dlmalloc::dlmalloc::Chunk::minus_offset(v1, v9)  : i32
     v14 = cast v0  : u32
     v15 = add v14, 424  : u32
     v16 = inttoptr v15  : *mut i32
@@ -92,7 +92,7 @@ block10:
     v32 = add v31, 416  : u32
     v33 = inttoptr v32  : *mut i32
     store v33, v12
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v13, v12, v4)
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v13, v12, v4)
     ret 
 
 block11:
@@ -110,7 +110,7 @@ block11:
     condbr v50, block13, block14
 
 block12:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v0, v13)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v0, v13)
     br block4(v13, v12)
 
 block13:
@@ -166,7 +166,7 @@ block16:
     condbr v102, block19, block20
 
 block17:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v93, v94, v88)
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v93, v94, v88)
     br block2(v94, v95, v93)
 
 block18:
@@ -183,7 +183,7 @@ block18:
     v203 = add v202, 416  : u32
     v204 = inttoptr v203  : *mut i32
     store v204, v201
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v93, v201)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v93, v201)
     ret 
 
 block19:
@@ -226,7 +226,7 @@ block20:
     condbr v109, block18, block21
 
 block21:
-    v110 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v88)  : i32
+    v110 = call noname::dlmalloc::dlmalloc::Chunk::size(v88)  : i32
     v111 = add v110, v94  : i32
     v112 = const.i32 256  : i32
     v113 = cast v110  : u32
@@ -237,7 +237,7 @@ block21:
     condbr v117, block23, block24
 
 block22:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v93, v111)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v93, v111)
     v153 = cast v95  : u32
     v154 = add v153, 424  : u32
     v155 = inttoptr v154  : *mut i32
@@ -262,7 +262,7 @@ block23:
     condbr v128, block25, block26
 
 block24:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v95, v88)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v95, v88)
     br block22
 
 block25:
@@ -339,7 +339,7 @@ block29:
     condbr v233, block32, block33
 
 block30:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v212, v213, v205)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v212, v213, v205)
     ret 
 
 block31(v247: i32):
@@ -377,14 +377,14 @@ block33:
     br block31(v237)
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(i32, i32) {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(i32, i32) {
 block0(v0: i32, v1: i32):
     v2 = const.i32 0  : i32
     v3 = cast v1  : u32
     v4 = add v3, 24  : u32
     v5 = inttoptr v4  : *mut i32
     v6 = load v5  : i32
-    v7 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk4next17he250edbec5d87123E(v1)  : i32
+    v7 = call noname::dlmalloc::dlmalloc::TreeChunk::next(v1)  : i32
     v8 = neq v7, v1  : i1
     v9 = cast v8  : i32
     v10 = neq v9, 0  : i1
@@ -407,14 +407,14 @@ block3:
     br block7(v39, v23)
 
 block4:
-    v26 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk4prev17h7a0f1d46544cc14aE(v1)  : i32
-    v27 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk4next17he250edbec5d87123E(v1)  : i32
-    v28 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v27)  : i32
+    v26 = call noname::dlmalloc::dlmalloc::TreeChunk::prev(v1)  : i32
+    v27 = call noname::dlmalloc::dlmalloc::TreeChunk::next(v1)  : i32
+    v28 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v27)  : i32
     v29 = cast v26  : u32
     v30 = add v29, 12  : u32
     v31 = inttoptr v30  : *mut i32
     store v31, v28
-    v32 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v26)  : i32
+    v32 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v26)  : i32
     v33 = cast v27  : u32
     v34 = add v33, 8  : u32
     v35 = inttoptr v34  : *mut i32
@@ -583,7 +583,7 @@ block19:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(i32, i32, i32) {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(i32, i32, i32) {
 block0(v0: i32, v1: i32, v2: i32):
     v3 = const.i32 0  : i32
     v4 = const.i32 0  : i32
@@ -611,7 +611,7 @@ block2(v42: i32):
     v47 = const.i32 2  : i32
     v48 = shl v42, v47  : i32
     v49 = add v0, v48  : i32
-    v50 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v37)  : i32
+    v50 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v37)  : i32
     v51 = cast v46  : u32
     v52 = add v51, 412  : u32
     v53 = inttoptr v52  : *mut i32
@@ -686,13 +686,13 @@ block7:
     v61 = cast v49  : u32
     v62 = inttoptr v61  : *mut i32
     v63 = load v62  : i32
-    v65 = call noname::_ZN8dlmalloc8dlmalloc24leftshift_for_tree_index17h31d064fdd867f502E(v42)  : i32
+    v65 = call noname::dlmalloc::dlmalloc::leftshift_for_tree_index(v42)  : i32
     v66 = shl v2, v65  : i32
     br block8(v63, v66)
 
 block8(v67: i32, v97: i32):
-    v68 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v67)  : i32
-    v69 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v68)  : i32
+    v68 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v67)  : i32
+    v69 = call noname::dlmalloc::dlmalloc::Chunk::size(v68)  : i32
     v71 = neq v69, v70  : i1
     v72 = cast v71  : i32
     v73 = neq v72, 0  : i1
@@ -728,7 +728,7 @@ block10:
     condbr v113, block8(v112, v104), block12
 
 block11:
-    v74 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v67)  : i32
+    v74 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v67)  : i32
     v75 = cast v74  : u32
     v76 = add v75, 8  : u32
     v77 = inttoptr v76  : *mut i32
@@ -760,7 +760,7 @@ block12:
     br block9
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$23release_unused_segments17h25622465f0742468E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 0  : i32
     v3 = const.i32 136  : i32
@@ -822,7 +822,7 @@ block5(v15: i32, v27: i32, v102: i32, v108: i32, v114: i32):
     v34 = cast v32  : u32
     v35 = shr v33, v34  : u32
     v36 = cast v35  : i32
-    v37 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$16can_release_part17h43bfb7d8666fcc31E(v27, v36)  : i32
+    v37 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part(v27, v36)  : i32
     v38 = eq v37, 0  : i1
     v39 = cast v38  : i32
     v40 = neq v39, 0  : i1
@@ -841,27 +841,27 @@ block8(v115: i32, v119: i32, v122: i32, v125: i32):
     br block7(v115, v119, v122, v15, v125)
 
 block9:
-    v41 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v15)  : i32
+    v41 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v15)  : i32
     v42 = neq v41, 0  : i1
     condbr v42, block8(v114, v19, v27, v108), block10
 
 block10:
-    v43 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v26)  : i32
+    v43 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v26)  : i32
     v44 = const.i32 8  : i32
-    v45 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v43, v44)  : i32
+    v45 = call noname::dlmalloc::dlmalloc::align_up(v43, v44)  : i32
     v46 = sub v45, v43  : i32
     v47 = add v26, v46  : i32
-    v48 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v47)  : i32
-    v49 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v48 = call noname::dlmalloc::dlmalloc::Chunk::size(v47)  : i32
+    v49 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v50 = const.i32 8  : i32
-    v51 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v49, v50)  : i32
+    v51 = call noname::dlmalloc::dlmalloc::align_up(v49, v50)  : i32
     v52 = const.i32 20  : i32
     v53 = const.i32 8  : i32
-    v54 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v52, v53)  : i32
+    v54 = call noname::dlmalloc::dlmalloc::align_up(v52, v53)  : i32
     v55 = const.i32 16  : i32
     v56 = const.i32 8  : i32
-    v57 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v55, v56)  : i32
-    v58 = call noname::_ZN8dlmalloc8dlmalloc5Chunk5inuse17h2d327e4c36b84dfeE(v47)  : i32
+    v57 = call noname::dlmalloc::dlmalloc::align_up(v55, v56)  : i32
+    v58 = call noname::dlmalloc::dlmalloc::Chunk::inuse(v47)  : i32
     v59 = neq v58, 0  : i1
     condbr v59, block8(v114, v19, v27, v108), block11
 
@@ -890,7 +890,7 @@ block12:
     condbr v77, block14, block15
 
 block13:
-    v89 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$4free17h993c5f05ba1214bcE(v27, v26, v23)  : i32
+    v89 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free(v27, v26, v23)  : i32
     v90 = neq v89, 0  : i1
     condbr v90, block16, block17
 
@@ -908,7 +908,7 @@ block14:
     br block13
 
 block15:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v27, v47)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v27, v47)
     br block13
 
 block16:
@@ -929,20 +929,20 @@ block16:
     br block7(v114, v103, v86, v101, v109)
 
 block17:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v86, v47, v48)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v86, v47, v48)
     br block8(v113, v103, v86, v107)
 
 block18:
     br block6
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$4free17h501de2a6604ba1ffE(i32, i32) {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::free(i32, i32) {
 block0(v0: i32, v1: i32):
     v2 = const.i32 0  : i32
-    v3 = call noname::_ZN8dlmalloc8dlmalloc5Chunk8from_mem17h11dd30c74f483706E(v1)  : i32
-    v4 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v3)  : i32
-    v5 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v3, v4)  : i32
-    v6 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6pinuse17h92d5107047b03ba7E(v3)  : i32
+    v3 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v1)  : i32
+    v4 = call noname::dlmalloc::dlmalloc::Chunk::size(v3)  : i32
+    v5 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v3, v4)  : i32
+    v6 = call noname::dlmalloc::dlmalloc::Chunk::pinuse(v3)  : i32
     v7 = neq v6, 0  : i1
     condbr v7, block3(v3, v4), block4
 
@@ -953,7 +953,7 @@ block2:
     br block1
 
 block3(v94: i32, v95: i32):
-    v90 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6cinuse17h58499de57c2d37e2E(v5)  : i32
+    v90 = call noname::dlmalloc::dlmalloc::Chunk::cinuse(v5)  : i32
     v91 = eq v90, 0  : i1
     v92 = cast v91  : i32
     v93 = neq v92, 0  : i1
@@ -963,7 +963,7 @@ block4:
     v8 = cast v3  : u32
     v9 = inttoptr v8  : *mut i32
     v10 = load v9  : i32
-    v11 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v3)  : i32
+    v11 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v3)  : i32
     v12 = neq v11, 0  : i1
     condbr v12, block5, block6
 
@@ -972,7 +972,7 @@ block5:
     v74 = add v4, v10  : i32
     v75 = const.i32 16  : i32
     v76 = add v74, v75  : i32
-    v77 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$4free17h993c5f05ba1214bcE(v0, v73, v76)  : i32
+    v77 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free(v0, v73, v76)  : i32
     v78 = eq v77, 0  : i1
     v79 = cast v78  : i32
     v80 = neq v79, 0  : i1
@@ -980,7 +980,7 @@ block5:
 
 block6:
     v13 = add v10, v4  : i32
-    v14 = call noname::_ZN8dlmalloc8dlmalloc5Chunk12minus_offset17h7c3eec81761249d9E(v3, v10)  : i32
+    v14 = call noname::dlmalloc::dlmalloc::Chunk::minus_offset(v3, v10)  : i32
     v15 = cast v0  : u32
     v16 = add v15, 424  : u32
     v17 = inttoptr v16  : *mut i32
@@ -1017,7 +1017,7 @@ block9:
     v33 = add v32, 416  : u32
     v34 = inttoptr v33  : *mut i32
     store v34, v13
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v14, v13, v5)
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v14, v13, v5)
     ret 
 
 block10:
@@ -1035,7 +1035,7 @@ block10:
     condbr v51, block12, block13
 
 block11:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v0, v14)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v0, v14)
     br block3(v14, v13)
 
 block12:
@@ -1100,7 +1100,7 @@ block16:
     condbr v103, block21, block22
 
 block17:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v94, v95, v89)
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v94, v95, v89)
     br block15(v95, v96, v94)
 
 block18:
@@ -1142,7 +1142,7 @@ block20:
     v196 = add v195, 416  : u32
     v197 = inttoptr v196  : *mut i32
     store v197, v194
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v94, v194)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v94, v194)
     ret 
 
 block21:
@@ -1185,7 +1185,7 @@ block22:
     condbr v110, block20, block23
 
 block23:
-    v111 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v89)  : i32
+    v111 = call noname::dlmalloc::dlmalloc::Chunk::size(v89)  : i32
     v112 = add v111, v95  : i32
     v113 = const.i32 256  : i32
     v114 = cast v111  : u32
@@ -1196,7 +1196,7 @@ block23:
     condbr v118, block25, block26
 
 block24:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v94, v112)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v94, v112)
     v154 = cast v96  : u32
     v155 = add v154, 424  : u32
     v156 = inttoptr v155  : *mut i32
@@ -1221,7 +1221,7 @@ block25:
     condbr v129, block27, block28
 
 block26:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v96, v89)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v96, v89)
     br block24
 
 block27:
@@ -1265,19 +1265,19 @@ block30:
     br block18
 
 block31:
-    v217 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v217 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v218 = const.i32 8  : i32
-    v219 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v217, v218)  : i32
+    v219 = call noname::dlmalloc::dlmalloc::align_up(v217, v218)  : i32
     v220 = const.i32 20  : i32
     v221 = const.i32 8  : i32
-    v222 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v220, v221)  : i32
+    v222 = call noname::dlmalloc::dlmalloc::align_up(v220, v221)  : i32
     v223 = const.i32 16  : i32
     v224 = const.i32 8  : i32
-    v225 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v223, v224)  : i32
+    v225 = call noname::dlmalloc::dlmalloc::align_up(v223, v224)  : i32
     v226 = const.i32 0  : i32
     v227 = const.i32 16  : i32
     v228 = const.i32 8  : i32
-    v229 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v227, v228)  : i32
+    v229 = call noname::dlmalloc::dlmalloc::align_up(v227, v228)  : i32
     v230 = const.i32 2  : i32
     v231 = shl v229, v230  : i32
     v232 = sub v226, v231  : i32
@@ -1312,15 +1312,15 @@ block32:
     condbr v257, block2, block33
 
 block33:
-    v258 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v258 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v259 = const.i32 8  : i32
-    v260 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v258, v259)  : i32
+    v260 = call noname::dlmalloc::dlmalloc::align_up(v258, v259)  : i32
     v261 = const.i32 20  : i32
     v262 = const.i32 8  : i32
-    v263 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v261, v262)  : i32
+    v263 = call noname::dlmalloc::dlmalloc::align_up(v261, v262)  : i32
     v264 = const.i32 16  : i32
     v265 = const.i32 8  : i32
-    v266 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v264, v265)  : i32
+    v266 = call noname::dlmalloc::dlmalloc::align_up(v264, v265)  : i32
     v267 = const.i32 0  : i32
     v268 = cast v207  : u32
     v269 = add v268, 420  : u32
@@ -1337,7 +1337,7 @@ block33:
     condbr v279, block34(v207, v267), block35
 
 block34(v449: i32, v452: i32):
-    v450 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$23release_unused_segments17h25622465f0742468E(v449)  : i32
+    v450 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments(v449)  : i32
     v451 = const.i32 0  : i32
     v453 = sub v451, v452  : i32
     v454 = neq v450, v453  : i1
@@ -1359,7 +1359,7 @@ block35:
 
 block36(v314: i32, v318: i32, v339: i32, v359: i32, v414: i32):
     v313 = const.i32 0  : i32
-    v315 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v314)  : i32
+    v315 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v314)  : i32
     v316 = neq v315, 0  : i1
     condbr v316, block34(v318, v313), block43
 
@@ -1387,7 +1387,7 @@ block39:
     condbr v310, block37(v309), block42
 
 block40:
-    v299 = call noname::_ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(v289)  : i32
+    v299 = call noname::dlmalloc::dlmalloc::Segment::top(v289)  : i32
     v300 = cast v299  : u32
     v301 = cast v293  : u32
     v302 = gt v300, v301  : i1
@@ -1412,7 +1412,7 @@ block43:
     v327 = cast v325  : u32
     v328 = shr v326, v327  : u32
     v329 = cast v328  : i32
-    v330 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$16can_release_part17h43bfb7d8666fcc31E(v318, v329)  : i32
+    v330 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part(v318, v329)  : i32
     v331 = eq v330, 0  : i1
     v332 = cast v331  : i32
     v333 = neq v332, 0  : i1
@@ -1435,7 +1435,7 @@ block45:
     br block46(v359)
 
 block46(v348: i32):
-    v349 = call noname::_ZN8dlmalloc8dlmalloc7Segment5holds17h8f6de4ee6718009bE(v347, v348)  : i32
+    v349 = call noname::dlmalloc::dlmalloc::Segment::holds(v347, v348)  : i32
     v350 = eq v349, 0  : i1
     v351 = cast v350  : i32
     v352 = neq v351, 0  : i1
@@ -1450,7 +1450,7 @@ block47:
     v368 = inttoptr v367  : *mut i32
     v369 = load v368  : i32
     v371 = sub v369, v339  : i32
-    v372 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$9free_part17h74489c9e7a3aa967E(v318, v365, v369, v371)  : i32
+    v372 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free_part(v318, v365, v369, v371)  : i32
     v373 = const.i32 0  : i32
     v374 = eq v370, 0  : i1
     v375 = cast v374  : i32
@@ -1506,11 +1506,11 @@ block52:
     v402 = add v401, 428  : u32
     v403 = inttoptr v402  : *mut i32
     v404 = load v403  : i32
-    v405 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v404)  : i32
+    v405 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v404)  : i32
     v406 = const.i32 8  : i32
-    v407 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v405, v406)  : i32
+    v407 = call noname::dlmalloc::dlmalloc::align_up(v405, v406)  : i32
     v408 = sub v407, v405  : i32
-    v409 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v404, v408)  : i32
+    v409 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v404, v408)  : i32
     v410 = cast v362  : u32
     v411 = add v410, 428  : u32
     v412 = inttoptr v411  : *mut i32
@@ -1529,16 +1529,16 @@ block52:
     v427 = add v426, 4  : u32
     v428 = inttoptr v427  : *mut i32
     store v428, v425
-    v429 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v429 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v430 = const.i32 8  : i32
-    v431 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v429, v430)  : i32
+    v431 = call noname::dlmalloc::dlmalloc::align_up(v429, v430)  : i32
     v432 = const.i32 20  : i32
     v433 = const.i32 8  : i32
-    v434 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v432, v433)  : i32
+    v434 = call noname::dlmalloc::dlmalloc::align_up(v432, v433)  : i32
     v435 = const.i32 16  : i32
     v436 = const.i32 8  : i32
-    v437 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v435, v436)  : i32
-    v438 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v409, v420)  : i32
+    v437 = call noname::dlmalloc::dlmalloc::align_up(v435, v436)  : i32
+    v438 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v409, v420)  : i32
     v439 = const.i32 2097152  : i32
     v440 = cast v362  : u32
     v441 = add v440, 440  : u32
@@ -1601,7 +1601,7 @@ block55:
     condbr v513, block59, block60
 
 block56:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v481, v482, v474)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v481, v482, v474)
     v483 = cast v481  : u32
     v484 = add v483, 448  : u32
     v485 = inttoptr v484  : *mut i32
@@ -1616,7 +1616,7 @@ block56:
     condbr v492, block2, block57
 
 block57:
-    v493 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$23release_unused_segments17h25622465f0742468E(v481)  : i32
+    v493 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments(v481)  : i32
     ret 
 
 block58(v527: i32):
@@ -1654,7 +1654,7 @@ block60:
     br block58(v517)
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$6malloc17h1ae2390053e3628cE(i32, i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::malloc(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = const.i32 0  : i32
     v4 = const.i64 0  : i64
@@ -1713,7 +1713,7 @@ block7:
     v170 = add v1, v169  : i32
     v171 = const.i32 16  : i32
     v172 = const.i32 8  : i32
-    v173 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v171, v172)  : i32
+    v173 = call noname::dlmalloc::dlmalloc::align_up(v171, v172)  : i32
     v174 = const.i32 -5  : i32
     v175 = add v173, v174  : i32
     v176 = cast v175  : u32
@@ -1723,7 +1723,7 @@ block7:
     v180 = neq v179, 0  : i1
     v181 = select v180, v168, v170  : i32
     v182 = const.i32 8  : i32
-    v183 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v181, v182)  : i32
+    v183 = call noname::dlmalloc::dlmalloc::align_up(v181, v182)  : i32
     v184 = cast v0  : u32
     v185 = add v184, 408  : u32
     v186 = inttoptr v185  : *mut i32
@@ -1745,20 +1745,20 @@ block7:
     condbr v201, block23, block24
 
 block8:
-    v15 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v15 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v16 = const.i32 8  : i32
-    v17 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v15, v16)  : i32
+    v17 = call noname::dlmalloc::dlmalloc::align_up(v15, v16)  : i32
     v18 = const.i32 20  : i32
     v19 = const.i32 8  : i32
-    v20 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v18, v19)  : i32
+    v20 = call noname::dlmalloc::dlmalloc::align_up(v18, v19)  : i32
     v21 = const.i32 16  : i32
     v22 = const.i32 8  : i32
-    v23 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v21, v22)  : i32
+    v23 = call noname::dlmalloc::dlmalloc::align_up(v21, v22)  : i32
     v24 = const.i32 0  : i32
     v25 = const.i32 0  : i32
     v26 = const.i32 16  : i32
     v27 = const.i32 8  : i32
-    v28 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v26, v27)  : i32
+    v28 = call noname::dlmalloc::dlmalloc::align_up(v26, v27)  : i32
     v29 = const.i32 2  : i32
     v30 = shl v28, v29  : i32
     v31 = sub v25, v30  : i32
@@ -1788,7 +1788,7 @@ block9:
     v52 = const.i32 4  : i32
     v53 = add v1, v52  : i32
     v54 = const.i32 8  : i32
-    v55 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v53, v54)  : i32
+    v55 = call noname::dlmalloc::dlmalloc::align_up(v53, v54)  : i32
     v56 = cast v0  : u32
     v57 = add v56, 412  : u32
     v58 = inttoptr v57  : *mut i32
@@ -1854,7 +1854,7 @@ block13:
     br block11(v96)
 
 block14:
-    v110 = call noname::_ZN8dlmalloc8dlmalloc24leftshift_for_tree_index17h31d064fdd867f502E(v101)  : i32
+    v110 = call noname::dlmalloc::dlmalloc::leftshift_for_tree_index(v101)  : i32
     v111 = shl v98, v110  : i32
     v112 = const.i32 0  : i32
     v113 = const.i32 0  : i32
@@ -1865,8 +1865,8 @@ block15:
     br block6(v63, v109, v101, v59, v100, v98, v99, v7)
 
 block16(v114: i32, v124: i32, v139: i32, v141: i32, v497: i32, v503: i32, v509: i32, v516: i32, v691: i32):
-    v115 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v114)  : i32
-    v116 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v115)  : i32
+    v115 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v114)  : i32
+    v116 = call noname::dlmalloc::dlmalloc::Chunk::size(v115)  : i32
     v118 = cast v116  : u32
     v119 = cast v117  : u32
     v120 = lt v118, v119  : i1
@@ -1968,8 +1968,8 @@ block24:
 block25:
     v238 = const.i32 3  : i32
     v239 = shl v206, v238  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(v214, v239)
-    v240 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v236)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v214, v239)
+    v240 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v236)  : i32
     br block2(v7, v240)
 
 block26:
@@ -1998,7 +1998,7 @@ block28:
     condbr v250, block35, block36
 
 block29(v655: i32, v683: i32):
-    v489 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v291)  : i32
+    v489 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v291)  : i32
     v490 = eq v489, 0  : i1
     v491 = cast v490  : i32
     v492 = neq v491, 0  : i1
@@ -2024,7 +2024,7 @@ block31(v1479: i32):
     v469 = add v468, 416  : u32
     v470 = inttoptr v469  : *mut i32
     store v470, v358
-    v473 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v352)  : i32
+    v473 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v352)  : i32
     br block2(v1479, v473)
 
 block32:
@@ -2054,7 +2054,7 @@ block32:
 
 block33:
     v412 = add v296, v292  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(v291, v412)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v291, v412)
     br block29(v294, v7)
 
 block34:
@@ -2091,10 +2091,10 @@ block35:
     v314 = const.i32 31  : i32
     v315 = band v192, v314  : i32
     v316 = shl v313, v315  : i32
-    v317 = call noname::_ZN8dlmalloc8dlmalloc9left_bits17hb6cbe146b8019d98E(v316)  : i32
+    v317 = call noname::dlmalloc::dlmalloc::left_bits(v316)  : i32
     v318 = shl v196, v315  : i32
     v319 = band v317, v318  : i32
-    v320 = call noname::_ZN8dlmalloc8dlmalloc9least_bit17h4bca52ead665dc5aE(v319)  : i32
+    v320 = call noname::dlmalloc::dlmalloc::least_bit(v319)  : i32
     v321 = popcnt v320  : i32
     v322 = const.i32 3  : i32
     v323 = shl v321, v322  : i32
@@ -2123,7 +2123,7 @@ block36:
     condbr v257, block3(v0, v183, v7), block37
 
 block37:
-    v258 = call noname::_ZN8dlmalloc8dlmalloc9least_bit17h4bca52ead665dc5aE(v254)  : i32
+    v258 = call noname::dlmalloc::dlmalloc::least_bit(v254)  : i32
     v259 = popcnt v258  : i32
     v260 = const.i32 2  : i32
     v261 = shl v259, v260  : i32
@@ -2131,22 +2131,22 @@ block37:
     v263 = cast v262  : u32
     v264 = inttoptr v263  : *mut i32
     v265 = load v264  : i32
-    v266 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v265)  : i32
-    v267 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v266)  : i32
+    v266 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v265)  : i32
+    v267 = call noname::dlmalloc::dlmalloc::Chunk::size(v266)  : i32
     v268 = sub v267, v183  : i32
-    v269 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk14leftmost_child17h20605933c801b44bE(v265)  : i32
+    v269 = call noname::dlmalloc::dlmalloc::TreeChunk::leftmost_child(v265)  : i32
     v270 = eq v269, 0  : i1
     v271 = cast v270  : i32
     v272 = neq v271, 0  : i1
     condbr v272, block38(v265, v183, v268), block39
 
 block38(v290: i32, v292: i32, v296: i32):
-    v291 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v290)  : i32
-    v293 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v291, v292)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v0, v290)
+    v291 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v290)  : i32
+    v293 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v291, v292)  : i32
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v0, v290)
     v297 = const.i32 16  : i32
     v298 = const.i32 8  : i32
-    v299 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v297, v298)  : i32
+    v299 = call noname::dlmalloc::dlmalloc::align_up(v297, v298)  : i32
     v300 = cast v296  : u32
     v301 = cast v299  : u32
     v302 = lt v300, v301  : i1
@@ -2158,8 +2158,8 @@ block39:
     br block40(v269, v268, v265)
 
 block40(v273: i32, v278: i32, v285: i32):
-    v274 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v273)  : i32
-    v275 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v274)  : i32
+    v274 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v273)  : i32
+    v275 = call noname::dlmalloc::dlmalloc::Chunk::size(v274)  : i32
     v277 = sub v275, v276  : i32
     v279 = cast v277  : u32
     v280 = cast v278  : u32
@@ -2169,7 +2169,7 @@ block40(v273: i32, v278: i32, v285: i32):
     v284 = select v283, v277, v278  : i32
     v286 = neq v282, 0  : i1
     v287 = select v286, v273, v285  : i32
-    v288 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk14leftmost_child17h20605933c801b44bE(v273)  : i32
+    v288 = call noname::dlmalloc::dlmalloc::TreeChunk::leftmost_child(v273)  : i32
     v289 = neq v288, 0  : i1
     condbr v289, block40(v288, v284, v287), block42
 
@@ -2180,9 +2180,9 @@ block42:
     br block41
 
 block43:
-    v305 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v293)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v291, v292)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v305, v296)
+    v305 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v293)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v291, v292)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v305, v296)
     v306 = cast v294  : u32
     v307 = add v306, 416  : u32
     v308 = inttoptr v307  : *mut i32
@@ -2194,12 +2194,12 @@ block44:
     br block30
 
 block45:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v328, v183)
-    v354 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v352, v353)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v328, v183)
+    v354 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v352, v353)  : i32
     v356 = const.i32 3  : i32
     v357 = shl v321, v356  : i32
     v358 = sub v357, v353  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v354, v358)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v354, v358)
     v360 = cast v0  : u32
     v361 = add v360, 416  : u32
     v362 = inttoptr v361  : *mut i32
@@ -2315,7 +2315,7 @@ block56(v526: i32, v554: i32):
 block57:
     v500 = const.i32 1  : i32
     v504 = shl v500, v501  : i32
-    v505 = call noname::_ZN8dlmalloc8dlmalloc9left_bits17hb6cbe146b8019d98E(v504)  : i32
+    v505 = call noname::dlmalloc::dlmalloc::left_bits(v504)  : i32
     v510 = band v505, v506  : i32
     v511 = eq v510, 0  : i1
     v512 = cast v511  : i32
@@ -2323,7 +2323,7 @@ block57:
     condbr v513, block3(v514, v557, v688), block58
 
 block58:
-    v517 = call noname::_ZN8dlmalloc8dlmalloc9least_bit17h4bca52ead665dc5aE(v510)  : i32
+    v517 = call noname::dlmalloc::dlmalloc::least_bit(v510)  : i32
     v518 = popcnt v517  : i32
     v519 = const.i32 2  : i32
     v520 = shl v518, v519  : i32
@@ -2338,8 +2338,8 @@ block59:
     br block5(v526, v554, v557, v560, v566, v693)
 
 block60(v530: i32, v531: i32, v540: i32):
-    v532 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v530)  : i32
-    v533 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v532)  : i32
+    v532 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v530)  : i32
+    v533 = call noname::dlmalloc::dlmalloc::Chunk::size(v532)  : i32
     v535 = cast v533  : u32
     v536 = cast v534  : u32
     v537 = gte v535, v536  : i1
@@ -2354,7 +2354,7 @@ block60(v530: i32, v531: i32, v540: i32):
     v547 = select v546, v530, v531  : i32
     v548 = neq v545, 0  : i1
     v549 = select v548, v539, v540  : i32
-    v550 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk14leftmost_child17h20605933c801b44bE(v530)  : i32
+    v550 = call noname::dlmalloc::dlmalloc::TreeChunk::leftmost_child(v530)  : i32
     v551 = neq v550, 0  : i1
     condbr v551, block60(v550, v547, v549), block62
 
@@ -2377,12 +2377,12 @@ block63:
     condbr v578, block64, block65
 
 block64:
-    v587 = call noname::_ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(v561)  : i32
-    v589 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v587, v573)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v565, v586)
+    v587 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v561)  : i32
+    v589 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v587, v573)  : i32
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v565, v586)
     v592 = const.i32 16  : i32
     v593 = const.i32 8  : i32
-    v594 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v592, v593)  : i32
+    v594 = call noname::dlmalloc::dlmalloc::align_up(v592, v593)  : i32
     v595 = cast v579  : u32
     v596 = cast v594  : u32
     v597 = lt v595, v596  : i1
@@ -2403,18 +2403,18 @@ block66:
     br block64
 
 block67(v696: i32):
-    v652 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v587)  : i32
+    v652 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v587)  : i32
     v653 = neq v652, 0  : i1
     condbr v653, block2(v696, v652), block75
 
 block68:
     v649 = add v591, v588  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(v587, v649)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v587, v649)
     br block67(v697)
 
 block69:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v587, v588)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v589, v591)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v587, v588)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v589, v591)
     v600 = const.i32 256  : i32
     v601 = cast v591  : u32
     v602 = cast v600  : u32
@@ -2447,7 +2447,7 @@ block70:
     condbr v625, block73, block74
 
 block71:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v590, v589, v591)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v590, v589, v591)
     br block67(v692)
 
 block72(v639: i32):
@@ -2523,7 +2523,7 @@ block77(v1321: i32, v1326: i32):
     br block141(v1342)
 
 block78(v1263: i32, v1264: i32):
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v1093, v1263, v1264)
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v1093, v1263, v1264)
     v1265 = const.i32 256  : i32
     v1266 = cast v1263  : u32
     v1267 = cast v1265  : u32
@@ -2547,8 +2547,8 @@ block79:
     v1258 = add v1257, 416  : u32
     v1259 = inttoptr v1258  : *mut i32
     store v1259, v1256
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(v1196, v1255)
-    v1260 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1196)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v1196, v1255)
+    v1260 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1196)  : i32
     br block2(v682, v1260)
 
 block80:
@@ -2565,8 +2565,8 @@ block80:
     v1245 = add v1244, 416  : u32
     v1246 = inttoptr v1245  : *mut i32
     store v1246, v1243
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v1093, v1243)
-    v1247 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1089)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v1093, v1243)
+    v1247 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1089)  : i32
     br block2(v1482, v1247)
 
 block81:
@@ -2588,7 +2588,7 @@ block81:
     v1233 = inttoptr v1232  : *mut i32
     v1234 = load v1233  : i32
     v1235 = add v1234, v815  : i32
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8init_top17he4cefe3b36a3bd87E(v792, v1230, v1235)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::init_top(v792, v1230, v1235)
     br block76(v792, v1092, v1484, v1509)
 
 block82:
@@ -2606,7 +2606,7 @@ block83:
     v1197 = sub v661, v662  : i32
     v1198 = const.i32 16  : i32
     v1199 = const.i32 8  : i32
-    v1200 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1198, v1199)  : i32
+    v1200 = call noname::dlmalloc::dlmalloc::align_up(v1198, v1199)  : i32
     v1201 = cast v1197  : u32
     v1202 = cast v1200  : u32
     v1203 = lt v1201, v1202  : i1
@@ -2636,7 +2636,7 @@ block85:
     v1180 = add v1179, 428  : u32
     v1181 = inttoptr v1180  : *mut i32
     v1182 = load v1181  : i32
-    v1183 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1182, v662)  : i32
+    v1183 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1182, v662)  : i32
     v1184 = cast v654  : u32
     v1185 = add v1184, 428  : u32
     v1186 = inttoptr v1185  : *mut i32
@@ -2647,31 +2647,31 @@ block85:
     v1190 = add v1189, 4  : u32
     v1191 = inttoptr v1190  : *mut i32
     store v1191, v1188
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v1182, v662)
-    v1192 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1182)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1182, v662)
+    v1192 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1182)  : i32
     br block2(v682, v1192)
 
 block86:
     v699 = const.i32 4  : i32
     v700 = add v682, v699  : i32
-    v701 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v701 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v702 = sub v662, v701  : i32
     v703 = const.i32 8  : i32
-    v704 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v701, v703)  : i32
+    v704 = call noname::dlmalloc::dlmalloc::align_up(v701, v703)  : i32
     v705 = add v702, v704  : i32
     v706 = const.i32 20  : i32
     v707 = const.i32 8  : i32
-    v708 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v706, v707)  : i32
+    v708 = call noname::dlmalloc::dlmalloc::align_up(v706, v707)  : i32
     v709 = add v705, v708  : i32
     v710 = const.i32 16  : i32
     v711 = const.i32 8  : i32
-    v712 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v710, v711)  : i32
+    v712 = call noname::dlmalloc::dlmalloc::align_up(v710, v711)  : i32
     v713 = add v709, v712  : i32
     v714 = const.i32 8  : i32
     v715 = add v713, v714  : i32
     v716 = const.i32 65536  : i32
-    v717 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v715, v716)  : i32
-    call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$5alloc17hdbf1e2bcc01bc909E(v700, v654, v717)
+    v717 = call noname::dlmalloc::dlmalloc::align_up(v715, v716)  : i32
+    call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::alloc(v700, v654, v717)
     v718 = const.i32 0  : i32
     v719 = cast v682  : u32
     v720 = add v719, 4  : u32
@@ -2766,12 +2766,12 @@ block92(v814: i32, v817: i32, v1091: i32, v1483: i32, v1508: i32):
     br block104(v817)
 
 block93:
-    v785 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v775)  : i32
+    v785 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v775)  : i32
     v786 = neq v785, 0  : i1
     condbr v786, block92(v815, v818, v1092, v1484, v1509), block98
 
 block94(v775: i32):
-    v776 = call noname::_ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(v775)  : i32
+    v776 = call noname::dlmalloc::dlmalloc::Segment::top(v775)  : i32
     v777 = eq v774, v776  : i1
     v778 = cast v777  : i32
     v779 = neq v778, 0  : i1
@@ -2791,7 +2791,7 @@ block97:
     br block92(v737, v773, v662, v682, v718)
 
 block98:
-    v787 = call noname::_ZN8dlmalloc8dlmalloc7Segment9sys_flags17h224550055bf7775bE(v775)  : i32
+    v787 = call noname::dlmalloc::dlmalloc::Segment::sys_flags(v775)  : i32
     v789 = neq v787, v729  : i1
     v790 = cast v789  : i32
     v791 = neq v790, 0  : i1
@@ -2802,7 +2802,7 @@ block99:
     v794 = add v793, 428  : u32
     v795 = inttoptr v794  : *mut i32
     v796 = load v795  : i32
-    v797 = call noname::_ZN8dlmalloc8dlmalloc7Segment5holds17h8f6de4ee6718009bE(v775, v796)  : i32
+    v797 = call noname::dlmalloc::dlmalloc::Segment::holds(v775, v796)  : i32
     v798 = neq v797, 0  : i1
     condbr v798, block81, block100
 
@@ -2825,16 +2825,16 @@ block101:
     v1080 = add v1079, 4  : u32
     v1081 = inttoptr v1080  : *mut i32
     store v1081, v1078
-    v1082 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v913)  : i32
+    v1082 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v913)  : i32
     v1083 = const.i32 8  : i32
-    v1084 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1082, v1083)  : i32
-    v1085 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1071)  : i32
+    v1084 = call noname::dlmalloc::dlmalloc::align_up(v1082, v1083)  : i32
+    v1085 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1071)  : i32
     v1086 = const.i32 8  : i32
-    v1087 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1085, v1086)  : i32
+    v1087 = call noname::dlmalloc::dlmalloc::align_up(v1085, v1086)  : i32
     v1088 = sub v1084, v1082  : i32
     v1089 = add v913, v1088  : i32
-    v1093 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1089, v1091)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v1089, v1090)
+    v1093 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1089, v1091)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1089, v1090)
     v1094 = sub v1087, v1085  : i32
     v1095 = add v1071, v1094  : i32
     v1096 = add v1090, v1089  : i32
@@ -2856,7 +2856,7 @@ block102(v840: i32, v846: i32, v912: i32, v925: i32, v1506: i32):
     br block111(v846)
 
 block103:
-    v832 = call noname::_ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(v819)  : i32
+    v832 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v819)  : i32
     v833 = neq v832, 0  : i1
     condbr v833, block102(v841, v847, v913, v926, v1507), block108
 
@@ -2883,7 +2883,7 @@ block107:
     br block102(v799, v817, v804, v814, v1508)
 
 block108:
-    v834 = call noname::_ZN8dlmalloc8dlmalloc7Segment9sys_flags17h224550055bf7775bE(v819)  : i32
+    v834 = call noname::dlmalloc::dlmalloc::Segment::sys_flags(v819)  : i32
     v837 = eq v834, v788  : i1
     v838 = cast v837  : i32
     v839 = neq v838, 0  : i1
@@ -2893,21 +2893,21 @@ block109:
     br block102(v841, v847, v913, v926, v1507)
 
 block110(v872: i32, v880: i32, v907: i32, v910: i32, v923: i32, v961: i32, v980: i32, v1446: i32, v1490: i32, v1504: i32):
-    v873 = call noname::_ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(v872)  : i32
+    v873 = call noname::dlmalloc::dlmalloc::Segment::top(v872)  : i32
     v874 = const.i32 20  : i32
     v875 = const.i32 8  : i32
-    v876 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v874, v875)  : i32
+    v876 = call noname::dlmalloc::dlmalloc::align_up(v874, v875)  : i32
     v877 = sub v873, v876  : i32
     v878 = const.i32 -23  : i32
     v879 = add v877, v878  : i32
-    v881 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v879)  : i32
+    v881 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v879)  : i32
     v882 = const.i32 8  : i32
-    v883 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v881, v882)  : i32
+    v883 = call noname::dlmalloc::dlmalloc::align_up(v881, v882)  : i32
     v884 = sub v883, v881  : i32
     v885 = add v879, v884  : i32
     v886 = const.i32 16  : i32
     v887 = const.i32 8  : i32
-    v888 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v886, v887)  : i32
+    v888 = call noname::dlmalloc::dlmalloc::align_up(v886, v887)  : i32
     v889 = add v880, v888  : i32
     v890 = cast v885  : u32
     v891 = cast v889  : u32
@@ -2915,22 +2915,22 @@ block110(v872: i32, v880: i32, v907: i32, v910: i32, v923: i32, v961: i32, v980:
     v893 = cast v892  : i32
     v894 = neq v893, 0  : i1
     v895 = select v894, v880, v885  : i32
-    v896 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v895)  : i32
-    v897 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v895, v876)  : i32
-    v898 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v896 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v895)  : i32
+    v897 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v895, v876)  : i32
+    v898 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v899 = const.i32 8  : i32
-    v900 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v898, v899)  : i32
+    v900 = call noname::dlmalloc::dlmalloc::align_up(v898, v899)  : i32
     v901 = const.i32 20  : i32
     v902 = const.i32 8  : i32
-    v903 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v901, v902)  : i32
+    v903 = call noname::dlmalloc::dlmalloc::align_up(v901, v902)  : i32
     v904 = const.i32 16  : i32
     v905 = const.i32 8  : i32
-    v906 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v904, v905)  : i32
-    v915 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v910)  : i32
+    v906 = call noname::dlmalloc::dlmalloc::align_up(v904, v905)  : i32
+    v915 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v910)  : i32
     v916 = const.i32 8  : i32
-    v917 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v915, v916)  : i32
+    v917 = call noname::dlmalloc::dlmalloc::align_up(v915, v916)  : i32
     v918 = sub v917, v915  : i32
-    v919 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v910, v918)  : i32
+    v919 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v910, v918)  : i32
     v920 = cast v907  : u32
     v921 = add v920, 428  : u32
     v922 = inttoptr v921  : *mut i32
@@ -2950,16 +2950,16 @@ block110(v872: i32, v880: i32, v907: i32, v910: i32, v923: i32, v961: i32, v980:
     v939 = add v938, 4  : u32
     v940 = inttoptr v939  : *mut i32
     store v940, v937
-    v941 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v941 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v942 = const.i32 8  : i32
-    v943 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v941, v942)  : i32
+    v943 = call noname::dlmalloc::dlmalloc::align_up(v941, v942)  : i32
     v944 = const.i32 20  : i32
     v945 = const.i32 8  : i32
-    v946 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v944, v945)  : i32
+    v946 = call noname::dlmalloc::dlmalloc::align_up(v944, v945)  : i32
     v947 = const.i32 16  : i32
     v948 = const.i32 8  : i32
-    v949 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v947, v948)  : i32
-    v950 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v919, v932)  : i32
+    v949 = call noname::dlmalloc::dlmalloc::align_up(v947, v948)  : i32
+    v950 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v919, v932)  : i32
     v951 = const.i32 2097152  : i32
     v952 = cast v907  : u32
     v953 = add v952, 440  : u32
@@ -2972,7 +2972,7 @@ block110(v872: i32, v880: i32, v907: i32, v910: i32, v923: i32, v961: i32, v980:
     v959 = add v958, 4  : u32
     v960 = inttoptr v959  : *mut i32
     store v960, v957
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v895, v876)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v895, v876)
     v964 = cast v961  : u32
     v965 = inttoptr v964  : *mut i64
     v966 = load v965  : i64
@@ -3034,7 +3034,7 @@ block113:
     condbr v869, block111(v868), block116
 
 block114:
-    v858 = call noname::_ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(v848)  : i32
+    v858 = call noname::dlmalloc::dlmalloc::Segment::top(v848)  : i32
     v859 = cast v858  : u32
     v860 = cast v852  : u32
     v861 = gt v859, v860  : i1
@@ -3050,8 +3050,8 @@ block116:
 
 block117(v997: i32):
     v998 = const.i32 4  : i32
-    v999 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v997, v998)  : i32
-    v1000 = call noname::_ZN8dlmalloc8dlmalloc5Chunk14fencepost_head17he07aaa52f3b50dfdE()  : i32
+    v999 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v997, v998)  : i32
+    v1000 = call noname::dlmalloc::dlmalloc::Chunk::fencepost_head()  : i32
     v1001 = cast v997  : u32
     v1002 = add v1001, 4  : u32
     v1003 = inttoptr v1002  : *mut i32
@@ -3076,8 +3076,8 @@ block119:
 
 block120:
     v1017 = sub v1012, v1013  : i32
-    v1018 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1013, v1017)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(v1013, v1017, v1018)
+    v1018 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1013, v1017)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v1013, v1017, v1018)
     v1019 = const.i32 256  : i32
     v1020 = cast v1017  : u32
     v1021 = cast v1019  : u32
@@ -3110,7 +3110,7 @@ block121:
     condbr v1045, block124, block125
 
 block122:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v907, v1013, v1017)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v907, v1013, v1017)
     br block76(v1025, v1445, v1489, v1503)
 
 block123(v1059: i32):
@@ -3167,7 +3167,7 @@ block126:
     v1172 = add v1171, 4  : u32
     v1173 = inttoptr v1172  : *mut i32
     store v1173, v1170
-    v1174 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1089)  : i32
+    v1174 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1089)  : i32
     br block2(v1483, v1174)
 
 block127:
@@ -3181,12 +3181,12 @@ block127:
     condbr v1111, block80, block128
 
 block128:
-    v1112 = call noname::_ZN8dlmalloc8dlmalloc5Chunk5inuse17h2d327e4c36b84dfeE(v1095)  : i32
+    v1112 = call noname::dlmalloc::dlmalloc::Chunk::inuse(v1095)  : i32
     v1113 = neq v1112, 0  : i1
     condbr v1113, block78(v1097, v1095), block129
 
 block129:
-    v1114 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v1095)  : i32
+    v1114 = call noname::dlmalloc::dlmalloc::Chunk::size(v1095)  : i32
     v1115 = const.i32 256  : i32
     v1116 = cast v1114  : u32
     v1117 = cast v1115  : u32
@@ -3197,7 +3197,7 @@ block129:
 
 block130:
     v1155 = add v1114, v1097  : i32
-    v1157 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1095, v1153)  : i32
+    v1157 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1095, v1153)  : i32
     br block78(v1155, v1157)
 
 block131:
@@ -3215,7 +3215,7 @@ block131:
     condbr v1131, block133, block134
 
 block132:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v841, v1095)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v841, v1095)
     br block130
 
 block133:
@@ -3249,7 +3249,7 @@ block134:
     br block130
 
 block135:
-    v1206 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1196, v662)  : i32
+    v1206 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1196, v662)  : i32
     v1207 = cast v654  : u32
     v1208 = add v1207, 416  : u32
     v1209 = inttoptr v1208  : *mut i32
@@ -3258,9 +3258,9 @@ block135:
     v1211 = add v1210, 424  : u32
     v1212 = inttoptr v1211  : *mut i32
     store v1212, v1206
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v1206, v1197)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v1196, v662)
-    v1213 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1196)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v1206, v1197)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1196, v662)
+    v1213 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1196)  : i32
     br block2(v682, v1213)
 
 block136:
@@ -3287,8 +3287,8 @@ block136:
     condbr v1295, block139, block140
 
 block137:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18insert_large_chunk17h8e77460818b80af0E(v841, v1261, v1263)
-    v1275 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1089)  : i32
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v841, v1261, v1263)
+    v1275 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1089)  : i32
     br block2(v1482, v1275)
 
 block138(v1309: i32):
@@ -3308,7 +3308,7 @@ block138(v1309: i32):
     v1317 = add v1316, 8  : u32
     v1318 = inttoptr v1317  : *mut i32
     store v1318, v1309
-    v1320 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1273)  : i32
+    v1320 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1273)  : i32
     br block2(v1485, v1320)
 
 block139:
@@ -3379,20 +3379,20 @@ block141(v1344: i32):
     condbr v1385, block141(v1381), block143
 
 block142:
-    v1386 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v1386 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v1387 = const.i32 8  : i32
-    v1388 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1386, v1387)  : i32
+    v1388 = call noname::dlmalloc::dlmalloc::align_up(v1386, v1387)  : i32
     v1389 = const.i32 20  : i32
     v1390 = const.i32 8  : i32
-    v1391 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1389, v1390)  : i32
+    v1391 = call noname::dlmalloc::dlmalloc::align_up(v1389, v1390)  : i32
     v1392 = const.i32 16  : i32
     v1393 = const.i32 8  : i32
-    v1394 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1392, v1393)  : i32
-    v1396 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1395)  : i32
+    v1394 = call noname::dlmalloc::dlmalloc::align_up(v1392, v1393)  : i32
+    v1396 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1395)  : i32
     v1397 = const.i32 8  : i32
-    v1398 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1396, v1397)  : i32
+    v1398 = call noname::dlmalloc::dlmalloc::align_up(v1396, v1397)  : i32
     v1399 = sub v1398, v1396  : i32
-    v1400 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1326, v1399)  : i32
+    v1400 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1326, v1399)  : i32
     v1401 = cast v1343  : u32
     v1402 = add v1401, 428  : u32
     v1403 = inttoptr v1402  : *mut i32
@@ -3412,16 +3412,16 @@ block142:
     v1416 = add v1415, 4  : u32
     v1417 = inttoptr v1416  : *mut i32
     store v1417, v1414
-    v1418 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v1418 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v1419 = const.i32 8  : i32
-    v1420 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1418, v1419)  : i32
+    v1420 = call noname::dlmalloc::dlmalloc::align_up(v1418, v1419)  : i32
     v1421 = const.i32 20  : i32
     v1422 = const.i32 8  : i32
-    v1423 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1421, v1422)  : i32
+    v1423 = call noname::dlmalloc::dlmalloc::align_up(v1421, v1422)  : i32
     v1424 = const.i32 16  : i32
     v1425 = const.i32 8  : i32
-    v1426 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v1424, v1425)  : i32
-    v1427 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1400, v1409)  : i32
+    v1426 = call noname::dlmalloc::dlmalloc::align_up(v1424, v1425)  : i32
+    v1427 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1400, v1409)  : i32
     v1428 = const.i32 2097152  : i32
     v1429 = cast v1343  : u32
     v1430 = add v1429, 440  : u32
@@ -3449,7 +3449,7 @@ block144:
     v1464 = add v1463, 428  : u32
     v1465 = inttoptr v1464  : *mut i32
     v1466 = load v1465  : i32
-    v1467 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1466, v1444)  : i32
+    v1467 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1466, v1444)  : i32
     v1468 = cast v1438  : u32
     v1469 = add v1468, 428  : u32
     v1470 = inttoptr v1469  : *mut i32
@@ -3460,19 +3460,19 @@ block144:
     v1474 = add v1473, 4  : u32
     v1475 = inttoptr v1474  : *mut i32
     store v1475, v1472
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(v1466, v1444)
-    v1476 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1466)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1466, v1444)
+    v1476 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1466)  : i32
     br block2(v1488, v1476)
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8init_top17he4cefe3b36a3bd87E(i32, i32, i32) {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::init_top(i32, i32, i32) {
 block0(v0: i32, v1: i32, v2: i32):
     v3 = const.i32 0  : i32
-    v4 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v1)  : i32
+    v4 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1)  : i32
     v5 = const.i32 8  : i32
-    v6 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v4, v5)  : i32
+    v6 = call noname::dlmalloc::dlmalloc::align_up(v4, v5)  : i32
     v7 = sub v6, v4  : i32
-    v8 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v1, v7)  : i32
+    v8 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1, v7)  : i32
     v9 = sub v2, v7  : i32
     v10 = cast v0  : u32
     v11 = add v10, 420  : u32
@@ -3488,16 +3488,16 @@ block0(v0: i32, v1: i32, v2: i32):
     v19 = add v18, 4  : u32
     v20 = inttoptr v19  : *mut i32
     store v20, v17
-    v21 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v21 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v22 = const.i32 8  : i32
-    v23 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v21, v22)  : i32
+    v23 = call noname::dlmalloc::dlmalloc::align_up(v21, v22)  : i32
     v24 = const.i32 20  : i32
     v25 = const.i32 8  : i32
-    v26 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v24, v25)  : i32
+    v26 = call noname::dlmalloc::dlmalloc::align_up(v24, v25)  : i32
     v27 = const.i32 16  : i32
     v28 = const.i32 8  : i32
-    v29 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v27, v28)  : i32
-    v30 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v8, v9)  : i32
+    v29 = call noname::dlmalloc::dlmalloc::align_up(v27, v28)  : i32
+    v30 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v8, v9)  : i32
     v31 = const.i32 2097152  : i32
     v32 = cast v0  : u32
     v33 = add v32, 440  : u32
@@ -3516,12 +3516,12 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8memalign17he8794c5d1cb954f9E(i32, i32, i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::memalign(i32, i32, i32) -> i32 {
 block0(v0: i32, v1: i32, v2: i32):
     v4 = const.i32 0  : i32
     v5 = const.i32 16  : i32
     v6 = const.i32 8  : i32
-    v7 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v5, v6)  : i32
+    v7 = call noname::dlmalloc::dlmalloc::align_up(v5, v6)  : i32
     v8 = cast v7  : u32
     v9 = cast v1  : u32
     v10 = lte v8, v9  : i1
@@ -3533,20 +3533,20 @@ block1(v3: i32):
     ret v3
 
 block2(v48: i32):
-    v16 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v16 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v17 = const.i32 8  : i32
-    v18 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v16, v17)  : i32
+    v18 = call noname::dlmalloc::dlmalloc::align_up(v16, v17)  : i32
     v19 = const.i32 20  : i32
     v20 = const.i32 8  : i32
-    v21 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v19, v20)  : i32
+    v21 = call noname::dlmalloc::dlmalloc::align_up(v19, v20)  : i32
     v22 = const.i32 16  : i32
     v23 = const.i32 8  : i32
-    v24 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v22, v23)  : i32
+    v24 = call noname::dlmalloc::dlmalloc::align_up(v22, v23)  : i32
     v25 = const.i32 0  : i32
     v26 = const.i32 0  : i32
     v27 = const.i32 16  : i32
     v28 = const.i32 8  : i32
-    v29 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v27, v28)  : i32
+    v29 = call noname::dlmalloc::dlmalloc::align_up(v27, v28)  : i32
     v30 = const.i32 2  : i32
     v31 = shl v29, v30  : i32
     v32 = sub v26, v31  : i32
@@ -3576,7 +3576,7 @@ block2(v48: i32):
 block3:
     v13 = const.i32 16  : i32
     v14 = const.i32 8  : i32
-    v15 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v13, v14)  : i32
+    v15 = call noname::dlmalloc::dlmalloc::align_up(v13, v14)  : i32
     br block2(v15)
 
 block4(v140: i32):
@@ -3588,7 +3588,7 @@ block5:
     v59 = add v50, v58  : i32
     v60 = const.i32 16  : i32
     v61 = const.i32 8  : i32
-    v62 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v60, v61)  : i32
+    v62 = call noname::dlmalloc::dlmalloc::align_up(v60, v61)  : i32
     v63 = const.i32 -5  : i32
     v64 = add v62, v63  : i32
     v65 = cast v64  : u32
@@ -3598,22 +3598,22 @@ block5:
     v69 = neq v68, 0  : i1
     v70 = select v69, v57, v59  : i32
     v71 = const.i32 8  : i32
-    v72 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v70, v71)  : i32
+    v72 = call noname::dlmalloc::dlmalloc::align_up(v70, v71)  : i32
     v73 = add v48, v72  : i32
     v74 = const.i32 16  : i32
     v75 = const.i32 8  : i32
-    v76 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v74, v75)  : i32
+    v76 = call noname::dlmalloc::dlmalloc::align_up(v74, v75)  : i32
     v77 = add v73, v76  : i32
     v78 = const.i32 -4  : i32
     v79 = add v77, v78  : i32
-    v80 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$6malloc17h1ae2390053e3628cE(v0, v79)  : i32
+    v80 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::malloc(v0, v79)  : i32
     v81 = eq v80, 0  : i1
     v82 = cast v81  : i32
     v83 = neq v82, 0  : i1
     condbr v83, block4(v25), block6
 
 block6:
-    v84 = call noname::_ZN8dlmalloc8dlmalloc5Chunk8from_mem17h11dd30c74f483706E(v80)  : i32
+    v84 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v80)  : i32
     v85 = const.i32 -1  : i32
     v86 = add v48, v85  : i32
     v87 = band v86, v80  : i32
@@ -3621,7 +3621,7 @@ block6:
     condbr v88, block8, block9
 
 block7(v120: i32):
-    v121 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v120)  : i32
+    v121 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v120)  : i32
     v122 = neq v121, 0  : i1
     condbr v122, block12, block13
 
@@ -3630,11 +3630,11 @@ block8:
     v90 = const.i32 0  : i32
     v91 = sub v90, v48  : i32
     v92 = band v89, v91  : i32
-    v93 = call noname::_ZN8dlmalloc8dlmalloc5Chunk8from_mem17h11dd30c74f483706E(v92)  : i32
+    v93 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v92)  : i32
     v94 = const.i32 16  : i32
     v95 = const.i32 8  : i32
-    v96 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v94, v95)  : i32
-    v97 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v84)  : i32
+    v96 = call noname::dlmalloc::dlmalloc::align_up(v94, v95)  : i32
+    v97 = call noname::dlmalloc::dlmalloc::Chunk::size(v84)  : i32
     v98 = const.i32 0  : i32
     v99 = sub v93, v84  : i32
     v100 = cast v99  : u32
@@ -3646,7 +3646,7 @@ block8:
     v106 = add v93, v105  : i32
     v107 = sub v106, v84  : i32
     v108 = sub v97, v107  : i32
-    v109 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v84)  : i32
+    v109 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v84)  : i32
     v110 = neq v109, 0  : i1
     condbr v110, block10, block11
 
@@ -3668,21 +3668,21 @@ block10:
     br block7(v106)
 
 block11:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v106, v108)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v84, v107)
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v56, v84, v107)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v106, v108)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v84, v107)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v56, v84, v107)
     br block7(v106)
 
 block12:
-    v138 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v120)  : i32
-    v139 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v137)  : i32
+    v138 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v120)  : i32
+    v139 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v137)  : i32
     br block4(v138)
 
 block13:
-    v123 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v120)  : i32
+    v123 = call noname::dlmalloc::dlmalloc::Chunk::size(v120)  : i32
     v124 = const.i32 16  : i32
     v125 = const.i32 8  : i32
-    v126 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v124, v125)  : i32
+    v126 = call noname::dlmalloc::dlmalloc::align_up(v124, v125)  : i32
     v128 = add v126, v72  : i32
     v129 = cast v123  : u32
     v130 = cast v128  : u32
@@ -3692,11 +3692,11 @@ block13:
     condbr v133, block12, block14
 
 block14:
-    v134 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v120, v127)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v120, v127)
+    v134 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v120, v127)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v120, v127)
     v135 = sub v123, v127  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v134, v135)
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v56, v134, v135)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v134, v135)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v56, v134, v135)
     br block12
 }
 
@@ -3717,10 +3717,10 @@ block0(v0: i32, v1: i32):
     v6 = sub v4, v5  : i32
     v7 = global.symbol @__stack_pointer  : *mut i32
     store v7, v6
-    call noname::_ZN8dlmalloc3sys23enable_alloc_after_fork17h64eb1fc0ff7b2689E()
+    call noname::dlmalloc::sys::enable_alloc_after_fork()
     v8 = const.i32 15  : i32
     v9 = add v6, v8  : i32
-    v10 = call noname::_ZN73_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..deref..DerefMut$GT$9deref_mut17h16955ef502c5c4e5E(v9)  : i32
+    v10 = call noname::<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(v9)  : i32
     v11 = const.i32 9  : i32
     v12 = cast v1  : u32
     v13 = cast v11  : u32
@@ -3735,7 +3735,7 @@ block1(v2: i32):
 block2(v25: i32):
     v20 = const.i32 15  : i32
     v21 = add v6, v20  : i32
-    call noname::_ZN68_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..drop..Drop$GT$4drop17he19d8d9c8ea92454E(v21)
+    call noname::<dlmalloc::global::Instance as core::ops::drop::Drop>::drop(v21)
     v22 = const.i32 16  : i32
     v23 = add v19, v22  : i32
     v24 = global.symbol @__stack_pointer  : *mut i32
@@ -3743,11 +3743,11 @@ block2(v25: i32):
     br block1(v25)
 
 block3:
-    v18 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$6malloc17h1ae2390053e3628cE(v10, v0)  : i32
+    v18 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::malloc(v10, v0)  : i32
     br block2(v18)
 
 block4:
-    v17 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8memalign17he8794c5d1cb954f9E(v10, v1, v0)  : i32
+    v17 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::memalign(v10, v1, v0)  : i32
     br block2(v17)
 }
 
@@ -3759,14 +3759,14 @@ block0(v0: i32, v1: i32, v2: i32):
     v6 = sub v4, v5  : i32
     v7 = global.symbol @__stack_pointer  : *mut i32
     store v7, v6
-    call noname::_ZN8dlmalloc3sys23enable_alloc_after_fork17h64eb1fc0ff7b2689E()
+    call noname::dlmalloc::sys::enable_alloc_after_fork()
     v8 = const.i32 15  : i32
     v9 = add v6, v8  : i32
-    v10 = call noname::_ZN73_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..deref..DerefMut$GT$9deref_mut17h16955ef502c5c4e5E(v9)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$4free17h501de2a6604ba1ffE(v10, v0)
+    v10 = call noname::<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(v9)  : i32
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::free(v10, v0)
     v11 = const.i32 15  : i32
     v12 = add v6, v11  : i32
-    call noname::_ZN68_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..drop..Drop$GT$4drop17he19d8d9c8ea92454E(v12)
+    call noname::<dlmalloc::global::Instance as core::ops::drop::Drop>::drop(v12)
     v13 = const.i32 16  : i32
     v14 = add v6, v13  : i32
     v15 = global.symbol @__stack_pointer  : *mut i32
@@ -3785,10 +3785,10 @@ block0(v0: i32, v1: i32, v2: i32, v3: i32):
     v8 = sub v6, v7  : i32
     v9 = global.symbol @__stack_pointer  : *mut i32
     store v9, v8
-    call noname::_ZN8dlmalloc3sys23enable_alloc_after_fork17h64eb1fc0ff7b2689E()
+    call noname::dlmalloc::sys::enable_alloc_after_fork()
     v10 = const.i32 15  : i32
     v11 = add v8, v10  : i32
-    v12 = call noname::_ZN73_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..deref..DerefMut$GT$9deref_mut17h16955ef502c5c4e5E(v11)  : i32
+    v12 = call noname::<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(v11)  : i32
     v13 = const.i32 9  : i32
     v14 = cast v2  : u32
     v15 = cast v13  : u32
@@ -3803,7 +3803,7 @@ block1(v4: i32):
 block2(v369: i32, v381: i32):
     v376 = const.i32 15  : i32
     v377 = add v369, v376  : i32
-    call noname::_ZN68_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..drop..Drop$GT$4drop17he19d8d9c8ea92454E(v377)
+    call noname::<dlmalloc::global::Instance as core::ops::drop::Drop>::drop(v377)
     v378 = const.i32 16  : i32
     v379 = add v369, v378  : i32
     v380 = global.symbol @__stack_pointer  : *mut i32
@@ -3811,20 +3811,20 @@ block2(v369: i32, v381: i32):
     br block1(v381)
 
 block3(v366: i32, v375: i32):
-    v367 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v366)  : i32
-    v368 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(v366)  : i32
+    v367 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v366)  : i32
+    v368 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v366)  : i32
     br block2(v375, v368)
 
 block4(v335: i32, v337: i32, v346: i32, v351: i32, v370: i32, v382: i32):
-    v342 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$6malloc17h1ae2390053e3628cE(v335, v337)  : i32
+    v342 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::malloc(v335, v337)  : i32
     v343 = eq v342, 0  : i1
     v344 = cast v343  : i32
     v345 = neq v344, 0  : i1
     condbr v345, block2(v370, v382), block45
 
 block5:
-    v321 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v75, v74)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v75, v74)
+    v321 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v74)
     v322 = cast v12  : u32
     v323 = add v322, 428  : u32
     v324 = inttoptr v323  : *mut i32
@@ -3851,24 +3851,24 @@ block6:
     v318 = neq v317, 0  : i1
     v319 = select v318, v1, v3  : i32
     v320 = call noname::memcpy(v19, v0, v319)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$4free17h501de2a6604ba1ffE(v12, v0)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::free(v12, v0)
     br block2(v8, v19)
 
 block7:
-    v22 = call noname::_ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E()  : i32
+    v22 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset()  : i32
     v23 = const.i32 8  : i32
-    v24 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v22, v23)  : i32
+    v24 = call noname::dlmalloc::dlmalloc::align_up(v22, v23)  : i32
     v25 = const.i32 20  : i32
     v26 = const.i32 8  : i32
-    v27 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v25, v26)  : i32
+    v27 = call noname::dlmalloc::dlmalloc::align_up(v25, v26)  : i32
     v28 = const.i32 16  : i32
     v29 = const.i32 8  : i32
-    v30 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v28, v29)  : i32
+    v30 = call noname::dlmalloc::dlmalloc::align_up(v28, v29)  : i32
     v31 = const.i32 0  : i32
     v32 = const.i32 0  : i32
     v33 = const.i32 16  : i32
     v34 = const.i32 8  : i32
-    v35 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v33, v34)  : i32
+    v35 = call noname::dlmalloc::dlmalloc::align_up(v33, v34)  : i32
     v36 = const.i32 2  : i32
     v37 = shl v35, v36  : i32
     v38 = sub v32, v37  : i32
@@ -3895,7 +3895,7 @@ block7:
     condbr v58, block2(v8, v31), block10
 
 block8:
-    v19 = call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$8memalign17he8794c5d1cb954f9E(v12, v2, v3)  : i32
+    v19 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::memalign(v12, v2, v3)  : i32
     v20 = neq v19, 0  : i1
     condbr v20, block6, block9
 
@@ -3909,7 +3909,7 @@ block10:
     v61 = add v3, v60  : i32
     v62 = const.i32 16  : i32
     v63 = const.i32 8  : i32
-    v64 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v62, v63)  : i32
+    v64 = call noname::dlmalloc::dlmalloc::align_up(v62, v63)  : i32
     v65 = const.i32 -5  : i32
     v66 = add v64, v65  : i32
     v67 = cast v66  : u32
@@ -3919,11 +3919,11 @@ block10:
     v71 = neq v70, 0  : i1
     v72 = select v71, v59, v61  : i32
     v73 = const.i32 8  : i32
-    v74 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v72, v73)  : i32
-    v75 = call noname::_ZN8dlmalloc8dlmalloc5Chunk8from_mem17h11dd30c74f483706E(v0)  : i32
-    v76 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v75)  : i32
-    v77 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v75, v76)  : i32
-    v78 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v75)  : i32
+    v74 = call noname::dlmalloc::dlmalloc::align_up(v72, v73)  : i32
+    v75 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v0)  : i32
+    v76 = call noname::dlmalloc::dlmalloc::Chunk::size(v75)  : i32
+    v77 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v76)  : i32
+    v78 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v75)  : i32
     v79 = neq v78, 0  : i1
     condbr v79, block17, block18
 
@@ -3948,7 +3948,7 @@ block13:
     v292 = sub v76, v74  : i32
     v293 = const.i32 16  : i32
     v294 = const.i32 8  : i32
-    v295 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v293, v294)  : i32
+    v295 = call noname::dlmalloc::dlmalloc::align_up(v293, v294)  : i32
     v296 = cast v292  : u32
     v297 = cast v295  : u32
     v298 = lt v296, v297  : i1
@@ -3972,7 +3972,7 @@ block14:
 block15:
     v243 = const.i32 16  : i32
     v244 = const.i32 8  : i32
-    v245 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v243, v244)  : i32
+    v245 = call noname::dlmalloc::dlmalloc::align_up(v243, v244)  : i32
     v246 = cast v108  : u32
     v247 = cast v245  : u32
     v248 = lt v246, v247  : i1
@@ -3995,7 +3995,7 @@ block16:
     condbr v220, block30, block31
 
 block17:
-    v115 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v75)  : i32
+    v115 = call noname::dlmalloc::dlmalloc::Chunk::size(v75)  : i32
     v116 = const.i32 256  : i32
     v117 = cast v74  : u32
     v118 = cast v116  : u32
@@ -4033,12 +4033,12 @@ block20:
     condbr v98, block14, block21
 
 block21:
-    v99 = call noname::_ZN8dlmalloc8dlmalloc5Chunk6cinuse17h58499de57c2d37e2E(v77)  : i32
+    v99 = call noname::dlmalloc::dlmalloc::Chunk::cinuse(v77)  : i32
     v100 = neq v99, 0  : i1
     condbr v100, block4(v12, v3, v0, v75, v8, v31), block22
 
 block22:
-    v101 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v77)  : i32
+    v101 = call noname::dlmalloc::dlmalloc::Chunk::size(v77)  : i32
     v102 = add v101, v76  : i32
     v103 = cast v102  : u32
     v104 = cast v74  : u32
@@ -4058,7 +4058,7 @@ block23:
     condbr v114, block16, block24
 
 block24:
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$18unlink_large_chunk17h2e279402ce6356d4E(v12, v77)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v12, v77)
     br block15
 
 block25:
@@ -4081,10 +4081,10 @@ block26:
     v145 = add v143, v144  : i32
     v147 = const.i32 31  : i32
     v148 = add v74, v147  : i32
-    v149 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$9page_size17h0fdd55b2693d440cE(v136)  : i32
-    v150 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v148, v149)  : i32
+    v149 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::page_size(v136)  : i32
+    v150 = call noname::dlmalloc::dlmalloc::align_up(v148, v149)  : i32
     v151 = const.i32 1  : i32
-    v152 = call noname::_ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$5remap17hf5ff3c6a92680f40E(v12, v141, v145, v150, v151)  : i32
+    v152 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::remap(v12, v141, v145, v150, v151)  : i32
     v153 = eq v152, 0  : i1
     v154 = cast v153  : i32
     v155 = neq v154, 0  : i1
@@ -4112,15 +4112,15 @@ block29:
     v161 = add v160, 4  : u32
     v162 = inttoptr v161  : *mut i32
     store v162, v159
-    v163 = call noname::_ZN8dlmalloc8dlmalloc5Chunk14fencepost_head17he07aaa52f3b50dfdE()  : i32
-    v164 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v156, v159)  : i32
+    v163 = call noname::dlmalloc::dlmalloc::Chunk::fencepost_head()  : i32
+    v164 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v156, v159)  : i32
     v165 = cast v164  : u32
     v166 = add v165, 4  : u32
     v167 = inttoptr v166  : *mut i32
     store v167, v163
     v168 = const.i32 -12  : i32
     v169 = add v157, v168  : i32
-    v170 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v156, v169)  : i32
+    v170 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v156, v169)  : i32
     v171 = const.i32 0  : i32
     v172 = cast v170  : u32
     v173 = add v172, 4  : u32
@@ -4197,15 +4197,15 @@ block31:
     br block15
 
 block32:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v251, v102)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v251, v102)
     v257 = neq v251, 0  : i1
     condbr v257, block3(v251, v372), block35
 
 block33:
-    v253 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v75, v74)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v251, v252)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v253, v242)
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v12, v253, v242)
+    v253 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v251, v252)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v253, v242)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v12, v253, v242)
     v255 = neq v251, 0  : i1
     condbr v255, block3(v251, v372), block34
 
@@ -4219,7 +4219,7 @@ block36:
     v268 = sub v262, v74  : i32
     v269 = const.i32 16  : i32
     v270 = const.i32 8  : i32
-    v271 = call noname::_ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(v269, v270)  : i32
+    v271 = call noname::dlmalloc::dlmalloc::align_up(v269, v270)  : i32
     v272 = cast v268  : u32
     v273 = cast v271  : u32
     v274 = gte v272, v273  : i1
@@ -4240,15 +4240,15 @@ block37(v282: i32, v286: i32):
     condbr v291, block3(v290, v373), block40
 
 block38:
-    v279 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v75, v74)  : i32
-    v280 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v279, v268)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v75, v74)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(v279, v268)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk12clear_pinuse17h3c1a99d0f5bddc22E(v280)
+    v279 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74)  : i32
+    v280 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v279, v268)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v74)
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v279, v268)
+    call noname::dlmalloc::dlmalloc::Chunk::clear_pinuse(v280)
     br block37(v279, v268)
 
 block39:
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v75, v262)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v262)
     v277 = const.i32 0  : i32
     v278 = const.i32 0  : i32
     br block37(v278, v277)
@@ -4257,10 +4257,10 @@ block40:
     br block4(v281, v3, v0, v290, v8, v31)
 
 block41:
-    v301 = call noname::_ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(v75, v74)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v75, v74)
-    call noname::_ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(v301, v292)
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$13dispose_chunk17h577eb103dc04307bE(v12, v301, v292)
+    v301 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74)  : i32
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v74)
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v301, v292)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v12, v301, v292)
     br block12
 
 block42:
@@ -4273,10 +4273,10 @@ block44:
     br block4(v12, v3, v0, v75, v8, v31)
 
 block45:
-    v352 = call noname::_ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(v351)  : i32
+    v352 = call noname::dlmalloc::dlmalloc::Chunk::size(v351)  : i32
     v353 = const.i32 -8  : i32
     v354 = const.i32 -4  : i32
-    v355 = call noname::_ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(v351)  : i32
+    v355 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v351)  : i32
     v356 = neq v355, 0  : i1
     v357 = select v356, v353, v354  : i32
     v358 = add v352, v357  : i32
@@ -4287,7 +4287,7 @@ block45:
     v363 = neq v362, 0  : i1
     v364 = select v363, v358, v337  : i32
     v365 = call noname::memcpy(v342, v346, v364)  : i32
-    call noname::_ZN8dlmalloc8dlmalloc17Dlmalloc$LT$A$GT$4free17h501de2a6604ba1ffE(v335, v346)
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::free(v335, v346)
     br block2(v370, v365)
 }
 
@@ -4299,7 +4299,7 @@ block0(v0: i32, v1: i32):
 block1:
 }
 
-pub fn _ZN5alloc7raw_vec11finish_grow17hcefa6a06206fd52bE(i32, i32, i32, i32) {
+pub fn alloc::raw_vec::finish_grow(i32, i32, i32, i32) {
 block0(v0: i32, v1: i32, v2: i32, v3: i32):
     v4 = const.i32 0  : i32
     v5 = eq v1, 0  : i1
@@ -4442,7 +4442,7 @@ block18:
     ret 
 }
 
-pub fn _ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$16reserve_for_push17h2205b68aee7ddaceE(i32) {
+pub fn alloc::raw_vec::RawVec<T,A>::reserve_for_push(i32) {
 block0(v0: i32):
     v1 = const.i32 0  : i32
     v2 = global.load (@__stack_pointer) as *mut i8  : i32
@@ -4486,7 +4486,7 @@ block2:
     v53 = add v4, v52  : i32
     v56 = const.i32 20  : i32
     v57 = add v51, v56  : i32
-    call noname::_ZN5alloc7raw_vec11finish_grow17hcefa6a06206fd52bE(v53, v28, v21, v57)
+    call noname::alloc::raw_vec::finish_grow(v53, v28, v21, v57)
     v58 = cast v51  : u32
     v59 = add v58, 12  : u32
     v60 = inttoptr v59  : *mut i32
@@ -4558,7 +4558,7 @@ block8:
     condbr v80, block9, block10
 
 block9:
-    call noname::_ZN5alloc7raw_vec17capacity_overflow17h6c250c8ca346b5adE()
+    call noname::alloc::raw_vec::capacity_overflow()
     unreachable 
 
 block10:
@@ -4567,7 +4567,7 @@ block10:
     v83 = cast v82  : u32
     v84 = inttoptr v83  : *mut i32
     v85 = load v84  : i32
-    call noname::_ZN5alloc5alloc18handle_alloc_error17h4f3cb0c5afb21c76E(v61, v85)
+    call noname::alloc::alloc::handle_alloc_error(v61, v85)
     unreachable 
 }
 
@@ -4591,7 +4591,7 @@ block0:
     store v13, v10
     v14 = const.i32 4  : i32
     v15 = add v4, v14  : i32
-    call noname::_ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$16reserve_for_push17h2205b68aee7ddaceE(v15)
+    call noname::alloc::raw_vec::RawVec<T,A>::reserve_for_push(v15)
     v16 = cast v4  : u32
     v17 = add v16, 4  : u32
     v18 = inttoptr v17  : *mut i32
@@ -4644,22 +4644,22 @@ block5:
     br block4
 }
 
-pub fn _ZN5alloc7raw_vec17capacity_overflow17h6c250c8ca346b5adE() {
+pub fn alloc::raw_vec::capacity_overflow() {
 block0:
     unreachable 
 
 block1:
 }
 
-pub fn _ZN5alloc5alloc18handle_alloc_error17h4f3cb0c5afb21c76E(i32, i32) {
+pub fn alloc::alloc::handle_alloc_error(i32, i32) {
 block0(v0: i32, v1: i32):
-    call noname::_ZN5alloc5alloc18handle_alloc_error8rt_error17h63de615f6e977af2E(v0, v1)
+    call noname::alloc::alloc::handle_alloc_error::rt_error(v0, v1)
     unreachable 
 
 block1:
 }
 
-pub fn _ZN5alloc5alloc18handle_alloc_error8rt_error17h63de615f6e977af2E(i32, i32) {
+pub fn alloc::alloc::handle_alloc_error::rt_error(i32, i32) {
 block0(v0: i32, v1: i32):
     call noname::__rust_alloc_error_handler(v1, v0)
     unreachable 
@@ -4674,7 +4674,7 @@ block0(v0: i32, v1: i32):
 block1:
 }
 
-pub fn _ZN8dlmalloc8dlmalloc8align_up17hacb462cafc347c13E(i32, i32) -> i32 {
+pub fn dlmalloc::dlmalloc::align_up(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = add v0, v1  : i32
     v4 = const.i32 -1  : i32
@@ -4688,7 +4688,7 @@ block1(v2: i32):
     ret v2
 }
 
-pub fn _ZN8dlmalloc8dlmalloc9left_bits17hb6cbe146b8019d98E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::left_bits(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 1  : i32
     v3 = shl v0, v2  : i32
@@ -4701,7 +4701,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc9least_bit17h4bca52ead665dc5aE(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::least_bit(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 0  : i32
     v3 = sub v2, v0  : i32
@@ -4712,7 +4712,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc24leftshift_for_tree_index17h31d064fdd867f502E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::leftshift_for_tree_index(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 0  : i32
     v3 = const.i32 25  : i32
@@ -4733,7 +4733,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk14fencepost_head17he07aaa52f3b50dfdE() -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::fencepost_head() -> i32 {
 block0:
     v1 = const.i32 7  : i32
     br block1(v1)
@@ -4742,7 +4742,7 @@ block1(v0: i32):
     ret v0
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk4size17h77d1c406ab42db33E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::size(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 4  : u32
@@ -4756,7 +4756,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk6cinuse17h58499de57c2d37e2E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::cinuse(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 4  : u32
@@ -4776,7 +4776,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk6pinuse17h92d5107047b03ba7E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::pinuse(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 4  : u32
@@ -4790,7 +4790,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk12clear_pinuse17h3c1a99d0f5bddc22E(i32) {
+pub fn dlmalloc::dlmalloc::Chunk::clear_pinuse(i32) {
 block0(v0: i32):
     v1 = cast v0  : u32
     v2 = add v1, 4  : u32
@@ -4808,7 +4808,7 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk5inuse17h2d327e4c36b84dfeE(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::inuse(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 4  : u32
@@ -4825,7 +4825,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk7mmapped17h1a9959fbf47496c3E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::mmapped(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 4  : u32
@@ -4842,7 +4842,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk9set_inuse17h4282057414c4e601E(i32, i32) {
+pub fn dlmalloc::dlmalloc::Chunk::set_inuse(i32, i32) {
 block0(v0: i32, v1: i32):
     v2 = cast v0  : u32
     v3 = add v2, 4  : u32
@@ -4874,7 +4874,7 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk20set_inuse_and_pinuse17h515e5a69a6d1edc6E(i32, i32) {
+pub fn dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(i32, i32) {
 block0(v0: i32, v1: i32):
     v2 = const.i32 3  : i32
     v3 = bor v1, v2  : i32
@@ -4899,7 +4899,7 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk34set_size_and_pinuse_of_inuse_chunk17h4acf6d59020bd397E(i32, i32) {
+pub fn dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(i32, i32) {
 block0(v0: i32, v1: i32):
     v2 = const.i32 3  : i32
     v3 = bor v1, v2  : i32
@@ -4913,7 +4913,7 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk33set_size_and_pinuse_of_free_chunk17ha971516d0be71949E(i32, i32) {
+pub fn dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(i32, i32) {
 block0(v0: i32, v1: i32):
     v2 = const.i32 1  : i32
     v3 = bor v1, v2  : i32
@@ -4931,7 +4931,7 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk20set_free_with_pinuse17h5d876ea751634e99E(i32, i32, i32) {
+pub fn dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(i32, i32, i32) {
 block0(v0: i32, v1: i32, v2: i32):
     v3 = cast v2  : u32
     v4 = add v3, 4  : u32
@@ -4959,7 +4959,7 @@ block1:
     ret 
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk11plus_offset17h6e6d06559ad34b15E(i32, i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::plus_offset(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = add v0, v1  : i32
     br block1(v3)
@@ -4968,7 +4968,7 @@ block1(v2: i32):
     ret v2
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk12minus_offset17h7c3eec81761249d9E(i32, i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::minus_offset(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = sub v0, v1  : i32
     br block1(v3)
@@ -4977,7 +4977,7 @@ block1(v2: i32):
     ret v2
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk6to_mem17h75497733644e1d6cE(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::to_mem(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 8  : i32
     v3 = add v0, v2  : i32
@@ -4987,7 +4987,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk10mem_offset17h86551c33e07de253E() -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::mem_offset() -> i32 {
 block0:
     v1 = const.i32 8  : i32
     br block1(v1)
@@ -4996,7 +4996,7 @@ block1(v0: i32):
     ret v0
 }
 
-pub fn _ZN8dlmalloc8dlmalloc5Chunk8from_mem17h11dd30c74f483706E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Chunk::from_mem(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 -8  : i32
     v3 = add v0, v2  : i32
@@ -5006,7 +5006,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc9TreeChunk14leftmost_child17h20605933c801b44bE(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::TreeChunk::leftmost_child(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 0  : i32
     v3 = cast v0  : u32
@@ -5031,7 +5031,7 @@ block3:
     br block2(v12)
 }
 
-pub fn _ZN8dlmalloc8dlmalloc9TreeChunk5chunk17h4efd58110bb4b6e5E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::TreeChunk::chunk(i32) -> i32 {
 block0(v0: i32):
     br block1(v0)
 
@@ -5039,7 +5039,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc9TreeChunk4next17he250edbec5d87123E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::TreeChunk::next(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 12  : u32
@@ -5051,7 +5051,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc9TreeChunk4prev17h7a0f1d46544cc14aE(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::TreeChunk::prev(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 8  : u32
@@ -5063,7 +5063,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc7Segment9is_extern17h6f6db2c70b891fd9E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Segment::is_extern(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 12  : u32
@@ -5077,7 +5077,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc7Segment9sys_flags17h224550055bf7775bE(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Segment::sys_flags(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = add v2, 12  : u32
@@ -5094,7 +5094,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc8dlmalloc7Segment5holds17h8f6de4ee6718009bE(i32, i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Segment::holds(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = const.i32 0  : i32
     v4 = const.i32 0  : i32
@@ -5127,7 +5127,7 @@ block3:
     br block2(v21)
 }
 
-pub fn _ZN8dlmalloc8dlmalloc7Segment3top17he7e9e2493151d036E(i32) -> i32 {
+pub fn dlmalloc::dlmalloc::Segment::top(i32) -> i32 {
 block0(v0: i32):
     v2 = cast v0  : u32
     v3 = inttoptr v2  : *mut i32
@@ -5143,7 +5143,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN73_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..deref..DerefMut$GT$9deref_mut17h16955ef502c5c4e5E(i32) -> i32 {
+pub fn <dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 1048580  : i32
     br block1(v2)
@@ -5152,7 +5152,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN68_$LT$dlmalloc..global..Instance$u20$as$u20$core..ops..drop..Drop$GT$4drop17he19d8d9c8ea92454E(i32) {
+pub fn <dlmalloc::global::Instance as core::ops::drop::Drop>::drop(i32) {
 block0(v0: i32):
     br block1
 
@@ -5160,7 +5160,7 @@ block1:
     ret 
 }
 
-pub fn _ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$5alloc17hdbf1e2bcc01bc909E(i32, i32, i32) {
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::alloc(i32, i32, i32) {
 block0(v0: i32, v1: i32, v2: i32):
     v3 = const.i32 0  : i32
     v4 = const.i32 16  : i32
@@ -5201,7 +5201,7 @@ block1:
     ret 
 }
 
-pub fn _ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$5remap17hf5ff3c6a92680f40E(i32, i32, i32, i32, i32) -> i32 {
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::remap(i32, i32, i32, i32, i32) -> i32 {
 block0(v0: i32, v1: i32, v2: i32, v3: i32, v4: i32):
     v6 = const.i32 0  : i32
     br block1(v6)
@@ -5210,7 +5210,7 @@ block1(v5: i32):
     ret v5
 }
 
-pub fn _ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$9free_part17h74489c9e7a3aa967E(i32, i32, i32, i32) -> i32 {
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::free_part(i32, i32, i32, i32) -> i32 {
 block0(v0: i32, v1: i32, v2: i32, v3: i32):
     v5 = const.i32 0  : i32
     br block1(v5)
@@ -5219,7 +5219,7 @@ block1(v4: i32):
     ret v4
 }
 
-pub fn _ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$4free17h993c5f05ba1214bcE(i32, i32, i32) -> i32 {
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::free(i32, i32, i32) -> i32 {
 block0(v0: i32, v1: i32, v2: i32):
     v4 = const.i32 0  : i32
     br block1(v4)
@@ -5228,7 +5228,7 @@ block1(v3: i32):
     ret v3
 }
 
-pub fn _ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$16can_release_part17h43bfb7d8666fcc31E(i32, i32) -> i32 {
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = const.i32 0  : i32
     br block1(v3)
@@ -5237,7 +5237,7 @@ block1(v2: i32):
     ret v2
 }
 
-pub fn _ZN61_$LT$dlmalloc..sys..System$u20$as$u20$dlmalloc..Allocator$GT$9page_size17h0fdd55b2693d440cE(i32) -> i32 {
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::page_size(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 65536  : i32
     br block1(v2)
@@ -5246,7 +5246,7 @@ block1(v1: i32):
     ret v1
 }
 
-pub fn _ZN8dlmalloc3sys23enable_alloc_after_fork17h64eb1fc0ff7b2689E() {
+pub fn dlmalloc::sys::enable_alloc_after_fork() {
 block0:
     br block1
 
@@ -5256,14 +5256,14 @@ block1:
 
 pub fn memcpy(i32, i32, i32) -> i32 {
 block0(v0: i32, v1: i32, v2: i32):
-    v4 = call noname::_ZN17compiler_builtins3mem6memcpy17h7b83c85e899060b3E(v0, v1, v2)  : i32
+    v4 = call noname::compiler_builtins::mem::memcpy(v0, v1, v2)  : i32
     br block1(v4)
 
 block1(v3: i32):
     ret v3
 }
 
-pub fn _ZN17compiler_builtins3mem6memcpy17h7b83c85e899060b3E(i32, i32, i32) -> i32 {
+pub fn compiler_builtins::mem::memcpy(i32, i32, i32) -> i32 {
 block0(v0: i32, v1: i32, v2: i32):
     v4 = const.i32 0  : i32
     v5 = const.i32 15  : i32

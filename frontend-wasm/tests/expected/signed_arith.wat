@@ -26,13 +26,13 @@
         i32.const 1048704
         i32.const 31
         i32.const 1048648
-        call $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E
+        call $core::panicking::panic
         unreachable
       end
       i32.const 1048672
       i32.const 25
       i32.const 1048648
-      call $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E
+      call $core::panicking::panic
       unreachable
     end
     local.get 0
@@ -52,7 +52,7 @@
     i32.const 1048672
     i32.const 25
     i32.const 1048736
-    call $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E
+    call $core::panicking::panic
     unreachable
   )
   (func $rem_s (;3;) (type 1) (param i32 i32) (result i32)
@@ -72,13 +72,13 @@
         i32.const 1048832
         i32.const 48
         i32.const 1048752
-        call $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E
+        call $core::panicking::panic
         unreachable
       end
       i32.const 1048768
       i32.const 57
       i32.const 1048752
-      call $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E
+      call $core::panicking::panic
       unreachable
     end
     local.get 0
@@ -98,7 +98,7 @@
     i32.const 1048768
     i32.const 57
     i32.const 1048880
-    call $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E
+    call $core::panicking::panic
     unreachable
   )
   (func $shr_s (;5;) (type 1) (param i32 i32) (result i32)
@@ -136,8 +136,8 @@
     call $shr_u
     i32.add
   )
-  (func $_ZN4core3ptr37drop_in_place$LT$core..fmt..Error$GT$17h282a1f10dc7e004dE (;8;) (type 0) (param i32))
-  (func $_ZN4core9panicking9panic_fmt17h9f61a1f2faa523f9E (;9;) (type 3) (param i32 i32)
+  (func $core::ptr::drop_in_place<core::fmt::Error> (;8;) (type 0) (param i32))
+  (func $core::panicking::panic_fmt (;9;) (type 3) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -165,7 +165,7 @@
     call $rust_begin_unwind
     unreachable
   )
-  (func $_ZN4core9panicking5panic17h62f53cc4db8dd7b3E (;10;) (type 4) (param i32 i32 i32)
+  (func $core::panicking::panic (;10;) (type 4) (param i32 i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -196,10 +196,10 @@
     i32.store
     local.get 3
     local.get 2
-    call $_ZN4core9panicking9panic_fmt17h9f61a1f2faa523f9E
+    call $core::panicking::panic_fmt
     unreachable
   )
-  (func $_ZN36_$LT$T$u20$as$u20$core..any..Any$GT$7type_id17h29327df37c6e3023E (;11;) (type 3) (param i32 i32)
+  (func $<T as core::any::Any>::type_id (;11;) (type 3) (param i32 i32)
     local.get 0
     i64.const -1688046730280208939
     i64.store offset=8
@@ -222,6 +222,6 @@
   (export "__main" (func $__main))
   (export "__data_end" (global 1))
   (export "__heap_base" (global 2))
-  (elem (;0;) (i32.const 1) func $_ZN4core3ptr37drop_in_place$LT$core..fmt..Error$GT$17h282a1f10dc7e004dE $_ZN36_$LT$T$u20$as$u20$core..any..Any$GT$7type_id17h29327df37c6e3023E)
+  (elem (;0;) (i32.const 1) func $core::ptr::drop_in_place<core::fmt::Error> $<T as core::any::Any>::type_id)
   (data $.rodata (;0;) (i32.const 1048576) "/tmp/6c3d0db843d22d28fff49dffc552879651b21c3f44039227473ff2d47441c4f3.rs\00\00\10\00H\00\00\00\0c\00\00\00\05\00\00\00\00\00\00\00\00\00\00\00attempt to divide by zero\00\00\00\00\00\00\00attempt to divide with overflow\00\00\00\10\00H\00\00\00\12\00\00\00\05\00\00\00\00\00\10\00H\00\00\00\18\00\00\00\05\00\00\00attempt to calculate the remainder with a divisor of zero\00\00\00\00\00\00\00attempt to calculate the remainder with overflow\00\00\10\00H\00\00\00\1e\00\00\00\05\00\00\00\01\00\00\00\00\00\00\00\01\00\00\00\02\00\00\00")
 )
