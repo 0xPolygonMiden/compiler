@@ -29,3 +29,4 @@ wat = "1.0.69"
 expect-test = "1.4.1"
 wasmprinter = "0.2.63"
 sha2 = "0.10"
+rustc-demangle = {version = "0.1.19", features = ["std"]}    

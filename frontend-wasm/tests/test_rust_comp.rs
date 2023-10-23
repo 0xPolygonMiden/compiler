@@ -97,11 +97,19 @@ pub fn check_ir_files_cargo(
     let mut wasm_bytes = vec![];
     Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
     fs::remove_dir_all(target_dir).unwrap();
+    check_ir_files_wasm(wasm_bytes, expected_wat_file, expected_ir_file);
+}
 
-    let wat = wasm_to_wat(&wasm_bytes);
+fn check_ir_files_wasm(
+    wasm_bytes: Vec<u8>,
+    expected_wat_file: expect_test::ExpectFile,
+    expected_ir_file: expect_test::ExpectFile,
+) {
+    let wat = demangle(&wasm_to_wat(&wasm_bytes));
     expected_wat_file.assert_eq(&wat);
     let module = translate(wasm_bytes);
-    expected_ir_file.assert_eq(&module.to_string());
+    let ir = demangle(&module.to_string());
+    expected_ir_file.assert_eq(&ir);
 }
 
 fn check_ir(
@@ -110,10 +118,11 @@ fn check_ir(
     expected_ir: expect_test::Expect,
 ) {
     let wasm_bytes = compile_wasm(rust_source);
-    let wat = wasm_to_wat(&wasm_bytes);
+    let wat = demangle(&wasm_to_wat(&wasm_bytes));
     expected_wat.assert_eq(&wat);
     let module = translate(wasm_bytes);
-    expected_ir.assert_eq(&module.to_string());
+    let ir = demangle(&module.to_string());
+    expected_ir.assert_eq(&ir);
 }
 
 #[allow(dead_code)]
@@ -123,10 +132,7 @@ fn check_ir_files(
     expected_ir_file: expect_test::ExpectFile,
 ) {
     let wasm_bytes = compile_wasm(rust_source);
-    let wat = wasm_to_wat(&wasm_bytes);
-    expected_wat_file.assert_eq(&wat);
-    let module = translate(wasm_bytes);
-    expected_ir_file.assert_eq(&module.to_string());
+    check_ir_files_wasm(wasm_bytes, expected_wat_file, expected_ir_file);
 }
 
 fn wasm_to_wat(wasm_bytes: &Vec<u8>) -> String {
@@ -160,6 +166,14 @@ fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter>
         Verbosity::Silent => Arc::new(NullEmitter::new(color)),
         _ => Arc::new(DefaultEmitter::new(color)),
     }
+}
+
+fn demangle(name: &str) -> String {
+    let mut input = name.as_bytes();
+    let mut demangled = Vec::new();
+    let include_hash = false;
+    rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
+    String::from_utf8(demangled).unwrap()
 }
 
 #[test]

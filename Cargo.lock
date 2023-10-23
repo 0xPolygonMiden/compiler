@@ -803,6 +803,7 @@ dependencies = [
  "miden-diagnostics",
  "miden-hir",
  "miden-hir-type",
+ "rustc-demangle",
  "sha2",
  "smallvec",
  "thiserror",
