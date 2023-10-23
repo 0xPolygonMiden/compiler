@@ -1,5 +1,5 @@
 #![deny(warnings)]
-mod parser;
+pub mod parser;
 
 #[macro_use]
 extern crate lalrpop_util;

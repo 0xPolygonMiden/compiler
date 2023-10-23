@@ -67,6 +67,7 @@ pub fn parse_str(source: &str) -> Result<ast::Module, ParseError> {
 /// Parses a [Module] from the given path.
 ///
 /// This is primarily intended for use in the import resolution phase.
+#[allow(dead_code)]
 pub(crate) fn parse_module_from_file<P: AsRef<Path>>(
     diagnostics: &DiagnosticsHandler,
     codemap: Arc<CodeMap>,
@@ -86,6 +87,7 @@ pub(crate) fn parse_module_from_file<P: AsRef<Path>>(
 /// Parses a [Module] from a file already in the codemap
 ///
 /// This is primarily intended for use in the import resolution phase.
+#[allow(dead_code)]
 pub(crate) fn parse_module(
     diagnostics: &DiagnosticsHandler,
     codemap: Arc<CodeMap>,
