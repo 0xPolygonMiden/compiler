@@ -25,6 +25,15 @@ Comma<T>: Vec<T> = {
     }
 };
 
+// Comma-delimited, possibly empty, possibly with a trailing comma
+CommaOpt<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => {
+        let mut v = v;
+        v.extend(e);
+        v
+    }
+};
+
 // AST NODE
 // ================================================================================================
 
@@ -84,8 +93,7 @@ Type: Type = {
     "felt" => Type::Felt,
     "*" "mut" <inner:Type> => Type::Ptr(Box::new(inner)),
     "&" "mut" <inner:Type> => Type::NativePtr(Box::new(inner), AddressSpace::Unknown),
-    "{" <field_types:Comma<Type>> "}" => Type::Struct(StructType::new(field_types)),
-    "{" "}" => Type::Struct(StructType::new(Vec::new())),
+    "{" <field_types:CommaOpt<Type>> "}" => Type::Struct(StructType::new(field_types)),
     "[" <inner:Type> ";" <length:Number> "]" => Type::Array(Box::new(inner), usize::try_from(length).unwrap()),
 }
 
@@ -130,8 +138,7 @@ FunctionParam: FunctionParameter = {
 }
 
 FunctionParams: Vec<FunctionParameter> = {
-    "(" ")" =>  Vec::new(),
-    "(" <params:Comma<FunctionParam>> ")" => params,
+    "(" <params:CommaOpt<FunctionParam>> ")" => params,
 }
 
 FunctionSignature: FunctionSignature = {
@@ -493,11 +500,8 @@ Operation: Operation = {
     "ret" => {
         Operation::ReturnOp(Vec::new())
     },
-    <op:CallOp> <f:FunctionIdentifier> "(" <args:Comma<Value>> ")" => {
+    <op:CallOp> <f:FunctionIdentifier> "(" <args:CommaOpt<Value>> ")" => {
         Operation::CallOp(op, f, args)
-    },
-    <op:CallOp> <f:FunctionIdentifier> "(" ")" => {
-        Operation::CallOp(op, f, Vec::new())
     },
     "cond" <val:Value> "," <dest1:Destination> "," <dest2:Destination> => {
         Operation::CondOp(val, dest1, dest2)
