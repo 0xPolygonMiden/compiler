@@ -673,7 +673,6 @@ fn rust_static_mut() {
     );
 }
 
-#[ignore = "hash part in mangled function names is not stable enough"]
 #[test]
 fn dlmalloc() {
     check_ir_files_cargo(
