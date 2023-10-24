@@ -17,7 +17,7 @@ use crate::Ident;
 /// This is a type alias used to clarify that an identifier refers to a module
 pub type ModuleId = Ident;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ModuleType {
     /// Kernel context module
     Kernel,
@@ -35,7 +35,7 @@ impl fmt::Display for ModuleType {
 
 /// This represents the parsed contents of a single Miden IR module
 ///
-#[derive(Spanned)]
+#[derive(Spanned, Debug)]
 pub struct Module {
     #[span]
     pub span: SourceSpan,
@@ -64,6 +64,15 @@ impl Module {
             externals,
             global_vars,
         }
+    }
+}
+impl PartialEq for Module {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.ty == other.ty
+            && self.global_vars == other.global_vars
+            && self.functions == other.functions
+            && self.externals == other.externals
     }
 }
 impl fmt::Display for Module {

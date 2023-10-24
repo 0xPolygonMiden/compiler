@@ -2,6 +2,7 @@ use super::*;
 use crate::{ArgumentExtension, ArgumentPurpose, CallConv, FunctionIdent, Type};
 
 /// The possible visibilities of a function
+#[derive(PartialEq, Debug)]
 pub enum Visibility {
     /// (Module) private visibility
     Private,
@@ -11,6 +12,7 @@ pub enum Visibility {
 
 /// A single parameter to a function.
 /// Parameter names are defined in the entry block for the function.
+#[derive(PartialEq, Debug)]
 pub struct FunctionParameter {
     /// The purpose of the parameter (default or struct return)
     pub purpose: ArgumentPurpose,
@@ -44,6 +46,7 @@ impl fmt::Display for FunctionParameter {
 }
 
 /// A single return value from a function.
+#[derive(PartialEq, Debug)]
 pub struct FunctionReturn {
     /// The bit extension for the parameter
     pub extension: ArgumentExtension,
@@ -67,7 +70,7 @@ impl fmt::Display for FunctionReturn {
 }
 
 /// Represents the type signature of a function
-#[derive(Spanned)]
+#[derive(Spanned, Debug)]
 pub struct FunctionSignature {
     #[span]
     pub span: SourceSpan,
@@ -94,6 +97,15 @@ impl FunctionSignature {
             params,
             returns,
         }
+    }
+}
+impl PartialEq for FunctionSignature {
+    fn eq(&self, other: &Self) -> bool {
+        self.visibility == other.visibility
+            && self.call_convention == other.call_convention
+            && self.name == other.name
+            && self.params == other.params
+            && self.returns == other.returns
     }
 }
 impl fmt::Display for FunctionSignature {
@@ -128,7 +140,7 @@ impl fmt::Display for FunctionSignature {
 }
 
 /// Represents the declaration of a function
-#[derive(Spanned)]
+#[derive(Spanned, Debug)]
 pub struct FunctionDeclaration {
     #[span]
     pub span: SourceSpan,
@@ -142,6 +154,12 @@ impl FunctionDeclaration {
             signature,
             blocks,
         }
+    }
+}
+impl PartialEq for FunctionDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.signature == other.signature
+            && self.blocks == other.blocks
     }
 }
 impl fmt::Display for FunctionDeclaration {

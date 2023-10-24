@@ -1,0 +1,12 @@
+module miden_ir_test
+
+global_1 u32 internal = 0xCAFEBABE
+
+pub cc(fast) fn miden_ir_test::test_func (zext u32, sext u32) -> u32 {
+    blk(v1 : u32, v2 : u32) : {
+        v3 = add.unchecked v1 v2 : u32
+        ret (v1, v3)
+    }
+}
+
+cc(kernel) fn exported::f1 (sret { u32, u32 }) -> [i8 ; 42];

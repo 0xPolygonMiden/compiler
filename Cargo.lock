@@ -906,6 +906,7 @@ dependencies = [
  "miden-parsing",
  "paste",
  "petgraph",
+ "pretty_assertions",
  "rustc-hash",
  "smallvec",
  "thiserror",

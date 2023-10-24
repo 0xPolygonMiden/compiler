@@ -34,7 +34,7 @@ impl fmt::Display for GlobalVarInitializer {
 }
 
 /// This represents the declaration of a Miden IR global variable
-#[derive(Spanned)]
+#[derive(Spanned, Debug)]
 pub struct GlobalVarDeclaration {
     #[span]
     pub span: SourceSpan,
@@ -58,6 +58,14 @@ impl GlobalVarDeclaration {
 
     pub fn with_init(&mut self, init: GlobalVarInitializer) {
         self.init = Some(init)
+    }
+}
+impl PartialEq for GlobalVarDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.ty == other.ty
+            && self.linkage == other.linkage
+            && self.init == other.init
     }
 }
 impl fmt::Display for GlobalVarDeclaration {

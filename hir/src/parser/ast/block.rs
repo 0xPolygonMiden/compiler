@@ -6,6 +6,7 @@ const INDENT: &str = "    ";
 /// Represents the label at the start of a basic block.
 ///
 /// Labels must be unique within each function.
+#[derive(PartialEq, Debug)]
 pub struct Label {
     pub name: Ident,
 }
@@ -21,6 +22,7 @@ impl fmt::Display for Label {
 }
 
 /// Represents an argument for a basic block
+#[derive(PartialEq, Debug)]
 pub struct BlockArgument {
     pub value: Value,
     pub ty: Type,
@@ -37,6 +39,7 @@ impl fmt::Display for BlockArgument {
 }
 
 /// Represents the label and the arguments of a basic block
+#[derive(PartialEq, Debug)]
 pub struct BlockHeader {
     pub label: Label,
     pub args: Vec<BlockArgument>,
@@ -66,7 +69,7 @@ impl fmt::Display for BlockHeader {
 }
 
 /// Represents a basic block of instructions
-#[derive(Spanned)]
+#[derive(Spanned, Debug)]
 pub struct Block {
     #[span]
     pub span: SourceSpan,
@@ -80,6 +83,12 @@ impl Block {
             header,
             instructions,
         }
+    }
+}
+impl PartialEq for Block {
+    fn eq(&self, other: &Self) -> bool {
+        self.header == other.header
+            && self.instructions == other.instructions
     }
 }
 impl fmt::Display for Block {

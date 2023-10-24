@@ -5,6 +5,7 @@ use crate::{FunctionIdent, Ident, Overflow, Type};
 ///
 /// All intermediate values are named, and have an associated [Value].
 /// Value identifiers must be globally unique.
+#[derive(PartialEq, Debug)]
 pub struct Value {
     pub name: Ident,
 }
@@ -20,6 +21,7 @@ impl fmt::Display for Value {
 }
 
 /// Immediates are converted at a later stage
+#[derive(PartialEq, Debug)]
 pub enum Immediate {
     Pos(u128),
     Neg(u128),
@@ -39,7 +41,7 @@ impl fmt::Display for Immediate {
 /// An instruction consists of a single operation, and a number of values that
 /// represent the results of the operation. Additionally, the instruction contains
 /// the types of the produced results
-#[derive(Spanned)]
+#[derive(Spanned, Debug)]
 pub struct Instruction {
     #[span]
     pub span: SourceSpan,
@@ -55,6 +57,13 @@ impl Instruction {
             op,
             types,
         }
+    }
+}
+impl PartialEq for Instruction {
+    fn eq(&self, other: &Self) -> bool {
+        self.values == other.values
+            && self.op == other.op
+            && self.types == other.types
     }
 }
 impl fmt::Display for Instruction {
@@ -83,6 +92,7 @@ impl fmt::Display for Instruction {
 }
 
 /// Represents a operation and its arguments
+#[derive(PartialEq, Debug)]
 pub enum Operation {
     BinaryOp(BinaryOpCode, Value, Value),
     BinaryImmOp(BinaryImmOpCode, Value, Immediate),
@@ -179,6 +189,7 @@ impl fmt::Display for Operation {
 }
 
 /// Used to distinguish between user calls and kernel calls
+#[derive(PartialEq, Debug)]
 pub enum CallOp {
     Call,
     SysCall,
@@ -193,6 +204,7 @@ impl fmt::Display for CallOp {
 }
 
 /// Used to distinguish between binary operations
+#[derive(PartialEq, Debug)]
 pub enum BinaryOpCode {
     Add(Overflow),
     Sub(Overflow),
@@ -287,6 +299,7 @@ impl fmt::Display for BinaryOpCode {
 }
 
 /// Used to distinguish between immediate binary operations
+#[derive(PartialEq, Debug)]
 pub enum BinaryImmOpCode {
     AddImm(Overflow),
     SubImm(Overflow),
@@ -367,6 +380,7 @@ impl fmt::Display for BinaryImmOpCode {
 }
 
 /// Used to distinguish between unary operations
+#[derive(PartialEq, Debug)]
 pub enum UnaryOpCode {
     Inv,
     Incr,
@@ -405,6 +419,7 @@ impl fmt::Display for UnaryOpCode {
 }
 
 /// Used to distinguish between immediate unary operations
+#[derive(PartialEq, Debug)]
 pub enum UnaryImmOpCode {
     I1,
     I8,
@@ -430,6 +445,7 @@ impl fmt::Display for UnaryImmOpCode {
 }
 
 /// Used to distinguish between primary operations
+#[derive(PartialEq, Debug)]
 pub enum PrimOpCode {
     Select,
     Assert,
@@ -453,6 +469,7 @@ impl fmt::Display for PrimOpCode {
 
 /// Memory offset for global variable reads.
 /// Conversion to i32 happens during transformation to hir.
+#[derive(PartialEq, Debug)]
 pub enum Offset {
     Pos(u128),
     Neg(u128),
@@ -483,6 +500,7 @@ impl fmt::Display for Offset {
 }
 
 /// Used to distinguish between nested global value operations
+#[derive(PartialEq, Debug)]
 pub enum GlobalValueOpNested {
     Symbol(Ident, Offset),
     Load(Box<GlobalValueOpNested>, Offset),
@@ -511,6 +529,7 @@ impl fmt::Display for GlobalValueOpNested {
 }
 
 /// Used to distinguish between top-level global value operations
+#[derive(PartialEq, Debug)]
 pub enum GlobalValueOp {
     Symbol(Ident, Offset),
     Load(GlobalValueOpNested, Offset),
@@ -544,6 +563,7 @@ impl fmt::Display for GlobalValueOp {
 }
 
 /// The destination of a branch/jump
+#[derive(PartialEq, Debug)]
 pub struct Destination {
     pub label: Label,
     pub args: Vec<BlockArgument>,
@@ -572,6 +592,7 @@ impl fmt::Display for Destination {
 }
 
 /// A branch of a switch operation
+#[derive(PartialEq, Debug)]
 pub enum SwitchBranch {
     Test(u128, Label),
     Default(Label),

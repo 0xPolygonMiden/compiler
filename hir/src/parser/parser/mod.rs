@@ -212,3 +212,6 @@ impl miden_parsing::Parse for ast::Module {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

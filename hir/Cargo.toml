@@ -25,6 +25,7 @@ miden-hir-type.workspace = true
 miden-parsing = "0.1"
 petgraph = "0.6"
 paste.workspace = true
+pretty_assertions = "1.0"
 rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
