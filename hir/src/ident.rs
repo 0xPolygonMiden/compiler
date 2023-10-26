@@ -39,7 +39,6 @@ impl fmt::Debug for FunctionIdent {
         f.debug_struct("FunctionIdent")
             .field("module", &self.module.name)
             .field("function", &self.function.name)
-            .field("span", &self.function.span)
             .finish()
     }
 }

@@ -144,7 +144,7 @@ pub fn write_instruction(
     write_operands(w, &func.dfg, inst, indent)?;
 
     if has_results {
-        write!(w, "  : ")?;
+        write!(w, " : ")?;
         for (i, v) in func.dfg.inst_results(inst).iter().enumerate() {
             let t = func.dfg.value_type(*v).to_string();
             if i > 0 {
@@ -168,10 +168,16 @@ fn write_operands(
 ) -> fmt::Result {
     let pool = &dfg.value_lists;
     match &dfg[inst] {
-        Instruction::BinaryOp(BinaryOp { args, .. }) => write!(w, " {}, {}", args[0], args[1]),
-        Instruction::BinaryOpImm(BinaryOpImm { arg, imm, .. }) => write!(w, " {}, {}", arg, imm),
-        Instruction::UnaryOp(UnaryOp { arg, .. }) => write!(w, " {}", arg),
-        Instruction::UnaryOpImm(UnaryOpImm { imm, .. }) => write!(w, " {}", imm),
+        Instruction::BinaryOp(BinaryOp { overflow, args, .. }) => {
+            write!(w, ".{} {}, {}", overflow, args[0], args[1])
+        }
+        Instruction::BinaryOpImm(BinaryOpImm {
+            overflow, arg, imm, ..
+        }) => write!(w, ".{} {}, {}", overflow, arg, imm),
+        Instruction::UnaryOp(UnaryOp { overflow, arg, .. }) => write!(w, ".{} {}", overflow, arg),
+        Instruction::UnaryOpImm(UnaryOpImm { overflow, imm, .. }) => {
+            write!(w, ".{} {}", overflow, imm)
+        }
         Instruction::Ret(Ret { args, .. }) => {
             if args.len(pool) > 0 {
                 write!(w, " ({})", DisplayValues(args.as_slice(pool)))

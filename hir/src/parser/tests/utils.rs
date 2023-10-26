@@ -45,9 +45,6 @@ impl Emitter for SplitEmitter {
     }
 }
 
-// TEST HANDLER
-// ================================================================================================
-
 /// [ParseTest] is a container for the data required to run parser tests. Used to build an AST from
 /// the given source string and asserts that executing the test will result in the expected AST.
 ///
@@ -63,9 +60,6 @@ pub struct ParseTest {
 }
 
 impl ParseTest {
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
-
     /// Creates a new test, from the source string.
     pub fn new() -> Self {
         let codemap = Arc::new(CodeMap::new());
@@ -107,9 +101,6 @@ impl ParseTest {
         self.parser
             .parse_string::<Module, _, _>(&self.diagnostics, source)
     }
-
-    // TEST METHODS
-    // --------------------------------------------------------------------------------------------
 
     #[track_caller]
     #[allow(unused)]

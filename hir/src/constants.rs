@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt};
+use std::{collections::BTreeMap, fmt, str::FromStr};
 
 use cranelift_entity::{entity_impl, EntityRef};
 
@@ -101,6 +101,25 @@ impl fmt::Display for ConstantData {
             }
         }
         Ok(())
+    }
+}
+impl FromStr for ConstantData {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let len = s.len();
+        if len % 2 != 0 {
+            return Err(());
+        }
+        let pairs = len / 2;
+        let mut data = Vec::with_capacity(pairs);
+        let mut chars = s.chars();
+        while let Some(a) = chars.next() {
+            let a = a.to_digit(16).ok_or(())?;
+            let b = chars.next().unwrap().to_digit(16).ok_or(())?;
+            data.push(((a << 4) + b) as u8);
+        }
+        Ok(Self(data))
     }
 }
 

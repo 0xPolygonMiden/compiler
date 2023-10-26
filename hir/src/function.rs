@@ -234,7 +234,7 @@ impl PartialEq for Signature {
 /// At link time, we make sure all external function references are either defined in
 /// the current program, or are well-known functions that are provided as part of a kernel
 /// or standard library in the Miden VM.
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ExternalFunction {
     pub id: FunctionIdent,
     pub signature: Signature,
