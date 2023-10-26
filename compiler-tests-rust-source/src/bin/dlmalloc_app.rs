@@ -3,7 +3,7 @@
 
 extern crate dlmalloc;
 
-use rust_wasm_tests::dlmalloc::vec_alloc;
+use crate::dlmalloc::vec_alloc;
 
 #[global_allocator]
 static A: dlmalloc::GlobalDlmalloc = dlmalloc::GlobalDlmalloc;

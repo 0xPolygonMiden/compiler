@@ -1,0 +1,26 @@
+[package]
+name = "miden-compiler-tests"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+miden-hir.workspace = true
+miden-codegen-masm.workspace = true
+miden-assembly.workspace = true
+miden-diagnostics.workspace = true
+expect-test = "1.4.1"
+miden-compiler-tests-rust-source = {path = "../compiler-tests-rust-source"}
+
+[dev-dependencies]
+proptest = "1.3"
+wat = "1.0.69"
+wasmprinter = "0.2.63"
+sha2 = "0.10"
+rustc-demangle = {version = "0.1.23", features = ["std"]}    
