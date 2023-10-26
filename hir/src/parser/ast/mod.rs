@@ -8,85 +8,74 @@ pub use self::functions::*;
 pub use self::globals::*;
 pub use self::instruction::*;
 
-use std::fmt;
+use core::fmt;
 
 use miden_diagnostics::{SourceSpan, Spanned};
 
-use crate::Ident;
-
-/// This is a type alias used to clarify that an identifier refers to a module
-pub type ModuleId = Ident;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ModuleType {
-    /// Kernel context module
-    Kernel,
-    /// User context module
-    Module,
-}
-impl fmt::Display for ModuleType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Kernel => f.write_str("kernel"),
-            Self::Module => f.write_str("module"),
-        }
-    }
-}
+use crate::{ExternalFunction, Ident};
 
 /// This represents the parsed contents of a single Miden IR module
-///
-#[derive(Spanned, Debug)]
+#[derive(Spanned)]
 pub struct Module {
     #[span]
     pub span: SourceSpan,
-    pub name: ModuleId,
-    pub ty: ModuleType,
+    pub name: Ident,
     pub global_vars: Vec<GlobalVarDeclaration>,
     pub functions: Vec<FunctionDeclaration>,
-    pub externals: Vec<FunctionSignature>,
+    pub externals: Vec<ExternalFunction>,
+    pub is_kernel: bool,
+}
+impl fmt::Debug for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Module")
+            .field("name", &self.name.as_symbol())
+            .field("global_vars", &self.global_vars)
+            .field("functions", &self.functions)
+            .field("externals", &self.externals)
+            .field("is_kernel", &self.is_kernel)
+            .finish()
+    }
 }
 impl Module {
-    /// Constructs a new module of the specified type, with the given span, name, functions and exports (externals).
-    ///
-    pub fn new(
-        span: SourceSpan,
-        ty: ModuleType,
-        name: ModuleId,
-        global_vars: Vec<GlobalVarDeclaration>,
-        functions: Vec<FunctionDeclaration>,
-        externals: Vec<FunctionSignature>,
-    ) -> Self {
-        Self {
+    pub fn new(span: SourceSpan, name: Ident, is_kernel: bool, forms: Vec<Form>) -> Self {
+        let mut module = Self {
             span,
             name,
-            ty,
-            functions,
-            externals,
-            global_vars,
+            functions: vec![],
+            externals: vec![],
+            global_vars: vec![],
+            is_kernel,
+        };
+        for form in forms.into_iter() {
+            match form {
+                Form::Global(global) => {
+                    module.global_vars.push(global);
+                }
+                Form::Function(function) => {
+                    module.functions.push(function);
+                }
+                Form::ExternalFunction(external) => {
+                    module.externals.push(external);
+                }
+            }
         }
+        module
     }
 }
 impl PartialEq for Module {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
-            && self.ty == other.ty
+            && self.is_kernel == other.is_kernel
             && self.global_vars == other.global_vars
             && self.functions == other.functions
             && self.externals == other.externals
     }
 }
-impl fmt::Display for Module {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{} {}", self.ty, self.name)?;
-        for gvar in self.global_vars.iter() {
-            writeln!(f, "{}", gvar)?;
-        }
-        for func in self.functions.iter() {
-            writeln!(f, "{}", func)?;
-        }
-        for ext in self.externals.iter() {
-            writeln!(f, "{};", ext)?;
-        }
-        Ok(())
-    }
+
+/// This represents one of the top-level forms which a [Module] can contain
+#[derive(Debug)]
+pub enum Form {
+    Global(GlobalVarDeclaration),
+    Function(FunctionDeclaration),
+    ExternalFunction(ExternalFunction),
 }

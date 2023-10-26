@@ -1,32 +1,6 @@
-// Simple macro used in the grammar definition for constructing spans
-macro_rules! span {
-    ($l:expr, $r:expr) => {
-        miden_diagnostics::SourceSpan::new($l, $r)
-    };
-    ($i:expr) => {
-        miden_diagnostics::SourceSpan::new($i, $i)
-    };
-}
+use miden_diagnostics::{Diagnostic, Label, SourceIndex, SourceSpan, ToDiagnostic};
 
-lalrpop_mod!(
-    #[allow(clippy::all)]
-    grammar,
-    "/parser/parser/grammar.rs"
-);
-
-use std::sync::Arc;
-
-use miden_diagnostics::{
-    CodeMap, Diagnostic, DiagnosticsHandler, Label, SourceIndex, SourceSpan, ToDiagnostic,
-};
-use miden_parsing::{Scanner, Source};
-
-use crate::parser::{
-    ast,
-    lexer::{Lexed, Lexer, LexicalError, Token},
-};
-
-pub type Parser = miden_parsing::Parser<()>;
+use super::lexer::{LexicalError, Token};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {
@@ -52,6 +26,10 @@ pub enum ParseError {
     },
     #[error("extraneous token '{token}'")]
     ExtraToken { span: SourceSpan, token: Token },
+    #[error("expected valid u32 value, got '{value}'")]
+    InvalidU32 { span: SourceSpan, value: isize },
+    #[error("expected valid offset value, got '{value}'")]
+    InvalidOffset { span: SourceSpan, value: isize },
     #[error("parsing failed, see diagnostics for details")]
     Failed,
 }
@@ -84,6 +62,8 @@ impl PartialEq for ParseError {
             ) => lt == rt && l == r,
             (Self::ExtraToken { token: l, .. }, Self::ExtraToken { token: r, .. }) => l == r,
             (Self::Failed, Self::Failed) => true,
+            (Self::InvalidU32 { value: l, .. }, Self::InvalidU32 { value: r, .. }) => l == r,
+            (Self::InvalidOffset { value: l, .. }, Self::InvalidOffset { value: r, .. }) => l == r,
             _ => false,
         }
     }
@@ -165,53 +145,13 @@ impl ToDiagnostic for ParseError {
             Self::ExtraToken { span, .. } => Diagnostic::error()
                 .with_message("extraneous token")
                 .with_labels(vec![Label::primary(span.source_id(), span)]),
+            Self::InvalidU32 { span, .. } => Diagnostic::error()
+                .with_message("expected value u32 value")
+                .with_labels(vec![Label::primary(span.source_id(), span)]),
+            Self::InvalidOffset { span, .. } => Diagnostic::error()
+                .with_message("expected value offset value")
+                .with_labels(vec![Label::primary(span.source_id(), span)]),
             err => Diagnostic::error().with_message(err.to_string()),
         }
     }
 }
-
-impl miden_parsing::Parse for ast::Module {
-    type Parser = grammar::ModuleParser;
-    type Error = ParseError;
-    type Config = ();
-    type Token = Lexed;
-
-    fn root_file_error(source: std::io::Error, path: std::path::PathBuf) -> Self::Error {
-        ParseError::FileError { source, path }
-    }
-
-    fn parse<S>(
-        parser: &Parser,
-        diagnostics: &DiagnosticsHandler,
-        source: S,
-    ) -> Result<Self, Self::Error>
-    where
-        S: Source,
-    {
-        let scanner = Scanner::new(source);
-        let lexer = Lexer::new(scanner);
-        Self::parse_tokens(diagnostics, parser.codemap.clone(), lexer)
-    }
-
-    fn parse_tokens<S: IntoIterator<Item = Lexed>>(
-        diagnostics: &DiagnosticsHandler,
-        codemap: Arc<CodeMap>,
-        tokens: S,
-    ) -> Result<Self, Self::Error> {
-        let mut next_var = 0;
-        let result = Self::Parser::new().parse(diagnostics, &codemap, &mut next_var, tokens);
-        match result {
-            Ok(ast) => {
-                if diagnostics.has_errors() {
-                    return Err(ParseError::Failed);
-                }
-                Ok(ast)
-            }
-            Err(lalrpop_util::ParseError::User { error }) => Err(error),
-            Err(err) => Err(err.into()),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests;

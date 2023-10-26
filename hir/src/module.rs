@@ -91,7 +91,7 @@ impl fmt::Display for Module {
             for global in self.globals.iter() {
                 write!(
                     f,
-                    "global {} {} : {}",
+                    "global {} @{} : {}",
                     global.linkage, global.name, global.ty
                 )?;
                 match global.init {

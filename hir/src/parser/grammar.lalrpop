@@ -1,0 +1,587 @@
+use std::sync::Arc;
+
+use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, SourceSpan};
+
+use crate::{AbiParam, AddressSpace, ArgumentExtension, ArgumentPurpose};
+use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
+use crate::{Ident, Linkage, Opcode, Overflow, Signature, StructType, Symbol, Type};
+use crate::parser::{
+    ast::*,
+    lexer::Token,
+    ParseError
+};
+
+grammar(diagnostics: &DiagnosticsHandler, codemap: &Arc<CodeMap>, next_var: &mut usize);
+
+// MACROS
+// ================================================================================================
+
+// Comma-delimited with at least one element
+#[inline]
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    }
+};
+
+// Comma-delimited, possibly empty, possibly with a trailing comma
+#[inline]
+CommaOpt<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => {
+        let mut v = v;
+        v.extend(e);
+        v
+    }
+};
+
+// AST NODE
+// ================================================================================================
+
+pub Module: Module = {
+    <l:@L> "kernel" <name:Ident> <forms:Form*> <r:@R> => {
+        Module::new(span!(l, r), name, /*is_kernel=*/true, forms)
+    },
+    <l:@L> "module" <name:Ident> <forms:Form*> <r:@R> => {
+        Module::new(span!(l, r), name, /*is_kernel=*/false, forms)
+    },
+}
+
+Form: Form = {
+    GlobalVarDeclaration => Form::Global(<>),
+    FunctionDeclaration => Form::Function(<>),
+    ExternalFunctionDeclaration => Form::ExternalFunction(<>),
+}
+
+// GLOBALS
+// ================================================================================================
+
+GlobalVarDeclaration: GlobalVarDeclaration = {
+    <l:@L> "global" <linkage:Linkage> "@" <name:Ident> ":" <ty:Type> <init:("=" <HexString>)?> "{" "id" "=" <id:Index>  "}" ";" <r:@R> => {
+        GlobalVarDeclaration::new(span!(l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init)
+    }
+}
+
+Linkage: Linkage = {
+    "internal" => Linkage::Internal,
+    "odr" => Linkage::Odr,
+    "external" => Linkage::Internal,
+}
+
+// TYPES
+// ==============================================================================================
+
+Type: Type = {
+    "(" ")" => Type::Unit,
+    "!" => Type::Never,
+    "i1" => Type::I1,
+    "i8" => Type::I8,
+    "u8" => Type::U8,
+    "i16" => Type::I16,
+    "u16" => Type::U16,
+    "i32" => Type::I32,
+    "u32" => Type::U32,
+    "i64" => Type::I64,
+    "u64" => Type::U64,
+    "i128" => Type::I128,
+    "u128" => Type::U128,
+    "u256" => Type::U256,
+    "f64" => Type::F64,
+    "felt" => Type::Felt,
+    "*" "mut" <pointee:Type> => Type::Ptr(Box::new(pointee)),
+    "&" "mut" <pointee:Type> => Type::NativePtr(Box::new(pointee), AddressSpace::Unknown),
+    StructType,
+    ArrayType,
+}
+
+StructType: Type = {
+    "{" <fields:CommaOpt<Type>> "}" => Type::Struct(StructType::new(fields)),
+}
+
+ArrayType: Type = {
+    "[" <element:Type> ";" <len:Index> "]" => Type::Array(Box::new(element), usize::try_from(len).unwrap()),
+}
+
+// FUNCTIONS
+// ==============================================================================================
+
+ExternalFunctionDeclaration: ExternalFunction = {
+    "extern" <cc:CallConv?> "fn" <id:FunctionIdent> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> ";" => {
+        let cc = cc.unwrap_or(CallConv::SystemV);
+        let results = results.unwrap_or_default();
+        ExternalFunction {
+            id,
+            signature: Signature {
+                params,
+                results,
+                cc,
+                linkage: Linkage::External,
+            }
+        }
+    },
+}
+
+FunctionDeclaration: FunctionDeclaration = {
+    <l:@L> <linkage:FunctionVisibility> <cc:CallConv?> "fn" <name:Ident> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> "{" <blocks:Block+> "}" <r:@R> => {
+        let cc = cc.unwrap_or(CallConv::SystemV);
+        let results = results.unwrap_or_default();
+        let signature = Signature {
+            params,
+            results,
+            cc,
+            linkage,
+        };
+        FunctionDeclaration::new(span!(l, r), name, signature, blocks)
+    },
+}
+
+FunctionVisibility: Linkage = {
+    "pub" => Linkage::External,
+    => Linkage::Internal,
+}
+
+CallConv: CallConv = {
+    "cc" "(" "fast" ")" => CallConv::Fast,
+    "cc" "(" "kernel" ")" => CallConv::Kernel,
+}
+
+AbiParam: AbiParam = {
+     <purpose:ArgumentPurpose> <extension:ArgumentExtension?> <ty:Type> => {
+        AbiParam {
+            ty,
+            purpose,
+            extension: extension.unwrap_or(ArgumentExtension::None),
+        }
+    }
+}
+
+ArgumentPurpose: ArgumentPurpose = {
+    "sret" => ArgumentPurpose::StructReturn,
+    => ArgumentPurpose::Default,
+}
+
+ArgumentExtension: ArgumentExtension = {
+    "zext" => ArgumentExtension::Zext,
+    "sext" => ArgumentExtension::Sext,
+}
+
+
+// BLOCKS
+// ================================================================================================
+
+Block: Block = {
+    <l:@L> <id:BlockId> <args:("(" <Comma<BlockArg>> ")")?> ":" <insts:Inst+> <r:@R> => {
+        Block::new(span!(l, r), id, args.unwrap_or_default(), insts)
+    }
+}
+
+BlockArg: TypedValue = {
+    <id:ValueId> ":" <ty:Type> => TypedValue::new(id, ty),
+}
+
+// INSTRUCTIONS
+// ================================================================================================
+
+Inst: Inst = {
+    <l:@L> <value:ValueId> "=" <op_and_overflow:UnaryOpcode> <operand:Operand> ":" <value_ty:Type> ";" <r:@R> => {
+        let (opcode, overflow) = op_and_overflow;
+        Inst::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand }, vec![TypedValue::new(value, value_ty)])
+    },
+
+    <l:@L> <value:ValueId> "=" <op_and_overflow:BinaryOpcode> <lhs:Operand> "," <rhs:Operand> ":" <value_ty:Type> ";" <r:@R> => {
+        let (opcode, overflow) = op_and_overflow;
+        Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] }, vec![TypedValue::new(value, value_ty)])
+    },
+
+    <l:@L> <values:Comma<ValueId>> "=" <opcode:PrimOpOpcode> <operands:Comma<Operand>> ":" <types:Comma<Type>> ";" <r:@R> => {
+        assert_eq!(values.len(), types.len());
+        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v, ty)).collect();
+        Inst::new(span!(l, r), InstType::PrimOp { opcode, operands }, outputs)
+    },
+
+    <l:@L> <values:Comma<ValueId>> "=" <opcode:CallOpcode> <callee:FunctionIdent> "(" <operands:CommaOpt<ValueId>> ")" <types:(":" <Comma<Type>>)?> ";" <r:@R> => {
+        let types = types.unwrap_or_default();
+        assert_eq!(values.len(), types.len());
+        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v, ty)).collect();
+        Inst::new(span!(l, r), InstType::Call { opcode, callee, operands }, outputs)
+    },
+
+    <l:@L> <value:ValueId> "=" <expr:GlobalValueExpr> ":" <value_ty:Type> ";" <r:@R> => {
+        Inst::new(span!(l, r), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }, vec![TypedValue::new(value, value_ty)])
+    },
+
+    <l:@L> "unreachable" ";" <r:@R> => {
+        Inst::new(span!(l, r), InstType::PrimOp { opcode: Opcode::Unreachable, operands: vec![] }, vec![])
+    },
+
+    <l:@L> "ret" <operands:Comma<Operand>?> ";" <r:@R> => {
+        Inst::new(span!(l, r), InstType::Ret { opcode: Opcode::Ret, operands: operands.unwrap_or_default() }, vec![])
+    },
+
+    <l:@L> "br" <successor:Successor> ";" <r:@R> => {
+        Inst::new(span!(l, r), InstType::Br { opcode: Opcode::Br, successor }, vec![])
+    },
+
+    <l:@L> "condbr" <cond:Operand> <then_dest:Successor> "," <else_dest:Successor> ";" <r:@R> => {
+        Inst::new(span!(l, r), InstType::CondBr { opcode: Opcode::CondBr, cond, then_dest, else_dest }, vec![])
+    },
+
+    <l:@L> "switch" <input:Operand> "{" <arms:Comma<SwitchArm>> "}" <r:@R> =>? {
+        let mut arms = arms;
+        let fallback = match arms.pop().unwrap() {
+            (None, successor, _) => successor,
+            (Some(_), _, _) => panic!("invalid switch: default arm is required"),
+        };
+        let mut successors = vec![];
+        for arm in arms.into_iter() {
+            match arm {
+                (Some(id), successor, span) => successors.push(Span::new(span, (id, successor))),
+                (None, _, _) => panic!("invalid switch: only one default arm is allowed"),
+            }
+        }
+        Ok(Inst::new(span!(l, r), InstType::Switch { opcode: Opcode::Switch, input, successors, fallback }, vec![]))
+    },
+}
+
+Successor: Successor = {
+    <l:@L> <id:BlockId> <args:("(" <Comma<ValueId>> ")")?> <r:@R> => Successor { span: span!(l, r), id, args: args.unwrap_or_default() },
+}
+
+SwitchArm: (Option<u32>, Successor, SourceSpan) = {
+    <l:@L> <value:Index> "=>" <successor:Successor> <r:@R> => (Some(value), successor, span!(l, r)),
+    <l:@L> <successor:Successor> <r:@R> => (None, successor, span!(l, r)),
+}
+
+CallOpcode: Opcode = {
+    "call" => Opcode::Call,
+    "syscall" => Opcode::Syscall,
+}
+
+UnaryOpcode: (Opcode, Option<Overflow>) = {
+    "const.i1" => (Opcode::ImmI1, None),
+    "const.u8" => (Opcode::ImmU8, None),
+    "const.i8" => (Opcode::ImmU8, None),
+    "const.u16" => (Opcode::ImmU16, None),
+    "const.i16" => (Opcode::ImmI16, None),
+    "const.u32" => (Opcode::ImmU32, None),
+    "const.i32" => (Opcode::ImmI32, None),
+    "const.u64" => (Opcode::ImmU64, None),
+    "const.i64" => (Opcode::ImmI64, None),
+    "const.felt" => (Opcode::ImmFelt, None),
+    "neg" => (Opcode::Neg, None),
+    "inv" => (Opcode::Inv, None),
+    "incr.unchecked" => (Opcode::Incr, Some(Overflow::Unchecked)),
+    "incr.checked" => (Opcode::Incr, Some(Overflow::Checked)),
+    "pow2" => (Opcode::Pow2, None),
+    "not" => (Opcode::Not, None),
+    "bnot" => (Opcode::Bnot, None),
+    "popcnt" => (Opcode::Popcnt, None),
+    "ptrtoint" => (Opcode::PtrToInt, None),
+    "inttoptr" => (Opcode::IntToPtr, None),
+    "cast" => (Opcode::Cast, None),
+    "trunc" => (Opcode::Trunc, None),
+    "zext" => (Opcode::Zext, None),
+    "sext" => (Opcode::Sext, None),
+    "is_odd" => (Opcode::IsOdd, None),
+}
+
+BinaryOpcode: (Opcode, Option<Overflow>) = {
+    "eq" => (Opcode::Eq, None),
+    "neq" => (Opcode::Neq, None),
+    "gt" => (Opcode::Gt, None),
+    "gte" => (Opcode::Gte, None),
+    "lt" => (Opcode::Lt, None),
+    "lte" => (Opcode::Lte, None),
+    "min" => (Opcode::Min, None),
+    "max" => (Opcode::Max, None),
+    "add.unchecked" => (Opcode::Add, Some(Overflow::Unchecked)),
+    "add.checked" => (Opcode::Add, Some(Overflow::Checked)),
+    "add.overflowing" => (Opcode::Add, Some(Overflow::Overflowing)),
+    "add.wrapping" => (Opcode::Add, Some(Overflow::Wrapping)),
+    "sub.unchecked" => (Opcode::Sub, Some(Overflow::Unchecked)),
+    "sub.checked" => (Opcode::Sub, Some(Overflow::Checked)),
+    "sub.overflowing" => (Opcode::Sub, Some(Overflow::Overflowing)),
+    "sub.wrapping" => (Opcode::Sub, Some(Overflow::Wrapping)),
+    "mul.unchecked" => (Opcode::Mul, Some(Overflow::Unchecked)),
+    "mul.checked" => (Opcode::Mul, Some(Overflow::Checked)),
+    "mul.overflowing" => (Opcode::Mul, Some(Overflow::Overflowing)),
+    "mul.wrapping" => (Opcode::Mul, Some(Overflow::Wrapping)),
+    "div.unchecked" => (Opcode::Div, Some(Overflow::Unchecked)),
+    "div.checked" => (Opcode::Div, Some(Overflow::Checked)),
+    "mod.unchecked" => (Opcode::Mod, Some(Overflow::Unchecked)),
+    "mod.checked" => (Opcode::Mod, Some(Overflow::Checked)),
+    "divmod.unchecked" => (Opcode::DivMod, Some(Overflow::Unchecked)),
+    "divmod.checked" => (Opcode::DivMod, Some(Overflow::Checked)),
+    "exp" => (Opcode::Exp, None),
+    "and" => (Opcode::And, None),
+    "band" => (Opcode::Band, None),
+    "or" => (Opcode::Or, None),
+    "bor" => (Opcode::Bor, None),
+    "xor" => (Opcode::Xor, None),
+    "bxor" => (Opcode::Bxor, None),
+    "shl.unchecked" => (Opcode::Shl, Some(Overflow::Unchecked)),
+    "shl.checked" => (Opcode::Shl, Some(Overflow::Checked)),
+    "shr.unchecked" => (Opcode::Shr, Some(Overflow::Unchecked)),
+    "shr.checked" => (Opcode::Shr, Some(Overflow::Checked)),
+    "rotl.unchecked" => (Opcode::Rotl, Some(Overflow::Unchecked)),
+    "rotl.checked" => (Opcode::Rotl, Some(Overflow::Checked)),
+    "rotr.unchecked" => (Opcode::Rotr, Some(Overflow::Unchecked)),
+    "rotr.checked" => (Opcode::Rotr, Some(Overflow::Checked)),
+}
+
+PrimOpOpcode: Opcode = {
+    "assert" => Opcode::Assert,
+    "assertz" => Opcode::Assertz,
+    "assert.eq" => Opcode::AssertEq,
+    "alloca" => Opcode::Alloca,
+    "store" => Opcode::Store,
+    "load" => Opcode::Load,
+    "memcpy" => Opcode::MemCpy,
+    "memory.grow" => Opcode::MemGrow,
+    "select" => Opcode::Select,
+}
+
+Operand: Operand = {
+    value_id => Operand::Value(<>),
+    int => Operand::Int(<>),
+    bigint => Operand::BigInt(<>),
+}
+
+GlobalValueExpr: GlobalValueExpr = {
+    "." "symbol" <expr:NestedGlobalValueExpr> => <>,
+
+    "." "load" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset, ty }
+    },
+
+    "." "load" <base:NestedGlobalValueExpr> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None }
+    },
+
+    "." "iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> => {
+        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty }
+    }
+}
+
+NestedGlobalValueExpr: GlobalValueExpr = {
+    "@" <symbol:Ident> <offset:Offset?> => GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0) },
+
+    "*" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset, ty }
+    },
+
+    "*" <base:NestedGlobalValueExpr> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None }
+    },
+
+    "iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> => {
+        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty }
+    }
+}
+
+// VALUES AND IDENTIFIERS
+// ================================================================================================
+
+HexString: ConstantData = {
+    data,
+}
+
+Int: isize = {
+    int,
+}
+
+Offset: i32 = {
+    <l:@L> <i:int> <r:@R> =>? {
+        match i32::try_from(i) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::InvalidOffset { span: span!(l, r), value: i }.into()),
+        }
+    }
+}
+
+Index: u32 = {
+    <l:@L> <i:int> <r:@R> =>? {
+        match u32::try_from(i) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::InvalidU32 { span: span!(l, r), value: i }.into()),
+        }
+    }
+}
+
+Ident: Ident = {
+    <l:@L> <id:ident> <r:@R> => Ident::new(id, span!(l, r)),
+}
+
+FunctionIdent: FunctionIdent = {
+    <l:@L> <id:function_ident> <r:@R> => {
+        let offset = id.0.as_str().as_bytes().len();
+        let module_span = SourceSpan::new(l, l + offset);
+        let function_span = SourceSpan::new(l + offset + 2, r);
+        FunctionIdent { module: Ident::new(id.0, module_span), function: Ident::new(id.1, function_span) }
+    }
+}
+
+ValueId: crate::Value = {
+    value_id,
+}
+
+BlockId: crate::Block = {
+    block_id,
+}
+
+
+// LEXER
+// ================================================================================================
+
+extern {
+    type Error = ParseError;
+    type Location = miden_diagnostics::SourceIndex;
+
+    enum Token {
+        ident => Token::Ident(<Symbol>),
+        function_ident => Token::FunctionIdent(<(Symbol, Symbol)>),
+        int => Token::Int(<isize>),
+        bigint => Token::BigInt(<num_bigint::BigInt>),
+        data => Token::Hex(<ConstantData>),
+        value_id => Token::Value(<crate::Value>),
+        block_id => Token::Block(<crate::Block>),
+        "kernel" => Token::Kernel,
+        "module" => Token::Module,
+        "internal" => Token::Internal,
+        "odr" => Token::Odr,
+        "external" => Token::External,
+        "extern" => Token::Extern,
+        "pub" => Token::Pub,
+        "fn" => Token::Fn,
+        "cc" => Token::Cc,
+        "fast" => Token::Fast,
+        "sret" => Token::Sret,
+        "zext" => Token::Zext,
+        "sext" => Token::Sext,
+        "trunc" => Token::Trunc,
+        "ret" => Token::Ret,
+        "call" => Token::Call,
+        "syscall" => Token::Syscall,
+        "br" => Token::Br,
+        "condbr" => Token::CondBr,
+        "switch" => Token::Switch,
+        "test" => Token::Test,
+        "load" => Token::Load,
+        "memcpy" => Token::MemCpy,
+        "asm" => Token::Asm,
+        "memory.grow" => Token::MemoryGrow,
+        "add.unchecked" => Token::AddUnchecked,
+        "add.checked" => Token::AddChecked,
+        "add.overflowing" => Token::AddOverflowing,
+        "add.wrapping" => Token::AddWrapping,
+        "sub.unchecked" => Token::SubUnchecked,
+        "sub.checked" => Token::SubChecked,
+        "sub.overflowing" => Token::SubOverflowing,
+        "sub.wrapping" => Token::SubWrapping,
+        "mul.unchecked" => Token::MulUnchecked,
+        "mul.checked" => Token::MulChecked,
+        "mul.overflowing" => Token::MulOverflowing,
+        "mul.wrapping" => Token::MulWrapping,
+        "div.unchecked" => Token::DivUnchecked,
+        "div.checked" => Token::DivChecked,
+        "mod.unchecked" => Token::ModUnchecked,
+        "mod.checked" => Token::ModChecked,
+        "divmod.unchecked" => Token::DivModUnchecked,
+        "divmod.checked" => Token::DivModChecked,
+        "min" => Token::Min,
+        "max" => Token::Max,
+        "exp" => Token::Exp,
+        "and" => Token::And,
+        "band" => Token::BAnd,
+        "or" => Token::Or,
+        "bor" => Token::BOr,
+        "xor" => Token::Xor,
+        "bxor" => Token::BXor,
+        "shl.unchecked" => Token::ShlUnchecked,
+        "shl.checked" => Token::ShlChecked,
+        "shr.unchecked" => Token::ShrUnchecked,
+        "shr.checked" => Token::ShrChecked,
+        "rotl.unchecked" => Token::RotlUnchecked,
+        "rotl.checked" => Token::RotlChecked,
+        "rotr.unchecked" => Token::RotrUnchecked,
+        "rotr.checked" => Token::RotrChecked,
+        "eq" => Token::Eq,
+        "neq" => Token::Neq,
+        "gt" => Token::Gt,
+        "gte" => Token::Gte,
+        "lt" => Token::Lt,
+        "lte" => Token::Lte,
+        "store" => Token::Store,
+        "inv" => Token::Inv,
+        "incr.unchecked" => Token::IncrUnchecked,
+        "incr.checked" => Token::IncrChecked,
+        "pow2" => Token::Pow2,
+        "not" => Token::Not,
+        "bnot" => Token::BNot,
+        "popcnt" => Token::PopCnt,
+        "is_odd" => Token::IsOdd,
+        "cast" => Token::Cast,
+        "ptrtoint" => Token::PtrToInt,
+        "inttoptr" => Token::IntToPtr,
+        "neg" => Token::Neg,
+        "const.i1" => Token::ConstI1,
+        "const.i8" => Token::ConstI8,
+        "const.u8" => Token::ConstU8,
+        "const.i16" => Token::ConstI16,
+        "const.u16" => Token::ConstU16,
+        "const.i32" => Token::ConstI32,
+        "const.u32" => Token::ConstU32,
+        "const.i64" => Token::ConstI64,
+        "const.u64" => Token::ConstU64,
+        "const.felt" => Token::ConstFelt,
+        "select" => Token::Select,
+        "assert" => Token::Assert,
+        "assertz" => Token::Assertz,
+        "assert.eq" => Token::AssertEq,
+        "alloca" => Token::Alloca,
+        "unreachable" => Token::Unreachable,
+        "i1" => Token::I1,
+        "i8" => Token::I8,
+        "u8" => Token::U8,
+        "i16" => Token::I16,
+        "u16" => Token::U16,
+        "i32" => Token::I32,
+        "u32" => Token::U32,
+        "i64" => Token::I64,
+        "u64" => Token::U64,
+        "i128" => Token::I128,
+        "u128" => Token::U128,
+        "u256" => Token::U256,
+        "f64" => Token::F64,
+        "felt" => Token::Felt,
+        "mut" => Token::Mut,
+        "as" => Token::As,
+        "id" => Token::Id,
+        "global" => Token::Global,
+        "global.symbol" => Token::GlobalSymbol,
+        "global.load" => Token::GlobalLoad,
+        "global.iadd" => Token::GlobalIAdd,
+        "symbol" => Token::Symbol,
+        "iadd" => Token::IAdd,
+        "=" => Token::Equal,
+        "=>" => Token::RDoubleArrow,
+        "+" => Token::Plus,
+        "-" => Token::Minus,
+        "->" => Token::RArrow,
+        "*" => Token::Star,
+        "&" => Token::Ampersand,
+        "!" => Token::Bang,
+        ":" => Token::Colon,
+        ";" => Token::Semicolon,
+        "," => Token::Comma,
+        "[" => Token::LBracket,
+        "]" => Token::RBracket,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
+        "." => Token::Dot,
+        "@" => Token::At,
+    }
+}
