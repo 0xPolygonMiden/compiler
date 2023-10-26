@@ -847,6 +847,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-compiler-tests"
+version = "0.1.0"
+dependencies = [
+ "expect-test",
+ "miden-assembly",
+ "miden-codegen-masm",
+ "miden-compiler-tests-rust-source",
+ "miden-diagnostics",
+ "miden-hir",
+ "proptest",
+ "rustc-demangle",
+ "sha2",
+ "wasmprinter",
+ "wat",
+]
+
+[[package]]
+name = "miden-compiler-tests-rust-source"
+version = "0.1.0"
+dependencies = [
+ "dlmalloc",
+]
+
+[[package]]
 name = "miden-core"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1403,13 +1427,6 @@ name = "regex-syntax"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
-
-[[package]]
-name = "rust-wasm-tests"
-version = "0.1.0"
-dependencies = [
- "dlmalloc",
-]
 
 [[package]]
 name = "rustc-demangle"
