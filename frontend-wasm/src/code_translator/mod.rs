@@ -236,11 +236,11 @@ pub fn translate_operator(
         }
         Operator::I32Rotl | Operator::I64Rotl => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().shl_wrapping(arg1, arg2, span));
+            state.push1(builder.ins().rotl(arg1, arg2, span));
         }
         Operator::I32Rotr | Operator::I64Rotr => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().shr_wrapping(arg1, arg2, span));
+            state.push1(builder.ins().rotr(arg1, arg2, span));
         }
         Operator::I32Sub | Operator::I64Sub => {
             let (arg1, arg2) = state.pop2();

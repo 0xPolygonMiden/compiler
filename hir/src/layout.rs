@@ -195,6 +195,10 @@ impl<K: EntityRef, V> ArenaMap<K, V> {
     }
 
     fn alloc_node(&mut self, key: K, value: V) -> NonNull<V> {
+        let len = key.index() + 1;
+        if len > self.keys.len() {
+            self.keys.resize(len, None);
+        }
         let value = self.arena.alloc(value);
         let nn = unsafe { NonNull::new_unchecked(value) };
         self.keys[key.index()].replace(nn);

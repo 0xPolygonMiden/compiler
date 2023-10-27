@@ -186,7 +186,7 @@ dependencies = ["install-wasm-target", "install-rust-src"]
 category = "Test"
 description = "Runs file-based checks using filecheck"
 command = "bin/filecheck"
-args = ["-t", "mir", "-t", "sw", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit"]
+args = ["-t", "hir", "-t", "sw", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit"]
 dependencies = [
   "build-filecheck",
 ]

@@ -66,6 +66,10 @@ pub fn check_ir_files_cargo(
     let temp_dir = std::env::temp_dir();
     let target_dir = temp_dir.join(format!("{bundle_name}-cargo/"));
     let output = Command::new("cargo")
+        .arg(format!(
+            "+{}",
+            std::env::var("CARGO_MAKE_TOOLCHAIN").unwrap()
+        ))
         .arg("build")
         .arg("--manifest-path")
         .arg(manifest_path)
@@ -206,37 +210,31 @@ fn rust_add() {
             )"#]],
         expect![[r#"
             module noname
-            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
-            global external gv1 : i32 = 0x00100000 { id = gvar1 };
-            global external gv2 : i32 = 0x00100000 { id = gvar2 };
 
+            const $0 = 0x00100000;
+
+            global external @__stack_pointer : i32 = $0 { id = 0 };
+            global external @gv1 : i32 = $0 { id = 1 };
+            global external @gv2 : i32 = $0 { id = 2 };
 
             pub fn add(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
-            {
-                v3 = add v1, v0  : i32
-                br block1(v3)
-            }
+                v3 = add.wrapping v1, v0 : i32;
+                br block1(v3);
 
             block1(v2: i32):
-            {
-                ret (v2)
-            }
+                ret v2;
             }
 
             pub fn __main() -> i32 {
             block0:
-            {
-                v1 = const.i32 1  : i32
-                v2 = const.i32 2  : i32
-                v3 = call noname::add(v1, v2)  : i32
-                br block1(v3)
-            }
+                v1 = const.i32 1 : i32;
+                v2 = const.i32 2 : i32;
+                v3 = call noname::add(v1, v2) : i32;
+                br block1(v3);
 
             block1(v0: i32):
-            {
-                ret (v0)
-            }
+                ret v0;
             }
         "#]],
     );
@@ -294,60 +292,46 @@ fn rust_fib() {
             )"#]],
         expect![[r#"
             module noname
-            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
-            global external gv1 : i32 = 0x00100000 { id = gvar1 };
-            global external gv2 : i32 = 0x00100000 { id = gvar2 };
 
+            const $0 = 0x00100000;
+
+            global external @__stack_pointer : i32 = $0 { id = 0 };
+            global external @gv1 : i32 = $0 { id = 1 };
+            global external @gv2 : i32 = $0 { id = 2 };
 
             pub fn fib(i32) -> i32 {
             block0(v0: i32):
-            {
-                v2 = const.i32 0  : i32
-                v3 = const.i32 0  : i32
-                v4 = const.i32 1  : i32
-                br block2(v4, v0, v3)
-            }
+                v2 = const.i32 0 : i32;
+                v3 = const.i32 0 : i32;
+                v4 = const.i32 1 : i32;
+                br block2(v4, v0, v3);
 
             block1(v1: i32):
-            {
-            }
 
             block2(v6: i32, v7: i32, v9: i32):
-            {
-                v8 = neq v7, 0  : i1
-                condbr v8, block4, block5
-            }
+                v8 = neq v7, 0 : i1;
+                condbr v8, block4, block5;
 
             block3(v5: i32):
-            {
-            }
 
             block4:
-            {
-                v10 = const.i32 -1  : i32
-                v11 = add v7, v10  : i32
-                v12 = add v9, v6  : i32
-                br block2(v12, v11, v6)
-            }
+                v10 = const.i32 -1 : i32;
+                v11 = add.wrapping v7, v10 : i32;
+                v12 = add.wrapping v9, v6 : i32;
+                br block2(v12, v11, v6);
 
             block5:
-            {
-                ret (v9)
-            }
+                ret v9;
             }
 
             pub fn __main() -> i32 {
             block0:
-            {
-                v1 = const.i32 25  : i32
-                v2 = call noname::fib(v1)  : i32
-                br block1(v2)
-            }
+                v1 = const.i32 25 : i32;
+                v2 = call noname::fib(v1) : i32;
+                br block1(v2);
 
             block1(v0: i32):
-            {
-                ret (v0)
-            }
+                ret v0;
             }
         "#]],
     );
@@ -412,68 +396,61 @@ fn rust_enum() {
             )"#]],
         expect![[r#"
             module noname
-            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
-            global external gv1 : i32 = 0x00100000 { id = gvar1 };
-            global external gv2 : i32 = 0x00100000 { id = gvar2 };
 
+            const $0 = 0x00100000;
+
+            global external @__stack_pointer : i32 = $0 { id = 0 };
+            global external @gv1 : i32 = $0 { id = 1 };
+            global external @gv2 : i32 = $0 { id = 2 };
 
             pub fn match_enum(i32, i32, i32) -> i32 {
             block0(v0: i32, v1: i32, v2: i32):
-            {
-                v4 = const.i32 255  : i32
-                v5 = band v2, v4  : i32
-                v6 = cast v5  : u32
-                switch v6, 0 => block4, 1 => block3, 2 => block2, block4
-            }
+                v4 = const.i32 255 : i32;
+                v5 = band v2, v4 : i32;
+                v6 = cast v5 : u32;
+                switch v6 {
+                    0 => block4,
+                    1 => block3,
+                    2 => block2,
+                    _ => block4
+                };
 
             block1(v3: i32):
-            {
-                ret (v3)
-            }
+                ret v3;
 
             block2:
-            {
-                v9 = mul v1, v0  : i32
-                br block1(v9)
-            }
+                v9 = mul.wrapping v1, v0 : i32;
+                br block1(v9);
 
             block3:
-            {
-                v8 = sub v0, v1  : i32
-                ret (v8)
-            }
+                v8 = sub.wrapping v0, v1 : i32;
+                ret v8;
 
             block4:
-            {
-                v7 = add v1, v0  : i32
-                ret (v7)
-            }
+                v7 = add.wrapping v1, v0 : i32;
+                ret v7;
             }
 
             pub fn __main() -> i32 {
             block0:
-            {
-                v1 = const.i32 3  : i32
-                v2 = const.i32 5  : i32
-                v3 = const.i32 0  : i32
-                v4 = call noname::match_enum(v1, v2, v3)  : i32
-                v5 = const.i32 3  : i32
-                v6 = const.i32 5  : i32
-                v7 = const.i32 1  : i32
-                v8 = call noname::match_enum(v5, v6, v7)  : i32
-                v9 = add v4, v8  : i32
-                v10 = const.i32 3  : i32
-                v11 = const.i32 5  : i32
-                v12 = const.i32 2  : i32
-                v13 = call noname::match_enum(v10, v11, v12)  : i32
-                v14 = add v9, v13  : i32
-                br block1(v14)
-            }
+                v1 = const.i32 3 : i32;
+                v2 = const.i32 5 : i32;
+                v3 = const.i32 0 : i32;
+                v4 = call noname::match_enum(v1, v2, v3) : i32;
+                v5 = const.i32 3 : i32;
+                v6 = const.i32 5 : i32;
+                v7 = const.i32 1 : i32;
+                v8 = call noname::match_enum(v5, v6, v7) : i32;
+                v9 = add.wrapping v4, v8 : i32;
+                v10 = const.i32 3 : i32;
+                v11 = const.i32 5 : i32;
+                v12 = const.i32 2 : i32;
+                v13 = call noname::match_enum(v10, v11, v12) : i32;
+                v14 = add.wrapping v9, v13 : i32;
+                br block1(v14);
 
             block1(v0: i32):
-            {
-                ret (v0)
-            }
+                ret v0;
             }
         "#]],
     )
@@ -541,79 +518,64 @@ fn rust_array() {
                 segment @0x100000 x 40 = 0x0000000a000000090000000800000007000000060000000500000004000000030000000200000001;
             }
 
-            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
-            global external gv1 : i32 = 0x00100028 { id = gvar1 };
-            global external gv2 : i32 = 0x00100030 { id = gvar2 };
+            const $0 = 0x00100000;
+            const $1 = 0x00100028;
+            const $2 = 0x00100030;
 
+            global external @__stack_pointer : i32 = $0 { id = 0 };
+            global external @gv1 : i32 = $1 { id = 1 };
+            global external @gv2 : i32 = $2 { id = 2 };
 
             pub fn sum_arr(i32, i32) -> i32 {
             block0(v0: i32, v1: i32):
-            {
-                v3 = const.i32 0  : i32
-                v4 = const.i32 0  : i32
-                v5 = eq v1, 0  : i1
-                v6 = cast v5  : i32
-                v7 = neq v6, 0  : i1
-                condbr v7, block2(v4), block3
-            }
+                v3 = const.i32 0 : i32;
+                v4 = const.i32 0 : i32;
+                v5 = eq v1, 0 : i1;
+                v6 = cast v5 : i32;
+                v7 = neq v6, 0 : i1;
+                condbr v7, block2(v4), block3;
 
             block1(v2: i32):
-            {
-                ret (v2)
-            }
+                ret v2;
 
             block2(v20: i32):
-            {
-                br block1(v20)
-            }
+                br block1(v20);
 
             block3:
-            {
-                br block4(v0, v4, v1)
-            }
+                br block4(v0, v4, v1);
 
             block4(v8: i32, v12: i32, v16: i32):
-            {
-                v9 = cast v8  : u32
-                v10 = inttoptr v9  : *mut i32
-                v11 = load v10  : i32
-                v13 = add v11, v12  : i32
-                v14 = const.i32 4  : i32
-                v15 = add v8, v14  : i32
-                v17 = const.i32 -1  : i32
-                v18 = add v16, v17  : i32
-                v19 = neq v18, 0  : i1
-                condbr v19, block4(v15, v13, v18), block6
-            }
+                v9 = cast v8 : u32;
+                v10 = inttoptr v9 : *mut i32;
+                v11 = load v10 : i32;
+                v13 = add.wrapping v11, v12 : i32;
+                v14 = const.i32 4 : i32;
+                v15 = add.wrapping v8, v14 : i32;
+                v17 = const.i32 -1 : i32;
+                v18 = add.wrapping v16, v17 : i32;
+                v19 = neq v18, 0 : i1;
+                condbr v19, block4(v15, v13, v18), block6;
 
             block5:
-            {
-                br block2(v13)
-            }
+                br block2(v13);
 
             block6:
-            {
-                br block5
-            }
+                br block5;
             }
 
             pub fn __main() -> i32 {
             block0:
-            {
-                v1 = const.i32 1048576  : i32
-                v2 = const.i32 5  : i32
-                v3 = call noname::sum_arr(v1, v2)  : i32
-                v4 = const.i32 1048596  : i32
-                v5 = const.i32 5  : i32
-                v6 = call noname::sum_arr(v4, v5)  : i32
-                v7 = add v3, v6  : i32
-                br block1(v7)
-            }
+                v1 = const.i32 1048576 : i32;
+                v2 = const.i32 5 : i32;
+                v3 = call noname::sum_arr(v1, v2) : i32;
+                v4 = const.i32 1048596 : i32;
+                v5 = const.i32 5 : i32;
+                v6 = call noname::sum_arr(v4, v5) : i32;
+                v7 = add.wrapping v3, v6 : i32;
+                br block1(v7);
 
             block1(v0: i32):
-            {
-                ret (v0)
-            }
+                ret v0;
             }
         "#]],
     )
@@ -680,78 +642,67 @@ fn rust_static_mut() {
                 segment @0x100000 x 9 = 0x090807060504030201;
             }
 
-            global external __stack_pointer : i32 = 0x00100000 { id = gvar0 };
-            global external gv1 : i32 = 0x00100009 { id = gvar1 };
-            global external gv2 : i32 = 0x00100010 { id = gvar2 };
+            const $0 = 0x00100000;
+            const $1 = 0x00100009;
+            const $2 = 0x00100010;
 
+            global external @__stack_pointer : i32 = $0 { id = 0 };
+            global external @gv1 : i32 = $1 { id = 1 };
+            global external @gv2 : i32 = $2 { id = 2 };
 
             pub fn global_var_update() {
             block0:
-            {
-                v0 = const.i32 0  : i32
-                v1 = const.i32 0  : i32
-                v2 = cast v1  : u32
-                v3 = add v2, 1048577  : u32
-                v4 = inttoptr v3  : *mut u8
-                v5 = load v4  : u8
-                v6 = zext v5  : i32
-                v7 = const.i32 1  : i32
-                v8 = add v6, v7  : i32
-                v9 = trunc v8  : u8
-                v10 = cast v0  : u32
-                v11 = add v10, 1048576  : u32
-                v12 = inttoptr v11  : *mut u8
-                store v12, v9
-                br block1
-            }
+                v0 = const.i32 0 : i32;
+                v1 = const.i32 0 : i32;
+                v2 = cast v1 : u32;
+                v3 = add v2, 1048577 : u32;
+                v4 = inttoptr v3 : *mut u8;
+                v5 = load v4 : u8;
+                v6 = zext v5 : i32;
+                v7 = const.i32 1 : i32;
+                v8 = add.wrapping v6, v7 : i32;
+                v9 = trunc v8 : u8;
+                v10 = cast v0 : u32;
+                v11 = add v10, 1048576 : u32;
+                v12 = inttoptr v11 : *mut u8;
+                store v12, v9;
+                br block1;
 
             block1:
-            {
-                ret
-            }
+                ret;
             }
 
             pub fn __main() -> i32 {
             block0:
-            {
-                v1 = const.i32 0  : i32
-                call noname::global_var_update()
-                v2 = const.i32 0  : i32
-                v3 = const.i32 -9  : i32
-                br block2(v3, v2)
-            }
+                v1 = const.i32 0 : i32;
+                call noname::global_var_update();
+                v2 = const.i32 0 : i32;
+                v3 = const.i32 -9 : i32;
+                br block2(v3, v2);
 
             block1(v0: i32):
-            {
-                ret (v0)
-            }
+                ret v0;
 
             block2(v4: i32, v11: i32):
-            {
-                v5 = const.i32 1048585  : i32
-                v6 = add v4, v5  : i32
-                v7 = cast v6  : u32
-                v8 = inttoptr v7  : *mut u8
-                v9 = load v8  : u8
-                v10 = zext v9  : i32
-                v12 = add v10, v11  : i32
-                v13 = const.i32 1  : i32
-                v14 = add v4, v13  : i32
-                v15 = neq v14, 0  : i1
-                condbr v15, block2(v14, v12), block4
-            }
+                v5 = const.i32 1048585 : i32;
+                v6 = add.wrapping v4, v5 : i32;
+                v7 = cast v6 : u32;
+                v8 = inttoptr v7 : *mut u8;
+                v9 = load v8 : u8;
+                v10 = zext v9 : i32;
+                v12 = add.wrapping v10, v11 : i32;
+                v13 = const.i32 1 : i32;
+                v14 = add.wrapping v4, v13 : i32;
+                v15 = neq v14, 0 : i1;
+                condbr v15, block2(v14, v12), block4;
 
             block3:
-            {
-                v16 = const.i32 255  : i32
-                v17 = band v12, v16  : i32
-                br block1(v17)
-            }
+                v16 = const.i32 255 : i32;
+                v17 = band v12, v16 : i32;
+                br block1(v17);
 
             block4:
-            {
-                br block3
-            }
+                br block3;
             }
         "#]],
     );
@@ -762,7 +713,7 @@ fn dlmalloc() {
     check_ir_files_cargo(
         "dlmalloc_app",
         expect_file!["./expected/dlmalloc.wat"],
-        expect_file!["./expected/dlmalloc.mir"],
+        expect_file!["./expected/dlmalloc.hir"],
     )
 }
 
@@ -772,6 +723,6 @@ fn signed_arith() {
     check_ir_files(
         include_str!("rust_source/signed_arith.rs"),
         expect_file!["./expected/signed_arith.wat"],
-        expect_file!["./expected/signed_arith.mir"],
+        expect_file!["./expected/signed_arith.hir"],
     );
 }

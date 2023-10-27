@@ -11,11 +11,9 @@ pub fn write_function(w: &mut dyn Write, func: &Function) -> fmt::Result {
         }
 
         write_block_header(w, func, block, 4)?;
-        writeln!(w, "{{")?;
         for inst in block_data.insts() {
             write_instruction(w, func, inst, 4)?;
         }
-        writeln!(w, "}}")?;
     }
     writeln!(w, "}}")
 }
@@ -153,7 +151,7 @@ pub fn write_instruction(
         }
     }
 
-    writeln!(w)?;
+    writeln!(w, ";")?;
 
     Ok(())
 }
@@ -218,7 +216,7 @@ fn write_operands(
         }
         Instruction::Ret(Ret { args, .. }) => {
             if args.len(pool) > 0 {
-                write!(w, " ({})", DisplayValues(args.as_slice(pool)))
+                write!(w, " {}", DisplayValues(args.as_slice(pool)))
             } else {
                 Ok(())
             }
@@ -250,10 +248,10 @@ fn write_operands(
         }) => {
             writeln!(w, " {} {{", arg)?;
             for (value, dest) in arms.iter() {
-                write_indent(w, indent + 2)?;
-                writeln!(w, "{} => {}", value, dest)?;
+                write_indent(w, indent + 4)?;
+                writeln!(w, "{} => {},", value, dest)?;
             }
-            write_indent(w, indent + 2)?;
+            write_indent(w, indent + 4)?;
             writeln!(w, "_ => {}", default)?;
             write_indent(w, indent)?;
             w.write_char('}')

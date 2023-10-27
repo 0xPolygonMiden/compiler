@@ -13,7 +13,7 @@ struct Config {
     #[arg(value_name = "DIR")]
     tests: PathBuf,
     /// Specify one or more file extensions to include when searching for test inputs
-    #[arg(long = "type", short = 't', default_value = "mir")]
+    #[arg(long = "type", short = 't', default_value = "hir")]
     file_types: Vec<String>,
     /// Define one or more variables to make available in test commands
     ///
