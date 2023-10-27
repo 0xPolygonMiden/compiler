@@ -257,6 +257,17 @@ impl GlobalVariableTable {
         self.data.contains(data)
     }
 
+    /// Traverse all of the constants in the table
+    #[inline]
+    pub fn constants(&self) -> impl Iterator<Item = (Constant, &ConstantData)> {
+        self.data.iter()
+    }
+
+    /// Returns true if the table has constant data stored
+    pub fn has_constants(&self) -> bool {
+        !self.data.is_empty()
+    }
+
     /// Declares a new global variable with the given symbol name, type, linkage, and optional initializer.
     ///
     /// If successful, `Ok` is returned, with the [GlobalVariable] corresponding to the data for the symbol.

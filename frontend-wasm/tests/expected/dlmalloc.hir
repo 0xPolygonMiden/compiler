@@ -1,0 +1,5472 @@
+module noname
+
+const $0 = 0x00100000;
+const $1 = 0x001001c8;
+const $2 = 0x001001d0;
+
+global external @__stack_pointer : i32 = $0 { id = 0 };
+global external @gv1 : i32 = $1 { id = 1 };
+global external @gv2 : i32 = $2 { id = 2 };
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32):
+    v3 = const.i32 0 : i32;
+    v4 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1, v2) : i32;
+    v5 = call noname::dlmalloc::dlmalloc::Chunk::pinuse(v1) : i32;
+    v6 = neq v5, 0 : i1;
+    condbr v6, block4(v1, v2), block5;
+
+block1:
+    ret;
+
+block2(v205: i32, v212: i32, v213: i32):
+    v206 = const.i32 256 : i32;
+    v207 = cast v205 : u32;
+    v208 = cast v206 : u32;
+    v209 = lt v207, v208 : i1;
+    v210 = cast v209 : i32;
+    v211 = neq v210, 0 : i1;
+    condbr v211, block29, block30;
+
+block3:
+    ret;
+
+block4(v93: i32, v94: i32):
+    v89 = call noname::dlmalloc::dlmalloc::Chunk::cinuse(v4) : i32;
+    v90 = eq v89, 0 : i1;
+    v91 = cast v90 : i32;
+    v92 = neq v91, 0 : i1;
+    condbr v92, block16, block17;
+
+block5:
+    v7 = cast v1 : u32;
+    v8 = inttoptr v7 : *mut i32;
+    v9 = load v8 : i32;
+    v10 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v1) : i32;
+    v11 = neq v10, 0 : i1;
+    condbr v11, block6, block7;
+
+block6:
+    v72 = sub.wrapping v1, v9 : i32;
+    v73 = add.wrapping v2, v9 : i32;
+    v74 = const.i32 16 : i32;
+    v75 = add.wrapping v73, v74 : i32;
+    v76 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free(v0, v72, v75) : i32;
+    v77 = eq v76, 0 : i1;
+    v78 = cast v77 : i32;
+    v79 = neq v78, 0 : i1;
+    condbr v79, block3, block15;
+
+block7:
+    v12 = add.wrapping v9, v2 : i32;
+    v13 = call noname::dlmalloc::dlmalloc::Chunk::minus_offset(v1, v9) : i32;
+    v14 = cast v0 : u32;
+    v15 = add v14, 424 : u32;
+    v16 = inttoptr v15 : *mut i32;
+    v17 = load v16 : i32;
+    v18 = neq v13, v17 : i1;
+    v19 = cast v18 : i32;
+    v20 = neq v19, 0 : i1;
+    condbr v20, block8, block9;
+
+block8:
+    v34 = const.i32 256 : i32;
+    v35 = cast v9 : u32;
+    v36 = cast v34 : u32;
+    v37 = lt v35, v36 : i1;
+    v38 = cast v37 : i32;
+    v39 = neq v38, 0 : i1;
+    condbr v39, block11, block12;
+
+block9:
+    v21 = cast v4 : u32;
+    v22 = add v21, 4 : u32;
+    v23 = inttoptr v22 : *mut i32;
+    v24 = load v23 : i32;
+    v25 = const.i32 3 : i32;
+    v26 = band v24, v25 : i32;
+    v27 = const.i32 3 : i32;
+    v28 = neq v26, v27 : i1;
+    v29 = cast v28 : i32;
+    v30 = neq v29, 0 : i1;
+    condbr v30, block4(v13, v12), block10;
+
+block10:
+    v31 = cast v0 : u32;
+    v32 = add v31, 416 : u32;
+    v33 = inttoptr v32 : *mut i32;
+    store v33, v12;
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v13, v12, v4);
+    ret;
+
+block11:
+    v40 = cast v13 : u32;
+    v41 = add v40, 12 : u32;
+    v42 = inttoptr v41 : *mut i32;
+    v43 = load v42 : i32;
+    v44 = cast v13 : u32;
+    v45 = add v44, 8 : u32;
+    v46 = inttoptr v45 : *mut i32;
+    v47 = load v46 : i32;
+    v48 = eq v43, v47 : i1;
+    v49 = cast v48 : i32;
+    v50 = neq v49, 0 : i1;
+    condbr v50, block13, block14;
+
+block12:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v0, v13);
+    br block4(v13, v12);
+
+block13:
+    v57 = cast v0 : u32;
+    v58 = add v57, 408 : u32;
+    v59 = inttoptr v58 : *mut i32;
+    v60 = load v59 : i32;
+    v61 = const.i32 -2 : i32;
+    v62 = const.i32 3 : i32;
+    v63 = cast v9 : u32;
+    v64 = cast v62 : u32;
+    v65 = shr v63, v64 : u32;
+    v66 = cast v65 : i32;
+    v67 = rotl v61, v66 : i32;
+    v68 = band v60, v67 : i32;
+    v69 = cast v0 : u32;
+    v70 = add v69, 408 : u32;
+    v71 = inttoptr v70 : *mut i32;
+    store v71, v68;
+    br block4(v13, v12);
+
+block14:
+    v51 = cast v47 : u32;
+    v52 = add v51, 12 : u32;
+    v53 = inttoptr v52 : *mut i32;
+    store v53, v43;
+    v54 = cast v43 : u32;
+    v55 = add v54, 8 : u32;
+    v56 = inttoptr v55 : *mut i32;
+    store v56, v47;
+    br block4(v13, v12);
+
+block15:
+    v80 = cast v0 : u32;
+    v81 = add v80, 432 : u32;
+    v82 = inttoptr v81 : *mut i32;
+    v83 = load v82 : i32;
+    v84 = sub.wrapping v83, v75 : i32;
+    v85 = cast v0 : u32;
+    v86 = add v85, 432 : u32;
+    v87 = inttoptr v86 : *mut i32;
+    store v87, v84;
+    ret;
+
+block16:
+    v96 = cast v0 : u32;
+    v97 = add v96, 428 : u32;
+    v98 = inttoptr v97 : *mut i32;
+    v99 = load v98 : i32;
+    v100 = eq v88, v99 : i1;
+    v101 = cast v100 : i32;
+    v102 = neq v101, 0 : i1;
+    condbr v102, block19, block20;
+
+block17:
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v93, v94, v88);
+    br block2(v94, v95, v93);
+
+block18:
+    v194 = cast v95 : u32;
+    v195 = add v194, 424 : u32;
+    v196 = inttoptr v195 : *mut i32;
+    store v196, v93;
+    v197 = cast v95 : u32;
+    v198 = add v197, 416 : u32;
+    v199 = inttoptr v198 : *mut i32;
+    v200 = load v199 : i32;
+    v201 = add.wrapping v200, v94 : i32;
+    v202 = cast v95 : u32;
+    v203 = add v202, 416 : u32;
+    v204 = inttoptr v203 : *mut i32;
+    store v204, v201;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v93, v201);
+    ret;
+
+block19:
+    v163 = cast v95 : u32;
+    v164 = add v163, 428 : u32;
+    v165 = inttoptr v164 : *mut i32;
+    store v165, v93;
+    v166 = cast v95 : u32;
+    v167 = add v166, 420 : u32;
+    v168 = inttoptr v167 : *mut i32;
+    v169 = load v168 : i32;
+    v170 = add.wrapping v169, v94 : i32;
+    v171 = cast v95 : u32;
+    v172 = add v171, 420 : u32;
+    v173 = inttoptr v172 : *mut i32;
+    store v173, v170;
+    v174 = const.i32 1 : i32;
+    v175 = bor v170, v174 : i32;
+    v176 = cast v93 : u32;
+    v177 = add v176, 4 : u32;
+    v178 = inttoptr v177 : *mut i32;
+    store v178, v175;
+    v179 = cast v95 : u32;
+    v180 = add v179, 424 : u32;
+    v181 = inttoptr v180 : *mut i32;
+    v182 = load v181 : i32;
+    v183 = neq v93, v182 : i1;
+    v184 = cast v183 : i32;
+    v185 = neq v184, 0 : i1;
+    condbr v185, block3, block28;
+
+block20:
+    v103 = cast v95 : u32;
+    v104 = add v103, 424 : u32;
+    v105 = inttoptr v104 : *mut i32;
+    v106 = load v105 : i32;
+    v107 = eq v88, v106 : i1;
+    v108 = cast v107 : i32;
+    v109 = neq v108, 0 : i1;
+    condbr v109, block18, block21;
+
+block21:
+    v110 = call noname::dlmalloc::dlmalloc::Chunk::size(v88) : i32;
+    v111 = add.wrapping v110, v94 : i32;
+    v112 = const.i32 256 : i32;
+    v113 = cast v110 : u32;
+    v114 = cast v112 : u32;
+    v115 = lt v113, v114 : i1;
+    v116 = cast v115 : i32;
+    v117 = neq v116, 0 : i1;
+    condbr v117, block23, block24;
+
+block22:
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v93, v111);
+    v153 = cast v95 : u32;
+    v154 = add v153, 424 : u32;
+    v155 = inttoptr v154 : *mut i32;
+    v156 = load v155 : i32;
+    v157 = neq v150, v156 : i1;
+    v158 = cast v157 : i32;
+    v159 = neq v158, 0 : i1;
+    condbr v159, block2(v151, v152, v150), block27;
+
+block23:
+    v118 = cast v88 : u32;
+    v119 = add v118, 12 : u32;
+    v120 = inttoptr v119 : *mut i32;
+    v121 = load v120 : i32;
+    v122 = cast v88 : u32;
+    v123 = add v122, 8 : u32;
+    v124 = inttoptr v123 : *mut i32;
+    v125 = load v124 : i32;
+    v126 = eq v121, v125 : i1;
+    v127 = cast v126 : i32;
+    v128 = neq v127, 0 : i1;
+    condbr v128, block25, block26;
+
+block24:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v95, v88);
+    br block22;
+
+block25:
+    v135 = cast v95 : u32;
+    v136 = add v135, 408 : u32;
+    v137 = inttoptr v136 : *mut i32;
+    v138 = load v137 : i32;
+    v139 = const.i32 -2 : i32;
+    v140 = const.i32 3 : i32;
+    v141 = cast v110 : u32;
+    v142 = cast v140 : u32;
+    v143 = shr v141, v142 : u32;
+    v144 = cast v143 : i32;
+    v145 = rotl v139, v144 : i32;
+    v146 = band v138, v145 : i32;
+    v147 = cast v95 : u32;
+    v148 = add v147, 408 : u32;
+    v149 = inttoptr v148 : *mut i32;
+    store v149, v146;
+    br block22;
+
+block26:
+    v129 = cast v125 : u32;
+    v130 = add v129, 12 : u32;
+    v131 = inttoptr v130 : *mut i32;
+    store v131, v121;
+    v132 = cast v121 : u32;
+    v133 = add v132, 8 : u32;
+    v134 = inttoptr v133 : *mut i32;
+    store v134, v125;
+    br block22;
+
+block27:
+    v160 = cast v152 : u32;
+    v161 = add v160, 416 : u32;
+    v162 = inttoptr v161 : *mut i32;
+    store v162, v151;
+    br block3;
+
+block28:
+    v186 = const.i32 0 : i32;
+    v187 = cast v95 : u32;
+    v188 = add v187, 416 : u32;
+    v189 = inttoptr v188 : *mut i32;
+    store v189, v186;
+    v190 = const.i32 0 : i32;
+    v191 = cast v95 : u32;
+    v192 = add v191, 424 : u32;
+    v193 = inttoptr v192 : *mut i32;
+    store v193, v190;
+    ret;
+
+block29:
+    v214 = const.i32 -8 : i32;
+    v215 = band v205, v214 : i32;
+    v216 = add.wrapping v212, v215 : i32;
+    v217 = const.i32 144 : i32;
+    v218 = add.wrapping v216, v217 : i32;
+    v219 = cast v212 : u32;
+    v220 = add v219, 408 : u32;
+    v221 = inttoptr v220 : *mut i32;
+    v222 = load v221 : i32;
+    v223 = const.i32 1 : i32;
+    v224 = const.i32 3 : i32;
+    v225 = cast v205 : u32;
+    v226 = cast v224 : u32;
+    v227 = shr v225, v226 : u32;
+    v228 = cast v227 : i32;
+    v229 = shl v223, v228 : i32;
+    v230 = band v222, v229 : i32;
+    v231 = eq v230, 0 : i1;
+    v232 = cast v231 : i32;
+    v233 = neq v232, 0 : i1;
+    condbr v233, block32, block33;
+
+block30:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v212, v213, v205);
+    ret;
+
+block31(v247: i32):
+    v244 = cast v218 : u32;
+    v245 = add v244, 8 : u32;
+    v246 = inttoptr v245 : *mut i32;
+    store v246, v213;
+    v248 = cast v247 : u32;
+    v249 = add v248, 12 : u32;
+    v250 = inttoptr v249 : *mut i32;
+    store v250, v243;
+    v251 = cast v243 : u32;
+    v252 = add v251, 12 : u32;
+    v253 = inttoptr v252 : *mut i32;
+    store v253, v242;
+    v254 = cast v243 : u32;
+    v255 = add v254, 8 : u32;
+    v256 = inttoptr v255 : *mut i32;
+    store v256, v247;
+    br block1;
+
+block32:
+    v238 = bor v222, v229 : i32;
+    v239 = cast v212 : u32;
+    v240 = add v239, 408 : u32;
+    v241 = inttoptr v240 : *mut i32;
+    store v241, v238;
+    br block31(v218);
+
+block33:
+    v234 = cast v218 : u32;
+    v235 = add v234, 8 : u32;
+    v236 = inttoptr v235 : *mut i32;
+    v237 = load v236 : i32;
+    br block31(v237);
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(i32, i32) {
+block0(v0: i32, v1: i32):
+    v2 = const.i32 0 : i32;
+    v3 = cast v1 : u32;
+    v4 = add v3, 24 : u32;
+    v5 = inttoptr v4 : *mut i32;
+    v6 = load v5 : i32;
+    v7 = call noname::dlmalloc::dlmalloc::TreeChunk::next(v1) : i32;
+    v8 = neq v7, v1 : i1;
+    v9 = cast v8 : i32;
+    v10 = neq v9, 0 : i1;
+    condbr v10, block4, block5;
+
+block1:
+    ret;
+
+block2(v96: i32):
+    v65 = eq v6, 0 : i1;
+    v66 = cast v65 : i32;
+    v67 = neq v66, 0 : i1;
+    condbr v67, block10, block11;
+
+block3:
+    v36 = const.i32 16 : i32;
+    v37 = add.wrapping v1, v36 : i32;
+    v38 = neq v17, 0 : i1;
+    v39 = select v38, v14, v37 : i32;
+    br block7(v39, v23);
+
+block4:
+    v26 = call noname::dlmalloc::dlmalloc::TreeChunk::prev(v1) : i32;
+    v27 = call noname::dlmalloc::dlmalloc::TreeChunk::next(v1) : i32;
+    v28 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v27) : i32;
+    v29 = cast v26 : u32;
+    v30 = add v29, 12 : u32;
+    v31 = inttoptr v30 : *mut i32;
+    store v31, v28;
+    v32 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v26) : i32;
+    v33 = cast v27 : u32;
+    v34 = add v33, 8 : u32;
+    v35 = inttoptr v34 : *mut i32;
+    store v35, v32;
+    br block2(v27);
+
+block5:
+    v11 = const.i32 20 : i32;
+    v12 = const.i32 16 : i32;
+    v13 = const.i32 20 : i32;
+    v14 = add.wrapping v1, v13 : i32;
+    v15 = cast v14 : u32;
+    v16 = inttoptr v15 : *mut i32;
+    v17 = load v16 : i32;
+    v18 = neq v17, 0 : i1;
+    v19 = select v18, v11, v12 : i32;
+    v20 = add.wrapping v1, v19 : i32;
+    v21 = cast v20 : u32;
+    v22 = inttoptr v21 : *mut i32;
+    v23 = load v22 : i32;
+    v24 = neq v23, 0 : i1;
+    condbr v24, block3, block6;
+
+block6:
+    v25 = const.i32 0 : i32;
+    br block2(v25);
+
+block7(v40: i32, v41: i32):
+    v42 = const.i32 20 : i32;
+    v43 = add.wrapping v41, v42 : i32;
+    v44 = const.i32 16 : i32;
+    v45 = add.wrapping v41, v44 : i32;
+    v46 = cast v43 : u32;
+    v47 = inttoptr v46 : *mut i32;
+    v48 = load v47 : i32;
+    v49 = neq v48, 0 : i1;
+    v50 = select v49, v43, v45 : i32;
+    v51 = const.i32 20 : i32;
+    v52 = const.i32 16 : i32;
+    v53 = neq v48, 0 : i1;
+    v54 = select v53, v51, v52 : i32;
+    v55 = add.wrapping v41, v54 : i32;
+    v56 = cast v55 : u32;
+    v57 = inttoptr v56 : *mut i32;
+    v58 = load v57 : i32;
+    v59 = neq v58, 0 : i1;
+    condbr v59, block7(v50, v58), block9;
+
+block8:
+    v60 = const.i32 0 : i32;
+    v61 = cast v40 : u32;
+    v62 = inttoptr v61 : *mut i32;
+    store v62, v60;
+    br block2(v41);
+
+block9:
+    br block8;
+
+block10:
+    br block1;
+
+block11:
+    v72 = cast v1 : u32;
+    v73 = add v72, 28 : u32;
+    v74 = inttoptr v73 : *mut i32;
+    v75 = load v74 : i32;
+    v76 = const.i32 2 : i32;
+    v77 = shl v75, v76 : i32;
+    v78 = add.wrapping v0, v77 : i32;
+    v79 = cast v78 : u32;
+    v80 = inttoptr v79 : *mut i32;
+    v81 = load v80 : i32;
+    v82 = eq v81, v70 : i1;
+    v83 = cast v82 : i32;
+    v84 = neq v83, 0 : i1;
+    condbr v84, block13, block14;
+
+block12:
+    v115 = cast v96 : u32;
+    v116 = add v115, 24 : u32;
+    v117 = inttoptr v116 : *mut i32;
+    store v117, v63;
+    v119 = cast v70 : u32;
+    v120 = add v119, 16 : u32;
+    v121 = inttoptr v120 : *mut i32;
+    v122 = load v121 : i32;
+    v123 = eq v122, 0 : i1;
+    v124 = cast v123 : i32;
+    v125 = neq v124, 0 : i1;
+    condbr v125, block17, block18;
+
+block13:
+    v100 = cast v78 : u32;
+    v101 = inttoptr v100 : *mut i32;
+    store v101, v96;
+    v102 = neq v96, 0 : i1;
+    condbr v102, block12, block16;
+
+block14:
+    v85 = const.i32 16 : i32;
+    v86 = const.i32 20 : i32;
+    v87 = cast v63 : u32;
+    v88 = add v87, 16 : u32;
+    v89 = inttoptr v88 : *mut i32;
+    v90 = load v89 : i32;
+    v91 = eq v90, v70 : i1;
+    v92 = cast v91 : i32;
+    v93 = neq v92, 0 : i1;
+    v94 = select v93, v85, v86 : i32;
+    v95 = add.wrapping v63, v94 : i32;
+    v97 = cast v95 : u32;
+    v98 = inttoptr v97 : *mut i32;
+    store v98, v96;
+    v99 = neq v96, 0 : i1;
+    condbr v99, block12, block15;
+
+block15:
+    br block10;
+
+block16:
+    v103 = cast v68 : u32;
+    v104 = add v103, 412 : u32;
+    v105 = inttoptr v104 : *mut i32;
+    v106 = load v105 : i32;
+    v107 = const.i32 -2 : i32;
+    v108 = rotl v107, v75 : i32;
+    v109 = band v106, v108 : i32;
+    v110 = cast v68 : u32;
+    v111 = add v110, 412 : u32;
+    v112 = inttoptr v111 : *mut i32;
+    store v112, v109;
+    ret;
+
+block17:
+    v133 = const.i32 20 : i32;
+    v134 = add.wrapping v118, v133 : i32;
+    v135 = cast v134 : u32;
+    v136 = inttoptr v135 : *mut i32;
+    v137 = load v136 : i32;
+    v138 = eq v137, 0 : i1;
+    v139 = cast v138 : i32;
+    v140 = neq v139, 0 : i1;
+    condbr v140, block10, block19;
+
+block18:
+    v126 = cast v113 : u32;
+    v127 = add v126, 16 : u32;
+    v128 = inttoptr v127 : *mut i32;
+    store v128, v122;
+    v129 = cast v122 : u32;
+    v130 = add v129, 24 : u32;
+    v131 = inttoptr v130 : *mut i32;
+    store v131, v113;
+    br block17;
+
+block19:
+    v142 = const.i32 20 : i32;
+    v143 = add.wrapping v113, v142 : i32;
+    v144 = cast v143 : u32;
+    v145 = inttoptr v144 : *mut i32;
+    store v145, v137;
+    v146 = cast v137 : u32;
+    v147 = add v146, 24 : u32;
+    v148 = inttoptr v147 : *mut i32;
+    store v148, v141;
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32):
+    v3 = const.i32 0 : i32;
+    v4 = const.i32 0 : i32;
+    v5 = const.i32 256 : i32;
+    v6 = cast v2 : u32;
+    v7 = cast v5 : u32;
+    v8 = lt v6, v7 : i1;
+    v9 = cast v8 : i32;
+    v10 = neq v9, 0 : i1;
+    condbr v10, block2(v4), block3;
+
+block1:
+    ret;
+
+block2(v42: i32):
+    v38 = const.i64 0 : i64;
+    v39 = cast v1 : u32;
+    v40 = add v39, 16 : u32;
+    v41 = inttoptr v40 : *mut i64;
+    store v41, v38;
+    v43 = cast v37 : u32;
+    v44 = add v43, 28 : u32;
+    v45 = inttoptr v44 : *mut i32;
+    store v45, v42;
+    v47 = const.i32 2 : i32;
+    v48 = shl v42, v47 : i32;
+    v49 = add.wrapping v0, v48 : i32;
+    v50 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v37) : i32;
+    v51 = cast v46 : u32;
+    v52 = add v51, 412 : u32;
+    v53 = inttoptr v52 : *mut i32;
+    v54 = load v53 : i32;
+    v55 = const.i32 1 : i32;
+    v56 = shl v55, v42 : i32;
+    v57 = band v54, v56 : i32;
+    v58 = eq v57, 0 : i1;
+    v59 = cast v58 : i32;
+    v60 = neq v59, 0 : i1;
+    condbr v60, block6, block7;
+
+block3:
+    v11 = const.i32 31 : i32;
+    v12 = const.i32 16777215 : i32;
+    v13 = cast v2 : u32;
+    v14 = cast v12 : u32;
+    v15 = gt v13, v14 : i1;
+    v16 = cast v15 : i32;
+    v17 = neq v16, 0 : i1;
+    condbr v17, block2(v11), block4;
+
+block4:
+    v18 = const.i32 6 : i32;
+    v19 = const.i32 8 : i32;
+    v20 = cast v2 : u32;
+    v21 = cast v19 : u32;
+    v22 = shr v20, v21 : u32;
+    v23 = cast v22 : i32;
+    v24 = popcnt v23 : i32;
+    v25 = sub.wrapping v18, v24 : i32;
+    v26 = cast v2 : u32;
+    v27 = cast v25 : u32;
+    v28 = shr v26, v27 : u32;
+    v29 = cast v28 : i32;
+    v30 = const.i32 1 : i32;
+    v31 = band v29, v30 : i32;
+    v32 = const.i32 1 : i32;
+    v33 = shl v24, v32 : i32;
+    v34 = sub.wrapping v31, v33 : i32;
+    v35 = const.i32 62 : i32;
+    v36 = add.wrapping v34, v35 : i32;
+    br block2(v36);
+
+block5(v128: i32):
+    v129 = cast v128 : u32;
+    v130 = add v129, 8 : u32;
+    v131 = inttoptr v130 : *mut i32;
+    store v131, v128;
+    v132 = cast v128 : u32;
+    v133 = add v132, 12 : u32;
+    v134 = inttoptr v133 : *mut i32;
+    store v134, v128;
+    br block1;
+
+block6:
+    v119 = bor v54, v56 : i32;
+    v120 = cast v46 : u32;
+    v121 = add v120, 412 : u32;
+    v122 = inttoptr v121 : *mut i32;
+    store v122, v119;
+    v123 = cast v37 : u32;
+    v124 = add v123, 24 : u32;
+    v125 = inttoptr v124 : *mut i32;
+    store v125, v49;
+    v126 = cast v49 : u32;
+    v127 = inttoptr v126 : *mut i32;
+    store v127, v37;
+    br block5(v50);
+
+block7:
+    v61 = cast v49 : u32;
+    v62 = inttoptr v61 : *mut i32;
+    v63 = load v62 : i32;
+    v65 = call noname::dlmalloc::dlmalloc::leftshift_for_tree_index(v42) : i32;
+    v66 = shl v2, v65 : i32;
+    br block8(v63, v66);
+
+block8(v67: i32, v97: i32):
+    v68 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v67) : i32;
+    v69 = call noname::dlmalloc::dlmalloc::Chunk::size(v68) : i32;
+    v71 = neq v69, v70 : i1;
+    v72 = cast v71 : i32;
+    v73 = neq v72, 0 : i1;
+    condbr v73, block10, block11;
+
+block9:
+    v114 = cast v109 : u32;
+    v115 = inttoptr v114 : *mut i32;
+    store v115, v92;
+    v116 = cast v92 : u32;
+    v117 = add v116, 24 : u32;
+    v118 = inttoptr v117 : *mut i32;
+    store v118, v67;
+    br block5(v79);
+
+block10:
+    v98 = const.i32 29 : i32;
+    v99 = cast v97 : u32;
+    v100 = cast v98 : u32;
+    v101 = shr v99, v100 : u32;
+    v102 = cast v101 : i32;
+    v103 = const.i32 1 : i32;
+    v104 = shl v97, v103 : i32;
+    v105 = const.i32 4 : i32;
+    v106 = band v102, v105 : i32;
+    v107 = add.wrapping v67, v106 : i32;
+    v108 = const.i32 16 : i32;
+    v109 = add.wrapping v107, v108 : i32;
+    v110 = cast v109 : u32;
+    v111 = inttoptr v110 : *mut i32;
+    v112 = load v111 : i32;
+    v113 = neq v112, 0 : i1;
+    condbr v113, block8(v112, v104), block12;
+
+block11:
+    v74 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v67) : i32;
+    v75 = cast v74 : u32;
+    v76 = add v75, 8 : u32;
+    v77 = inttoptr v76 : *mut i32;
+    v78 = load v77 : i32;
+    v80 = cast v78 : u32;
+    v81 = add v80, 12 : u32;
+    v82 = inttoptr v81 : *mut i32;
+    store v82, v79;
+    v83 = cast v74 : u32;
+    v84 = add v83, 8 : u32;
+    v85 = inttoptr v84 : *mut i32;
+    store v85, v79;
+    v86 = cast v79 : u32;
+    v87 = add v86, 12 : u32;
+    v88 = inttoptr v87 : *mut i32;
+    store v88, v74;
+    v89 = cast v79 : u32;
+    v90 = add v89, 8 : u32;
+    v91 = inttoptr v90 : *mut i32;
+    store v91, v78;
+    v93 = const.i32 0 : i32;
+    v94 = cast v92 : u32;
+    v95 = add v94, 24 : u32;
+    v96 = inttoptr v95 : *mut i32;
+    store v96, v93;
+    ret;
+
+block12:
+    br block9;
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 0 : i32;
+    v3 = const.i32 136 : i32;
+    v4 = add.wrapping v0, v3 : i32;
+    v5 = cast v4 : u32;
+    v6 = inttoptr v5 : *mut i32;
+    v7 = load v6 : i32;
+    v8 = neq v7, 0 : i1;
+    condbr v8, block3, block4;
+
+block1(v1: i32):
+    ret v1;
+
+block2(v126: i32, v127: i32, v139: i32):
+    v128 = const.i32 4095 : i32;
+    v129 = const.i32 4095 : i32;
+    v130 = cast v127 : u32;
+    v131 = cast v129 : u32;
+    v132 = gt v130, v131 : i1;
+    v133 = cast v132 : i32;
+    v134 = neq v133, 0 : i1;
+    v135 = select v134, v127, v128 : i32;
+    v136 = cast v126 : u32;
+    v137 = add v136, 448 : u32;
+    v138 = inttoptr v137 : *mut i32;
+    store v138, v135;
+    br block1(v139);
+
+block3:
+    v11 = const.i32 128 : i32;
+    v12 = add.wrapping v0, v11 : i32;
+    v13 = const.i32 0 : i32;
+    v14 = const.i32 0 : i32;
+    br block5(v7, v0, v12, v13, v14);
+
+block4:
+    v9 = const.i32 0 : i32;
+    v10 = const.i32 0 : i32;
+    br block2(v0, v9, v10);
+
+block5(v15: i32, v27: i32, v102: i32, v108: i32, v114: i32):
+    v16 = cast v15 : u32;
+    v17 = add v16, 8 : u32;
+    v18 = inttoptr v17 : *mut i32;
+    v19 = load v18 : i32;
+    v20 = cast v15 : u32;
+    v21 = add v20, 4 : u32;
+    v22 = inttoptr v21 : *mut i32;
+    v23 = load v22 : i32;
+    v24 = cast v15 : u32;
+    v25 = inttoptr v24 : *mut i32;
+    v26 = load v25 : i32;
+    v28 = cast v15 : u32;
+    v29 = add v28, 12 : u32;
+    v30 = inttoptr v29 : *mut i32;
+    v31 = load v30 : i32;
+    v32 = const.i32 1 : i32;
+    v33 = cast v31 : u32;
+    v34 = cast v32 : u32;
+    v35 = shr v33, v34 : u32;
+    v36 = cast v35 : i32;
+    v37 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part(v27, v36) : i32;
+    v38 = eq v37, 0 : i1;
+    v39 = cast v38 : i32;
+    v40 = neq v39, 0 : i1;
+    condbr v40, block8(v114, v19, v27, v108), block9;
+
+block6:
+    br block2(v121, v117, v124);
+
+block7(v112: i32, v118: i32, v121: i32, v123: i32, v124: i32):
+    v116 = const.i32 1 : i32;
+    v117 = add.wrapping v112, v116 : i32;
+    v120 = neq v118, 0 : i1;
+    condbr v120, block5(v118, v121, v123, v124, v117), block18;
+
+block8(v115: i32, v119: i32, v122: i32, v125: i32):
+    br block7(v115, v119, v122, v15, v125);
+
+block9:
+    v41 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v15) : i32;
+    v42 = neq v41, 0 : i1;
+    condbr v42, block8(v114, v19, v27, v108), block10;
+
+block10:
+    v43 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v26) : i32;
+    v44 = const.i32 8 : i32;
+    v45 = call noname::dlmalloc::dlmalloc::align_up(v43, v44) : i32;
+    v46 = sub.wrapping v45, v43 : i32;
+    v47 = add.wrapping v26, v46 : i32;
+    v48 = call noname::dlmalloc::dlmalloc::Chunk::size(v47) : i32;
+    v49 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v50 = const.i32 8 : i32;
+    v51 = call noname::dlmalloc::dlmalloc::align_up(v49, v50) : i32;
+    v52 = const.i32 20 : i32;
+    v53 = const.i32 8 : i32;
+    v54 = call noname::dlmalloc::dlmalloc::align_up(v52, v53) : i32;
+    v55 = const.i32 16 : i32;
+    v56 = const.i32 8 : i32;
+    v57 = call noname::dlmalloc::dlmalloc::align_up(v55, v56) : i32;
+    v58 = call noname::dlmalloc::dlmalloc::Chunk::inuse(v47) : i32;
+    v59 = neq v58, 0 : i1;
+    condbr v59, block8(v114, v19, v27, v108), block11;
+
+block11:
+    v60 = add.wrapping v47, v48 : i32;
+    v61 = add.wrapping v49, v23 : i32;
+    v62 = add.wrapping v51, v54 : i32;
+    v63 = add.wrapping v62, v57 : i32;
+    v64 = sub.wrapping v61, v63 : i32;
+    v65 = add.wrapping v26, v64 : i32;
+    v66 = cast v60 : u32;
+    v67 = cast v65 : u32;
+    v68 = lt v66, v67 : i1;
+    v69 = cast v68 : i32;
+    v70 = neq v69, 0 : i1;
+    condbr v70, block8(v114, v19, v27, v108), block12;
+
+block12:
+    v71 = cast v27 : u32;
+    v72 = add v71, 424 : u32;
+    v73 = inttoptr v72 : *mut i32;
+    v74 = load v73 : i32;
+    v75 = eq v47, v74 : i1;
+    v76 = cast v75 : i32;
+    v77 = neq v76, 0 : i1;
+    condbr v77, block14, block15;
+
+block13:
+    v89 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free(v27, v26, v23) : i32;
+    v90 = neq v89, 0 : i1;
+    condbr v90, block16, block17;
+
+block14:
+    v78 = const.i32 0 : i32;
+    v79 = cast v27 : u32;
+    v80 = add v79, 416 : u32;
+    v81 = inttoptr v80 : *mut i32;
+    store v81, v78;
+    v82 = const.i32 0 : i32;
+    v83 = cast v27 : u32;
+    v84 = add v83, 424 : u32;
+    v85 = inttoptr v84 : *mut i32;
+    store v85, v82;
+    br block13;
+
+block15:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v27, v47);
+    br block13;
+
+block16:
+    v93 = cast v86 : u32;
+    v94 = add v93, 432 : u32;
+    v95 = inttoptr v94 : *mut i32;
+    v96 = load v95 : i32;
+    v97 = sub.wrapping v96, v88 : i32;
+    v98 = cast v86 : u32;
+    v99 = add v98, 432 : u32;
+    v100 = inttoptr v99 : *mut i32;
+    store v100, v97;
+    v104 = cast v102 : u32;
+    v105 = add v104, 8 : u32;
+    v106 = inttoptr v105 : *mut i32;
+    store v106, v19;
+    v109 = add.wrapping v88, v108 : i32;
+    br block7(v114, v103, v86, v101, v109);
+
+block17:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v86, v47, v48);
+    br block8(v113, v103, v86, v107);
+
+block18:
+    br block6;
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::free(i32, i32) {
+block0(v0: i32, v1: i32):
+    v2 = const.i32 0 : i32;
+    v3 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v1) : i32;
+    v4 = call noname::dlmalloc::dlmalloc::Chunk::size(v3) : i32;
+    v5 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v3, v4) : i32;
+    v6 = call noname::dlmalloc::dlmalloc::Chunk::pinuse(v3) : i32;
+    v7 = neq v6, 0 : i1;
+    condbr v7, block3(v3, v4), block4;
+
+block1:
+    ret;
+
+block2:
+    br block1;
+
+block3(v94: i32, v95: i32):
+    v90 = call noname::dlmalloc::dlmalloc::Chunk::cinuse(v5) : i32;
+    v91 = eq v90, 0 : i1;
+    v92 = cast v91 : i32;
+    v93 = neq v92, 0 : i1;
+    condbr v93, block16, block17;
+
+block4:
+    v8 = cast v3 : u32;
+    v9 = inttoptr v8 : *mut i32;
+    v10 = load v9 : i32;
+    v11 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v3) : i32;
+    v12 = neq v11, 0 : i1;
+    condbr v12, block5, block6;
+
+block5:
+    v73 = sub.wrapping v3, v10 : i32;
+    v74 = add.wrapping v4, v10 : i32;
+    v75 = const.i32 16 : i32;
+    v76 = add.wrapping v74, v75 : i32;
+    v77 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free(v0, v73, v76) : i32;
+    v78 = eq v77, 0 : i1;
+    v79 = cast v78 : i32;
+    v80 = neq v79, 0 : i1;
+    condbr v80, block2, block14;
+
+block6:
+    v13 = add.wrapping v10, v4 : i32;
+    v14 = call noname::dlmalloc::dlmalloc::Chunk::minus_offset(v3, v10) : i32;
+    v15 = cast v0 : u32;
+    v16 = add v15, 424 : u32;
+    v17 = inttoptr v16 : *mut i32;
+    v18 = load v17 : i32;
+    v19 = neq v14, v18 : i1;
+    v20 = cast v19 : i32;
+    v21 = neq v20, 0 : i1;
+    condbr v21, block7, block8;
+
+block7:
+    v35 = const.i32 256 : i32;
+    v36 = cast v10 : u32;
+    v37 = cast v35 : u32;
+    v38 = lt v36, v37 : i1;
+    v39 = cast v38 : i32;
+    v40 = neq v39, 0 : i1;
+    condbr v40, block10, block11;
+
+block8:
+    v22 = cast v5 : u32;
+    v23 = add v22, 4 : u32;
+    v24 = inttoptr v23 : *mut i32;
+    v25 = load v24 : i32;
+    v26 = const.i32 3 : i32;
+    v27 = band v25, v26 : i32;
+    v28 = const.i32 3 : i32;
+    v29 = neq v27, v28 : i1;
+    v30 = cast v29 : i32;
+    v31 = neq v30, 0 : i1;
+    condbr v31, block3(v14, v13), block9;
+
+block9:
+    v32 = cast v0 : u32;
+    v33 = add v32, 416 : u32;
+    v34 = inttoptr v33 : *mut i32;
+    store v34, v13;
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v14, v13, v5);
+    ret;
+
+block10:
+    v41 = cast v14 : u32;
+    v42 = add v41, 12 : u32;
+    v43 = inttoptr v42 : *mut i32;
+    v44 = load v43 : i32;
+    v45 = cast v14 : u32;
+    v46 = add v45, 8 : u32;
+    v47 = inttoptr v46 : *mut i32;
+    v48 = load v47 : i32;
+    v49 = eq v44, v48 : i1;
+    v50 = cast v49 : i32;
+    v51 = neq v50, 0 : i1;
+    condbr v51, block12, block13;
+
+block11:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v0, v14);
+    br block3(v14, v13);
+
+block12:
+    v58 = cast v0 : u32;
+    v59 = add v58, 408 : u32;
+    v60 = inttoptr v59 : *mut i32;
+    v61 = load v60 : i32;
+    v62 = const.i32 -2 : i32;
+    v63 = const.i32 3 : i32;
+    v64 = cast v10 : u32;
+    v65 = cast v63 : u32;
+    v66 = shr v64, v65 : u32;
+    v67 = cast v66 : i32;
+    v68 = rotl v62, v67 : i32;
+    v69 = band v61, v68 : i32;
+    v70 = cast v0 : u32;
+    v71 = add v70, 408 : u32;
+    v72 = inttoptr v71 : *mut i32;
+    store v72, v69;
+    br block3(v14, v13);
+
+block13:
+    v52 = cast v48 : u32;
+    v53 = add v52, 12 : u32;
+    v54 = inttoptr v53 : *mut i32;
+    store v54, v44;
+    v55 = cast v44 : u32;
+    v56 = add v55, 8 : u32;
+    v57 = inttoptr v56 : *mut i32;
+    store v57, v48;
+    br block3(v14, v13);
+
+block14:
+    v81 = cast v0 : u32;
+    v82 = add v81, 432 : u32;
+    v83 = inttoptr v82 : *mut i32;
+    v84 = load v83 : i32;
+    v85 = sub.wrapping v84, v76 : i32;
+    v86 = cast v0 : u32;
+    v87 = add v86, 432 : u32;
+    v88 = inttoptr v87 : *mut i32;
+    store v88, v85;
+    ret;
+
+block15(v474: i32, v481: i32, v482: i32):
+    v475 = const.i32 256 : i32;
+    v476 = cast v474 : u32;
+    v477 = cast v475 : u32;
+    v478 = lt v476, v477 : i1;
+    v479 = cast v478 : i32;
+    v480 = neq v479, 0 : i1;
+    condbr v480, block55, block56;
+
+block16:
+    v97 = cast v0 : u32;
+    v98 = add v97, 428 : u32;
+    v99 = inttoptr v98 : *mut i32;
+    v100 = load v99 : i32;
+    v101 = eq v89, v100 : i1;
+    v102 = cast v101 : i32;
+    v103 = neq v102, 0 : i1;
+    condbr v103, block21, block22;
+
+block17:
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v94, v95, v89);
+    br block15(v95, v96, v94);
+
+block18:
+    v208 = cast v96 : u32;
+    v209 = add v208, 440 : u32;
+    v210 = inttoptr v209 : *mut i32;
+    v211 = load v210 : i32;
+    v212 = cast v171 : u32;
+    v213 = cast v211 : u32;
+    v214 = lte v212, v213 : i1;
+    v215 = cast v214 : i32;
+    v216 = neq v215, 0 : i1;
+    condbr v216, block2, block31;
+
+block19:
+    v198 = const.i32 0 : i32;
+    v199 = cast v96 : u32;
+    v200 = add v199, 416 : u32;
+    v201 = inttoptr v200 : *mut i32;
+    store v201, v198;
+    v202 = const.i32 0 : i32;
+    v203 = cast v96 : u32;
+    v204 = add v203, 424 : u32;
+    v205 = inttoptr v204 : *mut i32;
+    store v205, v202;
+    br block18;
+
+block20:
+    v187 = cast v96 : u32;
+    v188 = add v187, 424 : u32;
+    v189 = inttoptr v188 : *mut i32;
+    store v189, v94;
+    v190 = cast v96 : u32;
+    v191 = add v190, 416 : u32;
+    v192 = inttoptr v191 : *mut i32;
+    v193 = load v192 : i32;
+    v194 = add.wrapping v193, v95 : i32;
+    v195 = cast v96 : u32;
+    v196 = add v195, 416 : u32;
+    v197 = inttoptr v196 : *mut i32;
+    store v197, v194;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v94, v194);
+    ret;
+
+block21:
+    v164 = cast v96 : u32;
+    v165 = add v164, 428 : u32;
+    v166 = inttoptr v165 : *mut i32;
+    store v166, v94;
+    v167 = cast v96 : u32;
+    v168 = add v167, 420 : u32;
+    v169 = inttoptr v168 : *mut i32;
+    v170 = load v169 : i32;
+    v171 = add.wrapping v170, v95 : i32;
+    v172 = cast v96 : u32;
+    v173 = add v172, 420 : u32;
+    v174 = inttoptr v173 : *mut i32;
+    store v174, v171;
+    v175 = const.i32 1 : i32;
+    v176 = bor v171, v175 : i32;
+    v177 = cast v94 : u32;
+    v178 = add v177, 4 : u32;
+    v179 = inttoptr v178 : *mut i32;
+    store v179, v176;
+    v180 = cast v96 : u32;
+    v181 = add v180, 424 : u32;
+    v182 = inttoptr v181 : *mut i32;
+    v183 = load v182 : i32;
+    v184 = eq v94, v183 : i1;
+    v185 = cast v184 : i32;
+    v186 = neq v185, 0 : i1;
+    condbr v186, block19, block30;
+
+block22:
+    v104 = cast v96 : u32;
+    v105 = add v104, 424 : u32;
+    v106 = inttoptr v105 : *mut i32;
+    v107 = load v106 : i32;
+    v108 = eq v89, v107 : i1;
+    v109 = cast v108 : i32;
+    v110 = neq v109, 0 : i1;
+    condbr v110, block20, block23;
+
+block23:
+    v111 = call noname::dlmalloc::dlmalloc::Chunk::size(v89) : i32;
+    v112 = add.wrapping v111, v95 : i32;
+    v113 = const.i32 256 : i32;
+    v114 = cast v111 : u32;
+    v115 = cast v113 : u32;
+    v116 = lt v114, v115 : i1;
+    v117 = cast v116 : i32;
+    v118 = neq v117, 0 : i1;
+    condbr v118, block25, block26;
+
+block24:
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v94, v112);
+    v154 = cast v96 : u32;
+    v155 = add v154, 424 : u32;
+    v156 = inttoptr v155 : *mut i32;
+    v157 = load v156 : i32;
+    v158 = neq v151, v157 : i1;
+    v159 = cast v158 : i32;
+    v160 = neq v159, 0 : i1;
+    condbr v160, block15(v152, v153, v151), block29;
+
+block25:
+    v119 = cast v89 : u32;
+    v120 = add v119, 12 : u32;
+    v121 = inttoptr v120 : *mut i32;
+    v122 = load v121 : i32;
+    v123 = cast v89 : u32;
+    v124 = add v123, 8 : u32;
+    v125 = inttoptr v124 : *mut i32;
+    v126 = load v125 : i32;
+    v127 = eq v122, v126 : i1;
+    v128 = cast v127 : i32;
+    v129 = neq v128, 0 : i1;
+    condbr v129, block27, block28;
+
+block26:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v96, v89);
+    br block24;
+
+block27:
+    v136 = cast v96 : u32;
+    v137 = add v136, 408 : u32;
+    v138 = inttoptr v137 : *mut i32;
+    v139 = load v138 : i32;
+    v140 = const.i32 -2 : i32;
+    v141 = const.i32 3 : i32;
+    v142 = cast v111 : u32;
+    v143 = cast v141 : u32;
+    v144 = shr v142, v143 : u32;
+    v145 = cast v144 : i32;
+    v146 = rotl v140, v145 : i32;
+    v147 = band v139, v146 : i32;
+    v148 = cast v96 : u32;
+    v149 = add v148, 408 : u32;
+    v150 = inttoptr v149 : *mut i32;
+    store v150, v147;
+    br block24;
+
+block28:
+    v130 = cast v126 : u32;
+    v131 = add v130, 12 : u32;
+    v132 = inttoptr v131 : *mut i32;
+    store v132, v122;
+    v133 = cast v122 : u32;
+    v134 = add v133, 8 : u32;
+    v135 = inttoptr v134 : *mut i32;
+    store v135, v126;
+    br block24;
+
+block29:
+    v161 = cast v153 : u32;
+    v162 = add v161, 416 : u32;
+    v163 = inttoptr v162 : *mut i32;
+    store v163, v152;
+    ret;
+
+block30:
+    br block18;
+
+block31:
+    v217 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v218 = const.i32 8 : i32;
+    v219 = call noname::dlmalloc::dlmalloc::align_up(v217, v218) : i32;
+    v220 = const.i32 20 : i32;
+    v221 = const.i32 8 : i32;
+    v222 = call noname::dlmalloc::dlmalloc::align_up(v220, v221) : i32;
+    v223 = const.i32 16 : i32;
+    v224 = const.i32 8 : i32;
+    v225 = call noname::dlmalloc::dlmalloc::align_up(v223, v224) : i32;
+    v226 = const.i32 0 : i32;
+    v227 = const.i32 16 : i32;
+    v228 = const.i32 8 : i32;
+    v229 = call noname::dlmalloc::dlmalloc::align_up(v227, v228) : i32;
+    v230 = const.i32 2 : i32;
+    v231 = shl v229, v230 : i32;
+    v232 = sub.wrapping v226, v231 : i32;
+    v233 = add.wrapping v219, v222 : i32;
+    v234 = add.wrapping v225, v233 : i32;
+    v235 = sub.wrapping v217, v234 : i32;
+    v236 = const.i32 -65544 : i32;
+    v237 = add.wrapping v235, v236 : i32;
+    v238 = const.i32 -9 : i32;
+    v239 = band v237, v238 : i32;
+    v240 = const.i32 -3 : i32;
+    v241 = add.wrapping v239, v240 : i32;
+    v242 = cast v232 : u32;
+    v243 = cast v241 : u32;
+    v244 = lt v242, v243 : i1;
+    v245 = cast v244 : i32;
+    v246 = neq v245, 0 : i1;
+    v247 = select v246, v232, v241 : i32;
+    v248 = eq v247, 0 : i1;
+    v249 = cast v248 : i32;
+    v250 = neq v249, 0 : i1;
+    condbr v250, block2, block32;
+
+block32:
+    v251 = cast v207 : u32;
+    v252 = add v251, 428 : u32;
+    v253 = inttoptr v252 : *mut i32;
+    v254 = load v253 : i32;
+    v255 = eq v254, 0 : i1;
+    v256 = cast v255 : i32;
+    v257 = neq v256, 0 : i1;
+    condbr v257, block2, block33;
+
+block33:
+    v258 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v259 = const.i32 8 : i32;
+    v260 = call noname::dlmalloc::dlmalloc::align_up(v258, v259) : i32;
+    v261 = const.i32 20 : i32;
+    v262 = const.i32 8 : i32;
+    v263 = call noname::dlmalloc::dlmalloc::align_up(v261, v262) : i32;
+    v264 = const.i32 16 : i32;
+    v265 = const.i32 8 : i32;
+    v266 = call noname::dlmalloc::dlmalloc::align_up(v264, v265) : i32;
+    v267 = const.i32 0 : i32;
+    v268 = cast v207 : u32;
+    v269 = add v268, 420 : u32;
+    v270 = inttoptr v269 : *mut i32;
+    v271 = load v270 : i32;
+    v272 = sub.wrapping v260, v258 : i32;
+    v273 = add.wrapping v263, v272 : i32;
+    v274 = add.wrapping v266, v273 : i32;
+    v275 = cast v271 : u32;
+    v276 = cast v274 : u32;
+    v277 = lte v275, v276 : i1;
+    v278 = cast v277 : i32;
+    v279 = neq v278, 0 : i1;
+    condbr v279, block34(v207, v267), block35;
+
+block34(v449: i32, v452: i32):
+    v450 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments(v449) : i32;
+    v451 = const.i32 0 : i32;
+    v453 = sub.wrapping v451, v452 : i32;
+    v454 = neq v450, v453 : i1;
+    v455 = cast v454 : i32;
+    v456 = neq v455, 0 : i1;
+    condbr v456, block2, block53;
+
+block35:
+    v280 = sub.wrapping v271, v274 : i32;
+    v281 = const.i32 65535 : i32;
+    v282 = add.wrapping v280, v281 : i32;
+    v283 = const.i32 -65536 : i32;
+    v284 = band v282, v283 : i32;
+    v285 = const.i32 -65536 : i32;
+    v286 = add.wrapping v284, v285 : i32;
+    v287 = const.i32 128 : i32;
+    v288 = add.wrapping v207, v287 : i32;
+    br block37(v288);
+
+block36(v314: i32, v318: i32, v339: i32, v359: i32, v414: i32):
+    v313 = const.i32 0 : i32;
+    v315 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v314) : i32;
+    v316 = neq v315, 0 : i1;
+    condbr v316, block34(v318, v313), block43;
+
+block37(v289: i32):
+    v290 = cast v289 : u32;
+    v291 = inttoptr v290 : *mut i32;
+    v292 = load v291 : i32;
+    v294 = cast v292 : u32;
+    v295 = cast v293 : u32;
+    v296 = gt v294, v295 : i1;
+    v297 = cast v296 : i32;
+    v298 = neq v297, 0 : i1;
+    condbr v298, block39, block40;
+
+block38:
+    v312 = const.i32 0 : i32;
+    br block36(v312, v320, v341, v361, v416);
+
+block39:
+    v306 = cast v289 : u32;
+    v307 = add v306, 8 : u32;
+    v308 = inttoptr v307 : *mut i32;
+    v309 = load v308 : i32;
+    v310 = neq v309, 0 : i1;
+    condbr v310, block37(v309), block42;
+
+block40:
+    v299 = call noname::dlmalloc::dlmalloc::Segment::top(v289) : i32;
+    v300 = cast v299 : u32;
+    v301 = cast v293 : u32;
+    v302 = gt v300, v301 : i1;
+    v303 = cast v302 : i32;
+    v304 = neq v303, 0 : i1;
+    condbr v304, block36(v289, v207, v286, v288, v284), block41;
+
+block41:
+    br block39;
+
+block42:
+    br block38;
+
+block43:
+    v317 = const.i32 0 : i32;
+    v321 = cast v314 : u32;
+    v322 = add v321, 12 : u32;
+    v323 = inttoptr v322 : *mut i32;
+    v324 = load v323 : i32;
+    v325 = const.i32 1 : i32;
+    v326 = cast v324 : u32;
+    v327 = cast v325 : u32;
+    v328 = shr v326, v327 : u32;
+    v329 = cast v328 : i32;
+    v330 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part(v318, v329) : i32;
+    v331 = eq v330, 0 : i1;
+    v332 = cast v331 : i32;
+    v333 = neq v332, 0 : i1;
+    condbr v333, block34(v318, v317), block44;
+
+block44:
+    v334 = const.i32 0 : i32;
+    v335 = cast v314 : u32;
+    v336 = add v335, 4 : u32;
+    v337 = inttoptr v336 : *mut i32;
+    v338 = load v337 : i32;
+    v342 = cast v338 : u32;
+    v343 = cast v339 : u32;
+    v344 = lt v342, v343 : i1;
+    v345 = cast v344 : i32;
+    v346 = neq v345, 0 : i1;
+    condbr v346, block34(v318, v334), block45;
+
+block45:
+    br block46(v359);
+
+block46(v348: i32):
+    v349 = call noname::dlmalloc::dlmalloc::Segment::holds(v347, v348) : i32;
+    v350 = eq v349, 0 : i1;
+    v351 = cast v350 : i32;
+    v352 = neq v351, 0 : i1;
+    condbr v352, block48, block49;
+
+block47:
+    v363 = cast v347 : u32;
+    v364 = inttoptr v363 : *mut i32;
+    v365 = load v364 : i32;
+    v366 = cast v347 : u32;
+    v367 = add v366, 4 : u32;
+    v368 = inttoptr v367 : *mut i32;
+    v369 = load v368 : i32;
+    v371 = sub.wrapping v369, v339 : i32;
+    v372 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::free_part(v318, v365, v369, v371) : i32;
+    v373 = const.i32 0 : i32;
+    v374 = eq v370, 0 : i1;
+    v375 = cast v374 : i32;
+    v376 = neq v375, 0 : i1;
+    condbr v376, block34(v362, v373), block51;
+
+block48:
+    v354 = cast v348 : u32;
+    v355 = add v354, 8 : u32;
+    v356 = inttoptr v355 : *mut i32;
+    v357 = load v356 : i32;
+    v358 = neq v357, 0 : i1;
+    condbr v358, block46(v357), block50;
+
+block49:
+    v353 = const.i32 0 : i32;
+    br block34(v362, v353);
+
+block50:
+    br block47;
+
+block51:
+    v377 = const.i32 0 : i32;
+    v378 = eq v372, 0 : i1;
+    v379 = cast v378 : i32;
+    v380 = neq v379, 0 : i1;
+    condbr v380, block34(v362, v377), block52;
+
+block52:
+    v381 = cast v347 : u32;
+    v382 = add v381, 4 : u32;
+    v383 = inttoptr v382 : *mut i32;
+    v384 = load v383 : i32;
+    v385 = sub.wrapping v384, v370 : i32;
+    v386 = cast v347 : u32;
+    v387 = add v386, 4 : u32;
+    v388 = inttoptr v387 : *mut i32;
+    store v388, v385;
+    v389 = cast v362 : u32;
+    v390 = add v389, 432 : u32;
+    v391 = inttoptr v390 : *mut i32;
+    v392 = load v391 : i32;
+    v393 = sub.wrapping v392, v370 : i32;
+    v394 = cast v362 : u32;
+    v395 = add v394, 432 : u32;
+    v396 = inttoptr v395 : *mut i32;
+    store v396, v393;
+    v397 = cast v362 : u32;
+    v398 = add v397, 420 : u32;
+    v399 = inttoptr v398 : *mut i32;
+    v400 = load v399 : i32;
+    v401 = cast v362 : u32;
+    v402 = add v401, 428 : u32;
+    v403 = inttoptr v402 : *mut i32;
+    v404 = load v403 : i32;
+    v405 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v404) : i32;
+    v406 = const.i32 8 : i32;
+    v407 = call noname::dlmalloc::dlmalloc::align_up(v405, v406) : i32;
+    v408 = sub.wrapping v407, v405 : i32;
+    v409 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v404, v408) : i32;
+    v410 = cast v362 : u32;
+    v411 = add v410, 428 : u32;
+    v412 = inttoptr v411 : *mut i32;
+    store v412, v409;
+    v417 = add.wrapping v414, v408 : i32;
+    v418 = sub.wrapping v400, v417 : i32;
+    v419 = const.i32 65536 : i32;
+    v420 = add.wrapping v418, v419 : i32;
+    v421 = cast v362 : u32;
+    v422 = add v421, 420 : u32;
+    v423 = inttoptr v422 : *mut i32;
+    store v423, v420;
+    v424 = const.i32 1 : i32;
+    v425 = bor v420, v424 : i32;
+    v426 = cast v409 : u32;
+    v427 = add v426, 4 : u32;
+    v428 = inttoptr v427 : *mut i32;
+    store v428, v425;
+    v429 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v430 = const.i32 8 : i32;
+    v431 = call noname::dlmalloc::dlmalloc::align_up(v429, v430) : i32;
+    v432 = const.i32 20 : i32;
+    v433 = const.i32 8 : i32;
+    v434 = call noname::dlmalloc::dlmalloc::align_up(v432, v433) : i32;
+    v435 = const.i32 16 : i32;
+    v436 = const.i32 8 : i32;
+    v437 = call noname::dlmalloc::dlmalloc::align_up(v435, v436) : i32;
+    v438 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v409, v420) : i32;
+    v439 = const.i32 2097152 : i32;
+    v440 = cast v362 : u32;
+    v441 = add v440, 440 : u32;
+    v442 = inttoptr v441 : *mut i32;
+    store v442, v439;
+    v443 = sub.wrapping v431, v429 : i32;
+    v444 = add.wrapping v434, v443 : i32;
+    v445 = add.wrapping v437, v444 : i32;
+    v446 = cast v438 : u32;
+    v447 = add v446, 4 : u32;
+    v448 = inttoptr v447 : *mut i32;
+    store v448, v445;
+    br block34(v362, v370);
+
+block53:
+    v457 = cast v449 : u32;
+    v458 = add v457, 420 : u32;
+    v459 = inttoptr v458 : *mut i32;
+    v460 = load v459 : i32;
+    v461 = cast v449 : u32;
+    v462 = add v461, 440 : u32;
+    v463 = inttoptr v462 : *mut i32;
+    v464 = load v463 : i32;
+    v465 = cast v460 : u32;
+    v466 = cast v464 : u32;
+    v467 = lte v465, v466 : i1;
+    v468 = cast v467 : i32;
+    v469 = neq v468, 0 : i1;
+    condbr v469, block2, block54;
+
+block54:
+    v470 = const.i32 -1 : i32;
+    v471 = cast v449 : u32;
+    v472 = add v471, 440 : u32;
+    v473 = inttoptr v472 : *mut i32;
+    store v473, v470;
+    ret;
+
+block55:
+    v494 = const.i32 -8 : i32;
+    v495 = band v474, v494 : i32;
+    v496 = add.wrapping v481, v495 : i32;
+    v497 = const.i32 144 : i32;
+    v498 = add.wrapping v496, v497 : i32;
+    v499 = cast v481 : u32;
+    v500 = add v499, 408 : u32;
+    v501 = inttoptr v500 : *mut i32;
+    v502 = load v501 : i32;
+    v503 = const.i32 1 : i32;
+    v504 = const.i32 3 : i32;
+    v505 = cast v474 : u32;
+    v506 = cast v504 : u32;
+    v507 = shr v505, v506 : u32;
+    v508 = cast v507 : i32;
+    v509 = shl v503, v508 : i32;
+    v510 = band v502, v509 : i32;
+    v511 = eq v510, 0 : i1;
+    v512 = cast v511 : i32;
+    v513 = neq v512, 0 : i1;
+    condbr v513, block59, block60;
+
+block56:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v481, v482, v474);
+    v483 = cast v481 : u32;
+    v484 = add v483, 448 : u32;
+    v485 = inttoptr v484 : *mut i32;
+    v486 = load v485 : i32;
+    v487 = const.i32 -1 : i32;
+    v488 = add.wrapping v486, v487 : i32;
+    v489 = cast v481 : u32;
+    v490 = add v489, 448 : u32;
+    v491 = inttoptr v490 : *mut i32;
+    store v491, v488;
+    v492 = neq v488, 0 : i1;
+    condbr v492, block2, block57;
+
+block57:
+    v493 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments(v481) : i32;
+    ret;
+
+block58(v527: i32):
+    v524 = cast v498 : u32;
+    v525 = add v524, 8 : u32;
+    v526 = inttoptr v525 : *mut i32;
+    store v526, v482;
+    v528 = cast v527 : u32;
+    v529 = add v528, 12 : u32;
+    v530 = inttoptr v529 : *mut i32;
+    store v530, v523;
+    v531 = cast v523 : u32;
+    v532 = add v531, 12 : u32;
+    v533 = inttoptr v532 : *mut i32;
+    store v533, v522;
+    v534 = cast v523 : u32;
+    v535 = add v534, 8 : u32;
+    v536 = inttoptr v535 : *mut i32;
+    store v536, v527;
+    br block2;
+
+block59:
+    v518 = bor v502, v509 : i32;
+    v519 = cast v481 : u32;
+    v520 = add v519, 408 : u32;
+    v521 = inttoptr v520 : *mut i32;
+    store v521, v518;
+    br block58(v498);
+
+block60:
+    v514 = cast v498 : u32;
+    v515 = add v514, 8 : u32;
+    v516 = inttoptr v515 : *mut i32;
+    v517 = load v516 : i32;
+    br block58(v517);
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::malloc(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = const.i32 0 : i32;
+    v4 = const.i64 0 : i64;
+    v5 = global.load (@__stack_pointer) as *mut i8 : i32;
+    v6 = const.i32 16 : i32;
+    v7 = sub.wrapping v5, v6 : i32;
+    v8 = global.symbol @__stack_pointer : *mut i32;
+    store v8, v7;
+    v9 = const.i32 245 : i32;
+    v10 = cast v1 : u32;
+    v11 = cast v9 : u32;
+    v12 = lt v10, v11 : i1;
+    v13 = cast v12 : i32;
+    v14 = neq v13, 0 : i1;
+    condbr v14, block7, block8;
+
+block1(v2: i32):
+    ret v2;
+
+block2(v1477: i32, v1501: i32):
+    v1498 = const.i32 16 : i32;
+    v1499 = add.wrapping v1477, v1498 : i32;
+    v1500 = global.symbol @__stack_pointer : *mut i32;
+    store v1500, v1499;
+    br block1(v1501);
+
+block3(v654: i32, v662: i32, v682: i32):
+    v658 = cast v654 : u32;
+    v659 = add v658, 416 : u32;
+    v660 = inttoptr v659 : *mut i32;
+    v661 = load v660 : i32;
+    v668 = cast v661 : u32;
+    v669 = cast v662 : u32;
+    v670 = gte v668, v669 : i1;
+    v671 = cast v670 : i32;
+    v672 = neq v671, 0 : i1;
+    condbr v672, block83, block84;
+
+block4(v561: i32, v565: i32, v573: i32, v579: i32, v692: i32):
+    v562 = eq v561, 0 : i1;
+    v563 = cast v562 : i32;
+    v564 = neq v563, 0 : i1;
+    condbr v564, block3(v565, v573, v692), block63;
+
+block5(v552: i32, v553: i32, v555: i32, v558: i32, v568: i32, v695: i32):
+    br block60(v552, v553, v558);
+
+block6(v493: i32, v495: i32, v501: i32, v506: i32, v514: i32, v557: i32, v560: i32, v688: i32):
+    v498 = bor v493, v495 : i32;
+    v499 = neq v498, 0 : i1;
+    condbr v499, block56(v493, v495), block57;
+
+block7:
+    v168 = const.i32 16 : i32;
+    v169 = const.i32 4 : i32;
+    v170 = add.wrapping v1, v169 : i32;
+    v171 = const.i32 16 : i32;
+    v172 = const.i32 8 : i32;
+    v173 = call noname::dlmalloc::dlmalloc::align_up(v171, v172) : i32;
+    v174 = const.i32 -5 : i32;
+    v175 = add.wrapping v173, v174 : i32;
+    v176 = cast v175 : u32;
+    v177 = cast v1 : u32;
+    v178 = gt v176, v177 : i1;
+    v179 = cast v178 : i32;
+    v180 = neq v179, 0 : i1;
+    v181 = select v180, v168, v170 : i32;
+    v182 = const.i32 8 : i32;
+    v183 = call noname::dlmalloc::dlmalloc::align_up(v181, v182) : i32;
+    v184 = cast v0 : u32;
+    v185 = add v184, 408 : u32;
+    v186 = inttoptr v185 : *mut i32;
+    v187 = load v186 : i32;
+    v188 = const.i32 3 : i32;
+    v189 = cast v183 : u32;
+    v190 = cast v188 : u32;
+    v191 = shr v189, v190 : u32;
+    v192 = cast v191 : i32;
+    v193 = cast v187 : u32;
+    v194 = cast v192 : u32;
+    v195 = shr v193, v194 : u32;
+    v196 = cast v195 : i32;
+    v197 = const.i32 3 : i32;
+    v198 = band v196, v197 : i32;
+    v199 = eq v198, 0 : i1;
+    v200 = cast v199 : i32;
+    v201 = neq v200, 0 : i1;
+    condbr v201, block23, block24;
+
+block8:
+    v15 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v16 = const.i32 8 : i32;
+    v17 = call noname::dlmalloc::dlmalloc::align_up(v15, v16) : i32;
+    v18 = const.i32 20 : i32;
+    v19 = const.i32 8 : i32;
+    v20 = call noname::dlmalloc::dlmalloc::align_up(v18, v19) : i32;
+    v21 = const.i32 16 : i32;
+    v22 = const.i32 8 : i32;
+    v23 = call noname::dlmalloc::dlmalloc::align_up(v21, v22) : i32;
+    v24 = const.i32 0 : i32;
+    v25 = const.i32 0 : i32;
+    v26 = const.i32 16 : i32;
+    v27 = const.i32 8 : i32;
+    v28 = call noname::dlmalloc::dlmalloc::align_up(v26, v27) : i32;
+    v29 = const.i32 2 : i32;
+    v30 = shl v28, v29 : i32;
+    v31 = sub.wrapping v25, v30 : i32;
+    v32 = add.wrapping v17, v20 : i32;
+    v33 = add.wrapping v23, v32 : i32;
+    v34 = sub.wrapping v15, v33 : i32;
+    v35 = const.i32 -65544 : i32;
+    v36 = add.wrapping v34, v35 : i32;
+    v37 = const.i32 -9 : i32;
+    v38 = band v36, v37 : i32;
+    v39 = const.i32 -3 : i32;
+    v40 = add.wrapping v38, v39 : i32;
+    v41 = cast v31 : u32;
+    v42 = cast v40 : u32;
+    v43 = lt v41, v42 : i1;
+    v44 = cast v43 : i32;
+    v45 = neq v44, 0 : i1;
+    v46 = select v45, v31, v40 : i32;
+    v47 = cast v46 : u32;
+    v48 = cast v1 : u32;
+    v49 = lte v47, v48 : i1;
+    v50 = cast v49 : i32;
+    v51 = neq v50, 0 : i1;
+    condbr v51, block2(v7, v24), block9;
+
+block9:
+    v52 = const.i32 4 : i32;
+    v53 = add.wrapping v1, v52 : i32;
+    v54 = const.i32 8 : i32;
+    v55 = call noname::dlmalloc::dlmalloc::align_up(v53, v54) : i32;
+    v56 = cast v0 : u32;
+    v57 = add v56, 412 : u32;
+    v58 = inttoptr v57 : *mut i32;
+    v59 = load v58 : i32;
+    v60 = eq v59, 0 : i1;
+    v61 = cast v60 : i32;
+    v62 = neq v61, 0 : i1;
+    condbr v62, block3(v0, v55, v7), block10;
+
+block10:
+    v63 = const.i32 0 : i32;
+    v64 = const.i32 0 : i32;
+    v65 = const.i32 256 : i32;
+    v66 = cast v55 : u32;
+    v67 = cast v65 : u32;
+    v68 = lt v66, v67 : i1;
+    v69 = cast v68 : i32;
+    v70 = neq v69, 0 : i1;
+    condbr v70, block11(v64), block12;
+
+block11(v101: i32):
+    v97 = const.i32 0 : i32;
+    v99 = sub.wrapping v97, v55 : i32;
+    v102 = const.i32 2 : i32;
+    v103 = shl v101, v102 : i32;
+    v104 = add.wrapping v0, v103 : i32;
+    v105 = cast v104 : u32;
+    v106 = inttoptr v105 : *mut i32;
+    v107 = load v106 : i32;
+    v108 = neq v107, 0 : i1;
+    condbr v108, block14, block15;
+
+block12:
+    v71 = const.i32 31 : i32;
+    v72 = const.i32 16777215 : i32;
+    v73 = cast v55 : u32;
+    v74 = cast v72 : u32;
+    v75 = gt v73, v74 : i1;
+    v76 = cast v75 : i32;
+    v77 = neq v76, 0 : i1;
+    condbr v77, block11(v71), block13;
+
+block13:
+    v78 = const.i32 6 : i32;
+    v79 = const.i32 8 : i32;
+    v80 = cast v55 : u32;
+    v81 = cast v79 : u32;
+    v82 = shr v80, v81 : u32;
+    v83 = cast v82 : i32;
+    v84 = popcnt v83 : i32;
+    v85 = sub.wrapping v78, v84 : i32;
+    v86 = cast v55 : u32;
+    v87 = cast v85 : u32;
+    v88 = shr v86, v87 : u32;
+    v89 = cast v88 : i32;
+    v90 = const.i32 1 : i32;
+    v91 = band v89, v90 : i32;
+    v92 = const.i32 1 : i32;
+    v93 = shl v84, v92 : i32;
+    v94 = sub.wrapping v91, v93 : i32;
+    v95 = const.i32 62 : i32;
+    v96 = add.wrapping v94, v95 : i32;
+    br block11(v96);
+
+block14:
+    v110 = call noname::dlmalloc::dlmalloc::leftshift_for_tree_index(v101) : i32;
+    v111 = shl v98, v110 : i32;
+    v112 = const.i32 0 : i32;
+    v113 = const.i32 0 : i32;
+    br block16(v107, v99, v112, v111, v113, v101, v507, v100, v689);
+
+block15:
+    v109 = const.i32 0 : i32;
+    br block6(v63, v109, v101, v59, v100, v98, v99, v7);
+
+block16(v114: i32, v124: i32, v139: i32, v141: i32, v497: i32, v503: i32, v509: i32, v516: i32, v691: i32):
+    v115 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v114) : i32;
+    v116 = call noname::dlmalloc::dlmalloc::Chunk::size(v115) : i32;
+    v118 = cast v116 : u32;
+    v119 = cast v117 : u32;
+    v120 = lt v118, v119 : i1;
+    v121 = cast v120 : i32;
+    v122 = neq v121, 0 : i1;
+    condbr v122, block18(v124, v497), block19;
+
+block17:
+
+block18(v167: i32, v496: i32):
+    v133 = const.i32 20 : i32;
+    v134 = add.wrapping v114, v133 : i32;
+    v135 = cast v134 : u32;
+    v136 = inttoptr v135 : *mut i32;
+    v137 = load v136 : i32;
+    v142 = const.i32 29 : i32;
+    v143 = cast v141 : u32;
+    v144 = cast v142 : u32;
+    v145 = shr v143, v144 : u32;
+    v146 = cast v145 : i32;
+    v147 = const.i32 4 : i32;
+    v148 = band v146, v147 : i32;
+    v149 = add.wrapping v132, v148 : i32;
+    v150 = const.i32 16 : i32;
+    v151 = add.wrapping v149, v150 : i32;
+    v152 = cast v151 : u32;
+    v153 = inttoptr v152 : *mut i32;
+    v154 = load v153 : i32;
+    v155 = neq v137, v154 : i1;
+    v156 = cast v155 : i32;
+    v157 = neq v156, 0 : i1;
+    v158 = select v157, v137, v139 : i32;
+    v159 = neq v137, 0 : i1;
+    v160 = select v159, v158, v138 : i32;
+    v161 = const.i32 1 : i32;
+    v162 = shl v140, v161 : i32;
+    v163 = eq v154, 0 : i1;
+    v164 = cast v163 : i32;
+    v165 = neq v164, 0 : i1;
+    condbr v165, block6(v160, v496, v503, v509, v516, v166, v167, v691), block22;
+
+block19:
+    v123 = sub.wrapping v116, v117 : i32;
+    v125 = cast v123 : u32;
+    v126 = cast v124 : u32;
+    v127 = gte v125, v126 : i1;
+    v128 = cast v127 : i32;
+    v129 = neq v128, 0 : i1;
+    condbr v129, block18(v124, v497), block20;
+
+block20:
+    v130 = neq v123, 0 : i1;
+    condbr v130, block18(v123, v114), block21;
+
+block21:
+    v131 = const.i32 0 : i32;
+    br block5(v114, v114, v117, v131, v516, v691);
+
+block22:
+    br block16(v154, v167, v160, v162, v496, v502, v508, v515, v690);
+
+block23:
+    v241 = cast v0 : u32;
+    v242 = add v241, 416 : u32;
+    v243 = inttoptr v242 : *mut i32;
+    v244 = load v243 : i32;
+    v245 = cast v183 : u32;
+    v246 = cast v244 : u32;
+    v247 = lte v245, v246 : i1;
+    v248 = cast v247 : i32;
+    v249 = neq v248, 0 : i1;
+    condbr v249, block3(v0, v183, v7), block28;
+
+block24:
+    v202 = const.i32 -1 : i32;
+    v203 = bxor v196, v202 : i32;
+    v204 = const.i32 1 : i32;
+    v205 = band v203, v204 : i32;
+    v206 = add.wrapping v205, v192 : i32;
+    v207 = const.i32 3 : i32;
+    v208 = shl v206, v207 : i32;
+    v209 = add.wrapping v0, v208 : i32;
+    v210 = const.i32 152 : i32;
+    v211 = add.wrapping v209, v210 : i32;
+    v212 = cast v211 : u32;
+    v213 = inttoptr v212 : *mut i32;
+    v214 = load v213 : i32;
+    v215 = cast v214 : u32;
+    v216 = add v215, 8 : u32;
+    v217 = inttoptr v216 : *mut i32;
+    v218 = load v217 : i32;
+    v219 = const.i32 144 : i32;
+    v220 = add.wrapping v209, v219 : i32;
+    v221 = eq v218, v220 : i1;
+    v222 = cast v221 : i32;
+    v223 = neq v222, 0 : i1;
+    condbr v223, block26, block27;
+
+block25:
+    v238 = const.i32 3 : i32;
+    v239 = shl v206, v238 : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v214, v239);
+    v240 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v236) : i32;
+    br block2(v7, v240);
+
+block26:
+    v230 = const.i32 -2 : i32;
+    v231 = rotl v230, v206 : i32;
+    v232 = band v187, v231 : i32;
+    v233 = cast v0 : u32;
+    v234 = add v233, 408 : u32;
+    v235 = inttoptr v234 : *mut i32;
+    store v235, v232;
+    br block25;
+
+block27:
+    v224 = cast v218 : u32;
+    v225 = add v224, 12 : u32;
+    v226 = inttoptr v225 : *mut i32;
+    store v226, v220;
+    v227 = cast v220 : u32;
+    v228 = add v227, 8 : u32;
+    v229 = inttoptr v228 : *mut i32;
+    store v229, v218;
+    br block25;
+
+block28:
+    v250 = neq v196, 0 : i1;
+    condbr v250, block35, block36;
+
+block29(v655: i32, v683: i32):
+    v489 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v291) : i32;
+    v490 = eq v489, 0 : i1;
+    v491 = cast v490 : i32;
+    v492 = neq v491, 0 : i1;
+    condbr v492, block3(v655, v292, v683), block55;
+
+block30:
+    v478 = cast v294 : u32;
+    v479 = add v478, 424 : u32;
+    v480 = inttoptr v479 : *mut i32;
+    store v480, v305;
+    v483 = cast v474 : u32;
+    v484 = add v483, 416 : u32;
+    v485 = inttoptr v484 : *mut i32;
+    store v485, v296;
+    br block29(v474, v684);
+
+block31(v1479: i32):
+    v463 = cast v359 : u32;
+    v464 = add v463, 424 : u32;
+    v465 = inttoptr v464 : *mut i32;
+    store v465, v354;
+    v468 = cast v459 : u32;
+    v469 = add v468, 416 : u32;
+    v470 = inttoptr v469 : *mut i32;
+    store v470, v358;
+    v473 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v352) : i32;
+    br block2(v1479, v473);
+
+block32:
+    v414 = const.i32 -8 : i32;
+    v415 = band v363, v414 : i32;
+    v416 = add.wrapping v312, v415 : i32;
+    v417 = cast v359 : u32;
+    v418 = add v417, 424 : u32;
+    v419 = inttoptr v418 : *mut i32;
+    v420 = load v419 : i32;
+    v421 = cast v359 : u32;
+    v422 = add v421, 408 : u32;
+    v423 = inttoptr v422 : *mut i32;
+    v424 = load v423 : i32;
+    v425 = const.i32 1 : i32;
+    v426 = const.i32 3 : i32;
+    v427 = cast v363 : u32;
+    v428 = cast v426 : u32;
+    v429 = shr v427, v428 : u32;
+    v430 = cast v429 : i32;
+    v431 = shl v425, v430 : i32;
+    v432 = band v424, v431 : i32;
+    v433 = eq v432, 0 : i1;
+    v434 = cast v433 : i32;
+    v435 = neq v434, 0 : i1;
+    condbr v435, block53, block54;
+
+block33:
+    v412 = add.wrapping v296, v292 : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v291, v412);
+    br block29(v294, v7);
+
+block34:
+    v365 = const.i32 -8 : i32;
+    v366 = band v309, v365 : i32;
+    v367 = add.wrapping v294, v366 : i32;
+    v368 = const.i32 144 : i32;
+    v369 = add.wrapping v367, v368 : i32;
+    v370 = cast v294 : u32;
+    v371 = add v370, 424 : u32;
+    v372 = inttoptr v371 : *mut i32;
+    v373 = load v372 : i32;
+    v374 = cast v294 : u32;
+    v375 = add v374, 408 : u32;
+    v376 = inttoptr v375 : *mut i32;
+    v377 = load v376 : i32;
+    v378 = const.i32 1 : i32;
+    v379 = const.i32 3 : i32;
+    v380 = cast v309 : u32;
+    v381 = cast v379 : u32;
+    v382 = shr v380, v381 : u32;
+    v383 = cast v382 : i32;
+    v384 = shl v378, v383 : i32;
+    v385 = band v377, v384 : i32;
+    v386 = eq v385, 0 : i1;
+    v387 = cast v386 : i32;
+    v388 = neq v387, 0 : i1;
+    condbr v388, block50, block51;
+
+block35:
+    v311 = const.i32 144 : i32;
+    v312 = add.wrapping v0, v311 : i32;
+    v313 = const.i32 1 : i32;
+    v314 = const.i32 31 : i32;
+    v315 = band v192, v314 : i32;
+    v316 = shl v313, v315 : i32;
+    v317 = call noname::dlmalloc::dlmalloc::left_bits(v316) : i32;
+    v318 = shl v196, v315 : i32;
+    v319 = band v317, v318 : i32;
+    v320 = call noname::dlmalloc::dlmalloc::least_bit(v319) : i32;
+    v321 = popcnt v320 : i32;
+    v322 = const.i32 3 : i32;
+    v323 = shl v321, v322 : i32;
+    v324 = add.wrapping v312, v323 : i32;
+    v325 = cast v324 : u32;
+    v326 = add v325, 8 : u32;
+    v327 = inttoptr v326 : *mut i32;
+    v328 = load v327 : i32;
+    v329 = cast v328 : u32;
+    v330 = add v329, 8 : u32;
+    v331 = inttoptr v330 : *mut i32;
+    v332 = load v331 : i32;
+    v333 = eq v332, v324 : i1;
+    v334 = cast v333 : i32;
+    v335 = neq v334, 0 : i1;
+    condbr v335, block46, block47;
+
+block36:
+    v251 = cast v0 : u32;
+    v252 = add v251, 412 : u32;
+    v253 = inttoptr v252 : *mut i32;
+    v254 = load v253 : i32;
+    v255 = eq v254, 0 : i1;
+    v256 = cast v255 : i32;
+    v257 = neq v256, 0 : i1;
+    condbr v257, block3(v0, v183, v7), block37;
+
+block37:
+    v258 = call noname::dlmalloc::dlmalloc::least_bit(v254) : i32;
+    v259 = popcnt v258 : i32;
+    v260 = const.i32 2 : i32;
+    v261 = shl v259, v260 : i32;
+    v262 = add.wrapping v0, v261 : i32;
+    v263 = cast v262 : u32;
+    v264 = inttoptr v263 : *mut i32;
+    v265 = load v264 : i32;
+    v266 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v265) : i32;
+    v267 = call noname::dlmalloc::dlmalloc::Chunk::size(v266) : i32;
+    v268 = sub.wrapping v267, v183 : i32;
+    v269 = call noname::dlmalloc::dlmalloc::TreeChunk::leftmost_child(v265) : i32;
+    v270 = eq v269, 0 : i1;
+    v271 = cast v270 : i32;
+    v272 = neq v271, 0 : i1;
+    condbr v272, block38(v265, v183, v268), block39;
+
+block38(v290: i32, v292: i32, v296: i32):
+    v291 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v290) : i32;
+    v293 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v291, v292) : i32;
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v0, v290);
+    v297 = const.i32 16 : i32;
+    v298 = const.i32 8 : i32;
+    v299 = call noname::dlmalloc::dlmalloc::align_up(v297, v298) : i32;
+    v300 = cast v296 : u32;
+    v301 = cast v299 : u32;
+    v302 = lt v300, v301 : i1;
+    v303 = cast v302 : i32;
+    v304 = neq v303, 0 : i1;
+    condbr v304, block33, block43;
+
+block39:
+    br block40(v269, v268, v265);
+
+block40(v273: i32, v278: i32, v285: i32):
+    v274 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v273) : i32;
+    v275 = call noname::dlmalloc::dlmalloc::Chunk::size(v274) : i32;
+    v277 = sub.wrapping v275, v276 : i32;
+    v279 = cast v277 : u32;
+    v280 = cast v278 : u32;
+    v281 = lt v279, v280 : i1;
+    v282 = cast v281 : i32;
+    v283 = neq v282, 0 : i1;
+    v284 = select v283, v277, v278 : i32;
+    v286 = neq v282, 0 : i1;
+    v287 = select v286, v273, v285 : i32;
+    v288 = call noname::dlmalloc::dlmalloc::TreeChunk::leftmost_child(v273) : i32;
+    v289 = neq v288, 0 : i1;
+    condbr v289, block40(v288, v284, v287), block42;
+
+block41:
+    br block38(v287, v276, v284);
+
+block42:
+    br block41;
+
+block43:
+    v305 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v293) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v291, v292);
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v305, v296);
+    v306 = cast v294 : u32;
+    v307 = add v306, 416 : u32;
+    v308 = inttoptr v307 : *mut i32;
+    v309 = load v308 : i32;
+    v310 = neq v309, 0 : i1;
+    condbr v310, block34, block44;
+
+block44:
+    br block30;
+
+block45:
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v328, v183);
+    v354 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v352, v353) : i32;
+    v356 = const.i32 3 : i32;
+    v357 = shl v321, v356 : i32;
+    v358 = sub.wrapping v357, v353 : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v354, v358);
+    v360 = cast v0 : u32;
+    v361 = add v360, 416 : u32;
+    v362 = inttoptr v361 : *mut i32;
+    v363 = load v362 : i32;
+    v364 = neq v363, 0 : i1;
+    condbr v364, block32, block48;
+
+block46:
+    v342 = cast v0 : u32;
+    v343 = add v342, 408 : u32;
+    v344 = inttoptr v343 : *mut i32;
+    v345 = load v344 : i32;
+    v346 = const.i32 -2 : i32;
+    v347 = rotl v346, v321 : i32;
+    v348 = band v345, v347 : i32;
+    v349 = cast v0 : u32;
+    v350 = add v349, 408 : u32;
+    v351 = inttoptr v350 : *mut i32;
+    store v351, v348;
+    br block45;
+
+block47:
+    v336 = cast v332 : u32;
+    v337 = add v336, 12 : u32;
+    v338 = inttoptr v337 : *mut i32;
+    store v338, v324;
+    v339 = cast v324 : u32;
+    v340 = add v339, 8 : u32;
+    v341 = inttoptr v340 : *mut i32;
+    store v341, v332;
+    br block45;
+
+block48:
+    br block31(v7);
+
+block49(v402: i32):
+    v399 = cast v369 : u32;
+    v400 = add v399, 8 : u32;
+    v401 = inttoptr v400 : *mut i32;
+    store v401, v373;
+    v403 = cast v402 : u32;
+    v404 = add v403, 12 : u32;
+    v405 = inttoptr v404 : *mut i32;
+    store v405, v398;
+    v406 = cast v398 : u32;
+    v407 = add v406, 12 : u32;
+    v408 = inttoptr v407 : *mut i32;
+    store v408, v397;
+    v409 = cast v398 : u32;
+    v410 = add v409, 8 : u32;
+    v411 = inttoptr v410 : *mut i32;
+    store v411, v402;
+    br block30;
+
+block50:
+    v393 = bor v377, v384 : i32;
+    v394 = cast v294 : u32;
+    v395 = add v394, 408 : u32;
+    v396 = inttoptr v395 : *mut i32;
+    store v396, v393;
+    br block49(v369);
+
+block51:
+    v389 = cast v369 : u32;
+    v390 = add v389, 8 : u32;
+    v391 = inttoptr v390 : *mut i32;
+    v392 = load v391 : i32;
+    br block49(v392);
+
+block52(v449: i32):
+    v446 = cast v416 : u32;
+    v447 = add v446, 8 : u32;
+    v448 = inttoptr v447 : *mut i32;
+    store v448, v420;
+    v450 = cast v449 : u32;
+    v451 = add v450, 12 : u32;
+    v452 = inttoptr v451 : *mut i32;
+    store v452, v445;
+    v453 = cast v445 : u32;
+    v454 = add v453, 12 : u32;
+    v455 = inttoptr v454 : *mut i32;
+    store v455, v444;
+    v456 = cast v445 : u32;
+    v457 = add v456, 8 : u32;
+    v458 = inttoptr v457 : *mut i32;
+    store v458, v449;
+    br block31(v1480);
+
+block53:
+    v440 = bor v424, v431 : i32;
+    v441 = cast v359 : u32;
+    v442 = add v441, 408 : u32;
+    v443 = inttoptr v442 : *mut i32;
+    store v443, v440;
+    br block52(v416);
+
+block54:
+    v436 = cast v416 : u32;
+    v437 = add v436, 8 : u32;
+    v438 = inttoptr v437 : *mut i32;
+    v439 = load v438 : i32;
+    br block52(v439);
+
+block55:
+    br block2(v683, v489);
+
+block56(v526: i32, v554: i32):
+    v527 = eq v526, 0 : i1;
+    v528 = cast v527 : i32;
+    v529 = neq v528, 0 : i1;
+    condbr v529, block4(v554, v514, v556, v559, v688), block59;
+
+block57:
+    v500 = const.i32 1 : i32;
+    v504 = shl v500, v501 : i32;
+    v505 = call noname::dlmalloc::dlmalloc::left_bits(v504) : i32;
+    v510 = band v505, v506 : i32;
+    v511 = eq v510, 0 : i1;
+    v512 = cast v511 : i32;
+    v513 = neq v512, 0 : i1;
+    condbr v513, block3(v514, v557, v688), block58;
+
+block58:
+    v517 = call noname::dlmalloc::dlmalloc::least_bit(v510) : i32;
+    v518 = popcnt v517 : i32;
+    v519 = const.i32 2 : i32;
+    v520 = shl v518, v519 : i32;
+    v521 = add.wrapping v514, v520 : i32;
+    v522 = cast v521 : u32;
+    v523 = inttoptr v522 : *mut i32;
+    v524 = load v523 : i32;
+    v525 = const.i32 0 : i32;
+    br block56(v524, v525);
+
+block59:
+    br block5(v526, v554, v557, v560, v566, v693);
+
+block60(v530: i32, v531: i32, v540: i32):
+    v532 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v530) : i32;
+    v533 = call noname::dlmalloc::dlmalloc::Chunk::size(v532) : i32;
+    v535 = cast v533 : u32;
+    v536 = cast v534 : u32;
+    v537 = gte v535, v536 : i1;
+    v538 = cast v537 : i32;
+    v539 = sub.wrapping v533, v534 : i32;
+    v541 = cast v539 : u32;
+    v542 = cast v540 : u32;
+    v543 = lt v541, v542 : i1;
+    v544 = cast v543 : i32;
+    v545 = band v538, v544 : i32;
+    v546 = neq v545, 0 : i1;
+    v547 = select v546, v530, v531 : i32;
+    v548 = neq v545, 0 : i1;
+    v549 = select v548, v539, v540 : i32;
+    v550 = call noname::dlmalloc::dlmalloc::TreeChunk::leftmost_child(v530) : i32;
+    v551 = neq v550, 0 : i1;
+    condbr v551, block60(v550, v547, v549), block62;
+
+block61:
+    br block4(v547, v568, v534, v549, v695);
+
+block62:
+    br block61;
+
+block63:
+    v569 = cast v565 : u32;
+    v570 = add v569, 416 : u32;
+    v571 = inttoptr v570 : *mut i32;
+    v572 = load v571 : i32;
+    v574 = cast v572 : u32;
+    v575 = cast v573 : u32;
+    v576 = lt v574, v575 : i1;
+    v577 = cast v576 : i32;
+    v578 = neq v577, 0 : i1;
+    condbr v578, block64, block65;
+
+block64:
+    v587 = call noname::dlmalloc::dlmalloc::TreeChunk::chunk(v561) : i32;
+    v589 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v587, v573) : i32;
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v565, v586);
+    v592 = const.i32 16 : i32;
+    v593 = const.i32 8 : i32;
+    v594 = call noname::dlmalloc::dlmalloc::align_up(v592, v593) : i32;
+    v595 = cast v579 : u32;
+    v596 = cast v594 : u32;
+    v597 = lt v595, v596 : i1;
+    v598 = cast v597 : i32;
+    v599 = neq v598, 0 : i1;
+    condbr v599, block68, block69;
+
+block65:
+    v580 = sub.wrapping v572, v573 : i32;
+    v581 = cast v579 : u32;
+    v582 = cast v580 : u32;
+    v583 = gte v581, v582 : i1;
+    v584 = cast v583 : i32;
+    v585 = neq v584, 0 : i1;
+    condbr v585, block3(v565, v573, v692), block66;
+
+block66:
+    br block64;
+
+block67(v696: i32):
+    v652 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v587) : i32;
+    v653 = neq v652, 0 : i1;
+    condbr v653, block2(v696, v652), block75;
+
+block68:
+    v649 = add.wrapping v591, v588 : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v587, v649);
+    br block67(v697);
+
+block69:
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v587, v588);
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v589, v591);
+    v600 = const.i32 256 : i32;
+    v601 = cast v591 : u32;
+    v602 = cast v600 : u32;
+    v603 = lt v601, v602 : i1;
+    v604 = cast v603 : i32;
+    v605 = neq v604, 0 : i1;
+    condbr v605, block70, block71;
+
+block70:
+    v606 = const.i32 -8 : i32;
+    v607 = band v591, v606 : i32;
+    v608 = add.wrapping v590, v607 : i32;
+    v609 = const.i32 144 : i32;
+    v610 = add.wrapping v608, v609 : i32;
+    v611 = cast v590 : u32;
+    v612 = add v611, 408 : u32;
+    v613 = inttoptr v612 : *mut i32;
+    v614 = load v613 : i32;
+    v615 = const.i32 1 : i32;
+    v616 = const.i32 3 : i32;
+    v617 = cast v591 : u32;
+    v618 = cast v616 : u32;
+    v619 = shr v617, v618 : u32;
+    v620 = cast v619 : i32;
+    v621 = shl v615, v620 : i32;
+    v622 = band v614, v621 : i32;
+    v623 = eq v622, 0 : i1;
+    v624 = cast v623 : i32;
+    v625 = neq v624, 0 : i1;
+    condbr v625, block73, block74;
+
+block71:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v590, v589, v591);
+    br block67(v692);
+
+block72(v639: i32):
+    v636 = cast v610 : u32;
+    v637 = add v636, 8 : u32;
+    v638 = inttoptr v637 : *mut i32;
+    store v638, v589;
+    v640 = cast v639 : u32;
+    v641 = add v640, 12 : u32;
+    v642 = inttoptr v641 : *mut i32;
+    store v642, v635;
+    v643 = cast v635 : u32;
+    v644 = add v643, 12 : u32;
+    v645 = inttoptr v644 : *mut i32;
+    store v645, v634;
+    v646 = cast v635 : u32;
+    v647 = add v646, 8 : u32;
+    v648 = inttoptr v647 : *mut i32;
+    store v648, v639;
+    br block67(v697);
+
+block73:
+    v630 = bor v614, v621 : i32;
+    v631 = cast v590 : u32;
+    v632 = add v631, 408 : u32;
+    v633 = inttoptr v632 : *mut i32;
+    store v633, v630;
+    br block72(v610);
+
+block74:
+    v626 = cast v610 : u32;
+    v627 = add v626, 8 : u32;
+    v628 = inttoptr v627 : *mut i32;
+    v629 = load v628 : i32;
+    br block72(v629);
+
+block75:
+    br block3(v590, v588, v696);
+
+block76(v1438: i32, v1444: i32, v1488: i32, v1502: i32):
+    v1440 = cast v1438 : u32;
+    v1441 = add v1440, 420 : u32;
+    v1442 = inttoptr v1441 : *mut i32;
+    v1443 = load v1442 : i32;
+    v1454 = cast v1443 : u32;
+    v1455 = cast v1444 : u32;
+    v1456 = lte v1454, v1455 : i1;
+    v1457 = cast v1456 : i32;
+    v1458 = neq v1457, 0 : i1;
+    condbr v1458, block2(v1488, v1502), block144;
+
+block77(v1321: i32, v1326: i32):
+    v1322 = const.i32 4095 : i32;
+    v1323 = cast v1321 : u32;
+    v1324 = add v1323, 448 : u32;
+    v1325 = inttoptr v1324 : *mut i32;
+    store v1325, v1322;
+    v1327 = cast v1321 : u32;
+    v1328 = add v1327, 128 : u32;
+    v1329 = inttoptr v1328 : *mut i32;
+    store v1329, v1326;
+    v1330 = const.i32 140 : i32;
+    v1331 = add.wrapping v1321, v1330 : i32;
+    v1334 = cast v1331 : u32;
+    v1335 = inttoptr v1334 : *mut i32;
+    store v1335, v729;
+    v1336 = const.i32 132 : i32;
+    v1337 = add.wrapping v1321, v1336 : i32;
+    v1340 = cast v1337 : u32;
+    v1341 = inttoptr v1340 : *mut i32;
+    store v1341, v737;
+    v1342 = const.i32 0 : i32;
+    br block141(v1342);
+
+block78(v1263: i32, v1264: i32):
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v1093, v1263, v1264);
+    v1265 = const.i32 256 : i32;
+    v1266 = cast v1263 : u32;
+    v1267 = cast v1265 : u32;
+    v1268 = lt v1266, v1267 : i1;
+    v1269 = cast v1268 : i32;
+    v1270 = neq v1269, 0 : i1;
+    condbr v1270, block136, block137;
+
+block79:
+    v1248 = const.i32 0 : i32;
+    v1249 = cast v654 : u32;
+    v1250 = add v1249, 424 : u32;
+    v1251 = inttoptr v1250 : *mut i32;
+    store v1251, v1248;
+    v1252 = cast v654 : u32;
+    v1253 = add v1252, 416 : u32;
+    v1254 = inttoptr v1253 : *mut i32;
+    v1255 = load v1254 : i32;
+    v1256 = const.i32 0 : i32;
+    v1257 = cast v654 : u32;
+    v1258 = add v1257, 416 : u32;
+    v1259 = inttoptr v1258 : *mut i32;
+    store v1259, v1256;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(v1196, v1255);
+    v1260 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1196) : i32;
+    br block2(v682, v1260);
+
+block80:
+    v1236 = cast v841 : u32;
+    v1237 = add v1236, 424 : u32;
+    v1238 = inttoptr v1237 : *mut i32;
+    store v1238, v1093;
+    v1239 = cast v841 : u32;
+    v1240 = add v1239, 416 : u32;
+    v1241 = inttoptr v1240 : *mut i32;
+    v1242 = load v1241 : i32;
+    v1243 = add.wrapping v1242, v1097 : i32;
+    v1244 = cast v841 : u32;
+    v1245 = add v1244, 416 : u32;
+    v1246 = inttoptr v1245 : *mut i32;
+    store v1246, v1243;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v1093, v1243);
+    v1247 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1089) : i32;
+    br block2(v1482, v1247);
+
+block81:
+    v1219 = cast v775 : u32;
+    v1220 = add v1219, 4 : u32;
+    v1221 = inttoptr v1220 : *mut i32;
+    v1222 = load v1221 : i32;
+    v1223 = add.wrapping v1222, v815 : i32;
+    v1224 = cast v775 : u32;
+    v1225 = add v1224, 4 : u32;
+    v1226 = inttoptr v1225 : *mut i32;
+    store v1226, v1223;
+    v1227 = cast v792 : u32;
+    v1228 = add v1227, 428 : u32;
+    v1229 = inttoptr v1228 : *mut i32;
+    v1230 = load v1229 : i32;
+    v1231 = cast v792 : u32;
+    v1232 = add v1231, 420 : u32;
+    v1233 = inttoptr v1232 : *mut i32;
+    v1234 = load v1233 : i32;
+    v1235 = add.wrapping v1234, v815 : i32;
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::init_top(v792, v1230, v1235);
+    br block76(v792, v1092, v1484, v1509);
+
+block82:
+    v1216 = cast v654 : u32;
+    v1217 = add v1216, 444 : u32;
+    v1218 = inttoptr v1217 : *mut i32;
+    store v1218, v722;
+    br block77(v1214, v1215);
+
+block83:
+    v1193 = cast v654 : u32;
+    v1194 = add v1193, 424 : u32;
+    v1195 = inttoptr v1194 : *mut i32;
+    v1196 = load v1195 : i32;
+    v1197 = sub.wrapping v661, v662 : i32;
+    v1198 = const.i32 16 : i32;
+    v1199 = const.i32 8 : i32;
+    v1200 = call noname::dlmalloc::dlmalloc::align_up(v1198, v1199) : i32;
+    v1201 = cast v1197 : u32;
+    v1202 = cast v1200 : u32;
+    v1203 = lt v1201, v1202 : i1;
+    v1204 = cast v1203 : i32;
+    v1205 = neq v1204, 0 : i1;
+    condbr v1205, block79, block135;
+
+block84:
+    v673 = cast v654 : u32;
+    v674 = add v673, 420 : u32;
+    v675 = inttoptr v674 : *mut i32;
+    v676 = load v675 : i32;
+    v677 = cast v676 : u32;
+    v678 = cast v662 : u32;
+    v679 = gt v677, v678 : i1;
+    v680 = cast v679 : i32;
+    v681 = neq v680, 0 : i1;
+    condbr v681, block85, block86;
+
+block85:
+    v1175 = sub.wrapping v676, v662 : i32;
+    v1176 = cast v654 : u32;
+    v1177 = add v1176, 420 : u32;
+    v1178 = inttoptr v1177 : *mut i32;
+    store v1178, v1175;
+    v1179 = cast v654 : u32;
+    v1180 = add v1179, 428 : u32;
+    v1181 = inttoptr v1180 : *mut i32;
+    v1182 = load v1181 : i32;
+    v1183 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1182, v662) : i32;
+    v1184 = cast v654 : u32;
+    v1185 = add v1184, 428 : u32;
+    v1186 = inttoptr v1185 : *mut i32;
+    store v1186, v1183;
+    v1187 = const.i32 1 : i32;
+    v1188 = bor v1175, v1187 : i32;
+    v1189 = cast v1183 : u32;
+    v1190 = add v1189, 4 : u32;
+    v1191 = inttoptr v1190 : *mut i32;
+    store v1191, v1188;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1182, v662);
+    v1192 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1182) : i32;
+    br block2(v682, v1192);
+
+block86:
+    v699 = const.i32 4 : i32;
+    v700 = add.wrapping v682, v699 : i32;
+    v701 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v702 = sub.wrapping v662, v701 : i32;
+    v703 = const.i32 8 : i32;
+    v704 = call noname::dlmalloc::dlmalloc::align_up(v701, v703) : i32;
+    v705 = add.wrapping v702, v704 : i32;
+    v706 = const.i32 20 : i32;
+    v707 = const.i32 8 : i32;
+    v708 = call noname::dlmalloc::dlmalloc::align_up(v706, v707) : i32;
+    v709 = add.wrapping v705, v708 : i32;
+    v710 = const.i32 16 : i32;
+    v711 = const.i32 8 : i32;
+    v712 = call noname::dlmalloc::dlmalloc::align_up(v710, v711) : i32;
+    v713 = add.wrapping v709, v712 : i32;
+    v714 = const.i32 8 : i32;
+    v715 = add.wrapping v713, v714 : i32;
+    v716 = const.i32 65536 : i32;
+    v717 = call noname::dlmalloc::dlmalloc::align_up(v715, v716) : i32;
+    call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::alloc(v700, v654, v717);
+    v718 = const.i32 0 : i32;
+    v719 = cast v682 : u32;
+    v720 = add v719, 4 : u32;
+    v721 = inttoptr v720 : *mut i32;
+    v722 = load v721 : i32;
+    v723 = eq v722, 0 : i1;
+    v724 = cast v723 : i32;
+    v725 = neq v724, 0 : i1;
+    condbr v725, block2(v682, v718), block87;
+
+block87:
+    v726 = cast v682 : u32;
+    v727 = add v726, 12 : u32;
+    v728 = inttoptr v727 : *mut i32;
+    v729 = load v728 : i32;
+    v730 = cast v654 : u32;
+    v731 = add v730, 432 : u32;
+    v732 = inttoptr v731 : *mut i32;
+    v733 = load v732 : i32;
+    v734 = cast v682 : u32;
+    v735 = add v734, 8 : u32;
+    v736 = inttoptr v735 : *mut i32;
+    v737 = load v736 : i32;
+    v738 = add.wrapping v733, v737 : i32;
+    v739 = cast v654 : u32;
+    v740 = add v739, 432 : u32;
+    v741 = inttoptr v740 : *mut i32;
+    store v741, v738;
+    v742 = cast v654 : u32;
+    v743 = add v742, 436 : u32;
+    v744 = inttoptr v743 : *mut i32;
+    v745 = load v744 : i32;
+    v746 = cast v745 : u32;
+    v747 = cast v738 : u32;
+    v748 = gt v746, v747 : i1;
+    v749 = cast v748 : i32;
+    v750 = neq v749, 0 : i1;
+    v751 = select v750, v745, v738 : i32;
+    v752 = cast v654 : u32;
+    v753 = add v752, 436 : u32;
+    v754 = inttoptr v753 : *mut i32;
+    store v754, v751;
+    v755 = cast v654 : u32;
+    v756 = add v755, 428 : u32;
+    v757 = inttoptr v756 : *mut i32;
+    v758 = load v757 : i32;
+    v759 = neq v758, 0 : i1;
+    condbr v759, block88, block89;
+
+block88:
+    v772 = const.i32 128 : i32;
+    v773 = add.wrapping v654, v772 : i32;
+    br block94(v773);
+
+block89:
+    v760 = cast v654 : u32;
+    v761 = add v760, 444 : u32;
+    v762 = inttoptr v761 : *mut i32;
+    v763 = load v762 : i32;
+    v764 = eq v763, 0 : i1;
+    v765 = cast v764 : i32;
+    v766 = neq v765, 0 : i1;
+    condbr v766, block82, block90;
+
+block90:
+    v767 = cast v722 : u32;
+    v768 = cast v763 : u32;
+    v769 = lt v767, v768 : i1;
+    v770 = cast v769 : i32;
+    v771 = neq v770, 0 : i1;
+    condbr v771, block82, block91;
+
+block91:
+    br block77(v654, v722);
+
+block92(v814: i32, v817: i32, v1091: i32, v1483: i32, v1508: i32):
+    v800 = cast v799 : u32;
+    v801 = add v800, 444 : u32;
+    v802 = inttoptr v801 : *mut i32;
+    v803 = load v802 : i32;
+    v805 = cast v804 : u32;
+    v806 = cast v803 : u32;
+    v807 = gt v805, v806 : i1;
+    v808 = cast v807 : i32;
+    v809 = neq v808, 0 : i1;
+    v810 = select v809, v803, v774 : i32;
+    v811 = cast v792 : u32;
+    v812 = add v811, 444 : u32;
+    v813 = inttoptr v812 : *mut i32;
+    store v813, v810;
+    v816 = add.wrapping v804, v814 : i32;
+    br block104(v817);
+
+block93:
+    v785 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v775) : i32;
+    v786 = neq v785, 0 : i1;
+    condbr v786, block92(v815, v818, v1092, v1484, v1509), block98;
+
+block94(v775: i32):
+    v776 = call noname::dlmalloc::dlmalloc::Segment::top(v775) : i32;
+    v777 = eq v774, v776 : i1;
+    v778 = cast v777 : i32;
+    v779 = neq v778, 0 : i1;
+    condbr v779, block93, block96;
+
+block95:
+
+block96:
+    v780 = cast v775 : u32;
+    v781 = add v780, 8 : u32;
+    v782 = inttoptr v781 : *mut i32;
+    v783 = load v782 : i32;
+    v784 = neq v783, 0 : i1;
+    condbr v784, block94(v783), block97;
+
+block97:
+    br block92(v737, v773, v662, v682, v718);
+
+block98:
+    v787 = call noname::dlmalloc::dlmalloc::Segment::sys_flags(v775) : i32;
+    v789 = neq v787, v729 : i1;
+    v790 = cast v789 : i32;
+    v791 = neq v790, 0 : i1;
+    condbr v791, block92(v815, v818, v1092, v1484, v1509), block99;
+
+block99:
+    v793 = cast v654 : u32;
+    v794 = add v793, 428 : u32;
+    v795 = inttoptr v794 : *mut i32;
+    v796 = load v795 : i32;
+    v797 = call noname::dlmalloc::dlmalloc::Segment::holds(v775, v796) : i32;
+    v798 = neq v797, 0 : i1;
+    condbr v798, block81, block100;
+
+block100:
+    br block92(v815, v818, v1092, v1484, v1509);
+
+block101:
+    v1069 = cast v819 : u32;
+    v1070 = inttoptr v1069 : *mut i32;
+    v1071 = load v1070 : i32;
+    v1072 = cast v819 : u32;
+    v1073 = inttoptr v1072 : *mut i32;
+    store v1073, v913;
+    v1074 = cast v819 : u32;
+    v1075 = add v1074, 4 : u32;
+    v1076 = inttoptr v1075 : *mut i32;
+    v1077 = load v1076 : i32;
+    v1078 = add.wrapping v1077, v926 : i32;
+    v1079 = cast v819 : u32;
+    v1080 = add v1079, 4 : u32;
+    v1081 = inttoptr v1080 : *mut i32;
+    store v1081, v1078;
+    v1082 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v913) : i32;
+    v1083 = const.i32 8 : i32;
+    v1084 = call noname::dlmalloc::dlmalloc::align_up(v1082, v1083) : i32;
+    v1085 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1071) : i32;
+    v1086 = const.i32 8 : i32;
+    v1087 = call noname::dlmalloc::dlmalloc::align_up(v1085, v1086) : i32;
+    v1088 = sub.wrapping v1084, v1082 : i32;
+    v1089 = add.wrapping v913, v1088 : i32;
+    v1093 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1089, v1091) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1089, v1090);
+    v1094 = sub.wrapping v1087, v1085 : i32;
+    v1095 = add.wrapping v1071, v1094 : i32;
+    v1096 = add.wrapping v1090, v1089 : i32;
+    v1097 = sub.wrapping v1095, v1096 : i32;
+    v1098 = cast v841 : u32;
+    v1099 = add v1098, 428 : u32;
+    v1100 = inttoptr v1099 : *mut i32;
+    v1101 = load v1100 : i32;
+    v1102 = eq v1095, v1101 : i1;
+    v1103 = cast v1102 : i32;
+    v1104 = neq v1103, 0 : i1;
+    condbr v1104, block126, block127;
+
+block102(v840: i32, v846: i32, v912: i32, v925: i32, v1506: i32):
+    v842 = cast v840 : u32;
+    v843 = add v842, 428 : u32;
+    v844 = inttoptr v843 : *mut i32;
+    v845 = load v844 : i32;
+    br block111(v846);
+
+block103:
+    v832 = call noname::dlmalloc::dlmalloc::Segment::is_extern(v819) : i32;
+    v833 = neq v832, 0 : i1;
+    condbr v833, block102(v841, v847, v913, v926, v1507), block108;
+
+block104(v819: i32):
+    v820 = cast v819 : u32;
+    v821 = inttoptr v820 : *mut i32;
+    v822 = load v821 : i32;
+    v824 = eq v822, v823 : i1;
+    v825 = cast v824 : i32;
+    v826 = neq v825, 0 : i1;
+    condbr v826, block103, block106;
+
+block105:
+
+block106:
+    v827 = cast v819 : u32;
+    v828 = add v827, 8 : u32;
+    v829 = inttoptr v828 : *mut i32;
+    v830 = load v829 : i32;
+    v831 = neq v830, 0 : i1;
+    condbr v831, block104(v830), block107;
+
+block107:
+    br block102(v799, v817, v804, v814, v1508);
+
+block108:
+    v834 = call noname::dlmalloc::dlmalloc::Segment::sys_flags(v819) : i32;
+    v837 = eq v834, v788 : i1;
+    v838 = cast v837 : i32;
+    v839 = neq v838, 0 : i1;
+    condbr v839, block101, block109;
+
+block109:
+    br block102(v841, v847, v913, v926, v1507);
+
+block110(v872: i32, v880: i32, v907: i32, v910: i32, v923: i32, v961: i32, v980: i32, v1446: i32, v1490: i32, v1504: i32):
+    v873 = call noname::dlmalloc::dlmalloc::Segment::top(v872) : i32;
+    v874 = const.i32 20 : i32;
+    v875 = const.i32 8 : i32;
+    v876 = call noname::dlmalloc::dlmalloc::align_up(v874, v875) : i32;
+    v877 = sub.wrapping v873, v876 : i32;
+    v878 = const.i32 -23 : i32;
+    v879 = add.wrapping v877, v878 : i32;
+    v881 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v879) : i32;
+    v882 = const.i32 8 : i32;
+    v883 = call noname::dlmalloc::dlmalloc::align_up(v881, v882) : i32;
+    v884 = sub.wrapping v883, v881 : i32;
+    v885 = add.wrapping v879, v884 : i32;
+    v886 = const.i32 16 : i32;
+    v887 = const.i32 8 : i32;
+    v888 = call noname::dlmalloc::dlmalloc::align_up(v886, v887) : i32;
+    v889 = add.wrapping v880, v888 : i32;
+    v890 = cast v885 : u32;
+    v891 = cast v889 : u32;
+    v892 = lt v890, v891 : i1;
+    v893 = cast v892 : i32;
+    v894 = neq v893, 0 : i1;
+    v895 = select v894, v880, v885 : i32;
+    v896 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v895) : i32;
+    v897 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v895, v876) : i32;
+    v898 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v899 = const.i32 8 : i32;
+    v900 = call noname::dlmalloc::dlmalloc::align_up(v898, v899) : i32;
+    v901 = const.i32 20 : i32;
+    v902 = const.i32 8 : i32;
+    v903 = call noname::dlmalloc::dlmalloc::align_up(v901, v902) : i32;
+    v904 = const.i32 16 : i32;
+    v905 = const.i32 8 : i32;
+    v906 = call noname::dlmalloc::dlmalloc::align_up(v904, v905) : i32;
+    v915 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v910) : i32;
+    v916 = const.i32 8 : i32;
+    v917 = call noname::dlmalloc::dlmalloc::align_up(v915, v916) : i32;
+    v918 = sub.wrapping v917, v915 : i32;
+    v919 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v910, v918) : i32;
+    v920 = cast v907 : u32;
+    v921 = add v920, 428 : u32;
+    v922 = inttoptr v921 : *mut i32;
+    store v922, v919;
+    v928 = add.wrapping v898, v923 : i32;
+    v929 = add.wrapping v900, v903 : i32;
+    v930 = add.wrapping v906, v929 : i32;
+    v931 = add.wrapping v930, v918 : i32;
+    v932 = sub.wrapping v928, v931 : i32;
+    v933 = cast v907 : u32;
+    v934 = add v933, 420 : u32;
+    v935 = inttoptr v934 : *mut i32;
+    store v935, v932;
+    v936 = const.i32 1 : i32;
+    v937 = bor v932, v936 : i32;
+    v938 = cast v919 : u32;
+    v939 = add v938, 4 : u32;
+    v940 = inttoptr v939 : *mut i32;
+    store v940, v937;
+    v941 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v942 = const.i32 8 : i32;
+    v943 = call noname::dlmalloc::dlmalloc::align_up(v941, v942) : i32;
+    v944 = const.i32 20 : i32;
+    v945 = const.i32 8 : i32;
+    v946 = call noname::dlmalloc::dlmalloc::align_up(v944, v945) : i32;
+    v947 = const.i32 16 : i32;
+    v948 = const.i32 8 : i32;
+    v949 = call noname::dlmalloc::dlmalloc::align_up(v947, v948) : i32;
+    v950 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v919, v932) : i32;
+    v951 = const.i32 2097152 : i32;
+    v952 = cast v907 : u32;
+    v953 = add v952, 440 : u32;
+    v954 = inttoptr v953 : *mut i32;
+    store v954, v951;
+    v955 = sub.wrapping v943, v941 : i32;
+    v956 = add.wrapping v946, v955 : i32;
+    v957 = add.wrapping v949, v956 : i32;
+    v958 = cast v950 : u32;
+    v959 = add v958, 4 : u32;
+    v960 = inttoptr v959 : *mut i32;
+    store v960, v957;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v895, v876);
+    v964 = cast v961 : u32;
+    v965 = inttoptr v964 : *mut i64;
+    v966 = load v965 : i64;
+    v967 = const.i32 8 : i32;
+    v968 = add.wrapping v896, v967 : i32;
+    v969 = const.i32 8 : i32;
+    v970 = add.wrapping v961, v969 : i32;
+    v971 = cast v970 : u32;
+    v972 = inttoptr v971 : *mut i64;
+    v973 = load v972 : i64;
+    v974 = cast v968 : u32;
+    v975 = inttoptr v974 : *mut i64;
+    store v975, v973;
+    v976 = cast v896 : u32;
+    v977 = inttoptr v976 : *mut i64;
+    store v977, v966;
+    v978 = const.i32 140 : i32;
+    v979 = add.wrapping v907, v978 : i32;
+    v984 = cast v979 : u32;
+    v985 = inttoptr v984 : *mut i32;
+    store v985, v980;
+    v986 = const.i32 132 : i32;
+    v987 = add.wrapping v907, v986 : i32;
+    v988 = cast v987 : u32;
+    v989 = inttoptr v988 : *mut i32;
+    store v989, v923;
+    v990 = cast v907 : u32;
+    v991 = add v990, 128 : u32;
+    v992 = inttoptr v991 : *mut i32;
+    store v992, v910;
+    v993 = const.i32 136 : i32;
+    v994 = add.wrapping v907, v993 : i32;
+    v995 = cast v994 : u32;
+    v996 = inttoptr v995 : *mut i32;
+    store v996, v896;
+    br block117(v897);
+
+block111(v848: i32):
+    v849 = cast v848 : u32;
+    v850 = inttoptr v849 : *mut i32;
+    v851 = load v850 : i32;
+    v853 = cast v851 : u32;
+    v854 = cast v852 : u32;
+    v855 = gt v853, v854 : i1;
+    v856 = cast v855 : i32;
+    v857 = neq v856, 0 : i1;
+    condbr v857, block113, block114;
+
+block112:
+    v871 = const.i32 0 : i32;
+    br block110(v871, v870, v909, v914, v927, v963, v983, v1449, v1493, v1510);
+
+block113:
+    v865 = cast v848 : u32;
+    v866 = add v865, 8 : u32;
+    v867 = inttoptr v866 : *mut i32;
+    v868 = load v867 : i32;
+    v869 = neq v868, 0 : i1;
+    condbr v869, block111(v868), block116;
+
+block114:
+    v858 = call noname::dlmalloc::dlmalloc::Segment::top(v848) : i32;
+    v859 = cast v858 : u32;
+    v860 = cast v852 : u32;
+    v861 = gt v859, v860 : i1;
+    v862 = cast v861 : i32;
+    v863 = neq v862, 0 : i1;
+    condbr v863, block110(v848, v852, v840, v912, v925, v846, v835, v1090, v1482, v1506), block115;
+
+block115:
+    br block113;
+
+block116:
+    br block112;
+
+block117(v997: i32):
+    v998 = const.i32 4 : i32;
+    v999 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v997, v998) : i32;
+    v1000 = call noname::dlmalloc::dlmalloc::Chunk::fencepost_head() : i32;
+    v1001 = cast v997 : u32;
+    v1002 = add v1001, 4 : u32;
+    v1003 = inttoptr v1002 : *mut i32;
+    store v1003, v1000;
+    v1004 = const.i32 4 : i32;
+    v1005 = add.wrapping v999, v1004 : i32;
+    v1007 = cast v1005 : u32;
+    v1008 = cast v1006 : u32;
+    v1009 = lt v1007, v1008 : i1;
+    v1010 = cast v1009 : i32;
+    v1011 = neq v1010, 0 : i1;
+    condbr v1011, block117(v999), block119;
+
+block118:
+    v1014 = eq v895, v880 : i1;
+    v1015 = cast v1014 : i32;
+    v1016 = neq v1015, 0 : i1;
+    condbr v1016, block76(v1025, v1446, v1490, v1504), block120;
+
+block119:
+    br block118;
+
+block120:
+    v1017 = sub.wrapping v1012, v1013 : i32;
+    v1018 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1013, v1017) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(v1013, v1017, v1018);
+    v1019 = const.i32 256 : i32;
+    v1020 = cast v1017 : u32;
+    v1021 = cast v1019 : u32;
+    v1022 = lt v1020, v1021 : i1;
+    v1023 = cast v1022 : i32;
+    v1024 = neq v1023, 0 : i1;
+    condbr v1024, block121, block122;
+
+block121:
+    v1026 = const.i32 -8 : i32;
+    v1027 = band v1017, v1026 : i32;
+    v1028 = add.wrapping v1025, v1027 : i32;
+    v1029 = const.i32 144 : i32;
+    v1030 = add.wrapping v1028, v1029 : i32;
+    v1031 = cast v1025 : u32;
+    v1032 = add v1031, 408 : u32;
+    v1033 = inttoptr v1032 : *mut i32;
+    v1034 = load v1033 : i32;
+    v1035 = const.i32 1 : i32;
+    v1036 = const.i32 3 : i32;
+    v1037 = cast v1017 : u32;
+    v1038 = cast v1036 : u32;
+    v1039 = shr v1037, v1038 : u32;
+    v1040 = cast v1039 : i32;
+    v1041 = shl v1035, v1040 : i32;
+    v1042 = band v1034, v1041 : i32;
+    v1043 = eq v1042, 0 : i1;
+    v1044 = cast v1043 : i32;
+    v1045 = neq v1044, 0 : i1;
+    condbr v1045, block124, block125;
+
+block122:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v907, v1013, v1017);
+    br block76(v1025, v1445, v1489, v1503);
+
+block123(v1059: i32):
+    v1056 = cast v1030 : u32;
+    v1057 = add v1056, 8 : u32;
+    v1058 = inttoptr v1057 : *mut i32;
+    store v1058, v1013;
+    v1060 = cast v1059 : u32;
+    v1061 = add v1060, 12 : u32;
+    v1062 = inttoptr v1061 : *mut i32;
+    store v1062, v1055;
+    v1063 = cast v1055 : u32;
+    v1064 = add v1063, 12 : u32;
+    v1065 = inttoptr v1064 : *mut i32;
+    store v1065, v1054;
+    v1066 = cast v1055 : u32;
+    v1067 = add v1066, 8 : u32;
+    v1068 = inttoptr v1067 : *mut i32;
+    store v1068, v1059;
+    br block76(v1025, v1445, v1489, v1503);
+
+block124:
+    v1050 = bor v1034, v1041 : i32;
+    v1051 = cast v1025 : u32;
+    v1052 = add v1051, 408 : u32;
+    v1053 = inttoptr v1052 : *mut i32;
+    store v1053, v1050;
+    br block123(v1030);
+
+block125:
+    v1046 = cast v1030 : u32;
+    v1047 = add v1046, 8 : u32;
+    v1048 = inttoptr v1047 : *mut i32;
+    v1049 = load v1048 : i32;
+    br block123(v1049);
+
+block126:
+    v1158 = cast v841 : u32;
+    v1159 = add v1158, 428 : u32;
+    v1160 = inttoptr v1159 : *mut i32;
+    store v1160, v1093;
+    v1161 = cast v841 : u32;
+    v1162 = add v1161, 420 : u32;
+    v1163 = inttoptr v1162 : *mut i32;
+    v1164 = load v1163 : i32;
+    v1165 = add.wrapping v1164, v1097 : i32;
+    v1166 = cast v841 : u32;
+    v1167 = add v1166, 420 : u32;
+    v1168 = inttoptr v1167 : *mut i32;
+    store v1168, v1165;
+    v1169 = const.i32 1 : i32;
+    v1170 = bor v1165, v1169 : i32;
+    v1171 = cast v1093 : u32;
+    v1172 = add v1171, 4 : u32;
+    v1173 = inttoptr v1172 : *mut i32;
+    store v1173, v1170;
+    v1174 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1089) : i32;
+    br block2(v1483, v1174);
+
+block127:
+    v1105 = cast v841 : u32;
+    v1106 = add v1105, 424 : u32;
+    v1107 = inttoptr v1106 : *mut i32;
+    v1108 = load v1107 : i32;
+    v1109 = eq v1095, v1108 : i1;
+    v1110 = cast v1109 : i32;
+    v1111 = neq v1110, 0 : i1;
+    condbr v1111, block80, block128;
+
+block128:
+    v1112 = call noname::dlmalloc::dlmalloc::Chunk::inuse(v1095) : i32;
+    v1113 = neq v1112, 0 : i1;
+    condbr v1113, block78(v1097, v1095), block129;
+
+block129:
+    v1114 = call noname::dlmalloc::dlmalloc::Chunk::size(v1095) : i32;
+    v1115 = const.i32 256 : i32;
+    v1116 = cast v1114 : u32;
+    v1117 = cast v1115 : u32;
+    v1118 = lt v1116, v1117 : i1;
+    v1119 = cast v1118 : i32;
+    v1120 = neq v1119, 0 : i1;
+    condbr v1120, block131, block132;
+
+block130:
+    v1155 = add.wrapping v1114, v1097 : i32;
+    v1157 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1095, v1153) : i32;
+    br block78(v1155, v1157);
+
+block131:
+    v1121 = cast v1095 : u32;
+    v1122 = add v1121, 12 : u32;
+    v1123 = inttoptr v1122 : *mut i32;
+    v1124 = load v1123 : i32;
+    v1125 = cast v1095 : u32;
+    v1126 = add v1125, 8 : u32;
+    v1127 = inttoptr v1126 : *mut i32;
+    v1128 = load v1127 : i32;
+    v1129 = eq v1124, v1128 : i1;
+    v1130 = cast v1129 : i32;
+    v1131 = neq v1130, 0 : i1;
+    condbr v1131, block133, block134;
+
+block132:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v841, v1095);
+    br block130;
+
+block133:
+    v1138 = cast v841 : u32;
+    v1139 = add v1138, 408 : u32;
+    v1140 = inttoptr v1139 : *mut i32;
+    v1141 = load v1140 : i32;
+    v1142 = const.i32 -2 : i32;
+    v1143 = const.i32 3 : i32;
+    v1144 = cast v1114 : u32;
+    v1145 = cast v1143 : u32;
+    v1146 = shr v1144, v1145 : u32;
+    v1147 = cast v1146 : i32;
+    v1148 = rotl v1142, v1147 : i32;
+    v1149 = band v1141, v1148 : i32;
+    v1150 = cast v841 : u32;
+    v1151 = add v1150, 408 : u32;
+    v1152 = inttoptr v1151 : *mut i32;
+    store v1152, v1149;
+    br block130;
+
+block134:
+    v1132 = cast v1128 : u32;
+    v1133 = add v1132, 12 : u32;
+    v1134 = inttoptr v1133 : *mut i32;
+    store v1134, v1124;
+    v1135 = cast v1124 : u32;
+    v1136 = add v1135, 8 : u32;
+    v1137 = inttoptr v1136 : *mut i32;
+    store v1137, v1128;
+    br block130;
+
+block135:
+    v1206 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1196, v662) : i32;
+    v1207 = cast v654 : u32;
+    v1208 = add v1207, 416 : u32;
+    v1209 = inttoptr v1208 : *mut i32;
+    store v1209, v1197;
+    v1210 = cast v654 : u32;
+    v1211 = add v1210, 424 : u32;
+    v1212 = inttoptr v1211 : *mut i32;
+    store v1212, v1206;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v1206, v1197);
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1196, v662);
+    v1213 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1196) : i32;
+    br block2(v682, v1213);
+
+block136:
+    v1276 = const.i32 -8 : i32;
+    v1277 = band v1263, v1276 : i32;
+    v1278 = add.wrapping v1271, v1277 : i32;
+    v1279 = const.i32 144 : i32;
+    v1280 = add.wrapping v1278, v1279 : i32;
+    v1281 = cast v1271 : u32;
+    v1282 = add v1281, 408 : u32;
+    v1283 = inttoptr v1282 : *mut i32;
+    v1284 = load v1283 : i32;
+    v1285 = const.i32 1 : i32;
+    v1286 = const.i32 3 : i32;
+    v1287 = cast v1263 : u32;
+    v1288 = cast v1286 : u32;
+    v1289 = shr v1287, v1288 : u32;
+    v1290 = cast v1289 : i32;
+    v1291 = shl v1285, v1290 : i32;
+    v1292 = band v1284, v1291 : i32;
+    v1293 = eq v1292, 0 : i1;
+    v1294 = cast v1293 : i32;
+    v1295 = neq v1294, 0 : i1;
+    condbr v1295, block139, block140;
+
+block137:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk(v841, v1261, v1263);
+    v1275 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1089) : i32;
+    br block2(v1482, v1275);
+
+block138(v1309: i32):
+    v1306 = cast v1280 : u32;
+    v1307 = add v1306, 8 : u32;
+    v1308 = inttoptr v1307 : *mut i32;
+    store v1308, v1261;
+    v1310 = cast v1309 : u32;
+    v1311 = add v1310, 12 : u32;
+    v1312 = inttoptr v1311 : *mut i32;
+    store v1312, v1305;
+    v1313 = cast v1305 : u32;
+    v1314 = add v1313, 12 : u32;
+    v1315 = inttoptr v1314 : *mut i32;
+    store v1315, v1304;
+    v1316 = cast v1305 : u32;
+    v1317 = add v1316, 8 : u32;
+    v1318 = inttoptr v1317 : *mut i32;
+    store v1318, v1309;
+    v1320 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1273) : i32;
+    br block2(v1485, v1320);
+
+block139:
+    v1300 = bor v1284, v1291 : i32;
+    v1301 = cast v1271 : u32;
+    v1302 = add v1301, 408 : u32;
+    v1303 = inttoptr v1302 : *mut i32;
+    store v1303, v1300;
+    br block138(v1280);
+
+block140:
+    v1296 = cast v1280 : u32;
+    v1297 = add v1296, 8 : u32;
+    v1298 = inttoptr v1297 : *mut i32;
+    v1299 = load v1298 : i32;
+    br block138(v1299);
+
+block141(v1344: i32):
+    v1345 = add.wrapping v1343, v1344 : i32;
+    v1346 = const.i32 164 : i32;
+    v1347 = add.wrapping v1345, v1346 : i32;
+    v1348 = const.i32 152 : i32;
+    v1349 = add.wrapping v1345, v1348 : i32;
+    v1350 = cast v1347 : u32;
+    v1351 = inttoptr v1350 : *mut i32;
+    store v1351, v1349;
+    v1352 = const.i32 144 : i32;
+    v1353 = add.wrapping v1345, v1352 : i32;
+    v1354 = cast v1349 : u32;
+    v1355 = inttoptr v1354 : *mut i32;
+    store v1355, v1353;
+    v1356 = const.i32 156 : i32;
+    v1357 = add.wrapping v1345, v1356 : i32;
+    v1358 = cast v1357 : u32;
+    v1359 = inttoptr v1358 : *mut i32;
+    store v1359, v1353;
+    v1360 = const.i32 172 : i32;
+    v1361 = add.wrapping v1345, v1360 : i32;
+    v1362 = const.i32 160 : i32;
+    v1363 = add.wrapping v1345, v1362 : i32;
+    v1364 = cast v1361 : u32;
+    v1365 = inttoptr v1364 : *mut i32;
+    store v1365, v1363;
+    v1366 = cast v1363 : u32;
+    v1367 = inttoptr v1366 : *mut i32;
+    store v1367, v1349;
+    v1368 = const.i32 180 : i32;
+    v1369 = add.wrapping v1345, v1368 : i32;
+    v1370 = const.i32 168 : i32;
+    v1371 = add.wrapping v1345, v1370 : i32;
+    v1372 = cast v1369 : u32;
+    v1373 = inttoptr v1372 : *mut i32;
+    store v1373, v1371;
+    v1374 = cast v1371 : u32;
+    v1375 = inttoptr v1374 : *mut i32;
+    store v1375, v1363;
+    v1376 = const.i32 176 : i32;
+    v1377 = add.wrapping v1345, v1376 : i32;
+    v1378 = cast v1377 : u32;
+    v1379 = inttoptr v1378 : *mut i32;
+    store v1379, v1371;
+    v1380 = const.i32 32 : i32;
+    v1381 = add.wrapping v1344, v1380 : i32;
+    v1382 = const.i32 256 : i32;
+    v1383 = neq v1381, v1382 : i1;
+    v1384 = cast v1383 : i32;
+    v1385 = neq v1384, 0 : i1;
+    condbr v1385, block141(v1381), block143;
+
+block142:
+    v1386 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v1387 = const.i32 8 : i32;
+    v1388 = call noname::dlmalloc::dlmalloc::align_up(v1386, v1387) : i32;
+    v1389 = const.i32 20 : i32;
+    v1390 = const.i32 8 : i32;
+    v1391 = call noname::dlmalloc::dlmalloc::align_up(v1389, v1390) : i32;
+    v1392 = const.i32 16 : i32;
+    v1393 = const.i32 8 : i32;
+    v1394 = call noname::dlmalloc::dlmalloc::align_up(v1392, v1393) : i32;
+    v1396 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1395) : i32;
+    v1397 = const.i32 8 : i32;
+    v1398 = call noname::dlmalloc::dlmalloc::align_up(v1396, v1397) : i32;
+    v1399 = sub.wrapping v1398, v1396 : i32;
+    v1400 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1326, v1399) : i32;
+    v1401 = cast v1343 : u32;
+    v1402 = add v1401, 428 : u32;
+    v1403 = inttoptr v1402 : *mut i32;
+    store v1403, v1400;
+    v1405 = add.wrapping v1386, v1338 : i32;
+    v1406 = add.wrapping v1388, v1391 : i32;
+    v1407 = add.wrapping v1394, v1406 : i32;
+    v1408 = add.wrapping v1407, v1399 : i32;
+    v1409 = sub.wrapping v1405, v1408 : i32;
+    v1410 = cast v1343 : u32;
+    v1411 = add v1410, 420 : u32;
+    v1412 = inttoptr v1411 : *mut i32;
+    store v1412, v1409;
+    v1413 = const.i32 1 : i32;
+    v1414 = bor v1409, v1413 : i32;
+    v1415 = cast v1400 : u32;
+    v1416 = add v1415, 4 : u32;
+    v1417 = inttoptr v1416 : *mut i32;
+    store v1417, v1414;
+    v1418 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v1419 = const.i32 8 : i32;
+    v1420 = call noname::dlmalloc::dlmalloc::align_up(v1418, v1419) : i32;
+    v1421 = const.i32 20 : i32;
+    v1422 = const.i32 8 : i32;
+    v1423 = call noname::dlmalloc::dlmalloc::align_up(v1421, v1422) : i32;
+    v1424 = const.i32 16 : i32;
+    v1425 = const.i32 8 : i32;
+    v1426 = call noname::dlmalloc::dlmalloc::align_up(v1424, v1425) : i32;
+    v1427 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1400, v1409) : i32;
+    v1428 = const.i32 2097152 : i32;
+    v1429 = cast v1343 : u32;
+    v1430 = add v1429, 440 : u32;
+    v1431 = inttoptr v1430 : *mut i32;
+    store v1431, v1428;
+    v1432 = sub.wrapping v1420, v1418 : i32;
+    v1433 = add.wrapping v1423, v1432 : i32;
+    v1434 = add.wrapping v1426, v1433 : i32;
+    v1435 = cast v1427 : u32;
+    v1436 = add v1435, 4 : u32;
+    v1437 = inttoptr v1436 : *mut i32;
+    store v1437, v1434;
+    br block76(v1343, v662, v682, v718);
+
+block143:
+    br block142;
+
+block144:
+    v1459 = sub.wrapping v1443, v1444 : i32;
+    v1460 = cast v1438 : u32;
+    v1461 = add v1460, 420 : u32;
+    v1462 = inttoptr v1461 : *mut i32;
+    store v1462, v1459;
+    v1463 = cast v1438 : u32;
+    v1464 = add v1463, 428 : u32;
+    v1465 = inttoptr v1464 : *mut i32;
+    v1466 = load v1465 : i32;
+    v1467 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1466, v1444) : i32;
+    v1468 = cast v1438 : u32;
+    v1469 = add v1468, 428 : u32;
+    v1470 = inttoptr v1469 : *mut i32;
+    store v1470, v1467;
+    v1471 = const.i32 1 : i32;
+    v1472 = bor v1459, v1471 : i32;
+    v1473 = cast v1467 : u32;
+    v1474 = add v1473, 4 : u32;
+    v1475 = inttoptr v1474 : *mut i32;
+    store v1475, v1472;
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(v1466, v1444);
+    v1476 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1466) : i32;
+    br block2(v1488, v1476);
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::init_top(i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32):
+    v3 = const.i32 0 : i32;
+    v4 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v1) : i32;
+    v5 = const.i32 8 : i32;
+    v6 = call noname::dlmalloc::dlmalloc::align_up(v4, v5) : i32;
+    v7 = sub.wrapping v6, v4 : i32;
+    v8 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v1, v7) : i32;
+    v9 = sub.wrapping v2, v7 : i32;
+    v10 = cast v0 : u32;
+    v11 = add v10, 420 : u32;
+    v12 = inttoptr v11 : *mut i32;
+    store v12, v9;
+    v13 = cast v0 : u32;
+    v14 = add v13, 428 : u32;
+    v15 = inttoptr v14 : *mut i32;
+    store v15, v8;
+    v16 = const.i32 1 : i32;
+    v17 = bor v9, v16 : i32;
+    v18 = cast v8 : u32;
+    v19 = add v18, 4 : u32;
+    v20 = inttoptr v19 : *mut i32;
+    store v20, v17;
+    v21 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v22 = const.i32 8 : i32;
+    v23 = call noname::dlmalloc::dlmalloc::align_up(v21, v22) : i32;
+    v24 = const.i32 20 : i32;
+    v25 = const.i32 8 : i32;
+    v26 = call noname::dlmalloc::dlmalloc::align_up(v24, v25) : i32;
+    v27 = const.i32 16 : i32;
+    v28 = const.i32 8 : i32;
+    v29 = call noname::dlmalloc::dlmalloc::align_up(v27, v28) : i32;
+    v30 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v8, v9) : i32;
+    v31 = const.i32 2097152 : i32;
+    v32 = cast v0 : u32;
+    v33 = add v32, 440 : u32;
+    v34 = inttoptr v33 : *mut i32;
+    store v34, v31;
+    v35 = sub.wrapping v23, v21 : i32;
+    v36 = add.wrapping v26, v35 : i32;
+    v37 = add.wrapping v29, v36 : i32;
+    v38 = cast v30 : u32;
+    v39 = add v38, 4 : u32;
+    v40 = inttoptr v39 : *mut i32;
+    store v40, v37;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Dlmalloc<A>::memalign(i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32):
+    v4 = const.i32 0 : i32;
+    v5 = const.i32 16 : i32;
+    v6 = const.i32 8 : i32;
+    v7 = call noname::dlmalloc::dlmalloc::align_up(v5, v6) : i32;
+    v8 = cast v7 : u32;
+    v9 = cast v1 : u32;
+    v10 = lte v8, v9 : i1;
+    v11 = cast v10 : i32;
+    v12 = neq v11, 0 : i1;
+    condbr v12, block2(v1), block3;
+
+block1(v3: i32):
+    ret v3;
+
+block2(v48: i32):
+    v16 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v17 = const.i32 8 : i32;
+    v18 = call noname::dlmalloc::dlmalloc::align_up(v16, v17) : i32;
+    v19 = const.i32 20 : i32;
+    v20 = const.i32 8 : i32;
+    v21 = call noname::dlmalloc::dlmalloc::align_up(v19, v20) : i32;
+    v22 = const.i32 16 : i32;
+    v23 = const.i32 8 : i32;
+    v24 = call noname::dlmalloc::dlmalloc::align_up(v22, v23) : i32;
+    v25 = const.i32 0 : i32;
+    v26 = const.i32 0 : i32;
+    v27 = const.i32 16 : i32;
+    v28 = const.i32 8 : i32;
+    v29 = call noname::dlmalloc::dlmalloc::align_up(v27, v28) : i32;
+    v30 = const.i32 2 : i32;
+    v31 = shl v29, v30 : i32;
+    v32 = sub.wrapping v26, v31 : i32;
+    v33 = add.wrapping v18, v21 : i32;
+    v34 = add.wrapping v24, v33 : i32;
+    v35 = sub.wrapping v16, v34 : i32;
+    v36 = const.i32 -65544 : i32;
+    v37 = add.wrapping v35, v36 : i32;
+    v38 = const.i32 -9 : i32;
+    v39 = band v37, v38 : i32;
+    v40 = const.i32 -3 : i32;
+    v41 = add.wrapping v39, v40 : i32;
+    v42 = cast v32 : u32;
+    v43 = cast v41 : u32;
+    v44 = lt v42, v43 : i1;
+    v45 = cast v44 : i32;
+    v46 = neq v45, 0 : i1;
+    v47 = select v46, v32, v41 : i32;
+    v49 = sub.wrapping v47, v48 : i32;
+    v51 = cast v49 : u32;
+    v52 = cast v2 : u32;
+    v53 = lte v51, v52 : i1;
+    v54 = cast v53 : i32;
+    v55 = neq v54, 0 : i1;
+    condbr v55, block4(v25), block5;
+
+block3:
+    v13 = const.i32 16 : i32;
+    v14 = const.i32 8 : i32;
+    v15 = call noname::dlmalloc::dlmalloc::align_up(v13, v14) : i32;
+    br block2(v15);
+
+block4(v140: i32):
+    br block1(v140);
+
+block5:
+    v57 = const.i32 16 : i32;
+    v58 = const.i32 4 : i32;
+    v59 = add.wrapping v50, v58 : i32;
+    v60 = const.i32 16 : i32;
+    v61 = const.i32 8 : i32;
+    v62 = call noname::dlmalloc::dlmalloc::align_up(v60, v61) : i32;
+    v63 = const.i32 -5 : i32;
+    v64 = add.wrapping v62, v63 : i32;
+    v65 = cast v64 : u32;
+    v66 = cast v50 : u32;
+    v67 = gt v65, v66 : i1;
+    v68 = cast v67 : i32;
+    v69 = neq v68, 0 : i1;
+    v70 = select v69, v57, v59 : i32;
+    v71 = const.i32 8 : i32;
+    v72 = call noname::dlmalloc::dlmalloc::align_up(v70, v71) : i32;
+    v73 = add.wrapping v48, v72 : i32;
+    v74 = const.i32 16 : i32;
+    v75 = const.i32 8 : i32;
+    v76 = call noname::dlmalloc::dlmalloc::align_up(v74, v75) : i32;
+    v77 = add.wrapping v73, v76 : i32;
+    v78 = const.i32 -4 : i32;
+    v79 = add.wrapping v77, v78 : i32;
+    v80 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::malloc(v0, v79) : i32;
+    v81 = eq v80, 0 : i1;
+    v82 = cast v81 : i32;
+    v83 = neq v82, 0 : i1;
+    condbr v83, block4(v25), block6;
+
+block6:
+    v84 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v80) : i32;
+    v85 = const.i32 -1 : i32;
+    v86 = add.wrapping v48, v85 : i32;
+    v87 = band v86, v80 : i32;
+    v88 = neq v87, 0 : i1;
+    condbr v88, block8, block9;
+
+block7(v120: i32):
+    v121 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v120) : i32;
+    v122 = neq v121, 0 : i1;
+    condbr v122, block12, block13;
+
+block8:
+    v89 = add.wrapping v86, v80 : i32;
+    v90 = const.i32 0 : i32;
+    v91 = sub.wrapping v90, v48 : i32;
+    v92 = band v89, v91 : i32;
+    v93 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v92) : i32;
+    v94 = const.i32 16 : i32;
+    v95 = const.i32 8 : i32;
+    v96 = call noname::dlmalloc::dlmalloc::align_up(v94, v95) : i32;
+    v97 = call noname::dlmalloc::dlmalloc::Chunk::size(v84) : i32;
+    v98 = const.i32 0 : i32;
+    v99 = sub.wrapping v93, v84 : i32;
+    v100 = cast v99 : u32;
+    v101 = cast v96 : u32;
+    v102 = gt v100, v101 : i1;
+    v103 = cast v102 : i32;
+    v104 = neq v103, 0 : i1;
+    v105 = select v104, v98, v48 : i32;
+    v106 = add.wrapping v93, v105 : i32;
+    v107 = sub.wrapping v106, v84 : i32;
+    v108 = sub.wrapping v97, v107 : i32;
+    v109 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v84) : i32;
+    v110 = neq v109, 0 : i1;
+    condbr v110, block10, block11;
+
+block9:
+    br block7(v84);
+
+block10:
+    v111 = cast v84 : u32;
+    v112 = inttoptr v111 : *mut i32;
+    v113 = load v112 : i32;
+    v114 = cast v106 : u32;
+    v115 = add v114, 4 : u32;
+    v116 = inttoptr v115 : *mut i32;
+    store v116, v108;
+    v117 = add.wrapping v113, v107 : i32;
+    v118 = cast v106 : u32;
+    v119 = inttoptr v118 : *mut i32;
+    store v119, v117;
+    br block7(v106);
+
+block11:
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v106, v108);
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v84, v107);
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v56, v84, v107);
+    br block7(v106);
+
+block12:
+    v138 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v120) : i32;
+    v139 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v137) : i32;
+    br block4(v138);
+
+block13:
+    v123 = call noname::dlmalloc::dlmalloc::Chunk::size(v120) : i32;
+    v124 = const.i32 16 : i32;
+    v125 = const.i32 8 : i32;
+    v126 = call noname::dlmalloc::dlmalloc::align_up(v124, v125) : i32;
+    v128 = add.wrapping v126, v72 : i32;
+    v129 = cast v123 : u32;
+    v130 = cast v128 : u32;
+    v131 = lte v129, v130 : i1;
+    v132 = cast v131 : i32;
+    v133 = neq v132, 0 : i1;
+    condbr v133, block12, block14;
+
+block14:
+    v134 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v120, v127) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v120, v127);
+    v135 = sub.wrapping v123, v127 : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v134, v135);
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v56, v134, v135);
+    br block12;
+}
+
+pub fn __main() -> i32 {
+block0:
+    v1 = call noname::vec_alloc() : i32;
+    br block1(v1);
+
+block1(v0: i32):
+    ret v0;
+}
+
+pub fn __rust_alloc(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = const.i32 0 : i32;
+    v4 = global.load (@__stack_pointer) as *mut i8 : i32;
+    v5 = const.i32 16 : i32;
+    v6 = sub.wrapping v4, v5 : i32;
+    v7 = global.symbol @__stack_pointer : *mut i32;
+    store v7, v6;
+    call noname::dlmalloc::sys::enable_alloc_after_fork();
+    v8 = const.i32 15 : i32;
+    v9 = add.wrapping v6, v8 : i32;
+    v10 = call noname::<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(v9) : i32;
+    v11 = const.i32 9 : i32;
+    v12 = cast v1 : u32;
+    v13 = cast v11 : u32;
+    v14 = lt v12, v13 : i1;
+    v15 = cast v14 : i32;
+    v16 = neq v15, 0 : i1;
+    condbr v16, block3, block4;
+
+block1(v2: i32):
+    ret v2;
+
+block2(v25: i32):
+    v20 = const.i32 15 : i32;
+    v21 = add.wrapping v6, v20 : i32;
+    call noname::<dlmalloc::global::Instance as core::ops::drop::Drop>::drop(v21);
+    v22 = const.i32 16 : i32;
+    v23 = add.wrapping v19, v22 : i32;
+    v24 = global.symbol @__stack_pointer : *mut i32;
+    store v24, v23;
+    br block1(v25);
+
+block3:
+    v18 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::malloc(v10, v0) : i32;
+    br block2(v18);
+
+block4:
+    v17 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::memalign(v10, v1, v0) : i32;
+    br block2(v17);
+}
+
+pub fn __rust_dealloc(i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32):
+    v3 = const.i32 0 : i32;
+    v4 = global.load (@__stack_pointer) as *mut i8 : i32;
+    v5 = const.i32 16 : i32;
+    v6 = sub.wrapping v4, v5 : i32;
+    v7 = global.symbol @__stack_pointer : *mut i32;
+    store v7, v6;
+    call noname::dlmalloc::sys::enable_alloc_after_fork();
+    v8 = const.i32 15 : i32;
+    v9 = add.wrapping v6, v8 : i32;
+    v10 = call noname::<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(v9) : i32;
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::free(v10, v0);
+    v11 = const.i32 15 : i32;
+    v12 = add.wrapping v6, v11 : i32;
+    call noname::<dlmalloc::global::Instance as core::ops::drop::Drop>::drop(v12);
+    v13 = const.i32 16 : i32;
+    v14 = add.wrapping v6, v13 : i32;
+    v15 = global.symbol @__stack_pointer : *mut i32;
+    store v15, v14;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn __rust_realloc(i32, i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32, v3: i32):
+    v5 = const.i32 0 : i32;
+    v6 = global.load (@__stack_pointer) as *mut i8 : i32;
+    v7 = const.i32 16 : i32;
+    v8 = sub.wrapping v6, v7 : i32;
+    v9 = global.symbol @__stack_pointer : *mut i32;
+    store v9, v8;
+    call noname::dlmalloc::sys::enable_alloc_after_fork();
+    v10 = const.i32 15 : i32;
+    v11 = add.wrapping v8, v10 : i32;
+    v12 = call noname::<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(v11) : i32;
+    v13 = const.i32 9 : i32;
+    v14 = cast v2 : u32;
+    v15 = cast v13 : u32;
+    v16 = lt v14, v15 : i1;
+    v17 = cast v16 : i32;
+    v18 = neq v17, 0 : i1;
+    condbr v18, block7, block8;
+
+block1(v4: i32):
+    ret v4;
+
+block2(v369: i32, v381: i32):
+    v376 = const.i32 15 : i32;
+    v377 = add.wrapping v369, v376 : i32;
+    call noname::<dlmalloc::global::Instance as core::ops::drop::Drop>::drop(v377);
+    v378 = const.i32 16 : i32;
+    v379 = add.wrapping v369, v378 : i32;
+    v380 = global.symbol @__stack_pointer : *mut i32;
+    store v380, v379;
+    br block1(v381);
+
+block3(v366: i32, v375: i32):
+    v367 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v366) : i32;
+    v368 = call noname::dlmalloc::dlmalloc::Chunk::to_mem(v366) : i32;
+    br block2(v375, v368);
+
+block4(v335: i32, v337: i32, v346: i32, v351: i32, v370: i32, v382: i32):
+    v342 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::malloc(v335, v337) : i32;
+    v343 = eq v342, 0 : i1;
+    v344 = cast v343 : i32;
+    v345 = neq v344, 0 : i1;
+    condbr v345, block2(v370, v382), block45;
+
+block5:
+    v321 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v74);
+    v322 = cast v12 : u32;
+    v323 = add v322, 428 : u32;
+    v324 = inttoptr v323 : *mut i32;
+    store v324, v321;
+    v325 = sub.wrapping v308, v74 : i32;
+    v326 = const.i32 1 : i32;
+    v327 = bor v325, v326 : i32;
+    v328 = cast v321 : u32;
+    v329 = add v328, 4 : u32;
+    v330 = inttoptr v329 : *mut i32;
+    store v330, v327;
+    v331 = cast v12 : u32;
+    v332 = add v331, 420 : u32;
+    v333 = inttoptr v332 : *mut i32;
+    store v333, v325;
+    v334 = neq v75, 0 : i1;
+    condbr v334, block3(v75, v8), block44;
+
+block6:
+    v314 = cast v1 : u32;
+    v315 = cast v3 : u32;
+    v316 = lt v314, v315 : i1;
+    v317 = cast v316 : i32;
+    v318 = neq v317, 0 : i1;
+    v319 = select v318, v1, v3 : i32;
+    v320 = call noname::memcpy(v19, v0, v319) : i32;
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::free(v12, v0);
+    br block2(v8, v19);
+
+block7:
+    v22 = call noname::dlmalloc::dlmalloc::Chunk::mem_offset() : i32;
+    v23 = const.i32 8 : i32;
+    v24 = call noname::dlmalloc::dlmalloc::align_up(v22, v23) : i32;
+    v25 = const.i32 20 : i32;
+    v26 = const.i32 8 : i32;
+    v27 = call noname::dlmalloc::dlmalloc::align_up(v25, v26) : i32;
+    v28 = const.i32 16 : i32;
+    v29 = const.i32 8 : i32;
+    v30 = call noname::dlmalloc::dlmalloc::align_up(v28, v29) : i32;
+    v31 = const.i32 0 : i32;
+    v32 = const.i32 0 : i32;
+    v33 = const.i32 16 : i32;
+    v34 = const.i32 8 : i32;
+    v35 = call noname::dlmalloc::dlmalloc::align_up(v33, v34) : i32;
+    v36 = const.i32 2 : i32;
+    v37 = shl v35, v36 : i32;
+    v38 = sub.wrapping v32, v37 : i32;
+    v39 = add.wrapping v24, v27 : i32;
+    v40 = add.wrapping v30, v39 : i32;
+    v41 = sub.wrapping v22, v40 : i32;
+    v42 = const.i32 -65544 : i32;
+    v43 = add.wrapping v41, v42 : i32;
+    v44 = const.i32 -9 : i32;
+    v45 = band v43, v44 : i32;
+    v46 = const.i32 -3 : i32;
+    v47 = add.wrapping v45, v46 : i32;
+    v48 = cast v38 : u32;
+    v49 = cast v47 : u32;
+    v50 = lt v48, v49 : i1;
+    v51 = cast v50 : i32;
+    v52 = neq v51, 0 : i1;
+    v53 = select v52, v38, v47 : i32;
+    v54 = cast v53 : u32;
+    v55 = cast v3 : u32;
+    v56 = lte v54, v55 : i1;
+    v57 = cast v56 : i32;
+    v58 = neq v57, 0 : i1;
+    condbr v58, block2(v8, v31), block10;
+
+block8:
+    v19 = call noname::dlmalloc::dlmalloc::Dlmalloc<A>::memalign(v12, v2, v3) : i32;
+    v20 = neq v19, 0 : i1;
+    condbr v20, block6, block9;
+
+block9:
+    v21 = const.i32 0 : i32;
+    br block2(v8, v21);
+
+block10:
+    v59 = const.i32 16 : i32;
+    v60 = const.i32 4 : i32;
+    v61 = add.wrapping v3, v60 : i32;
+    v62 = const.i32 16 : i32;
+    v63 = const.i32 8 : i32;
+    v64 = call noname::dlmalloc::dlmalloc::align_up(v62, v63) : i32;
+    v65 = const.i32 -5 : i32;
+    v66 = add.wrapping v64, v65 : i32;
+    v67 = cast v66 : u32;
+    v68 = cast v3 : u32;
+    v69 = gt v67, v68 : i1;
+    v70 = cast v69 : i32;
+    v71 = neq v70, 0 : i1;
+    v72 = select v71, v59, v61 : i32;
+    v73 = const.i32 8 : i32;
+    v74 = call noname::dlmalloc::dlmalloc::align_up(v72, v73) : i32;
+    v75 = call noname::dlmalloc::dlmalloc::Chunk::from_mem(v0) : i32;
+    v76 = call noname::dlmalloc::dlmalloc::Chunk::size(v75) : i32;
+    v77 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v76) : i32;
+    v78 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v75) : i32;
+    v79 = neq v78, 0 : i1;
+    condbr v79, block17, block18;
+
+block11:
+    v304 = cast v12 : u32;
+    v305 = add v304, 420 : u32;
+    v306 = inttoptr v305 : *mut i32;
+    v307 = load v306 : i32;
+    v308 = add.wrapping v307, v76 : i32;
+    v309 = cast v308 : u32;
+    v310 = cast v74 : u32;
+    v311 = gt v309, v310 : i1;
+    v312 = cast v311 : i32;
+    v313 = neq v312, 0 : i1;
+    condbr v313, block5, block43;
+
+block12:
+    v303 = neq v75, 0 : i1;
+    condbr v303, block3(v302, v374), block42;
+
+block13:
+    v292 = sub.wrapping v76, v74 : i32;
+    v293 = const.i32 16 : i32;
+    v294 = const.i32 8 : i32;
+    v295 = call noname::dlmalloc::dlmalloc::align_up(v293, v294) : i32;
+    v296 = cast v292 : u32;
+    v297 = cast v295 : u32;
+    v298 = lt v296, v297 : i1;
+    v299 = cast v298 : i32;
+    v300 = neq v299, 0 : i1;
+    condbr v300, block12, block41;
+
+block14:
+    v258 = cast v12 : u32;
+    v259 = add v258, 416 : u32;
+    v260 = inttoptr v259 : *mut i32;
+    v261 = load v260 : i32;
+    v262 = add.wrapping v261, v76 : i32;
+    v263 = cast v262 : u32;
+    v264 = cast v74 : u32;
+    v265 = lt v263, v264 : i1;
+    v266 = cast v265 : i32;
+    v267 = neq v266, 0 : i1;
+    condbr v267, block4(v12, v3, v0, v75, v8, v31), block36;
+
+block15:
+    v243 = const.i32 16 : i32;
+    v244 = const.i32 8 : i32;
+    v245 = call noname::dlmalloc::dlmalloc::align_up(v243, v244) : i32;
+    v246 = cast v108 : u32;
+    v247 = cast v245 : u32;
+    v248 = lt v246, v247 : i1;
+    v249 = cast v248 : i32;
+    v250 = neq v249, 0 : i1;
+    condbr v250, block32, block33;
+
+block16:
+    v210 = cast v77 : u32;
+    v211 = add v210, 12 : u32;
+    v212 = inttoptr v211 : *mut i32;
+    v213 = load v212 : i32;
+    v214 = cast v77 : u32;
+    v215 = add v214, 8 : u32;
+    v216 = inttoptr v215 : *mut i32;
+    v217 = load v216 : i32;
+    v218 = eq v213, v217 : i1;
+    v219 = cast v218 : i32;
+    v220 = neq v219, 0 : i1;
+    condbr v220, block30, block31;
+
+block17:
+    v115 = call noname::dlmalloc::dlmalloc::Chunk::size(v75) : i32;
+    v116 = const.i32 256 : i32;
+    v117 = cast v74 : u32;
+    v118 = cast v116 : u32;
+    v119 = lt v117, v118 : i1;
+    v120 = cast v119 : i32;
+    v121 = neq v120, 0 : i1;
+    condbr v121, block4(v12, v3, v0, v75, v8, v31), block25;
+
+block18:
+    v80 = cast v76 : u32;
+    v81 = cast v74 : u32;
+    v82 = gte v80, v81 : i1;
+    v83 = cast v82 : i32;
+    v84 = neq v83, 0 : i1;
+    condbr v84, block13, block19;
+
+block19:
+    v85 = cast v12 : u32;
+    v86 = add v85, 428 : u32;
+    v87 = inttoptr v86 : *mut i32;
+    v88 = load v87 : i32;
+    v89 = eq v77, v88 : i1;
+    v90 = cast v89 : i32;
+    v91 = neq v90, 0 : i1;
+    condbr v91, block11, block20;
+
+block20:
+    v92 = cast v12 : u32;
+    v93 = add v92, 424 : u32;
+    v94 = inttoptr v93 : *mut i32;
+    v95 = load v94 : i32;
+    v96 = eq v77, v95 : i1;
+    v97 = cast v96 : i32;
+    v98 = neq v97, 0 : i1;
+    condbr v98, block14, block21;
+
+block21:
+    v99 = call noname::dlmalloc::dlmalloc::Chunk::cinuse(v77) : i32;
+    v100 = neq v99, 0 : i1;
+    condbr v100, block4(v12, v3, v0, v75, v8, v31), block22;
+
+block22:
+    v101 = call noname::dlmalloc::dlmalloc::Chunk::size(v77) : i32;
+    v102 = add.wrapping v101, v76 : i32;
+    v103 = cast v102 : u32;
+    v104 = cast v74 : u32;
+    v105 = lt v103, v104 : i1;
+    v106 = cast v105 : i32;
+    v107 = neq v106, 0 : i1;
+    condbr v107, block4(v12, v3, v0, v75, v8, v31), block23;
+
+block23:
+    v108 = sub.wrapping v102, v74 : i32;
+    v109 = const.i32 256 : i32;
+    v110 = cast v101 : u32;
+    v111 = cast v109 : u32;
+    v112 = lt v110, v111 : i1;
+    v113 = cast v112 : i32;
+    v114 = neq v113, 0 : i1;
+    condbr v114, block16, block24;
+
+block24:
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk(v12, v77);
+    br block15;
+
+block25:
+    v122 = const.i32 4 : i32;
+    v123 = add.wrapping v74, v122 : i32;
+    v124 = cast v115 : u32;
+    v125 = cast v123 : u32;
+    v126 = lt v124, v125 : i1;
+    v127 = cast v126 : i32;
+    v128 = neq v127, 0 : i1;
+    condbr v128, block26, block27;
+
+block26:
+    v138 = cast v137 : u32;
+    v139 = inttoptr v138 : *mut i32;
+    v140 = load v139 : i32;
+    v141 = sub.wrapping v75, v140 : i32;
+    v143 = add.wrapping v115, v140 : i32;
+    v144 = const.i32 16 : i32;
+    v145 = add.wrapping v143, v144 : i32;
+    v147 = const.i32 31 : i32;
+    v148 = add.wrapping v74, v147 : i32;
+    v149 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::page_size(v136) : i32;
+    v150 = call noname::dlmalloc::dlmalloc::align_up(v148, v149) : i32;
+    v151 = const.i32 1 : i32;
+    v152 = call noname::<dlmalloc::sys::System as dlmalloc::Allocator>::remap(v12, v141, v145, v150, v151) : i32;
+    v153 = eq v152, 0 : i1;
+    v154 = cast v153 : i32;
+    v155 = neq v154, 0 : i1;
+    condbr v155, block4(v136, v3, v0, v137, v8, v31), block29;
+
+block27:
+    v129 = sub.wrapping v115, v74 : i32;
+    v130 = const.i32 131073 : i32;
+    v131 = cast v129 : u32;
+    v132 = cast v130 : u32;
+    v133 = lt v131, v132 : i1;
+    v134 = cast v133 : i32;
+    v135 = neq v134, 0 : i1;
+    condbr v135, block12, block28;
+
+block28:
+    br block26;
+
+block29:
+    v156 = add.wrapping v152, v140 : i32;
+    v157 = sub.wrapping v150, v140 : i32;
+    v158 = const.i32 -16 : i32;
+    v159 = add.wrapping v157, v158 : i32;
+    v160 = cast v156 : u32;
+    v161 = add v160, 4 : u32;
+    v162 = inttoptr v161 : *mut i32;
+    store v162, v159;
+    v163 = call noname::dlmalloc::dlmalloc::Chunk::fencepost_head() : i32;
+    v164 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v156, v159) : i32;
+    v165 = cast v164 : u32;
+    v166 = add v165, 4 : u32;
+    v167 = inttoptr v166 : *mut i32;
+    store v167, v163;
+    v168 = const.i32 -12 : i32;
+    v169 = add.wrapping v157, v168 : i32;
+    v170 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v156, v169) : i32;
+    v171 = const.i32 0 : i32;
+    v172 = cast v170 : u32;
+    v173 = add v172, 4 : u32;
+    v174 = inttoptr v173 : *mut i32;
+    store v174, v171;
+    v175 = cast v136 : u32;
+    v176 = add v175, 432 : u32;
+    v177 = inttoptr v176 : *mut i32;
+    v178 = load v177 : i32;
+    v179 = sub.wrapping v150, v145 : i32;
+    v180 = add.wrapping v178, v179 : i32;
+    v181 = cast v136 : u32;
+    v182 = add v181, 432 : u32;
+    v183 = inttoptr v182 : *mut i32;
+    store v183, v180;
+    v184 = cast v136 : u32;
+    v185 = add v184, 444 : u32;
+    v186 = inttoptr v185 : *mut i32;
+    v187 = load v186 : i32;
+    v188 = cast v152 : u32;
+    v189 = cast v187 : u32;
+    v190 = gt v188, v189 : i1;
+    v191 = cast v190 : i32;
+    v192 = neq v191, 0 : i1;
+    v193 = select v192, v187, v152 : i32;
+    v194 = cast v136 : u32;
+    v195 = add v194, 444 : u32;
+    v196 = inttoptr v195 : *mut i32;
+    store v196, v193;
+    v197 = cast v136 : u32;
+    v198 = add v197, 436 : u32;
+    v199 = inttoptr v198 : *mut i32;
+    v200 = load v199 : i32;
+    v201 = cast v200 : u32;
+    v202 = cast v180 : u32;
+    v203 = gt v201, v202 : i1;
+    v204 = cast v203 : i32;
+    v205 = neq v204, 0 : i1;
+    v206 = select v205, v200, v180 : i32;
+    v207 = cast v136 : u32;
+    v208 = add v207, 436 : u32;
+    v209 = inttoptr v208 : *mut i32;
+    store v209, v206;
+    br block3(v156, v371);
+
+block30:
+    v227 = cast v12 : u32;
+    v228 = add v227, 408 : u32;
+    v229 = inttoptr v228 : *mut i32;
+    v230 = load v229 : i32;
+    v231 = const.i32 -2 : i32;
+    v232 = const.i32 3 : i32;
+    v233 = cast v101 : u32;
+    v234 = cast v232 : u32;
+    v235 = shr v233, v234 : u32;
+    v236 = cast v235 : i32;
+    v237 = rotl v231, v236 : i32;
+    v238 = band v230, v237 : i32;
+    v239 = cast v12 : u32;
+    v240 = add v239, 408 : u32;
+    v241 = inttoptr v240 : *mut i32;
+    store v241, v238;
+    br block15;
+
+block31:
+    v221 = cast v217 : u32;
+    v222 = add v221, 12 : u32;
+    v223 = inttoptr v222 : *mut i32;
+    store v223, v213;
+    v224 = cast v213 : u32;
+    v225 = add v224, 8 : u32;
+    v226 = inttoptr v225 : *mut i32;
+    store v226, v217;
+    br block15;
+
+block32:
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v251, v102);
+    v257 = neq v251, 0 : i1;
+    condbr v257, block3(v251, v372), block35;
+
+block33:
+    v253 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v251, v252);
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v253, v242);
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v12, v253, v242);
+    v255 = neq v251, 0 : i1;
+    condbr v255, block3(v251, v372), block34;
+
+block34:
+    br block4(v254, v3, v0, v251, v8, v31);
+
+block35:
+    br block4(v254, v339, v348, v251, v372, v384);
+
+block36:
+    v268 = sub.wrapping v262, v74 : i32;
+    v269 = const.i32 16 : i32;
+    v270 = const.i32 8 : i32;
+    v271 = call noname::dlmalloc::dlmalloc::align_up(v269, v270) : i32;
+    v272 = cast v268 : u32;
+    v273 = cast v271 : u32;
+    v274 = gte v272, v273 : i1;
+    v275 = cast v274 : i32;
+    v276 = neq v275, 0 : i1;
+    condbr v276, block38, block39;
+
+block37(v282: i32, v286: i32):
+    v283 = cast v12 : u32;
+    v284 = add v283, 424 : u32;
+    v285 = inttoptr v284 : *mut i32;
+    store v285, v282;
+    v287 = cast v281 : u32;
+    v288 = add v287, 416 : u32;
+    v289 = inttoptr v288 : *mut i32;
+    store v289, v286;
+    v291 = neq v75, 0 : i1;
+    condbr v291, block3(v290, v373), block40;
+
+block38:
+    v279 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74) : i32;
+    v280 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v279, v268) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v74);
+    call noname::dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(v279, v268);
+    call noname::dlmalloc::dlmalloc::Chunk::clear_pinuse(v280);
+    br block37(v279, v268);
+
+block39:
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v262);
+    v277 = const.i32 0 : i32;
+    v278 = const.i32 0 : i32;
+    br block37(v278, v277);
+
+block40:
+    br block4(v281, v3, v0, v290, v8, v31);
+
+block41:
+    v301 = call noname::dlmalloc::dlmalloc::Chunk::plus_offset(v75, v74) : i32;
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v75, v74);
+    call noname::dlmalloc::dlmalloc::Chunk::set_inuse(v301, v292);
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk(v12, v301, v292);
+    br block12;
+
+block42:
+    br block4(v12, v3, v0, v302, v8, v31);
+
+block43:
+    br block4(v12, v3, v0, v75, v8, v31);
+
+block44:
+    br block4(v12, v3, v0, v75, v8, v31);
+
+block45:
+    v352 = call noname::dlmalloc::dlmalloc::Chunk::size(v351) : i32;
+    v353 = const.i32 -8 : i32;
+    v354 = const.i32 -4 : i32;
+    v355 = call noname::dlmalloc::dlmalloc::Chunk::mmapped(v351) : i32;
+    v356 = neq v355, 0 : i1;
+    v357 = select v356, v353, v354 : i32;
+    v358 = add.wrapping v352, v357 : i32;
+    v359 = cast v358 : u32;
+    v360 = cast v337 : u32;
+    v361 = lt v359, v360 : i1;
+    v362 = cast v361 : i32;
+    v363 = neq v362, 0 : i1;
+    v364 = select v363, v358, v337 : i32;
+    v365 = call noname::memcpy(v342, v346, v364) : i32;
+    call noname::dlmalloc::dlmalloc::Dlmalloc<A>::free(v335, v346);
+    br block2(v370, v365);
+}
+
+pub fn __rust_alloc_error_handler(i32, i32) {
+block0(v0: i32, v1: i32):
+    call noname::__rdl_oom(v0, v1);
+    ret;
+
+block1:
+}
+
+pub fn alloc::raw_vec::finish_grow(i32, i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32, v3: i32):
+    v4 = const.i32 0 : i32;
+    v5 = eq v1, 0 : i1;
+    v6 = cast v5 : i32;
+    v7 = neq v6, 0 : i1;
+    condbr v7, block4, block5;
+
+block1:
+    ret;
+
+block2(v83: i32):
+    v84 = const.i32 1 : i32;
+    v85 = cast v83 : u32;
+    v86 = inttoptr v85 : *mut i32;
+    store v86, v84;
+    br block1;
+
+block3:
+    v79 = const.i32 0 : i32;
+    v80 = cast v0 : u32;
+    v81 = add v80, 4 : u32;
+    v82 = inttoptr v81 : *mut i32;
+    store v82, v79;
+    br block2(v0);
+
+block4:
+    v71 = const.i32 0 : i32;
+    v72 = cast v0 : u32;
+    v73 = add v72, 4 : u32;
+    v74 = inttoptr v73 : *mut i32;
+    store v74, v71;
+    v75 = const.i32 8 : i32;
+    v76 = add.wrapping v0, v75 : i32;
+    v77 = cast v76 : u32;
+    v78 = inttoptr v77 : *mut i32;
+    store v78, v2;
+    br block2(v0);
+
+block5:
+    v8 = const.i32 -1 : i32;
+    v9 = lte v2, v8 : i1;
+    v10 = cast v9 : i32;
+    v11 = neq v10, 0 : i1;
+    condbr v11, block3, block6;
+
+block6:
+    v12 = cast v3 : u32;
+    v13 = add v12, 4 : u32;
+    v14 = inttoptr v13 : *mut i32;
+    v15 = load v14 : i32;
+    v16 = eq v15, 0 : i1;
+    v17 = cast v16 : i32;
+    v18 = neq v17, 0 : i1;
+    condbr v18, block9, block10;
+
+block7(v46: i32, v57: i32, v63: i32):
+    v47 = eq v46, 0 : i1;
+    v48 = cast v47 : i32;
+    v49 = neq v48, 0 : i1;
+    condbr v49, block17, block18;
+
+block8:
+    v45 = call noname::__rust_alloc(v2, v1) : i32;
+    br block7(v45, v43, v44);
+
+block9:
+    v36 = neq v2, 0 : i1;
+    condbr v36, block15, block16;
+
+block10:
+    v19 = const.i32 8 : i32;
+    v20 = add.wrapping v3, v19 : i32;
+    v21 = cast v20 : u32;
+    v22 = inttoptr v21 : *mut i32;
+    v23 = load v22 : i32;
+    v24 = neq v23, 0 : i1;
+    condbr v24, block11, block12;
+
+block11:
+    v32 = cast v3 : u32;
+    v33 = inttoptr v32 : *mut i32;
+    v34 = load v33 : i32;
+    v35 = call noname::__rust_realloc(v34, v23, v1, v2) : i32;
+    br block7(v35, v2, v1);
+
+block12:
+    v25 = neq v2, 0 : i1;
+    condbr v25, block13, block14;
+
+block13:
+    v26 = const.i32 0 : i32;
+    v27 = cast v26 : u32;
+    v28 = add v27, 1048576 : u32;
+    v29 = inttoptr v28 : *mut u8;
+    v30 = load v29 : u8;
+    v31 = zext v30 : i32;
+    br block8;
+
+block14:
+    br block7(v1, v2, v1);
+
+block15:
+    v37 = const.i32 0 : i32;
+    v38 = cast v37 : u32;
+    v39 = add v38, 1048576 : u32;
+    v40 = inttoptr v39 : *mut u8;
+    v41 = load v40 : u8;
+    v42 = zext v41 : i32;
+    br block8;
+
+block16:
+    br block7(v1, v2, v1);
+
+block17:
+    v64 = cast v50 : u32;
+    v65 = add v64, 4 : u32;
+    v66 = inttoptr v65 : *mut i32;
+    store v66, v63;
+    v67 = const.i32 8 : i32;
+    v68 = add.wrapping v50, v67 : i32;
+    v69 = cast v68 : u32;
+    v70 = inttoptr v69 : *mut i32;
+    store v70, v57;
+    br block2(v50);
+
+block18:
+    v52 = cast v0 : u32;
+    v53 = add v52, 4 : u32;
+    v54 = inttoptr v53 : *mut i32;
+    store v54, v46;
+    v55 = const.i32 8 : i32;
+    v56 = add.wrapping v50, v55 : i32;
+    v58 = cast v56 : u32;
+    v59 = inttoptr v58 : *mut i32;
+    store v59, v57;
+    v60 = const.i32 0 : i32;
+    v61 = cast v50 : u32;
+    v62 = inttoptr v61 : *mut i32;
+    store v62, v60;
+    ret;
+}
+
+pub fn alloc::raw_vec::RawVec<T,A>::reserve_for_push(i32) {
+block0(v0: i32):
+    v1 = const.i32 0 : i32;
+    v2 = global.load (@__stack_pointer) as *mut i8 : i32;
+    v3 = const.i32 32 : i32;
+    v4 = sub.wrapping v2, v3 : i32;
+    v5 = global.symbol @__stack_pointer : *mut i32;
+    store v5, v4;
+    v6 = cast v0 : u32;
+    v7 = add v6, 4 : u32;
+    v8 = inttoptr v7 : *mut i32;
+    v9 = load v8 : i32;
+    v10 = const.i32 1 : i32;
+    v11 = shl v9, v10 : i32;
+    v12 = const.i32 4 : i32;
+    v13 = const.i32 4 : i32;
+    v14 = cast v11 : u32;
+    v15 = cast v13 : u32;
+    v16 = gt v14, v15 : i1;
+    v17 = cast v16 : i32;
+    v18 = neq v17, 0 : i1;
+    v19 = select v18, v11, v12 : i32;
+    v20 = const.i32 2 : i32;
+    v21 = shl v19, v20 : i32;
+    v22 = const.i32 536870912 : i32;
+    v23 = cast v19 : u32;
+    v24 = cast v22 : u32;
+    v25 = lt v23, v24 : i1;
+    v26 = cast v25 : i32;
+    v27 = const.i32 2 : i32;
+    v28 = shl v26, v27 : i32;
+    v29 = eq v9, 0 : i1;
+    v30 = cast v29 : i32;
+    v31 = neq v30, 0 : i1;
+    condbr v31, block3, block4;
+
+block1:
+    ret;
+
+block2:
+    v52 = const.i32 8 : i32;
+    v53 = add.wrapping v4, v52 : i32;
+    v56 = const.i32 20 : i32;
+    v57 = add.wrapping v51, v56 : i32;
+    call noname::alloc::raw_vec::finish_grow(v53, v28, v21, v57);
+    v58 = cast v51 : u32;
+    v59 = add v58, 12 : u32;
+    v60 = inttoptr v59 : *mut i32;
+    v61 = load v60 : i32;
+    v62 = cast v51 : u32;
+    v63 = add v62, 8 : u32;
+    v64 = inttoptr v63 : *mut i32;
+    v65 = load v64 : i32;
+    v66 = neq v65, 0 : i1;
+    condbr v66, block6, block7;
+
+block3:
+    v47 = const.i32 0 : i32;
+    v48 = cast v4 : u32;
+    v49 = add v48, 24 : u32;
+    v50 = inttoptr v49 : *mut i32;
+    store v50, v47;
+    br block2;
+
+block4:
+    v32 = const.i32 4 : i32;
+    v33 = cast v4 : u32;
+    v34 = add v33, 24 : u32;
+    v35 = inttoptr v34 : *mut i32;
+    store v35, v32;
+    v36 = const.i32 2 : i32;
+    v37 = shl v9, v36 : i32;
+    v38 = cast v4 : u32;
+    v39 = add v38, 28 : u32;
+    v40 = inttoptr v39 : *mut i32;
+    store v40, v37;
+    v41 = cast v0 : u32;
+    v42 = inttoptr v41 : *mut i32;
+    v43 = load v42 : i32;
+    v44 = cast v4 : u32;
+    v45 = add v44, 20 : u32;
+    v46 = inttoptr v45 : *mut i32;
+    store v46, v43;
+    br block2;
+
+block5:
+    v87 = const.i32 32 : i32;
+    v88 = add.wrapping v51, v87 : i32;
+    v89 = global.symbol @__stack_pointer : *mut i32;
+    store v89, v88;
+    br block1;
+
+block6:
+    v74 = const.i32 -2147483647 : i32;
+    v75 = eq v61, v74 : i1;
+    v76 = cast v75 : i32;
+    v77 = neq v76, 0 : i1;
+    condbr v77, block5, block8;
+
+block7:
+    v69 = cast v0 : u32;
+    v70 = add v69, 4 : u32;
+    v71 = inttoptr v70 : *mut i32;
+    store v71, v19;
+    v72 = cast v67 : u32;
+    v73 = inttoptr v72 : *mut i32;
+    store v73, v61;
+    br block5;
+
+block8:
+    v78 = eq v61, 0 : i1;
+    v79 = cast v78 : i32;
+    v80 = neq v79, 0 : i1;
+    condbr v80, block9, block10;
+
+block9:
+    call noname::alloc::raw_vec::capacity_overflow();
+    unreachable ;
+
+block10:
+    v81 = const.i32 16 : i32;
+    v82 = add.wrapping v51, v81 : i32;
+    v83 = cast v82 : u32;
+    v84 = inttoptr v83 : *mut i32;
+    v85 = load v84 : i32;
+    call noname::alloc::alloc::handle_alloc_error(v61, v85);
+    unreachable ;
+}
+
+pub fn vec_alloc() -> i32 {
+block0:
+    v1 = const.i32 0 : i32;
+    v2 = global.load (@__stack_pointer) as *mut i8 : i32;
+    v3 = const.i32 16 : i32;
+    v4 = sub.wrapping v2, v3 : i32;
+    v5 = global.symbol @__stack_pointer : *mut i32;
+    store v5, v4;
+    v6 = const.i32 0 : i32;
+    v7 = cast v4 : u32;
+    v8 = add v7, 12 : u32;
+    v9 = inttoptr v8 : *mut i32;
+    store v9, v6;
+    v10 = const.i64 4 : i64;
+    v11 = cast v4 : u32;
+    v12 = add v11, 4 : u32;
+    v13 = inttoptr v12 : *mut i64;
+    store v13, v10;
+    v14 = const.i32 4 : i32;
+    v15 = add.wrapping v4, v14 : i32;
+    call noname::alloc::raw_vec::RawVec<T,A>::reserve_for_push(v15);
+    v16 = cast v4 : u32;
+    v17 = add v16, 4 : u32;
+    v18 = inttoptr v17 : *mut i32;
+    v19 = load v18 : i32;
+    v20 = cast v4 : u32;
+    v21 = add v20, 12 : u32;
+    v22 = inttoptr v21 : *mut i32;
+    v23 = load v22 : i32;
+    v24 = const.i32 2 : i32;
+    v25 = shl v23, v24 : i32;
+    v26 = add.wrapping v19, v25 : i32;
+    v27 = const.i32 1 : i32;
+    v28 = cast v26 : u32;
+    v29 = inttoptr v28 : *mut i32;
+    store v29, v27;
+    v30 = const.i32 -1 : i32;
+    v31 = eq v23, v30 : i1;
+    v32 = cast v31 : i32;
+    v33 = neq v32, 0 : i1;
+    condbr v33, block2, block3;
+
+block1(v0: i32):
+
+block2:
+    unreachable ;
+
+block3:
+    v34 = cast v4 : u32;
+    v35 = add v34, 8 : u32;
+    v36 = inttoptr v35 : *mut i32;
+    v37 = load v36 : i32;
+    v38 = eq v37, 0 : i1;
+    v39 = cast v38 : i32;
+    v40 = neq v39, 0 : i1;
+    condbr v40, block4, block5;
+
+block4:
+    v45 = const.i32 16 : i32;
+    v46 = add.wrapping v4, v45 : i32;
+    v47 = global.symbol @__stack_pointer : *mut i32;
+    store v47, v46;
+    v48 = const.i32 1 : i32;
+    ret v48;
+
+block5:
+    v41 = const.i32 2 : i32;
+    v42 = shl v37, v41 : i32;
+    v43 = const.i32 4 : i32;
+    call noname::__rust_dealloc(v19, v42, v43);
+    br block4;
+}
+
+pub fn alloc::raw_vec::capacity_overflow() {
+block0:
+    unreachable ;
+
+block1:
+}
+
+pub fn alloc::alloc::handle_alloc_error(i32, i32) {
+block0(v0: i32, v1: i32):
+    call noname::alloc::alloc::handle_alloc_error::rt_error(v0, v1);
+    unreachable ;
+
+block1:
+}
+
+pub fn alloc::alloc::handle_alloc_error::rt_error(i32, i32) {
+block0(v0: i32, v1: i32):
+    call noname::__rust_alloc_error_handler(v1, v0);
+    unreachable ;
+
+block1:
+}
+
+pub fn __rdl_oom(i32, i32) {
+block0(v0: i32, v1: i32):
+    unreachable ;
+
+block1:
+}
+
+pub fn dlmalloc::dlmalloc::align_up(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = add.wrapping v0, v1 : i32;
+    v4 = const.i32 -1 : i32;
+    v5 = add.wrapping v3, v4 : i32;
+    v6 = const.i32 0 : i32;
+    v7 = sub.wrapping v6, v1 : i32;
+    v8 = band v5, v7 : i32;
+    br block1(v8);
+
+block1(v2: i32):
+    ret v2;
+}
+
+pub fn dlmalloc::dlmalloc::left_bits(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 1 : i32;
+    v3 = shl v0, v2 : i32;
+    v4 = const.i32 0 : i32;
+    v5 = sub.wrapping v4, v3 : i32;
+    v6 = bor v3, v5 : i32;
+    br block1(v6);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::least_bit(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 0 : i32;
+    v3 = sub.wrapping v2, v0 : i32;
+    v4 = band v3, v0 : i32;
+    br block1(v4);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::leftshift_for_tree_index(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 0 : i32;
+    v3 = const.i32 25 : i32;
+    v4 = const.i32 1 : i32;
+    v5 = cast v0 : u32;
+    v6 = cast v4 : u32;
+    v7 = shr v5, v6 : u32;
+    v8 = cast v7 : i32;
+    v9 = sub.wrapping v3, v8 : i32;
+    v10 = const.i32 31 : i32;
+    v11 = eq v0, v10 : i1;
+    v12 = cast v11 : i32;
+    v13 = neq v12, 0 : i1;
+    v14 = select v13, v2, v9 : i32;
+    br block1(v14);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::fencepost_head() -> i32 {
+block0:
+    v1 = const.i32 7 : i32;
+    br block1(v1);
+
+block1(v0: i32):
+    ret v0;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::size(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 4 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    v6 = const.i32 -8 : i32;
+    v7 = band v5, v6 : i32;
+    br block1(v7);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::cinuse(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 4 : u32;
+    v4 = inttoptr v3 : *mut u8;
+    v5 = load v4 : u8;
+    v6 = zext v5 : i32;
+    v7 = const.i32 2 : i32;
+    v8 = band v6, v7 : i32;
+    v9 = const.i32 1 : i32;
+    v10 = cast v8 : u32;
+    v11 = cast v9 : u32;
+    v12 = shr v10, v11 : u32;
+    v13 = cast v12 : i32;
+    br block1(v13);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::pinuse(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 4 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    v6 = const.i32 1 : i32;
+    v7 = band v5, v6 : i32;
+    br block1(v7);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::clear_pinuse(i32) {
+block0(v0: i32):
+    v1 = cast v0 : u32;
+    v2 = add v1, 4 : u32;
+    v3 = inttoptr v2 : *mut i32;
+    v4 = load v3 : i32;
+    v5 = const.i32 -2 : i32;
+    v6 = band v4, v5 : i32;
+    v7 = cast v0 : u32;
+    v8 = add v7, 4 : u32;
+    v9 = inttoptr v8 : *mut i32;
+    store v9, v6;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::inuse(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 4 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    v6 = const.i32 3 : i32;
+    v7 = band v5, v6 : i32;
+    v8 = const.i32 1 : i32;
+    v9 = neq v7, v8 : i1;
+    v10 = cast v9 : i32;
+    br block1(v10);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::mmapped(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 4 : u32;
+    v4 = inttoptr v3 : *mut u8;
+    v5 = load v4 : u8;
+    v6 = zext v5 : i32;
+    v7 = const.i32 3 : i32;
+    v8 = band v6, v7 : i32;
+    v9 = eq v8, 0 : i1;
+    v10 = cast v9 : i32;
+    br block1(v10);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::set_inuse(i32, i32) {
+block0(v0: i32, v1: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 4 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    v6 = const.i32 1 : i32;
+    v7 = band v5, v6 : i32;
+    v8 = bor v7, v1 : i32;
+    v9 = const.i32 2 : i32;
+    v10 = bor v8, v9 : i32;
+    v11 = cast v0 : u32;
+    v12 = add v11, 4 : u32;
+    v13 = inttoptr v12 : *mut i32;
+    store v13, v10;
+    v14 = add.wrapping v0, v1 : i32;
+    v15 = cast v14 : u32;
+    v16 = add v15, 4 : u32;
+    v17 = inttoptr v16 : *mut i32;
+    v18 = load v17 : i32;
+    v19 = const.i32 1 : i32;
+    v20 = bor v18, v19 : i32;
+    v21 = cast v14 : u32;
+    v22 = add v21, 4 : u32;
+    v23 = inttoptr v22 : *mut i32;
+    store v23, v20;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse(i32, i32) {
+block0(v0: i32, v1: i32):
+    v2 = const.i32 3 : i32;
+    v3 = bor v1, v2 : i32;
+    v4 = cast v0 : u32;
+    v5 = add v4, 4 : u32;
+    v6 = inttoptr v5 : *mut i32;
+    store v6, v3;
+    v7 = add.wrapping v0, v1 : i32;
+    v8 = cast v7 : u32;
+    v9 = add v8, 4 : u32;
+    v10 = inttoptr v9 : *mut i32;
+    v11 = load v10 : i32;
+    v12 = const.i32 1 : i32;
+    v13 = bor v11, v12 : i32;
+    v14 = cast v7 : u32;
+    v15 = add v14, 4 : u32;
+    v16 = inttoptr v15 : *mut i32;
+    store v16, v13;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk(i32, i32) {
+block0(v0: i32, v1: i32):
+    v2 = const.i32 3 : i32;
+    v3 = bor v1, v2 : i32;
+    v4 = cast v0 : u32;
+    v5 = add v4, 4 : u32;
+    v6 = inttoptr v5 : *mut i32;
+    store v6, v3;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk(i32, i32) {
+block0(v0: i32, v1: i32):
+    v2 = const.i32 1 : i32;
+    v3 = bor v1, v2 : i32;
+    v4 = cast v0 : u32;
+    v5 = add v4, 4 : u32;
+    v6 = inttoptr v5 : *mut i32;
+    store v6, v3;
+    v7 = add.wrapping v0, v1 : i32;
+    v8 = cast v7 : u32;
+    v9 = inttoptr v8 : *mut i32;
+    store v9, v1;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::set_free_with_pinuse(i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32):
+    v3 = cast v2 : u32;
+    v4 = add v3, 4 : u32;
+    v5 = inttoptr v4 : *mut i32;
+    v6 = load v5 : i32;
+    v7 = const.i32 -2 : i32;
+    v8 = band v6, v7 : i32;
+    v9 = cast v2 : u32;
+    v10 = add v9, 4 : u32;
+    v11 = inttoptr v10 : *mut i32;
+    store v11, v8;
+    v12 = const.i32 1 : i32;
+    v13 = bor v1, v12 : i32;
+    v14 = cast v0 : u32;
+    v15 = add v14, 4 : u32;
+    v16 = inttoptr v15 : *mut i32;
+    store v16, v13;
+    v17 = add.wrapping v0, v1 : i32;
+    v18 = cast v17 : u32;
+    v19 = inttoptr v18 : *mut i32;
+    store v19, v1;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::plus_offset(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = add.wrapping v0, v1 : i32;
+    br block1(v3);
+
+block1(v2: i32):
+    ret v2;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::minus_offset(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = sub.wrapping v0, v1 : i32;
+    br block1(v3);
+
+block1(v2: i32):
+    ret v2;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::to_mem(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 8 : i32;
+    v3 = add.wrapping v0, v2 : i32;
+    br block1(v3);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::mem_offset() -> i32 {
+block0:
+    v1 = const.i32 8 : i32;
+    br block1(v1);
+
+block1(v0: i32):
+    ret v0;
+}
+
+pub fn dlmalloc::dlmalloc::Chunk::from_mem(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 -8 : i32;
+    v3 = add.wrapping v0, v2 : i32;
+    br block1(v3);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::TreeChunk::leftmost_child(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 0 : i32;
+    v3 = cast v0 : u32;
+    v4 = add v3, 16 : u32;
+    v5 = inttoptr v4 : *mut i32;
+    v6 = load v5 : i32;
+    v7 = neq v6, 0 : i1;
+    condbr v7, block2(v6), block3;
+
+block1(v1: i32):
+    ret v1;
+
+block2(v13: i32):
+    br block1(v13);
+
+block3:
+    v8 = const.i32 20 : i32;
+    v9 = add.wrapping v0, v8 : i32;
+    v10 = cast v9 : u32;
+    v11 = inttoptr v10 : *mut i32;
+    v12 = load v11 : i32;
+    br block2(v12);
+}
+
+pub fn dlmalloc::dlmalloc::TreeChunk::chunk(i32) -> i32 {
+block0(v0: i32):
+    br block1(v0);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::TreeChunk::next(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 12 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    br block1(v5);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::TreeChunk::prev(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 8 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    br block1(v5);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Segment::is_extern(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 12 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    v6 = const.i32 1 : i32;
+    v7 = band v5, v6 : i32;
+    br block1(v7);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Segment::sys_flags(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = add v2, 12 : u32;
+    v4 = inttoptr v3 : *mut i32;
+    v5 = load v4 : i32;
+    v6 = const.i32 1 : i32;
+    v7 = cast v5 : u32;
+    v8 = cast v6 : u32;
+    v9 = shr v7, v8 : u32;
+    v10 = cast v9 : i32;
+    br block1(v10);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::dlmalloc::Segment::holds(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = const.i32 0 : i32;
+    v4 = const.i32 0 : i32;
+    v5 = cast v0 : u32;
+    v6 = inttoptr v5 : *mut i32;
+    v7 = load v6 : i32;
+    v8 = cast v7 : u32;
+    v9 = cast v1 : u32;
+    v10 = gt v8, v9 : i1;
+    v11 = cast v10 : i32;
+    v12 = neq v11, 0 : i1;
+    condbr v12, block2(v4), block3;
+
+block1(v2: i32):
+    ret v2;
+
+block2(v22: i32):
+    br block1(v22);
+
+block3:
+    v13 = cast v0 : u32;
+    v14 = add v13, 4 : u32;
+    v15 = inttoptr v14 : *mut i32;
+    v16 = load v15 : i32;
+    v17 = add.wrapping v7, v16 : i32;
+    v18 = cast v17 : u32;
+    v19 = cast v1 : u32;
+    v20 = gt v18, v19 : i1;
+    v21 = cast v20 : i32;
+    br block2(v21);
+}
+
+pub fn dlmalloc::dlmalloc::Segment::top(i32) -> i32 {
+block0(v0: i32):
+    v2 = cast v0 : u32;
+    v3 = inttoptr v2 : *mut i32;
+    v4 = load v3 : i32;
+    v5 = cast v0 : u32;
+    v6 = add v5, 4 : u32;
+    v7 = inttoptr v6 : *mut i32;
+    v8 = load v7 : i32;
+    v9 = add.wrapping v4, v8 : i32;
+    br block1(v9);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn <dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 1048580 : i32;
+    br block1(v2);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn <dlmalloc::global::Instance as core::ops::drop::Drop>::drop(i32) {
+block0(v0: i32):
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::alloc(i32, i32, i32) {
+block0(v0: i32, v1: i32, v2: i32):
+    v3 = const.i32 0 : i32;
+    v4 = const.i32 16 : i32;
+    v5 = cast v2 : u32;
+    v6 = cast v4 : u32;
+    v7 = shr v5, v6 : u32;
+    v8 = cast v7 : i32;
+    v9 = cast v8 : u32;
+    v10 = memory.grow v9 : i32;
+    v11 = const.i32 0 : i32;
+    v12 = cast v0 : u32;
+    v13 = add v12, 8 : u32;
+    v14 = inttoptr v13 : *mut i32;
+    store v14, v11;
+    v15 = const.i32 0 : i32;
+    v16 = const.i32 -65536 : i32;
+    v17 = band v2, v16 : i32;
+    v18 = const.i32 -1 : i32;
+    v19 = eq v10, v18 : i1;
+    v20 = cast v19 : i32;
+    v21 = neq v20, 0 : i1;
+    v22 = select v21, v15, v17 : i32;
+    v23 = cast v0 : u32;
+    v24 = add v23, 4 : u32;
+    v25 = inttoptr v24 : *mut i32;
+    store v25, v22;
+    v26 = const.i32 0 : i32;
+    v27 = const.i32 16 : i32;
+    v28 = shl v10, v27 : i32;
+    v29 = neq v20, 0 : i1;
+    v30 = select v29, v26, v28 : i32;
+    v31 = cast v0 : u32;
+    v32 = inttoptr v31 : *mut i32;
+    store v32, v30;
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::remap(i32, i32, i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32, v3: i32, v4: i32):
+    v6 = const.i32 0 : i32;
+    br block1(v6);
+
+block1(v5: i32):
+    ret v5;
+}
+
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::free_part(i32, i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32, v3: i32):
+    v5 = const.i32 0 : i32;
+    br block1(v5);
+
+block1(v4: i32):
+    ret v4;
+}
+
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::free(i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32):
+    v4 = const.i32 0 : i32;
+    br block1(v4);
+
+block1(v3: i32):
+    ret v3;
+}
+
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = const.i32 0 : i32;
+    br block1(v3);
+
+block1(v2: i32):
+    ret v2;
+}
+
+pub fn <dlmalloc::sys::System as dlmalloc::Allocator>::page_size(i32) -> i32 {
+block0(v0: i32):
+    v2 = const.i32 65536 : i32;
+    br block1(v2);
+
+block1(v1: i32):
+    ret v1;
+}
+
+pub fn dlmalloc::sys::enable_alloc_after_fork() {
+block0:
+    br block1;
+
+block1:
+    ret;
+}
+
+pub fn "memcpy"(i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32):
+    v4 = call noname::compiler_builtins::mem::memcpy(v0, v1, v2) : i32;
+    br block1(v4);
+
+block1(v3: i32):
+    ret v3;
+}
+
+pub fn compiler_builtins::mem::memcpy(i32, i32, i32) -> i32 {
+block0(v0: i32, v1: i32, v2: i32):
+    v4 = const.i32 0 : i32;
+    v5 = const.i32 15 : i32;
+    v6 = cast v2 : u32;
+    v7 = cast v5 : u32;
+    v8 = gt v6, v7 : i1;
+    v9 = cast v8 : i32;
+    v10 = neq v9, 0 : i1;
+    condbr v10, block3, block4;
+
+block1(v3: i32):
+    ret v3;
+
+block2(v133: i32, v137: i32, v159: i32, v161: i32):
+    v134 = eq v133, 0 : i1;
+    v135 = cast v134 : i32;
+    v136 = neq v135, 0 : i1;
+    condbr v136, block21, block22;
+
+block3:
+    v11 = const.i32 0 : i32;
+    v12 = sub.wrapping v11, v0 : i32;
+    v13 = const.i32 3 : i32;
+    v14 = band v12, v13 : i32;
+    v15 = add.wrapping v0, v14 : i32;
+    v16 = eq v14, 0 : i1;
+    v17 = cast v16 : i32;
+    v18 = neq v17, 0 : i1;
+    condbr v18, block5(v15), block6;
+
+block4:
+    br block2(v2, v0, v1, v0);
+
+block5(v38: i32):
+    v43 = sub.wrapping v2, v14 : i32;
+    v44 = const.i32 -4 : i32;
+    v45 = band v43, v44 : i32;
+    v46 = add.wrapping v38, v45 : i32;
+    v49 = add.wrapping v1, v41 : i32;
+    v50 = const.i32 3 : i32;
+    v51 = band v49, v50 : i32;
+    v52 = eq v51, 0 : i1;
+    v53 = cast v52 : i32;
+    v54 = neq v53, 0 : i1;
+    condbr v54, block11, block12;
+
+block6:
+    br block7(v0, v1);
+
+block7(v19: i32, v20: i32):
+    v21 = cast v20 : u32;
+    v22 = inttoptr v21 : *mut u8;
+    v23 = load v22 : u8;
+    v24 = zext v23 : i32;
+    v25 = trunc v24 : u8;
+    v26 = cast v19 : u32;
+    v27 = inttoptr v26 : *mut u8;
+    store v27, v25;
+    v28 = const.i32 1 : i32;
+    v29 = add.wrapping v20, v28 : i32;
+    v30 = const.i32 1 : i32;
+    v31 = add.wrapping v19, v30 : i32;
+    v33 = cast v31 : u32;
+    v34 = cast v32 : u32;
+    v35 = lt v33, v34 : i1;
+    v36 = cast v35 : i32;
+    v37 = neq v36, 0 : i1;
+    condbr v37, block7(v31, v29), block9;
+
+block8:
+    br block5(v32);
+
+block9:
+    br block8;
+
+block10(v138: i32, v162: i32):
+    v124 = const.i32 3 : i32;
+    v125 = band v43, v124 : i32;
+    v132 = add.wrapping v49, v45 : i32;
+    br block2(v125, v138, v132, v162);
+
+block11:
+    v100 = const.i32 1 : i32;
+    v101 = lt v45, v100 : i1;
+    v102 = cast v101 : i32;
+    v103 = neq v102, 0 : i1;
+    condbr v103, block10(v46, v163), block17;
+
+block12:
+    v55 = const.i32 1 : i32;
+    v56 = lt v45, v55 : i1;
+    v57 = cast v56 : i32;
+    v58 = neq v57, 0 : i1;
+    condbr v58, block10(v46, v0), block13;
+
+block13:
+    v59 = const.i32 3 : i32;
+    v60 = shl v49, v59 : i32;
+    v61 = const.i32 24 : i32;
+    v62 = band v60, v61 : i32;
+    v63 = const.i32 -4 : i32;
+    v64 = band v49, v63 : i32;
+    v65 = const.i32 4 : i32;
+    v66 = add.wrapping v64, v65 : i32;
+    v67 = const.i32 0 : i32;
+    v68 = sub.wrapping v67, v60 : i32;
+    v69 = const.i32 24 : i32;
+    v70 = band v68, v69 : i32;
+    v71 = cast v64 : u32;
+    v72 = inttoptr v71 : *mut i32;
+    v73 = load v72 : i32;
+    br block14(v38, v73, v66);
+
+block14(v74: i32, v75: i32, v81: i32):
+    v77 = cast v75 : u32;
+    v78 = cast v76 : u32;
+    v79 = shr v77, v78 : u32;
+    v80 = cast v79 : i32;
+    v82 = cast v81 : u32;
+    v83 = inttoptr v82 : *mut i32;
+    v84 = load v83 : i32;
+    v86 = shl v84, v85 : i32;
+    v87 = bor v80, v86 : i32;
+    v88 = cast v74 : u32;
+    v89 = inttoptr v88 : *mut i32;
+    store v89, v87;
+    v90 = const.i32 4 : i32;
+    v91 = add.wrapping v81, v90 : i32;
+    v92 = const.i32 4 : i32;
+    v93 = add.wrapping v74, v92 : i32;
+    v95 = cast v93 : u32;
+    v96 = cast v94 : u32;
+    v97 = lt v95, v96 : i1;
+    v98 = cast v97 : i32;
+    v99 = neq v98, 0 : i1;
+    condbr v99, block14(v93, v84, v91), block16;
+
+block15:
+
+block16:
+    br block10(v94, v163);
+
+block17:
+    br block18(v38, v49);
+
+block18(v104: i32, v105: i32):
+    v106 = cast v105 : u32;
+    v107 = inttoptr v106 : *mut i32;
+    v108 = load v107 : i32;
+    v109 = cast v104 : u32;
+    v110 = inttoptr v109 : *mut i32;
+    store v110, v108;
+    v111 = const.i32 4 : i32;
+    v112 = add.wrapping v105, v111 : i32;
+    v113 = const.i32 4 : i32;
+    v114 = add.wrapping v104, v113 : i32;
+    v116 = cast v114 : u32;
+    v117 = cast v115 : u32;
+    v118 = lt v116, v117 : i1;
+    v119 = cast v118 : i32;
+    v120 = neq v119, 0 : i1;
+    condbr v120, block18(v114, v112), block20;
+
+block19:
+    br block10(v115, v163);
+
+block20:
+    br block19;
+
+block21:
+    br block1(v161);
+
+block22:
+    v139 = add.wrapping v137, v133 : i32;
+    br block23(v137, v159);
+
+block23(v140: i32, v141: i32):
+    v142 = cast v141 : u32;
+    v143 = inttoptr v142 : *mut u8;
+    v144 = load v143 : u8;
+    v145 = zext v144 : i32;
+    v146 = trunc v145 : u8;
+    v147 = cast v140 : u32;
+    v148 = inttoptr v147 : *mut u8;
+    store v148, v146;
+    v149 = const.i32 1 : i32;
+    v150 = add.wrapping v141, v149 : i32;
+    v151 = const.i32 1 : i32;
+    v152 = add.wrapping v140, v151 : i32;
+    v154 = cast v152 : u32;
+    v155 = cast v153 : u32;
+    v156 = lt v154, v155 : i1;
+    v157 = cast v156 : i32;
+    v158 = neq v157, 0 : i1;
+    condbr v158, block23(v152, v150), block25;
+
+block24:
+    br block21;
+
+block25:
+    br block24;
+}

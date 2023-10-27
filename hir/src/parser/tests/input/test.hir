@@ -5,11 +5,11 @@ const $0 = 0xdeadbeef;
 global internal @DEADBEEF : u32 = $0 { id = 0 };
 
 pub cc(fast) fn foo(u32, sext u32) -> u32 {
-blk0(v1: u32, v2: u32):
+block0(v1: u32, v2: u32):
     v3 = add.unchecked v1, v2 : u32;
-    br blk1;
+    br block1;
 
-blk1:
+block1:
     ret v3;
 }
 

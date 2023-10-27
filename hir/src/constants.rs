@@ -172,4 +172,10 @@ impl ConstantPool {
         self.cache.insert(data, id);
         id
     }
+
+    /// Traverse the contents of the pool
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = (Constant, &ConstantData)> {
+        self.constants.iter().map(|(k, v)| (*k, v))
+    }
 }

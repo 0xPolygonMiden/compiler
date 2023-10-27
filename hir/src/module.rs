@@ -68,13 +68,16 @@ impl fmt::Display for Module {
         use std::fmt::Write;
 
         if self.is_kernel {
-            writeln!(f, "kernel {}", DisplayIdent(&self.name))?;
+            writeln!(f, "kernel {}\n", DisplayIdent(&self.name))?;
         } else {
-            writeln!(f, "module {}", DisplayIdent(&self.name))?;
+            writeln!(f, "module {}\n", DisplayIdent(&self.name))?;
         }
 
-        if !self.segments.is_empty() {
-            f.write_char('\n')?;
+        let has_segments = !self.segments.is_empty();
+        let has_globals = !self.globals.is_empty();
+        let has_constants = self.globals.has_constants();
+
+        if has_segments {
             f.write_str("memory {\n")?;
             for segment in self.segments.iter() {
                 writeln!(
@@ -85,10 +88,22 @@ impl fmt::Display for Module {
                     segment.init(),
                 )?;
             }
-            f.write_str("}\n\n")?;
+            f.write_str("}\n")?;
         }
 
-        if !self.globals.is_empty() {
+        if has_globals {
+            if has_constants {
+                if has_segments {
+                    f.write_char('\n')?;
+                }
+                for (constant, constant_data) in self.globals.constants() {
+                    let id = constant.as_u32();
+                    writeln!(f, "const ${id} = {constant_data};")?;
+                }
+
+                f.write_char('\n')?;
+            }
+
             for global in self.globals.iter() {
                 write!(
                     f,
@@ -99,19 +114,23 @@ impl fmt::Display for Module {
                 )?;
                 match global.init {
                     Some(init) => {
-                        let data = self.globals.get_constant(init);
-                        writeln!(f, " = {} {{ id = {} }};", data, global.id())?;
+                        writeln!(
+                            f,
+                            " = ${} {{ id = {} }};",
+                            init.as_u32(),
+                            global.id().as_u32()
+                        )?;
                     }
                     None => {
-                        writeln!(f, " {{ id = {} }};", global.id())?;
+                        writeln!(f, " {{ id = {} }};", global.id().as_u32())?;
                     }
                 }
             }
-            writeln!(f)?;
+            f.write_char('\n')?;
         }
 
         let mut external_functions = BTreeMap::<FunctionIdent, Signature>::default();
-        for function in self.functions.iter() {
+        for (i, function) in self.functions.iter().enumerate() {
             for import in function.dfg.imports() {
                 // Don't print declarations for functions in this module
                 if import.id.module == self.name {
@@ -121,7 +140,9 @@ impl fmt::Display for Module {
                     .entry(import.id)
                     .or_insert_with(|| import.signature.clone());
             }
-            writeln!(f)?;
+            if i > 0 {
+                writeln!(f)?;
+            }
             write_function(f, function)?;
         }
 

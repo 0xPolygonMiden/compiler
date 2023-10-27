@@ -702,62 +702,46 @@ mod tests {
 
         let expected = "pub fn sum_matrix(*mut u32, u32, u32) -> u32 {
 block0(v0: *mut u32, v1: u32, v2: u32):
-{
-    v10 = const.u32 0  : u32
-    v11 = ptrtoint v0  : u32
-    v12 = neq v11, 0  : i1
-    condbr v12, block2, block7
-}
+    v10 = const.u32 0 : u32;
+    v11 = ptrtoint v0 : u32;
+    v12 = neq v11, 0 : i1;
+    condbr v12, block2, block7;
 
 block7:
-{
-    ret (v10)
-}
+    ret v10;
 
 block2:
-{
-    v13 = const.u32 0  : u32
-    v14 = const.u32 0  : u32
-    v15 = mul v2, 4  : u32
-    br block3(v10, v13, v14)
-}
+    v13 = const.u32 0 : u32;
+    v14 = const.u32 0 : u32;
+    v15 = mul.checked v2, 4 : u32;
+    br block3(v10, v13, v14);
 
 block3(v4: u32, v5: u32, v6: u32):
-{
-    v16 = lt v5, v1  : i1
-    v17 = mul v5, v15  : u32
-    condbr v16, block4(v4, v5, v6), block8
-}
+    v16 = lt v5, v1 : i1;
+    v17 = mul.checked v5, v15 : u32;
+    condbr v16, block4(v4, v5, v6), block8;
 
 block8:
-{
-    ret (v4)
-}
+    ret v4;
 
 block4(v7: u32, v8: u32, v9: u32):
-{
-    v18 = lt v9, v2  : i1
-    condbr v18, block5, block6
-}
+    v18 = lt v9, v2 : i1;
+    condbr v18, block5, block6;
 
 block5:
-{
-    v19 = mul v9, 4  : u32
-    v20 = add v17, v19  : u32
-    v21 = add v11, v20  : u32
-    v22 = inttoptr v21  : *mut u32
-    v23 = load v22  : u32
-    v24 = add v7, v23  : u32
-    v25 = incr v9  : u32
-    br block4(v24, v8, v25)
-}
+    v19 = mul.checked v9, 4 : u32;
+    v20 = add.checked v17, v19 : u32;
+    v21 = add.checked v11, v20 : u32;
+    v22 = inttoptr v21 : *mut u32;
+    v23 = load v22 : u32;
+    v24 = add.checked v7, v23 : u32;
+    v25 = incr v9 : u32;
+    br block4(v24, v8, v25);
 
 block6:
-{
-    v26 = incr v8  : u32
-    v27 = const.u32 0  : u32
-    br block3(v7, v26, v27)
-}
+    v26 = incr v8 : u32;
+    v27 = const.u32 0 : u32;
+    br block3(v7, v26, v27);
 }
 ";
 

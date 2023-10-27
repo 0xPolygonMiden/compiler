@@ -305,7 +305,7 @@ where
                     Err(_) => Token::from_keyword_or_ident(s),
                 };
             }
-            if let Some(rest) = s.strip_prefix("blk") {
+            if let Some(rest) = s.strip_prefix("block") {
                 return match rest.parse::<u32>() {
                     Ok(id) => Token::Block(Block::from_u32(id)),
                     Err(_) => Token::from_keyword_or_ident(s),
