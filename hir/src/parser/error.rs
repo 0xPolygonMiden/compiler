@@ -30,6 +30,8 @@ pub enum ParseError {
     InvalidU32 { span: SourceSpan, value: isize },
     #[error("expected valid offset value, got '{value}'")]
     InvalidOffset { span: SourceSpan, value: isize },
+    #[error("parsing succeeded, but validation failed, see diagnostics for details")]
+    InvalidModule,
     #[error("parsing failed, see diagnostics for details")]
     Failed,
 }
@@ -61,6 +63,7 @@ impl PartialEq for ParseError {
                 },
             ) => lt == rt && l == r,
             (Self::ExtraToken { token: l, .. }, Self::ExtraToken { token: r, .. }) => l == r,
+            (Self::InvalidModule, Self::InvalidModule) => true,
             (Self::Failed, Self::Failed) => true,
             (Self::InvalidU32 { value: l, .. }, Self::InvalidU32 { value: r, .. }) => l == r,
             (Self::InvalidOffset { value: l, .. }, Self::InvalidOffset { value: r, .. }) => l == r,

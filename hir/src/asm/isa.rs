@@ -12,7 +12,7 @@ pub struct MasmBlockId(u32);
 entity_impl!(MasmBlockId, "blk");
 
 /// Represents a single code block in Miden Assembly
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MasmBlock {
     pub id: MasmBlockId,
     pub ops: SmallVec<[MasmOp; 4]>,

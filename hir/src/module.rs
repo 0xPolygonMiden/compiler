@@ -64,12 +64,13 @@ pub struct Module {
 }
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::write::DisplayIdent;
         use std::fmt::Write;
 
         if self.is_kernel {
-            writeln!(f, "kernel {}", &self.name)?;
+            writeln!(f, "kernel {}", DisplayIdent(&self.name))?;
         } else {
-            writeln!(f, "module {}", &self.name)?;
+            writeln!(f, "module {}", DisplayIdent(&self.name))?;
         }
 
         if !self.segments.is_empty() {
@@ -92,7 +93,9 @@ impl fmt::Display for Module {
                 write!(
                     f,
                     "global {} @{} : {}",
-                    global.linkage, global.name, global.ty
+                    global.linkage,
+                    DisplayIdent(&global.name),
+                    global.ty
                 )?;
                 match global.init {
                     Some(init) => {
@@ -132,6 +135,58 @@ impl fmt::Display for Module {
         }
 
         Ok(())
+    }
+}
+impl fmt::Debug for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Module")
+            .field("name", &self.name)
+            .field("is_kernel", &self.is_kernel)
+            .field("docs", &self.docs)
+            .field("segments", &self.segments)
+            .field("globals", &self.globals)
+            .field("functions", &self.functions)
+            .finish()
+    }
+}
+impl Eq for Module {}
+impl PartialEq for Module {
+    fn eq(&self, other: &Self) -> bool {
+        let is_eq = self.name == other.name
+            && self.is_kernel == other.is_kernel
+            && self.docs == other.docs
+            && self.segments().eq(other.segments())
+            && self.globals.len() == other.globals.len()
+            && self.functions.iter().count() == other.functions.iter().count();
+        if !is_eq {
+            return false;
+        }
+
+        for global in self.globals() {
+            let id = global.id();
+            if !other.globals.contains_key(id) {
+                return false;
+            }
+            let other_global = other.globals.get(id);
+            if global != other_global {
+                return false;
+            }
+        }
+
+        for function in self.functions.iter() {
+            if !other.contains(function.id.function) {
+                return false;
+            }
+            if let Some(other_function) = other.function(function.id.function) {
+                if function != other_function {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

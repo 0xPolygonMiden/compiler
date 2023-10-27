@@ -246,6 +246,7 @@ where
             '&' => pop!(self, Token::Ampersand),
             '!' => pop!(self, Token::Bang),
             '@' => pop!(self, Token::At),
+            '$' => pop!(self, Token::Dollar),
             '0' => match self.peek() {
                 'x' => {
                     self.skip();
@@ -258,14 +259,14 @@ where
             '1'..='9' => self.lex_number(),
             'a'..='z' => self.lex_keyword_or_ident(),
             'A'..='Z' => self.lex_identifier(),
-            '_' => self.lex_identifier(),
-            c => {
-                dbg!(c);
-                Token::Error(LexicalError::UnexpectedCharacter {
-                    start: self.span().start(),
-                    found: c,
-                })
-            }
+            '_' => match self.peek() {
+                c if c.is_ascii_alphanumeric() || c == '_' => self.lex_identifier(),
+                _ => pop!(self, Token::Underscore),
+            },
+            c => Token::Error(LexicalError::UnexpectedCharacter {
+                start: self.span().start(),
+                found: c,
+            }),
         }
     }
 
@@ -372,7 +373,13 @@ where
         loop {
             match self.read() {
                 '_' => self.skip(),
-                '.' if allow_dot => self.skip(),
+                '.' if allow_dot => {
+                    // We only allow '.' when followed by a alpha character
+                    match self.peek() {
+                        c if c.is_ascii_alphabetic() => self.skip(),
+                        _ => break,
+                    }
+                }
                 '0'..='9' => self.skip(),
                 ':' => match self.peek() {
                     ':' => {

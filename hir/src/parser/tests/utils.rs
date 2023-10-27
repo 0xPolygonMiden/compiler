@@ -91,15 +91,24 @@ impl ParseTest {
         self.parser.codemap.add(name.as_ref(), content);
     }
 
-    pub fn parse_module_from_file(&self, path: &str) -> Result<Module, ParseError> {
+    pub fn parse_module_ast_from_file(&self, path: &str) -> Result<Module, ParseError> {
         self.parser
             .parse_file::<Module, _, _>(&self.diagnostics, path)
     }
 
-    #[allow(unused)]
-    pub fn parse_module(&self, source: &str) -> Result<Module, ParseError> {
+    pub fn parse_module_ast(&self, source: &str) -> Result<Module, ParseError> {
         self.parser
             .parse_string::<Module, _, _>(&self.diagnostics, source)
+    }
+
+    pub fn parse_module_from_file(&self, path: &str) -> Result<crate::Module, ParseError> {
+        self.parse_module_ast_from_file(path)
+            .and_then(|ast| ast.try_into_hir(&self.diagnostics))
+    }
+
+    pub fn parse_module(&self, source: &str) -> Result<crate::Module, ParseError> {
+        self.parse_module_ast(source)
+            .and_then(|ast| ast.try_into_hir(&self.diagnostics))
     }
 
     #[track_caller]
@@ -120,9 +129,24 @@ impl ParseTest {
     /// Parses a [Module] from the given source string and asserts that executing the test will result
     /// in the expected AST.
     #[track_caller]
+    pub fn expect_module(&self, source: &str, expected: &crate::Module) {
+        match self.parse_module(source) {
+            Err(err) => {
+                self.diagnostics.emit(err);
+                panic!("expected parsing to succeed, see diagnostics for details");
+            }
+            Ok(parsed) => {
+                assert_eq!(&parsed, expected);
+            }
+        }
+    }
+
+    /// Parses a [Module] from the given source string and asserts that executing the test will result
+    /// in the expected AST.
+    #[track_caller]
     #[allow(unused)]
     pub fn expect_module_ast(&self, source: &str, expected: Module) {
-        match self.parse_module(source) {
+        match self.parse_module_ast(source) {
             Err(err) => {
                 self.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");
@@ -133,10 +157,9 @@ impl ParseTest {
 
     /// Parses a [Module] from the given source path and asserts that executing the test will result
     /// in the expected AST.
-    #[allow(unused)]
     #[track_caller]
     pub fn expect_module_ast_from_file(&self, path: &str, expected: Module) {
-        match self.parse_module_from_file(path) {
+        match self.parse_module_ast_from_file(path) {
             Err(err) => {
                 self.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");

@@ -44,7 +44,7 @@ fn write_signature(
         CallConv::Kernel => w.write_str("cc(kernel) fn ")?,
     }
     match module {
-        None => write!(w, "{}(", name)?,
+        None => write!(w, "{}(", DisplayIdent(&name))?,
         Some(module) => write!(
             w,
             "{}(",
@@ -122,9 +122,7 @@ pub fn write_instruction(
     inst: Inst,
     indent: usize,
 ) -> fmt::Result {
-    let s = String::with_capacity(16);
-
-    write!(w, "{1:0$}", indent, s)?;
+    write_indent(w, indent)?;
 
     let mut has_results = false;
     for r in func.dfg.inst_results(inst) {
@@ -168,14 +166,54 @@ fn write_operands(
 ) -> fmt::Result {
     let pool = &dfg.value_lists;
     match &dfg[inst] {
-        Instruction::BinaryOp(BinaryOp { overflow, args, .. }) => {
+        Instruction::BinaryOp(BinaryOp {
+            overflow: None,
+            args,
+            ..
+        }) => {
+            write!(w, " {}, {}", args[0], args[1])
+        }
+        Instruction::BinaryOp(BinaryOp {
+            overflow: Some(overflow),
+            args,
+            ..
+        }) => {
             write!(w, ".{} {}, {}", overflow, args[0], args[1])
         }
         Instruction::BinaryOpImm(BinaryOpImm {
-            overflow, arg, imm, ..
+            overflow: None,
+            arg,
+            imm,
+            ..
+        }) => write!(w, " {}, {}", arg, imm),
+        Instruction::BinaryOpImm(BinaryOpImm {
+            overflow: Some(overflow),
+            arg,
+            imm,
+            ..
         }) => write!(w, ".{} {}, {}", overflow, arg, imm),
-        Instruction::UnaryOp(UnaryOp { overflow, arg, .. }) => write!(w, ".{} {}", overflow, arg),
-        Instruction::UnaryOpImm(UnaryOpImm { overflow, imm, .. }) => {
+        Instruction::UnaryOp(UnaryOp {
+            overflow: None,
+            arg,
+            ..
+        }) => write!(w, " {}", arg),
+        Instruction::UnaryOp(UnaryOp {
+            overflow: Some(overflow),
+            arg,
+            ..
+        }) => write!(w, ".{} {}", overflow, arg),
+        Instruction::UnaryOpImm(UnaryOpImm {
+            overflow: None,
+            imm,
+            ..
+        }) => {
+            write!(w, " {}", imm)
+        }
+        Instruction::UnaryOpImm(UnaryOpImm {
+            overflow: Some(overflow),
+            imm,
+            ..
+        }) => {
             write!(w, ".{} {}", overflow, imm)
         }
         Instruction::Ret(Ret { args, .. }) => {
@@ -210,11 +248,15 @@ fn write_operands(
         Instruction::Switch(Switch {
             arg, arms, default, ..
         }) => {
-            write!(w, " {}", arg)?;
+            writeln!(w, " {} {{", arg)?;
             for (value, dest) in arms.iter() {
-                write!(w, ", {} => {}", value, dest)?;
+                write_indent(w, indent + 2)?;
+                writeln!(w, "{} => {}", value, dest)?;
             }
-            write!(w, ", {}", default)
+            write_indent(w, indent + 2)?;
+            writeln!(w, "_ => {}", default)?;
+            write_indent(w, indent)?;
+            w.write_char('}')
         }
         Instruction::Test(Test { arg, ref ty, .. }) => {
             write!(w, ".{} {}", ty, arg)
@@ -249,7 +291,7 @@ fn write_global_value(
                 w.write_str(".symbol ")?;
             }
             let offset = DisplayOffset::from(*offset);
-            write!(w, "@{}{}", name, offset)
+            write!(w, "@{}{}", DisplayIdent(name), offset)
         }
         GlobalValueData::Load { base, offset, ty } if nested => {
             let pointer_ty = dfg.global_type(*base);
@@ -303,6 +345,22 @@ fn write_block_args(w: &mut dyn Write, args: &[Value]) -> fmt::Result {
         Ok(())
     } else {
         write!(w, "({})", DisplayValues(args))
+    }
+}
+
+#[inline(always)]
+fn write_indent(w: &mut dyn Write, indent: usize) -> fmt::Result {
+    write!(w, "{1:0$}", indent, "")
+}
+
+pub(crate) struct DisplayIdent<'a>(pub &'a Ident);
+impl<'a> fmt::Display for DisplayIdent<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0.as_symbol().is_keyword() {
+            write!(f, "\"{}\"", self.0)
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 

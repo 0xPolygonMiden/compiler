@@ -74,14 +74,57 @@ impl miden_parsing::Parse for ast::Module {
     }
 }
 
+impl miden_parsing::Parse for crate::Module {
+    type Parser = grammar::ModuleParser;
+    type Error = ParseError;
+    type Config = ();
+    type Token = Lexed;
+
+    fn root_file_error(source: std::io::Error, path: std::path::PathBuf) -> Self::Error {
+        ParseError::FileError { source, path }
+    }
+
+    fn parse<S>(
+        parser: &Parser,
+        diagnostics: &DiagnosticsHandler,
+        source: S,
+    ) -> Result<Self, Self::Error>
+    where
+        S: Source,
+    {
+        let scanner = Scanner::new(source);
+        let lexer = Lexer::new(scanner);
+        Self::parse_tokens(diagnostics, parser.codemap.clone(), lexer)
+    }
+
+    fn parse_tokens<S: IntoIterator<Item = Lexed>>(
+        diagnostics: &DiagnosticsHandler,
+        codemap: Arc<CodeMap>,
+        tokens: S,
+    ) -> Result<Self, Self::Error> {
+        let mut next_var = 0;
+        let result = Self::Parser::new().parse(diagnostics, &codemap, &mut next_var, tokens);
+        match result {
+            Ok(ast) => {
+                if diagnostics.has_errors() {
+                    return Err(ParseError::Failed);
+                }
+                ast.try_into_hir(diagnostics)
+            }
+            Err(lalrpop_util::ParseError::User { error }) => Err(error),
+            Err(err) => Err(err.into()),
+        }
+    }
+}
+
 /// Parses the provided source and returns the AST.
 pub fn parse(
     diagnostics: &DiagnosticsHandler,
     codemap: Arc<CodeMap>,
     source: &str,
-) -> Result<ast::Module, ParseError> {
+) -> Result<crate::Module, ParseError> {
     let parser = Parser::new((), codemap);
-    match parser.parse_string::<ast::Module, _, _>(diagnostics, source) {
+    match parser.parse_string::<crate::Module, _, _>(diagnostics, source) {
         Ok(ast) => Ok(ast),
         Err(ParseError::Lexer(err)) => {
             diagnostics.emit(err);
@@ -96,9 +139,9 @@ pub fn parse_file<P: AsRef<Path>>(
     diagnostics: &DiagnosticsHandler,
     codemap: Arc<CodeMap>,
     source: P,
-) -> Result<ast::Module, ParseError> {
+) -> Result<crate::Module, ParseError> {
     let parser = Parser::new((), codemap);
-    match parser.parse_file::<ast::Module, _, _>(diagnostics, source) {
+    match parser.parse_file::<crate::Module, _, _>(diagnostics, source) {
         Ok(ast) => Ok(ast),
         Err(ParseError::Lexer(err)) => {
             diagnostics.emit(err);
@@ -111,7 +154,7 @@ pub fn parse_file<P: AsRef<Path>>(
 /// Parses the provided source string with a default [CodeMap] and [DiagnosticsHandler].
 ///
 /// This is primarily provided for use in tests, you should generally prefer [parse]
-pub fn parse_str(source: &str) -> Result<ast::Module, ParseError> {
+pub fn parse_str(source: &str) -> Result<crate::Module, ParseError> {
     use miden_diagnostics::{
         term::termcolor::ColorChoice, DefaultEmitter, DiagnosticsConfig, Verbosity,
     };
@@ -126,44 +169,4 @@ pub fn parse_str(source: &str) -> Result<ast::Module, ParseError> {
     };
     let diagnostics = DiagnosticsHandler::new(config, codemap.clone(), emitter);
     parse(&diagnostics, codemap, source)
-}
-
-/// Parses a [Module] from the given path.
-///
-/// This is primarily intended for use in the import resolution phase.
-#[allow(dead_code)]
-pub(crate) fn parse_module_from_file<P: AsRef<Path>>(
-    diagnostics: &DiagnosticsHandler,
-    codemap: Arc<CodeMap>,
-    path: P,
-) -> Result<ast::Module, ParseError> {
-    let parser = Parser::new((), codemap);
-    match parser.parse_file::<ast::Module, _, _>(diagnostics, path) {
-        ok @ Ok(_) => ok,
-        Err(ParseError::Lexer(err)) => {
-            diagnostics.emit(err);
-            Err(ParseError::Failed)
-        }
-        err @ Err(_) => err,
-    }
-}
-
-/// Parses a [Module] from a file already in the codemap
-///
-/// This is primarily intended for use in the import resolution phase.
-#[allow(dead_code)]
-pub(crate) fn parse_module(
-    diagnostics: &DiagnosticsHandler,
-    codemap: Arc<CodeMap>,
-    source: Arc<miden_diagnostics::SourceFile>,
-) -> Result<ast::Module, ParseError> {
-    let parser = Parser::new((), codemap);
-    match parser.parse::<ast::Module, _>(diagnostics, source) {
-        ok @ Ok(_) => ok,
-        Err(ParseError::Lexer(err)) => {
-            diagnostics.emit(err);
-            Err(ParseError::Failed)
-        }
-        err @ Err(_) => err,
-    }
 }

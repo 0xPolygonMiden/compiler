@@ -135,6 +135,11 @@ impl GlobalVariableTable {
         }
     }
 
+    /// Returns the number of global variables in this table
+    pub fn len(&self) -> usize {
+        self.layout.iter().count()
+    }
+
     /// Returns true if the global variable table is empty
     pub fn is_empty(&self) -> bool {
         self.layout.is_empty()
@@ -160,6 +165,11 @@ impl GlobalVariableTable {
     /// Gets the data associated with the given [GlobalVariable]
     pub fn get(&self, id: GlobalVariable) -> &GlobalVariableData {
         &self.arena[id]
+    }
+
+    /// Checks if the given `id` can be found in this table
+    pub fn contains_key(&self, id: GlobalVariable) -> bool {
+        self.arena.contains(id)
     }
 
     /// Removes the global variable associated with `id` from this table
@@ -440,11 +450,16 @@ impl GlobalVariableTable {
     ///
     /// It is expected that the caller has already guaranteed that the name of the given global variable
     /// is not present in the table, and that all validation rules for global variables have been enforced.
-    unsafe fn insert(&mut self, mut data: GlobalVariableData) -> GlobalVariable {
+    pub(crate) unsafe fn insert(&mut self, mut data: GlobalVariableData) -> GlobalVariable {
         let name = data.name;
         // Allocate the data in the arena
-        let gv = self.arena.alloc_key();
-        data.id = gv;
+        let gv = if data.id == GlobalVariable::default() {
+            let gv = self.arena.alloc_key();
+            data.id = gv;
+            gv
+        } else {
+            data.id
+        };
         self.arena.append(gv, data);
         // Add the symbol name to the symbol map
         self.names.insert(name, gv);
@@ -456,6 +471,11 @@ impl GlobalVariableTable {
         };
         self.layout.push_back(unsafe_ref);
         gv
+    }
+}
+impl fmt::Debug for GlobalVariableTable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.layout.iter()).finish()
     }
 }
 
@@ -475,7 +495,7 @@ impl Default for GlobalVariable {
 /// A [GlobalVariable] represents a concrete definition for a symbolic value,
 /// i.e. it corresponds to the actual allocated memory referenced by a [GlobalValueData::Symbol]
 /// value.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct GlobalVariableData {
     /// The intrusive link used for storing this global variable in a list
     link: LinkedListLink,
@@ -496,7 +516,25 @@ pub struct GlobalVariableData {
     pub init: Option<Constant>,
 }
 impl GlobalVariableData {
+    pub(crate) fn new(
+        id: GlobalVariable,
+        name: Ident,
+        ty: Type,
+        linkage: Linkage,
+        init: Option<Constant>,
+    ) -> Self {
+        Self {
+            link: LinkedListLink::new(),
+            id,
+            name,
+            ty,
+            linkage,
+            init,
+        }
+    }
+
     /// Get the unique identifier assigned to this global variable
+    #[inline]
     pub fn id(&self) -> GlobalVariable {
         self.id
     }
@@ -536,6 +574,17 @@ impl Hash for GlobalVariableData {
         self.ty.hash(state);
         self.linkage.hash(state);
         self.init.hash(state);
+    }
+}
+impl fmt::Debug for GlobalVariableData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("GlobalVariableData")
+            .field("id", &self.id)
+            .field("name", &self.name)
+            .field("ty", &self.ty)
+            .field("linkage", &self.linkage)
+            .field("init", &self.init)
+            .finish()
     }
 }
 

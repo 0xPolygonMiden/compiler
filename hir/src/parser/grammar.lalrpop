@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, SourceSpan};
+use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan};
 
 use crate::{AbiParam, AddressSpace, ArgumentExtension, ArgumentPurpose};
 use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
@@ -49,6 +49,7 @@ pub Module: Module = {
 }
 
 Form: Form = {
+    ConstantDeclaration => Form::Constant(<>),
     GlobalVarDeclaration => Form::Global(<>),
     FunctionDeclaration => Form::Function(<>),
     ExternalFunctionDeclaration => Form::ExternalFunction(<>),
@@ -57,10 +58,14 @@ Form: Form = {
 // GLOBALS
 // ================================================================================================
 
+ConstantDeclaration: ConstantDeclaration = {
+    <l:@L> "const" "$" <id:Index> "=" <init:HexString> ";" <r:@R>
+        => ConstantDeclaration::new(span!(l, r), crate::Constant::from_u32(id), init),
+}
+
 GlobalVarDeclaration: GlobalVarDeclaration = {
-    <l:@L> "global" <linkage:Linkage> "@" <name:Ident> ":" <ty:Type> <init:("=" <HexString>)?> "{" "id" "=" <id:Index>  "}" ";" <r:@R> => {
-        GlobalVarDeclaration::new(span!(l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init)
-    }
+    <l:@L> "global" <linkage:Linkage> "@" <name:Ident> ":" <ty:Type> <init:("=" "$" <Index>)?> "{" "id" "=" <id:Index>  "}" ";" <r:@R>
+        => GlobalVarDeclaration::new(span!(l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init.map(crate::Constant::from_u32)),
 }
 
 Linkage: Linkage = {
@@ -106,11 +111,12 @@ ArrayType: Type = {
 // FUNCTIONS
 // ==============================================================================================
 
-ExternalFunctionDeclaration: ExternalFunction = {
-    "extern" <cc:CallConv?> "fn" <id:FunctionIdent> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> ";" => {
+ExternalFunctionDeclaration: Span<ExternalFunction> = {
+    <l:@L> "extern" <cc:CallConv?> "fn" <id:FunctionIdent> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> ";" <r:@R> => {
+        let span = span!(l, r);
         let cc = cc.unwrap_or(CallConv::SystemV);
         let results = results.unwrap_or_default();
-        ExternalFunction {
+        Span::new(span, ExternalFunction {
             id,
             signature: Signature {
                 params,
@@ -118,7 +124,7 @@ ExternalFunctionDeclaration: ExternalFunction = {
                 cc,
                 linkage: Linkage::External,
             }
-        }
+        })
     },
 }
 
@@ -177,38 +183,38 @@ Block: Block = {
 }
 
 BlockArg: TypedValue = {
-    <id:ValueId> ":" <ty:Type> => TypedValue::new(id, ty),
+    <l:@L> <id:ValueId> ":" <ty:Type> <r:@R> => TypedValue::new(span!(l, r), id, ty),
 }
 
 // INSTRUCTIONS
 // ================================================================================================
 
 Inst: Inst = {
-    <l:@L> <value:ValueId> "=" <op_and_overflow:UnaryOpcode> <operand:Operand> ":" <value_ty:Type> ";" <r:@R> => {
+    <l:@L> <value:SpannedValueId> "=" <op_and_overflow:UnaryOpcode> <operand:Operand> ":" <value_ty:Type> ";" <r:@R> => {
         let (opcode, overflow) = op_and_overflow;
-        Inst::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand }, vec![TypedValue::new(value, value_ty)])
+        Inst::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand }, vec![TypedValue::new(value.span(), value.item, value_ty)])
     },
 
-    <l:@L> <value:ValueId> "=" <op_and_overflow:BinaryOpcode> <lhs:Operand> "," <rhs:Operand> ":" <value_ty:Type> ";" <r:@R> => {
+    <l:@L> <value:SpannedValueId> "=" <op_and_overflow:BinaryOpcode> <lhs:Operand> "," <rhs:Operand> ":" <value_ty:Type> ";" <r:@R> => {
         let (opcode, overflow) = op_and_overflow;
-        Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] }, vec![TypedValue::new(value, value_ty)])
+        Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] }, vec![TypedValue::new(value.span(), value.item, value_ty)])
     },
 
-    <l:@L> <values:Comma<ValueId>> "=" <opcode:PrimOpOpcode> <operands:Comma<Operand>> ":" <types:Comma<Type>> ";" <r:@R> => {
+    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:PrimOpOpcode> <operands:Comma<Operand>> ":" <types:Comma<Type>> ";" <r:@R> => {
         assert_eq!(values.len(), types.len());
-        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v, ty)).collect();
+        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v.span(), v.item, ty)).collect();
         Inst::new(span!(l, r), InstType::PrimOp { opcode, operands }, outputs)
     },
 
-    <l:@L> <values:Comma<ValueId>> "=" <opcode:CallOpcode> <callee:FunctionIdent> "(" <operands:CommaOpt<ValueId>> ")" <types:(":" <Comma<Type>>)?> ";" <r:@R> => {
+    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:CallOpcode> <callee:FunctionIdent> "(" <operands:CommaOpt<SpannedValueId>> ")" <types:(":" <Comma<Type>>)?> ";" <r:@R> => {
         let types = types.unwrap_or_default();
         assert_eq!(values.len(), types.len());
-        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v, ty)).collect();
+        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v.span(), v.item, ty)).collect();
         Inst::new(span!(l, r), InstType::Call { opcode, callee, operands }, outputs)
     },
 
-    <l:@L> <value:ValueId> "=" <expr:GlobalValueExpr> ":" <value_ty:Type> ";" <r:@R> => {
-        Inst::new(span!(l, r), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }, vec![TypedValue::new(value, value_ty)])
+    <l:@L> <value:SpannedValueId> "=" <expr:GlobalValueExpr> ":" <value_ty:Type> ";" <r:@R> => {
+        Inst::new(span!(l, r), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }, vec![TypedValue::new(value.span(), value.item, value_ty)])
     },
 
     <l:@L> "unreachable" ";" <r:@R> => {
@@ -223,11 +229,11 @@ Inst: Inst = {
         Inst::new(span!(l, r), InstType::Br { opcode: Opcode::Br, successor }, vec![])
     },
 
-    <l:@L> "condbr" <cond:Operand> <then_dest:Successor> "," <else_dest:Successor> ";" <r:@R> => {
+    <l:@L> "condbr" <cond:SpannedValueId> <then_dest:Successor> "," <else_dest:Successor> ";" <r:@R> => {
         Inst::new(span!(l, r), InstType::CondBr { opcode: Opcode::CondBr, cond, then_dest, else_dest }, vec![])
     },
 
-    <l:@L> "switch" <input:Operand> "{" <arms:Comma<SwitchArm>> "}" <r:@R> =>? {
+    <l:@L> "switch" <input:SpannedValueId> "{" <arms:Comma<SwitchArm>> "}" <r:@R> =>? {
         let mut arms = arms;
         let fallback = match arms.pop().unwrap() {
             (None, successor, _) => successor,
@@ -245,12 +251,12 @@ Inst: Inst = {
 }
 
 Successor: Successor = {
-    <l:@L> <id:BlockId> <args:("(" <Comma<ValueId>> ")")?> <r:@R> => Successor { span: span!(l, r), id, args: args.unwrap_or_default() },
+    <l:@L> <id:BlockId> <args:("(" <Comma<SpannedValueId>> ")")?> <r:@R> => Successor { span: span!(l, r), id, args: args.unwrap_or_default() },
 }
 
 SwitchArm: (Option<u32>, Successor, SourceSpan) = {
     <l:@L> <value:Index> "=>" <successor:Successor> <r:@R> => (Some(value), successor, span!(l, r)),
-    <l:@L> <successor:Successor> <r:@R> => (None, successor, span!(l, r)),
+    <l:@L> "_" "=>" <successor:Successor> <r:@R> => (None, successor, span!(l, r)),
 }
 
 CallOpcode: Opcode = {
@@ -343,40 +349,40 @@ PrimOpOpcode: Opcode = {
 }
 
 Operand: Operand = {
-    value_id => Operand::Value(<>),
-    int => Operand::Int(<>),
-    bigint => Operand::BigInt(<>),
+    <l:@L> <v:value_id> <r:@R> => Operand::Value(Span::new(span!(l, r), v)),
+    <l:@L> <i:int> <r:@R> => Operand::Int(Span::new(span!(l, r), i)),
+    <l:@L> <i:bigint> <r:@R> => Operand::BigInt(Span::new(span!(l, r), i)),
 }
 
 GlobalValueExpr: GlobalValueExpr = {
-    "." "symbol" <expr:NestedGlobalValueExpr> => <>,
+    <l:@L> "global.symbol" "@" <symbol:Ident> <offset:Offset?> <r:@R> => GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(l, r) },
 
-    "." "load" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset, ty }
+    <l:@L> "global.load" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> <r:@R> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset, ty, span: span!(l, r) }
     },
 
-    "." "load" <base:NestedGlobalValueExpr> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None }
+    <l:@L> "global.load" <base:NestedGlobalValueExpr> <r:@R> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None, span: span!(l, r) }
     },
 
-    "." "iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> => {
-        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty }
+    <l:@L> "global.iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> <r:@R> => {
+        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty, span: span!(l, r) }
     }
 }
 
 NestedGlobalValueExpr: GlobalValueExpr = {
-    "@" <symbol:Ident> <offset:Offset?> => GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0) },
+    <l:@L> "@" <symbol:Ident> <offset:Offset?> <r:@R> => GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(l, r) },
 
-    "*" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset, ty }
+    <l:@L> "*" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> <r:@R> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset, ty, span: span!(l, r) }
     },
 
-    "*" <base:NestedGlobalValueExpr> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None }
+    <l:@L> "*" <base:NestedGlobalValueExpr> <r:@R> => {
+        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None, span: span!(l, r) }
     },
 
-    "iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> => {
-        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty }
+    <l:@L> "iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> <r:@R> => {
+        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty, span: span!(l, r) }
     }
 }
 
@@ -420,6 +426,10 @@ FunctionIdent: FunctionIdent = {
         let function_span = SourceSpan::new(l + offset + 2, r);
         FunctionIdent { module: Ident::new(id.0, module_span), function: Ident::new(id.1, function_span) }
     }
+}
+
+SpannedValueId: Span<crate::Value> = {
+    <l:@L> <v:value_id> <r:@R> => Span::new(span!(l, r), v),
 }
 
 ValueId: crate::Value = {
@@ -558,6 +568,7 @@ extern {
         "mut" => Token::Mut,
         "as" => Token::As,
         "id" => Token::Id,
+        "const" => Token::Const,
         "global" => Token::Global,
         "global.symbol" => Token::GlobalSymbol,
         "global.load" => Token::GlobalLoad,
@@ -568,6 +579,7 @@ extern {
         "=>" => Token::RDoubleArrow,
         "+" => Token::Plus,
         "-" => Token::Minus,
+        "_" => Token::Underscore,
         "->" => Token::RArrow,
         "*" => Token::Star,
         "&" => Token::Ampersand,
@@ -582,6 +594,7 @@ extern {
         "{" => Token::LBrace,
         "}" => Token::RBrace,
         "." => Token::Dot,
+        "$" => Token::Dollar,
         "@" => Token::At,
     }
 }

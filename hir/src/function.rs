@@ -1,7 +1,7 @@
 use std::fmt;
 
 use cranelift_entity::entity_impl;
-use intrusive_collections::{intrusive_adapter, LinkedListLink};
+use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 use miden_diagnostics::Spanned;
 
 use super::*;
@@ -234,7 +234,7 @@ impl PartialEq for Signature {
 /// At link time, we make sure all external function references are either defined in
 /// the current program, or are well-known functions that are provided as part of a kernel
 /// or standard library in the Miden VM.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExternalFunction {
     pub id: FunctionIdent,
     pub signature: Signature,
@@ -252,6 +252,9 @@ impl PartialOrd for ExternalFunction {
 }
 
 intrusive_adapter!(pub FunctionListAdapter = Box<Function>: Function { link: LinkedListLink });
+
+/// A type alias for `LinkedList<FunctionListAdapter>`
+pub type FunctionList = LinkedList<FunctionListAdapter>;
 
 /// [Function] corresponds to a function definition, in single-static assignment (SSA) form.
 ///
@@ -290,6 +293,28 @@ impl Function {
         for param in signature.params() {
             dfg.append_block_param(entry, param.ty.clone(), id.span());
         }
+        dfg.imports.insert(
+            id,
+            ExternalFunction {
+                id,
+                signature: signature.clone(),
+            },
+        );
+        Self {
+            link: Default::default(),
+            id,
+            signature,
+            dfg,
+        }
+    }
+
+    /// This function is like [Function::new], except it does not initialize the
+    /// function entry block using the provided [Signature]. Instead, it is expected
+    /// that the caller does this manually.
+    ///
+    /// This is primarily intended for use by the IR parser.
+    pub(crate) fn new_uninit(id: FunctionIdent, signature: Signature) -> Self {
+        let mut dfg = DataFlowGraph::default();
         dfg.imports.insert(
             id,
             ExternalFunction {
@@ -377,5 +402,53 @@ impl fmt::Debug for Function {
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         crate::write_function(f, self)
+    }
+}
+impl Eq for Function {}
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        let is_eq = self.id == other.id && self.signature == other.signature;
+        if !is_eq {
+            return false;
+        }
+
+        // We expect the entry block to be the same
+        if self.dfg.entry != other.dfg.entry {
+            return false;
+        }
+
+        // We expect the blocks to be laid out in the same order, and to have the same parameter lists
+        for (block_id, block) in self.dfg.blocks() {
+            if let Some(other_block) = other.dfg.blocks.get(block_id) {
+                if block.params.as_slice(&self.dfg.value_lists)
+                    != other_block.params.as_slice(&other.dfg.value_lists)
+                {
+                    return false;
+                }
+                // We expect the instructions in each block to be the same
+                if !block
+                    .insts
+                    .iter()
+                    .map(|i| InstructionWithValueListPool {
+                        inst: i,
+                        value_lists: &self.dfg.value_lists,
+                    })
+                    .eq(other_block
+                        .insts
+                        .iter()
+                        .map(|i| InstructionWithValueListPool {
+                            inst: i,
+                            value_lists: &other.dfg.value_lists,
+                        }))
+                {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        // We expect both functions to have the same imports
+        self.dfg.imports == other.dfg.imports
     }
 }

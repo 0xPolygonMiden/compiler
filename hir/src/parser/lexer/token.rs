@@ -142,6 +142,7 @@ pub enum Token {
     U256,
     F64,
     Felt,
+    Const,
     Mut,
     DoubleQuote,
     Colon,
@@ -158,10 +159,12 @@ pub enum Token {
     RDoubleArrow,
     Plus,
     Minus,
+    Underscore,
     RArrow,
     Star,
     Ampersand,
     Bang,
+    Dollar,
     At,
 }
 impl Token {
@@ -284,6 +287,7 @@ impl Token {
             "f64" => Self::F64,
             "felt" => Self::Felt,
             "mut" => Self::Mut,
+            "const" => Self::Const,
             other => Self::Ident(Symbol::intern(other)),
         }
     }
@@ -468,6 +472,7 @@ impl fmt::Display for Token {
             Self::F64 => write!(f, "f64"),
             Self::Felt => write!(f, "felt"),
             Self::Mut => write!(f, "mut"),
+            Self::Const => write!(f, "const"),
             Self::DoubleQuote => write!(f, "\""),
             Self::Colon => write!(f, ":"),
             Self::Semicolon => write!(f, ";"),
@@ -483,10 +488,12 @@ impl fmt::Display for Token {
             Self::RDoubleArrow => write!(f, "=>"),
             Self::Plus => write!(f, "+"),
             Self::Minus => write!(f, "-"),
+            Self::Underscore => write!(f, "_"),
             Self::RArrow => write!(f, "->"),
             Self::Star => write!(f, "*"),
             Self::Ampersand => write!(f, "&"),
             Self::Bang => write!(f, "!"),
+            Self::Dollar => write!(f, "$"),
             Self::At => write!(f, "@"),
         }
     }

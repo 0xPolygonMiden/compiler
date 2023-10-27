@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, UnsafeRef};
 
@@ -158,6 +161,11 @@ impl DataSegmentTable {
         self.segments.back().get()
     }
 }
+impl fmt::Debug for DataSegmentTable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.segments.iter()).finish()
+    }
+}
 
 /// A [DataSegment] represents a region of linear memory that should be initialized
 /// with a given vector of bytes.
@@ -175,7 +183,7 @@ impl DataSegmentTable {
 /// on addresses falling in that segment - e.g. loads are allowed, stores are not. Miden
 /// currently does not have any form of memory protection, so this validation is best
 /// effort.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DataSegment {
     link: LinkedListLink,
     /// The offset from the start of linear memory where this segment starts
@@ -188,6 +196,16 @@ pub struct DataSegment {
     init: ConstantData,
     /// Whether or not this segment is intended to be read-only data
     readonly: bool,
+}
+impl fmt::Debug for DataSegment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DataSegment")
+            .field("offset", &self.offset)
+            .field("size", &self.size)
+            .field("init", &format_args!("{}", &self.init))
+            .field("readonly", &self.readonly)
+            .finish()
+    }
 }
 impl DataSegment {
     /// Create a new [DataSegment] with the given offset, size, initializer, and readonly flag.
