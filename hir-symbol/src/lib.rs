@@ -4,64 +4,12 @@ use core::ops::Deref;
 use core::str;
 
 use std::collections::BTreeMap;
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
 
-lazy_static::lazy_static! {
-    static ref SYMBOL_TABLE: SymbolTable = SymbolTable::new();
-}
+static SYMBOL_TABLE: OnceLock<SymbolTable> = OnceLock::new();
 
 pub mod symbols {
-    #![allow(non_upper_case_globals)]
-    use super::Symbol;
-
-    /// The symbol `false`
-    pub const False: Symbol = Symbol::new(0);
-    /// The symbol `true`
-    pub const True: Symbol = Symbol::new(1);
-    /// The symbol corresponding to an empty string
-    pub const Empty: Symbol = Symbol::new(2);
-    /// The symbol `module`
-    pub const Module: Symbol = Symbol::new(3);
-    /// The symbol `function`
-    pub const Function: Symbol = Symbol::new(4);
-    /// The symbol `const`
-    pub const Const: Symbol = Symbol::new(5);
-    /// The symbol `global`
-    pub const Global: Symbol = Symbol::new(6);
-    /// The symbol `kernel`
-    pub const Kernel: Symbol = Symbol::new(7);
-    /// The symbol `internal`
-    pub const Internal: Symbol = Symbol::new(8);
-    /// The symbol `external`
-    pub const External: Symbol = Symbol::new(9);
-    /// The symbol `odr`
-    pub const Odr: Symbol = Symbol::new(10);
-    /// The symbol `C`
-    pub const C: Symbol = Symbol::new(11);
-    /// The symbol `sret`
-    pub const Sret: Symbol = Symbol::new(12);
-    /// The symbol `zext`
-    pub const Zext: Symbol = Symbol::new(13);
-    /// The symbol `sext`
-    pub const Sext: Symbol = Symbol::new(14);
-
-    pub(super) const __SYMBOLS: &[(Symbol, &str)] = &[
-        (False, "false"),
-        (True, "true"),
-        (Empty, ""),
-        (Module, "module"),
-        (Function, "function"),
-        (Const, "const"),
-        (Global, "global"),
-        (Kernel, "kernel"),
-        (Internal, "internal"),
-        (External, "external"),
-        (Odr, "odr"),
-        (C, "C"),
-        (Sret, "sret"),
-        (Zext, "zext"),
-        (Sext, "sext"),
-    ];
+    include!(env!("SYMBOLS_RS"));
 }
 
 struct SymbolTable {
@@ -108,6 +56,12 @@ impl Symbol {
     #[inline]
     pub fn as_usize(self) -> usize {
         self.0.as_usize()
+    }
+
+    /// Returns true if this symbol is a keyword in the IR textual format
+    #[inline]
+    pub fn is_keyword(self) -> bool {
+        symbols::is_keyword(self)
     }
 }
 impl fmt::Debug for Symbol {
@@ -210,12 +164,14 @@ impl Interner {
 // If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    let mut r = SYMBOL_TABLE.interner.write().unwrap();
+    let table = SYMBOL_TABLE.get_or_init(|| SymbolTable::new());
+    let mut r = table.interner.write().unwrap();
     f(&mut r)
 }
 
 #[inline]
 fn with_read_only_interner<T, F: FnOnce(&Interner) -> T>(f: F) -> T {
-    let r = SYMBOL_TABLE.interner.read().unwrap();
+    let table = SYMBOL_TABLE.get_or_init(|| SymbolTable::new());
+    let r = table.interner.read().unwrap();
     f(&r)
 }

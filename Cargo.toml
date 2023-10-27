@@ -49,6 +49,7 @@ smallvec = { version = "1.9", features = [
 ] }
 smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
+toml = { version = "0.5", features = ["preserve_order"] }
 miden-assembly = "0.7"
 miden-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
