@@ -337,8 +337,9 @@ impl DataFlowGraph {
                         self.append_result(inst, ty);
                     }
                 }
-                _ => {
-                    for ty in opcode.results(ctrl_ty).into_iter() {
+                ix => {
+                    let overflow = ix.overflow();
+                    for ty in opcode.results(overflow, ctrl_ty).into_iter() {
                         self.append_result(inst, ty);
                     }
                 }
@@ -358,8 +359,9 @@ impl DataFlowGraph {
                 Instruction::InlineAsm(ref asm) => {
                     new_results.extend(asm.results.as_slice().iter().cloned());
                 }
-                _ => {
-                    new_results = opcode.results(ctrl_ty);
+                ix => {
+                    let overflow = ix.overflow();
+                    new_results = opcode.results(overflow, ctrl_ty);
                 }
             }
         }

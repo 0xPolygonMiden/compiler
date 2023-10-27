@@ -735,11 +735,11 @@ block5:
     v22 = inttoptr v21 : *mut u32;
     v23 = load v22 : u32;
     v24 = add.checked v7, v23 : u32;
-    v25 = incr v9 : u32;
+    v25 = incr.wrapping v9 : u32;
     br block4(v24, v8, v25);
 
 block6:
-    v26 = incr v8 : u32;
+    v26 = incr.wrapping v8 : u32;
     v27 = const.u32 0 : u32;
     br block3(v7, v26, v27);
 }

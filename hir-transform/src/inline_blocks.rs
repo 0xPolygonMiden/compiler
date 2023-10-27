@@ -392,7 +392,9 @@ mod tests {
             // blk1
             builder.switch_to_block(b);
             let ptr3_i32 = builder.ins().cast(ptr3, Type::I32, SourceSpan::UNKNOWN);
-            let ptr4_i32 = builder.ins().add(ptr3_i32, offset, SourceSpan::UNKNOWN);
+            let ptr4_i32 = builder
+                .ins()
+                .add_checked(ptr3_i32, offset, SourceSpan::UNKNOWN);
             let ptr4 = builder.ins().cast(ptr4_i32, Type::U32, SourceSpan::UNKNOWN);
             let is_null2 = builder
                 .ins()
@@ -436,7 +438,7 @@ block0(v0: *mut u8, v1: i32):
 
 block2(v4: u32):
     v10 = cast v4 : i32;
-    v11 = add v10, v1 : i32;
+    v11 = add.checked v10, v1 : i32;
     v12 = cast v11 : u32;
     v13 = eq v12, 0 : i1;
     condbr v13, block5(v0), block6(v12);

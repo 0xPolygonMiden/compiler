@@ -329,33 +329,71 @@ macro_rules! binary_int_op {
                 let lty = assert_integer_operands!(self, lhs, rhs);
                 into_first_result!(self.Binary($op, lty, lhs, rhs, span))
             }
+            fn [<$name _imm>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs);
+                into_first_result!(self.BinaryImm($op, lty, lhs, imm, span))
+            }
+        }
+    };
+}
+
+macro_rules! binary_int_op_with_overflow {
+    ($name:ident, $op:expr) => {
+        paste::paste! {
             fn [<$name _checked>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
                 let lty = assert_integer_operands!(self, lhs, rhs);
                 into_first_result!(self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Checked, span))
+            }
+            fn [<$name _unchecked>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs, rhs);
+                into_first_result!(self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Unchecked, span))
             }
             fn [<$name _wrapping>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
                 let lty = assert_integer_operands!(self, lhs, rhs);
                 into_first_result!(self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Wrapping, span))
             }
-            fn [<$name _overflowing>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+            fn [<$name _overflowing>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Inst {
                 let lty = assert_integer_operands!(self, lhs, rhs);
-                into_first_result!(self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Overflowing, span))
-            }
-            fn [<$name _imm>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
-                let lty = assert_integer_operands!(self, lhs);
-                into_first_result!(self.BinaryImm($op, lty, lhs, imm, span))
+                self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Overflowing, span).0
             }
             fn [<$name _imm_checked>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
                 let lty = assert_integer_operands!(self, lhs);
                 into_first_result!(self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Checked, span))
             }
+            fn [<$name _imm_unchecked>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs);
+                into_first_result!(self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Unchecked, span))
+            }
             fn [<$name _imm_wrapping>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
                 let lty = assert_integer_operands!(self, lhs);
                 into_first_result!(self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Wrapping, span))
             }
-            fn [<$name _imm_overflowing>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+            fn [<$name _imm_overflowing>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Inst {
                 let lty = assert_integer_operands!(self, lhs);
-                into_first_result!(self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Overflowing, span))
+                self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Overflowing, span).0
+            }
+        }
+    }
+}
+
+macro_rules! checked_binary_int_op {
+    ($name:ident, $op:expr) => {
+        paste::paste! {
+            fn [<$name _checked>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs, rhs);
+                into_first_result!(self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Checked, span))
+            }
+            fn [<$name _unchecked>](self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs, rhs);
+                into_first_result!(self.BinaryWithOverflow($op, lty, lhs, rhs, Overflow::Unchecked, span))
+            }
+            fn [<$name _imm_checked>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs);
+                into_first_result!(self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Checked, span))
+            }
+            fn [<$name _imm_unchecked>](self, lhs: Value, imm: Immediate, span: SourceSpan) -> Value {
+                let lty = assert_integer_operands!(self, lhs);
+                into_first_result!(self.BinaryImmWithOverflow($op, lty, lhs, imm, Overflow::Unchecked, span))
             }
         }
     };
@@ -383,6 +421,29 @@ macro_rules! unary_int_op {
         fn $name(self, rhs: Value, span: SourceSpan) -> Value {
             let rty = assert_integer_operands!(self, rhs);
             into_first_result!(self.Unary($op, rty, rhs, span))
+        }
+    };
+}
+
+macro_rules! unary_int_op_with_overflow {
+    ($name:ident, $op:expr) => {
+        paste::paste! {
+            fn [<$name _checked>](self, rhs: Value, span: SourceSpan) -> Value {
+                let rty = assert_integer_operands!(self, rhs);
+                into_first_result!(self.UnaryWithOverflow($op, rty, rhs, Overflow::Checked, span))
+            }
+            fn [<$name _unchecked>](self, rhs: Value, span: SourceSpan) -> Value {
+                let rty = assert_integer_operands!(self, rhs);
+                into_first_result!(self.UnaryWithOverflow($op, rty, rhs, Overflow::Unchecked, span))
+            }
+            fn [<$name _wrapping>](self, rhs: Value, span: SourceSpan) -> Value {
+                let rty = assert_integer_operands!(self, rhs);
+                into_first_result!(self.UnaryWithOverflow($op, rty, rhs, Overflow::Wrapping, span))
+            }
+            fn [<$name _overflowing>](self, rhs: Value, span: SourceSpan) -> Inst {
+                let rty = assert_integer_operands!(self, rhs);
+                self.UnaryWithOverflow($op, rty, rhs, Overflow::Overflowing, span).0
+            }
         }
     };
 }
@@ -989,14 +1050,14 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.Unary(Opcode::Sext, ty, arg, span))
     }
 
-    binary_int_op!(add, Opcode::Add);
-    binary_int_op!(sub, Opcode::Sub);
-    binary_int_op!(mul, Opcode::Mul);
-    binary_int_op!(div, Opcode::Div);
+    binary_int_op_with_overflow!(add, Opcode::Add);
+    binary_int_op_with_overflow!(sub, Opcode::Sub);
+    binary_int_op_with_overflow!(mul, Opcode::Mul);
+    checked_binary_int_op!(div, Opcode::Div);
     binary_int_op!(min, Opcode::Min);
     binary_int_op!(max, Opcode::Max);
-    binary_int_op!(r#mod, Opcode::Mod);
-    binary_int_op!(divmod, Opcode::DivMod);
+    checked_binary_int_op!(r#mod, Opcode::Mod);
+    checked_binary_int_op!(divmod, Opcode::DivMod);
     binary_int_op!(exp, Opcode::Exp);
     binary_boolean_op!(and, Opcode::And);
     binary_int_op!(band, Opcode::Band);
@@ -1004,13 +1065,13 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     binary_int_op!(bor, Opcode::Bor);
     binary_boolean_op!(xor, Opcode::Xor);
     binary_int_op!(bxor, Opcode::Bxor);
-    binary_int_op!(shl, Opcode::Shl);
-    binary_int_op!(shr, Opcode::Shr);
+    binary_int_op_with_overflow!(shl, Opcode::Shl);
+    binary_int_op_with_overflow!(shr, Opcode::Shr);
     binary_int_op!(rotl, Opcode::Rotl);
     binary_int_op!(rotr, Opcode::Rotr);
     unary_int_op!(neg, Opcode::Neg);
     unary_int_op!(inv, Opcode::Inv);
-    unary_int_op!(incr, Opcode::Incr);
+    unary_int_op_with_overflow!(incr, Opcode::Incr);
     unary_int_op!(pow2, Opcode::Pow2);
     unary_boolean_op!(not, Opcode::Not);
     unary_int_op!(bnot, Opcode::Bnot);
