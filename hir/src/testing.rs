@@ -111,22 +111,22 @@ macro_rules! span {
 ///
 /// pub fn fib(u32) -> u32 {
 /// entry(n: u32):
-///   a0 = const.u32 0
-///   b0 = const.u32 1
-///   i0 = const.u32 0
-///   br blk0(a0, b0, i0)
+///   a0 = const.u32 0 : u32;
+///   b0 = const.u32 1 : u32;
+///   n0 = const.u32 0 : u32;
+///   br blk0(a0, b0, n0);
 ///
-/// blk0(a1: u32, b1: u32, i1: u32):
-///   continue = lt i1, n
-///   cond_br continue, blk1, blk2(a1)
+/// blk0(a1: u32, b1: u32, n1: u32):
+///   continue = lt n1, n : i1;
+///   cond_br continue, blk1, blk2(a1);
 ///
 /// blk1:
-///   b2 = add a1, b1
-///   i2 = incr i1
-///   br blk0(b1, b2, i2)
+///   b2 = add.checked a1, b1 : u32;
+///   n2 = incr.wrapping n1 : u32;
+///   br blk0(b1, b2, n2);
 ///
 /// blk2(result: u32):
-///   ret result
+///   ret result;
 /// }
 /// ```
 pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent {
@@ -152,7 +152,7 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
     let loop_header = fb.create_block();
     let a1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
     let b1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
-    let i1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+    let n1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
 
     // This block corresponds to `blk1` in the example
     let loop_body = fb.create_block();
@@ -170,7 +170,7 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
         .br(loop_header, &[a0, b0, i0], context.current_span());
 
     fb.switch_to_block(loop_header);
-    let continue_flag = fb.ins().lt(i1, n, context.current_span());
+    let continue_flag = fb.ins().lt(n1, n, context.current_span());
     fb.ins().cond_br(
         continue_flag,
         loop_body,
@@ -181,10 +181,10 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
     );
 
     fb.switch_to_block(loop_body);
-    let b2 = fb.ins().add(a1, b1, context.current_span());
-    let i2 = fb.ins().incr(i1, context.current_span());
+    let b2 = fb.ins().add_checked(a1, b1, context.current_span());
+    let n2 = fb.ins().incr_wrapping(n1, context.current_span());
     fb.ins()
-        .br(loop_header, &[b1, b2, i2], context.current_span());
+        .br(loop_header, &[b1, b2, n2], context.current_span());
 
     fb.switch_to_block(loop_exit);
     fb.ins().ret(Some(result), context.current_span());
@@ -256,11 +256,11 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
 ///     ptr4 = inttoptr ptr4i : *mut u32
 ///     value = load ptr4 : u32
 ///     sum4 = add.checked sum3, value
-///     cols4 = incr cols3
+///     cols4 = incr.wrapping cols3
 ///     br blk3(sum4, rows3, cols4)
 ///
 /// blk5:
-///     rows5 = incr rows3
+///     rows5 = incr.wrapping rows3
 ///     br blk2(sum3, rows5, cols3)
 /// }
 /// ```
@@ -358,13 +358,13 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> Functio
     );
     let value = fb.ins().load(ptr4, context.current_span());
     let sum4 = fb.ins().add_checked(sum3, value, context.current_span());
-    let cols4 = fb.ins().incr(cols3, context.current_span());
+    let cols4 = fb.ins().incr_wrapping(cols3, context.current_span());
     fb.ins()
         .br(d, &[sum4, rows3, cols4], context.current_span());
 
     // blk5
     fb.switch_to_block(f);
-    let rows5 = fb.ins().incr(rows3, context.current_span());
+    let rows5 = fb.ins().incr_wrapping(rows3, context.current_span());
     let cols5 = fb.ins().u32(0, context.current_span());
     fb.ins()
         .br(c, &[sum3, rows5, cols5], context.current_span());
@@ -512,7 +512,9 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     let heap_end = fb
         .ins()
         .load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
-    let available = fb.ins().sub(heap_end, heap_top, SourceSpan::UNKNOWN);
+    let available = fb
+        .ins()
+        .sub_checked(heap_end, heap_top, SourceSpan::UNKNOWN);
     let requires_growth = fb.ins().gt(size, available, SourceSpan::UNKNOWN);
     let grow_mem_block = fb.create_block();
     let alloc_block = fb.create_block();
@@ -526,18 +528,20 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     );
 
     fb.switch_to_block(grow_mem_block);
-    let needed = fb.ins().sub(size, available, SourceSpan::UNKNOWN);
-    let need_pages = fb
-        .ins()
-        .div_imm(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
-    let need_extra = fb
-        .ins()
-        .mod_imm(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+    let needed = fb.ins().sub_checked(size, available, SourceSpan::UNKNOWN);
+    let need_pages =
+        fb.ins()
+            .div_imm_checked(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+    let need_extra =
+        fb.ins()
+            .mod_imm_checked(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
     let extra_page = fb
         .ins()
         .gt_imm(need_extra, Immediate::U32(0), SourceSpan::UNKNOWN);
     let extra_count = fb.ins().zext(extra_page, Type::U32, SourceSpan::UNKNOWN);
-    let num_pages = fb.ins().add(need_pages, extra_count, SourceSpan::UNKNOWN);
+    let num_pages = fb
+        .ins()
+        .add_checked(need_pages, extra_count, SourceSpan::UNKNOWN);
     let prev_pages = {
         let call = fb
             .ins()
@@ -550,10 +554,10 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     fb.ins().br(alloc_block, &[], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(alloc_block);
-    let addr = fb.ins().add(heap_top, size, SourceSpan::UNKNOWN);
+    let addr = fb.ins().add_checked(heap_top, size, SourceSpan::UNKNOWN);
     let align_offset = fb
         .ins()
-        .mod_imm(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
+        .mod_imm_checked(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
     let is_aligned = fb
         .ins()
         .eq_imm(align_offset, Immediate::U32(0), SourceSpan::UNKNOWN);
@@ -577,10 +581,10 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     fb.switch_to_block(align_block);
     let aligned_addr = fb
         .ins()
-        .add_imm(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
+        .add_imm_checked(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
     let aligned_addr = fb
         .ins()
-        .sub(aligned_addr, align_offset, SourceSpan::UNKNOWN);
+        .sub_checked(aligned_addr, align_offset, SourceSpan::UNKNOWN);
     let aligned_ptr = fb
         .ins()
         .inttoptr(aligned_addr, raw_ptr_ty.clone(), SourceSpan::UNKNOWN);
@@ -618,10 +622,10 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         .load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
     let used = fb
         .ins()
-        .sub(heap_end_addr, heap_base_addr, SourceSpan::UNKNOWN);
+        .sub_checked(heap_end_addr, heap_base_addr, SourceSpan::UNKNOWN);
     let used_pages = fb
         .ins()
-        .div_imm(used, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+        .div_imm_checked(used, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
     fb.ins().ret(Some(used_pages), SourceSpan::UNKNOWN);
 
     let _memory_size = fb
@@ -653,8 +657,10 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         .ins()
         .load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
     let heap_max = fb.ins().u32(u32::MAX, SourceSpan::UNKNOWN);
-    let remaining_bytes = fb.ins().sub(heap_max, heap_end, SourceSpan::UNKNOWN);
-    let remaining_pages = fb.ins().div_imm(
+    let remaining_bytes = fb
+        .ins()
+        .sub_checked(heap_max, heap_end, SourceSpan::UNKNOWN);
+    let remaining_pages = fb.ins().div_imm_checked(
         remaining_bytes,
         Immediate::U32(PAGE_SIZE),
         SourceSpan::UNKNOWN,
@@ -679,14 +685,18 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     let heap_base = fb
         .ins()
         .load_symbol("HEAP_BASE", Type::U32, SourceSpan::UNKNOWN);
-    let prev_bytes = fb.ins().sub(heap_end, heap_base, SourceSpan::UNKNOWN);
-    let prev_pages = fb
+    let prev_bytes = fb
         .ins()
-        .div_imm(prev_bytes, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
-    let num_bytes = fb
+        .sub_checked(heap_end, heap_base, SourceSpan::UNKNOWN);
+    let prev_pages =
+        fb.ins()
+            .div_imm_checked(prev_bytes, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+    let num_bytes =
+        fb.ins()
+            .mul_imm_checked(num_pages, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+    let new_heap_end = fb
         .ins()
-        .mul_imm(num_pages, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
-    let new_heap_end = fb.ins().add(heap_end, num_bytes, SourceSpan::UNKNOWN);
+        .add_checked(heap_end, num_bytes, SourceSpan::UNKNOWN);
     let heap_end_addr = fb.ins().symbol_addr(
         "HEAP_END",
         Type::Ptr(Box::new(Type::U32)),
@@ -850,14 +860,14 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         .cond_br(done, loop_exit, &[], loop_body, &[], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(loop_body);
-    let a_char_addr = fb.ins().incr(a_addr, SourceSpan::UNKNOWN);
+    let a_char_addr = fb.ins().incr_wrapping(a_addr, SourceSpan::UNKNOWN);
     let a_char_ptr = fb.ins().inttoptr(
         a_char_addr,
         Type::Ptr(Box::new(Type::U8)),
         SourceSpan::UNKNOWN,
     );
     let a_char = fb.ins().load(a_char_ptr, SourceSpan::UNKNOWN);
-    let b_char_addr = fb.ins().incr(b_addr, SourceSpan::UNKNOWN);
+    let b_char_addr = fb.ins().incr_wrapping(b_addr, SourceSpan::UNKNOWN);
     let b_char_ptr = fb.ins().inttoptr(
         b_char_addr,
         Type::Ptr(Box::new(Type::U8)),
@@ -870,7 +880,7 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     let one = fb.ins().i8(1, SourceSpan::UNKNOWN);
     let neg_one = fb.ins().i8(-1, SourceSpan::UNKNOWN);
     let is_ne_result = fb.ins().select(is_gt, one, neg_one, SourceSpan::UNKNOWN);
-    let i_incr = fb.ins().incr(i, SourceSpan::UNKNOWN);
+    let i_incr = fb.ins().incr_wrapping(i, SourceSpan::UNKNOWN);
     fb.ins().cond_br(
         is_eq,
         loop_header,

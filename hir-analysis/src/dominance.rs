@@ -732,7 +732,7 @@ mod tests {
 
             builder.switch_to_block(block1);
             let v1 = builder.ins().i32(1, SourceSpan::UNKNOWN);
-            let v2 = builder.ins().add(v0, v1, SourceSpan::UNKNOWN);
+            let v2 = builder.ins().add_checked(v0, v1, SourceSpan::UNKNOWN);
             builder.ins().br(block0, &[v2], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block2);

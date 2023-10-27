@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan};
+use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan, Severity};
 
 use crate::{AbiParam, AddressSpace, ArgumentExtension, ArgumentPurpose};
 use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
@@ -200,6 +200,42 @@ Inst: Inst = {
         Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] }, vec![TypedValue::new(value.span(), value.item, value_ty)])
     },
 
+    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:OverflowingUnaryOpcode> <operand:Operand> ":" <overflowed_ty:Type> "," <value_ty:Type> ";" <r:@R> =>? {
+        let num_results = values.len();
+        if num_results != 2 {
+            diagnostics.diagnostic(Severity::Error)
+                .with_message("invalid instruction")
+                .with_primary_label(span!(l, r), format!("expected this instruction to have two results, but got {num_results}"))
+                .emit();
+            Err(ParseError::Failed.into())
+        } else {
+            let mut values = values;
+            let value = values.pop().unwrap();
+            let value = TypedValue::new(value.span(), value.item, value_ty);
+            let overflowed = values.pop().unwrap();
+            let overflowed = TypedValue::new(overflowed.span(), overflowed.item, overflowed_ty);
+            Ok(Inst::new(span!(l, r), InstType::UnaryOp { opcode, overflow: Some(Overflow::Overflowing), operand }, vec![overflowed, value]))
+        }
+    },
+
+    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:OverflowingBinaryOpcode> <lhs:Operand> "," <rhs:Operand> ":" <overflowed_ty:Type> "," <value_ty:Type> ";" <r:@R> =>? {
+        let num_results = values.len();
+        if num_results != 2 {
+            diagnostics.diagnostic(Severity::Error)
+                .with_message("invalid instruction")
+                .with_primary_label(span!(l, r), format!("expected this instruction to have two results, but got {num_results}"))
+                .emit();
+            Err(ParseError::Failed.into())
+        } else {
+            let mut values = values;
+            let value = values.pop().unwrap();
+            let value = TypedValue::new(value.span(), value.item, value_ty);
+            let overflowed = values.pop().unwrap();
+            let overflowed = TypedValue::new(overflowed.span(), overflowed.item, overflowed_ty);
+            Ok(Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow: Some(Overflow::Overflowing), operands: [lhs, rhs] }, vec![overflowed, value]))
+        }
+    },
+
     <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:PrimOpOpcode> <operands:Comma<Operand>> ":" <types:Comma<Type>> ";" <r:@R> => {
         assert_eq!(values.len(), types.len());
         let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v.span(), v.item, ty)).collect();
@@ -279,6 +315,7 @@ UnaryOpcode: (Opcode, Option<Overflow>) = {
     "inv" => (Opcode::Inv, None),
     "incr.unchecked" => (Opcode::Incr, Some(Overflow::Unchecked)),
     "incr.checked" => (Opcode::Incr, Some(Overflow::Checked)),
+    "incr.wrapping" => (Opcode::Incr, Some(Overflow::Wrapping)),
     "pow2" => (Opcode::Pow2, None),
     "not" => (Opcode::Not, None),
     "bnot" => (Opcode::Bnot, None),
@@ -292,6 +329,10 @@ UnaryOpcode: (Opcode, Option<Overflow>) = {
     "is_odd" => (Opcode::IsOdd, None),
 }
 
+OverflowingUnaryOpcode: Opcode = {
+    "incr.overflowing" => Opcode::Incr,
+}
+
 BinaryOpcode: (Opcode, Option<Overflow>) = {
     "eq" => (Opcode::Eq, None),
     "neq" => (Opcode::Neq, None),
@@ -303,15 +344,12 @@ BinaryOpcode: (Opcode, Option<Overflow>) = {
     "max" => (Opcode::Max, None),
     "add.unchecked" => (Opcode::Add, Some(Overflow::Unchecked)),
     "add.checked" => (Opcode::Add, Some(Overflow::Checked)),
-    "add.overflowing" => (Opcode::Add, Some(Overflow::Overflowing)),
     "add.wrapping" => (Opcode::Add, Some(Overflow::Wrapping)),
     "sub.unchecked" => (Opcode::Sub, Some(Overflow::Unchecked)),
     "sub.checked" => (Opcode::Sub, Some(Overflow::Checked)),
-    "sub.overflowing" => (Opcode::Sub, Some(Overflow::Overflowing)),
     "sub.wrapping" => (Opcode::Sub, Some(Overflow::Wrapping)),
     "mul.unchecked" => (Opcode::Mul, Some(Overflow::Unchecked)),
     "mul.checked" => (Opcode::Mul, Some(Overflow::Checked)),
-    "mul.overflowing" => (Opcode::Mul, Some(Overflow::Overflowing)),
     "mul.wrapping" => (Opcode::Mul, Some(Overflow::Wrapping)),
     "div.unchecked" => (Opcode::Div, Some(Overflow::Unchecked)),
     "div.checked" => (Opcode::Div, Some(Overflow::Checked)),
@@ -328,12 +366,20 @@ BinaryOpcode: (Opcode, Option<Overflow>) = {
     "bxor" => (Opcode::Bxor, None),
     "shl.unchecked" => (Opcode::Shl, Some(Overflow::Unchecked)),
     "shl.checked" => (Opcode::Shl, Some(Overflow::Checked)),
+    "shl.wrapping" => (Opcode::Shl, Some(Overflow::Wrapping)),
     "shr.unchecked" => (Opcode::Shr, Some(Overflow::Unchecked)),
     "shr.checked" => (Opcode::Shr, Some(Overflow::Checked)),
-    "rotl.unchecked" => (Opcode::Rotl, Some(Overflow::Unchecked)),
-    "rotl.checked" => (Opcode::Rotl, Some(Overflow::Checked)),
-    "rotr.unchecked" => (Opcode::Rotr, Some(Overflow::Unchecked)),
-    "rotr.checked" => (Opcode::Rotr, Some(Overflow::Checked)),
+    "shr.wrapping" => (Opcode::Shr, Some(Overflow::Wrapping)),
+    "rotl" => (Opcode::Rotl, None),
+    "rotr" => (Opcode::Rotr, None),
+}
+
+OverflowingBinaryOpcode: Opcode = {
+    "add.overflowing" => Opcode::Add,
+    "sub.overflowing" => Opcode::Sub,
+    "mul.overflowing" => Opcode::Mul,
+    "shl.overflowing" => Opcode::Shl,
+    "shr.overflowing" => Opcode::Shr,
 }
 
 PrimOpOpcode: Opcode = {
@@ -510,12 +556,14 @@ extern {
         "bxor" => Token::BXor,
         "shl.unchecked" => Token::ShlUnchecked,
         "shl.checked" => Token::ShlChecked,
+        "shl.wrapping" => Token::ShlWrapping,
+        "shl.overflowing" => Token::ShlOverflowing,
         "shr.unchecked" => Token::ShrUnchecked,
         "shr.checked" => Token::ShrChecked,
-        "rotl.unchecked" => Token::RotlUnchecked,
-        "rotl.checked" => Token::RotlChecked,
-        "rotr.unchecked" => Token::RotrUnchecked,
-        "rotr.checked" => Token::RotrChecked,
+        "shr.wrapping" => Token::ShrWrapping,
+        "shr.overflowing" => Token::ShrOverflowing,
+        "rotl" => Token::Rotl,
+        "rotr" => Token::Rotr,
         "eq" => Token::Eq,
         "neq" => Token::Neq,
         "gt" => Token::Gt,
@@ -526,6 +574,8 @@ extern {
         "inv" => Token::Inv,
         "incr.unchecked" => Token::IncrUnchecked,
         "incr.checked" => Token::IncrChecked,
+        "incr.wrapping" => Token::IncrWrapping,
+        "incr.overflowing" => Token::IncrOverflowing,
         "pow2" => Token::Pow2,
         "not" => Token::Not,
         "bnot" => Token::BNot,

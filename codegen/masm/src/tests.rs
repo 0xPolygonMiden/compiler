@@ -246,9 +246,9 @@ fn stackify_fundamental_if() {
             SourceSpan::UNKNOWN,
         );
         fb.switch_to_block(is_odd_blk);
-        fb.ins().add(a, b, SourceSpan::UNKNOWN);
+        fb.ins().add_checked(a, b, SourceSpan::UNKNOWN);
         fb.switch_to_block(is_even_blk);
-        fb.ins().mul(a, b, SourceSpan::UNKNOWN);
+        fb.ins().mul_checked(a, b, SourceSpan::UNKNOWN);
         fb.build().expect("unexpected error building function")
     };
 
@@ -337,8 +337,10 @@ fn stackify_fundamental_loops() {
         );
 
         fb.switch_to_block(loop_body_blk);
-        let a2 = fb.ins().incr(a1, SourceSpan::UNKNOWN);
-        let n2 = fb.ins().sub_imm(n1, Immediate::U32(1), SourceSpan::UNKNOWN);
+        let a2 = fb.ins().incr_checked(a1, SourceSpan::UNKNOWN);
+        let n2 = fb
+            .ins()
+            .sub_imm_checked(n1, Immediate::U32(1), SourceSpan::UNKNOWN);
         fb.ins().br(loop_header_blk, &[a2, n2], SourceSpan::UNKNOWN);
 
         fb.switch_to_block(loop_exit_blk);

@@ -203,6 +203,17 @@ impl Instruction {
         self.opcode().is_commutative()
     }
 
+    /// Get the [Overflow] flag for this instruction, if applicable
+    pub fn overflow(&self) -> Option<Overflow> {
+        match self {
+            Self::BinaryOp(BinaryOp { overflow, .. })
+            | Self::BinaryOpImm(BinaryOpImm { overflow, .. })
+            | Self::UnaryOp(UnaryOp { overflow, .. })
+            | Self::UnaryOpImm(UnaryOpImm { overflow, .. }) => *overflow,
+            _ => None,
+        }
+    }
+
     pub fn arguments<'a>(&'a self, pool: &'a ValueListPool) -> &[Value] {
         match self {
             Self::BinaryOp(BinaryOp { ref args, .. }) => args.as_slice(),
@@ -610,7 +621,7 @@ impl Opcode {
         }
     }
 
-    pub(super) fn results(&self, ctrl_ty: Type) -> SmallVec<[Type; 1]> {
+    pub(super) fn results(&self, overflow: Option<Overflow>, ctrl_ty: Type) -> SmallVec<[Type; 1]> {
         use smallvec::smallvec;
 
         match self {
@@ -659,15 +670,11 @@ impl Opcode {
             | Self::Zext
             | Self::Sext
             | Self::Select
-            | Self::Add
-            | Self::Sub
-            | Self::Mul
             | Self::Div
             | Self::Min
             | Self::Max
             | Self::Neg
             | Self::Inv
-            | Self::Incr
             | Self::Pow2
             | Self::Popcnt
             | Self::Mod
@@ -677,12 +684,17 @@ impl Opcode {
             | Self::Band
             | Self::Bor
             | Self::Bxor
-            | Self::Shl
-            | Self::Shr
             | Self::Rotl
             | Self::Rotr
             | Self::MemGrow => {
                 smallvec![ctrl_ty]
+            }
+            // These ops have overflowing variants which returns an additional result in that case
+            Self::Add | Self::Sub | Self::Mul | Self::Incr | Self::Shl | Self::Shr => {
+                match overflow {
+                    Some(Overflow::Overflowing) => smallvec![Type::I1, ctrl_ty],
+                    _ => smallvec![ctrl_ty],
+                }
             }
             // The result type of a load is derived from the pointee type
             Self::Load => {

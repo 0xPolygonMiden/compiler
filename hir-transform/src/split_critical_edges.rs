@@ -220,10 +220,10 @@ mod tests {
 
             // blk1
             builder.switch_to_block(b);
-            let ptr4 = builder.ins().sub(ptr3, n2, SourceSpan::UNKNOWN);
+            let ptr4 = builder.ins().sub_checked(ptr3, n2, SourceSpan::UNKNOWN);
             let n3 = builder
                 .ins()
-                .sub_imm(n2, Immediate::U32(1), SourceSpan::UNKNOWN);
+                .sub_imm_checked(n2, Immediate::U32(1), SourceSpan::UNKNOWN);
             let is_zero = builder
                 .ins()
                 .eq_imm(n3, Immediate::U32(0), SourceSpan::UNKNOWN);
@@ -259,8 +259,8 @@ block4:
     br block3(v0);
 
 block2(v4: u32, v5: u32):
-    v9 = sub v4, v5 : u32;
-    v10 = sub v5, 1 : u32;
+    v9 = sub.checked v4, v5 : u32;
+    v10 = sub.checked v5, 1 : u32;
     v11 = eq v10, 0 : i1;
     condbr v11, block6, block5;
 

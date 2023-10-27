@@ -218,21 +218,29 @@ pub fn translate_operator(
         }
         Operator::I32Shl | Operator::I64Shl => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().shl(arg1, arg2, span));
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            state.push1(builder.ins().shl_wrapping(arg1, arg2, span));
         }
         Operator::I32ShrU => {
             let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            let val = builder.ins().shr(arg1, arg2, span);
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            let val = builder.ins().shr_wrapping(arg1, arg2, span);
             state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64ShrU => {
             let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            let val = builder.ins().shr(arg1, arg2, span);
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            let val = builder.ins().shr_wrapping(arg1, arg2, span);
             state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32ShrS | Operator::I64ShrS => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().shr(arg1, arg2, span));
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            state.push1(builder.ins().shr_wrapping(arg1, arg2, span));
         }
         Operator::I32Rotl | Operator::I64Rotl => {
             let (arg1, arg2) = state.pop2();
@@ -250,7 +258,7 @@ pub fn translate_operator(
         }
         Operator::F64Sub => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().sub(arg1, arg2, span));
+            state.push1(builder.ins().sub_checked(arg1, arg2, span));
         }
         Operator::I32Mul | Operator::I64Mul => {
             let (arg1, arg2) = state.pop2();
@@ -260,31 +268,31 @@ pub fn translate_operator(
         }
         Operator::I32DivS | Operator::I64DivS => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().div(arg1, arg2, span));
+            state.push1(builder.ins().div_checked(arg1, arg2, span));
         }
         Operator::I32DivU => {
             let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            let val = builder.ins().div(arg1, arg2, span);
+            let val = builder.ins().div_checked(arg1, arg2, span);
             state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64DivU => {
             let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            let val = builder.ins().div(arg1, arg2, span);
+            let val = builder.ins().div_checked(arg1, arg2, span);
             state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32RemU => {
             let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            let val = builder.ins().r#mod(arg1, arg2, span);
+            let val = builder.ins().r#mod_checked(arg1, arg2, span);
             state.push1(builder.ins().cast(val, I32, span));
         }
         Operator::I64RemU => {
             let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            let val = builder.ins().r#mod(arg1, arg2, span);
+            let val = builder.ins().r#mod_checked(arg1, arg2, span);
             state.push1(builder.ins().cast(val, I64, span));
         }
         Operator::I32RemS | Operator::I64RemS => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().r#mod(arg1, arg2, span));
+            state.push1(builder.ins().r#mod_checked(arg1, arg2, span));
         }
         /**************************** Comparison Operators **********************************/
         Operator::I32LtU => {
@@ -579,7 +587,7 @@ fn prepare_addr(
     let full_addr_int = if memarg.offset != 0 {
         builder
             .ins()
-            .add_imm(addr_u32, Immediate::U32(memarg.offset as u32), span)
+            .add_imm_checked(addr_u32, Immediate::U32(memarg.offset as u32), span)
     } else {
         addr_u32
     };

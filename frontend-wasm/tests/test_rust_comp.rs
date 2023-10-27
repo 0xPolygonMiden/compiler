@@ -655,7 +655,7 @@ fn rust_static_mut() {
                 v0 = const.i32 0 : i32;
                 v1 = const.i32 0 : i32;
                 v2 = cast v1 : u32;
-                v3 = add v2, 1048577 : u32;
+                v3 = add.checked v2, 1048577 : u32;
                 v4 = inttoptr v3 : *mut u8;
                 v5 = load v4 : u8;
                 v6 = zext v5 : i32;
@@ -663,7 +663,7 @@ fn rust_static_mut() {
                 v8 = add.wrapping v6, v7 : i32;
                 v9 = trunc v8 : u8;
                 v10 = cast v0 : u32;
-                v11 = add v10, 1048576 : u32;
+                v11 = add.checked v10, 1048576 : u32;
                 v12 = inttoptr v11 : *mut u8;
                 store v12, v9;
                 br block1;
