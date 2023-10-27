@@ -88,6 +88,9 @@ impl AsMut<Instruction> for InstNode {
 
 intrusive_adapter!(pub InstAdapter = UnsafeRef<InstNode>: InstNode { link: LinkedListLink });
 
+/// A type alias for `LinkedList<InstAdapter>`
+pub type InstructionList = intrusive_collections::LinkedList<InstAdapter>;
+
 /// Represents the type of instruction associated with a particular opcode
 #[derive(Debug)]
 pub enum Instruction {
@@ -829,14 +832,14 @@ pub struct GlobalValueOp {
 #[derive(Debug, Clone)]
 pub struct BinaryOp {
     pub op: Opcode,
-    pub overflow: Overflow,
+    pub overflow: Option<Overflow>,
     pub args: [Value; 2],
 }
 
 #[derive(Debug, Clone)]
 pub struct BinaryOpImm {
     pub op: Opcode,
-    pub overflow: Overflow,
+    pub overflow: Option<Overflow>,
     pub arg: Value,
     pub imm: Immediate,
 }
@@ -844,14 +847,14 @@ pub struct BinaryOpImm {
 #[derive(Debug, Clone)]
 pub struct UnaryOp {
     pub op: Opcode,
-    pub overflow: Overflow,
+    pub overflow: Option<Overflow>,
     pub arg: Value,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnaryOpImm {
     pub op: Opcode,
-    pub overflow: Overflow,
+    pub overflow: Option<Overflow>,
     pub imm: Immediate,
 }
 
@@ -932,4 +935,77 @@ pub struct PrimOpImm {
     pub op: Opcode,
     pub imm: Immediate,
     pub args: ValueList,
+}
+
+#[doc(hidden)]
+pub struct InstructionWithValueListPool<'a> {
+    pub inst: &'a Instruction,
+    pub value_lists: &'a ValueListPool,
+}
+impl<'a> PartialEq for InstructionWithValueListPool<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        if core::mem::discriminant(self.inst) != core::mem::discriminant(other.inst) {
+            return false;
+        }
+
+        if self.inst.opcode() != other.inst.opcode() {
+            return false;
+        }
+
+        match (self.inst, other.inst) {
+            (Instruction::GlobalValue(l), Instruction::GlobalValue(r)) => l.global == r.global,
+            (Instruction::BinaryOp(l), Instruction::BinaryOp(r)) => {
+                l.overflow == r.overflow && l.args == r.args
+            }
+            (Instruction::BinaryOpImm(l), Instruction::BinaryOpImm(r)) => {
+                l.arg == r.arg && l.imm == r.imm && l.overflow == r.overflow
+            }
+            (Instruction::UnaryOp(l), Instruction::UnaryOp(r)) => {
+                l.arg == r.arg && l.overflow == r.overflow
+            }
+            (Instruction::UnaryOpImm(l), Instruction::UnaryOpImm(r)) => {
+                l.imm == r.imm && l.overflow == r.overflow
+            }
+            (Instruction::Call(l), Instruction::Call(r)) => {
+                l.callee == r.callee
+                    && l.args.as_slice(self.value_lists) == r.args.as_slice(self.value_lists)
+            }
+            (Instruction::Br(l), Instruction::Br(r)) => {
+                l.destination == r.destination
+                    && l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
+            }
+            (Instruction::CondBr(l), Instruction::CondBr(r)) => {
+                l.cond == r.cond
+                    && l.then_dest.0 == r.then_dest.0
+                    && l.else_dest.0 == r.else_dest.0
+                    && l.then_dest.1.as_slice(self.value_lists)
+                        == r.then_dest.1.as_slice(other.value_lists)
+                    && l.else_dest.1.as_slice(self.value_lists)
+                        == r.else_dest.1.as_slice(other.value_lists)
+            }
+            (Instruction::Switch(l), Instruction::Switch(r)) => {
+                l.arg == r.arg && l.default == r.default && l.arms == r.arms
+            }
+            (Instruction::Ret(l), Instruction::Ret(r)) => {
+                l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
+            }
+            (Instruction::RetImm(l), Instruction::RetImm(r)) => l.arg == r.arg,
+            (Instruction::Load(l), Instruction::Load(r)) => l.addr == r.addr && l.ty == r.ty,
+            (Instruction::PrimOp(l), Instruction::PrimOp(r)) => {
+                l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
+            }
+            (Instruction::PrimOpImm(l), Instruction::PrimOpImm(r)) => {
+                l.imm == r.imm
+                    && l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
+            }
+            (Instruction::Test(l), Instruction::Test(r)) => l.arg == r.arg && l.ty == r.ty,
+            (Instruction::InlineAsm(l), Instruction::InlineAsm(r)) => {
+                l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
+                    && l.results == r.results
+                    && l.body == r.body
+                    && l.blocks == r.blocks
+            }
+            (_, _) => unreachable!(),
+        }
+    }
 }

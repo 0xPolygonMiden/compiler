@@ -272,28 +272,42 @@ impl<K: EntityRef, V> OrderedArenaMap<K, V> {
 
     /// Returns true if this [OrderedArenaMap] is empty
     pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
+        self.list.is_empty()
     }
 
     /// Returns the total number of actively linked items in the map
     pub fn len(&self) -> usize {
-        self.map.len()
+        self.list.iter().count()
     }
 
     /// Returns true if this map contains the given key and its value has been linked
     #[inline]
     pub fn contains(&self, key: K) -> bool {
-        self.map.contains(key)
+        if let Some(node) = self.map.get(key) {
+            node.link.is_linked()
+        } else {
+            false
+        }
     }
 
     /// Returns a reference to the value associated with the given key, if present and linked
     pub fn get(&self, key: K) -> Option<&V> {
-        self.map.get(key).map(|data| data.value())
+        let node = self.map.get(key)?;
+        if node.link.is_linked() {
+            Some(node.value())
+        } else {
+            None
+        }
     }
 
     /// Returns a mutable reference to the value associated with the given key, if present and linked
     pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
-        self.map.get_mut(key).map(|data| data.value_mut())
+        let node = self.map.get_mut(key)?;
+        if node.link.is_linked() {
+            Some(node.value_mut())
+        } else {
+            None
+        }
     }
 
     /// Allocates a key, but does not link the data
@@ -425,13 +439,13 @@ impl<K: EntityRef, V> Index<K> for OrderedArenaMap<K, V> {
 
     #[inline]
     fn index(&self, index: K) -> &Self::Output {
-        self.get(index).unwrap()
+        self.map[index].value()
     }
 }
 impl<K: EntityRef, V> IndexMut<K> for OrderedArenaMap<K, V> {
     #[inline]
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
-        self.get_mut(index).unwrap()
+        self.map.get_mut(index).unwrap().value_mut()
     }
 }
 

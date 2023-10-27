@@ -1,7 +1,9 @@
 use std::{cmp::Ordering, collections::VecDeque, fmt, rc::Rc};
 
 use cranelift_entity::packed_option::ReservedValue;
-use miden_hir::{self as hir, assert_matches, BranchInfo, Immediate, Instruction, ProgramPoint};
+use miden_hir::{
+    self as hir, assert_matches, BranchInfo, Immediate, Instruction, Overflow, ProgramPoint,
+};
 use miden_hir_analysis::{DominatorTree, FunctionAnalysis, LivenessAnalysis, Loop, LoopAnalysis};
 use miden_hir_pass::Pass;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -1540,6 +1542,7 @@ impl<'a> MasmEmitter<'a> {
         stack: &mut OperandStack,
     ) {
         let mut emitter = self.inst_emitter(inst, stack);
+        let overflow = op.overflow.unwrap_or(Overflow::Checked);
         match op.op {
             hir::Opcode::Eq => emitter.eq_imm(op.imm),
             hir::Opcode::Neq => emitter.neq_imm(op.imm),
@@ -1547,16 +1550,16 @@ impl<'a> MasmEmitter<'a> {
             hir::Opcode::Gte => emitter.gte_imm(op.imm),
             hir::Opcode::Lt => emitter.lt_imm(op.imm),
             hir::Opcode::Lte => emitter.lte_imm(op.imm),
-            hir::Opcode::Add => emitter.add_imm(op.imm, op.overflow),
-            hir::Opcode::Sub => emitter.sub_imm(op.imm, op.overflow),
-            hir::Opcode::Mul => emitter.mul_imm(op.imm, op.overflow),
-            hir::Opcode::Div if op.overflow.is_checked() => emitter.checked_div_imm(op.imm),
+            hir::Opcode::Add => emitter.add_imm(op.imm, overflow),
+            hir::Opcode::Sub => emitter.sub_imm(op.imm, overflow),
+            hir::Opcode::Mul => emitter.mul_imm(op.imm, overflow),
+            hir::Opcode::Div if overflow.is_checked() => emitter.checked_div_imm(op.imm),
             hir::Opcode::Div => emitter.unchecked_div_imm(op.imm),
             hir::Opcode::Min => emitter.min_imm(op.imm),
             hir::Opcode::Max => emitter.max_imm(op.imm),
-            hir::Opcode::Mod if op.overflow.is_checked() => emitter.checked_mod_imm(op.imm),
+            hir::Opcode::Mod if overflow.is_checked() => emitter.checked_mod_imm(op.imm),
             hir::Opcode::Mod => emitter.unchecked_mod_imm(op.imm),
-            hir::Opcode::DivMod if op.overflow.is_checked() => emitter.checked_divmod_imm(op.imm),
+            hir::Opcode::DivMod if overflow.is_checked() => emitter.checked_divmod_imm(op.imm),
             hir::Opcode::DivMod => emitter.unchecked_divmod_imm(op.imm),
             hir::Opcode::Exp => emitter.exp_imm(op.imm),
             hir::Opcode::And => emitter.and_imm(op.imm),
@@ -1575,6 +1578,7 @@ impl<'a> MasmEmitter<'a> {
 
     fn emit_binary_op(&mut self, inst: hir::Inst, op: &hir::BinaryOp, stack: &mut OperandStack) {
         let mut emitter = self.inst_emitter(inst, stack);
+        let overflow = op.overflow.unwrap_or(Overflow::Checked);
         match op.op {
             hir::Opcode::Eq => emitter.eq(),
             hir::Opcode::Neq => emitter.neq(),
@@ -1582,16 +1586,16 @@ impl<'a> MasmEmitter<'a> {
             hir::Opcode::Gte => emitter.gte(),
             hir::Opcode::Lt => emitter.lt(),
             hir::Opcode::Lte => emitter.lte(),
-            hir::Opcode::Add => emitter.add(op.overflow),
-            hir::Opcode::Sub => emitter.sub(op.overflow),
-            hir::Opcode::Mul => emitter.mul(op.overflow),
-            hir::Opcode::Div if op.overflow.is_checked() => emitter.checked_div(),
+            hir::Opcode::Add => emitter.add(overflow),
+            hir::Opcode::Sub => emitter.sub(overflow),
+            hir::Opcode::Mul => emitter.mul(overflow),
+            hir::Opcode::Div if overflow.is_checked() => emitter.checked_div(),
             hir::Opcode::Div => emitter.unchecked_div(),
             hir::Opcode::Min => emitter.min(),
             hir::Opcode::Max => emitter.max(),
-            hir::Opcode::Mod if op.overflow.is_checked() => emitter.checked_mod(),
+            hir::Opcode::Mod if overflow.is_checked() => emitter.checked_mod(),
             hir::Opcode::Mod => emitter.unchecked_mod(),
-            hir::Opcode::DivMod if op.overflow.is_checked() => emitter.checked_divmod(),
+            hir::Opcode::DivMod if overflow.is_checked() => emitter.checked_divmod(),
             hir::Opcode::DivMod => emitter.unchecked_divmod(),
             hir::Opcode::Exp => emitter.exp(),
             hir::Opcode::And => emitter.and(),

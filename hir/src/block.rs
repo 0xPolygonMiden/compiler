@@ -1,5 +1,5 @@
 use cranelift_entity::entity_impl;
-use intrusive_collections::linked_list::{Cursor, CursorMut, LinkedList};
+use intrusive_collections::linked_list::{Cursor, CursorMut};
 use intrusive_collections::{LinkedListLink, UnsafeRef};
 
 use super::*;
@@ -24,7 +24,7 @@ pub struct BlockData {
     pub id: Block,
     pub link: LinkedListLink,
     pub params: ValueList,
-    pub insts: LinkedList<InstAdapter>,
+    pub insts: InstructionList,
 }
 impl Drop for BlockData {
     fn drop(&mut self) {
@@ -35,9 +35,9 @@ impl Clone for BlockData {
     fn clone(&self) -> Self {
         Self {
             id: self.id,
-            link: LinkedListLink::default(),
+            link: Default::default(),
             params: self.params,
-            insts: LinkedList::new(InstAdapter::new()),
+            insts: Default::default(),
         }
     }
 }
@@ -45,9 +45,9 @@ impl BlockData {
     pub(crate) fn new(id: Block) -> Self {
         Self {
             id,
-            link: LinkedListLink::default(),
+            link: Default::default(),
             params: ValueList::new(),
-            insts: LinkedList::new(InstAdapter::new()),
+            insts: Default::default(),
         }
     }
 

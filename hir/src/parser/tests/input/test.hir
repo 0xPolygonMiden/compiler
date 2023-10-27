@@ -1,6 +1,8 @@
 module "test"
 
-global internal @DEADBEEF : u32 = 0xdeadbeef { id = 0 };
+const $0 = 0xdeadbeef;
+
+global internal @DEADBEEF : u32 = $0 { id = 0 };
 
 pub cc(fast) fn foo(u32, sext u32) -> u32 {
 blk0(v1: u32, v2: u32):

@@ -1309,7 +1309,12 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         rhs: Value,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        self.BinaryWithOverflow(op, ty, lhs, rhs, Default::default(), span)
+        let data = Instruction::BinaryOp(BinaryOp {
+            op,
+            overflow: None,
+            args: [lhs, rhs],
+        });
+        self.build(data, ty, span)
     }
 
     #[allow(non_snake_case)]
@@ -1324,7 +1329,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     ) -> (Inst, &'f mut DataFlowGraph) {
         let data = Instruction::BinaryOp(BinaryOp {
             op,
-            overflow,
+            overflow: Some(overflow),
             args: [lhs, rhs],
         });
         self.build(data, ty, span)
@@ -1339,7 +1344,13 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         imm: Immediate,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        self.BinaryImmWithOverflow(op, ty, arg, imm, Default::default(), span)
+        let data = Instruction::BinaryOpImm(BinaryOpImm {
+            op,
+            overflow: None,
+            arg,
+            imm,
+        });
+        self.build(data, ty, span)
     }
 
     #[allow(non_snake_case)]
@@ -1354,7 +1365,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     ) -> (Inst, &'f mut DataFlowGraph) {
         let data = Instruction::BinaryOpImm(BinaryOpImm {
             op,
-            overflow,
+            overflow: Some(overflow),
             arg,
             imm,
         });
@@ -1369,7 +1380,12 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         arg: Value,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        self.UnaryWithOverflow(op, ty, arg, Default::default(), span)
+        let data = Instruction::UnaryOp(UnaryOp {
+            op,
+            overflow: None,
+            arg,
+        });
+        self.build(data, ty, span)
     }
 
     #[allow(non_snake_case)]
@@ -1381,7 +1397,11 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         overflow: Overflow,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        let data = Instruction::UnaryOp(UnaryOp { op, overflow, arg });
+        let data = Instruction::UnaryOp(UnaryOp {
+            op,
+            overflow: Some(overflow),
+            arg,
+        });
         self.build(data, ty, span)
     }
 
@@ -1393,7 +1413,12 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         imm: Immediate,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        self.UnaryImmWithOverflow(op, ty, imm, Default::default(), span)
+        let data = Instruction::UnaryOpImm(UnaryOpImm {
+            op,
+            overflow: None,
+            imm,
+        });
+        self.build(data, ty, span)
     }
 
     #[allow(non_snake_case)]
@@ -1405,7 +1430,11 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         overflow: Overflow,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        let data = Instruction::UnaryOpImm(UnaryOpImm { op, overflow, imm });
+        let data = Instruction::UnaryOpImm(UnaryOpImm {
+            op,
+            overflow: Some(overflow),
+            imm,
+        });
         self.build(data, ty, span)
     }
 

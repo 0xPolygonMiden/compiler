@@ -1,4 +1,4 @@
-use miden_diagnostics::SourceSpan;
+use miden_diagnostics::{SourceSpan, Span};
 
 use crate::parser::ast::*;
 use crate::{
@@ -24,13 +24,19 @@ fn parser_integration_test() {
     let dummy_sourcespan = SourceSpan::UNKNOWN;
 
     // global internal @DEADBEEF : u32 = 0xdeadbeef { id = 0 };
+    let deadbeef_const_id = crate::Constant::from_u32(0);
+    let deadbeef_const = ConstantDeclaration::new(
+        dummy_sourcespan,
+        deadbeef_const_id,
+        "deadbeef".parse().unwrap(),
+    );
     let deadbeef = GlobalVarDeclaration::new(
         dummy_sourcespan,
         crate::GlobalVariable::from_u32(0),
         ident!(DEADBEEF),
         Type::U32,
         Linkage::Internal,
-        Some("deadbeef".parse().unwrap()),
+        Some(deadbeef_const_id),
     );
 
     // pub cc(fast) fn foo(u32, sext u32) -> u32 {
@@ -61,8 +67,8 @@ fn parser_integration_test() {
         span: dummy_sourcespan,
         id: blk0_id,
         params: vec![
-            TypedValue::new(v1, Type::U32),
-            TypedValue::new(v2, Type::U32),
+            TypedValue::new(dummy_sourcespan, v1, Type::U32),
+            TypedValue::new(dummy_sourcespan, v2, Type::U32),
         ],
         body: vec![],
     };
@@ -74,9 +80,12 @@ fn parser_integration_test() {
         ty: InstType::BinaryOp {
             opcode: Opcode::Add,
             overflow: Some(Overflow::Unchecked),
-            operands: [Operand::Value(v1), Operand::Value(v2)],
+            operands: [
+                Operand::Value(Span::new(dummy_sourcespan, v1)),
+                Operand::Value(Span::new(dummy_sourcespan, v2)),
+            ],
         },
-        outputs: vec![TypedValue::new(v3, Type::U32)],
+        outputs: vec![TypedValue::new(dummy_sourcespan, v3, Type::U32)],
     };
     blk0.body.push(inst1);
 
@@ -108,7 +117,7 @@ fn parser_integration_test() {
         span: dummy_sourcespan,
         ty: InstType::Ret {
             opcode: Opcode::Ret,
-            operands: vec![Operand::Value(v3)],
+            operands: vec![Operand::Value(Span::new(dummy_sourcespan, v3))],
         },
         outputs: vec![],
     };
@@ -139,11 +148,19 @@ fn parser_integration_test() {
     let expected = Module {
         span: dummy_sourcespan,
         name: ident!(test),
+        constants: vec![deadbeef_const],
         global_vars: vec![deadbeef],
         functions: vec![foo],
-        externals: vec![make_pair],
+        externals: vec![Span::new(dummy_sourcespan, make_pair)],
         is_kernel: false,
     };
 
     ParseTest::new().expect_module_ast_from_file("src/parser/tests/input/test.hir", expected);
+}
+
+/// Round-trip an IR module through the textual format and assert that we get back the same module
+#[allow(unused)]
+fn roundtrip(module: &crate::Module) {
+    let formatted = module.to_string();
+    ParseTest::new().expect_module(&formatted, &module);
 }

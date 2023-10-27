@@ -13,7 +13,7 @@ pub struct GlobalVarDeclaration {
     pub name: Ident,
     pub ty: Type,
     pub linkage: Linkage,
-    pub init: Option<ConstantData>,
+    pub init: Option<crate::Constant>,
 }
 impl GlobalVarDeclaration {
     pub fn new(
@@ -22,7 +22,7 @@ impl GlobalVarDeclaration {
         name: Ident,
         ty: Type,
         linkage: Linkage,
-        init: Option<ConstantData>,
+        init: Option<crate::Constant>,
     ) -> Self {
         Self {
             span,
@@ -36,12 +36,14 @@ impl GlobalVarDeclaration {
 }
 impl fmt::Debug for GlobalVarDeclaration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::display::DisplayOptional;
+
         f.debug_struct("GlobalVarDeclaration")
             .field("id", &format_args!("{}", &self.id))
             .field("name", &self.name.as_symbol())
             .field("ty", &self.ty)
             .field("linkage", &self.linkage)
-            .field("init", &DisplayOptionalConstantData(self.init.as_ref()))
+            .field("init", &DisplayOptional(self.init.as_ref()))
             .finish()
     }
 }
@@ -55,12 +57,29 @@ impl PartialEq for GlobalVarDeclaration {
     }
 }
 
-struct DisplayOptionalConstantData<'a>(Option<&'a ConstantData>);
-impl<'a> fmt::Debug for DisplayOptionalConstantData<'a> {
+/// This represents the declaration of a constant
+#[derive(Spanned)]
+pub struct ConstantDeclaration {
+    #[span]
+    pub span: SourceSpan,
+    pub id: crate::Constant,
+    pub init: ConstantData,
+}
+impl ConstantDeclaration {
+    pub fn new(span: SourceSpan, id: crate::Constant, init: ConstantData) -> Self {
+        Self { span, id, init }
+    }
+}
+impl fmt::Debug for ConstantDeclaration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.0 {
-            None => f.write_str("None"),
-            Some(data) => write!(f, "Some({data})"),
-        }
+        f.debug_struct("ConstantDeclaration")
+            .field("id", &format_args!("{}", &self.id))
+            .field("init", &format_args!("{}", &self.init))
+            .finish()
+    }
+}
+impl PartialEq for ConstantDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.init == other.init
     }
 }
