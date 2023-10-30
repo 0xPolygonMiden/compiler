@@ -846,30 +846,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-compiler-tests"
-version = "0.1.0"
-dependencies = [
- "expect-test",
- "miden-assembly",
- "miden-codegen-masm",
- "miden-compiler-tests-rust-source",
- "miden-diagnostics",
- "miden-hir",
- "proptest",
- "rustc-demangle",
- "sha2",
- "wasmprinter",
- "wat",
-]
-
-[[package]]
-name = "miden-compiler-tests-rust-source"
-version = "0.1.0"
-dependencies = [
- "dlmalloc",
-]
-
-[[package]]
 name = "miden-core"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1028,6 +1004,30 @@ name = "miden-hir-type"
 version = "0.1.0"
 dependencies = [
  "smallvec",
+]
+
+[[package]]
+name = "miden-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "expect-test",
+ "miden-assembly",
+ "miden-codegen-masm",
+ "miden-diagnostics",
+ "miden-hir",
+ "miden-integration-tests-rust",
+ "proptest",
+ "rustc-demangle",
+ "sha2",
+ "wasmprinter",
+ "wat",
+]
+
+[[package]]
+name = "miden-integration-tests-rust"
+version = "0.1.0"
+dependencies = [
+ "dlmalloc",
 ]
 
 [[package]]
