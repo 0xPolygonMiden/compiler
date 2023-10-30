@@ -1,7 +1,7 @@
 /// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected output
-pub struct CompTest {}
+pub struct CompilerTest {}
 
-impl CompTest {
+impl CompilerTest {
     /// Create a new instance with default configuration
     pub fn new() -> Self {
         todo!()
