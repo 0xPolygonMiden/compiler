@@ -1,3 +1,19 @@
+macro_rules! register_function_rewrite {
+    ($name:literal, $ty:ty) => {
+        impl $ty {
+            fn new(
+                _options: std::sync::Arc<midenc_session::Options>,
+                _diagnostics: std::sync::Arc<miden_diagnostics::DiagnosticsHandler>,
+            ) -> Box<dyn crate::ModuleRewritePass> {
+                Box::new(crate::ModuleRewritePassAdapter(Self))
+            }
+        }
+        inventory::submit! {
+            crate::ModuleRewritePassRegistration::new($name, <$ty>::new)
+        }
+    };
+}
+
 pub(crate) mod adt;
 mod inline_blocks;
 mod split_critical_edges;
@@ -7,8 +23,88 @@ pub use self::inline_blocks::InlineBlocks;
 pub use self::split_critical_edges::SplitCriticalEdges;
 pub use self::treeify::Treeify;
 
+use std::sync::Arc;
+
+use miden_diagnostics::DiagnosticsHandler;
 use miden_hir_analysis::FunctionAnalysis;
-use miden_hir_pass::Pass;
+use midenc_session::Options;
+
+pub struct ModuleRewritePassRegistration {
+    name: &'static str,
+    ctor: fn(Arc<Options>, Arc<DiagnosticsHandler>) -> Box<dyn ModuleRewritePass>,
+}
+impl ModuleRewritePassRegistration {
+    pub const fn new(
+        name: &'static str,
+        ctor: fn(Arc<Options>, Arc<DiagnosticsHandler>) -> Box<dyn ModuleRewritePass>,
+    ) -> Self {
+        Self { name, ctor }
+    }
+
+    /// Get the name of the registered pass
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Get an instance of the registered pass
+    #[inline]
+    pub fn get(
+        &self,
+        options: Arc<Options>,
+        diagnostics: Arc<DiagnosticsHandler>,
+    ) -> Box<dyn ModuleRewritePass> {
+        (self.ctor)(options, diagnostics)
+    }
+}
+
+inventory::collect!(ModuleRewritePassRegistration);
+
+pub struct ModuleRewritePassAdapter<R>(R);
+impl<R> RewritePass for ModuleRewritePassAdapter<R>
+where
+    R: RewritePass<Input = miden_hir::Function, Analysis = FunctionAnalysis>,
+{
+    type Input = miden_hir::Module;
+    type Analysis = ();
+
+    fn run(
+        &mut self,
+        module: &mut Self::Input,
+        _analysis: &mut Self::Analysis,
+    ) -> anyhow::Result<()> {
+        // Removing a function via this cursor will move the cursor to
+        // the next function in the module. Once the end of the module
+        // is reached, the cursor will point to the null object, and
+        // `remove` will return `None`.
+        let mut cursor = module.cursor_mut();
+        while let Some(mut function) = cursor.remove() {
+            let mut analysis = FunctionAnalysis::new(&function);
+            // Apply rewrites
+            self.0.run(&mut function, &mut analysis)?;
+            // Add the function back to the module
+            //
+            // We add it before the current position of the cursor
+            // to ensure that we don't interfere with our traversal
+            // of the module top to bottom
+            cursor.insert_before(function);
+        }
+
+        Ok(())
+    }
+}
+
+pub trait ModuleRewritePass: RewritePass<Input = miden_hir::Module, Analysis = ()> {}
+impl<R: RewritePass<Input = miden_hir::Module, Analysis = ()>> ModuleRewritePass for R {}
+
+pub trait FunctionRewritePass:
+    RewritePass<Input = miden_hir::Function, Analysis = FunctionAnalysis>
+{
+}
+impl<R: RewritePass<Input = miden_hir::Function, Analysis = FunctionAnalysis>> FunctionRewritePass
+    for R
+{
+}
 
 /// A [RewritePass] is a special kind of [Pass] which is designed to perform some
 /// kind of rewrite transformation on a [miden_hir::Function].
@@ -18,25 +114,43 @@ use miden_hir_pass::Pass;
 /// structure is designed for this purpose, allowing one to request specific
 /// analysis results, which will be computed on-demand if not yet available.
 pub trait RewritePass {
-    type Error;
+    type Input;
+    type Analysis;
 
-    /// Runs the rewrite on `function` with `analyses`.
+    /// Runs the rewrite on `item` with `analyses`.
     ///
     /// Rewrites should return `Err` to signal that the pass has failed
     /// and compilation should be aborted
-    fn run(
-        &mut self,
-        function: &mut miden_hir::Function,
-        analyses: &mut FunctionAnalysis,
-    ) -> Result<(), Self::Error>;
+    fn run(&mut self, item: &mut Self::Input, analyses: &mut Self::Analysis) -> anyhow::Result<()>;
 
     /// Chains two rewrites together to form a new, fused rewrite
     fn chain<P>(self, pass: P) -> RewriteChain<Self, P>
     where
         Self: Sized,
-        P: RewritePass<Error = Self::Error>,
+        P: RewritePass<
+            Input = <Self as RewritePass>::Input,
+            Analysis = <Self as RewritePass>::Analysis,
+        >,
     {
         RewriteChain::new(self, pass)
+    }
+}
+impl<F: RewritePass> RewritePass for Box<F> {
+    type Input = <F as RewritePass>::Input;
+    type Analysis = <F as RewritePass>::Analysis;
+
+    #[inline]
+    fn run(&mut self, item: &mut Self::Input, analysis: &mut Self::Analysis) -> anyhow::Result<()> {
+        (**self).run(item, analysis)
+    }
+}
+impl<I, A> RewritePass for dyn Fn(&mut I, &mut A) -> anyhow::Result<()> {
+    type Input = I;
+    type Analysis = A;
+
+    #[inline]
+    fn run(&mut self, item: &mut Self::Input, analysis: &mut Self::Analysis) -> anyhow::Result<()> {
+        (*self)(item, analysis)
     }
 }
 
@@ -71,35 +185,16 @@ where
         Self::new(self.a.clone(), self.b.clone())
     }
 }
-impl<A, B, E> RewritePass for RewriteChain<A, B>
+impl<T, U, I, A> RewritePass for RewriteChain<T, U>
 where
-    A: RewritePass<Error = E>,
-    B: RewritePass<Error = E>,
+    T: RewritePass<Input = I, Analysis = A>,
+    U: RewritePass<Input = I, Analysis = A>,
 {
-    type Error = <B as RewritePass>::Error;
+    type Input = I;
+    type Analysis = A;
 
-    fn run(
-        &mut self,
-        function: &mut miden_hir::Function,
-        analyses: &mut FunctionAnalysis,
-    ) -> Result<(), Self::Error> {
-        self.a.run(function, analyses)?;
-        self.b.run(function, analyses)
-    }
-}
-impl<A, B, E> Pass for RewriteChain<A, B>
-where
-    A: RewritePass<Error = E>,
-    B: RewritePass<Error = E>,
-{
-    type Input<'a> = (&'a mut miden_hir::Function, &'a mut FunctionAnalysis);
-    type Output<'a> = (&'a mut miden_hir::Function, &'a mut FunctionAnalysis);
-    type Error = <B as RewritePass>::Error;
-
-    fn run<'a>(&mut self, input: Self::Input<'a>) -> Result<Self::Output<'a>, Self::Error> {
-        let (function, analyses) = input;
-        self.a.run(function, analyses)?;
-        self.b.run(function, analyses)?;
-        Ok((function, analyses))
+    fn run(&mut self, item: &mut Self::Input, analyses: &mut Self::Analysis) -> anyhow::Result<()> {
+        self.a.run(item, analyses)?;
+        self.b.run(item, analyses)
     }
 }

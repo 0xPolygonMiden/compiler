@@ -25,14 +25,19 @@ pub enum WasmError {
     #[error("Unsupported Wasm: {0}")]
     Unsupported(String),
 
+    /// Too many functions were declared in a module
     #[error("Too many declared functions in the module")]
     FuncNumLimitExceeded,
 
+    /// Duplicate symbol names were found in a module
     #[error("{0}")]
     SymbolConflictError(#[from] SymbolConflictError),
+
+    /// Unable to translate function to HIR
     #[error("Failed to build function. See diagnostics for details")]
     InvalidFunctionError,
 
+    /// An unknown error occurred
     #[error("Unexpected: {0}")]
     Unexpected(String),
 }

@@ -253,14 +253,18 @@ use crate::{adt::ScopedMap, RewritePass};
 /// ```
 ///
 pub struct Treeify;
+
+register_function_rewrite!("treeify", Treeify);
+
 impl RewritePass for Treeify {
-    type Error = anyhow::Error;
+    type Input = hir::Function;
+    type Analysis = FunctionAnalysis;
 
     fn run(
         &mut self,
-        function: &mut hir::Function,
-        analysis: &mut FunctionAnalysis,
-    ) -> Result<(), Self::Error> {
+        function: &mut Self::Input,
+        analysis: &mut Self::Analysis,
+    ) -> anyhow::Result<()> {
         // Require the dominator tree and loop analyses
         analysis.ensure_loops(function);
 

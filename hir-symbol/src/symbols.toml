@@ -80,3 +80,8 @@ global = {}
 symbol = {}
 iadd = {}
 const = {}
+
+[passes]
+inline_blocks = { value = "inline-blocks" }
+split_critical_edges = { value = "split-critical-edges" }
+treeify = { value = "treeify" }

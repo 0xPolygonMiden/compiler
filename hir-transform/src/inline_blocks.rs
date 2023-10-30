@@ -26,14 +26,18 @@ use crate::{adt::ScopedMap, RewritePass};
 /// those redundant branches, all of the code from blocks in the chain can be inlined in the first
 /// block of the chain.
 pub struct InlineBlocks;
+
+register_function_rewrite!("inline-blocks", InlineBlocks);
+
 impl RewritePass for InlineBlocks {
-    type Error = anyhow::Error;
+    type Input = hir::Function;
+    type Analysis = FunctionAnalysis;
 
     fn run(
         &mut self,
-        function: &mut hir::Function,
-        analysis: &mut FunctionAnalysis,
-    ) -> Result<(), Self::Error> {
+        function: &mut Self::Input,
+        analysis: &mut Self::Analysis,
+    ) -> anyhow::Result<()> {
         let cfg = analysis.cfg_mut();
 
         let entry = function.dfg.entry_block();

@@ -125,6 +125,23 @@ pub fn parse(
 ) -> Result<crate::Module, ParseError> {
     let parser = Parser::new((), codemap);
     match parser.parse_string::<crate::Module, _, _>(diagnostics, source) {
+        Ok(ir) => Ok(ir),
+        Err(ParseError::Lexer(err)) => {
+            diagnostics.emit(err);
+            Err(ParseError::Failed)
+        }
+        Err(err) => Err(err),
+    }
+}
+
+/// Parses the provided source and returns the AST.
+pub fn parse_ast(
+    diagnostics: &DiagnosticsHandler,
+    codemap: Arc<CodeMap>,
+    source: &str,
+) -> Result<ast::Module, ParseError> {
+    let parser = Parser::new((), codemap);
+    match parser.parse_string::<ast::Module, _, _>(diagnostics, source) {
         Ok(ast) => Ok(ast),
         Err(ParseError::Lexer(err)) => {
             diagnostics.emit(err);
@@ -142,6 +159,23 @@ pub fn parse_file<P: AsRef<Path>>(
 ) -> Result<crate::Module, ParseError> {
     let parser = Parser::new((), codemap);
     match parser.parse_file::<crate::Module, _, _>(diagnostics, source) {
+        Ok(ast) => Ok(ast),
+        Err(ParseError::Lexer(err)) => {
+            diagnostics.emit(err);
+            Err(ParseError::Failed)
+        }
+        Err(err) => Err(err),
+    }
+}
+
+/// Parses the provided source and returns the AST.
+pub fn parse_file_ast<P: AsRef<Path>>(
+    diagnostics: &DiagnosticsHandler,
+    codemap: Arc<CodeMap>,
+    source: P,
+) -> Result<ast::Module, ParseError> {
+    let parser = Parser::new((), codemap);
+    match parser.parse_file::<ast::Module, _, _>(diagnostics, source) {
         Ok(ast) => Ok(ast),
         Err(ParseError::Lexer(err)) => {
             diagnostics.emit(err);

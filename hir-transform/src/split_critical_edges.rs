@@ -26,14 +26,18 @@ use super::RewritePass;
 /// and multiple successors.
 ///
 pub struct SplitCriticalEdges;
+
+register_function_rewrite!("split-critical-edges", SplitCriticalEdges);
+
 impl RewritePass for SplitCriticalEdges {
-    type Error = anyhow::Error;
+    type Input = hir::Function;
+    type Analysis = FunctionAnalysis;
 
     fn run(
         &mut self,
-        function: &mut hir::Function,
-        analysis: &mut FunctionAnalysis,
-    ) -> Result<(), Self::Error> {
+        function: &mut Self::Input,
+        analysis: &mut Self::Analysis,
+    ) -> anyhow::Result<()> {
         // Search for blocks with multiple successors with edges to blocks with
         // multiple predecessors; these blocks form critical edges in the control
         // flow graph which must be split.

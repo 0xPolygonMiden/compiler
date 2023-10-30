@@ -45,6 +45,14 @@ impl fmt::Debug for Module {
             .finish()
     }
 }
+impl midenc_session::Emit for Module {
+    fn output_type(&self) -> midenc_session::OutputType {
+        midenc_session::OutputType::Ast
+    }
+    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+        writer.write_fmt(format_args!("{:#?}", self))
+    }
+}
 
 pub(super) type ConstantsById = FxHashMap<crate::Constant, Span<crate::ConstantData>>;
 pub(super) type GlobalVariablesById =

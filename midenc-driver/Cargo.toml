@@ -1,9 +1,12 @@
 [package]
-name = "miden-codegen-masm"
+name = "midenc-driver"
+description = "The compiler frontend for Miden"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
 categories.workspace = true
 keywords.workspace = true
 license.workspace = true
@@ -12,16 +15,15 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-thiserror.workspace = true
-cranelift-entity.workspace = true
-intrusive-collections.workspace = true
+bitflags.workspace = true
+clap.workspace = true
+log.workspace = true
+inventory.workspace = true
 miden-assembly.workspace = true
+miden-codegen-masm.workspace = true
 miden-diagnostics.workspace = true
+miden-frontend-wasm.workspace = true
 miden-hir.workspace = true
-miden-hir-analysis.workspace = true
-miden-hir-pass.workspace = true
-miden-hir-transform.workspace = true
 midenc-session.workspace = true
-paste.workspace = true
 rustc-hash.workspace = true
-smallvec.workspace = true
+thiserror.workspace = true
