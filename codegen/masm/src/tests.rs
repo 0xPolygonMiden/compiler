@@ -130,7 +130,7 @@ impl TestByEmulationHarness {
     #[allow(unused)]
     pub fn execute(
         &mut self,
-        program: Program,
+        program: Box<Program>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         let entrypoint = program.entrypoint.expect("cannot execute a library");

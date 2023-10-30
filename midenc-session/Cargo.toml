@@ -1,6 +1,5 @@
 [package]
-name = "midenc"
-description = "The compiler frontend/executable for Miden"
+name = "midenc-session"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -17,8 +16,7 @@ edition.workspace = true
 anyhow.workspace = true
 bitflags.workspace = true
 clap.workspace = true
-env_logger.workspace = true
-human-panic = "1.0"
-log.workspace = true
+inventory.workspace = true
 miden-diagnostics.workspace = true
-miden-frontend-wasm.workspace = true
+rustc-hash.workspace = true
+thiserror.workspace = true

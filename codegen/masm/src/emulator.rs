@@ -370,7 +370,7 @@ impl Emulator {
     }
 
     /// Load `program` into this emulator
-    pub fn load_program(&mut self, program: Program) -> Result<(), EmulationError> {
+    pub fn load_program(&mut self, program: Box<Program>) -> Result<(), EmulationError> {
         for module in program.modules.into_iter() {
             self.load_module(module)?;
         }

@@ -4,40 +4,16 @@ mod stackify;
 #[cfg(test)]
 mod tests;
 
-pub use self::emulator::{Breakpoint, DebugInfo, EmulationError, Emulator};
+pub use self::emulator::{Breakpoint, DebugInfo, EmulationError, Emulator, InstructionPointer};
 pub use self::masm::*;
 pub use self::stackify::Stackify;
+
+use std::sync::Arc;
 
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir as hir;
 use miden_hir_analysis::FunctionAnalysis;
-
-/// This struct implements a compiler pass that emits an intermediate form
-/// of Miden Assembly corresponding to a given [miden_hir::Program].
-///
-/// This pass assumes that the input [miden_hir::Program] was constructed
-/// and linked without running any transformation passes, i.e. it assumes
-/// that it must do so. Running this pass when those transformations have
-/// already been applied shouldn't be a problem, however it is quite expensive
-/// to run many of those passes, so it should be avoided.
-///
-/// The resulting [Program] in MASM IR can then be used to:
-///
-/// * Emit textual Miden Assembly via the [core::fmt::Display] trait
-/// * Execute the program or a function via [Emulator]
-pub struct HirToMasm<'a> {
-    diagnostics: &'a DiagnosticsHandler,
-}
-impl<'p> miden_hir_pass::Pass for HirToMasm<'p> {
-    type Input<'a> = &'a mut hir::Program;
-    type Output<'a> = Program;
-    type Error = anyhow::Error;
-
-    fn run<'a>(&mut self, input: Self::Input<'a>) -> Result<Self::Output<'a>, Self::Error> {
-        let mut compiler = MasmCompiler::new(self.diagnostics);
-        compiler.compile(input)
-    }
-}
+use midenc_session::Options;
 
 /// [MasmCompiler] is a compiler from Miden IR to MASM IR, an intermediate representation
 /// of Miden Assembly which is used within the Miden compiler framework for various purposes,
@@ -49,20 +25,24 @@ impl<'p> miden_hir_pass::Pass for HirToMasm<'p> {
 /// compile it to MASM IR, an intermediate representation of Miden Assembly
 /// used within the compiler.
 pub struct MasmCompiler<'a> {
+    options: Arc<Options>,
     diagnostics: &'a DiagnosticsHandler,
 }
 impl<'a> MasmCompiler<'a> {
-    pub fn new(diagnostics: &'a DiagnosticsHandler) -> Self {
-        Self { diagnostics }
+    pub fn new(options: Arc<Options>, diagnostics: &'a DiagnosticsHandler) -> Self {
+        Self {
+            options,
+            diagnostics,
+        }
     }
 
     /// Compile an [hir::Program] that has been linked and is ready to be compiled.
-    pub fn compile(&mut self, input: &mut hir::Program) -> anyhow::Result<Program> {
-        ProgramCompiler::new(input, self.diagnostics).compile()
+    pub fn compile(&mut self, input: &mut hir::Program) -> anyhow::Result<Box<Program>> {
+        ProgramCompiler::new(input, &self.options, self.diagnostics).compile()
     }
 
     /// Compile a single [hir::Module] as a program.
-    pub fn compile_module(&mut self, input: Box<hir::Module>) -> anyhow::Result<Program> {
+    pub fn compile_module(&mut self, input: Box<hir::Module>) -> anyhow::Result<Box<Program>> {
         let mut program = hir::ProgramBuilder::new(self.diagnostics)
             .with_module(input)?
             .link()?;
@@ -74,7 +54,7 @@ impl<'a> MasmCompiler<'a> {
     pub fn compile_modules<I: IntoIterator<Item = Box<hir::Module>>>(
         &mut self,
         input: I,
-    ) -> anyhow::Result<Program> {
+    ) -> anyhow::Result<Box<Program>> {
         let mut builder = hir::ProgramBuilder::new(self.diagnostics);
         for module in input.into_iter() {
             builder.add_module(module)?;
@@ -88,21 +68,28 @@ impl<'a> MasmCompiler<'a> {
 
 struct ProgramCompiler<'a> {
     #[allow(unused)]
+    options: &'a Options,
+    #[allow(unused)]
     diagnostics: &'a DiagnosticsHandler,
     input: &'a mut hir::Program,
-    output: Program,
+    output: Box<Program>,
 }
 impl<'a> ProgramCompiler<'a> {
-    pub fn new(input: &'a mut hir::Program, diagnostics: &'a DiagnosticsHandler) -> Self {
-        let output = Program::from(input as &hir::Program);
+    pub fn new(
+        input: &'a mut hir::Program,
+        options: &'a Options,
+        diagnostics: &'a DiagnosticsHandler,
+    ) -> Self {
+        let output = Box::new(Program::from(input as &hir::Program));
         Self {
+            options,
             diagnostics,
             input,
             output,
         }
     }
 
-    pub fn compile(mut self) -> anyhow::Result<Program> {
+    pub fn compile(mut self) -> anyhow::Result<Box<Program>> {
         // Remove the set of modules to compile from the program
         let mut modules = self.input.modules_mut().take();
 

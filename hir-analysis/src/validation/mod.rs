@@ -306,6 +306,13 @@ impl PartialEq for ValidationError {
     }
 }
 
+inventory::submit! {
+    midenc_session::CompileFlag::new("validate")
+        .long("no-validate")
+        .action(midenc_session::FlagAction::SetFalse)
+        .help("If present, disables validation of the IR prior to codegen")
+}
+
 /// A [Rule] validates some specific type of behavior on an item of type `T`
 pub trait Rule<T> {
     /// Validate `item`, using `diagnostics` to emit relevant diagnostics.

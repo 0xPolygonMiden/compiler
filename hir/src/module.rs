@@ -170,6 +170,14 @@ impl fmt::Debug for Module {
             .finish()
     }
 }
+impl midenc_session::Emit for Module {
+    fn output_type(&self) -> midenc_session::OutputType {
+        midenc_session::OutputType::Hir
+    }
+    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+        writer.write_fmt(format_args!("{}", self))
+    }
+}
 impl Eq for Module {}
 impl PartialEq for Module {
     fn eq(&self, other: &Self) -> bool {

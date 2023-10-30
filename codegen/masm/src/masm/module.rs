@@ -154,6 +154,14 @@ impl fmt::Display for Module {
         Ok(())
     }
 }
+impl midenc_session::Emit for Module {
+    fn output_type(&self) -> midenc_session::OutputType {
+        midenc_session::OutputType::Masm
+    }
+    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+        writer.write_fmt(format_args!("{}", self))
+    }
+}
 
 impl Module {
     /// This is a helper that constructs and returns the predefined `intrinsics::mem` module
