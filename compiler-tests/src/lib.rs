@@ -3,11 +3,11 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 
-mod comp_test;
+mod compiler_test;
 mod exec_emulator;
 mod exec_vm;
 
-pub use comp_test::CompTest;
+pub use compiler_test::CompilerTest;
 pub use exec_emulator::execute_emulator;
 pub use exec_vm::execute_vm;
 

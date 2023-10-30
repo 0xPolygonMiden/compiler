@@ -7,12 +7,12 @@ use proptest::test_runner::TestRunner;
 
 use crate::execute_emulator;
 use crate::execute_vm;
-use crate::CompTest;
+use crate::CompilerTest;
 
 #[test]
 fn u32_div() {
     // Test expected compilation artifacts
-    let mut test = CompTest::new();
+    let mut test = CompilerTest::new();
     test.rust_source("compiler-tests-rust-source", "div_u_app")
         .expect_wasm(expect_file!["./expected/div_u.wat"])
         .expect_ir(expect_file!["./expected/div_u.mir"])
