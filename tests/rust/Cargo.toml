@@ -1,5 +1,5 @@
 [package]
-name = "miden-compiler-tests-rust-source"
+name = "miden-integration-tests-rust"
 version = "0.1.0"
 edition = "2021"
 

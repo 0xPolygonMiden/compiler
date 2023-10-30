@@ -14,8 +14,8 @@ members = [
   "midenc-session",
   "tools/*",
   "frontend-wasm",
-  "compiler-tests-rust-source",
-  "compiler-tests",
+  "tests/rust",
+  "tests/integration",
 ]
 
 [workspace.package]
