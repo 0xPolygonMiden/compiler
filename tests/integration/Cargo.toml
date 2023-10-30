@@ -1,5 +1,5 @@
 [package]
-name = "miden-compiler-tests"
+name = "miden-integration-tests"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -16,7 +16,7 @@ miden-codegen-masm.workspace = true
 miden-assembly.workspace = true
 miden-diagnostics.workspace = true
 expect-test = "1.4.1"
-miden-compiler-tests-rust-source = {path = "../compiler-tests-rust-source"}
+miden-integration-tests-rust = {path = "../rust"}
 
 [dev-dependencies]
 proptest = "1.3"

@@ -1,7 +1,7 @@
 use expect_test::expect_file;
-use miden_compiler_tests_rust_source::div_u::div_u;
 use miden_hir::Felt;
 use miden_hir::StarkField;
+use miden_integration_tests_rust::div_u::div_u;
 use proptest::prelude::*;
 use proptest::test_runner::TestRunner;
 
