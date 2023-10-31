@@ -1342,11 +1342,6 @@ impl<'a> MasmEmitter<'a> {
 
     /// Emit code for a non-terminator instruction, which consumes and produces values on the operand stack
     fn emit_op(&mut self, inst: hir::Inst, ix: &hir::Instruction, stack: &mut OperandStack) {
-        assert!(
-            !ix.opcode().is_terminator(),
-            "unhandled terminator in non-terminator context: {:?}",
-            ix
-        );
         match ix {
             Instruction::GlobalValue(op) => self.emit_global_value(inst, op, stack),
             Instruction::UnaryOpImm(op) => self.emit_unary_imm_op(inst, op, stack),
@@ -1360,11 +1355,14 @@ impl<'a> MasmEmitter<'a> {
             Instruction::Call(op) => self.emit_call_op(inst, op, stack),
             Instruction::InlineAsm(op) => self.emit_inline_asm(inst, op, stack),
             // Control flow instructions are handled before `emit_op` is called
-            Instruction::RetImm(_)
+            ix @ (Instruction::RetImm(_)
             | Instruction::Ret(_)
             | Instruction::Br(_)
             | Instruction::CondBr(_)
-            | Instruction::Switch(_) => unreachable!(),
+            | Instruction::Switch(_)) => panic!(
+                "expected {} instruction to have been lowered already",
+                ix.opcode()
+            ),
         }
     }
 
