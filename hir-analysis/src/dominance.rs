@@ -8,7 +8,9 @@ use cranelift_entity::SecondaryMap;
 
 use rustc_hash::FxHashSet;
 
+use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
 use miden_hir::{Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint};
+use midenc_session::Session;
 
 use super::{BlockPredecessor, ControlFlowGraph};
 
@@ -50,6 +52,22 @@ pub struct DominatorTree {
     /// Scratch buffer used by `compute_postorder`
     stack: Vec<(Visit, Block)>,
     valid: bool,
+}
+impl Analysis for DominatorTree {
+    type Entity = Function;
+
+    fn analyze(
+        function: &Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> AnalysisResult<Self> {
+        let cfg = analyses.get_or_compute(function, session)?;
+        Ok(DominatorTree::with_function(function, &cfg))
+    }
+
+    fn is_invalidated(&self, preserved: &PreservedAnalyses) -> bool {
+        !preserved.is_preserved::<ControlFlowGraph>()
+    }
 }
 impl DominatorTree {
     /// Allocate a new blank dominator tree. Use `compute` to compute the dominator tree for a

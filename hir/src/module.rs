@@ -8,7 +8,7 @@ use intrusive_collections::{
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use rustc_hash::FxHashSet;
 
-use super::*;
+use super::{pass::AnalysisKey, *};
 
 /// This error is raised when two modules conflict with the same symbol name
 #[derive(Debug, thiserror::Error)]
@@ -33,12 +33,13 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
 ///
 /// * Mapping from Signature to FuncRef
 /// * Mapping from FunctionName to FuncRef
-#[derive(Spanned)]
+#[derive(Spanned, AnalysisKey)]
 pub struct Module {
     /// The link used to attach this module to a [Program]
     link: RBTreeLink,
     /// The name of this module
     #[span]
+    #[analysis_key]
     pub name: Ident,
     /// Documentation attached to this module, to be passed through to
     /// Miden Assembly during code generation.
@@ -171,6 +172,9 @@ impl fmt::Debug for Module {
     }
 }
 impl midenc_session::Emit for Module {
+    fn name(&self) -> Option<crate::Symbol> {
+        Some(self.name.as_symbol())
+    }
     fn output_type(&self) -> midenc_session::OutputType {
         midenc_session::OutputType::Hir
     }

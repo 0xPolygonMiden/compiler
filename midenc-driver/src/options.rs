@@ -44,39 +44,6 @@ impl FromStr for Operand {
     }
 }
 
-/// This enum represents the behavior of the compiler with regard to warnings
-#[derive(Debug, Copy, Clone, Default, ValueEnum)]
-pub enum Warnings {
-    /// Disable all warnings
-    None,
-    /// Enable all warnings
-    #[default]
-    All,
-    /// Promotes warnings to errors
-    Error,
-}
-impl fmt::Display for Warnings {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::None => f.write_str("none"),
-            Self::All => f.write_str("auto"),
-            Self::Error => f.write_str("error"),
-        }
-    }
-}
-impl FromStr for Warnings {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "none" => Ok(Self::None),
-            "all" => Ok(Self::All),
-            "error" => Ok(Self::Error),
-            _ => Err(()),
-        }
-    }
-}
-
 /// This enum represents the type of messages produced by the compiler during execution
 #[derive(Debug, Copy, Clone, Default, ValueEnum)]
 pub enum VerbosityFlag {

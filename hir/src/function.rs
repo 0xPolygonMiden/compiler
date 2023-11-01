@@ -4,7 +4,7 @@ use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 use miden_diagnostics::Spanned;
 
-use super::*;
+use super::{pass::AnalysisKey, *};
 
 /// This error is raised when two function declarations conflict with the same symbol name
 #[derive(Debug, thiserror::Error)]
@@ -274,10 +274,11 @@ pub type FunctionList = LinkedList<FunctionListAdapter>;
 ///
 /// References to functions and global variables from a [Function] are not fully validated until
 /// link-time/code generation.
-#[derive(Spanned)]
+#[derive(Spanned, AnalysisKey)]
 pub struct Function {
     link: LinkedListLink,
     #[span]
+    #[analysis_key]
     pub id: FunctionIdent,
     pub signature: Signature,
     pub dfg: DataFlowGraph,

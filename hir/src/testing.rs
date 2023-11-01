@@ -1,8 +1,6 @@
-use std::{mem, path::Path, slice, sync::Arc};
+use std::{mem, path::Path, slice};
 
-use miden_diagnostics::{
-    term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler,
-};
+use midenc_session::Session;
 
 use super::*;
 
@@ -10,25 +8,38 @@ const PAGE_SIZE: u32 = 64 * 1024;
 
 /// The base context used by all IR tests
 pub struct TestContext {
-    pub codemap: Arc<CodeMap>,
-    pub diagnostics: DiagnosticsHandler,
+    pub session: Session,
 }
 impl Default for TestContext {
     fn default() -> Self {
-        let codemap = Arc::new(CodeMap::new());
-        let emitter = Arc::new(DefaultEmitter::new(ColorChoice::Auto));
-        let diagnostics = DiagnosticsHandler::new(Default::default(), codemap.clone(), emitter);
+        use midenc_session::InputFile;
 
-        Self {
-            codemap,
-            diagnostics,
-        }
+        let session = Session::new(
+            None,
+            Default::default(),
+            InputFile::new("test.hir").unwrap(),
+            None,
+            None,
+            None,
+            Default::default(),
+            None,
+        );
+
+        Self { session }
     }
 }
 impl TestContext {
+    /// Create a new test context with the given [Session]
+    pub fn new(session: Session) -> Self {
+        Self { session }
+    }
+
     /// Add a source file to this context
     pub fn add<P: AsRef<Path>>(&mut self, path: P) -> miden_diagnostics::SourceId {
-        self.codemap.add_file(path).expect("invalid source file")
+        self.session
+            .codemap
+            .add_file(path)
+            .expect("invalid source file")
     }
 
     /// Get a [SourceSpan] corresponding to the callsite of this function
@@ -41,6 +52,7 @@ impl TestContext {
             .unwrap()
             .join(caller.file());
         let source_id = self
+            .session
             .codemap
             .add_file(caller_file)
             .expect("invalid source file");
@@ -57,7 +69,8 @@ impl TestContext {
         line: u32,
         column: u32,
     ) -> miden_diagnostics::SourceSpan {
-        self.codemap
+        self.session
+            .codemap
             .line_column_to_span(source_id, line - 1, column - 1)
             .expect("invalid source location")
     }
@@ -190,7 +203,7 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
     fb.ins().ret(Some(result), context.current_span());
 
     // We're done
-    fb.build(&context.diagnostics)
+    fb.build(&context.session.diagnostics)
         .expect("unexpected validation error, see diagnostics output")
 }
 
@@ -370,7 +383,7 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> Functio
         .br(c, &[sum3, rows5, cols5], context.current_span());
 
     // We're done
-    fb.build(&context.diagnostics)
+    fb.build(&context.session.diagnostics)
         .expect("unexpected validation error, see diagnostics output")
 }
 

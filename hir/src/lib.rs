@@ -1,4 +1,7 @@
 #![deny(warnings)]
+// Required for pass infrastructure, can be removed when it gets stabilized
+// in an upcoming release, see https://github.com/rust-lang/rust/issues/65991
+#![feature(trait_upcasting)]
 pub mod parser;
 
 #[macro_use]
@@ -6,6 +9,7 @@ extern crate lalrpop_util;
 
 pub use intrusive_collections::UnsafeRef;
 pub use miden_diagnostics::SourceSpan;
+pub use miden_hir_macros::*;
 pub use miden_hir_symbol::{symbols, Symbol};
 pub use miden_hir_type::{AddressSpace, Alignable, FunctionType, StructType, Type};
 pub use winter_math::{FieldElement, StarkField};
@@ -149,6 +153,7 @@ mod instruction;
 mod layout;
 mod locals;
 mod module;
+pub mod pass;
 mod program;
 mod segments;
 pub mod testing;
@@ -174,7 +179,7 @@ pub use self::instruction::*;
 pub use self::layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap};
 pub use self::locals::{Local, LocalId};
 pub use self::module::*;
-pub use self::program::{Linker, LinkerError, Program, ProgramBuilder};
+pub use self::program::{Linker, LinkerError, Program, ProgramAnalysisKey, ProgramBuilder};
 pub use self::segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable};
 pub use self::value::{Value, ValueData, ValueList, ValueListPool};
 pub use self::write::{write_external_function, write_function, write_instruction};

@@ -1,11 +1,14 @@
 use std::{cmp::Ordering, collections::VecDeque, fmt, rc::Rc};
 
 use cranelift_entity::packed_option::ReservedValue;
+use miden_hir::pass::{AnalysisManager, ConversionPass, ConversionResult};
 use miden_hir::{
     self as hir, assert_matches, BranchInfo, Immediate, Instruction, Overflow, ProgramPoint,
 };
-use miden_hir_analysis::{DominatorTree, FunctionAnalysis, LivenessAnalysis, Loop, LoopAnalysis};
-use miden_hir_pass::Pass;
+use miden_hir_analysis::{
+    DominatorTree, GlobalVariableAnalysis, LivenessAnalysis, Loop, LoopAnalysis,
+};
+use midenc_session::Session;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
@@ -286,35 +289,34 @@ use super::{
 /// These rules are used to recover structured control flow for arbitrarily complex loop patterns. The resulting
 /// code is not necessarily optimal in terms of size, due to duplication of loop headers and such, but this
 /// doesn't make any performance tradeoffs that I'm aware of.
-pub struct Stackify<'a> {
-    program: &'a hir::Program,
-    analysis: &'a FunctionAnalysis,
-}
-impl<'a> Stackify<'a> {
-    pub fn new(program: &'a hir::Program, analysis: &'a FunctionAnalysis) -> Self {
-        Self { program, analysis }
-    }
-}
-impl<'p> Pass for Stackify<'p> {
-    type Input<'a> = &'a hir::Function;
-    type Output<'a> = Box<masm::Function>;
-    type Error = anyhow::Error;
+pub struct Stackify;
+impl ConversionPass for Stackify {
+    type From<'a> = &'a hir::Function;
+    type To = masm::Function;
 
-    fn run<'a>(&mut self, f: Self::Input<'a>) -> Result<Self::Output<'a>, Self::Error> {
-        self.analysis.require_all()?;
+    fn convert<'a>(
+        &mut self,
+        f: Self::From<'a>,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> ConversionResult<Self::To> {
+        use miden_hir::ProgramAnalysisKey;
 
-        let mut f_prime = Box::new(masm::Function::new(f.id, f.signature.clone()));
+        let mut f_prime = masm::Function::new(f.id, f.signature.clone());
 
         // Start at the function entry
         {
             let entry = f.dfg.entry_block();
             let entry_prime = f_prime.body;
 
-            let domtree = self.analysis.domtree();
-            let loops = self.analysis.loops();
-            let liveness = self.analysis.liveness();
-            let mut emitter =
-                MasmEmitter::new(self.program, f, &mut f_prime, domtree, loops, liveness);
+            let globals = analyses.expect::<GlobalVariableAnalysis>(
+                &ProgramAnalysisKey,
+                "expected program-wide global variable analysis to have been performed",
+            );
+            let domtree = analyses.get_or_compute::<DominatorTree>(f, session)?;
+            let loops = analyses.get_or_compute::<LoopAnalysis>(f, session)?;
+            let liveness = analyses.get_or_compute::<LivenessAnalysis>(f, session)?;
+            let mut emitter = MasmEmitter::new(f, &mut f_prime, domtree, loops, liveness, globals);
 
             let mut stack = OperandStack::default();
             for arg in f.dfg.block_args(entry).iter().rev().copied() {
@@ -331,15 +333,14 @@ impl<'p> Pass for Stackify<'p> {
 
 /// This structure is used to emit code for a function in the SSA IR.
 struct MasmEmitter<'a> {
-    /// The program to which `f` belongs
-    program: &'a hir::Program,
     /// The SSA IR function being translated
     f: &'a hir::Function,
     /// The resulting stack machine function being emitted
     f_prime: &'a mut masm::Function,
-    domtree: &'a DominatorTree,
-    loops: &'a LoopAnalysis,
-    liveness: &'a LivenessAnalysis,
+    domtree: Rc<DominatorTree>,
+    loops: Rc<LoopAnalysis>,
+    liveness: Rc<LivenessAnalysis>,
+    globals: Rc<GlobalVariableAnalysis>,
     /// The "controlling" loop corresponds to the current maximum loop depth
     /// reached along the current control flow path. When we reach a loopback
     /// edge in the control flow graph, we emit a trailing duplicate of the
@@ -375,20 +376,20 @@ struct CacheEntry {
 
 impl<'a> MasmEmitter<'a> {
     fn new(
-        program: &'a hir::Program,
         f: &'a hir::Function,
         f_prime: &'a mut masm::Function,
-        domtree: &'a DominatorTree,
-        loops: &'a LoopAnalysis,
-        liveness: &'a LivenessAnalysis,
+        domtree: Rc<DominatorTree>,
+        loops: Rc<LoopAnalysis>,
+        liveness: Rc<LivenessAnalysis>,
+        globals: Rc<GlobalVariableAnalysis>,
     ) -> Self {
         Self {
-            program,
             f,
             f_prime,
             domtree,
             loops,
             liveness,
+            globals,
             controlling_loop: None,
             emitting: Default::default(),
             current_block: masm::BlockId::reserved_value(),
@@ -485,7 +486,7 @@ impl<'a> MasmEmitter<'a> {
                 .cached
                 .entry(b)
                 .or_insert_with(|| {
-                    let depgraph = build_dependency_graph(b, self.f, self.liveness);
+                    let depgraph = build_dependency_graph(b, self.f, &self.liveness);
                     let treegraph = TreeGraph::from(depgraph.clone());
                     let schedule = treegraph
                         .toposort()
@@ -506,7 +507,7 @@ impl<'a> MasmEmitter<'a> {
             );
         } else {
             assert!(is_first_visit, "unexpected cycle");
-            let depgraph = build_dependency_graph(b, self.f, self.liveness);
+            let depgraph = build_dependency_graph(b, self.f, &self.liveness);
             let treegraph = TreeGraph::from(depgraph.clone());
             let schedule = treegraph
                 .toposort()
@@ -1123,7 +1124,7 @@ impl<'a> MasmEmitter<'a> {
                         .collect::<SmallVec<[hir::Value; 2]>>();
                     let params = self.f.dfg.block_params(destination);
                     let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
-                    drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
+                    drop_unused_operands_after(self.emitting, &args, &mut emitter, &self.liveness);
                     prepare_stack_arguments(&args, params, &mut emitter);
                 }
                 if self.loops.is_loop_header(self.emitting).is_some() {
@@ -1174,7 +1175,7 @@ impl<'a> MasmEmitter<'a> {
                     .collect::<SmallVec<[hir::Value; 2]>>();
                 let params = self.f.dfg.block_params(*destination);
                 let mut emitter = OpEmitter::new(self.f_prime, self.current_block, stack);
-                drop_unused_operands_after(self.emitting, &args, &mut emitter, self.liveness);
+                drop_unused_operands_after(self.emitting, &args, &mut emitter, &self.liveness);
                 prepare_stack_arguments(&args, params, &mut emitter);
                 let current_loop = self
                     .controlling_loop
@@ -1256,7 +1257,7 @@ impl<'a> MasmEmitter<'a> {
                                 self.emitting,
                                 &then_args,
                                 &mut emitter,
-                                self.liveness,
+                                &self.liveness,
                             );
                         }
                         let params = self.f.dfg.block_params(*then_dest);
@@ -1278,7 +1279,7 @@ impl<'a> MasmEmitter<'a> {
                                 self.emitting,
                                 &else_args,
                                 &mut emitter,
-                                self.liveness,
+                                &self.liveness,
                             );
                         }
                         let params = self.f.dfg.block_params(*else_dest);
@@ -1305,7 +1306,7 @@ impl<'a> MasmEmitter<'a> {
                             self.emitting,
                             &then_args,
                             &mut emitter,
-                            self.liveness,
+                            &self.liveness,
                         );
                         let params = self.f.dfg.block_params(*then_dest);
                         prepare_stack_arguments(&then_args, params, &mut emitter);
@@ -1324,7 +1325,7 @@ impl<'a> MasmEmitter<'a> {
                             self.emitting,
                             &else_args,
                             &mut emitter,
-                            self.liveness,
+                            &self.liveness,
                         );
                         let params = self.f.dfg.block_params(*else_dest);
                         prepare_stack_arguments(&else_args, params, &mut emitter);
@@ -1419,7 +1420,10 @@ impl<'a> MasmEmitter<'a> {
         stack: &mut OperandStack,
     ) {
         assert_eq!(op.op, hir::Opcode::GlobalValue);
-        let addr = self.calculate_global_value_addr(op.global);
+        let addr = self
+            .globals
+            .get_computed_addr(&self.f.id, op.global)
+            .expect("expected linker to identify all undefined symbols");
         match self.f.dfg.global_value(op.global) {
             hir::GlobalValueData::Load { ref ty, .. } => {
                 let mut emitter = self.inst_emitter(inst, stack);
@@ -1721,37 +1725,6 @@ impl<'a> MasmEmitter<'a> {
         for result in self.f.dfg.inst_results(inst).iter().copied().rev() {
             let ty = self.f.dfg.value_type(result).clone();
             stack.push(TypedValue { value: result, ty });
-        }
-    }
-
-    /// Computes the absolute offset (address) represented by the given global value
-    fn calculate_global_value_addr(&self, mut gv: hir::GlobalValue) -> u32 {
-        let global_table_offset = self.program.segments().next_available_offset();
-        let mut relative_offset = 0;
-        let globals = self.program.globals();
-        loop {
-            let gv_data = self.f.dfg.global_value(gv);
-            relative_offset += gv_data.offset();
-            match gv_data {
-                hir::GlobalValueData::Symbol { name, .. } => {
-                    let var = globals
-                        .find(*name)
-                        .expect("linker should have caught undefined global variables");
-                    let base_offset = unsafe { globals.offset_of(var) };
-                    if relative_offset >= 0 {
-                        return (global_table_offset + base_offset) + relative_offset as u32;
-                    } else {
-                        return (global_table_offset + base_offset)
-                            - relative_offset.unsigned_abs();
-                    }
-                }
-                hir::GlobalValueData::IAddImm { base, .. } => {
-                    gv = *base;
-                }
-                hir::GlobalValueData::Load { base, .. } => {
-                    gv = *base;
-                }
-            }
         }
     }
 

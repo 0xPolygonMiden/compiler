@@ -17,20 +17,24 @@ lalrpop = { version = "0.20", default-features = false }
 anyhow.workspace = true
 cranelift-entity.workspace = true
 intrusive-collections.workspace = true
+inventory.workspace = true
 lalrpop-util="0.20"
 miden-assembly.workspace = true
 miden-diagnostics.workspace = true
 miden-hir-symbol.workspace = true
 miden-hir-type.workspace = true
+miden-hir-macros.workspace = true
 miden-parsing.workspace = true
 midenc-session.workspace = true
 num-bigint = "0.4"
 num-traits = "0.2"
 petgraph = "0.6"
 paste.workspace = true
-pretty_assertions = "1.0"
 rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
 winter-math = { version = "0.6", default-features = false }
+
+[dev-dependencies]
+pretty_assertions = "1.0"

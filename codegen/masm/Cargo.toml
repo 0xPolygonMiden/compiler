@@ -19,7 +19,6 @@ miden-assembly.workspace = true
 miden-diagnostics.workspace = true
 miden-hir.workspace = true
 miden-hir-analysis.workspace = true
-miden-hir-pass.workspace = true
 miden-hir-transform.workspace = true
 midenc-session.workspace = true
 paste.workspace = true

@@ -203,8 +203,9 @@ mod typecheck;
 pub use self::typecheck::TypeError;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
+use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PassInfo};
 use miden_hir::*;
-use miden_hir_pass::Pass;
+use midenc_session::Session;
 
 use self::block::{BlockValidator, DefsDominateUses};
 use self::function::FunctionValidator;
@@ -241,7 +242,7 @@ pub enum ValidationError {
     TypeError(#[from] TypeError),
     /// An unknown validation error occurred
     #[error(transparent)]
-    Misc(#[from] anyhow::Error),
+    Failed(#[from] anyhow::Error),
 }
 #[cfg(test)]
 impl PartialEq for ValidationError {
@@ -300,7 +301,7 @@ impl PartialEq for ValidationError {
                 },
             ) => ai == bi && ar == br,
             (Self::TypeError(a), Self::TypeError(b)) => a == b,
-            (Self::Misc(a), Self::Misc(b)) => a.to_string() == b.to_string(),
+            (Self::Failed(a), Self::Failed(b)) => a.to_string() == b.to_string(),
             (_, _) => false,
         }
     }
@@ -408,46 +409,54 @@ where
     }
 }
 
-/// The [ModuleValidator] can be used to validate and emit diagnostics for a [Module].
-///
-/// It implements [miden_hir_pass::Pass], so can be used as part of a pass pipeline.
+/// The [ModuleValidationAnalysis] can be used to validate and emit diagnostics for a [Module].
 ///
 /// This validates all rules which apply to items at/within module scope.
-pub struct ModuleValidator<'a> {
-    diagnostics: &'a DiagnosticsHandler,
-}
-impl<'a> ModuleValidator<'a> {
-    pub fn new(diagnostics: &'a DiagnosticsHandler) -> Self {
-        Self { diagnostics }
-    }
+#[derive(PassInfo)]
+pub struct ModuleValidationAnalysis(Result<(), ValidationError>);
+impl Analysis for ModuleValidationAnalysis {
+    type Entity = Module;
 
-    pub fn validate(&mut self, module: &Module) -> Result<(), ValidationError> {
-        self.run(module)
+    fn analyze(
+        module: &Self::Entity,
+        _analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> AnalysisResult<Self> {
+        if session.get_flag("validate") {
+            return Ok(Self(Ok(())));
+        }
+
+        match Self::validate(module, session) {
+            // If an unexpected error occurs, treat it as a failure of the pass itself
+            Err(ValidationError::Failed(err)) => Err(err.into()),
+            result => Ok(Self(result)),
+        }
     }
 }
-impl<'p> Pass for ModuleValidator<'p> {
-    type Input<'a> = &'a Module;
-    type Output<'a> = ();
-    type Error = ValidationError;
-
-    fn run<'a>(&mut self, input: Self::Input<'a>) -> Result<Self::Output<'a>, Self::Error> {
+impl ModuleValidationAnalysis {
+    fn validate(module: &Module, session: &Session) -> Result<(), ValidationError> {
         // Apply module-scoped rules
         let mut rules = NamingConventions;
-        rules.validate(input, self.diagnostics)?;
+        rules.validate(module, &session.diagnostics)?;
 
         // Apply global-scoped rules
         let mut rules = NamingConventions;
-        for global in input.globals() {
-            rules.validate(global, self.diagnostics)?;
+        for global in module.globals() {
+            rules.validate(global, &session.diagnostics)?;
         }
 
         // Apply function-scoped rules
-        let mut rules = FunctionValidator::new(input.is_kernel());
-        for function in input.functions() {
-            rules.validate(function, self.diagnostics)?;
+        let mut rules = FunctionValidator::new(module.is_kernel());
+        for function in module.functions() {
+            rules.validate(function, &session.diagnostics)?;
         }
 
         Ok(())
+    }
+}
+impl From<ModuleValidationAnalysis> for Result<(), ValidationError> {
+    fn from(analysis: ModuleValidationAnalysis) -> Self {
+        analysis.0
     }
 }
 
@@ -470,7 +479,7 @@ mod tests {
         testing::sum_matrix(&mut builder, &context);
         let module = builder.build();
 
-        let mut validator = ModuleValidator::new(&context.diagnostics);
-        assert_eq!(validator.validate(&module), Ok(()));
+        let analysis = ModuleValidationAnalysis::validate(&module, &context.session);
+        analysis.expect("module was expected to be valid")
     }
 }

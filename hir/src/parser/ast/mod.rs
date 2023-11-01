@@ -46,6 +46,9 @@ impl fmt::Debug for Module {
     }
 }
 impl midenc_session::Emit for Module {
+    fn name(&self) -> Option<crate::Symbol> {
+        Some(self.name.as_symbol())
+    }
     fn output_type(&self) -> midenc_session::OutputType {
         midenc_session::OutputType::Ast
     }

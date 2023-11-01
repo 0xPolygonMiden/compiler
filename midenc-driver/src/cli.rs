@@ -106,10 +106,15 @@ impl Midenc {
         let cli = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<Self>)?;
 
-        cli.invoke(cwd.into(), emitter)
+        cli.invoke(cwd.into(), emitter, matches)
     }
 
-    fn invoke(self, cwd: PathBuf, emitter: Option<Arc<dyn Emitter>>) -> Result<(), DriverError> {
+    fn invoke(
+        self,
+        cwd: PathBuf,
+        emitter: Option<Arc<dyn Emitter>>,
+        matches: clap::ArgMatches,
+    ) -> Result<(), DriverError> {
         use miden_diagnostics::term::termcolor::ColorChoice as MDColorChoice;
 
         let color = match self.color {
@@ -120,39 +125,40 @@ impl Midenc {
 
         match self.command {
             Commands::Compile {
-                stdout,
+                input,
                 output_file,
                 output_dir,
                 output_types,
-                inputs,
                 passes,
                 print_ir_after_all,
                 print_ir_after_pass,
             } => {
-                let output_types = OutputTypes::from_slice(&output_types);
-                let mut options = Options::new(
-                    cwd,
-                    self.target_dir,
-                    output_dir,
-                    output_file,
-                    output_types,
-                    inputs,
-                    color,
-                    self.verbosity.into(),
-                )?;
-                options.stdout = stdout;
-                match self.warn {
-                    Warnings::None => options.disable_warnings(),
-                    Warnings::All => options.enable_warnings(),
-                    Warnings::Error => options.warnings_as_errors(true),
+                let mut output_types = OutputTypes::new(output_types);
+                if output_types.is_empty() {
+                    output_types.insert(OutputType::Masl, None);
                 }
+                let mut options = Options::new(cwd)
+                    .with_color(color)
+                    .with_verbosity(self.verbosity.into())
+                    .with_warnings(self.warn)
+                    .with_output_types(output_types);
                 options.passes = passes;
                 options.print_ir_after_all = print_ir_after_all;
                 options.print_ir_after_pass = print_ir_after_pass;
 
-                let options = Arc::from(options);
-                let codemap = Arc::new(CodeMap::new());
-                commands::compile_with_opts(options, codemap, emitter).map(|_| ())
+                let session = Session::new(
+                    project_type,
+                    target,
+                    input,
+                    output_dir,
+                    output_file,
+                    tmp_dir,
+                    options,
+                    emitter,
+                )
+                .with_arg_matches(matches);
+
+                commands::compile(Arc::new(session))
             }
             _ => unimplemented!(),
         }
@@ -168,21 +174,23 @@ fn format_error<I: clap::CommandFactory>(err: clap::Error) -> clap::Error {
 enum Commands {
     /// Invoke the compiler frontend using the provided set of inputs
     Compile {
-        /// When set, emits outputs to stdout
-        #[arg(long, default_value_t = false)]
-        stdout: bool,
+        /// The input file to compile
+        ///
+        /// You may specify `-` to read from stdin, otherwise you must provide a path
+        #[arg(required(true), value_name = "FILE")]
+        input: InputFile,
         /// Write output to `<filename>`
-        #[arg(value_name = "FILENAME", short = 'o')]
-        output_file: Option<PathBuf>,
+        #[arg(short = 'o', value_name = "FILENAME")]
+        output_file: Option<OutputFile>,
         /// Write output to compiler-chosen filename in `<dir>`
-        #[arg(value_name = "DIR", long = "output-dir", env = "MIDENC_OUT_DIR")]
+        #[arg(long = "output-dir", value_name = "DIR", env = "MIDENC_OUT_DIR")]
         output_dir: Option<PathBuf>,
         /// Specify one or more output types for the compiler to emit
-        #[arg(long = "emit", default_values = ["masm"])]
-        output_types: Vec<OutputType>,
+        #[arg(long = "emit", value_name = "SPEC", value_delimiter = ',')]
+        output_types: Vec<OutputTypeSpec>,
         /// Specify which IR passes to run
         ///
-        /// Example: `--passes 'split-critical-edges,treeify'`
+        /// Example: `--passes split-critical-edges,treeify`
         ///
         /// The above will apply those passes, in that order, and then exit.
         #[arg(long = "passes", value_name = "PASSES", value_delimiter = ',')]
@@ -193,11 +201,6 @@ enum Commands {
         /// Print the IR after running a specific pass
         #[arg(long = "print-ir-after-pass", value_name = "PASS")]
         print_ir_after_pass: Option<String>,
-        /// Path(s) to the source file(s) to compile.
-        ///
-        /// You may also use `--stdin` as a file name to read a file from stdin.
-        #[arg(trailing_var_arg(true), allow_hyphen_values(true), num_args(1..), value_name = "INPUT")]
-        inputs: Vec<PathBuf>,
     },
     /// Start an interactive debugging session by compiling the given program to
     /// Miden Assembly, and running it with the Miden VM emulator.
@@ -219,9 +222,9 @@ enum Commands {
         /// Optional breakpoints to set before running the program
         #[arg(value_name = "EXPR", short = 'b', long = "breakpoint")]
         breakpoints: Vec<Breakpoint>,
-        #[arg(value_name = "INPUT", num_args(1..))]
-        /// Specify one or more input files to compile as part of the program to execute
-        inputs: Vec<PathBuf>,
+        /// The input file to compile
+        #[arg(required(true), value_name = "FILE")]
+        input: InputFile,
         /// Optional arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,
@@ -246,8 +249,8 @@ enum Commands {
         /// Specify one or more input files to compile as part of the program to execute
         ///
         /// You may use `-` as a file name to read a file from stdin.
-        #[arg(value_name = "INPUT", num_args(1..))]
-        inputs: Vec<PathBuf>,
+        #[arg(required(true), value_name = "FILE")]
+        input: InputFile,
         /// Arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,
@@ -272,8 +275,8 @@ enum Commands {
         /// Specify one or more input files to compile as part of the program to execute
         ///
         /// You may use `-` as a file name to read a file from stdin.
-        #[arg(value_name = "INPUT", num_args(1..))]
-        inputs: Vec<PathBuf>,
+        #[arg(required(true), value_name = "FILE")]
+        input: InputFile,
         /// Arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,

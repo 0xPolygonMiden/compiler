@@ -10,7 +10,7 @@ use super::{
 fn simple_builder_test() {
     let context = TestContext::default();
 
-    let mut builder = ProgramBuilder::new(&context.diagnostics);
+    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
     {
         let mut mb = builder.module("test");
         testing::fib1(mb.as_mut(), &context);
@@ -133,7 +133,7 @@ fn inline_asm_builders_test() {
 
     // Finish building the function, getting back the function identifier
     let _sum = fb
-        .build(&context.diagnostics)
+        .build(&context.session.diagnostics)
         .expect("unexpected validation error, see diagnostics output");
 
     // Finalize the module
@@ -145,7 +145,7 @@ fn inline_asm_builders_test() {
 fn linker_test() {
     let context = TestContext::default();
 
-    let mut builder = ProgramBuilder::new(&context.diagnostics);
+    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
     testing::hello_world(&mut builder, &context)
         .expect("unexpected error constructing test modules");
 
