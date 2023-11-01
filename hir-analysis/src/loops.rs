@@ -1,7 +1,9 @@
 use cranelift_entity::packed_option::PackedOption;
 use cranelift_entity::{entity_impl, PrimaryMap, SecondaryMap};
 
+use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
 use miden_hir::{Block, DataFlowGraph, Function};
+use midenc_session::Session;
 
 use super::{BlockPredecessor, ControlFlowGraph, DominatorTree};
 
@@ -79,6 +81,23 @@ pub struct LoopAnalysis {
     loops: PrimaryMap<Loop, LoopData>,
     block_loop_map: SecondaryMap<Block, PackedOption<Loop>>,
     valid: bool,
+}
+impl Analysis for LoopAnalysis {
+    type Entity = Function;
+
+    fn analyze(
+        function: &Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> AnalysisResult<Self> {
+        let cfg = analyses.get_or_compute(function, session)?;
+        let domtree = analyses.get_or_compute(function, session)?;
+        Ok(LoopAnalysis::with_function(function, &cfg, &domtree))
+    }
+
+    fn is_invalidated(&self, preserved: &PreservedAnalyses) -> bool {
+        !preserved.is_preserved::<ControlFlowGraph>() || !preserved.is_preserved::<DominatorTree>()
+    }
 }
 impl Default for LoopAnalysis {
     fn default() -> Self {

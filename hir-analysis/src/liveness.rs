@@ -3,7 +3,9 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
+use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
 use miden_hir::{self as hir, Block as BlockId, Inst as InstId, Value as ValueId, *};
+use midenc_session::Session;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{ControlFlowGraph, DominatorTree, LoopAnalysis};
@@ -56,6 +58,26 @@ pub struct LivenessAnalysis {
     live_out: FxHashMap<ProgramPoint, NextUseSet>,
     // Maximum register pressure for each block
     per_block_register_pressure: FxHashMap<BlockId, usize>,
+}
+impl Analysis for LivenessAnalysis {
+    type Entity = Function;
+
+    fn analyze(
+        function: &Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> AnalysisResult<Self> {
+        let cfg = analyses.get_or_compute(function, session)?;
+        let domtree = analyses.get_or_compute(function, session)?;
+        let loops = analyses.get_or_compute(function, session)?;
+        Ok(LivenessAnalysis::compute(function, &cfg, &domtree, &loops))
+    }
+
+    fn is_invalidated(&self, preserved: &PreservedAnalyses) -> bool {
+        !preserved.is_preserved::<ControlFlowGraph>()
+            || !preserved.is_preserved::<DominatorTree>()
+            || !preserved.is_preserved::<LoopAnalysis>()
+    }
 }
 impl LivenessAnalysis {
     /// Computes liveness for the given function, using the provided analyses

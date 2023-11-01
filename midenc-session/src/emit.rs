@@ -2,14 +2,21 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use miden_hir_symbol::Symbol;
+
 use crate::OutputType;
 
 pub trait Emit {
+    /// The name of this item, if applicable
+    fn name(&self) -> Option<Symbol>;
+    /// The output type associated with this item
     fn output_type(&self) -> OutputType;
+    /// Write this item to standard output
     fn write_to_stdout(&self) -> std::io::Result<()> {
         let stdout = std::io::stdout();
         self.write_to(stdout)
     }
+    /// Write this item to the given file path
     fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir)?;
@@ -17,5 +24,6 @@ pub trait Emit {
         let file = File::create(path)?;
         self.write_to(file)
     }
+    /// Write this item to the given [std::io::Write] handle
     fn write_to<W: Write>(&self, writer: W) -> std::io::Result<()>;
 }

@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
+use miden_hir::pass::{AnalysisManager, PassInfo, RewritePass, RewriteResult};
 use miden_hir::{self as hir, Block as BlockId, Value as ValueId, *};
-use miden_hir_analysis::{BlockPredecessor, ControlFlowGraph, FunctionAnalysis, LoopAnalysis};
+use miden_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, LoopAnalysis};
+use midenc_session::Session;
 use rustc_hash::FxHashSet;
 
-use crate::{adt::ScopedMap, RewritePass};
+use crate::adt::ScopedMap;
 
 /// This pass takes as input the SSA form of a function, and ensures that the CFG of
 /// that function is a tree, not a DAG, excepting loop headers.
@@ -252,25 +254,24 @@ use crate::{adt::ScopedMap, RewritePass};
 /// end
 /// ```
 ///
+#[derive(PassInfo)]
 pub struct Treeify;
 
-register_function_rewrite!("treeify", Treeify);
+//register_function_rewrite!("treeify", Treeify);
 
 impl RewritePass for Treeify {
-    type Input = hir::Function;
-    type Analysis = FunctionAnalysis;
+    type Entity = hir::Function;
 
-    fn run(
+    fn apply(
         &mut self,
-        function: &mut Self::Input,
-        analysis: &mut Self::Analysis,
-    ) -> anyhow::Result<()> {
-        // Require the dominator tree and loop analyses
-        analysis.ensure_loops(function);
+        function: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> RewriteResult {
+        let cfg = analyses.get_or_compute::<ControlFlowGraph>(function, session)?;
+        let domtree = analyses.get_or_compute::<DominatorTree>(function, session)?;
+        let loops = analyses.get_or_compute::<LoopAnalysis>(function, session)?;
 
-        let cfg = analysis.cfg();
-        let domtree = analysis.domtree();
-        let loops = analysis.loops();
         let mut block_q = VecDeque::<CopyBlock>::default();
         let mut changed = false;
 
@@ -304,8 +305,8 @@ impl RewritePass for Treeify {
                                 b,
                                 p,
                                 function,
-                                cfg,
-                                loops,
+                                &cfg,
+                                &loops,
                                 &mut block_q,
                                 value_map,
                                 block_map,
@@ -315,8 +316,8 @@ impl RewritePass for Treeify {
                                 b,
                                 p,
                                 function,
-                                cfg,
-                                loops,
+                                &cfg,
+                                &loops,
                                 &mut block_q,
                                 value_map,
                                 block_map,
@@ -327,7 +328,7 @@ impl RewritePass for Treeify {
 
                 // After treeification, the original subtree blocks cannot possibly be
                 // referenced by other blocks in the function, so remove all of them
-                detach_tree(b, function, cfg);
+                detach_tree(b, function, &cfg);
 
                 // Mark the control flow graph as modified
                 changed = true;
@@ -335,8 +336,8 @@ impl RewritePass for Treeify {
         }
 
         // If we made any changes, we need to recompute all analyses
-        if changed {
-            analysis.recompute(function);
+        if !changed {
+            analyses.mark_all_preserved::<Function>(&function.id);
         }
 
         Ok(())
@@ -662,13 +663,13 @@ where
 #[cfg(test)]
 mod tests {
     use miden_hir::{
+        pass::{AnalysisManager, RewritePass},
         testing::{self, TestContext},
         ModuleBuilder,
     };
-    use miden_hir_analysis::FunctionAnalysis;
     use pretty_assertions::{assert_eq, assert_ne};
 
-    use crate::{RewritePass, Treeify};
+    use crate::Treeify;
 
     /// Run the treeify pass on the IR of the [testing::sum_matrix] function.
     ///
@@ -699,9 +700,10 @@ mod tests {
             .expect("undefined function");
 
         let original = function.to_string();
-        let mut analysis = FunctionAnalysis::new(&function);
-        let mut pass = Treeify;
-        pass.run(&mut function, &mut analysis)
+        let mut analyses = AnalysisManager::default();
+        let mut rewrite = Treeify;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
             .expect("treeification failed");
 
         let expected = "pub fn sum_matrix(*mut u32, u32, u32) -> u32 {

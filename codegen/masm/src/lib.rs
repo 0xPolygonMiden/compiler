@@ -8,12 +8,30 @@ pub use self::emulator::{Breakpoint, DebugInfo, EmulationError, Emulator, Instru
 pub use self::masm::*;
 pub use self::stackify::Stackify;
 
-use std::sync::Arc;
-
-use miden_diagnostics::DiagnosticsHandler;
 use miden_hir as hir;
-use miden_hir_analysis::FunctionAnalysis;
-use midenc_session::Options;
+use midenc_session::Session;
+
+/// This error type represents all of the errors produced by [MasmCompiler]
+#[derive(Debug, thiserror::Error)]
+pub enum CompilerError {
+    /// Two or more modules conflict with each other
+    #[error(transparent)]
+    ModuleConflict(#[from] hir::ModuleConflictError),
+    /// An error occurred at link-time
+    #[error(transparent)]
+    Linker(#[from] hir::LinkerError),
+    /// An error occurred during analysis
+    #[error(transparent)]
+    Analysis(#[from] hir::pass::AnalysisError),
+    /// An error occurred during application of a rewrite
+    #[error(transparent)]
+    Rewrite(#[from] hir::pass::RewriteError),
+    /// An error occurred during application of a conversion
+    #[error(transparent)]
+    Conversion(#[from] hir::pass::ConversionError),
+}
+
+pub type CompilerResult<T> = Result<T, CompilerError>;
 
 /// [MasmCompiler] is a compiler from Miden IR to MASM IR, an intermediate representation
 /// of Miden Assembly which is used within the Miden compiler framework for various purposes,
@@ -25,25 +43,21 @@ use midenc_session::Options;
 /// compile it to MASM IR, an intermediate representation of Miden Assembly
 /// used within the compiler.
 pub struct MasmCompiler<'a> {
-    options: Arc<Options>,
-    diagnostics: &'a DiagnosticsHandler,
+    session: &'a Session,
 }
 impl<'a> MasmCompiler<'a> {
-    pub fn new(options: Arc<Options>, diagnostics: &'a DiagnosticsHandler) -> Self {
-        Self {
-            options,
-            diagnostics,
-        }
+    pub fn new(session: &'a Session) -> Self {
+        Self { session }
     }
 
     /// Compile an [hir::Program] that has been linked and is ready to be compiled.
-    pub fn compile(&mut self, input: &mut hir::Program) -> anyhow::Result<Box<Program>> {
-        ProgramCompiler::new(input, &self.options, self.diagnostics).compile()
+    pub fn compile(&mut self, input: &mut hir::Program) -> CompilerResult<Box<Program>> {
+        ProgramCompiler::new(input).compile(&self.session)
     }
 
     /// Compile a single [hir::Module] as a program.
-    pub fn compile_module(&mut self, input: Box<hir::Module>) -> anyhow::Result<Box<Program>> {
-        let mut program = hir::ProgramBuilder::new(self.diagnostics)
+    pub fn compile_module(&mut self, input: Box<hir::Module>) -> CompilerResult<Box<Program>> {
+        let mut program = hir::ProgramBuilder::new(&self.session.diagnostics)
             .with_module(input)?
             .link()?;
 
@@ -54,8 +68,8 @@ impl<'a> MasmCompiler<'a> {
     pub fn compile_modules<I: IntoIterator<Item = Box<hir::Module>>>(
         &mut self,
         input: I,
-    ) -> anyhow::Result<Box<Program>> {
-        let mut builder = hir::ProgramBuilder::new(self.diagnostics);
+    ) -> CompilerResult<Box<Program>> {
+        let mut builder = hir::ProgramBuilder::new(&self.session.diagnostics);
         for module in input.into_iter() {
             builder.add_module(module)?;
         }
@@ -67,29 +81,16 @@ impl<'a> MasmCompiler<'a> {
 }
 
 struct ProgramCompiler<'a> {
-    #[allow(unused)]
-    options: &'a Options,
-    #[allow(unused)]
-    diagnostics: &'a DiagnosticsHandler,
     input: &'a mut hir::Program,
     output: Box<Program>,
 }
 impl<'a> ProgramCompiler<'a> {
-    pub fn new(
-        input: &'a mut hir::Program,
-        options: &'a Options,
-        diagnostics: &'a DiagnosticsHandler,
-    ) -> Self {
+    pub fn new(input: &'a mut hir::Program) -> Self {
         let output = Box::new(Program::from(input as &hir::Program));
-        Self {
-            options,
-            diagnostics,
-            input,
-            output,
-        }
+        Self { input, output }
     }
 
-    pub fn compile(mut self) -> anyhow::Result<Box<Program>> {
+    pub fn compile(mut self, session: &Session) -> CompilerResult<Box<Program>> {
         // Remove the set of modules to compile from the program
         let mut modules = self.input.modules_mut().take();
 
@@ -100,7 +101,7 @@ impl<'a> ProgramCompiler<'a> {
         // 3. Put the input module back in the Program
         // 4. Add the compiled MASM IR module to the MASM IR program
         while let Some(mut module) = modules.front_mut().remove() {
-            let masm_module = self.compile_module(&mut module)?;
+            let masm_module = self.compile_module(&mut module, session)?;
             self.input.modules_mut().insert(module);
             self.output.modules.push(masm_module);
         }
@@ -120,8 +121,17 @@ impl<'a> ProgramCompiler<'a> {
     /// 6. Add the MASM IR function to the MASM IR module
     ///
     /// Once all functions are compiled from this module, the MASM IR module itself is returned.
-    fn compile_module(&mut self, module: &mut hir::Module) -> anyhow::Result<Module> {
-        use miden_hir_pass::Pass;
+    fn compile_module(
+        &mut self,
+        module: &mut hir::Module,
+        session: &Session,
+    ) -> CompilerResult<Module> {
+        use miden_hir::{
+            pass::{Analysis, AnalysisManager, ConversionPass, RewritePass},
+            ProgramAnalysisKey,
+        };
+        use miden_hir_analysis as analysis;
+        use miden_hir_transform as transform;
 
         let mut output = Module::new(module.name);
 
@@ -135,17 +145,24 @@ impl<'a> ProgramCompiler<'a> {
             }
         }
 
+        // Create new program-wide analysis manager
+        let mut analyses = AnalysisManager::new();
+        // Register program-wide analyses
+        let global_analysis =
+            analysis::GlobalVariableAnalysis::analyze(&self.input, &mut analyses, session)?;
+        analyses.insert(ProgramAnalysisKey, global_analysis);
+
         // Removing a function via this cursor will move the cursor to
         // the next function in the module. Once the end of the module
         // is reached, the cursor will point to the null object, and
         // `remove` will return `None`.
         let mut cursor = module.cursor_mut();
         while let Some(mut function) = cursor.remove() {
-            let mut analysis = FunctionAnalysis::new(&function);
             // Apply rewrites
-            self.rewrite_function(&mut function, &mut analysis)?;
-            // Make sure all analyses are available
-            analysis.ensure_all(&function);
+            let mut rewrites = transform::SplitCriticalEdges
+                .chain(transform::Treeify)
+                .chain(transform::InlineBlocks);
+            rewrites.apply(&mut function, &mut analyses, session)?;
             // Add the function back to the module
             //
             // We add it before the current position of the cursor
@@ -158,25 +175,12 @@ impl<'a> ProgramCompiler<'a> {
             // get a temporary read-only cursor to the previous item
             let function = cursor.peek_prev().get().unwrap();
             // Lower the function
-            let mut pass = Stackify::new(self.input, &analysis);
-            let masm_function = pass.run(function)?;
+            let mut stackify = Stackify;
+            let masm_function = stackify.convert(function, &mut analyses, session)?;
             // Attach to MASM module
-            output.functions.push_back(masm_function);
+            output.functions.push_back(Box::new(masm_function));
         }
 
         Ok(output)
-    }
-
-    fn rewrite_function(
-        &self,
-        function: &mut hir::Function,
-        analysis: &mut FunctionAnalysis,
-    ) -> anyhow::Result<()> {
-        use miden_hir_transform::{self as transform, RewritePass};
-
-        let mut rewrites = transform::SplitCriticalEdges
-            .chain(transform::Treeify)
-            .chain(transform::InlineBlocks);
-        rewrites.run(function, analysis)
     }
 }

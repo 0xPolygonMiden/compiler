@@ -823,7 +823,6 @@ dependencies = [
  "miden-diagnostics",
  "miden-hir",
  "miden-hir-analysis",
- "miden-hir-pass",
  "miden-hir-transform",
  "midenc-session",
  "paste",
@@ -914,10 +913,12 @@ dependencies = [
  "anyhow",
  "cranelift-entity",
  "intrusive-collections",
+ "inventory",
  "lalrpop",
  "lalrpop-util",
  "miden-assembly",
  "miden-diagnostics",
+ "miden-hir-macros",
  "miden-hir-symbol",
  "miden-hir-type",
  "miden-parsing",
@@ -944,7 +945,6 @@ dependencies = [
  "inventory",
  "miden-diagnostics",
  "miden-hir",
- "miden-hir-pass",
  "midenc-session",
  "rustc-hash",
  "smallvec",
@@ -952,10 +952,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-hir-pass"
+name = "miden-hir-macros"
 version = "0.1.0"
 dependencies = [
- "anyhow",
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.31",
 ]
 
 [[package]]
@@ -1033,10 +1036,12 @@ name = "midenc-session"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "atty",
  "bitflags 1.3.2",
  "clap 4.4.2",
  "inventory",
  "miden-diagnostics",
+ "miden-hir-symbol",
  "rustc-hash",
  "thiserror",
 ]

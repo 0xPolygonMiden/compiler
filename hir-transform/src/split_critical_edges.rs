@@ -3,10 +3,10 @@ use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
+use miden_hir::pass::{AnalysisManager, PassInfo, RewritePass, RewriteResult};
 use miden_hir::{self as hir, Block as BlockId, *};
-use miden_hir_analysis::FunctionAnalysis;
-
-use super::RewritePass;
+use miden_hir_analysis::ControlFlowGraph;
+use midenc_session::Session;
 
 /// This pass operates on the SSA IR, and ensures that there are no critical
 /// edges in the control flow graph.
@@ -25,19 +25,20 @@ use super::RewritePass;
 /// After this pass completes, no node in the control flow graph will have both multiple predecessors
 /// and multiple successors.
 ///
+#[derive(PassInfo)]
 pub struct SplitCriticalEdges;
 
-register_function_rewrite!("split-critical-edges", SplitCriticalEdges);
+//register_function_rewrite!("split-critical-edges", SplitCriticalEdges);
 
 impl RewritePass for SplitCriticalEdges {
-    type Input = hir::Function;
-    type Analysis = FunctionAnalysis;
+    type Entity = hir::Function;
 
-    fn run(
+    fn apply(
         &mut self,
-        function: &mut Self::Input,
-        analysis: &mut Self::Analysis,
-    ) -> anyhow::Result<()> {
+        function: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        _session: &Session,
+    ) -> RewriteResult {
         // Search for blocks with multiple successors with edges to blocks with
         // multiple predecessors; these blocks form critical edges in the control
         // flow graph which must be split.
@@ -50,7 +51,9 @@ impl RewritePass for SplitCriticalEdges {
         let mut worklist = VecDeque::<BlockId>::default();
         worklist.push_back(function.dfg.entry_block());
 
-        let cfg = analysis.cfg_mut();
+        let mut cfg = analyses
+            .take::<ControlFlowGraph>(&function.id)
+            .unwrap_or_else(|| ControlFlowGraph::with_function(function));
 
         while let Some(p) = worklist.pop_front() {
             // If we've already visited a block, skip it
@@ -133,6 +136,8 @@ impl RewritePass for SplitCriticalEdges {
             cfg.recompute_block(&function.dfg, p);
         }
 
+        analyses.insert(function.id, cfg);
+
         Ok(())
     }
 }
@@ -140,12 +145,13 @@ impl RewritePass for SplitCriticalEdges {
 #[cfg(test)]
 mod tests {
     use miden_hir::{
+        pass::{AnalysisManager, RewritePass},
+        testing::TestContext,
         AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
     };
-    use miden_hir_analysis::FunctionAnalysis;
     use pretty_assertions::{assert_eq, assert_ne};
 
-    use crate::{RewritePass, SplitCriticalEdges};
+    use crate::SplitCriticalEdges;
 
     /// Run the split critical edges pass on the following IR:
     ///
@@ -180,6 +186,7 @@ mod tests {
     /// running the [InlineBlocks] pass afterwards, which will flatten the CFG.
     #[test]
     fn split_critical_edges_simple_test() {
+        let context = TestContext::default();
         let id = "test::sce".parse().unwrap();
         let mut function = Function::new(
             id,
@@ -245,9 +252,10 @@ mod tests {
         }
 
         let original = function.to_string();
-        let mut analysis = FunctionAnalysis::new(&function);
-        let mut pass = SplitCriticalEdges;
-        pass.run(&mut function, &mut analysis)
+        let mut analyses = AnalysisManager::default();
+        let mut rewrite = SplitCriticalEdges;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
             .expect("splitting critical edges failed");
 
         let expected = "pub fn sce(*mut u8, u32) -> *mut u8 {

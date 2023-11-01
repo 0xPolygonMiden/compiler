@@ -17,7 +17,6 @@ cranelift-bforest.workspace = true
 inventory.workspace = true
 miden-diagnostics.workspace = true
 miden-hir.workspace = true
-miden-hir-pass.workspace = true
 midenc-session.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true

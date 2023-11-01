@@ -1,7 +1,9 @@
 use cranelift_bforest as bforest;
 use cranelift_entity::SecondaryMap;
 
+use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
 use miden_hir::{Block, DataFlowGraph, Function, Inst, Instruction};
+use midenc_session::Session;
 
 /// Represents the predecessor of the current basic block.
 ///
@@ -35,6 +37,30 @@ pub struct ControlFlowGraph {
     succ_forest: bforest::SetForest<Block>,
     valid: bool,
 }
+impl Clone for ControlFlowGraph {
+    fn clone(&self) -> Self {
+        let mut data = SecondaryMap::<Block, Node>::with_capacity(self.data.capacity());
+        let mut pred_forest = bforest::MapForest::new();
+        let mut succ_forest = bforest::SetForest::new();
+
+        for (k, v) in self.data.iter() {
+            let node = &mut data[k];
+            for (pk, pv) in v.predecessors.iter(&self.pred_forest) {
+                node.predecessors.insert(pk, pv, &mut pred_forest, &());
+            }
+            for succ in v.successors.iter(&self.succ_forest) {
+                node.successors.insert(succ, &mut succ_forest, &());
+            }
+        }
+
+        Self {
+            data,
+            pred_forest,
+            succ_forest,
+            valid: self.valid,
+        }
+    }
+}
 impl Default for ControlFlowGraph {
     fn default() -> Self {
         Self {
@@ -43,6 +69,17 @@ impl Default for ControlFlowGraph {
             succ_forest: bforest::SetForest::new(),
             valid: false,
         }
+    }
+}
+impl Analysis for ControlFlowGraph {
+    type Entity = Function;
+
+    fn analyze(
+        function: &Self::Entity,
+        _analyses: &mut AnalysisManager,
+        _session: &Session,
+    ) -> AnalysisResult<Self> {
+        Ok(ControlFlowGraph::with_function(function))
     }
 }
 impl ControlFlowGraph {

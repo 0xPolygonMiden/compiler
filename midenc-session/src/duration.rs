@@ -6,6 +6,12 @@ impl HumanDuration {
     pub fn since(i: Instant) -> Self {
         Self(Instant::now().duration_since(i))
     }
+
+    /// Get this duration as an f64 representing the duration in fractional seconds
+    #[inline]
+    pub fn as_secs_f64(&self) -> f64 {
+        self.0.as_secs_f64()
+    }
 }
 impl From<Duration> for HumanDuration {
     fn from(d: Duration) -> Self {

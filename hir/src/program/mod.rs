@@ -43,6 +43,7 @@ pub struct Program {
     /// global variables in the linear memory heap at runtime.
     globals: GlobalVariableTable,
 }
+
 impl Program {
     /// Create a new, empty [Program].
     #[inline(always)]
@@ -102,6 +103,17 @@ impl Program {
     pub fn signature(&self, id: &FunctionIdent) -> Option<&Signature> {
         let module = self.modules.find(&id.module).get()?;
         module.function(id.function).map(|f| &f.signature)
+    }
+}
+
+#[doc(hidden)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ProgramAnalysisKey;
+impl crate::pass::AnalysisKey for Program {
+    type Key = ProgramAnalysisKey;
+
+    fn key(&self) -> Self::Key {
+        ProgramAnalysisKey
     }
 }
 

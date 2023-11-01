@@ -19,10 +19,7 @@ pub enum DriverError {
     NoInputs,
     /// An invalid input was given to the compiler
     #[error(transparent)]
-    InvalidInput(std::io::Error),
-    /// Occurs if an unsupported file type is given as an input
-    #[error(transparent)]
-    InvalidFileType(#[from] midenc_session::InvalidFileTypeError),
+    InvalidInput(#[from] midenc_session::InvalidInputError),
     /// An error occurred while parsing/translating a Wasm module
     #[error(transparent)]
     WasmError(#[from] miden_frontend_wasm::WasmError),

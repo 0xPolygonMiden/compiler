@@ -3,10 +3,12 @@ use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
+use miden_hir::pass::{AnalysisManager, PassInfo, RewritePass, RewriteResult};
 use miden_hir::{self as hir, *};
-use miden_hir_analysis::{ControlFlowGraph, FunctionAnalysis};
+use miden_hir_analysis::ControlFlowGraph;
+use midenc_session::Session;
 
-use crate::{adt::ScopedMap, RewritePass};
+use crate::adt::ScopedMap;
 
 /// This pass operates on the SSA IR, and inlines superfluous blocks which serve no
 /// purpose. Such blocks have no block arguments, and have a single predecessor.
@@ -25,20 +27,23 @@ use crate::{adt::ScopedMap, RewritePass};
 /// a single predecessor and successor, introducing branches where none are needed, and by removing
 /// those redundant branches, all of the code from blocks in the chain can be inlined in the first
 /// block of the chain.
+#[derive(PassInfo)]
 pub struct InlineBlocks;
 
-register_function_rewrite!("inline-blocks", InlineBlocks);
+//register_function_rewrite!("inline-blocks", InlineBlocks);
 
 impl RewritePass for InlineBlocks {
-    type Input = hir::Function;
-    type Analysis = FunctionAnalysis;
+    type Entity = hir::Function;
 
-    fn run(
+    fn apply(
         &mut self,
-        function: &mut Self::Input,
-        analysis: &mut Self::Analysis,
-    ) -> anyhow::Result<()> {
-        let cfg = analysis.cfg_mut();
+        function: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        _session: &Session,
+    ) -> RewriteResult {
+        let mut cfg = analyses
+            .take::<ControlFlowGraph>(&function.id)
+            .unwrap_or_else(|| ControlFlowGraph::with_function(function));
 
         let entry = function.dfg.entry_block();
         let mut changed = false;
@@ -105,7 +110,7 @@ impl RewritePass for InlineBlocks {
                     }
                 }
 
-                inline(b, p, function, &mut worklist, &rewrites, cfg);
+                inline(b, p, function, &mut worklist, &rewrites, &mut cfg);
 
                 // Mark that the control flow graph as modified
                 changed = true;
@@ -114,8 +119,9 @@ impl RewritePass for InlineBlocks {
 
         rewrite_uses(entry, function, &rewrites);
 
-        if changed {
-            analysis.cfg_changed(function);
+        analyses.insert(function.id, cfg);
+        if !changed {
+            analyses.mark_preserved::<ControlFlowGraph>(&function.id);
         }
 
         Ok(())
@@ -268,12 +274,13 @@ fn rewrite_use(
 #[cfg(test)]
 mod tests {
     use miden_hir::{
+        pass::{AnalysisManager, RewritePass},
+        testing::TestContext,
         AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
     };
-    use miden_hir_analysis::FunctionAnalysis;
     use pretty_assertions::{assert_eq, assert_ne};
 
-    use crate::{InlineBlocks, RewritePass};
+    use crate::InlineBlocks;
 
     /// Run the inlining pass on the following IR:
     ///
@@ -345,6 +352,7 @@ mod tests {
     /// provided in the predecessor block for those parameters.
     #[test]
     fn inline_blocks_simple_tree_cfg_test() {
+        let context = TestContext::default();
         let id = "test::inlining_test".parse().unwrap();
         let mut function = Function::new(
             id,
@@ -429,9 +437,10 @@ mod tests {
         }
 
         let original = function.to_string();
-        let mut analysis = FunctionAnalysis::new(&function);
-        let mut pass = InlineBlocks;
-        pass.run(&mut function, &mut analysis)
+        let mut analyses = AnalysisManager::default();
+        let mut rewrite = InlineBlocks;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
             .expect("inlining failed");
 
         let expected = "pub fn inlining_test(*mut u8, i32) -> *mut u8 {

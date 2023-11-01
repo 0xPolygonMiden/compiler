@@ -1,10 +1,10 @@
 use miden_hir::{
     self,
+    pass::AnalysisManager,
     testing::{self, TestContext},
     AbiParam, Felt, FieldElement, Immediate, InstBuilder, OperandStack, ProgramBuilder, Signature,
     SourceSpan, Stack, StarkField, Type,
 };
-use miden_hir_analysis::FunctionAnalysis;
 use std::fmt::Write;
 
 use super::*;
@@ -45,40 +45,43 @@ impl TestByEmulationHarness {
         }
     }
 
-    pub fn apply_rewrite_passes(
-        &self,
-        function: &mut hir::Function,
-        analysis: &mut FunctionAnalysis,
-    ) -> anyhow::Result<()> {
-        use miden_hir_transform::{self as transform, RewritePass};
-
-        let mut rewrites = transform::SplitCriticalEdges
-            .chain(transform::Treeify)
-            .chain(transform::InlineBlocks);
-        rewrites.run(function, analysis)
-    }
-
     pub fn stackify(
         &self,
         program: &hir::Program,
         function: &mut hir::Function,
-    ) -> anyhow::Result<Box<Function>> {
-        use miden_hir_pass::Pass;
+    ) -> CompilerResult<Box<Function>> {
+        use miden_hir::{
+            pass::{Analysis, ConversionPass, RewritePass},
+            ProgramAnalysisKey,
+        };
+        use miden_hir_analysis as analysis;
+        use miden_hir_transform as transform;
 
         // Analyze function
-        let mut analysis = FunctionAnalysis::new(function);
+        let mut analyses = AnalysisManager::new();
+
+        // Register program-wide analyses
+        let global_analysis = analysis::GlobalVariableAnalysis::analyze(
+            program,
+            &mut analyses,
+            &self.context.session,
+        )?;
+        analyses.insert(ProgramAnalysisKey, global_analysis);
 
         // Apply pre-codegen transformations
-        self.apply_rewrite_passes(function, &mut analysis)?;
+        let mut rewrites = transform::SplitCriticalEdges
+            .chain(transform::Treeify)
+            .chain(transform::InlineBlocks);
+        rewrites.apply(function, &mut analyses, &self.context.session)?;
 
         println!("{}", function);
 
-        // Make sure all analyses are available
-        analysis.ensure_all(&function);
-
         // Run stackification
-        let mut pass = Stackify::new(program, &analysis);
-        pass.run(function)
+        let mut stackify = Stackify;
+        stackify
+            .convert(function, &mut analyses, &self.context.session)
+            .map(Box::new)
+            .map_err(CompilerError::Conversion)
     }
 
     pub fn set_cycle_budget(&mut self, budget: usize) {
@@ -159,7 +162,7 @@ fn fib_emulator() {
     let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
-    let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
+    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
 
     // Build test module with fib function
     let mut mb = builder.module("test");
@@ -214,7 +217,7 @@ fn stackify_fundamental_if() {
     let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
-    let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
+    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
 
     // Build test module with function that adds two numbers if the
     // first number is odd, and multiplies them if the first number is even
@@ -297,7 +300,7 @@ fn stackify_fundamental_loops() {
     let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
-    let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
+    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
 
     // Build test module with function that increments a number until a
     // given iteration count is reached
@@ -405,7 +408,7 @@ fn stackify_sum_matrix() {
         .expect("failed to load intrinsics::mem");
 
     // Build a simple program
-    let mut builder = ProgramBuilder::new(&harness.context.diagnostics);
+    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
 
     // Build test module with fib function
     let mut mb = builder.module("test");

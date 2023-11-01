@@ -4,7 +4,7 @@ members = [
   "codegen/*",
   "hir",
   "hir-analysis",
-  "hir-pass",
+  "hir-macros",
   "hir-symbol",
   "hir-transform",
   "hir-type",
@@ -38,6 +38,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 cranelift-entity = "0.100"
 cranelift-bforest = "0.100"
 env_logger = "0.9"
+Inflector = "0.11"
 intrusive-collections = "0.9"
 inventory = "0.3"
 log = "0.4"
@@ -59,7 +60,7 @@ miden-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 miden-hir = { path = "hir" }
 miden-hir-analysis = { path = "hir-analysis" }
-miden-hir-pass = { path = "hir-pass" }
+miden-hir-macros = { path = "hir-macros" }
 miden-hir-symbol = { path = "hir-symbol" }
 miden-hir-transform = { path = "hir-transform" }
 miden-hir-type = { path = "hir-type" }
