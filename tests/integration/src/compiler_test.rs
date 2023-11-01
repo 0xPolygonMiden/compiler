@@ -7,7 +7,6 @@ use std::process::Command;
 use std::sync::Arc;
 
 use miden_codegen_masm::MasmCompiler;
-use miden_codegen_masm::Program;
 use miden_diagnostics::term::termcolor::ColorChoice;
 use miden_diagnostics::CodeMap;
 use miden_diagnostics::DefaultEmitter;
@@ -18,10 +17,12 @@ use miden_diagnostics::NullEmitter;
 use miden_diagnostics::SourceSpan;
 use miden_diagnostics::Verbosity;
 use miden_frontend_wasm::translate_module;
+use miden_frontend_wasm::translate_program;
 use miden_frontend_wasm::WasmTranslationConfig;
 
 use miden_hir::FunctionIdent;
 use miden_hir::Ident;
+use miden_hir::ProgramBuilder;
 use miden_hir::Symbol;
 
 enum CompilerTestSource {
@@ -38,9 +39,8 @@ enum CompilerTestSource {
 pub struct CompilerTest {
     diagnostics: DiagnosticsHandler,
     source: CompilerTestSource,
-    entrypoint: Option<FunctionIdent>,
-    wasm: Option<Vec<u8>>,
-    hir: Option<miden_hir::Module>,
+    wasm_bytes: Vec<u8>,
+    hir: Option<Box<miden_hir::Program>>,
     ir_masm: Option<miden_codegen_masm::Program>,
 }
 
@@ -96,75 +96,162 @@ impl CompilerTest {
 
         let diagnostics = make_diagnostics();
 
+        let entrypoint = FunctionIdent {
+            module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
+            function: Ident::new(
+                Symbol::intern(entrypoint.to_string()),
+                SourceSpan::default(),
+            ),
+        };
+        let hir_module = translate_module(
+            &wasm_bytes,
+            &WasmTranslationConfig::default(),
+            &make_diagnostics(),
+        )
+        .expect("Failed to translate Wasm to IR program");
+
+        let mut builder = ProgramBuilder::new(&diagnostics)
+            .with_module(hir_module.into())
+            .unwrap();
+        builder = builder.with_entrypoint(entrypoint);
+        let hir_program = builder.link().expect("Failed to link IR program");
+
         CompilerTest {
             diagnostics,
             source: CompilerTestSource::RustCargo {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name: artifact_name.to_string(),
             },
-            wasm: Some(wasm_bytes),
-            hir: None,
-            entrypoint: Some(FunctionIdent {
-                module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
-                function: Ident::new(
-                    Symbol::intern(entrypoint.to_string()),
-                    SourceSpan::default(),
-                ),
-            }),
+            wasm_bytes,
+            hir: Some(hir_program.into()),
             ir_masm: None,
         }
     }
 
     /// Set the Rust source code to compile
-    pub fn rust_source(rust_source: &str) -> Self {
+    pub fn rust_source_program(rust_source: &str) -> Self {
+        let wasm_bytes = compile_rust_file(rust_source);
+        let ir_program = translate_program(
+            &wasm_bytes,
+            &WasmTranslationConfig::default(),
+            &make_diagnostics(),
+        )
+        .expect("Failed to translate Wasm to IR program");
         CompilerTest {
             diagnostics: make_diagnostics(),
             source: CompilerTestSource::Rust(rust_source.to_string()),
-            wasm: Some(compile_wasm(rust_source)),
-            hir: None,
-            entrypoint: None,
+            wasm_bytes,
+            hir: Some(ir_program),
+            ir_masm: None,
+        }
+    }
+
+    /// Set the Rust source code to compile and add a binary operation test
+    pub fn rust_source_main_fn(rust_source: &str) -> Self {
+        let rust_source = format!(
+            r#"
+            #![no_std]
+            #![no_main]
+
+            #[panic_handler]
+            fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
+                loop {{}}
+            }}
+
+            #[no_mangle]
+            pub extern "C" fn __main{}
+            "#,
+            rust_source
+        );
+        let wasm_bytes = compile_rust_file(&rust_source);
+        let ir_module = translate_module(
+            &wasm_bytes,
+            &WasmTranslationConfig::default(),
+            &make_diagnostics(),
+        )
+        .expect("Failed to translate Wasm to IR program");
+
+        let diagnostics = make_diagnostics();
+
+        // set entrypoint to __main
+        let entrypoint = FunctionIdent {
+            module: Ident {
+                name: Symbol::intern("noname"),
+                span: SourceSpan::default(),
+            },
+            function: Ident {
+                name: Symbol::intern("__main"),
+                span: SourceSpan::default(),
+            },
+        };
+        let builder = ProgramBuilder::new(&diagnostics)
+            .with_module(ir_module.into())
+            .unwrap()
+            .with_entrypoint(entrypoint);
+        let ir_program_with_entrypoint = builder.link().expect("Failed to link IR program");
+
+        CompilerTest {
+            diagnostics,
+            source: CompilerTestSource::Rust(rust_source.to_string()),
+            wasm_bytes,
+            hir: Some(ir_program_with_entrypoint),
             ir_masm: None,
         }
     }
 
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&mut self, expected_wat_file: expect_test::ExpectFile) {
-        let wasm_bytes = self.wasm.as_ref().expect("Wasm is not compiled");
+        let wasm_bytes = self.wasm_bytes.as_ref();
         let wat = demangle(&wasm_to_wat(wasm_bytes));
         expected_wat_file.assert_eq(&wat);
     }
 
     /// Compare the compiled IR against the expected output
     pub fn expect_ir(&mut self, expected_hir_file: expect_test::ExpectFile) {
-        let wasm_bytes = self.wasm.as_ref().expect("Wasm is not compiled");
-        let module = wasm_to_ir_module(wasm_bytes, &self.diagnostics);
-        let ir = demangle(&module.to_string());
-        self.hir = Some(module);
-        expected_hir_file.assert_eq(&ir);
+        // Program does not implement pretty printer yet, use the first module
+        let ir_module = demangle(
+            &self
+                .hir
+                .as_ref()
+                .expect("IR is not compiled")
+                .modules()
+                .iter()
+                .take(1)
+                .collect::<Vec<&miden_hir::Module>>()
+                .first()
+                .expect("no module in IR program")
+                .to_string()
+                .as_str(),
+        );
+        expected_hir_file.assert_eq(&ir_module);
     }
 
     /// Compare the compiled MASM against the expected output
     pub fn expect_masm(&mut self, _expected_masm_file: expect_test::ExpectFile) {
-        let hir = self.hir.take().expect("IR is not compiled");
-        let program_with_entrypoint =
-            ir_module_to_masm_program(hir, self.entrypoint.unwrap(), &self.diagnostics);
         // TODO: check midenc PR if it fixes the issue with to_program_ast (invalid entrypoint name)
-        // expected_masm_file.assert_eq(&program_with_entrypoint.to_program_ast().to_string());
-        self.ir_masm = Some(program_with_entrypoint);
+        // expected_masm_file.assert_eq(&program.to_program_ast().to_string());
     }
 
     /// Get the compiled MASM as [`miden_codegen_masm::Program`]
     pub fn codegen_masm_program(mut self) -> miden_codegen_masm::Program {
-        self.ir_masm.take().expect("MASM is not compiled")
+        self.ir_masm()
     }
 
     /// Get the compiled MASM as [`miden_assembly::Module`]
     pub fn asm_masm_module(&self) -> miden_assembly::Module {
         todo!()
     }
+
+    fn ir_masm(&mut self) -> miden_codegen_masm::Program {
+        self.ir_masm.take().unwrap_or_else(|| {
+            let mut compiler = MasmCompiler::new(&self.diagnostics);
+            let mut hir = self.hir.take().expect("IR is not compiled");
+            compiler.compile(&mut hir).unwrap()
+        })
+    }
 }
 
-fn compile_wasm(rust_source: &str) -> Vec<u8> {
+fn compile_rust_file(rust_source: &str) -> Vec<u8> {
     let rustc_opts = [
         "-C",
         "opt-level=z", // optimize for size
@@ -206,21 +293,6 @@ fn wasm_to_ir_module(wasm_bytes: &[u8], diagnostics: &DiagnosticsHandler) -> mid
     let module =
         translate_module(wasm_bytes, &WasmTranslationConfig::default(), diagnostics).unwrap();
     module
-}
-
-fn ir_module_to_masm_program(
-    hir: miden_hir::Module,
-    entrypoint: FunctionIdent,
-    diagnostics: &DiagnosticsHandler,
-) -> Program {
-    let mut compiler = MasmCompiler::new(diagnostics);
-    let program = compiler.compile_module(hir.into()).unwrap();
-    let program_with_entrypoint = Program {
-        modules: program.modules,
-        entrypoint: Some(entrypoint),
-        segments: program.segments,
-    };
-    program_with_entrypoint
 }
 
 fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {

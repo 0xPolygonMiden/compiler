@@ -913,12 +913,9 @@ dependencies = [
  "miden-hir",
  "miden-hir-type",
  "miden-integration-tests",
- "rustc-demangle",
- "sha2",
  "smallvec",
  "thiserror",
  "wasmparser 0.107.0",
- "wasmprinter",
  "wat",
 ]
 

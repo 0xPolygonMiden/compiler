@@ -9,7 +9,9 @@ use crate::wasm_types::{
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
-use miden_hir::{CallConv, ConstantData, Ident, Linkage, Module, ModuleBuilder, Symbol};
+use miden_hir::{
+    CallConv, ConstantData, FunctionIdent, Ident, Linkage, Module, ModuleBuilder, Symbol,
+};
 use miden_hir_type::FunctionType;
 
 use std::string::String;
@@ -45,7 +47,7 @@ pub struct ModuleInfo {
     global_names: SecondaryMap<GlobalIndex, String>,
 
     /// The start function.
-    pub start_func: Option<FuncIndex>,
+    start_func_index: Option<FuncIndex>,
 }
 
 impl ModuleInfo {
@@ -56,7 +58,7 @@ impl ModuleInfo {
             imported_funcs: Vec::new(),
             functions: PrimaryMap::new(),
             memories: PrimaryMap::new(),
-            start_func: None,
+            start_func_index: None,
             globals: PrimaryMap::new(),
             function_names: SecondaryMap::new(),
             global_names: SecondaryMap::new(),
@@ -73,6 +75,21 @@ impl ModuleInfo {
             format!("gv{}", global_index.index())
         } else {
             stored_name
+        }
+    }
+
+    pub fn start_func(&self) -> Option<FunctionIdent> {
+        if let Some(start_func_index) = self.start_func_index {
+            let func_name = self.function_names[start_func_index].clone();
+            Some(FunctionIdent {
+                module: self.name.clone(),
+                function: Ident {
+                    name: Symbol::intern(func_name),
+                    span: SourceSpan::default(),
+                },
+            })
+        } else {
+            None
         }
     }
 }
@@ -251,8 +268,8 @@ impl<'a> ModuleEnvironment<'a> {
 
     /// Declares the optional start function.
     pub fn declare_start_func(&mut self, func_index: FuncIndex) {
-        debug_assert!(self.info.start_func.is_none());
-        self.info.start_func = Some(func_index);
+        debug_assert!(self.info.start_func_index.is_none());
+        self.info.start_func_index = Some(func_index);
     }
 
     /// Provides the contents of a function body.

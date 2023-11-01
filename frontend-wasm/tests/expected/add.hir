@@ -6,15 +6,6 @@ global external @__stack_pointer : i32 = $0 { id = 0 };
 global external @gv1 : i32 = $0 { id = 1 };
 global external @gv2 : i32 = $0 { id = 2 };
 
-pub fn add(i32, i32) -> i32 {
-block0(v0: i32, v1: i32):
-    v3 = add.wrapping v1, v0 : i32;
-    br block1(v3);
-
-block1(v2: i32):
-    ret v2;
-}
-
 pub fn __main() -> i32 {
 block0:
     v1 = const.i32 1 : i32;
@@ -24,4 +15,13 @@ block0:
 
 block1(v0: i32):
     ret v0;
+}
+
+pub fn add(i32, i32) -> i32 {
+block0(v0: i32, v1: i32):
+    v3 = add.wrapping v1, v0 : i32;
+    br block1(v3);
+
+block1(v2: i32):
+    ret v2;
 }

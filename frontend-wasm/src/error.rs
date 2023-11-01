@@ -40,6 +40,9 @@ pub enum WasmError {
     /// An unknown error occurred
     #[error("Unexpected: {0}")]
     Unexpected(String),
+
+    #[error("Failed to link module. See diagnostics for details")]
+    LinkerError(#[from] miden_hir::LinkerError),
 }
 
 impl From<wasmparser::BinaryReaderError> for WasmError {

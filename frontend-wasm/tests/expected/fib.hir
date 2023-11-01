@@ -6,6 +6,16 @@ global external @__stack_pointer : i32 = $0 { id = 0 };
 global external @gv1 : i32 = $0 { id = 1 };
 global external @gv2 : i32 = $0 { id = 2 };
 
+pub fn __main() -> i32 {
+block0:
+    v1 = const.i32 25 : i32;
+    v2 = call noname::fib(v1) : i32;
+    br block1(v2);
+
+block1(v0: i32):
+    ret v0;
+}
+
 pub fn fib(i32) -> i32 {
 block0(v0: i32):
     v2 = const.i32 0 : i32;
@@ -29,14 +39,4 @@ block4:
 
 block5:
     ret v9;
-}
-
-pub fn __main() -> i32 {
-block0:
-    v1 = const.i32 25 : i32;
-    v2 = call noname::fib(v1) : i32;
-    br block1(v2);
-
-block1(v0: i32):
-    ret v0;
 }
