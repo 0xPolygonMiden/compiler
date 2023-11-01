@@ -10,16 +10,47 @@ use crate::sections_translator::{
 use crate::wasm_types::FuncIndex;
 use crate::{unsupported_diag, WasmTranslationConfig};
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::Module;
+use miden_hir::{FunctionIdent, Module, Program, ProgramBuilder};
 use std::prelude::v1::*;
 use wasmparser::{NameSectionReader, Parser, Payload, Validator, WasmFeatures};
 
-/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR
+/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR module
 pub fn translate_module(
+    wasm: &[u8],
+    config: &WasmTranslationConfig,
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<Module> {
+    translate_module_inner(wasm, config, diagnostics).map(|res| res.module)
+}
+
+/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR program
+pub fn translate_program(
+    wasm: &[u8],
+    config: &WasmTranslationConfig,
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<Box<Program>> {
+    let res = translate_module_inner(wasm, config, diagnostics)?;
+    let mut builder = ProgramBuilder::new(diagnostics)
+        .with_module(res.module.into())
+        .unwrap();
+    if let Some(entrypoint) = res.entrypoint {
+        builder = builder.with_entrypoint(entrypoint);
+    }
+    let program = builder.link()?;
+    Ok(program)
+}
+
+struct WasmTranslationResult {
+    module: Module,
+    entrypoint: Option<FunctionIdent>,
+}
+
+/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR
+fn translate_module_inner(
     wasm: &[u8],
     _config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
-) -> WasmResult<Module> {
+) -> WasmResult<WasmTranslationResult> {
     let mut module_env = ModuleEnvironment::new();
     let env = &mut module_env;
     let wasm_features = WasmFeatures::default();
@@ -34,9 +65,11 @@ pub fn translate_module(
                 validator.version(num, encoding, &range)?;
             }
             Payload::End(offset) => {
+                let entrypoint = module_env.info.start_func();
                 let module = module_env.build(diagnostics, &mut validator)?;
                 validator.end(offset)?;
-                return Ok(module);
+                let res = WasmTranslationResult { module, entrypoint };
+                return Ok(res);
             }
 
             Payload::TypeSection(types) => {
