@@ -1,0 +1,19 @@
+export.fib
+  dup.0
+  push.2147483648
+  u32.and
+  eq.2147483648
+  assertz
+  push.1000
+  dup.0
+  push.2147483648
+  u32.and
+  eq.2147483648
+  assertz
+  u32.lt.checked
+
+end
+begin
+    exec.fib
+end
+
