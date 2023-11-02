@@ -18,6 +18,7 @@ miden-assembly.workspace = true
 miden-core.workspace = true
 miden-processor.workspace = true
 miden-diagnostics.workspace = true
+midenc-session.workspace = true
 expect-test = "1.4.1"
 miden-integration-tests-rust = {path = "../rust"}
 wat = "1.0.69"
