@@ -17,6 +17,7 @@ members = [
   "tests/rust",
   "tests/integration",
 ]
+exclude = ["tests/rust-wasm"]
 
 [workspace.package]
 version = "0.1.0"
@@ -72,6 +73,7 @@ miden-frontend-wasm = { path = "frontend-wasm" }
 midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
+miden-integration-tests = { path = "tests/integration" }
 
 
 [profile.dev]
