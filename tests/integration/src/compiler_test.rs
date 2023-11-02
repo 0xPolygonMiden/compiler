@@ -26,6 +26,8 @@ use miden_hir::FunctionIdent;
 use miden_hir::Ident;
 use miden_hir::ProgramBuilder;
 use miden_hir::Symbol;
+use midenc_session::InputFile;
+use midenc_session::Session;
 
 enum CompilerTestSource {
     Rust(String),
@@ -39,11 +41,11 @@ enum CompilerTestSource {
 
 /// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected output
 pub struct CompilerTest {
-    diagnostics: DiagnosticsHandler,
+    session: Session,
     source: CompilerTestSource,
     wasm_bytes: Vec<u8>,
     hir: Option<Box<miden_hir::Program>>,
-    ir_masm: Option<miden_codegen_masm::Program>,
+    ir_masm: Option<Box<miden_codegen_masm::Program>>,
 }
 
 impl CompilerTest {
@@ -58,10 +60,6 @@ impl CompilerTest {
         let temp_dir = std::env::temp_dir();
         let target_dir = temp_dir.join(cargo_project_folder);
         let output = Command::new("cargo")
-            .arg(format!(
-                "+{}",
-                std::env::var("CARGO_MAKE_TOOLCHAIN").unwrap()
-            ))
             .arg("build")
             .arg("--manifest-path")
             .arg(manifest_path)
@@ -96,7 +94,7 @@ impl CompilerTest {
         Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
         fs::remove_dir_all(target_dir).unwrap();
 
-        let diagnostics = make_diagnostics();
+        let session = default_session();
 
         let entrypoint = FunctionIdent {
             module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
@@ -105,18 +103,21 @@ impl CompilerTest {
                 SourceSpan::default(),
             ),
         };
-        let hir_module =
-            translate_module(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics)
-                .expect("Failed to translate Wasm to IR program");
+        let hir_module = translate_module(
+            &wasm_bytes,
+            &WasmTranslationConfig::default(),
+            &session.diagnostics,
+        )
+        .expect("Failed to translate Wasm to IR program");
 
-        let mut builder = ProgramBuilder::new(&diagnostics)
+        let mut builder = ProgramBuilder::new(&session.diagnostics)
             .with_module(hir_module.into())
             .unwrap();
         builder = builder.with_entrypoint(entrypoint);
         let hir_program = builder.link().expect("Failed to link IR program");
 
         CompilerTest {
-            diagnostics,
+            session,
             source: CompilerTestSource::RustCargo {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name: artifact_name.to_string(),
@@ -130,12 +131,15 @@ impl CompilerTest {
     /// Set the Rust source code to compile
     pub fn rust_source_program(rust_source: &str) -> Self {
         let wasm_bytes = compile_rust_file(rust_source);
-        let diagnostics = make_diagnostics();
-        let ir_program =
-            translate_program(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics)
-                .expect("Failed to translate Wasm to IR program");
+        let session = default_session();
+        let ir_program = translate_program(
+            &wasm_bytes,
+            &WasmTranslationConfig::default(),
+            &session.diagnostics,
+        )
+        .expect("Failed to translate Wasm to IR program");
         CompilerTest {
-            diagnostics,
+            session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             wasm_bytes,
             hir: Some(ir_program),
@@ -161,10 +165,13 @@ impl CompilerTest {
             rust_source
         );
         let wasm_bytes = compile_rust_file(&rust_source);
-        let diagnostics = make_diagnostics();
-        let ir_module =
-            translate_module(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics)
-                .expect("Failed to translate Wasm to IR program");
+        let session = default_session();
+        let ir_module = translate_module(
+            &wasm_bytes,
+            &WasmTranslationConfig::default(),
+            &session.diagnostics,
+        )
+        .expect("Failed to translate Wasm to IR program");
 
         let entrypoint = FunctionIdent {
             module: Ident {
@@ -176,14 +183,14 @@ impl CompilerTest {
                 span: SourceSpan::default(),
             },
         };
-        let builder = ProgramBuilder::new(&diagnostics)
+        let builder = ProgramBuilder::new(&session.diagnostics)
             .with_module(ir_module.into())
             .unwrap()
             .with_entrypoint(entrypoint);
         let ir_program_with_entrypoint = builder.link().expect("Failed to link IR program");
 
         CompilerTest {
-            diagnostics,
+            session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             wasm_bytes,
             hir: Some(ir_program_with_entrypoint),
@@ -236,7 +243,7 @@ impl CompilerTest {
         // TODO: get code map from the self.diagnotics
         let codemap = CodeMap::new();
         let program_ast = program.to_program_ast();
-        for module in &program.modules {
+        for module in program.modules() {
             let core_module = module.to_module_ast(&codemap);
             let _ = assembler
                 .compile_module(
@@ -252,9 +259,9 @@ impl CompilerTest {
 
     fn ir_masm(&mut self) -> &miden_codegen_masm::Program {
         if self.ir_masm.is_none() {
-            let mut compiler = MasmCompiler::new(&self.diagnostics);
-            let mut hir = self.hir.take().expect("IR is not compiled");
-            let ir_masm = compiler.compile(&mut hir).unwrap();
+            let mut compiler = MasmCompiler::new(&self.session);
+            let hir = self.hir.take().expect("IR is not compiled");
+            let ir_masm = compiler.compile(hir).unwrap();
             self.ir_masm = Some(ir_masm);
         }
         &self.ir_masm.as_ref().unwrap()
@@ -319,6 +326,19 @@ fn make_diagnostics() -> DiagnosticsHandler {
         default_emitter(Verbosity::Debug, ColorChoice::Auto),
     );
     diagnostics
+}
+
+fn default_session() -> Session {
+    let session = Session::new(
+        Default::default(),
+        InputFile::from_path("test.hir").unwrap(),
+        None,
+        None,
+        None,
+        Default::default(),
+        None,
+    );
+    session
 }
 
 fn hash_string(inputs: &[&str]) -> String {

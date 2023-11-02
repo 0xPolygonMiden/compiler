@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use miden_codegen_masm::Emulator;
 use miden_codegen_masm::Program;
 use miden_hir::Felt;
 use miden_hir::Stack;
 
 /// Execute the module using the emulator with the given arguments
-pub fn execute_emulator(program: Program, args: &[Felt]) -> Vec<Felt> {
+pub fn execute_emulator(program: Arc<Program>, args: &[Felt]) -> Vec<Felt> {
     let entrypoint = program.entrypoint.expect("cannot execute a library");
     let mut emulator = Emulator::default();
     emulator
