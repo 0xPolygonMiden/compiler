@@ -109,15 +109,89 @@ where
     }
 }
 
+/// This type is used to adapt function [RewritePass] to apply against a module.
+///
+/// When this is applied to a module, all functions in the module will be rewritten.
+pub struct ModuleRewritePassAdapter<R>(R);
+impl<R> Default for ModuleRewritePassAdapter<R>
+where
+    R: RewritePass<Entity = crate::Function> + Default,
+{
+    fn default() -> Self {
+        Self(R::default())
+    }
+}
+impl<R> ModuleRewritePassAdapter<R>
+where
+    R: RewritePass<Entity = crate::Function>,
+{
+    /// Adapt `R` to run against all functions in a [crate::Module]
+    pub const fn new(pass: R) -> Self {
+        Self(pass)
+    }
+}
+impl<R: PassInfo> PassInfo for ModuleRewritePassAdapter<R> {
+    const FLAG: &'static str = <R as PassInfo>::FLAG;
+    const SUMMARY: &'static str = <R as PassInfo>::SUMMARY;
+    const DESCRIPTION: &'static str = <R as PassInfo>::DESCRIPTION;
+}
+impl<R> RewritePass for ModuleRewritePassAdapter<R>
+where
+    R: RewritePass<Entity = crate::Function>,
+{
+    type Entity = crate::Module;
+
+    fn apply(
+        &mut self,
+        module: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> RewriteResult {
+        // Removing a function via this cursor will move the cursor to
+        // the next function in the module. Once the end of the module
+        // is reached, the cursor will point to the null object, and
+        // `remove` will return `None`.
+        let mut cursor = module.cursor_mut();
+        let mut dirty = false;
+        while let Some(mut function) = cursor.remove() {
+            // Apply rewrite
+            if self.0.should_apply(&function, session) {
+                dirty = true;
+                self.0.apply(&mut function, analyses, session)?;
+            } else {
+                analyses.mark_all_preserved::<crate::Function>(&function.id);
+            }
+            // Add the function back to the module
+            //
+            // We add it before the current position of the cursor
+            // to ensure that we don't interfere with our traversal
+            // of the module top to bottom
+            cursor.insert_before(function);
+        }
+
+        if !dirty {
+            analyses.mark_all_preserved::<crate::Module>(&module.name);
+        }
+
+        Ok(())
+    }
+}
+
 /// A [RewriteSet] is used to compose two or more [RewritePass] impls for the same entity type,
 /// to be applied as a single, fused [RewritePass].
 pub struct RewriteSet<T> {
     rewrites: Vec<Box<dyn RewritePass<Entity = T>>>,
 }
+impl<T> Default for RewriteSet<T> {
+    fn default() -> Self {
+        Self { rewrites: vec![] }
+    }
+}
 impl<T> RewriteSet<T>
 where
     T: AnalysisKey,
 {
+    /// Create a new [RewriteSet] from a pair of [RewritePass]
     pub fn pair<A, B>(a: A, b: B) -> Self
     where
         A: RewritePass<Entity = T> + 'static,
@@ -128,6 +202,7 @@ where
         }
     }
 
+    /// Append a new [RewritePass] to this set
     pub fn push<R>(&mut self, rewrite: R)
     where
         R: RewritePass<Entity = T> + 'static,
@@ -135,8 +210,14 @@ where
         self.rewrites.push(Box::new(rewrite));
     }
 
+    /// Take all rewrites out of another [RewriteSet], and append them to this set
     pub fn append(&mut self, other: &mut Self) {
         self.rewrites.append(&mut other.rewrites);
+    }
+
+    /// Extend this rewrite set with rewrites from `iter`
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = Box<dyn RewritePass<Entity = T>>>) {
+        self.rewrites.extend(iter);
     }
 }
 impl<T> From<Box<dyn RewritePass<Entity = T>>> for RewriteSet<T>
@@ -199,16 +280,21 @@ where
 #[doc(hidden)]
 pub struct RewritePassRegistration<T> {
     pub name: &'static str,
-    pub help: &'static str,
+    pub summary: &'static str,
+    pub description: &'static str,
     ctor: fn() -> Box<dyn RewritePass<Entity = T>>,
 }
 impl<T> RewritePassRegistration<T> {
-    pub const fn new(
-        name: &'static str,
-        help: &'static str,
-        ctor: fn() -> Box<dyn RewritePass<Entity = T>>,
-    ) -> Self {
-        Self { name, help, ctor }
+    pub const fn new<P>() -> Self
+    where
+        P: RewritePass<Entity = T> + PassInfo + Default + 'static,
+    {
+        Self {
+            name: <P as PassInfo>::FLAG,
+            summary: <P as PassInfo>::SUMMARY,
+            description: <P as PassInfo>::DESCRIPTION,
+            ctor: dyn_rewrite_pass_ctor::<P>,
+        }
     }
 
     /// Get the name of the registered pass
@@ -217,10 +303,16 @@ impl<T> RewritePassRegistration<T> {
         self.name
     }
 
-    /// Get the help documentation associated with the registered pass
+    /// Get a summary of the registered pass
     #[inline]
-    pub const fn help(&self) -> &'static str {
-        self.help
+    pub const fn summary(&self) -> &'static str {
+        self.summary
+    }
+
+    /// Get a rich description of the registered pass
+    #[inline]
+    pub const fn description(&self) -> &'static str {
+        self.description
     }
 
     /// Get an instance of the registered pass
@@ -229,3 +321,16 @@ impl<T> RewritePassRegistration<T> {
         (self.ctor)()
     }
 }
+
+fn dyn_rewrite_pass_ctor<P>() -> Box<dyn RewritePass<Entity = <P as RewritePass>::Entity>>
+where
+    P: RewritePass + Default + 'static,
+{
+    Box::new(P::default())
+}
+
+// Register rewrite passes for modules
+inventory::collect!(RewritePassRegistration<crate::Module>);
+
+// Register rewrite passes for functions
+inventory::collect!(RewritePassRegistration<crate::Function>);

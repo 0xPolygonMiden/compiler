@@ -3,13 +3,12 @@ use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
-use miden_hir::pass::{AnalysisManager, PassInfo, RewritePass, RewriteResult};
+use miden_hir::pass::{AnalysisManager, RewritePass, RewriteResult};
 use miden_hir::{self as hir, Block as BlockId, *};
 use miden_hir_analysis::ControlFlowGraph;
 use midenc_session::Session;
 
-/// This pass operates on the SSA IR, and ensures that there are no critical
-/// edges in the control flow graph.
+/// This pass breaks any critical edges in the CFG of a function.
 ///
 /// A critical edge occurs when control flow may exit a block, which we'll call `P`, to
 /// more than one successor block, which we'll call `S`, where any `S` has more than one
@@ -25,11 +24,8 @@ use midenc_session::Session;
 /// After this pass completes, no node in the control flow graph will have both multiple predecessors
 /// and multiple successors.
 ///
-#[derive(PassInfo)]
+#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
 pub struct SplitCriticalEdges;
-
-//register_function_rewrite!("split-critical-edges", SplitCriticalEdges);
-
 impl RewritePass for SplitCriticalEdges {
     type Entity = hir::Function;
 

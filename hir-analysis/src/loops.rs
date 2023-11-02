@@ -343,7 +343,7 @@ impl LoopAnalysis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FunctionAnalysis;
+    use crate::{ControlFlowGraph, DominatorTree};
     use miden_hir::{
         AbiParam, Function, FunctionBuilder, InstBuilder, Signature, SourceSpan, Type,
     };
@@ -385,9 +385,9 @@ mod tests {
             builder.ins().ret(None, SourceSpan::UNKNOWN);
         }
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        analysis.ensure_loops(&function);
-        let loop_analysis = analysis.loops();
+        let cfg = ControlFlowGraph::with_function(&function);
+        let domtree = DominatorTree::with_function(&function, &cfg);
+        let loop_analysis = LoopAnalysis::with_function(&function, &cfg, &domtree);
 
         let loops = loop_analysis.loops().collect::<Vec<Loop>>();
         assert_eq!(loops.len(), 2);
@@ -468,10 +468,9 @@ mod tests {
             builder.ins().ret(None, SourceSpan::UNKNOWN);
         }
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        analysis.ensure_loops(&function);
-        let loop_analysis = analysis.loops();
-        let domtree = analysis.domtree();
+        let cfg = ControlFlowGraph::with_function(&function);
+        let domtree = DominatorTree::with_function(&function, &cfg);
+        let loop_analysis = LoopAnalysis::with_function(&function, &cfg, &domtree);
 
         let loops = loop_analysis.loops().collect::<Vec<Loop>>();
         assert_eq!(loops.len(), 2);
@@ -558,9 +557,9 @@ mod tests {
             builder.ins().ret(None, SourceSpan::UNKNOWN);
         }
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        analysis.ensure_loops(&function);
-        let loop_analysis = analysis.loops();
+        let cfg = ControlFlowGraph::with_function(&function);
+        let domtree = DominatorTree::with_function(&function, &cfg);
+        let loop_analysis = LoopAnalysis::with_function(&function, &cfg, &domtree);
 
         let loops = loop_analysis.loops().collect::<Vec<Loop>>();
         assert_eq!(loops.len(), 3);

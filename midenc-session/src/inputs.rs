@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 use miden_diagnostics::FileName;
@@ -30,29 +31,20 @@ pub struct InputFile {
     file_type: FileType,
 }
 impl InputFile {
-    /// Get an [InputFile] representing the contents of `filename`.
-    ///
-    /// This function returns an error if the contents are not a valid supported file type.
-    pub fn new<F: Into<FileName>>(filename: F) -> Result<Self, InvalidInputError> {
-        match filename.into() {
-            FileName::Real(path) => Self::from_path(path),
-            name @ FileName::Virtual(_) => Self::from_stdin(name),
-        }
-    }
-
     /// Get an [InputFile] representing the contents of `path`.
     ///
     /// This function returns an error if the contents are not a valid supported file type.
-    pub fn from_path(path: PathBuf) -> Result<Self, InvalidInputError> {
-        let file_type = FileType::try_from(path.as_ref())?;
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, InvalidInputError> {
+        let path = path.as_ref();
+        let file_type = FileType::try_from(path)?;
         match file_type {
             FileType::Hir | FileType::Wasm => Ok(Self {
-                file: InputType::Real(path),
+                file: InputType::Real(path.to_path_buf()),
                 file_type,
             }),
             // We do not yet have frontends for these file types
             FileType::Masm | FileType::Masl | FileType::Wat => {
-                Err(InvalidInputError::UnsupportedFileType(path))
+                Err(InvalidInputError::UnsupportedFileType(path.to_path_buf()))
             }
         }
     }
@@ -157,6 +149,17 @@ pub enum FileType {
     Masl,
     Wasm,
     Wat,
+}
+impl fmt::Display for FileType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Hir => f.write_str("hir"),
+            Self::Masm => f.write_str("masm"),
+            Self::Masl => f.write_str("masl"),
+            Self::Wasm => f.write_str("wasm"),
+            Self::Wat => f.write_str("wat"),
+        }
+    }
 }
 impl FileType {
     pub fn detect(bytes: &[u8]) -> Result<Self, InvalidInputError> {

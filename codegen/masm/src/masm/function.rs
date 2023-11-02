@@ -1,7 +1,8 @@
 use std::fmt;
+use std::sync::Arc;
 
 use cranelift_entity::{EntityRef, PrimaryMap};
-use intrusive_collections::{intrusive_adapter, LinkedListLink};
+use intrusive_collections::{intrusive_adapter, LinkedListAtomicLink};
 use miden_diagnostics::Spanned;
 use miden_hir::{FunctionIdent, Signature, Type};
 use rustc_hash::FxHashMap;
@@ -9,12 +10,13 @@ use smallvec::{smallvec, SmallVec};
 
 use super::*;
 
-intrusive_adapter!(pub FunctionListAdapter = Box<Function>: Function { link: LinkedListLink });
+intrusive_adapter!(pub FunctionListAdapter = Box<Function>: Function { link: LinkedListAtomicLink });
+intrusive_adapter!(pub FrozenFunctionListAdapter = Arc<Function>: Function { link: LinkedListAtomicLink });
 
 /// This represents a function in Miden Assembly
 #[derive(Spanned)]
 pub struct Function {
-    link: LinkedListLink,
+    link: LinkedListAtomicLink,
     /// The name of this function
     #[span]
     pub name: FunctionIdent,

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, cmp, fmt, rc::Rc};
+use std::{cell::RefCell, cmp, fmt, rc::Rc, sync::Arc};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -46,7 +46,7 @@ pub enum EmulationError {
 #[derive(Clone)]
 enum Stub {
     /// This function has a definition in Miden Assembly
-    Asm(Rc<Function>),
+    Asm(Arc<Function>),
     /// This function has a native Rust implementation
     Native(Rc<RefCell<Box<NativeFn>>>),
 }
@@ -168,14 +168,14 @@ pub enum Jump {
 }
 
 struct Activation {
-    function: Rc<Function>,
+    function: Arc<Function>,
     ip: InstructionPointer,
     fp: Addr,
     repeat_stack: SmallVec<[Option<(u8, u8)>; 2]>,
     ip_stack: SmallVec<[InstructionPointer; 2]>,
 }
 impl Activation {
-    pub fn new(function: Rc<Function>, fp: Addr) -> Self {
+    pub fn new(function: Arc<Function>, fp: Addr) -> Self {
         let block = function.body;
         Self {
             function,
@@ -370,9 +370,12 @@ impl Emulator {
     }
 
     /// Load `program` into this emulator
-    pub fn load_program(&mut self, program: Box<Program>) -> Result<(), EmulationError> {
-        for module in program.modules.into_iter() {
+    pub fn load_program(&mut self, program: Arc<Program>) -> Result<(), EmulationError> {
+        let modules = program.unwrap_frozen_modules();
+        let mut cursor = modules.front();
+        while let Some(module) = cursor.clone_pointer() {
             self.load_module(module)?;
+            cursor.move_next();
         }
 
         // TODO: Load data segments
@@ -381,7 +384,7 @@ impl Emulator {
     }
 
     /// Load `module` into this emulator
-    pub fn load_module(&mut self, mut module: Module) -> Result<(), EmulationError> {
+    pub fn load_module(&mut self, module: Arc<Module>) -> Result<(), EmulationError> {
         if !self.modules_loaded.insert(module.name) {
             return Err(EmulationError::AlreadyLoaded(module.name));
         }
@@ -397,16 +400,18 @@ impl Emulator {
         self.modules_pending.remove(&module.name);
 
         // Load functions from this module
-        while let Some(function) = module.functions.pop_front() {
-            let function = Rc::from(function);
+        let functions = module.unwrap_frozen_functions();
+        let mut cursor = functions.front();
+        while let Some(function) = cursor.clone_pointer() {
             self.load_function(function)?;
+            cursor.move_next();
         }
 
         Ok(())
     }
 
     /// Load `function` into this emulator
-    fn load_function(&mut self, function: Rc<Function>) -> Result<(), EmulationError> {
+    fn load_function(&mut self, function: Arc<Function>) -> Result<(), EmulationError> {
         let id = function.name;
         if self.functions.contains_key(&id) {
             return Err(EmulationError::DuplicateFunction(id));
@@ -542,7 +547,7 @@ impl Emulator {
     #[inline]
     fn invoke_function(
         &mut self,
-        function: Rc<Function>,
+        function: Arc<Function>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         // Place the arguments on the operand stack

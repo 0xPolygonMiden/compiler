@@ -9,13 +9,6 @@ use miden_diagnostics::{DiagnosticsConfig, Emitter, Verbosity};
 
 use crate::OutputTypes;
 
-#[derive(Debug, thiserror::Error)]
-pub enum InvalidOptionError {
-    /// An input specified to the compiler is not valid
-    #[error(transparent)]
-    InvalidInput(#[from] std::io::Error),
-}
-
 /// This struct contains all of the configuration options for the compiler
 #[derive(Debug)]
 pub struct Options {
@@ -35,8 +28,6 @@ pub struct Options {
     pub diagnostics: DiagnosticsConfig,
     /// The current working directory of the compiler
     pub current_dir: PathBuf,
-    /// The passes to run against IR modules
-    pub passes: Option<Vec<String>>,
     /// Print IR to stdout after each pass
     pub print_ir_after_all: bool,
     /// Print IR to stdout each time the named pass is applied
@@ -59,7 +50,6 @@ impl Options {
             color: Default::default(),
             diagnostics: Default::default(),
             current_dir,
-            passes: None,
             print_ir_after_all: false,
             print_ir_after_pass: None,
         }

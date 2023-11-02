@@ -315,7 +315,7 @@ impl Function {
     ///
     /// This is primarily intended for use by the IR parser.
     pub(crate) fn new_uninit(id: FunctionIdent, signature: Signature) -> Self {
-        let mut dfg = DataFlowGraph::default();
+        let mut dfg = DataFlowGraph::new_uninit();
         dfg.imports.insert(
             id,
             ExternalFunction {

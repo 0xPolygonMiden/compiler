@@ -1,4 +1,3 @@
-use std::fmt;
 use std::str::FromStr;
 
 use clap::ValueEnum;

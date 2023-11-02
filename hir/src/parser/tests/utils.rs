@@ -1,11 +1,14 @@
+use std::path::Path;
 use std::sync::Arc;
 
-use miden_diagnostics::{CodeMap, DiagnosticsConfig, DiagnosticsHandler, Emitter, Verbosity};
+use miden_diagnostics::{Emitter, Verbosity};
+use midenc_session::{Options, Warnings};
 use pretty_assertions::assert_eq;
 
 use crate::{
     parser::ast::Module,
     parser::{ParseError, Parser},
+    testing::TestContext,
 };
 
 struct SplitEmitter {
@@ -53,69 +56,60 @@ impl Emitter for SplitEmitter {
 /// - ParseError test: check that the parsed values are valid.
 ///   * InvalidInt: This error is returned if the parsed number is not a valid u64.
 pub struct ParseTest {
-    pub diagnostics: Arc<DiagnosticsHandler>,
-    #[allow(unused)]
+    context: TestContext,
     emitter: Arc<SplitEmitter>,
-    parser: Parser,
 }
 
 impl ParseTest {
     /// Creates a new test, from the source string.
     pub fn new() -> Self {
-        let codemap = Arc::new(CodeMap::new());
         let emitter = Arc::new(SplitEmitter::new());
-        let config = DiagnosticsConfig {
-            verbosity: Verbosity::Warning,
-            warnings_as_errors: true,
-            no_warn: false,
-            display: Default::default(),
-        };
-        let diagnostics = Arc::new(DiagnosticsHandler::new(
-            config,
-            codemap.clone(),
-            emitter.clone(),
-        ));
-        let parser = Parser::new((), codemap);
-        Self {
-            diagnostics,
-            emitter,
-            parser,
-        }
+        let options = Options::new(std::env::current_dir().unwrap())
+            .with_verbosity(Verbosity::Warning)
+            .with_warnings(Warnings::Error);
+        let context = TestContext::default_with_opts_and_emitter(options, Some(emitter.clone()));
+        Self { context, emitter }
     }
 
     /// This adds a new in-memory file to the [CodeMap] for this test.
     ///
     /// This is used when we want to write a test with imports, without having to place files on disk
     #[allow(unused)]
-    pub fn add_virtual_file<P: AsRef<std::path::Path>>(&self, name: P, content: String) {
-        self.parser.codemap.add(name.as_ref(), content);
+    pub fn add_virtual_file<P: AsRef<Path>>(&self, name: P, content: String) {
+        self.context.session.codemap.add(name.as_ref(), content);
     }
 
-    pub fn parse_module_ast_from_file(&self, path: &str) -> Result<Module, ParseError> {
-        self.parser
-            .parse_file::<Module, _, _>(&self.diagnostics, path)
+    pub fn parse_module_ast_from_file<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> Result<Module, ParseError> {
+        let parser = Parser::new(&self.context.session);
+        parser.parse_file::<Module>(path)
     }
 
     pub fn parse_module_ast(&self, source: &str) -> Result<Module, ParseError> {
-        self.parser
-            .parse_string::<Module, _, _>(&self.diagnostics, source)
+        let parser = Parser::new(&self.context.session);
+        parser.parse_str::<Module>(source)
     }
 
-    pub fn parse_module_from_file(&self, path: &str) -> Result<crate::Module, ParseError> {
-        self.parse_module_ast_from_file(path)
-            .and_then(|ast| ast.try_into_hir(&self.diagnostics))
+    pub fn parse_module_from_file<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> Result<crate::Module, ParseError> {
+        let parser = Parser::new(&self.context.session);
+        parser.parse_file::<crate::Module>(path)
     }
 
     pub fn parse_module(&self, source: &str) -> Result<crate::Module, ParseError> {
-        self.parse_module_ast(source)
-            .and_then(|ast| ast.try_into_hir(&self.diagnostics))
+        let parser = Parser::new(&self.context.session);
+        parser.parse_str::<crate::Module>(source)
     }
 
     #[track_caller]
     #[allow(unused)]
     pub fn expect_module_diagnostic(&self, source: &str, expected: &str) {
         if let Err(err) = self.parse_module(source) {
-            self.diagnostics.emit(err);
+            self.context.session.diagnostics.emit(err);
             assert!(
                 self.emitter.captured().contains(expected),
                 "expected diagnostic output to contain the string: '{}'",
@@ -132,7 +126,7 @@ impl ParseTest {
     pub fn expect_module(&self, source: &str, expected: &crate::Module) {
         match self.parse_module(source) {
             Err(err) => {
-                self.diagnostics.emit(err);
+                self.context.session.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");
             }
             Ok(parsed) => {
@@ -148,7 +142,7 @@ impl ParseTest {
     pub fn expect_module_ast(&self, source: &str, expected: Module) {
         match self.parse_module_ast(source) {
             Err(err) => {
-                self.diagnostics.emit(err);
+                self.context.session.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");
             }
             Ok(ast) => assert_eq!(ast, expected),
@@ -161,7 +155,7 @@ impl ParseTest {
     pub fn expect_module_ast_from_file(&self, path: &str, expected: Module) {
         match self.parse_module_ast_from_file(path) {
             Err(err) => {
-                self.diagnostics.emit(err);
+                self.context.session.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");
             }
             Ok(ast) => assert_eq!(ast, expected),

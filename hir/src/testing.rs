@@ -1,6 +1,7 @@
-use std::{mem, path::Path, slice};
+use std::{mem, path::Path, slice, sync::Arc};
 
-use midenc_session::Session;
+use miden_diagnostics::Emitter;
+use midenc_session::{Options, Session};
 
 use super::*;
 
@@ -12,25 +13,35 @@ pub struct TestContext {
 }
 impl Default for TestContext {
     fn default() -> Self {
-        use midenc_session::InputFile;
-
-        let session = Session::new(
-            None,
-            Default::default(),
-            InputFile::new("test.hir").unwrap(),
-            None,
-            None,
-            None,
-            Default::default(),
-            None,
-        );
-
-        Self { session }
+        Self::default_with_emitter(None)
     }
 }
 impl TestContext {
     /// Create a new test context with the given [Session]
     pub fn new(session: Session) -> Self {
+        Self { session }
+    }
+
+    pub fn default_with_emitter(emitter: Option<Arc<dyn Emitter>>) -> Self {
+        Self::default_with_opts_and_emitter(Default::default(), emitter)
+    }
+
+    pub fn default_with_opts_and_emitter(
+        options: Options,
+        emitter: Option<Arc<dyn Emitter>>,
+    ) -> Self {
+        use midenc_session::InputFile;
+
+        let session = Session::new(
+            Default::default(),
+            InputFile::from_path("test.hir").unwrap(),
+            None,
+            None,
+            None,
+            options,
+            emitter,
+        );
+
         Self { session }
     }
 

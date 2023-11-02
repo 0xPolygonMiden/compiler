@@ -9,11 +9,12 @@ mod statistics;
 pub use self::duration::HumanDuration;
 pub use self::emit::Emit;
 pub use self::flags::{CompileFlag, FlagAction};
-pub use self::inputs::{FileType, InputFile, InvalidInputError};
+pub use self::inputs::{FileType, InputFile, InputType, InvalidInputError};
 pub use self::options::*;
 pub use self::outputs::{OutputFile, OutputFiles, OutputType, OutputTypeSpec, OutputTypes};
 pub use self::statistics::Statistics;
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -71,7 +72,6 @@ pub struct Session {
 }
 impl Session {
     pub fn new(
-        project_type: Option<ProjectType>,
         target: TargetEnv,
         input: InputFile,
         output_dir: Option<PathBuf>,
@@ -80,11 +80,10 @@ impl Session {
         options: Options,
         emitter: Option<Arc<dyn Emitter>>,
     ) -> Self {
-        let project_type = project_type.unwrap_or_else(|| ProjectType::default_for_target(target));
-
+        // TODO: Make sure we pin this down when we need to ship stuff with compiler
         let sysroot = match &options.sysroot {
             Some(sysroot) => sysroot.clone(),
-            None => todo!("load default sysroot"),
+            None => std::env::current_dir().unwrap(),
         };
         let codemap = Arc::new(CodeMap::new());
 
@@ -124,6 +123,7 @@ impl Session {
             ),
         };
 
+        let project_type = ProjectType::default_for_target(target);
         Self {
             project_type,
             target,
@@ -138,6 +138,12 @@ impl Session {
         }
     }
 
+    pub fn with_project_type(mut self, ty: ProjectType) -> Self {
+        self.project_type = ty;
+        self
+    }
+
+    #[doc(hidden)]
     pub fn with_arg_matches(mut self, matches: clap::ArgMatches) -> Self {
         self.arg_matches = matches;
         self
@@ -169,6 +175,11 @@ impl Session {
         self.arg_matches.get_many(name)
     }
 
+    /// Get the remaining [clap::ArgMatches] left after parsing the base session configuration
+    pub fn matches(&self) -> &clap::ArgMatches {
+        &self.arg_matches
+    }
+
     pub fn out_filename(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
         let default_filename = self.filename_for_input(outputs, progname);
         let out_filename = outputs
@@ -198,20 +209,17 @@ impl Session {
             ProjectType::Library => OutputFile::Real(
                 outputs
                     .out_dir
-                    .join(&format!("{progname}.{}", OutputType::Masl.extension())),
+                    .join(format!("{progname}.{}", OutputType::Masl.extension())),
             ),
         }
     }
 
     fn check_file_is_writeable(&self, file: &Path) {
-        match file.metadata() {
-            Err(_) => return,
-            Ok(m) => {
-                if m.permissions().readonly() {
-                    self.diagnostics
-                        .fatal(format!("file is not writeable: {}", file.display()))
-                        .raise();
-                }
+        if let Ok(m) = file.metadata() {
+            if m.permissions().readonly() {
+                self.diagnostics
+                    .fatal(format!("file is not writeable: {}", file.display()))
+                    .raise();
             }
         }
     }
@@ -266,4 +274,13 @@ pub enum TargetEnv {
     Base,
     /// The Miden Rollup environment, using the Rollup kernel
     Rollup,
+}
+impl fmt::Display for TargetEnv {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Emu => f.write_str("emu"),
+            Self::Base => f.write_str("base"),
+            Self::Rollup => f.write_str("rollup"),
+        }
+    }
 }

@@ -203,7 +203,8 @@ mod typecheck;
 pub use self::typecheck::TypeError;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PassInfo};
+use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
+
 use miden_hir::*;
 use midenc_session::Session;
 
@@ -312,6 +313,7 @@ inventory::submit! {
         .long("no-validate")
         .action(midenc_session::FlagAction::SetFalse)
         .help("If present, disables validation of the IR prior to codegen")
+        .help_heading("Analysis")
 }
 
 /// A [Rule] validates some specific type of behavior on an item of type `T`
@@ -441,7 +443,7 @@ impl ModuleValidationAnalysis {
 
         // Apply global-scoped rules
         let mut rules = NamingConventions;
-        for global in module.globals() {
+        for global in module.globals().iter() {
             rules.validate(global, &session.diagnostics)?;
         }
 

@@ -97,7 +97,7 @@ impl OutputFile {
     pub fn as_path(&self) -> &Path {
         match self {
             Self::Real(ref path) => path.as_ref(),
-            Self::Stdout => &Path::new("stdout"),
+            Self::Stdout => Path::new("stdout"),
         }
     }
 
@@ -193,7 +193,7 @@ impl OutputFiles {
         self.with_directory_and_extension(&self.out_dir, extension)
     }
 
-    fn with_directory_and_extension(&self, directory: &PathBuf, extension: &str) -> PathBuf {
+    fn with_directory_and_extension(&self, directory: &Path, extension: &str) -> PathBuf {
         let mut path = directory.join(&self.stem);
         path.set_extension(extension);
         path
@@ -246,7 +246,7 @@ impl OutputTypes {
     }
 
     pub fn parse_only(&self) -> bool {
-        self.0.keys().any(|k| !matches!(k, OutputType::Ast))
+        !self.0.keys().any(|k| !matches!(k, OutputType::Ast))
     }
 
     pub fn should_codegen(&self) -> bool {
@@ -256,12 +256,14 @@ impl OutputTypes {
     }
 
     pub fn should_link(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Masl))
+        self.0
+            .keys()
+            .any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
     }
 }
 
 /// This type describes an output type with optional path specification
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct OutputTypeSpec {
     pub output_type: OutputType,
     pub path: Option<OutputFile>,
