@@ -6,6 +6,8 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 
+use miden_assembly::Assembler;
+use miden_assembly::AssemblyContext;
 use miden_codegen_masm::MasmCompiler;
 use miden_diagnostics::term::termcolor::ColorChoice;
 use miden_diagnostics::CodeMap;
@@ -103,12 +105,9 @@ impl CompilerTest {
                 SourceSpan::default(),
             ),
         };
-        let hir_module = translate_module(
-            &wasm_bytes,
-            &WasmTranslationConfig::default(),
-            &make_diagnostics(),
-        )
-        .expect("Failed to translate Wasm to IR program");
+        let hir_module =
+            translate_module(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics)
+                .expect("Failed to translate Wasm to IR program");
 
         let mut builder = ProgramBuilder::new(&diagnostics)
             .with_module(hir_module.into())
@@ -131,14 +130,12 @@ impl CompilerTest {
     /// Set the Rust source code to compile
     pub fn rust_source_program(rust_source: &str) -> Self {
         let wasm_bytes = compile_rust_file(rust_source);
-        let ir_program = translate_program(
-            &wasm_bytes,
-            &WasmTranslationConfig::default(),
-            &make_diagnostics(),
-        )
-        .expect("Failed to translate Wasm to IR program");
+        let diagnostics = make_diagnostics();
+        let ir_program =
+            translate_program(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics)
+                .expect("Failed to translate Wasm to IR program");
         CompilerTest {
-            diagnostics: make_diagnostics(),
+            diagnostics,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             wasm_bytes,
             hir: Some(ir_program),
@@ -159,28 +156,23 @@ impl CompilerTest {
             }}
 
             #[no_mangle]
-            pub extern "C" fn __main{}
+            pub extern "C" fn entrypoint{}
             "#,
             rust_source
         );
         let wasm_bytes = compile_rust_file(&rust_source);
-        let ir_module = translate_module(
-            &wasm_bytes,
-            &WasmTranslationConfig::default(),
-            &make_diagnostics(),
-        )
-        .expect("Failed to translate Wasm to IR program");
-
         let diagnostics = make_diagnostics();
+        let ir_module =
+            translate_module(&wasm_bytes, &WasmTranslationConfig::default(), &diagnostics)
+                .expect("Failed to translate Wasm to IR program");
 
-        // set entrypoint to __main
         let entrypoint = FunctionIdent {
             module: Ident {
                 name: Symbol::intern("noname"),
                 span: SourceSpan::default(),
             },
             function: Ident {
-                name: Symbol::intern("__main"),
+                name: Symbol::intern("entrypoint"),
                 span: SourceSpan::default(),
             },
         };
@@ -227,27 +219,45 @@ impl CompilerTest {
     }
 
     /// Compare the compiled MASM against the expected output
-    pub fn expect_masm(&mut self, _expected_masm_file: expect_test::ExpectFile) {
-        // TODO: check midenc PR if it fixes the issue with to_program_ast (invalid entrypoint name)
-        // expected_masm_file.assert_eq(&program.to_program_ast().to_string());
+    pub fn expect_masm(&mut self, expected_masm_file: expect_test::ExpectFile) {
+        let program = self.ir_masm();
+        expected_masm_file.assert_eq(&program.to_string());
     }
 
     /// Get the compiled MASM as [`miden_codegen_masm::Program`]
-    pub fn codegen_masm_program(mut self) -> miden_codegen_masm::Program {
+    pub fn codegen_masm_program(&mut self) -> &miden_codegen_masm::Program {
         self.ir_masm()
     }
 
-    /// Get the compiled MASM as [`miden_assembly::Module`]
-    pub fn asm_masm_module(&self) -> miden_assembly::Module {
-        todo!()
+    /// Get the compiled MASM as [`miden_assembly::Program`]
+    pub fn vm_masm_program(&mut self) -> miden_core::Program {
+        let assembler = Assembler::default();
+        let program = self.ir_masm();
+        // TODO: get code map from the self.diagnotics
+        let codemap = CodeMap::new();
+        let program_ast = program.to_program_ast();
+        for module in &program.modules {
+            let core_module = module.to_module_ast(&codemap);
+            let _ = assembler
+                .compile_module(
+                    &core_module.ast,
+                    Some(&core_module.path),
+                    &mut AssemblyContext::for_module(false),
+                )
+                .unwrap();
+        }
+        let core_program = assembler.compile_ast(&program_ast).unwrap();
+        core_program
     }
 
-    fn ir_masm(&mut self) -> miden_codegen_masm::Program {
-        self.ir_masm.take().unwrap_or_else(|| {
+    fn ir_masm(&mut self) -> &miden_codegen_masm::Program {
+        if self.ir_masm.is_none() {
             let mut compiler = MasmCompiler::new(&self.diagnostics);
             let mut hir = self.hir.take().expect("IR is not compiled");
-            compiler.compile(&mut hir).unwrap()
-        })
+            let ir_masm = compiler.compile(&mut hir).unwrap();
+            self.ir_masm = Some(ir_masm);
+        }
+        &self.ir_masm.as_ref().unwrap()
     }
 }
 
@@ -289,25 +299,11 @@ fn wasm_to_wat(wasm_bytes: &Vec<u8>) -> String {
     wat
 }
 
-fn wasm_to_ir_module(wasm_bytes: &[u8], diagnostics: &DiagnosticsHandler) -> miden_hir::Module {
-    let module =
-        translate_module(wasm_bytes, &WasmTranslationConfig::default(), diagnostics).unwrap();
-    module
-}
-
 fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
     match verbosity {
         Verbosity::Silent => Arc::new(NullEmitter::new(color)),
         _ => Arc::new(DefaultEmitter::new(color)),
     }
-}
-
-fn demangle(name: &str) -> String {
-    let mut input = name.as_bytes();
-    let mut demangled = Vec::new();
-    let include_hash = false;
-    rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
-    String::from_utf8(demangled).unwrap()
 }
 
 fn make_diagnostics() -> DiagnosticsHandler {
@@ -332,4 +328,12 @@ fn hash_string(inputs: &[&str]) -> String {
         hasher.update(input);
     }
     format!("{:x}", hasher.finalize())
+}
+
+fn demangle(name: &str) -> String {
+    let mut input = name.as_bytes();
+    let mut demangled = Vec::new();
+    let include_hash = false;
+    rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
+    String::from_utf8(demangled).unwrap()
 }

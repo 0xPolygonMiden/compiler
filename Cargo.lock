@@ -815,6 +815,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-air"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fa086b50e9fc3f808e171cb69f81fe464efbc01f996df3db0e450caaf070749"
+dependencies = [
+ "miden-core",
+ "winter-air",
+]
+
+[[package]]
 name = "miden-assembly"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1012,10 +1022,12 @@ dependencies = [
  "expect-test",
  "miden-assembly",
  "miden-codegen-masm",
+ "miden-core",
  "miden-diagnostics",
  "miden-frontend-wasm",
  "miden-hir",
  "miden-integration-tests-rust",
+ "miden-processor",
  "proptest",
  "rustc-demangle",
  "sha2",
@@ -1038,6 +1050,18 @@ checksum = "d36dfec2c0319b3773a83627318f92a0212077bed80148c86e8b09af60cd1a88"
 dependencies = [
  "miden-diagnostics",
  "thiserror",
+]
+
+[[package]]
+name = "miden-processor"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "229cd9564e22c81d0d0122377c248f07e4e85706d566c778d65a53b8005fcda6"
+dependencies = [
+ "log",
+ "miden-air",
+ "miden-core",
+ "winter-prover",
 ]
 
 [[package]]
@@ -1989,6 +2013,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "winter-air"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e952a5774c8e5d13cc015f29351f7f76511ce41440aa39d01c12365bb70e285e"
+dependencies = [
+ "winter-crypto",
+ "winter-fri",
+ "winter-math",
+ "winter-utils",
+]
+
+[[package]]
 name = "winter-crypto"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2001,11 +2037,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "winter-fri"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60de4e8baf33cc388b82f79808e42dacd7cb208e8c17bd10e3f8b8bdbdae1668"
+dependencies = [
+ "winter-crypto",
+ "winter-math",
+ "winter-utils",
+]
+
+[[package]]
 name = "winter-math"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1795f5323f03c987a6aada6e8229f2c7f9353956cfa1b648b9c6cf5440958caa"
 dependencies = [
+ "winter-utils",
+]
+
+[[package]]
+name = "winter-prover"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2adea1eb4620fd1b3e8a7647a2a45bd4ebcab4cda14c9719b70039db05762191"
+dependencies = [
+ "log",
+ "winter-air",
+ "winter-crypto",
+ "winter-fri",
+ "winter-math",
  "winter-utils",
 ]
 
