@@ -3,15 +3,17 @@ use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
-use miden_hir::pass::{AnalysisManager, PassInfo, RewritePass, RewriteResult};
+use miden_hir::pass::{AnalysisManager, RewritePass, RewriteResult};
 use miden_hir::{self as hir, *};
 use miden_hir_analysis::ControlFlowGraph;
 use midenc_session::Session;
 
 use crate::adt::ScopedMap;
 
-/// This pass operates on the SSA IR, and inlines superfluous blocks which serve no
-/// purpose. Such blocks have no block arguments, and have a single predecessor.
+/// This pass inlines unnecessary blocks, and removes unnecessary block arguments.
+///
+/// Specifically, the blocks affected are those with a single predecessor, as they
+/// by definition can be inlined into their immediate predecessor in such cases.
 ///
 /// Blocks like this may have been introduced for the following reasons:
 ///
@@ -27,11 +29,8 @@ use crate::adt::ScopedMap;
 /// a single predecessor and successor, introducing branches where none are needed, and by removing
 /// those redundant branches, all of the code from blocks in the chain can be inlined in the first
 /// block of the chain.
-#[derive(PassInfo)]
+#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
 pub struct InlineBlocks;
-
-//register_function_rewrite!("inline-blocks", InlineBlocks);
-
 impl RewritePass for InlineBlocks {
     type Entity = hir::Function;
 

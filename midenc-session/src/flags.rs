@@ -3,6 +3,7 @@ pub struct CompileFlag {
     pub short: Option<char>,
     pub long: Option<&'static str>,
     pub help: Option<&'static str>,
+    pub help_heading: Option<&'static str>,
     pub env: Option<&'static str>,
     pub action: FlagAction,
     pub default_missing_value: Option<&'static str>,
@@ -15,6 +16,7 @@ impl CompileFlag {
             short: None,
             long: None,
             help: None,
+            help_heading: None,
             env: None,
             action: FlagAction::Set,
             default_missing_value: None,
@@ -39,6 +41,11 @@ impl CompileFlag {
 
     pub const fn help(mut self, help: &'static str) -> Self {
         self.help = Some(help);
+        self
+    }
+
+    pub const fn help_heading(mut self, help_heading: &'static str) -> Self {
+        self.help_heading = Some(help_heading);
         self
     }
 

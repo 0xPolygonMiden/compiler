@@ -699,7 +699,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::FunctionAnalysis;
+    use crate::ControlFlowGraph;
     use miden_hir::{
         AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
     };
@@ -710,10 +710,9 @@ mod tests {
         let function = Function::new(id, Signature::new([], []));
         let entry = function.dfg.entry_block();
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        assert!(analysis.cfg().is_valid());
-        analysis.ensure_domtree(&function);
-        let domtree = analysis.domtree();
+        let cfg = ControlFlowGraph::with_function(&function);
+        assert!(cfg.is_valid());
+        let domtree = DominatorTree::with_function(&function, &cfg);
 
         assert_eq!(1, domtree.nodes.keys().count());
         assert_eq!(domtree.cfg_postorder(), &[entry]);
@@ -758,9 +757,8 @@ mod tests {
             v2
         };
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        analysis.ensure_domtree(&function);
-        let domtree = analysis.domtree();
+        let cfg = ControlFlowGraph::with_function(&function);
+        let domtree = DominatorTree::with_function(&function, &cfg);
 
         // Fall-through-first, prune-at-source DFT:
         //
@@ -821,9 +819,8 @@ mod tests {
             (br_block3_block1, br_block1_block0_block2)
         };
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        analysis.ensure_domtree(&function);
-        let domtree = analysis.domtree();
+        let cfg = ControlFlowGraph::with_function(&function);
+        let domtree = DominatorTree::with_function(&function, &cfg);
 
         // Fall-through-first, prune-at-source DFT:
         //
@@ -899,9 +896,8 @@ mod tests {
             (jmp02, trap, jmp21)
         };
 
-        let mut analysis = FunctionAnalysis::new(&function);
-        analysis.ensure_domtree(&function);
-        let domtree = analysis.domtree();
+        let cfg = ControlFlowGraph::with_function(&function);
+        let domtree = DominatorTree::with_function(&function, &cfg);
 
         assert_eq!(function.dfg.entry_block(), block0);
         assert_eq!(domtree.idom(block0), None);

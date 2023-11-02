@@ -188,14 +188,14 @@ impl PartialEq for Module {
         let is_eq = self.name == other.name
             && self.is_kernel == other.is_kernel
             && self.docs == other.docs
-            && self.segments().eq(other.segments())
+            && self.segments.iter().eq(other.segments.iter())
             && self.globals.len() == other.globals.len()
             && self.functions.iter().count() == other.functions.iter().count();
         if !is_eq {
             return false;
         }
 
-        for global in self.globals() {
+        for global in self.globals.iter() {
             let id = global.id();
             if !other.globals.contains_key(id) {
                 return false;
@@ -286,15 +286,9 @@ impl Module {
         !self.link.is_linked()
     }
 
-    /// Return an iterator over the data segments allocated in this module
-    ///
-    /// The iterator is double-ended, so can be used to traverse the segments in either direction.
-    ///
-    /// Data segments are ordered by the address at which are are allocated, in ascending order.
-    pub fn segments<'a, 'b: 'a>(
-        &'b self,
-    ) -> intrusive_collections::linked_list::Iter<'a, DataSegmentAdapter> {
-        self.segments.iter()
+    /// Return the table of data segments for this module
+    pub fn segments(&self) -> &DataSegmentTable {
+        &self.segments
     }
 
     /// Declare a new [DataSegment] in this module, with the given offset, size, and data.
@@ -315,13 +309,9 @@ impl Module {
         self.segments.declare(offset, size, init, readonly)
     }
 
-    /// Return an iterator over the global variables declared in this module
-    ///
-    /// The iterator is double-ended, so can be used to traverse the globals table in either direction
-    pub fn globals<'a, 'b: 'a>(
-        &'b self,
-    ) -> intrusive_collections::linked_list::Iter<'a, GlobalVariableAdapter> {
-        self.globals.iter()
+    /// Return the table of global variables for this module
+    pub fn globals(&self) -> &GlobalVariableTable {
+        &self.globals
     }
 
     /// Declare a new [GlobalVariable] in this module, with the given name, type, linkage, and optional initializer.
@@ -467,6 +457,11 @@ impl Module {
         }
 
         Ok(())
+    }
+
+    /// Remove the first function in the module, and return it, if present
+    pub fn pop_front(&mut self) -> Option<Box<Function>> {
+        self.functions.pop_front()
     }
 
     /// Returns a mutable cursor to the module body, starting at the first function.

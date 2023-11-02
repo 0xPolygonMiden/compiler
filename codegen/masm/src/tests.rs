@@ -1,11 +1,12 @@
 use miden_hir::{
     self,
-    pass::AnalysisManager,
+    pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
     AbiParam, Felt, FieldElement, Immediate, InstBuilder, OperandStack, ProgramBuilder, Signature,
     SourceSpan, Stack, StarkField, Type,
 };
 use std::fmt::Write;
+use std::sync::Arc;
 
 use super::*;
 
@@ -51,7 +52,7 @@ impl TestByEmulationHarness {
         function: &mut hir::Function,
     ) -> CompilerResult<Box<Function>> {
         use miden_hir::{
-            pass::{Analysis, ConversionPass, RewritePass},
+            pass::{Analysis, RewritePass},
             ProgramAnalysisKey,
         };
         use miden_hir_analysis as analysis;
@@ -61,7 +62,7 @@ impl TestByEmulationHarness {
         let mut analyses = AnalysisManager::new();
 
         // Register program-wide analyses
-        let global_analysis = analysis::GlobalVariableAnalysis::analyze(
+        let global_analysis = analysis::GlobalVariableAnalysis::<hir::Program>::analyze(
             program,
             &mut analyses,
             &self.context.session,
@@ -77,8 +78,8 @@ impl TestByEmulationHarness {
         println!("{}", function);
 
         // Run stackification
-        let mut stackify = Stackify;
-        stackify
+        let mut convert_to_masm = ConvertHirToMasm::<&hir::Function>::default();
+        convert_to_masm
             .convert(function, &mut analyses, &self.context.session)
             .map(Box::new)
             .map_err(CompilerError::Conversion)
@@ -133,7 +134,7 @@ impl TestByEmulationHarness {
     #[allow(unused)]
     pub fn execute(
         &mut self,
-        program: Box<Program>,
+        program: Arc<Program>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         let entrypoint = program.entrypoint.expect("cannot execute a library");
@@ -145,7 +146,7 @@ impl TestByEmulationHarness {
 
     pub fn execute_module(
         &mut self,
-        module: Module,
+        module: Arc<Module>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         let entrypoint = module.entry.expect("cannot execute a library");
@@ -198,14 +199,14 @@ fn fib_emulator() {
 
     println!("{}", output.as_str());
 
-    let mut module = Module::new(id.module);
-    module.functions.push_back(masm);
+    let mut module = Box::new(Module::new(id.module));
+    module.push_back(masm);
     module.entry = Some(id);
 
     // Test it via the emulator
     let n = Felt::new(10);
     let mut stack = harness
-        .execute_module(module, &[n])
+        .execute_module(module.freeze(), &[n])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(55));
@@ -280,15 +281,15 @@ fn stackify_fundamental_if() {
         .stackify(&program, &mut function)
         .expect("stackification failed");
 
-    let mut module = Module::new(id.module);
-    module.functions.push_back(masm);
+    let mut module = Box::new(Module::new(id.module));
+    module.push_back(masm);
     module.entry = Some(id);
 
     let a = Felt::new(3);
     let b = Felt::new(4);
 
     let mut stack = harness
-        .execute_module(module, &[a, b])
+        .execute_module(module.freeze(), &[a, b])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(12));
@@ -383,15 +384,15 @@ fn stackify_fundamental_loops() {
 
     println!("{}", output.as_str());
 
-    let mut module = Module::new(id.module);
-    module.functions.push_back(masm);
+    let mut module = Box::new(Module::new(id.module));
+    module.push_back(masm);
     module.entry = Some(id);
 
     let a = Felt::new(3);
     let n = Felt::new(4);
 
     let mut stack = harness
-        .execute_module(module, &[a, n])
+        .execute_module(module.freeze(), &[a, n])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
@@ -402,9 +403,10 @@ fn stackify_fundamental_loops() {
 fn stackify_sum_matrix() {
     let mut harness = TestByEmulationHarness::default();
 
+    let mem_intrinsics = Box::new(Module::mem_intrinsics()).freeze();
     harness
         .emulator
-        .load_module(Module::mem_intrinsics())
+        .load_module(mem_intrinsics)
         .expect("failed to load intrinsics::mem");
 
     // Build a simple program
@@ -439,8 +441,8 @@ fn stackify_sum_matrix() {
         .stackify(&program, &mut function)
         .expect("stackification failed");
 
-    let mut module = Module::new(id.module);
-    module.functions.push_back(masm);
+    let mut module = Box::new(Module::new(id.module));
+    module.push_back(masm);
     module.entry = Some(id);
 
     let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
@@ -465,7 +467,7 @@ fn stackify_sum_matrix() {
     harness.set_cycle_budget(1000);
 
     let mut stack = harness
-        .execute_module(module, &[ptr, rows, cols])
+        .execute_module(module.freeze(), &[ptr, rows, cols])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(6));

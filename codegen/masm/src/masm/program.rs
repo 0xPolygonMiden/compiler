@@ -1,5 +1,6 @@
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::Path, sync::Arc};
 
+use intrusive_collections::RBTree;
 use miden_hir::{self as hir, DataSegmentTable, FunctionIdent, Ident};
 
 use super::*;
@@ -10,16 +11,83 @@ use super::*;
 #[derive(Default)]
 pub struct Program {
     /// The set of modules which belong to this program
-    pub modules: Vec<Module>,
+    modules: Modules,
     /// The function identifier for the program entrypoint, if this is an executable module
     pub entrypoint: Option<FunctionIdent>,
     /// The data segment table for this program
     pub segments: DataSegmentTable,
 }
+
+enum Modules {
+    Open(RBTree<ModuleTreeAdapter>),
+    Frozen(RBTree<FrozenModuleTreeAdapter>),
+}
+impl Default for Modules {
+    fn default() -> Self {
+        Self::Open(Default::default())
+    }
+}
+impl Modules {
+    pub fn iter(&self) -> ModulesIter<'_> {
+        match self {
+            Self::Open(ref tree) => ModulesIter::Open(tree.iter()),
+            Self::Frozen(ref tree) => ModulesIter::Frozen(tree.iter()),
+        }
+    }
+
+    pub fn insert(&mut self, module: Box<Module>) {
+        match self {
+            Self::Open(ref mut tree) => {
+                tree.insert(module);
+            }
+            Self::Frozen(_) => panic!("cannot insert module into frozen program"),
+        }
+    }
+
+    fn freeze(&mut self) {
+        if let Self::Open(ref mut modules) = self {
+            let mut frozen = RBTree::<FrozenModuleTreeAdapter>::default();
+
+            let mut open = modules.front_mut();
+            while let Some(module) = open.remove() {
+                frozen.insert(module.freeze());
+            }
+
+            *self = Self::Frozen(frozen);
+        }
+    }
+}
+
 impl Program {
     /// Create a new, empty [Program]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Freezes this program, preventing further modifications
+    pub fn freeze(mut self: Box<Self>) -> Arc<Program> {
+        self.modules.freeze();
+        Arc::from(self)
+    }
+
+    /// Get an iterator over the modules in this program
+    pub fn modules(&self) -> impl Iterator<Item = &Module> + '_ {
+        self.modules.iter()
+    }
+
+    /// Access the frozen module tree of this program, and panic if not frozen
+    pub fn unwrap_frozen_modules(&self) -> &RBTree<FrozenModuleTreeAdapter> {
+        match self.modules {
+            Modules::Frozen(ref modules) => modules,
+            Modules::Open(_) => panic!("expected program to be frozen"),
+        }
+    }
+
+    /// Insert a module into this program
+    ///
+    /// NOTE: This function will panic if the program has been frozen
+    pub fn insert(&mut self, module: Box<Module>) {
+        self.modules.insert(module);
     }
 
     pub fn is_executable(&self) -> bool {
@@ -95,11 +163,24 @@ impl From<&hir::Program> for Program {
         let entrypoint = program.entrypoint();
         let segments = program.segments().clone();
         Self {
-            modules: vec![],
+            modules: Default::default(),
             entrypoint,
             segments,
         }
     }
 }
 
-impl Program {}
+enum ModulesIter<'a> {
+    Open(intrusive_collections::rbtree::Iter<'a, ModuleTreeAdapter>),
+    Frozen(intrusive_collections::rbtree::Iter<'a, FrozenModuleTreeAdapter>),
+}
+impl<'a> Iterator for ModulesIter<'a> {
+    type Item = &'a Module;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Open(ref mut iter) => iter.next(),
+            Self::Frozen(ref mut iter) => iter.next(),
+        }
+    }
+}

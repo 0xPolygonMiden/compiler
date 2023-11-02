@@ -13,7 +13,7 @@ pub trait Emit {
     fn output_type(&self) -> OutputType;
     /// Write this item to standard output
     fn write_to_stdout(&self) -> std::io::Result<()> {
-        let stdout = std::io::stdout();
+        let stdout = std::io::stdout().lock();
         self.write_to(stdout)
     }
     /// Write this item to the given file path
@@ -26,4 +26,27 @@ pub trait Emit {
     }
     /// Write this item to the given [std::io::Write] handle
     fn write_to<W: Write>(&self, writer: W) -> std::io::Result<()>;
+}
+
+impl<T: Emit> Emit for Box<T> {
+    #[inline]
+    fn name(&self) -> Option<Symbol> {
+        (**self).name()
+    }
+    #[inline]
+    fn output_type(&self) -> OutputType {
+        (**self).output_type()
+    }
+    #[inline]
+    fn write_to_stdout(&self) -> std::io::Result<()> {
+        (**self).write_to_stdout()
+    }
+    #[inline]
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
+        (**self).write_to_file(path)
+    }
+    #[inline]
+    fn write_to<W: Write>(&self, writer: W) -> std::io::Result<()> {
+        (**self).write_to(writer)
+    }
 }

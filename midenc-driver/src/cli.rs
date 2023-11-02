@@ -3,12 +3,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::{ColorChoice, Parser, Subcommand};
-use miden_diagnostics::{CodeMap, Emitter};
+use miden_diagnostics::Emitter;
 use miden_hir::FunctionIdent;
-use midenc_session::{Options, OutputType, OutputTypes};
+use midenc_session::{
+    InputFile, Options, OutputFile, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session,
+    TargetEnv, Warnings,
+};
 
 use crate::commands::{self, Breakpoint};
-use crate::{DriverError, Operand, VerbosityFlag, Warnings};
+use crate::{DriverError, Operand, VerbosityFlag};
 
 /// This struct provides the command-line interface used by `midenc`
 #[derive(Debug, Parser)]
@@ -16,7 +19,16 @@ use crate::{DriverError, Operand, VerbosityFlag, Warnings};
 #[command(author, version, about = "A compiler for Miden Assembly", long_about = None)]
 pub struct Midenc {
     /// Specify what type and level of informational output to emit
-    #[arg(global(true), value_enum, value_name = "LEVEL", short = 'v', next_line_help(true), default_value_t = VerbosityFlag::Info, default_missing_value = "debug")]
+    #[arg(
+        global(true),
+        value_enum,
+        value_name = "LEVEL",
+        short = 'v',
+        next_line_help(true),
+        default_value_t = VerbosityFlag::Info,
+        default_missing_value = "debug",
+        display_order(0),
+    )]
     verbosity: VerbosityFlag,
     /// Specify how warnings should be treated by the compiler.
     #[arg(
@@ -26,6 +38,7 @@ pub struct Midenc {
         short = 'W',
         next_line_help(true),
         default_value_t = Warnings::All,
+        display_order(1),
     )]
     warn: Warnings,
     /// Whether, and how, to color terminal output
@@ -35,6 +48,7 @@ pub struct Midenc {
     ///
     /// Defaults to a directory named `target` in the current working directory
     #[arg(
+        hide(true),
         global(true),
         value_name = "DIR",
         long = "target-dir",
@@ -63,11 +77,12 @@ impl Midenc {
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
     {
+        use miden_hir::RewritePassRegistration;
         use midenc_session::CompileFlag;
 
         let command = <Self as clap::CommandFactory>::command();
         let command = command.mut_subcommand("compile", |cmd| {
-            inventory::iter::<CompileFlag>
+            let cmd = inventory::iter::<CompileFlag>
                 .into_iter()
                 .fold(cmd, |cmd, flag| {
                     let arg = clap::Arg::new(flag.name)
@@ -75,6 +90,11 @@ impl Midenc {
                         .action(clap::ArgAction::from(flag.action));
                     let arg = if let Some(help) = flag.help {
                         arg.help(help)
+                    } else {
+                        arg
+                    };
+                    let arg = if let Some(help_heading) = flag.help_heading {
+                        arg.help_heading(help_heading)
                     } else {
                         arg
                     };
@@ -99,14 +119,30 @@ impl Midenc {
                         arg
                     };
                     cmd.arg(arg)
+                });
+
+            inventory::iter::<RewritePassRegistration<miden_hir::Module>>
+                .into_iter()
+                .fold(cmd, |cmd, rewrite| {
+                    let name = rewrite.name();
+                    let arg = clap::Arg::new(name)
+                        .long(name)
+                        .action(clap::ArgAction::SetTrue)
+                        .help(rewrite.summary())
+                        .help_heading("Transformations");
+                    cmd.arg(arg)
                 })
         });
 
         let mut matches = command.try_get_matches_from(args)?;
+        let compile_matches = matches
+            .subcommand_matches("compile")
+            .cloned()
+            .unwrap_or_default();
         let cli = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<Self>)?;
 
-        cli.invoke(cwd.into(), emitter, matches)
+        cli.invoke(cwd.into(), emitter, compile_matches)
     }
 
     fn invoke(
@@ -123,16 +159,26 @@ impl Midenc {
             ColorChoice::Never => MDColorChoice::Never,
         };
 
+        let tmp_dir = self.target_dir.unwrap_or_else(|| std::env::temp_dir());
+
         match self.command {
             Commands::Compile {
+                target,
+                is_program,
+                is_library: _,
                 input,
                 output_file,
+                stdout,
                 output_dir,
                 output_types,
-                passes,
                 print_ir_after_all,
                 print_ir_after_pass,
             } => {
+                let project_type = if is_program {
+                    ProjectType::Program
+                } else {
+                    ProjectType::Library
+                };
                 let mut output_types = OutputTypes::new(output_types);
                 if output_types.is_empty() {
                     output_types.insert(OutputType::Masl, None);
@@ -142,21 +188,26 @@ impl Midenc {
                     .with_verbosity(self.verbosity.into())
                     .with_warnings(self.warn)
                     .with_output_types(output_types);
-                options.passes = passes;
                 options.print_ir_after_all = print_ir_after_all;
                 options.print_ir_after_pass = print_ir_after_pass;
 
+                let output_file = match output_file {
+                    Some(path) => Some(OutputFile::Real(path)),
+                    None if stdout => Some(OutputFile::Stdout),
+                    None => None,
+                };
+
                 let session = Session::new(
-                    project_type,
                     target,
                     input,
                     output_dir,
                     output_file,
-                    tmp_dir,
+                    Some(tmp_dir),
                     options,
                     emitter,
                 )
-                .with_arg_matches(matches);
+                .with_arg_matches(matches)
+                .with_project_type(project_type);
 
                 commands::compile(Arc::new(session))
             }
@@ -173,33 +224,77 @@ fn format_error<I: clap::CommandFactory>(err: clap::Error) -> clap::Error {
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Invoke the compiler frontend using the provided set of inputs
+    #[command(next_display_order(10))]
     Compile {
+        /// The target environment to compile for
+        #[arg(long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base, display_order(2))]
+        target: TargetEnv,
+        /// Tells the compiler to produce an executable Miden program
+        ///
+        /// When the target is `base` or `rollup`, this defaults to true
+        #[arg(
+            long = "exe",
+            default_value_t = true,
+            default_value_if("target", "emu", Some("false")),
+            display_order(3)
+        )]
+        is_program: bool,
+        /// Tells the compiler to produce a Miden library
+        ///
+        /// When the target is `emu`, this defaults to true
+        #[arg(
+            long = "lib",
+            conflicts_with("is_program"),
+            default_value_t = false,
+            default_value_if("target", "emu", Some("true")),
+            display_order(4)
+        )]
+        is_library: bool,
         /// The input file to compile
         ///
         /// You may specify `-` to read from stdin, otherwise you must provide a path
         #[arg(required(true), value_name = "FILE")]
         input: InputFile,
-        /// Write output to `<filename>`
-        #[arg(short = 'o', value_name = "FILENAME")]
-        output_file: Option<OutputFile>,
         /// Write output to compiler-chosen filename in `<dir>`
-        #[arg(long = "output-dir", value_name = "DIR", env = "MIDENC_OUT_DIR")]
+        #[arg(
+            long = "output-dir",
+            value_name = "DIR",
+            env = "MIDENC_OUT_DIR",
+            display_order(5)
+        )]
         output_dir: Option<PathBuf>,
+        /// Write output to `<filename>`
+        #[arg(
+            short = 'o',
+            value_name = "FILENAME",
+            id = "output-file",
+            display_order(6)
+        )]
+        output_file: Option<PathBuf>,
+        /// Write output to stdout
+        #[arg(long = "stdout", conflicts_with("output-file"), display_order(7))]
+        stdout: bool,
         /// Specify one or more output types for the compiler to emit
-        #[arg(long = "emit", value_name = "SPEC", value_delimiter = ',')]
+        #[arg(
+            long = "emit",
+            value_name = "SPEC",
+            value_delimiter = ',',
+            display_order(8)
+        )]
         output_types: Vec<OutputTypeSpec>,
-        /// Specify which IR passes to run
-        ///
-        /// Example: `--passes split-critical-edges,treeify`
-        ///
-        /// The above will apply those passes, in that order, and then exit.
-        #[arg(long = "passes", value_name = "PASSES", value_delimiter = ',')]
-        passes: Option<Vec<String>>,
         /// Print the IR after each pass is applied
-        #[arg(long = "print-ir-after-all", default_value_t = false)]
+        #[arg(
+            long = "print-ir-after-all",
+            default_value_t = false,
+            help_heading = "Passes"
+        )]
         print_ir_after_all: bool,
         /// Print the IR after running a specific pass
-        #[arg(long = "print-ir-after-pass", value_name = "PASS")]
+        #[arg(
+            long = "print-ir-after-pass",
+            value_name = "PASS",
+            help_heading = "Passes"
+        )]
         print_ir_after_pass: Option<String>,
     },
     /// Start an interactive debugging session by compiling the given program to
@@ -211,6 +306,7 @@ enum Commands {
     /// with breakpoints and the ability to step through code and inspect the state
     /// of the operand stack and linear memory, as well as dump values on the stack
     /// to a desired representation. Think of this like `lldb` for Miden Assembly.
+    #[command(next_display_order(10))]
     Debug {
         /// Specify the fully-qualified name of the function to invoke as the program entrypoint
         ///
@@ -240,6 +336,7 @@ enum Commands {
     /// The emulator is more restrictive, but is faster than the Miden VM, and
     /// provides a wider array of debugging and introspection features when troubleshooting
     /// programs compiled by `midenc`.
+    #[command(next_display_order(10))]
     Exec {
         /// Specify the fully-qualified name of the function to invoke as the program entrypoint
         ///
@@ -266,7 +363,11 @@ enum Commands {
     /// The program will be compiled to Miden Assembly and then run with the Miden VM.
     ///
     /// The inputs given must constitute a valid executable program.
+    #[command(next_display_order(10))]
     Run {
+        /// The target environment to compile for
+        #[arg(hide(true), long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base)]
+        target: TargetEnv,
         /// Specify the fully-qualified name of the function to invoke as the program entrypoint
         ///
         /// For example, `foo::bar`

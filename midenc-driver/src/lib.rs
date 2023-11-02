@@ -5,18 +5,18 @@ mod options;
 pub use self::cli::Midenc;
 pub use self::options::*;
 
+/// A convenience alias for `Result<T, DriverError>`
+pub type DriverResult<T> = Result<T, DriverError>;
+
 /// This error type is produced by the `midenc` driver
 #[derive(Debug, thiserror::Error)]
 pub enum DriverError {
     /// An error was raised due to invalid command-line arguments or argument validation
     #[error(transparent)]
     Clap(#[from] clap::Error),
-    /// An invalid compiler option was given
-    #[error(transparent)]
-    InvalidOption(midenc_session::InvalidOptionError),
-    /// Occurs if no inputs are given to the compiler
-    #[error("expected at least one input to compile")]
-    NoInputs,
+    /// The compilation pipeline was stopped early
+    #[error("compilation was canceled by user")]
+    Stopped,
     /// An invalid input was given to the compiler
     #[error(transparent)]
     InvalidInput(#[from] midenc_session::InvalidInputError),
@@ -25,7 +25,19 @@ pub enum DriverError {
     WasmError(#[from] miden_frontend_wasm::WasmError),
     /// An error occurred while parsing an HIR module
     #[error(transparent)]
-    ParseHirError(#[from] miden_hir::parser::ParseError),
+    Parsing(#[from] miden_hir::parser::ParseError),
+    /// An error occurred while running an analysis
+    #[error(transparent)]
+    Analysis(#[from] miden_hir::pass::AnalysisError),
+    /// An error occurred while rewriting an IR entity
+    #[error(transparent)]
+    Rewriting(#[from] miden_hir::pass::RewriteError),
+    /// An error occurred while converting from one dialect to another
+    #[error(transparent)]
+    Conversion(#[from] miden_hir::pass::ConversionError),
+    /// An error occurred while linking a program
+    #[error(transparent)]
+    Linker(#[from] miden_hir::LinkerError),
     /// An error ocurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -33,12 +45,9 @@ pub enum DriverError {
     #[error(transparent)]
     Failed(#[from] anyhow::Error),
 }
-impl From<midenc_session::InvalidOptionError> for DriverError {
-    fn from(err: midenc_session::InvalidOptionError) -> Self {
-        use midenc_session::InvalidOptionError;
-        match err {
-            InvalidOptionError::InvalidInput(err) => Self::InvalidInput(err),
-        }
+impl From<miden_hir::ModuleConflictError> for DriverError {
+    fn from(err: miden_hir::ModuleConflictError) -> DriverError {
+        Self::Linker(miden_hir::LinkerError::ModuleConflict(err.0))
     }
 }
 
@@ -48,5 +57,8 @@ where
     P: Into<std::path::PathBuf>,
     A: IntoIterator<Item = std::ffi::OsString>,
 {
-    Midenc::run(cwd, args)
+    match Midenc::run(cwd, args) {
+        Err(DriverError::Stopped) => Ok(()),
+        result => result,
+    }
 }

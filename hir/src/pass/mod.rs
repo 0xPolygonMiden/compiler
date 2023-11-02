@@ -34,56 +34,27 @@ pub use self::rewrite::*;
 
 use midenc_session::Session;
 
+/// This trait provides descriptive information about a pass
+///
+/// This is primarily intended to assist in registering passes with the pass manager
 pub trait PassInfo {
+    /// The string which should be used as the name of this pass on the command line.
+    ///
+    /// For example, for the InlineBlocks pass, this is set to `inline-blocks`.
+    ///
+    /// You can add `#[derive(PassInfo)]` to a pass type, and this will be derived from
+    /// the name of the type, and converted to kebab-case, e.g. `inline-blocks`.
     const FLAG: &'static str;
-    const HELP: &'static str;
-}
-
-pub struct ModuleRewritePassAdapter<R>(R);
-impl<R: PassInfo> PassInfo for ModuleRewritePassAdapter<R> {
-    const FLAG: &'static str = <R as PassInfo>::FLAG;
-    const HELP: &'static str = <R as PassInfo>::HELP;
-}
-impl<R> RewritePass for ModuleRewritePassAdapter<R>
-where
-    R: RewritePass<Entity = crate::Function>,
-{
-    type Entity = crate::Module;
-
-    fn apply(
-        &mut self,
-        module: &mut Self::Entity,
-        analyses: &mut AnalysisManager,
-        session: &Session,
-    ) -> RewriteResult {
-        // Removing a function via this cursor will move the cursor to
-        // the next function in the module. Once the end of the module
-        // is reached, the cursor will point to the null object, and
-        // `remove` will return `None`.
-        let mut cursor = module.cursor_mut();
-        let mut dirty = false;
-        while let Some(mut function) = cursor.remove() {
-            // Apply rewrite
-            if self.0.should_apply(&function, session) {
-                dirty = true;
-                self.0.apply(&mut function, analyses, session)?;
-            } else {
-                analyses.mark_all_preserved::<crate::Function>(&function.id);
-            }
-            // Add the function back to the module
-            //
-            // We add it before the current position of the cursor
-            // to ensure that we don't interfere with our traversal
-            // of the module top to bottom
-            cursor.insert_before(function);
-        }
-
-        if !dirty {
-            analyses.mark_all_preserved::<crate::Module>(&module.name);
-        }
-
-        Ok(())
-    }
+    /// A short, single-line description of what this pass does.
+    ///
+    /// You can add `#[derive(PassInfo)]` to a pass type, and this will be derived from
+    /// the first line of the documentation attached to the type.
+    const SUMMARY: &'static str;
+    /// A rich, potentially multi-line description of this pass and its configuration.
+    ///
+    /// You can add `#[derive(PassInfo)]` to a pass type, and this will be derived from
+    /// the documentation attached to the type.
+    const DESCRIPTION: &'static str;
 }
 
 /// The [Pass] trait represents a fallible operation which takes an input of any type, and produces an
@@ -225,15 +196,15 @@ where
 }
 impl<A, B> ConversionPass for Chain<A, B>
 where
-    A: for<'a> ConversionPass,
-    B: for<'a> ConversionPass<From<'a> = <A as ConversionPass>::To>,
+    A: ConversionPass,
+    B: ConversionPass<From = <A as ConversionPass>::To>,
 {
-    type From<'a> = <A as ConversionPass>::From<'a>;
+    type From = <A as ConversionPass>::From;
     type To = <B as ConversionPass>::To;
 
     fn convert<'a>(
         &mut self,
-        entity: Self::From<'a>,
+        entity: Self::From,
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {

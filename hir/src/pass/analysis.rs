@@ -244,11 +244,19 @@ pub struct AnalysisManager {
     /// The set of entity keys that have had `preserve_all` set
     preserve_all: FxHashSet<u64>,
 }
-
 impl AnalysisManager {
     /// Get a new, empty [AnalysisManager].
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Check if the given analysis has been computed and is in the cache
+    pub fn is_available<A>(&self, key: &<<A as Analysis>::Entity as AnalysisKey>::Key) -> bool
+    where
+        A: Analysis,
+    {
+        let key = CachedAnalysisKey::new::<A>(key);
+        self.cached.contains_key(&key)
     }
 
     /// Get a reference to the analysis of the requested type, for the given entity, if available

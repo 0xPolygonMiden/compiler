@@ -1,47 +1,6 @@
-use std::any::Any;
-use std::sync::Arc;
-
 use midenc_session::Session;
 
 use super::{AnalysisError, AnalysisManager, Chain, PassInfo};
-
-/// A [Dialect] refers to a specific intermediate representation in the compiler,
-/// typically suited for some specific purpose. These dialects are named, and have
-/// one or more passes which are applied to operations in that dialect.
-pub trait Dialect {
-    /// The name used to refer to this dialect, e.g. "hir"
-    fn name(&self) -> &'static str;
-
-    /// The file type extension used by this dialect when stored on disk
-    fn extension(&self) -> &'static str;
-}
-
-/// A trait applied to all operations of a [Dialect] providing a means by which
-/// to express passes which abstract over operations.
-pub trait Op: Sized + Any {
-    fn dialect(&self) -> Arc<dyn Dialect>;
-    /// Returns true if this operation is of concrete type `T`
-    fn is<T>(&self) -> bool
-    where
-        T: Op,
-    {
-        (self as &dyn Any).is::<T>()
-    }
-    /// Returns true if this operation is of concrete type `T`
-    fn downcast_ref<T>(&self) -> Option<&T>
-    where
-        T: Op,
-    {
-        (self as &dyn Any).downcast_ref::<T>()
-    }
-    /// Returns true if this operation is of concrete type `T`
-    fn downcast_mut<T>(&mut self) -> Option<&mut T>
-    where
-        T: Op,
-    {
-        (self as &mut dyn Any).downcast_mut::<T>()
-    }
-}
 
 /// This error is produced when a [ConversionPass] fails
 #[derive(Debug, thiserror::Error)]
@@ -72,13 +31,13 @@ impl<P> ConversionPassInfo for P where P: PassInfo + ConversionPass {}
 /// as delineating compilation phases (e.g. parsing, semantic analysis, elaboration, optimization,
 /// etc.).
 pub trait ConversionPass {
-    type From<'a>;
+    type From;
     type To;
 
     /// Apply this conversion to `entity`
-    fn convert<'a>(
+    fn convert(
         &mut self,
-        entity: Self::From<'a>,
+        entity: Self::From,
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To>;
@@ -87,24 +46,78 @@ pub trait ConversionPass {
     fn chain<P>(self, next: P) -> Chain<Self, P>
     where
         Self: Sized,
-        P: for<'a> ConversionPass<From<'a> = Self::To>,
+        P: ConversionPass<From = Self::To>,
     {
         Chain::new(self, next)
     }
 }
 impl<P, T, U> ConversionPass for Box<P>
 where
-    P: ?Sized + for<'a> ConversionPass<From<'a> = T, To = U>,
+    P: ?Sized + ConversionPass<From = T, To = U>,
 {
-    type From<'a> = T;
+    type From = T;
     type To = U;
 
-    fn convert<'a>(
+    fn convert(
         &mut self,
-        entity: Self::From<'a>,
+        entity: Self::From,
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
         (**self).convert(entity, analyses, session)
     }
+}
+
+type ConversionPassCtor<T, U> = fn() -> Box<dyn ConversionPass<From = T, To = U>>;
+
+#[doc(hidden)]
+pub struct ConversionPassRegistration<T, U> {
+    pub name: &'static str,
+    pub summary: &'static str,
+    pub description: &'static str,
+    ctor: ConversionPassCtor<T, U>,
+}
+impl<T, U> ConversionPassRegistration<T, U> {
+    pub const fn new<P>() -> Self
+    where
+        P: ConversionPass<From = T, To = U> + PassInfo + Default + 'static,
+    {
+        Self {
+            name: <P as PassInfo>::FLAG,
+            summary: <P as PassInfo>::SUMMARY,
+            description: <P as PassInfo>::DESCRIPTION,
+            ctor: dyn_conversion_pass_ctor::<P, T, U>,
+        }
+    }
+
+    /// Get the name of the registered pass
+    #[inline]
+    pub const fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Get a summary of the registered pass
+    #[inline]
+    pub const fn summary(&self) -> &'static str {
+        self.summary
+    }
+
+    /// Get a rich description of the registered pass
+    #[inline]
+    pub const fn description(&self) -> &'static str {
+        self.description
+    }
+
+    /// Get an instance of the registered pass
+    #[inline]
+    pub fn get(&self) -> Box<dyn ConversionPass<From = T, To = U>> {
+        (self.ctor)()
+    }
+}
+
+fn dyn_conversion_pass_ctor<P, T, U>() -> Box<dyn ConversionPass<From = T, To = U>>
+where
+    P: Default + ConversionPass<From = T, To = U> + 'static,
+{
+    Box::new(P::default())
 }

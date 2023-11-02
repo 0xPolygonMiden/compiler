@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use miden_hir::pass::{AnalysisManager, PassInfo, RewritePass, RewriteResult};
+use miden_hir::pass::{AnalysisManager, RewritePass, RewriteResult};
 use miden_hir::{self as hir, Block as BlockId, Value as ValueId, *};
 use miden_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, LoopAnalysis};
 use midenc_session::Session;
@@ -9,8 +9,11 @@ use rustc_hash::FxHashSet;
 
 use crate::adt::ScopedMap;
 
-/// This pass takes as input the SSA form of a function, and ensures that the CFG of
-/// that function is a tree, not a DAG, excepting loop headers.
+/// This pass rewrites the CFG of a function so that it forms a tree.
+///
+/// While we technically call this treeification, loop headers are preserved, so
+/// there are still nodes in the CFG with multiple predecessors, but _only_ those
+/// blocks which are loop headers are permitted to be unaltered.
 ///
 /// This transformation splits vertices with multiple predecessors, by duplicating the
 /// subtree of the program rooted at those vertices. As mentioned above, we do not split
@@ -254,11 +257,8 @@ use crate::adt::ScopedMap;
 /// end
 /// ```
 ///
-#[derive(PassInfo)]
+#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
 pub struct Treeify;
-
-//register_function_rewrite!("treeify", Treeify);
-
 impl RewritePass for Treeify {
     type Entity = hir::Function;
 

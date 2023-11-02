@@ -24,6 +24,7 @@ miden-codegen-masm.workspace = true
 miden-diagnostics.workspace = true
 miden-frontend-wasm.workspace = true
 miden-hir.workspace = true
+miden-hir-transform.workspace = true
 midenc-session.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true

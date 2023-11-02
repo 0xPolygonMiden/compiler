@@ -1,7 +1,7 @@
 use inflector::cases::kebabcase::to_kebab_case;
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, DeriveInput, Ident};
+use syn::{parse_macro_input, DeriveInput, Ident, Token};
 
 #[proc_macro_derive(PassInfo)]
 pub fn derive_pass_info(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -14,13 +14,13 @@ pub fn derive_pass_info(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
     let pass_name = to_kebab_case(&name);
     let pass_name_lit = syn::Lit::Str(syn::LitStr::new(&pass_name, id.span()));
 
-    let docs_ident = syn::Ident::new("docs", derive_span);
+    let doc_ident = syn::Ident::new("doc", derive_span);
     let docs = derive_input
         .attrs
         .iter()
         .filter_map(|attr| match attr.meta {
             syn::Meta::NameValue(ref nv) => {
-                if nv.path.get_ident()? == &docs_ident {
+                if nv.path.get_ident()? == &doc_ident {
                     match nv.value {
                         syn::Expr::Lit(syn::ExprLit {
                             lit: syn::Lit::Str(ref lit),
@@ -34,13 +34,19 @@ pub fn derive_pass_info(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
             }
             syn::Meta::Path(_) | syn::Meta::List(_) => None,
         })
-        .collect::<String>();
-    let pass_help = syn::Lit::Str(syn::LitStr::new(&docs, derive_span));
+        .collect::<Vec<_>>();
+    let pass_summary = match docs.first() {
+        Some(line) => syn::Lit::Str(syn::LitStr::new(line, derive_span)),
+        None => syn::Lit::Str(syn::LitStr::new("", derive_span)),
+    };
+    let description = docs.into_iter().collect::<String>();
+    let pass_description = syn::Lit::Str(syn::LitStr::new(&description, derive_span));
 
     let quoted = quote! {
         impl #impl_generics PassInfo for #id #ty_generics #where_clause {
             const FLAG: &'static str = #pass_name_lit;
-            const HELP: &'static str = #pass_help;
+            const SUMMARY: &'static str = #pass_summary;
+            const DESCRIPTION: &'static str = #pass_description;
         }
     };
 
@@ -135,19 +141,89 @@ pub fn derive_analysis_key(item: proc_macro::TokenStream) -> proc_macro::TokenSt
 #[proc_macro_derive(RewritePassRegistration)]
 pub fn derive_rewrite_pass_registration(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let derive_input = parse_macro_input!(item as DeriveInput);
-    let derive_span = derive_input.span();
     let id = derive_input.ident.clone();
-    let ctor_name = syn::Ident::new(&format!("__{id}_rewrite_pass_ctor"), derive_span);
 
     let quoted = quote! {
-        inventory::submit!(RewritePassRegistration::new(
-            <#id as PassInfo>::FLAG,
-            <#id as PassInfo>::HELP,
-            #ctor_name,
-        ));
+        inventory::submit!(miden_hir::pass::RewritePassRegistration::new::<#id>());
+    };
 
-        fn #ctor_name() -> Box<dyn RewritePass<Entity = <#id as RewritePass>::Entity>> {
-            Box::new(#id::default())
+    proc_macro::TokenStream::from(quoted)
+}
+
+#[proc_macro_derive(ModuleRewritePassAdapter)]
+pub fn derive_module_rewrite_pass_adapter(
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let derive_input = parse_macro_input!(item as DeriveInput);
+    let id = derive_input.ident.clone();
+
+    let quoted = quote! {
+        inventory::submit!(miden_hir::pass::RewritePassRegistration::new::<miden_hir::pass::ModuleRewritePassAdapter::<#id>>());
+    };
+
+    proc_macro::TokenStream::from(quoted)
+}
+
+#[proc_macro_derive(ConversionPassRegistration)]
+pub fn derive_conversion_pass_registration(
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let derive_input = parse_macro_input!(item as DeriveInput);
+    let id = derive_input.ident.clone();
+    let generics = derive_input.generics;
+    let mut params = syn::punctuated::Punctuated::<_, Token![,]>::new();
+    for gp in generics.params.iter() {
+        match gp {
+            syn::GenericParam::Lifetime(ref lt) => {
+                if !lt.bounds.empty_or_trailing() {
+                    return syn::Error::new(
+                        gp.span(),
+                        "cannot derive ConversionPassRegistration on a type with lifetime bounds",
+                    )
+                    .into_compile_error()
+                    .into();
+                }
+                params.push(syn::GenericArgument::Lifetime(syn::Lifetime {
+                    apostrophe: lt.span(),
+                    ident: Ident::new("_", lt.span()),
+                }));
+            }
+            syn::GenericParam::Type(ref ty) => {
+                if !ty.bounds.empty_or_trailing() {
+                    return syn::Error::new(gp.span(), "cannot derive ConversionPassRegistration on a generic type with type bounds")
+                        .into_compile_error()
+                        .into();
+                }
+                let param_ty: syn::Type = syn::parse_quote_spanned! { ty.span() => () };
+                params.push(syn::GenericArgument::Type(param_ty));
+            }
+            syn::GenericParam::Const(_) => {
+                return syn::Error::new(gp.span(), "cannot derive ConversionPassRegistration on a generic type with const arguments")
+                    .into_compile_error()
+                    .into();
+            }
+        }
+    }
+
+    let quoted = if params.empty_or_trailing() {
+        quote! {
+            inventory::submit! {
+                midenc_session::CompileFlag::new(<#id as PassInfo>::FLAG)
+                    .long(<#id as PassInfo>::FLAG)
+                    .help(<#id as PassInfo>::SUMMARY)
+                    .help_heading("Conversions")
+                    .action(midenc_session::FlagAction::SetTrue)
+            }
+        }
+    } else {
+        quote! {
+            inventory::submit! {
+                midenc_session::CompileFlag::new(<#id<#params> as PassInfo>::FLAG)
+                    .long(<#id<#params> as PassInfo>::FLAG)
+                    .help(<#id<#params> as PassInfo>::SUMMARY)
+                    .help_heading("Conversions")
+                    .action(midenc_session::FlagAction::SetTrue)
+            }
         }
     };
 

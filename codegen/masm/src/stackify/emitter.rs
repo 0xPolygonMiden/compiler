@@ -1,14 +1,282 @@
+//! This pass transforms Miden IR to MASM IR, which is a representation of Miden
+//! Assembly we use a subset of in Miden IR already for inline assembly, but is
+//! extended in this crate with modules and functions.
+//!
+//! # Background
+//!
+//! MASM IR is a superset of the representation we use for inline assembly in Miden IR,
+//! extended with functions and modules so that we can represent the artifacts we produce
+//! during code generation. MASM IR is a stack machine representation, unlike Miden IR
+//! which is in SSA form, a type of register machine with infinite registers.
+//!
+//! ## Miden vs Other Stack VMs
+//!
+//! The machine represented by MASM IR (the Miden virtual machine), is not only a stack
+//! machine, but one with some unique constraints compared to your typical run-of-the-mill
+//! stack machine:
+//!
+//! * The control flow graph of the entire program must be a tree, not a directed (a)cylic graph.
+//! * Miden does provide facilities for cyclic control flow, in the form of very basic looping
+//! idioms: `while.true` and `repeat.N` (where `N` is a constant). Rather than representing these
+//! using back edges in a control flow graph, these instructions are self-contained nodes in a
+//! control flow tree, representing a sub-tree of the program that will be executed on each iteration
+//! of the loop.
+//! * As a result of the control flow graph constraints, recursion is not permitted. The call graph
+//! of the program must be topographically orderable.
+//! * In addition to the recursion constraint, indirect function calls are not supported either.
+//! All callees must be known statically. This may change with the introduction of the `PCALL`
+//! instruction, but for now this is a hard restriction.
+//!
+//! ## MAST
+//!
+//! These restrictions are primarily imposed due to the design tradeoffs made in Miden. In particular,
+//! Miden Assembly is not the form executed by the Miden VM, rather it is compiled to a MAST, or
+//! _Merkelized Abstract Syntax Tree_. A MAST provides both data integrity and compression. By relying
+//! on some of the properties of Merkle trees, they can be used to verify the integrity of the program
+//! to be executed. As you might imagine, this data structure is a tree, so programs represented in
+//! MAST form are themselves required to be trees. In a MAST, the root of the tree represents the full
+//! program, and each node in the tree represents a subprogram. Each path in the tree represents a possible
+//! execution path the program can take. More precisely, the root of the MAST is the hash of the whole
+//! program, and each child of the root node is either a leaf node, a hash of the subprogram that node
+//! represents, or a non-leaf node, which like the root, is a hash of its children.
+//!
+//! By using a MAST representation, it is possible to represent the execution of a program as a sequence
+//! of hashes which identify which node of the MAST is executed next. So the first hash identifies where
+//! execution begins, i.e. the root, the second hash identifies which child node of the root is executed
+//! next, and so on. This makes it possible to represent an execution trace of a program without shipping
+//! the entire program, only the hashes of the MAST nodes that were actually executed.
+//!
+//! So in short, while Miden Assembly (and MASM IR as a result) seem oddly designed, there is a rationale
+//! behind that design, and its tradeoffs are what have dictated some of the more awkward parts of the
+//! instruction set. There are some other considerations that affect things like why we have u32 instructions
+//! but no other "standard" integral types. We won't get into that here.
+//!
+//! One final note: you might wonder why Miden Assembly doesn't have a particular instruction. In most
+//! cases the fundamental limit is either due to running out of space in the opcode byte (we only have
+//! 8 bits to encode the opcode). There are a few other implementation details in the VM that I'm less
+//! familiar with that also constraint what instructions we can add (instructions typically require
+//! helper registers, and we have a very limited set of those as well).
+//!
+//! # Stackification
+//!
+//! We call the set of transformations applied by this pass _stackification_, which refers to one of the most
+//! important tasks it performs: converting the Miden IR instruction set, with its use of SSA values (which
+//! can be thought of as virtual registers) into the MASM instruction set, where equivalent semantics require
+//! us to maneuver values on the operand stack; put another way, we're "stackifying" registers.
+//!
+//! This pass has a couple prerequisites, which are implemented in transformation passes in [miden-hir-transform]:
+//!
+//! * The linker has been run on all modules that will be in the final [Program], and we have that on hand.
+//! * No cycles in the control flow graph (except loop headers). This is handled by the [Treeify] pass.
+//! * All blocks have only a single predecessor (except loop headers). Also handled by the [Treeify] pass.
+//! * All unconditional branches have been inlined (except those leading to loop headers). Handled by the [InlineBlocks] pass.
+//! * Implicitly, there can be no critical edges due to the above constraints, but that is handled well before
+//!   [Treeify], just prior to liveness analysis, by the [SplitCriticalEdges] pass.
+//!
+//! The Miden IR we are given is then transformed as follows:
+//!
+//! * In a reverse postorder traversal of the control flow graph, we visit each block, and
+//!   emit MASM IR according to a scheduling we compute.
+//! * The instruction schedule for a Miden IR basic block is based on the [TreeGraph] data structure.
+//!   This scheduling is intended to make maximal use of the operand stack without needing to spill locals,
+//!   or perform excess operand stack manipulation. The treegraph is computed based on the data flow dependency
+//!   graph of the instructions in each basic block, represented by [DependencyGraph].
+//! * As we emit code, we emulate the state of the operand stack at each point, so that we can determine
+//!   what stack manipulation ops are needed. See [OperandStack].
+//! * Miden IR instructions are not a 1:1 match with MASM instructions, so some additional work is done
+//!   to map the higher-level instructions and their semantics to the more limited set of MASM instructions.
+//! * We convert global variable accesses into their actual memory addresses here. The linker has done the
+//!   work of laying things out for us, so we are simply asking the [Program] at what offset a given global
+//!   has been allocated, and then using that address.
+//! * When emitting the entrypoint for a program, we insert a prologue which initializes any data segments
+//!   used by the program.
+//!
+//! The output of the pass is a MASM IR program which can be run via the emulator, or emitted to disk.
+//!
+//! # Instruction Scheduling
+//!
+//! Instruction scheduling is determined by a combination of factors:
+//!
+//! * The data dependencies between instructions, and between blocks
+//! * The order of arguments required by each instruction
+//! * Control dependencies, i.e. we can't execute the terminator of a block until we execute all other
+//!   instructions in the block.
+//!
+//! The actual algorithm is outlined below, and is performed on a per-block basis:
+//!
+//! 1. Construct a [DependencyGraph] for the block. This graph represents the data flow dependencies
+//!    for each instruction in the block, as well as accounting for values inherited from dominating blocks,
+//!    in the form of either instruction results or block arguments.
+//! 2. Condense the dependency graph into a [TreeGraph].
+//!   * Each node in the tree graph represents a node in the dependency graph which either:
+//!     * Has no predecessors, i.e. it is the root of an expression tree. For example, the expression
+//!       `1 + 1 * 2` is a tree, whose root is the `*` operator, and whose operands are the leaf node `2`,
+//!       and the subtree expression `1 + 1`.
+//!     * Has multiple uses, i.e. it is a value which must be duplicated on the operand stack in order
+//!       to keep it live across all uses.
+//!   * Edges in the tree graph represent data dependencies between an instruction in the condensed subtree
+//!     of the dependency graph represented by a given treegraph node (the dependent node), and another treegraph
+//!     node that represents an instruction which produces a value with multiple uses (the dependency node).
+//!     The dependency node may also be a condensed subtree, but the root of that tree is always the instruction
+//!     which produces the value in question. Each edge in the treegraph carries with it all of the necessary
+//!     information to identify what values are used, and by which instructions.
+//! 3. Compute the topographical ordering of the [TreeGraph]. This ordering ensures that all dependencies
+//!    come before their dependents, falling back to the original program order for nodes with no data
+//!    dependencies between them. The block terminator is always placed last, to reflect the control dependency.
+//! 4. Schedule the treegraph nodes by visiting them in reverse topological order.
+//! 5. Schedule the instructions in the condensed subtree of the dependency graph represented by each treegraph node.
+//!    This is done using a postorder DFS traversal of the dependency graph starting from the point corresponding
+//!    to the treegraph node. The order in which sibling dependencies are visited is in reverse argument order
+//!    of the instruction being scheduled. The dependency graph (and tree graph) are consulted during this process
+//!    to determine when values can be safely consumed or require copies to be made. The operand stack tells us
+//!    where values are on the operand stack at each step, so we can emit the proper stack manipulation instructions.
+//!
+//! This approach has the effect of placing operands on the operand stack in as close to optimal order as possible,
+//! in fact it is guaranteed that for data dependency graphs which are trees, the order _is_ optimal. In general though,
+//! the order is not always optimal, due to the presence of multiply-used values, or instructions with multiple results
+//! whose order is fixed, and may require some stack manipulation to adjust.
+//!
+//! Importantly, this approach allows us to forgo the need for locals/temporaries, as we are able to keep values
+//! on the operand stack for their entire live range, and only for as long as necessary. We do still use locals
+//! for automatic allocations (i.e. temporaries that we'd ordinarily need to allocate heap memory for, but
+//! should be freed when the call returns).
+//!
+//! # Recovering Structured Control Flow
+//!
+//! Miden Assembly only provides us with a very limited set of (3) structured control flow ops, two of which interest
+//! us in terms of code generation: `if.true` and `while.true`. There are no arbitrary jumps between blocks of code
+//! in a function, each control operator has a well-defined entry and exit point, with no other means of entering or
+//! exiting the block of code which constitutes the body of that control operator.
+//!
+//! Miden IR however does not have these kind of high-level structured control flow instructions. A Miden IR function is
+//! a flat list of basic blocks, and each basic block is a flat sequence of instructions. Control flow in Miden IR is
+//! unstructured, using jumps (conditional, unconditional, and table-based) to form the edges of a directed, possibly
+//! cyclic, graph.
+//!
+//! Because Miden IR control flow is unstructured, and we need structured control flow for Miden Assembly, we must perform
+//! a transformation which recovers structured control flow from an unstructed control flow graph. Because unstructured
+//! control flow is so flexible, we must decompose it into some combination of structured control ops that give us equivalent
+//! semantics to the original control flow graph. This is a complex process, but uses some simple building blocks:
+//!
+//! First, let's examine the two MASM instructions mentioned above. Both pop a condition off the operand stack, and take
+//! one of two paths through the program, depending on the instruction. For `if.true`, one of the two blocks representing
+//! the branches of the if/else. For `while.true`, the loop is either (re)entered, or it is skipped/exited, and control
+//! resumes after the `while.true` body. The boolean which controls the loop must be fetched/recomputed both before
+//! the `while.true` is reached, and at the very end of the `while.true` body.
+//!
+//! Looking closer at `while.true`, we see that how the loop is controlled is a bit different than Miden IR.
+//! The way we'd represent the equivalent of `while.true` is composed of three basic blocks:
+//!
+//! 1. The loop header. This is where the predicate that controls the loop is evaluated. This block is terminated
+//!    by a conditional jump to either the loop body, or the loop exit.
+//! 2. The loop body. In practice this could be many blocks, depending on what is in the body of the `while.true`,
+//!    but in this case we'll say its just one, at the end of which we have an unconditional jump back to the loop header.
+//! 3. The loop exit. This represents the point where control flow is joined when either bypassing the loop or exiting it,
+//!    in MASM it represents the code that immediately follows the end of the `while.true` statement.
+//!
+//! However we cannot directly translate the loop structure I just described to Miden Assembly, because the `while.true`
+//! instruction does not have a code block which corresponds to the loop header! Instead the predicate exists in two
+//! places: at the instruction just before the `while.true`; and at the end of the `while.true` body. So when we have
+//! a loop like this in Miden IR, we must actually lower it as an `if.true` nested in a `while.true`. The outer `while.true`
+//! is entered unconditionally (by pushing `true` on the operand stack), and then the inner `if.true` is used to represent
+//! the semantics of the Miden IR loop, i.e. the true and false branches represent entry into the loop body and exit from
+//! it, respectively. The false branch of the `if.true` contains a `push.0` to break out of the outer `while.true`.
+//! This lowering mimics the structure of the Miden IR loop.
+//!
+//! In generalizing this approach to more complex loop structures, I concluded the following:
+//!
+//! * When you reach the end of a MASM code block, this is equivalent to reaching an edge in the IR control flow graph (CFG):
+//!   1. Unless otherwise noted, a code block implicitly ends with an unconditional jump to the next code block to be executed
+//!   2. If there are no further code blocks to be executed, instead of an unconditional jump, control returns from the
+//!      function with whatever is on the operand stack.
+//!   3. Both `if.true` and `while.true` can be thought of as forks in the control flow graph, where control is typically
+//!      rejoined at the first instruction following the control operator. However, when there are no following instructions
+//!      the transfer of control depends on whether there are more code blocks to be executed or not. If there are, then
+//!      the join point is the start of the next block; if there are not, then control can be considered to return from the
+//!      function directly. An alternative, and semantically equivalent view is that control rejoins after the
+//!      `if.true`/`while.true`, but before evaluating any other control flow rules described here. Due to the way the
+//!      treeify and block inliner passes interact, in practice the IR does not have join points in the CFG except for
+//!      along loopback edges.
+//! * We can implement a variety of loop idioms by using `while.true` as an infinite loop primitive:
+//!   * `while(<predicate>) { <body> }`:
+//!       ```masm,ignore
+//!       push.1
+//!       while.true
+//!         <predicate>
+//!         if.true
+//!           <body>
+//!         else
+//!           push.0
+//!         end
+//!       end
+//!       ```
+//!   * `do { <body> } while(<predicate>)`, this is the ideal case for `while.true`:
+//!       ```masm,ignore
+//!       push.1
+//!       while.true
+//!         <body>
+//!         <predicate>
+//!       end
+//!       ```
+//!   * `for (i = 0; i++; i < len) { <body> }`:
+//!       ```masm,ignore
+//!       push.len
+//!       push.0     # i = 0
+//!       push.1
+//!       while.true
+//!         dup.0    # copy i, stack before this is: [i, len], after it's: [i, i, len]
+//!         dup.2    # copy len
+//!         lt       # i < len
+//!         if.true
+//!           <body>
+//!           incr   # i++, we assume here that <body> leaves the stack as: [i, len]
+//!           push.1 # unconditionally continue loop
+//!         else
+//!           push.0
+//!         end
+//!       end
+//!       ```
+//!   * Generalizing this a bit for typical condition-controlled loops, we more or less end up with the following:
+//!       ```masm,ignore
+//!       <prologue>      # loop invariant expressions go here
+//!       push.1          # unconditionally enter the loop
+//!       while.true
+//!         <loop header> # the stuff that happens at the start of every iteration goes here
+//!         <predicate>   # technically part of the header, but must always be the last thing done
+//!         if.true       # this controls whether we are entering/exiting the loop
+//!           <loop body> # the loop body may use its position in the control flow tree to
+//!                       # break out of the loop directly with push.0, or continue the loop using push.1
+//!         else
+//!           <epilogue>  # this is where you'd put code that is run when exiting the loop normally
+//!           push.0
+//!         end
+//!       end
+//!       <join>          # this is where control joins whether the loop was taken or not
+//!       ```
+//! * We can nest loops arbitrarily deep in Miden IR, and in MASM; however in Miden IR, control can
+//!   transfer directly to a containing loop, or even out of any containing loop, from any loop depth.
+//!   This can't be represented directly in MASM, instead we must break out of each intermediate loop
+//!   to get to the desired depth, using `push.0`, and continue with `push.1` (if applicable).
+//! * Any join points in the control flow graph require that the operand stack be in the same abstract state
+//!   regardless of the path taken to get there. This means that from the perspective of the code at/following the
+//!   join point, the position of all live values on the operand stack is consistent. A program which violates
+//!   this rule has undefined behavior from that point onward.
+//! * As implied by the previous point, any code block which is an immediate predecessor of a join point in the
+//!   control flow graph, must agree with the other predecessors on the state of the stack by the end of that block.
+//!   To ensure this, instructions may be inserted in the block to get the stack into the desired state.
+//!
+//! These rules are used to recover structured control flow for arbitrarily complex loop patterns. The resulting
+//! code is not necessarily optimal in terms of size, due to duplication of loop headers and such, but this
+//! doesn't make any performance tradeoffs that I'm aware of.
 use std::{cmp::Ordering, collections::VecDeque, fmt, rc::Rc};
 
 use cranelift_entity::packed_option::ReservedValue;
-use miden_hir::pass::{AnalysisManager, ConversionPass, ConversionResult};
 use miden_hir::{
     self as hir, assert_matches, BranchInfo, Immediate, Instruction, Overflow, ProgramPoint,
 };
 use miden_hir_analysis::{
-    DominatorTree, GlobalVariableAnalysis, LivenessAnalysis, Loop, LoopAnalysis,
+    DominatorTree, GlobalVariableLayout, LivenessAnalysis, Loop, LoopAnalysis,
 };
-use midenc_session::Session;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
@@ -19,320 +287,17 @@ use super::{
     *,
 };
 
-/// This pass transforms Miden IR to MASM IR, which is a representation of Miden
-/// Assembly we use a subset of in Miden IR already for inline assembly, but is
-/// extended in this crate with modules and functions.
-///
-/// # Background
-///
-/// MASM IR is a superset of the representation we use for inline assembly in Miden IR,
-/// extended with functions and modules so that we can represent the artifacts we produce
-/// during code generation. MASM IR is a stack machine representation, unlike Miden IR
-/// which is in SSA form, a type of register machine with infinite registers.
-///
-/// ## Miden vs Other Stack VMs
-///
-/// The machine represented by MASM IR (the Miden virtual machine), is not only a stack
-/// machine, but one with some unique constraints compared to your typical run-of-the-mill
-/// stack machine:
-///
-/// * The control flow graph of the entire program must be a tree, not a directed (a)cylic graph.
-/// * Miden does provide facilities for cyclic control flow, in the form of very basic looping
-/// idioms: `while.true` and `repeat.N` (where `N` is a constant). Rather than representing these
-/// using back edges in a control flow graph, these instructions are self-contained nodes in a
-/// control flow tree, representing a sub-tree of the program that will be executed on each iteration
-/// of the loop.
-/// * As a result of the control flow graph constraints, recursion is not permitted. The call graph
-/// of the program must be topographically orderable.
-/// * In addition to the recursion constraint, indirect function calls are not supported either.
-/// All callees must be known statically. This may change with the introduction of the `PCALL`
-/// instruction, but for now this is a hard restriction.
-///
-/// ## MAST
-///
-/// These restrictions are primarily imposed due to the design tradeoffs made in Miden. In particular,
-/// Miden Assembly is not the form executed by the Miden VM, rather it is compiled to a MAST, or
-/// _Merkelized Abstract Syntax Tree_. A MAST provides both data integrity and compression. By relying
-/// on some of the properties of Merkle trees, they can be used to verify the integrity of the program
-/// to be executed. As you might imagine, this data structure is a tree, so programs represented in
-/// MAST form are themselves required to be trees. In a MAST, the root of the tree represents the full
-/// program, and each node in the tree represents a subprogram. Each path in the tree represents a possible
-/// execution path the program can take. More precisely, the root of the MAST is the hash of the whole
-/// program, and each child of the root node is either a leaf node, a hash of the subprogram that node
-/// represents, or a non-leaf node, which like the root, is a hash of its children.
-///
-/// By using a MAST representation, it is possible to represent the execution of a program as a sequence
-/// of hashes which identify which node of the MAST is executed next. So the first hash identifies where
-/// execution begins, i.e. the root, the second hash identifies which child node of the root is executed
-/// next, and so on. This makes it possible to represent an execution trace of a program without shipping
-/// the entire program, only the hashes of the MAST nodes that were actually executed.
-///
-/// So in short, while Miden Assembly (and MASM IR as a result) seem oddly designed, there is a rationale
-/// behind that design, and its tradeoffs are what have dictated some of the more awkward parts of the
-/// instruction set. There are some other considerations that affect things like why we have u32 instructions
-/// but no other "standard" integral types. We won't get into that here.
-///
-/// One final note: you might wonder why Miden Assembly doesn't have a particular instruction. In most
-/// cases the fundamental limit is either due to running out of space in the opcode byte (we only have
-/// 8 bits to encode the opcode). There are a few other implementation details in the VM that I'm less
-/// familiar with that also constraint what instructions we can add (instructions typically require
-/// helper registers, and we have a very limited set of those as well).
-///
-/// # Stackification
-///
-/// We call the set of transformations applied by this pass _stackification_, which refers to one of the most
-/// important tasks it performs: converting the Miden IR instruction set, with its use of SSA values (which
-/// can be thought of as virtual registers) into the MASM instruction set, where equivalent semantics require
-/// us to maneuver values on the operand stack; put another way, we're "stackifying" registers.
-///
-/// This pass has a couple prerequisites, which are implemented in transformation passes in [miden-hir-transform]:
-///
-/// * The linker has been run on all modules that will be in the final [Program], and we have that on hand.
-/// * No cycles in the control flow graph (except loop headers). This is handled by the [Treeify] pass.
-/// * All blocks have only a single predecessor (except loop headers). Also handled by the [Treeify] pass.
-/// * All unconditional branches have been inlined (except those leading to loop headers). Handled by the [InlineBlocks] pass.
-/// * Implicitly, there can be no critical edges due to the above constraints, but that is handled well before
-///   [Treeify], just prior to liveness analysis, by the [SplitCriticalEdges] pass.
-///
-/// The Miden IR we are given is then transformed as follows:
-///
-/// * In a reverse postorder traversal of the control flow graph, we visit each block, and
-///   emit MASM IR according to a scheduling we compute.
-/// * The instruction schedule for a Miden IR basic block is based on the [TreeGraph] data structure.
-///   This scheduling is intended to make maximal use of the operand stack without needing to spill locals,
-///   or perform excess operand stack manipulation. The treegraph is computed based on the data flow dependency
-///   graph of the instructions in each basic block, represented by [DependencyGraph].
-/// * As we emit code, we emulate the state of the operand stack at each point, so that we can determine
-///   what stack manipulation ops are needed. See [OperandStack].
-/// * Miden IR instructions are not a 1:1 match with MASM instructions, so some additional work is done
-///   to map the higher-level instructions and their semantics to the more limited set of MASM instructions.
-/// * We convert global variable accesses into their actual memory addresses here. The linker has done the
-///   work of laying things out for us, so we are simply asking the [Program] at what offset a given global
-///   has been allocated, and then using that address.
-/// * When emitting the entrypoint for a program, we insert a prologue which initializes any data segments
-///   used by the program.
-///
-/// The output of the pass is a MASM IR program which can be run via the emulator, or emitted to disk.
-///
-/// # Instruction Scheduling
-///
-/// Instruction scheduling is determined by a combination of factors:
-///
-/// * The data dependencies between instructions, and between blocks
-/// * The order of arguments required by each instruction
-/// * Control dependencies, i.e. we can't execute the terminator of a block until we execute all other
-///   instructions in the block.
-///
-/// The actual algorithm is outlined below, and is performed on a per-block basis:
-///
-/// 1. Construct a [DependencyGraph] for the block. This graph represents the data flow dependencies
-///    for each instruction in the block, as well as accounting for values inherited from dominating blocks,
-///    in the form of either instruction results or block arguments.
-/// 2. Condense the dependency graph into a [TreeGraph].
-///   * Each node in the tree graph represents a node in the dependency graph which either:
-///     * Has no predecessors, i.e. it is the root of an expression tree. For example, the expression
-///       `1 + 1 * 2` is a tree, whose root is the `*` operator, and whose operands are the leaf node `2`,
-///       and the subtree expression `1 + 1`.
-///     * Has multiple uses, i.e. it is a value which must be duplicated on the operand stack in order
-///       to keep it live across all uses.
-///   * Edges in the tree graph represent data dependencies between an instruction in the condensed subtree
-///     of the dependency graph represented by a given treegraph node (the dependent node), and another treegraph
-///     node that represents an instruction which produces a value with multiple uses (the dependency node).
-///     The dependency node may also be a condensed subtree, but the root of that tree is always the instruction
-///     which produces the value in question. Each edge in the treegraph carries with it all of the necessary
-///     information to identify what values are used, and by which instructions.
-/// 3. Compute the topographical ordering of the [TreeGraph]. This ordering ensures that all dependencies
-///    come before their dependents, falling back to the original program order for nodes with no data
-///    dependencies between them. The block terminator is always placed last, to reflect the control dependency.
-/// 4. Schedule the treegraph nodes by visiting them in reverse topological order.
-/// 5. Schedule the instructions in the condensed subtree of the dependency graph represented by each treegraph node.
-///    This is done using a postorder DFS traversal of the dependency graph starting from the point corresponding
-///    to the treegraph node. The order in which sibling dependencies are visited is in reverse argument order
-///    of the instruction being scheduled. The dependency graph (and tree graph) are consulted during this process
-///    to determine when values can be safely consumed or require copies to be made. The operand stack tells us
-///    where values are on the operand stack at each step, so we can emit the proper stack manipulation instructions.
-///
-/// This approach has the effect of placing operands on the operand stack in as close to optimal order as possible,
-/// in fact it is guaranteed that for data dependency graphs which are trees, the order _is_ optimal. In general though,
-/// the order is not always optimal, due to the presence of multiply-used values, or instructions with multiple results
-/// whose order is fixed, and may require some stack manipulation to adjust.
-///
-/// Importantly, this approach allows us to forgo the need for locals/temporaries, as we are able to keep values
-/// on the operand stack for their entire live range, and only for as long as necessary. We do still use locals
-/// for automatic allocations (i.e. temporaries that we'd ordinarily need to allocate heap memory for, but
-/// should be freed when the call returns).
-///
-/// # Recovering Structured Control Flow
-///
-/// Miden Assembly only provides us with a very limited set of (3) structured control flow ops, two of which interest
-/// us in terms of code generation: `if.true` and `while.true`. There are no arbitrary jumps between blocks of code
-/// in a function, each control operator has a well-defined entry and exit point, with no other means of entering or
-/// exiting the block of code which constitutes the body of that control operator.
-///
-/// Miden IR however does not have these kind of high-level structured control flow instructions. A Miden IR function is
-/// a flat list of basic blocks, and each basic block is a flat sequence of instructions. Control flow in Miden IR is
-/// unstructured, using jumps (conditional, unconditional, and table-based) to form the edges of a directed, possibly
-/// cyclic, graph.
-///
-/// Because Miden IR control flow is unstructured, and we need structured control flow for Miden Assembly, we must perform
-/// a transformation which recovers structured control flow from an unstructed control flow graph. Because unstructured
-/// control flow is so flexible, we must decompose it into some combination of structured control ops that give us equivalent
-/// semantics to the original control flow graph. This is a complex process, but uses some simple building blocks:
-///
-/// First, let's examine the two MASM instructions mentioned above. Both pop a condition off the operand stack, and take
-/// one of two paths through the program, depending on the instruction. For `if.true`, one of the two blocks representing
-/// the branches of the if/else. For `while.true`, the loop is either (re)entered, or it is skipped/exited, and control
-/// resumes after the `while.true` body. The boolean which controls the loop must be fetched/recomputed both before
-/// the `while.true` is reached, and at the very end of the `while.true` body.
-///
-/// Looking closer at `while.true`, we see that how the loop is controlled is a bit different than Miden IR.
-/// The way we'd represent the equivalent of `while.true` is composed of three basic blocks:
-///
-/// 1. The loop header. This is where the predicate that controls the loop is evaluated. This block is terminated
-///    by a conditional jump to either the loop body, or the loop exit.
-/// 2. The loop body. In practice this could be many blocks, depending on what is in the body of the `while.true`,
-///    but in this case we'll say its just one, at the end of which we have an unconditional jump back to the loop header.
-/// 3. The loop exit. This represents the point where control flow is joined when either bypassing the loop or exiting it,
-///    in MASM it represents the code that immediately follows the end of the `while.true` statement.
-///
-/// However we cannot directly translate the loop structure I just described to Miden Assembly, because the `while.true`
-/// instruction does not have a code block which corresponds to the loop header! Instead the predicate exists in two
-/// places: at the instruction just before the `while.true`; and at the end of the `while.true` body. So when we have
-/// a loop like this in Miden IR, we must actually lower it as an `if.true` nested in a `while.true`. The outer `while.true`
-/// is entered unconditionally (by pushing `true` on the operand stack), and then the inner `if.true` is used to represent
-/// the semantics of the Miden IR loop, i.e. the true and false branches represent entry into the loop body and exit from
-/// it, respectively. The false branch of the `if.true` contains a `push.0` to break out of the outer `while.true`.
-/// This lowering mimics the structure of the Miden IR loop.
-///
-/// In generalizing this approach to more complex loop structures, I concluded the following:
-///
-/// * When you reach the end of a MASM code block, this is equivalent to reaching an edge in the IR control flow graph (CFG):
-///   1. Unless otherwise noted, a code block implicitly ends with an unconditional jump to the next code block to be executed
-///   2. If there are no further code blocks to be executed, instead of an unconditional jump, control returns from the
-///      function with whatever is on the operand stack.
-///   3. Both `if.true` and `while.true` can be thought of as forks in the control flow graph, where control is typically
-///      rejoined at the first instruction following the control operator. However, when there are no following instructions
-///      the transfer of control depends on whether there are more code blocks to be executed or not. If there are, then
-///      the join point is the start of the next block; if there are not, then control can be considered to return from the
-///      function directly. An alternative, and semantically equivalent view is that control rejoins after the
-///      `if.true`/`while.true`, but before evaluating any other control flow rules described here. Due to the way the
-///      treeify and block inliner passes interact, in practice the IR does not have join points in the CFG except for
-///      along loopback edges.
-/// * We can implement a variety of loop idioms by using `while.true` as an infinite loop primitive:
-///   * `while(<predicate>) { <body> }`:
-///       ```masm,ignore
-///       push.1
-///       while.true
-///         <predicate>
-///         if.true
-///           <body>
-///         else
-///           push.0
-///         end
-///       end
-///       ```
-///   * `do { <body> } while(<predicate>)`, this is the ideal case for `while.true`:
-///       ```masm,ignore
-///       push.1
-///       while.true
-///         <body>
-///         <predicate>
-///       end
-///       ```
-///   * `for (i = 0; i++; i < len) { <body> }`:
-///       ```masm,ignore
-///       push.len
-///       push.0     # i = 0
-///       push.1
-///       while.true
-///         dup.0    # copy i, stack before this is: [i, len], after it's: [i, i, len]
-///         dup.2    # copy len
-///         lt       # i < len
-///         if.true
-///           <body>
-///           incr   # i++, we assume here that <body> leaves the stack as: [i, len]
-///           push.1 # unconditionally continue loop
-///         else
-///           push.0
-///         end
-///       end
-///       ```
-///   * Generalizing this a bit for typical condition-controlled loops, we more or less end up with the following:
-///       ```masm,ignore
-///       <prologue>      # loop invariant expressions go here
-///       push.1          # unconditionally enter the loop
-///       while.true
-///         <loop header> # the stuff that happens at the start of every iteration goes here
-///         <predicate>   # technically part of the header, but must always be the last thing done
-///         if.true       # this controls whether we are entering/exiting the loop
-///           <loop body> # the loop body may use its position in the control flow tree to
-///                       # break out of the loop directly with push.0, or continue the loop using push.1
-///         else
-///           <epilogue>  # this is where you'd put code that is run when exiting the loop normally
-///           push.0
-///         end
-///       end
-///       <join>          # this is where control joins whether the loop was taken or not
-///       ```
-/// * We can nest loops arbitrarily deep in Miden IR, and in MASM; however in Miden IR, control can
-///   transfer directly to a containing loop, or even out of any containing loop, from any loop depth.
-///   This can't be represented directly in MASM, instead we must break out of each intermediate loop
-///   to get to the desired depth, using `push.0`, and continue with `push.1` (if applicable).
-/// * Any join points in the control flow graph require that the operand stack be in the same abstract state
-///   regardless of the path taken to get there. This means that from the perspective of the code at/following the
-///   join point, the position of all live values on the operand stack is consistent. A program which violates
-///   this rule has undefined behavior from that point onward.
-/// * As implied by the previous point, any code block which is an immediate predecessor of a join point in the
-///   control flow graph, must agree with the other predecessors on the state of the stack by the end of that block.
-///   To ensure this, instructions may be inserted in the block to get the stack into the desired state.
-///
-/// These rules are used to recover structured control flow for arbitrarily complex loop patterns. The resulting
-/// code is not necessarily optimal in terms of size, due to duplication of loop headers and such, but this
-/// doesn't make any performance tradeoffs that I'm aware of.
-pub struct Stackify;
-impl ConversionPass for Stackify {
-    type From<'a> = &'a hir::Function;
-    type To = masm::Function;
-
-    fn convert<'a>(
-        &mut self,
-        f: Self::From<'a>,
-        analyses: &mut AnalysisManager,
-        session: &Session,
-    ) -> ConversionResult<Self::To> {
-        use miden_hir::ProgramAnalysisKey;
-
-        let mut f_prime = masm::Function::new(f.id, f.signature.clone());
-
-        // Start at the function entry
-        {
-            let entry = f.dfg.entry_block();
-            let entry_prime = f_prime.body;
-
-            let globals = analyses.expect::<GlobalVariableAnalysis>(
-                &ProgramAnalysisKey,
-                "expected program-wide global variable analysis to have been performed",
-            );
-            let domtree = analyses.get_or_compute::<DominatorTree>(f, session)?;
-            let loops = analyses.get_or_compute::<LoopAnalysis>(f, session)?;
-            let liveness = analyses.get_or_compute::<LivenessAnalysis>(f, session)?;
-            let mut emitter = MasmEmitter::new(f, &mut f_prime, domtree, loops, liveness, globals);
-
-            let mut stack = OperandStack::default();
-            for arg in f.dfg.block_args(entry).iter().rev().copied() {
-                let ty = f.dfg.value_type(arg).clone();
-                stack.push(TypedValue { value: arg, ty });
-            }
-
-            emitter.emit(entry, entry_prime, stack);
-        }
-
-        Ok(f_prime)
-    }
+/// Represents a cached dependency graph, tree graph, and schedule for
+/// a block which is a loop header. This allows us to avoid recalculating
+/// these data structures for blocks which will be visited multiple times.
+struct CacheEntry {
+    depgraph: DependencyGraph,
+    treegraph: TreeGraph,
+    schedule: Vec<Node>,
 }
 
 /// This structure is used to emit code for a function in the SSA IR.
-struct MasmEmitter<'a> {
+pub(super) struct MasmEmitter<'a> {
     /// The SSA IR function being translated
     f: &'a hir::Function,
     /// The resulting stack machine function being emitted
@@ -340,7 +305,7 @@ struct MasmEmitter<'a> {
     domtree: Rc<DominatorTree>,
     loops: Rc<LoopAnalysis>,
     liveness: Rc<LivenessAnalysis>,
-    globals: Rc<GlobalVariableAnalysis>,
+    globals: GlobalVariableLayout,
     /// The "controlling" loop corresponds to the current maximum loop depth
     /// reached along the current control flow path. When we reach a loopback
     /// edge in the control flow graph, we emit a trailing duplicate of the
@@ -364,24 +329,14 @@ struct MasmEmitter<'a> {
     /// differently, so it is important to track this information.
     visited: FxHashSet<hir::Block>,
 }
-
-/// Represents a cached dependency graph, tree graph, and schedule for
-/// a block which is a loop header. This allows us to avoid recalculating
-/// these data structures for blocks which will be visited multiple times.
-struct CacheEntry {
-    depgraph: DependencyGraph,
-    treegraph: TreeGraph,
-    schedule: Vec<Node>,
-}
-
 impl<'a> MasmEmitter<'a> {
-    fn new(
+    pub fn new(
         f: &'a hir::Function,
         f_prime: &'a mut masm::Function,
         domtree: Rc<DominatorTree>,
         loops: Rc<LoopAnalysis>,
         liveness: Rc<LivenessAnalysis>,
-        globals: Rc<GlobalVariableAnalysis>,
+        globals: GlobalVariableLayout,
     ) -> Self {
         Self {
             f,
@@ -405,7 +360,7 @@ impl<'a> MasmEmitter<'a> {
     /// control to another block in the function. Thus we must keep track of when we're
     /// visiting a block for the first time, as well as what block we were in when we started
     /// emitting code for `b`, so that we can properly emit code for loopback edges.
-    fn emit(&mut self, b: hir::Block, b_prime: masm::BlockId, stack: OperandStack) {
+    pub fn emit(&mut self, b: hir::Block, b_prime: masm::BlockId, stack: OperandStack) {
         let is_first_visit = self.visited.insert(b);
         // Update the current, controlling, and emitting blocks, but saving the previous
         // values so we can restore them when this function returns.

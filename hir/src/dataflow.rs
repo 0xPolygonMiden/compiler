@@ -22,12 +22,19 @@ pub struct DataFlowGraph {
 }
 impl Default for DataFlowGraph {
     fn default() -> Self {
-        let mut blocks = OrderedArenaMap::<Block, BlockData>::new();
-        let entry = blocks.create();
-        blocks.append(entry, BlockData::new(entry));
+        let mut dfg = Self::new_uninit();
+        let entry = dfg.blocks.create();
+        dfg.entry = entry;
+        dfg.blocks.append(entry, BlockData::new(entry));
+        dfg
+    }
+}
+impl DataFlowGraph {
+    /// Create a new, completely uninitialized DataFlowGraph
+    pub fn new_uninit() -> Self {
         Self {
-            entry,
-            blocks,
+            entry: Block::from_u32(0),
+            blocks: OrderedArenaMap::new(),
             insts: ArenaMap::new(),
             results: SecondaryMap::new(),
             values: PrimaryMap::new(),
@@ -37,8 +44,7 @@ impl Default for DataFlowGraph {
             constants: ConstantPool::default(),
         }
     }
-}
-impl DataFlowGraph {
+
     /// Returns an [ExternalFunction] given its [FunctionIdent]
     pub fn get_import(&self, id: &FunctionIdent) -> Option<&ExternalFunction> {
         self.imports.get(id)

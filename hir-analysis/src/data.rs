@@ -1,17 +1,30 @@
 use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
 use miden_hir::{
-    Function, FunctionIdent, GlobalValue, GlobalValueData, GlobalVariableTable, Program,
+    Function, FunctionIdent, GlobalValue, GlobalValueData, GlobalVariableTable, Module, Program,
 };
 use midenc_session::Session;
 use rustc_hash::FxHashMap;
 
-/// This analysis calculates the addresses/offsets of all global variables in a [Program]
-#[derive(Default)]
-pub struct GlobalVariableAnalysis {
-    global_table_offset: u32,
-    offsets: FxHashMap<FunctionIdent, FxHashMap<GlobalValue, u32>>,
+/// This analysis calculates the addresses/offsets of all global variables in a [Program] or [Module]
+pub struct GlobalVariableAnalysis<T> {
+    layout: GlobalVariableLayout,
+    _marker: core::marker::PhantomData<T>,
 }
-impl Analysis for GlobalVariableAnalysis {
+impl<T> Default for GlobalVariableAnalysis<T> {
+    fn default() -> Self {
+        Self {
+            layout: Default::default(),
+            _marker: core::marker::PhantomData,
+        }
+    }
+}
+impl<T> GlobalVariableAnalysis<T> {
+    pub fn layout(&self) -> &GlobalVariableLayout {
+        &self.layout
+    }
+}
+
+impl Analysis for GlobalVariableAnalysis<Program> {
     type Entity = Program;
 
     fn analyze(
@@ -19,28 +32,69 @@ impl Analysis for GlobalVariableAnalysis {
         _analyses: &mut AnalysisManager,
         _session: &Session,
     ) -> AnalysisResult<Self> {
-        let mut result = Self::default();
+        let mut layout = GlobalVariableLayout::default();
 
-        result.global_table_offset = program.segments().next_available_offset();
+        layout.global_table_offset = program.segments().next_available_offset();
         let globals = program.globals();
         for module in program.modules().iter() {
             for function in module.functions() {
                 let mut function_offsets = FxHashMap::default();
                 for gv in function.dfg.globals.keys() {
                     if let Some(addr) =
-                        compute_global_value_addr(gv, result.global_table_offset, function, globals)
+                        compute_global_value_addr(gv, layout.global_table_offset, function, globals)
                     {
                         function_offsets.insert(gv, addr);
                     }
                 }
-                result.offsets.insert(function.id, function_offsets);
+                layout.offsets.insert(function.id, function_offsets);
             }
         }
 
-        Ok(result)
+        Ok(Self {
+            layout,
+            _marker: core::marker::PhantomData,
+        })
     }
 }
-impl GlobalVariableAnalysis {
+
+impl Analysis for GlobalVariableAnalysis<Module> {
+    type Entity = Module;
+
+    fn analyze(
+        module: &Self::Entity,
+        _analyses: &mut AnalysisManager,
+        _session: &Session,
+    ) -> AnalysisResult<Self> {
+        let mut layout = GlobalVariableLayout::default();
+
+        layout.global_table_offset = module.segments().next_available_offset();
+        let globals = module.globals();
+        for function in module.functions() {
+            let mut function_offsets = FxHashMap::default();
+            for gv in function.dfg.globals.keys() {
+                if let Some(addr) =
+                    compute_global_value_addr(gv, layout.global_table_offset, function, globals)
+                {
+                    function_offsets.insert(gv, addr);
+                }
+            }
+            layout.offsets.insert(function.id, function_offsets);
+        }
+
+        Ok(Self {
+            layout,
+            _marker: core::marker::PhantomData,
+        })
+    }
+}
+
+/// This struct contains data about the layout of global variables in linear memory
+#[derive(Default, Clone)]
+pub struct GlobalVariableLayout {
+    global_table_offset: u32,
+    offsets: FxHashMap<FunctionIdent, FxHashMap<GlobalValue, u32>>,
+}
+impl GlobalVariableLayout {
     /// Get the address/offset at which global variables will start being allocated
     pub fn global_table_offset(&self) -> u32 {
         self.global_table_offset
