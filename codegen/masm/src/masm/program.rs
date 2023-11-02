@@ -254,15 +254,6 @@ impl fmt::Display for Program {
     }
 }
 
-impl fmt::Display for Program {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for module in self.modules.iter() {
-            writeln!(f, "{}", module)?;
-        }
-        Ok(())
-    }
-}
-
 enum ModulesIter<'a> {
     Open(intrusive_collections::rbtree::Iter<'a, ModuleTreeAdapter>),
     Frozen(intrusive_collections::rbtree::Iter<'a, FrozenModuleTreeAdapter>),

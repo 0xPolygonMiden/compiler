@@ -1028,6 +1028,7 @@ dependencies = [
  "miden-hir",
  "miden-integration-tests-rust",
  "miden-processor",
+ "midenc-session",
  "proptest",
  "rustc-demangle",
  "sha2",
