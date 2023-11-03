@@ -1,0 +1,8 @@
+export.entrypoint
+  u32.eq
+
+end
+begin
+    exec.entrypoint
+end
+

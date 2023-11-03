@@ -148,7 +148,7 @@ impl CompilerTest {
     }
 
     /// Set the Rust source code to compile and add a binary operation test
-    pub fn rust_source_main_fn(rust_source: &str) -> Self {
+    pub fn rust_fn_body(rust_source: &str) -> Self {
         let rust_source = format!(
             r#"
             #![no_std]
