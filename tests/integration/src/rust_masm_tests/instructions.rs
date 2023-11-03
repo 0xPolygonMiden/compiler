@@ -60,6 +60,7 @@ macro_rules! test_arith_op {
     };
 }
 
+// enable after the https://github.com/0xPolygonMiden/compiler/issues/55 is fixed
 // test_comparison_op!(ge, >=, u32);
 test_comparison_op!(ge, >=, u16);
 test_comparison_op!(ge, >=, u8);
