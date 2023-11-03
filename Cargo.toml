@@ -14,10 +14,10 @@ members = [
   "midenc-session",
   "tools/*",
   "frontend-wasm",
-  "tests/rust",
+  "tests/rust-apps/*",
   "tests/integration",
 ]
-exclude = ["tests/rust-wasm"]
+exclude = ["tests/rust-apps-wasm"]
 
 [workspace.package]
 version = "0.1.0"
