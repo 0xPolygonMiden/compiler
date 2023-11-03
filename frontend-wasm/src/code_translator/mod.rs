@@ -14,6 +14,7 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use std::collections::{hash_map, HashMap};
+use std::u64;
 
 use crate::error::{WasmError, WasmResult};
 use crate::func_translation_state::ControlStackFrame;
@@ -191,7 +192,10 @@ pub fn translate_operator(
         }
         Operator::I64ExtendI32U => {
             let val = state.pop1();
-            state.push1(builder.ins().zext(val, I64, span));
+            let u32_val = builder.ins().cast(val, U32, span);
+            let u64_val = builder.ins().zext(u32_val, U64, span);
+            let i64_val = builder.ins().cast(u64_val, I64, span);
+            state.push1(i64_val);
         }
         Operator::I32WrapI64 => {
             let val = state.pop1();
