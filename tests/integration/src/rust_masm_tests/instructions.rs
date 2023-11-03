@@ -3,6 +3,7 @@ use miden_hir::Felt;
 use proptest::prop_assert_eq;
 use proptest::test_runner::TestRunner;
 
+use crate::execute_emulator;
 use crate::execute_vm;
 use crate::CompilerTest;
 
@@ -13,7 +14,7 @@ fn i32_gt_u() {
     test.expect_wasm(expect_file!["../../expected/gt_u.wat"]);
     test.expect_ir(expect_file!["../../expected/gt_u.hir"]);
     test.expect_masm(expect_file!["../../expected/gt_u.masm"]);
-    // let ir_masm = test.codegen_masm_program();
+    let ir_masm = test.ir_masm_program();
     let vm_program = test.vm_masm_program();
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
@@ -24,6 +25,12 @@ fn i32_gt_u() {
             args.reverse();
             let vm_out = execute_vm(&vm_program, &args).first().unwrap().clone();
             prop_assert_eq!(rust_out, vm_out);
+            args.reverse();
+            let emul_out = execute_emulator(ir_masm.clone(), &args)
+                .first()
+                .unwrap()
+                .clone();
+            prop_assert_eq!(rust_out, emul_out);
             Ok(())
         })
         .unwrap();

@@ -45,7 +45,7 @@ pub struct CompilerTest {
     source: CompilerTestSource,
     wasm_bytes: Vec<u8>,
     hir: Option<Box<miden_hir::Program>>,
-    ir_masm: Option<Box<miden_codegen_masm::Program>>,
+    ir_masm: Option<Arc<miden_codegen_masm::Program>>,
 }
 
 impl CompilerTest {
@@ -227,19 +227,14 @@ impl CompilerTest {
 
     /// Compare the compiled MASM against the expected output
     pub fn expect_masm(&mut self, expected_masm_file: expect_test::ExpectFile) {
-        let program = self.ir_masm();
+        let program = self.ir_masm_program();
         expected_masm_file.assert_eq(&program.to_string());
-    }
-
-    /// Get the compiled MASM as [`miden_codegen_masm::Program`]
-    pub fn codegen_masm_program(&mut self) -> &miden_codegen_masm::Program {
-        self.ir_masm()
     }
 
     /// Get the compiled MASM as [`miden_assembly::Program`]
     pub fn vm_masm_program(&mut self) -> miden_core::Program {
         let assembler = Assembler::default();
-        let program = self.ir_masm();
+        let program = self.ir_masm_program();
         // TODO: get code map from the self.diagnotics
         let codemap = CodeMap::new();
         let program_ast = program.to_program_ast();
@@ -257,14 +252,16 @@ impl CompilerTest {
         core_program
     }
 
-    fn ir_masm(&mut self) -> &miden_codegen_masm::Program {
+    /// Get the compiled MASM as [`miden_codegen_masm::Program`]
+    pub fn ir_masm_program(&mut self) -> Arc<miden_codegen_masm::Program> {
         if self.ir_masm.is_none() {
             let mut compiler = MasmCompiler::new(&self.session);
             let hir = self.hir.take().expect("IR is not compiled");
             let ir_masm = compiler.compile(hir).unwrap();
-            self.ir_masm = Some(ir_masm);
+            let frozen = ir_masm.freeze();
+            self.ir_masm = Some(frozen);
         }
-        &self.ir_masm.as_ref().unwrap()
+        self.ir_masm.clone().unwrap()
     }
 }
 
