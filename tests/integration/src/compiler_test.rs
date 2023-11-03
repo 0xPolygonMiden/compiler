@@ -55,7 +55,7 @@ impl CompilerTest {
         artifact_name: &str,
         entrypoint: &str,
     ) -> Self {
-        let manifest_path = format!("../rust-wasm/{}/Cargo.toml", cargo_project_folder);
+        let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
         // dbg!(&pwd);
         let temp_dir = std::env::temp_dir();
         let target_dir = temp_dir.join(cargo_project_folder);

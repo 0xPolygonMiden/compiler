@@ -1,5 +1,5 @@
 [package]
-name = "miden-integration-tests-rust-fib"
+name = "miden-integration-tests-rust-fib-wasm"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,5 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-miden-integration-tests-rust = { path = "../../rust" }
 dlmalloc = { version = "0.2.4", features = ["global"]}
-
-[profile.release]
-lto = true
-opt-level = "z"
+miden-integration-tests-rust-fib = { path = "../../rust-apps/fib" }

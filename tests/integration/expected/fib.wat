@@ -5,6 +5,7 @@
     i32.const 1000
     i32.lt_u
   )
+  (table (;0;) 1 1 funcref)
   (memory (;0;) 16)
   (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
   (global (;1;) i32 i32.const 1048576)

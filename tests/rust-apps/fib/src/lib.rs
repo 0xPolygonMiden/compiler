@@ -1,5 +1,6 @@
-#[no_mangle]
+#![no_std]
 
+#[no_mangle]
 pub fn fib(n: u32) -> u32 {
     // TODO: switch to Fibonacci after i32 intrinsics PR is merged (missing addition)
     // let mut a = 0;

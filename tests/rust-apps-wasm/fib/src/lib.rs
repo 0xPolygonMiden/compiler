@@ -9,5 +9,5 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 pub fn fib(n: u32) -> u32 {
-    miden_integration_tests_rust::fib::fib(n)
+    miden_integration_tests_rust_fib::fib(n)
 }

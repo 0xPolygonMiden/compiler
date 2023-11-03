@@ -10,7 +10,7 @@ use crate::CompilerTest;
 #[test]
 fn fib() {
     let mut test =
-        CompilerTest::rust_source_cargo("rust-fib", "miden_integration_tests_rust_fib", "fib");
+        CompilerTest::rust_source_cargo("fib", "miden_integration_tests_rust_fib_wasm", "fib");
     // Test expected compilation artifacts
     test.expect_wasm(expect_file!["../../expected/fib.wat"]);
     test.expect_ir(expect_file!["../../expected/fib.hir"]);
@@ -21,7 +21,7 @@ fn fib() {
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     TestRunner::default()
         .run(&(1..u32::MAX / 2), move |a| {
-            let rust_out = miden_integration_tests_rust::fib::fib(a) as u64;
+            let rust_out = miden_integration_tests_rust_fib::fib(a) as u64;
             let mut args = [Felt::from(a)];
             let vm_out = execute_vm(&vm_program, &args).first().unwrap().clone();
             prop_assert_eq!(rust_out, vm_out);

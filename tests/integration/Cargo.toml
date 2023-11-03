@@ -20,7 +20,7 @@ miden-processor.workspace = true
 miden-diagnostics.workspace = true
 midenc-session.workspace = true
 expect-test = "1.4.1"
-miden-integration-tests-rust = {path = "../rust"}
+miden-integration-tests-rust-fib = {path = "../rust-apps/fib"}
 wat = "1.0.69"
 wasmprinter = "0.2.63"
 sha2 = "0.10"
