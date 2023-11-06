@@ -1,0 +1,8 @@
+export.entrypoint
+  u32.xor
+
+end
+begin
+    exec.entrypoint
+end
+

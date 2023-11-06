@@ -1,0 +1,9 @@
+export.entrypoint
+  push.65535
+  u32.xor
+
+end
+begin
+    exec.entrypoint
+end
+
