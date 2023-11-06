@@ -6,6 +6,7 @@
 mod compiler_test;
 mod exec_emulator;
 mod exec_vm;
+pub(crate) mod felt_conversion;
 
 pub use compiler_test::CompilerTest;
 pub use exec_emulator::execute_emulator;

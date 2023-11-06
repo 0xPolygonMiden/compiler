@@ -26,6 +26,7 @@ use miden_hir::FunctionIdent;
 use miden_hir::Ident;
 use miden_hir::ProgramBuilder;
 use miden_hir::Symbol;
+use miden_stdlib::StdLibrary;
 use midenc_session::InputFile;
 use midenc_session::Session;
 
@@ -233,7 +234,9 @@ impl CompilerTest {
 
     /// Get the compiled MASM as [`miden_assembly::Program`]
     pub fn vm_masm_program(&mut self) -> miden_core::Program {
-        let assembler = Assembler::default();
+        let assembler = Assembler::default()
+            .with_library(&StdLibrary::default())
+            .expect("Failed to load stdlib");
         let program = self.ir_masm_program();
         // TODO: get code map from the self.diagnotics
         let codemap = CodeMap::new();
