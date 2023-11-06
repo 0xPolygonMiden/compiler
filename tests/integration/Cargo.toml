@@ -17,6 +17,7 @@ miden-codegen-masm.workspace = true
 miden-assembly.workspace = true
 miden-core.workspace = true
 miden-processor.workspace = true
+miden-stdlib.workspace = true
 miden-diagnostics.workspace = true
 midenc-session.workspace = true
 expect-test = "1.4.1"

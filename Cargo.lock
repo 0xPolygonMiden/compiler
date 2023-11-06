@@ -1030,6 +1030,7 @@ dependencies = [
  "miden-hir",
  "miden-integration-tests-rust-fib",
  "miden-processor",
+ "miden-stdlib",
  "midenc-session",
  "proptest",
  "rustc-demangle",
@@ -1062,6 +1063,15 @@ dependencies = [
  "miden-air",
  "miden-core",
  "winter-prover",
+]
+
+[[package]]
+name = "miden-stdlib"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a6deebc865ae05b19e130644fd52051cbd591f024edc2920fdd7b66d4fc8198"
+dependencies = [
+ "miden-assembly",
 ]
 
 [[package]]

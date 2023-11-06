@@ -1,0 +1,8 @@
+export.entrypoint
+  eqw
+
+end
+begin
+    exec.entrypoint
+end
+

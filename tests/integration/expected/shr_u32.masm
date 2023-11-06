@@ -1,0 +1,24 @@
+export.entrypoint
+  dup.0
+  push.2147483648
+  u32.and
+  eq.2147483648
+  assertz
+  swap.1
+  dup.0
+  push.2147483648
+  u32.and
+  eq.2147483648
+  assertz
+  u32.shr.checked
+  dup.0
+  push.2147483648
+  u32.and
+  eq.2147483648
+  assertz
+
+end
+begin
+    exec.entrypoint
+end
+
