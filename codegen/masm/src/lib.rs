@@ -55,8 +55,22 @@ impl<'a> MasmCompiler<'a> {
     }
 
     /// Compile an [hir::Program] that has been linked and is ready to be compiled.
-    pub fn compile(&mut self, input: Box<hir::Program>) -> CompilerResult<Box<Program>> {
-        use miden_hir::pass::ConversionPass;
+    pub fn compile(&mut self, mut input: Box<hir::Program>) -> CompilerResult<Box<Program>> {
+        use miden_hir::pass::{ConversionPass, ModuleRewritePassAdapter, RewritePass, RewriteSet};
+        use miden_hir_transform as transforms;
+
+        let mut rewrites = RewriteSet::default();
+        rewrites.push(ModuleRewritePassAdapter::new(
+            transforms::SplitCriticalEdges,
+        ));
+        rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
+        rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
+
+        let modules = input.modules_mut().take();
+        for mut module in modules.into_iter() {
+            rewrites.apply(&mut module, &mut self.analyses, &self.session)?;
+            input.modules_mut().insert(module);
+        }
 
         let mut convert_to_masm = ConvertHirToMasm::<hir::Program>::default();
         let mut program = convert_to_masm.convert(input, &mut self.analyses, &self.session)?;

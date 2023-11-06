@@ -5,7 +5,6 @@ use miden_hir::{
     AbiParam, Felt, FieldElement, Immediate, InstBuilder, OperandStack, ProgramBuilder, Signature,
     SourceSpan, Stack, StarkField, Type,
 };
-use std::fmt::Write;
 use std::sync::Arc;
 
 use super::*;
@@ -158,7 +157,7 @@ impl TestByEmulationHarness {
 
     pub fn execute_program(
         &mut self,
-        program: Program,
+        program: Arc<Program>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         let entrypoint = program.entrypoint.expect("cannot execute a library");
@@ -184,18 +183,18 @@ fn fib_emulator() {
         .expect("unexpected error constructing test module");
 
     // Link the program
-    let mut program = builder
+    let program = builder
         .with_entrypoint("test::fib".parse().unwrap())
         .link()
         .expect("failed to link program");
 
-    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
-    let program = compiler.compile(&mut program).expect("compilation failed");
+    let mut compiler = MasmCompiler::new(&harness.context.session);
+    let program = compiler.compile(program).expect("compilation failed");
 
     // Test it via the emulator
     let n = Felt::new(10);
     let mut stack = harness
-        .execute_module(module.freeze(), &[n])
+        .execute_program(program.freeze(), &[n])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(55));
@@ -249,19 +248,19 @@ fn stackify_fundamental_if() {
         .expect("unexpected error constructing test module");
 
     // Link the program
-    let mut program = builder
+    let program = builder
         .with_entrypoint(id)
         .link()
         .expect("failed to link program");
 
-    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
-    let program = compiler.compile(&mut program).expect("compilation failed");
+    let mut compiler = MasmCompiler::new(&harness.context.session);
+    let program = compiler.compile(program).expect("compilation failed");
 
     let a = Felt::new(3);
     let b = Felt::new(4);
 
     let mut stack = harness
-        .execute_module(module.freeze(), &[a, b])
+        .execute_program(program.freeze(), &[a, b])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(12));
@@ -329,19 +328,19 @@ fn stackify_fundamental_loops() {
         .expect("unexpected error constructing test module");
 
     // Link the program
-    let mut program = builder
+    let program = builder
         .with_entrypoint(id)
         .link()
         .expect("failed to link program");
 
-    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
-    let program = compiler.compile(&mut program).expect("compilation failed");
+    let mut compiler = MasmCompiler::new(&harness.context.session);
+    let program = compiler.compile(program).expect("compilation failed");
 
     let a = Felt::new(3);
     let n = Felt::new(4);
 
     let mut stack = harness
-        .execute_module(module.freeze(), &[a, n])
+        .execute_program(program.freeze(), &[a, n])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
@@ -354,7 +353,9 @@ fn verify_i32_intrinsics_syntax() {
 
     harness
         .emulator
-        .load_module(Module::load_intrinsic("intrinsics::i32").expect("parsing failed"))
+        .load_module(
+            Box::new(Module::load_intrinsic("intrinsics::i32").expect("parsing failed")).freeze(),
+        )
         .expect("failed to load intrinsics::i32");
 }
 
@@ -373,16 +374,14 @@ fn stackify_sum_matrix() {
         .expect("unexpected error constructing test module");
 
     // Link the program
-    let mut program = builder
+    let program = builder
         .with_entrypoint("test::sum_matrix".parse().unwrap())
         .link()
         .expect("failed to link program");
 
     // Compile
-    let mut compiler = MasmCompiler::new(&harness.context.diagnostics);
-    let program = compiler.compile(&mut program).expect("compilation failed");
-
-    dbg!(program.modules().iter().map(|m| m.name).collect::<Vec<_>>());
+    let mut compiler = MasmCompiler::new(&harness.context.session);
+    let program = compiler.compile(program).expect("compilation failed");
 
     // Prep emulator
     let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
@@ -407,7 +406,7 @@ fn stackify_sum_matrix() {
 
     // Execute test::sum_matrix
     let mut stack = harness
-        .execute_module(module.freeze(), &[ptr, rows, cols])
+        .execute_program(program.freeze(), &[ptr, rows, cols])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(6));
