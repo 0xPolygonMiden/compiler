@@ -9,3 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 dlmalloc = { version = "0.2.4", features = ["global"]}
 miden-integration-tests-rust-fib = { path = "../../rust-apps/fib" }
+
+[profile.release]
+opt-level = "z"
