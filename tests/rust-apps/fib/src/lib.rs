@@ -12,9 +12,9 @@ pub fn fib(n: u32) -> u32 {
     // }
     // a
 
-    if n < 1000 {
-        1
-    } else {
-        0
+    let mut a = n;
+    while a > 3 {
+        a = a / 3;
     }
+    a
 }
