@@ -249,7 +249,13 @@ impl CompilerTest {
                     Some(&core_module.path),
                     &mut AssemblyContext::for_module(false),
                 )
-                .unwrap();
+                .expect(
+                    format!(
+                        "VM Assembler failed to compile module:\n{:?}",
+                        core_module.ast
+                    )
+                    .as_str(),
+                );
         }
         let core_program = assembler.compile_ast(&program_ast).unwrap();
         core_program
