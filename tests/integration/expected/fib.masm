@@ -603,17 +603,58 @@ end
 
 export.fib
   dup.0
-  push.2147483648
-  u32.and
-  eq.2147483648
-  assertz
-  push.1000
   dup.0
   push.2147483648
   u32.and
   eq.2147483648
   assertz
-  u32.lt.checked
+  push.3
+  dup.0
+  push.2147483648
+  u32.and
+  eq.2147483648
+  assertz
+  u32.gt.checked
+  u32.neq.0
+  push.1
+  while.true
+    if.true
+      dup.0
+      push.2147483648
+      u32.and
+      eq.2147483648
+      assertz
+      push.3
+      dup.0
+      push.2147483648
+      u32.and
+      eq.2147483648
+      assertz
+      u32.div.checked
+      dup.0
+      push.2147483648
+      u32.and
+      eq.2147483648
+      assertz
+      dup.0
+      dup.0
+      push.2147483648
+      u32.and
+      eq.2147483648
+      assertz
+      push.3
+      dup.0
+      push.2147483648
+      u32.and
+      eq.2147483648
+      assertz
+      u32.gt.checked
+      u32.neq.0
+      push.1
+    else
+      push.0
+    end
+  end
 
 end
 begin
