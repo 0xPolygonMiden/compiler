@@ -134,12 +134,6 @@ enum Call {
     FinishPredecessorsLookup(Value, Block),
 }
 
-/// Emit instructions to produce a zero value in the given type.
-fn emit_zero(_ty: &Type, //, mut cur: FuncCursor
-) -> Value {
-    todo!("emit zero value at the beginning of a block")
-}
-
 /// The following methods are the API of the SSA builder. Here is how it should be used when
 /// translating to Miden IR:
 ///
@@ -461,55 +455,18 @@ impl SSABuilder {
         let num_predecessors = self.predecessors(dest_block).len();
         // When this `Drain` is dropped, these elements will get truncated.
         let results = self.results.drain(self.results.len() - num_predecessors..);
-
-        let pred_val = {
-            let mut iter = results.as_slice().iter().filter(|&val| val != &sentinel);
-            if let Some(val) = iter.next() {
-                // This variable has at least one non-temporary definition. If they're all the same
-                // value, we can remove the block parameter and reference that value instead.
-                if iter.all(|other| other == val) {
-                    Some(*val)
-                } else {
-                    None
-                }
-            } else {
-                // The variable is used but never defined before. This is an irregularity in the
-                // code, but rather than throwing an error we silently initialize the variable to
-                // 0. This will have no effect since this situation happens in unreachable code.
-                if !dfg.is_block_inserted(dest_block) {
-                    dfg.append_block(dest_block);
-                }
-                self.side_effects
-                    .instructions_added_to_blocks
-                    .push(dest_block);
-                let zero = emit_zero(
-                    dfg.value_type(sentinel),
-                    // FuncCursor::new(func).at_first_insertion_point(dest_block),
-                );
-                Some(zero)
-            }
-        };
-
-        if let Some(pred_val) = pred_val {
-            // Here all the predecessors use a single value to represent our variable
-            // so we don't need to have it as a block argument.
-            dfg.remove_block_param(sentinel);
-            pred_val
-        } else {
-            // There is disagreement in the predecessors on which value to use so we have
-            // to keep the block argument.
-            let mut preds = self.ssa_blocks[dest_block].predecessors;
-            for (idx, &val) in results.as_slice().iter().enumerate() {
-                let pred = preds.get_mut(idx, &mut self.inst_pool).unwrap();
-                let branch = *pred;
-                assert!(
-                    dfg.insts[branch].opcode().is_branch(),
-                    "you have declared a non-branch instruction as a predecessor to a block!"
-                );
-                dfg.append_branch_destination_argument(branch, dest_block, val);
-            }
-            sentinel
+        // Keep the block argument.
+        let mut preds = self.ssa_blocks[dest_block].predecessors;
+        for (idx, &val) in results.as_slice().iter().enumerate() {
+            let pred = preds.get_mut(idx, &mut self.inst_pool).unwrap();
+            let branch = *pred;
+            assert!(
+                dfg.insts[branch].opcode().is_branch(),
+                "you have declared a non-branch instruction as a predecessor to a block!"
+            );
+            dfg.append_branch_destination_argument(branch, dest_block, val);
         }
+        sentinel
     }
 
     /// Returns the list of `Block`s that have been declared as predecessors of the argument.
