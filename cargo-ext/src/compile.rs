@@ -33,12 +33,6 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
         .map(PathBuf::from)
         .unwrap_or_else(|_| cwd.join("target"));
     let release_folder = target_dir.join("wasm32-unknown-unknown").join("release");
-    if !release_folder.exists() {
-        panic!(
-            "Cargo build failed, expected release folder at path: {}",
-            release_folder.to_str().unwrap()
-        );
-    }
     let target_bin_file_path = release_folder.join(artifact_name).with_extension("wasm");
     if target_bin_file_path.exists() {
         // remove existing Wasm file since cargo build might not generate a new one silently
@@ -60,6 +54,12 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
     if !output.status.success() {
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         panic!("Rust to Wasm compilation failed!");
+    }
+    if !release_folder.exists() {
+        panic!(
+            "Cargo build failed, expected release folder at path: {}",
+            release_folder.to_str().unwrap()
+        );
     }
     if !target_bin_file_path.exists() {
         panic!(
