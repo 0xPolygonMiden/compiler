@@ -14,17 +14,19 @@ use midenc_session::Session;
 use midenc_session::TargetEnv;
 
 pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: PathBuf) {
+    // for cargo env var see https://doc.rust-lang.org/cargo/reference/environment-variables.html
     let mut cargo_build_cmd = Command::new("cargo");
     cargo_build_cmd
         .arg("build")
         .arg("--release")
         .arg("--target=wasm32-unknown-unknown");
 
-    let project_type = if let Some(bin_name) = bin_name {
-        cargo_build_cmd.arg("--bin").arg(bin_name);
-        ProjectType::Program
+    let (project_type, artifact_name) = if let Some(bin_name) = bin_name {
+        cargo_build_cmd.arg("--bin").arg(bin_name.clone());
+        (ProjectType::Program, bin_name)
     } else {
-        ProjectType::Library
+        // TODO: parse artifact name for lib from Cargo.toml (package.name?)
+        (ProjectType::Library, "miden_lib".to_string())
     };
     let output = cargo_build_cmd.output().expect(
         format!(
@@ -41,15 +43,18 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: PathBuf
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         panic!("Rust to Wasm compilation failed!");
     }
-    // TODO: parse the lib name from the Cargo.toml file
-    let artifact_name = "miden_lib";
     let cwd = std::env::current_dir().unwrap();
-    let target_bin_file_path = cwd
-        .join("target")
-        .join("wasm32-unknown-unknown")
-        .join("release")
-        .join(artifact_name)
-        .with_extension("wasm");
+    let target_dir = std::env::var("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| cwd.join("target"));
+    let release_folder = target_dir.join("wasm32-unknown-unknown").join("release");
+    if !release_folder.exists() {
+        panic!(
+            "Cargo build failed, expected release folder at path: {}",
+            release_folder.to_str().unwrap()
+        );
+    }
+    let target_bin_file_path = release_folder.join(artifact_name).with_extension("wasm");
     if !target_bin_file_path.exists() {
         panic!(
             "Cargo build failed, expected Wasm artifact at path: {}",
