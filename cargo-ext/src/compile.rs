@@ -33,13 +33,16 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
         .map(PathBuf::from)
         .unwrap_or_else(|_| cwd.join("target"));
     let release_folder = target_dir.join("wasm32-unknown-unknown").join("release");
-    let target_bin_file_path = release_folder.join(artifact_name).with_extension("wasm");
+    let target_bin_file_path = release_folder
+        .join(artifact_name.clone())
+        .with_extension("wasm");
     if target_bin_file_path.exists() {
         // remove existing Wasm file since cargo build might not generate a new one silently
         //  e.g. if crate-type = ["cdylib"] is not set in Cargo.toml
         std::fs::remove_file(&target_bin_file_path).unwrap();
     }
 
+    println!("Compiling '{artifact_name}' Rust to Wasm with cargo build ...");
     let output = cargo_build_cmd.output().expect(
         format!(
             "Failed to execute cargo build {}.",
@@ -67,7 +70,10 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
             target_bin_file_path.to_str().unwrap()
         );
     }
-
+    println!(
+        "Compiling '{}' Wasm to Masm with midenc ...",
+        &output_file.as_path().to_str().unwrap()
+    );
     let input = InputFile::from_path(target_bin_file_path).expect("Invalid Wasm artifact path");
     let output_file = OutputFile::Real(output_file.clone());
     let output_types = OutputTypes::new(vec![OutputTypeSpec {
