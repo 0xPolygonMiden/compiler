@@ -13,7 +13,7 @@ fn compile_template() {
     // dbg!(&test_dir);
     let output_file = test_dir.join(masm_path_rel);
     // dbg!(&output_file);
-    compile(TargetEnv::Base, None, &output_file);
+    compile(TargetEnv::Base, None, &output_file).expect("Failed to compile");
     env::set_current_dir(restore_dir).unwrap();
     assert!(output_file.exists());
     assert!(output_file.metadata().unwrap().len() > 0);

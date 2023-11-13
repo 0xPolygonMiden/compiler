@@ -27,5 +27,6 @@ midenc-driver.workspace = true
 midenc-session.workspace = true
 miden-diagnostics.workspace = true
 clap.workspace = true
+anyhow.workspace = true
 
 [dev-dependencies]

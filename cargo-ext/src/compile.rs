@@ -1,8 +1,9 @@
-use core::panic;
+use anyhow::bail;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 
+use anyhow::Context;
 use miden_diagnostics::Verbosity;
 use midenc_session::InputFile;
 use midenc_session::OutputFile;
@@ -13,7 +14,11 @@ use midenc_session::ProjectType;
 use midenc_session::Session;
 use midenc_session::TargetEnv;
 
-pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBuf) {
+pub fn compile(
+    target: TargetEnv,
+    bin_name: Option<String>,
+    output_file: &PathBuf,
+) -> anyhow::Result<()> {
     // for cargo env var see https://doc.rust-lang.org/cargo/reference/environment-variables.html
     let mut cargo_build_cmd = Command::new("cargo");
     cargo_build_cmd
@@ -28,7 +33,7 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
         // TODO: parse artifact name for lib from Cargo.toml (package.name?)
         (ProjectType::Library, "miden_lib".to_string())
     };
-    let cwd = std::env::current_dir().unwrap();
+    let cwd = std::env::current_dir().context("Failed to get current working directory")?;
     let target_dir = std::env::var("CARGO_TARGET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| cwd.join("target"));
@@ -39,11 +44,16 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
     if target_bin_file_path.exists() {
         // remove existing Wasm file since cargo build might not generate a new one silently
         //  e.g. if crate-type = ["cdylib"] is not set in Cargo.toml
-        std::fs::remove_file(&target_bin_file_path).unwrap();
+        std::fs::remove_file(&target_bin_file_path).with_context(|| {
+            format!(
+                "Failed to remove existing Wasm file {}",
+                &target_bin_file_path.to_str().unwrap()
+            )
+        })?;
     }
 
     println!("Compiling '{artifact_name}' Rust to Wasm with cargo build ...");
-    let output = cargo_build_cmd.output().expect(
+    let output = cargo_build_cmd.output().with_context(|| {
         format!(
             "Failed to execute cargo build {}.",
             cargo_build_cmd
@@ -52,29 +62,28 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
                 .collect::<Vec<_>>()
                 .join(" ")
         )
-        .as_str(),
-    );
+    })?;
     if !output.status.success() {
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-        panic!("Rust to Wasm compilation failed!");
+        bail!("Rust to Wasm compilation failed!");
     }
     if !release_folder.exists() {
-        panic!(
+        bail!(
             "Cargo build failed, expected release folder at path: {}",
             release_folder.to_str().unwrap()
         );
     }
     if !target_bin_file_path.exists() {
-        panic!(
+        bail!(
             "Cargo build failed, expected Wasm artifact at path: {}",
             target_bin_file_path.to_str().unwrap()
         );
     }
     println!(
-        "Compiling '{}' Wasm to Masm with midenc ...",
+        "Compiling '{}' Wasm to MASM with midenc ...",
         &output_file.as_path().to_str().unwrap()
     );
-    let input = InputFile::from_path(target_bin_file_path).expect("Invalid Wasm artifact path");
+    let input = InputFile::from_path(target_bin_file_path).context("Invalid input file")?;
     let output_file = OutputFile::Real(output_file.clone());
     let output_types = OutputTypes::new(vec![OutputTypeSpec {
         output_type: OutputType::Masm,
@@ -90,11 +99,5 @@ pub fn compile(target: TargetEnv, bin_name: Option<String>, output_file: &PathBu
             // .with_arg_matches(matches)
             .with_project_type(project_type),
     );
-    match midenc_driver::commands::compile(session.clone()) {
-        Ok(_) => (),
-        Err(e) => {
-            eprintln!("{}", e);
-            panic!("Compilation failed!");
-        }
-    }
+    midenc_driver::commands::compile(session.clone()).context("Wasm to MASM compilation failed!")
 }
