@@ -17,8 +17,6 @@ fn main() -> anyhow::Result<()> {
             bin_name,
             output_file,
         } => {
-            // TODO: ensure wasm32-unknown-unknown target is installed
-            // TODO: pass unrecognized flags to the midenc
             compile(target, bin_name, &output_file).context(format!("Failed to compile {}", target))
         }
     }
