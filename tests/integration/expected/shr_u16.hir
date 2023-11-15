@@ -14,8 +14,5 @@ block0(v0: i32, v1: i32):
     v6 = cast v4 : u32;
     v7 = shr.wrapping v5, v6 : u32;
     v8 = cast v7 : i32;
-    br block1(v8);
-
-block1(v2: i32):
-    ret v2;
+    ret v8;
 }
