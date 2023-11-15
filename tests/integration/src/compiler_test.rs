@@ -22,8 +22,12 @@ use miden_frontend_wasm::translate_module;
 use miden_frontend_wasm::translate_program;
 use miden_frontend_wasm::WasmTranslationConfig;
 
+use miden_hir::pass::AnalysisManager;
+use miden_hir::pass::RewritePass;
+use miden_hir::pass::RewriteSet;
 use miden_hir::FunctionIdent;
 use miden_hir::Ident;
+use miden_hir::ModuleRewritePassAdapter;
 use miden_hir::ProgramBuilder;
 use miden_hir::Symbol;
 use miden_stdlib::StdLibrary;
@@ -104,13 +108,7 @@ impl CompilerTest {
                 SourceSpan::default(),
             ),
         };
-        let hir_module = translate_module(
-            &wasm_bytes,
-            &WasmTranslationConfig::default(),
-            &session.diagnostics,
-        )
-        .expect("Failed to translate Wasm to IR program");
-
+        let hir_module = wasm_to_ir(&wasm_bytes, &session);
         let mut builder = ProgramBuilder::new(&session.diagnostics)
             .with_module(hir_module.into())
             .unwrap();
@@ -167,13 +165,7 @@ impl CompilerTest {
         );
         let wasm_bytes = compile_rust_file(&rust_source);
         let session = default_session();
-        let ir_module = translate_module(
-            &wasm_bytes,
-            &WasmTranslationConfig::default(),
-            &session.diagnostics,
-        )
-        .expect("Failed to translate Wasm to IR program");
-
+        let ir_module = wasm_to_ir(&wasm_bytes, &session);
         let entrypoint = FunctionIdent {
             module: Ident {
                 name: Symbol::intern("noname"),
@@ -362,4 +354,26 @@ fn demangle(name: &str) -> String {
     let include_hash = false;
     rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
     String::from_utf8(demangled).unwrap()
+}
+
+fn wasm_to_ir(wasm_bytes: &[u8], session: &Session) -> miden_hir::Module {
+    use miden_hir_transform as transforms;
+    let mut ir_module = translate_module(
+        wasm_bytes,
+        &WasmTranslationConfig::default(),
+        &session.diagnostics,
+    )
+    .expect("Failed to translate Wasm to IR module");
+
+    let mut analyses = AnalysisManager::new();
+    let mut rewrites = RewriteSet::default();
+    rewrites.push(ModuleRewritePassAdapter::new(
+        transforms::SplitCriticalEdges,
+    ));
+    rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
+    rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
+    rewrites
+        .apply(&mut ir_module, &mut analyses, session)
+        .expect("Failed to apply rewrites");
+    ir_module
 }

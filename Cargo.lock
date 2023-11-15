@@ -1027,6 +1027,7 @@ dependencies = [
  "miden-diagnostics",
  "miden-frontend-wasm",
  "miden-hir",
+ "miden-hir-transform",
  "miden-integration-tests-rust-fib",
  "miden-processor",
  "miden-stdlib",

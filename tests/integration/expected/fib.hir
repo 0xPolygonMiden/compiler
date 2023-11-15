@@ -13,8 +13,5 @@ block0(v0: i32):
     v4 = cast v2 : u32;
     v5 = lt v3, v4 : i1;
     v6 = cast v5 : i32;
-    br block1(v6);
-
-block1(v1: i32):
-    ret v1;
+    ret v6;
 }
