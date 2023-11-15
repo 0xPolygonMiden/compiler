@@ -13,6 +13,7 @@ edition.workspace = true
 [dependencies]
 miden-frontend-wasm.workspace = true
 miden-hir.workspace = true
+miden-hir-transform.workspace = true
 miden-codegen-masm.workspace = true
 miden-assembly.workspace = true
 miden-core.workspace = true
