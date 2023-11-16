@@ -1,5 +1,6 @@
 const.SIGN_BIT=2147483648 # 1 << 31
 const.MIN=SIGN_BIT
+const.MAX=2147483647 # (1 << 31) - 1
 const.NEG1=4294967295 # u32::MAX
 
 # Returns `1` if `a` has its sign bit set, else `0`
@@ -9,7 +10,24 @@ export.is_signed # [a]
     push.SIGN_BIT u32checked_and push.SIGN_BIT eq
 end
 
-# Adds `a` to `b`, asserting that both inputs are valid i32.
+# Get the negation of `a`
+#
+# This operation is unchecked, so if the input is not a valid i32 the behavior is undefined
+export.unchecked_neg # [a]
+    u32checked_not u32wrapping_add.1
+end
+
+# Get the negation of `a`
+#
+# This operation is checked, so if the input is not a valid i32,
+# or if the negation is not a valid i32, execution traps
+export.checked_neg # [a]
+    # assert that the negation is representable
+    dup.0 push.MIN eq assertz
+    exec.unchecked_neg
+end
+
+# Adds `b` to `a`, asserting that both inputs are valid i32.
 #
 # Returns the result modulo 2^32, plus a boolean indicating whether or not the subtraction underflowed.
 export.overflowing_add # [b, a]
@@ -41,37 +59,16 @@ export.overflowing_add # [b, a]
     movup.2 and # [overflowed, result]
 end
 
-# Adds `b` to `a`, asserting that both inputs are valid i32,
-# and asserting that the addition does not overflow.
+# Adds `b` to `a`, wrapping around on overflow.
+export.wrapping_add # [b, a]
+    exec.overflowing_add # [overflowed, result]
+    drop
+end
+
+# Adds `b` to `a`, asserting on overflow.
 export.checked_add # [b, a]
     exec.overflowing_add # [overflowed, result]
     assertz # [result]
-end
-
-# Get the negation of `a`
-#
-# This operation is checked, so if the input is not a valid i32,
-# or if the negation is not a valid i32, execution traps
-export.checked_neg # [a]
-    # assert that the negation is representable
-    dup.0 push.MIN eq assertz
-    u32checked_not u32wrapping_add.1
-end
-
-# Get the negation of `a`
-#
-# This operation is unchecked, so if the input is not a valid i32 the behavior is undefined
-export.unchecked_neg # [a]
-    u32checked_not u32wrapping_add.1
-end
-
-# Subtracts `b` from `a`
-#
-# This operation will fail if `b` is not a valid i32, or if `result` is not a valid i32
-export.unchecked_sub # [b, a]
-    u32checked_not
-    add
-    add.1 # [!b + a + 1]
 end
 
 # Subtracts `b` from `a`, asserting that both inputs are valid i32.
@@ -80,29 +77,47 @@ end
 export.overflowing_sub # [b, a]
     u32assert2
 
-    # is `b` signed?
-    dup.0 exec.is_signed # [is_b_signed, b, a]
+    # Subtraction is equivalent to addition if we negate the right-hand operand
+    #
+    # However, we must account for the edge case where `i32::MIN` is given, as that
+    # cannot be negated. In our case, the negation doesn't need to be realized immediately,
+    # so as long as the result is in range, we don't need to assert.
+    dup.0 push.MIN eq          # [is_b_min, b, a]
+    if.true
+        # The following is effectively identical to the implementation for `overflowing_add`,
+        # but inlined here as we know the value of `b` statically in this branch, and we need
+        # special handling to account for the fact that `b` was `i32::MIN`
 
-    # is `a` signed?
-    dup.2 exec.is_signed # [is_a_signed, is_b_signed, b, a]
+        # NOTE: We treat `b` as unsigned, since we're supposed to be negating it
+        drop push.MAX         # [i32::MAX, a]
+        dup.1 exec.is_signed  # [is_a_signed, i32::MAX, a]
+        dup.0 eq.0            # [is_same_sign, is_a_signed, i32::MAX, a]
 
-    # compute result
-    movup.3 movup.3 u32wrapping_sub
+        # compute result
+        movup.3 movup.3 u32wrapping_add  # [a + i32::MAX, is_same_sign, is_a_signed]
+        push.1 u32wrapping_add           # [a + i32::MAX + 1, is_same_sign, is_a_signed]
 
-    # is `result` signed?
-    dup.0 exec.is_signed # [is_result_signed, result, is_a_signed, is_b_signed]
+        # is `result` signed?
+        dup.0 exec.is_signed # [is_result_signed, result, is_same_sign, is_a_signed]
 
-    # if `b` and `result` have the same sign, which is different than the sign of `a`,
-    # then overflow has occurred. In all other cases, the result is valid
-    movup.3         # [is_b_signed, is_result_signed, result, is_a_signed]
-    dup.1 eq       # [do_b_and_result_have_same_sign, is_result_signed, result, is_a_signed]
-    swap.1 movup.3 # [is_a_signed, is_result_signed, do_b_and_result_have_same_sign, result]
-    neq             # [do_a_and_result_have_different_sign, do_b_and_result_have_same_sign, result]
-    and             # [overflowed, result]
+        # if both operands have the same sign, and the result differs, overflow has occurred
+        movup.3 neq # [signs_differ, result, is_same_sign]
+        movup.2 and # [overflowed, result]
+    else
+        exec.unchecked_neg
+        exec.overflowing_add
+    end
 end
 
-# Subtracts `b` from `a`, asserting that both inputs are valid i32,
-# and asserting that the subtraction does not underflow.
+# Subtracts `b` from `a`
+#
+# This operation will fail if `b` is not a valid i32, or if `result` is not a valid i32
+export.wrapping_sub # [b, a]
+    exec.overflowing_sub # [overflowed, result]
+    drop
+end
+
+# Subtracts `b` from `a`, asserting on underflow/overflow
 export.checked_sub # [b, a]
     exec.overflowing_sub # [overflowed, result]
     assertz # [result]
@@ -166,7 +181,6 @@ end
 
 # Given two i32 values in two's complement representation, compare them,
 # returning -1 if `a` < `b`, 0 if equal, and 1 if `a` > `b`.
-#
 export.icmp # [b, a]
     dup.1 # [a, b, a]
     dup.1 # [b, a, b, a]
