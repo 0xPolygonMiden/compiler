@@ -18,7 +18,7 @@ impl Stage for SemanticAnalysisStage {
         input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         match input {
             ParseOutput::Ast(ast) => {
                 let mut convert_to_hir = ast::ConvertAstToHir;

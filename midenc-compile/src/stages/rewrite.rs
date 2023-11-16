@@ -18,7 +18,7 @@ impl Stage for ApplyRewritesStage {
         mut input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         use miden_hir::pass::{ModuleRewritePassAdapter, RewriteSet};
 
         // Get all registered module rewrites and apply them in the order they appear

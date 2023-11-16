@@ -1,7 +1,7 @@
 use miden_hir::pass::AnalysisManager;
 use midenc_session::Session;
 
-use crate::{DriverError, DriverResult};
+use crate::{CompilerError, CompilerResult};
 
 /// This trait is implemented by a stage in the compiler
 pub trait Stage {
@@ -19,7 +19,7 @@ pub trait Stage {
         input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output>;
+    ) -> CompilerResult<Self::Output>;
 
     fn next<S>(self, stage: S) -> Chain<Self, S>
     where
@@ -70,13 +70,13 @@ where
         input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         if !self.a.enabled(session) {
-            return Err(DriverError::Stopped);
+            return Err(CompilerError::Stopped);
         }
         let output = self.a.run(input, analyses, session)?;
         if !self.b.enabled(session) {
-            return Err(DriverError::Stopped);
+            return Err(CompilerError::Stopped);
         }
         self.b.run(output, analyses, session)
     }
@@ -105,9 +105,9 @@ where
         input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         if !self.a.enabled(session) {
-            return Err(DriverError::Stopped);
+            return Err(CompilerError::Stopped);
         }
         let output = self.a.run(input, analyses, session)?;
         if !self.b.enabled(session) {
@@ -152,7 +152,7 @@ where
         inputs: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         let mut outputs = vec![];
         for input in inputs.into_iter() {
             outputs.push(self.spread.run(input, analyses, session)?);

@@ -1,9 +1,6 @@
-mod cli;
-pub mod commands;
-mod options;
+mod midenc;
 
-pub use self::cli::Midenc;
-pub use self::options::*;
+pub use self::midenc::Midenc;
 
 /// A convenience alias for `Result<T, DriverError>`
 pub type DriverResult<T> = Result<T, DriverError>;
@@ -14,41 +11,18 @@ pub enum DriverError {
     /// An error was raised due to invalid command-line arguments or argument validation
     #[error(transparent)]
     Clap(#[from] clap::Error),
-    /// The compilation pipeline was stopped early
-    #[error("compilation was canceled by user")]
-    Stopped,
-    /// An invalid input was given to the compiler
+    /// Compilation failed
     #[error(transparent)]
-    InvalidInput(#[from] midenc_session::InvalidInputError),
-    /// An error occurred while parsing/translating a Wasm module
-    #[error(transparent)]
-    WasmError(#[from] miden_frontend_wasm::WasmError),
-    /// An error occurred while parsing an HIR module
-    #[error(transparent)]
-    Parsing(#[from] miden_hir::parser::ParseError),
-    /// An error occurred while running an analysis
-    #[error(transparent)]
-    Analysis(#[from] miden_hir::pass::AnalysisError),
-    /// An error occurred while rewriting an IR entity
-    #[error(transparent)]
-    Rewriting(#[from] miden_hir::pass::RewriteError),
-    /// An error occurred while converting from one dialect to another
-    #[error(transparent)]
-    Conversion(#[from] miden_hir::pass::ConversionError),
-    /// An error occurred while linking a program
-    #[error(transparent)]
-    Linker(#[from] miden_hir::LinkerError),
+    Compile(#[from] midenc_compile::CompilerError),
     /// An error ocurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    /// An error occured while compiling a program
+    /// An unexpected error occurred
     #[error(transparent)]
     Failed(#[from] anyhow::Error),
-}
-impl From<miden_hir::ModuleConflictError> for DriverError {
-    fn from(err: miden_hir::ModuleConflictError) -> DriverError {
-        Self::Linker(miden_hir::LinkerError::ModuleConflict(err.0))
-    }
+    /// An error was emitted as a diagnostic, so we don't need to emit info to stdout
+    #[error("exited due to error: see diagnostics for details")]
+    Reported,
 }
 
 /// Run the driver as if it was invoked from the command-line
@@ -58,7 +32,7 @@ where
     A: IntoIterator<Item = std::ffi::OsString>,
 {
     match Midenc::run(cwd, args) {
-        Err(DriverError::Stopped) => Ok(()),
+        Err(DriverError::Compile(midenc_compile::CompilerError::Stopped)) => Ok(()),
         result => result,
     }
 }

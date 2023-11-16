@@ -20,7 +20,7 @@ impl Stage for LinkerStage {
         input: Self::Input,
         _analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         if session.should_link() {
             let mut builder = hir::ProgramBuilder::new(&session.diagnostics);
             for module in input.into_iter() {

@@ -149,3 +149,41 @@ impl FromStr for Warnings {
         }
     }
 }
+
+/// This enum represents the type of messages produced by the compiler during execution
+#[derive(Debug, Copy, Clone, Default, ValueEnum)]
+pub enum VerbosityFlag {
+    /// Emit additional debug/trace information during compilation
+    Debug,
+    /// Emit the standard informational, warning, and error messages
+    #[default]
+    Info,
+    /// Only emit warnings and errors
+    Warning,
+    /// Only emit errors
+    Error,
+    /// Do not emit anything to stdout/stderr
+    Silent,
+}
+impl From<Verbosity> for VerbosityFlag {
+    fn from(v: Verbosity) -> Self {
+        match v {
+            Verbosity::Debug => Self::Debug,
+            Verbosity::Info => Self::Info,
+            Verbosity::Warning => Self::Warning,
+            Verbosity::Error => Self::Error,
+            Verbosity::Silent => Self::Silent,
+        }
+    }
+}
+impl Into<Verbosity> for VerbosityFlag {
+    fn into(self) -> Verbosity {
+        match self {
+            Self::Debug => Verbosity::Debug,
+            Self::Info => Verbosity::Info,
+            Self::Warning => Verbosity::Warning,
+            Self::Error => Verbosity::Error,
+            Self::Silent => Verbosity::Silent,
+        }
+    }
+}
