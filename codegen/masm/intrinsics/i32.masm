@@ -211,10 +211,10 @@ export.checked_div # [b, a]
     dup.1 exec.unchecked_neg    # [-b, |a|, b, is_a_signed]
     dup.2 swap.1                # [-b, b, |a|, b, is_a_signed]
     movup.3 exec.is_signed      # [is_b_signed, -b, b, |a|, is_a_signed]
-    dup.0 movdn.4 cdrop        # [|b|, |a|, is_a_signed, is_b_signed]
+    dup.0 movdn.5 cdrop         # [|b|, |a|, is_a_signed, is_b_signed]
 
     # divide
-    u32unchecked_div             # [|a / b|, is_a_signed, is_b_signed]
+    u32unchecked_div            # [|a / b|, is_a_signed, is_b_signed]
 
     # if the signs differ, negate the result
     movdn.2 neq                 # [signs_differ, |a / b|]
