@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use cranelift_entity::{EntityRef, PrimaryMap};
 use intrusive_collections::{intrusive_adapter, LinkedListAtomicLink};
-use miden_diagnostics::Spanned;
+use miden_diagnostics::{SourceSpan, Spanned};
 use miden_hir::{FunctionIdent, Ident, Signature, Type};
 use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
@@ -17,8 +17,9 @@ intrusive_adapter!(pub FrozenFunctionListAdapter = Arc<Function>: Function { lin
 #[derive(Spanned)]
 pub struct Function {
     link: LinkedListAtomicLink,
-    /// The name of this function
     #[span]
+    pub span: SourceSpan,
+    /// The name of this function
     pub name: FunctionIdent,
     /// The type signature of this function
     pub signature: Signature,
@@ -41,6 +42,7 @@ impl Function {
         });
         Self {
             link: Default::default(),
+            span: SourceSpan::UNKNOWN,
             name,
             signature,
             body,

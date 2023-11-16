@@ -77,10 +77,12 @@ impl<'a> MasmCompiler<'a> {
 
         // Ensure intrinsics modules are linked
         program.insert(Box::new(
-            Module::load_intrinsic("intrinsics::mem").expect("parsing failed"),
+            Module::load_intrinsic("intrinsics::mem", &self.session.codemap)
+                .expect("parsing failed"),
         ));
         program.insert(Box::new(
-            Module::load_intrinsic("intrinsics::i32").expect("parsing failed"),
+            Module::load_intrinsic("intrinsics::i32", &self.session.codemap)
+                .expect("parsing failed"),
         ));
 
         Ok(program)

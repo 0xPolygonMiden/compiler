@@ -146,6 +146,11 @@ impl PartialEq<Symbol> for Ident {
         self.name.eq(rhs)
     }
 }
+impl PartialEq<str> for Ident {
+    fn eq(&self, rhs: &str) -> bool {
+        self.name.as_str() == rhs
+    }
+}
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);

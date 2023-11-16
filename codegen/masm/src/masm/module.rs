@@ -1,8 +1,14 @@
-use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use intrusive_collections::{intrusive_adapter, LinkedList, RBTreeAtomicLink};
-use miden_diagnostics::Spanned;
-use miden_hir::{FunctionIdent, Ident};
+use miden_assembly::ast::ModuleAst;
+use miden_diagnostics::{CodeMap, SourceFile, SourceSpan, Spanned};
+use miden_hir::{FunctionIdent, Ident, Symbol};
 use rustc_hash::FxHashMap;
 
 use super::{FrozenFunctionListAdapter, Function, FunctionListAdapter, Import, ModuleImportInfo};
@@ -13,10 +19,22 @@ const MEM_INTRINSICS: &'static str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"));
 
 /// This is a mapping of intrinsics module name to the raw MASM source for that module
-const INTRINSICS: [(&'static str, &'static str); 2] = [
-    ("intrinsics::i32", I32_INTRINSICS),
-    ("intrinsics::mem", MEM_INTRINSICS),
+const INTRINSICS: [(&'static str, &'static str, &'static str); 2] = [
+    ("intrinsics::i32", I32_INTRINSICS, "i32.masm"),
+    ("intrinsics::mem", MEM_INTRINSICS, "mem.masm"),
 ];
+
+#[derive(Debug, thiserror::Error)]
+pub enum LoadModuleError {
+    #[error("failed to load module from disk: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("invalid path to module: '{}' is not a file", .0.display())]
+    InvalidPath(PathBuf),
+    #[error(transparent)]
+    InvalidModulePath(#[from] miden_assembly::PathError),
+    #[error(transparent)]
+    ParseFailed(#[from] miden_assembly::ParsingError),
+}
 
 /// This represents a single compiled Miden Assembly module in a form that is
 /// designed to integrate well with the rest of our IR. You can think of this
@@ -24,6 +42,7 @@ const INTRINSICS: [(&'static str, &'static str); 2] = [
 /// i.e. [miden_assembly::ast::ModuleAst].
 pub struct Module {
     link: RBTreeAtomicLink,
+    pub span: SourceSpan,
     /// The name of this module, e.g. `std::math::u64`
     pub name: Ident,
     /// The module-scoped documentation for this module
@@ -41,6 +60,7 @@ impl Module {
     pub fn new(name: Ident) -> Self {
         Self {
             link: Default::default(),
+            span: SourceSpan::UNKNOWN,
             name,
             docs: None,
             entry: None,
@@ -49,19 +69,66 @@ impl Module {
         }
     }
 
-    pub fn parse_str<N: Into<Ident>>(
-        source: &str,
+    /// Parse a [Module] from the given string
+    pub fn parse_source_file<N: Into<Ident>>(
+        source_file: Arc<SourceFile>,
         name: N,
-    ) -> Result<Self, miden_assembly::ParsingError> {
-        use miden_assembly::{
-            ast::{ModuleAst, ModuleImports},
-            ProcedureId,
-        };
-        use miden_hir::Symbol;
+        codemap: &CodeMap,
+    ) -> Result<Self, LoadModuleError> {
+        use miden_assembly::LibraryPath;
 
-        let ast = ModuleAst::parse(source)?;
+        let name = name.into();
+        let module = miden_assembly::Module {
+            path: LibraryPath::new(name.as_str())?,
+            ast: ModuleAst::parse(source_file.source())?,
+        };
+        let span = source_file.source_span();
+        Ok(Self::from_module(&module, span, codemap))
+    }
+
+    /// Parse a [Module] from the given file path
+    pub fn parse_file<P: AsRef<Path>>(
+        path: P,
+        root_ns: Option<miden_assembly::LibraryNamespace>,
+        codemap: &CodeMap,
+    ) -> Result<Self, LoadModuleError> {
+        let id = codemap.add_file(path)?;
+        let source_file = codemap.get(id).unwrap();
+        let basename = source_file
+            .name()
+            .as_ref()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        let name = match root_ns {
+            None => format!("{basename}"),
+            Some(root_ns) => format!("{}::{basename}", root_ns.as_str()),
+        };
+        Self::parse_source_file(source_file, name.as_str(), codemap)
+    }
+
+    pub fn from_module(
+        module: &miden_assembly::Module,
+        span: SourceSpan,
+        codemap: &CodeMap,
+    ) -> Self {
+        let name = Ident::with_empty_span(Symbol::intern(module.path.as_str()));
+        Self::from_module_ast_with_name(&module.ast, name, span, codemap)
+    }
+
+    /// Convert a [miden_assembly::ast::ModuleAst] to a [Module]
+    pub fn from_module_ast_with_name<N: Into<Ident>>(
+        ast: &ModuleAst,
+        name: N,
+        span: SourceSpan,
+        _codemap: &CodeMap,
+    ) -> Self {
+        use miden_assembly::{ast::ModuleImports, ProcedureId};
+
         let module_name = name.into();
         let mut module = Self::new(module_name);
+        module.span = span;
         module.docs = ast.docs().cloned();
 
         // HACK: We're waiting on 0xPolygonMiden/miden-vm#1110
@@ -109,7 +176,7 @@ impl Module {
             module.functions.push_back(function);
         }
 
-        Ok(module)
+        module
     }
 
     /// Freezes this program, preventing further modifications
@@ -140,10 +207,7 @@ impl Module {
 
     /// Convert this module into its [miden_assembly::Module] representation.
     pub fn to_module_ast(&self, codemap: &miden_diagnostics::CodeMap) -> miden_assembly::Module {
-        use miden_assembly::{
-            self as masm,
-            ast::{ModuleAst, ModuleImports},
-        };
+        use miden_assembly::{self as masm, ast::ModuleImports};
 
         // Create module import table
         let mut imported = BTreeMap::<String, masm::LibraryPath>::default();
@@ -258,7 +322,7 @@ impl fmt::Display for Module {
     }
 }
 impl midenc_session::Emit for Module {
-    fn name(&self) -> Option<miden_hir::Symbol> {
+    fn name(&self) -> Option<Symbol> {
         Some(self.name.as_symbol())
     }
     fn output_type(&self) -> midenc_session::OutputType {
@@ -346,9 +410,13 @@ impl Module {
     /// This helper loads the named module from the set of intrinsics modules defined in this crate.
     ///
     /// Expects the fully-qualified name to be given, e.g. `intrinsics::mem`
-    pub fn load_intrinsic<N: AsRef<str>>(name: N) -> Option<Self> {
+    pub fn load_intrinsic<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Self> {
+        use miden_diagnostics::FileName;
+
         let name = name.as_ref();
-        let (_, source) = INTRINSICS.iter().find(|(n, _)| *n == name)?;
-        Some(Self::parse_str(source, name).expect("invalid module"))
+        let (name, source, filename) = INTRINSICS.iter().copied().find(|(n, _, _)| *n == name)?;
+        let id = codemap.add(FileName::Virtual(filename.into()), source.to_string());
+        let source_file = codemap.get(id).unwrap();
+        Some(Self::parse_source_file(source_file, name, codemap).expect("invalid module"))
     }
 }
