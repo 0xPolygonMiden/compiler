@@ -2,8 +2,8 @@ use miden_hir::{
     self,
     pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
-    AbiParam, Felt, FieldElement, Immediate, InstBuilder, OperandStack, ProgramBuilder, Signature,
-    SourceSpan, Stack, StarkField, Type,
+    AbiParam, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, OperandStack,
+    ProgramBuilder, Signature, SourceSpan, Stack, StarkField, Type,
 };
 use std::sync::Arc;
 
@@ -162,6 +162,44 @@ impl TestByEmulationHarness {
             .load_program(program)
             .expect("failed to load program");
         self.emulator.invoke(entrypoint, args)
+    }
+
+    #[inline]
+    pub fn invoke(
+        &mut self,
+        entrypoint: FunctionIdent,
+        args: &[Felt],
+    ) -> Result<OperandStack<Felt>, EmulationError> {
+        self.emulator.invoke(entrypoint, args)
+    }
+
+    #[inline]
+    pub fn enter(&mut self, entrypoint: FunctionIdent, args: &[Felt]) {
+        match self.emulator.enter(entrypoint, args) {
+            Ok(_) | Err(EmulationError::BreakpointHit(_)) => {
+                dbg!(self.emulator.info());
+            }
+            Err(other) => panic!("unexpected emulation error: {other}"),
+        }
+    }
+
+    pub fn step_with_info(&mut self) {
+        match self.emulator.step() {
+            Ok(_) | Err(EmulationError::BreakpointHit(_)) => {
+                dbg!(self.emulator.info());
+            }
+            Err(other) => panic!("unexpected emulation error: {other}"),
+        }
+    }
+
+    #[inline]
+    pub fn step(&mut self) -> Result<EmulatorEvent, EmulationError> {
+        self.emulator.step()
+    }
+
+    #[inline]
+    pub fn step_over(&mut self) -> Result<EmulatorEvent, EmulationError> {
+        self.emulator.step_over()
     }
 }
 
@@ -345,9 +383,8 @@ fn stackify_fundamental_loops() {
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
 }
 
-/// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
 #[test]
-fn verify_i32_intrinsics_syntax() {
+fn i32_icmp() {
     let mut harness = TestByEmulationHarness::default();
 
     harness
@@ -360,6 +397,262 @@ fn verify_i32_intrinsics_syntax() {
             .freeze(),
         )
         .expect("failed to load intrinsics::i32");
+
+    let zero = Felt::new(0i32 as u32 as u64);
+    let neg_one = Felt::new(-1i32 as u32 as u64);
+    let one = Felt::new(1i32 as u32 as u64);
+    let max = Felt::new(i32::MAX as u32 as u64);
+    let min = Felt::new(i32::MIN as u32 as u64);
+
+    // NOTE: arguments are passed in reverse, i.e. [b, a] not [a, b]
+    let icmp = "intrinsics::i32::icmp".parse().unwrap();
+    // 0.cmp(1)
+    let mut stack = harness
+        .invoke(icmp, &[one, zero])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(neg_one));
+
+    // Reset emulator
+    harness.emulator.stop();
+    // 1.cmp(0)
+    let mut stack = harness
+        .invoke(icmp, &[zero, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // 0.cmp(0)
+    let mut stack = harness
+        .invoke(icmp, &[zero, zero])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // -1.cmp(0)
+    let mut stack = harness
+        .invoke(icmp, &[zero, neg_one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(neg_one));
+
+    harness.emulator.stop();
+    // 0.cmp(-1)
+    let mut stack = harness
+        .invoke(icmp, &[neg_one, zero])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // -1.cmp(i32::MAX)
+    let mut stack = harness
+        .invoke(icmp, &[max, neg_one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(neg_one));
+
+    harness.emulator.stop();
+    // i32::MAX.cmp(-1)
+    let mut stack = harness
+        .invoke(icmp, &[neg_one, max])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // -1.cmp(i32::MIN)
+    let mut stack = harness
+        .invoke(icmp, &[min, neg_one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // i32::MIN.cmp(-1)
+    let mut stack = harness
+        .invoke(icmp, &[neg_one, min])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(neg_one));
+
+    harness.emulator.stop();
+    // i32::MIN.cmp(i32::MIN)
+    let mut stack = harness.invoke(icmp, &[min, min]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // i32::MAX.cmp(i32::MIN)
+    let mut stack = harness.invoke(icmp, &[min, max]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // i32::MAX.cmp(1)
+    let mut stack = harness.invoke(icmp, &[one, max]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+}
+
+#[test]
+fn i32_is_gt() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
+        )
+        .expect("failed to load intrinsics::i32");
+
+    let zero = Felt::new(0i32 as u32 as u64);
+    let neg_one = Felt::new(-1i32 as u32 as u64);
+    let one = Felt::new(1i32 as u32 as u64);
+    let max = Felt::new(i32::MAX as u32 as u64);
+    let min = Felt::new(i32::MIN as u32 as u64);
+
+    // NOTE: arguments are passed in reverse, i.e. [b, a] not [a, b]
+    let is_gt = "intrinsics::i32::is_gt".parse().unwrap();
+    // 0 > 1
+    let mut stack = harness
+        .invoke(is_gt, &[one, zero])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1 > 0
+    let mut stack = harness
+        .invoke(is_gt, &[zero, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // 1 > 1
+    let mut stack = harness
+        .invoke(is_gt, &[one, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1 > -1
+    let mut stack = harness
+        .invoke(is_gt, &[neg_one, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // i32::MAX > 1
+    let mut stack = harness
+        .invoke(is_gt, &[one, max])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // 1 > i32::MIN
+    let mut stack = harness
+        .invoke(is_gt, &[min, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+}
+
+#[test]
+fn i32_is_lt() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
+        )
+        .expect("failed to load intrinsics::i32");
+
+    let zero = Felt::new(0i32 as u32 as u64);
+    let neg_one = Felt::new(-1i32 as u32 as u64);
+    let one = Felt::new(1i32 as u32 as u64);
+    let max = Felt::new(i32::MAX as u32 as u64);
+    let min = Felt::new(i32::MIN as u32 as u64);
+
+    // NOTE: arguments are passed in reverse, i.e. [b, a] not [a, b]
+    let is_lt = "intrinsics::i32::is_lt".parse().unwrap();
+    // 0 < 1
+    let mut stack = harness
+        .invoke(is_lt, &[one, zero])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // 1 < 0
+    let mut stack = harness
+        .invoke(is_lt, &[zero, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1 < 1
+    let mut stack = harness
+        .invoke(is_lt, &[one, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1 < -1
+    let mut stack = harness
+        .invoke(is_lt, &[neg_one, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // i32::MAX < 1
+    let mut stack = harness
+        .invoke(is_lt, &[one, max])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1 < i32::MIN
+    let mut stack = harness
+        .invoke(is_lt, &[min, one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // -1 < i32::MIN
+    let mut stack = harness
+        .invoke(is_lt, &[min, neg_one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // i32::MIN < -1
+    let mut stack = harness
+        .invoke(is_lt, &[neg_one, min])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
 }
 
 /// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].

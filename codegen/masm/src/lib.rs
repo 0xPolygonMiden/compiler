@@ -5,7 +5,8 @@ pub mod stackify;
 mod tests;
 
 pub use self::emulator::{
-    Breakpoint, DebugInfo, EmulationError, Emulator, InstructionPointer, Watchpoint, WatchpointId,
+    Breakpoint, BreakpointEvent, CallFrame, DebugInfo, DebugInfoWithStack, EmulationError,
+    Emulator, EmulatorEvent, InstructionPointer, WatchMode, Watchpoint, WatchpointId,
 };
 pub use self::masm::*;
 pub use self::stackify::ConvertHirToMasm;
