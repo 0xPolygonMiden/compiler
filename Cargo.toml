@@ -82,3 +82,9 @@ codegen-units = 1
 opt-level = 2
 codegen-units = 1
 lto = "thin"
+
+[profile.test.package.proptest]
+opt-level = 3
+
+[profile.test.package.rand_chacha]
+opt-level = 3
