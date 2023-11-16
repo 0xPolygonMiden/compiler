@@ -1,5 +1,5 @@
 use super::Stage;
-use crate::{DriverError, DriverResult};
+use crate::{CompilerError, CompilerResult};
 use miden_codegen_masm as masm;
 use miden_frontend_wasm as wasm;
 use miden_hir::pass::{AnalysisManager, ConversionPass, RewritePass};
@@ -12,7 +12,7 @@ mod parse;
 mod rewrite;
 mod sema;
 
-pub use self::codegen::CodegenStage;
+pub use self::codegen::{CodegenStage, Compiled};
 pub use self::link::{LinkerStage, MaybeLinked};
 pub use self::parse::{ParseOutput, ParseStage};
 pub use self::rewrite::ApplyRewritesStage;

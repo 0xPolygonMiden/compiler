@@ -22,7 +22,7 @@ impl Stage for CodegenStage {
         input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
-    ) -> DriverResult<Self::Output> {
+    ) -> CompilerResult<Self::Output> {
         match input {
             MaybeLinked::Linked(program) => {
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();

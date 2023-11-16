@@ -38,14 +38,12 @@ impl InputFile {
         let path = path.as_ref();
         let file_type = FileType::try_from(path)?;
         match file_type {
-            FileType::Hir | FileType::Wasm => Ok(Self {
+            FileType::Hir | FileType::Wasm | FileType::Masm | FileType::Masl => Ok(Self {
                 file: InputType::Real(path.to_path_buf()),
                 file_type,
             }),
             // We do not yet have frontends for these file types
-            FileType::Masm | FileType::Masl | FileType::Wat => {
-                Err(InvalidInputError::UnsupportedFileType(path.to_path_buf()))
-            }
+            FileType::Wat => Err(InvalidInputError::UnsupportedFileType(path.to_path_buf())),
         }
     }
 
@@ -72,6 +70,13 @@ impl InputFile {
 
     pub fn file_type(&self) -> FileType {
         self.file_type
+    }
+
+    pub fn as_path(&self) -> Option<&Path> {
+        match &self.file {
+            InputType::Real(ref path) => Some(path),
+            _ => None,
+        }
     }
 
     pub fn filestem(&self) -> &str {

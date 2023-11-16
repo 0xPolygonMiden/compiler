@@ -1,6 +1,6 @@
 [package]
-name = "midenc-driver"
-description = "The driver for midenc, the Miden compiler"
+name = "midenc-compile"
+description = "The compiler frontend for Miden"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -16,8 +16,14 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-miden-hir.workspace = true
+log.workspace = true
+inventory.workspace = true
+miden-assembly.workspace = true
+miden-codegen-masm.workspace = true
 miden-diagnostics.workspace = true
+miden-frontend-wasm.workspace = true
+miden-hir.workspace = true
+miden-hir-transform.workspace = true
 midenc-session.workspace = true
-midenc-compile.workspace = true
+rustc-hash.workspace = true
 thiserror.workspace = true
