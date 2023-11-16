@@ -26,3 +26,6 @@ midenc-session.workspace = true
 paste.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
+
+[dev-dependencies]
+proptest = "1.4"
