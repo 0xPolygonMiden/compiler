@@ -182,8 +182,8 @@ export.icmp # [b, a]
     # if a_msb != b_msb, then a > b (if a_msb == 0), or a < b (if a_msb == 1)
     if.true # [b_msb == 0, b, a]
         movdn.2 drop drop         # [b_msb == 0]
-        push.1 push.NEG1          # [-1, 1, b_msb == 0]
-        swap.2                    # [b_msb == 0, 1, -1]
+        push.NEG1 push.1          # [1, -1, b_msb == 0]
+        swap.2                    # [b_msb == 0, -1, 1]
         cdrop                     # [1 or -1]
     else    # [b_msb == 0, b, a]
         # a_msb == b_msb, so we can compare the remaining bits lexicographically,
