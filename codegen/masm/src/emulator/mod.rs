@@ -625,6 +625,27 @@ macro_rules! binop32 {
 ///
 /// 1. The top two elements of the stack
 /// 2. The top element of the stack and an immediate.
+macro_rules! binop_unchecked_u32 {
+    ($emu:ident, $op:ident) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let b = pop!($emu);
+        let a = pop!($emu);
+        $emu.stack.push(Felt::new(a.as_int().$op(b.as_int())));
+    }};
+
+    ($emu:ident, $op:ident, $imm:expr) => {{
+        #[allow(unused)]
+        use core::ops::*;
+        let a = pop!($emu);
+        $emu.stack.push(Felt::new(a.as_int().$op($imm)));
+    }};
+}
+
+/// Applies a checked binary operator to two u32 values, either:
+///
+/// 1. The top two elements of the stack
+/// 2. The top element of the stack and an immediate.
 macro_rules! binop_checked_u32 {
     ($emu:ident, $op:ident) => {{
         paste::paste! {
@@ -1365,8 +1386,8 @@ impl Emulator {
                 }
                 Op::U32CheckedDiv => binop_checked_u32!(self, div),
                 Op::U32CheckedDivImm(imm) => binop_checked_u32!(self, div, imm),
-                Op::U32UncheckedDiv => binop!(self, div),
-                Op::U32UncheckedDivImm(imm) => binop!(self, div, Felt::new(imm as u64)),
+                Op::U32UncheckedDiv => binop_unchecked_u32!(self, div),
+                Op::U32UncheckedDivImm(imm) => binop_unchecked_u32!(self, div, imm as u64),
                 Op::U32CheckedMod => binop_checked_u32!(self, rem),
                 Op::U32CheckedModImm(imm) => binop_checked_u32!(self, rem, imm),
                 Op::U32UncheckedMod => {
