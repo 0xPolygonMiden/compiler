@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{collections::BTreeMap, path::Path, sync::Arc};
 
+use hir::Ident;
 use intrusive_collections::RBTree;
 use miden_hir::{self as hir, DataSegmentTable, FunctionIdent};
 
