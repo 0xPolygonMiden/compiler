@@ -833,3 +833,71 @@ fn i32_overflowing_add() {
     assert_eq!(stack.pop(), Some(one));
     assert_eq!(stack.pop(), Some(max));
 }
+
+#[test]
+fn i32_unchecked_neg() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
+        )
+        .expect("failed to load intrinsics::i32");
+
+    let zero = Felt::new(0i32 as u32 as u64);
+    let neg_one = Felt::new(-1i32 as u32 as u64);
+    let one = Felt::new(1i32 as u32 as u64);
+    let max = Felt::new(i32::MAX as u32 as u64);
+
+    let neg = "intrinsics::i32::unchecked_neg".parse().unwrap();
+    // 0
+    let mut stack = harness.invoke(neg, &[zero]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1
+    let mut stack = harness.invoke(neg, &[one]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(neg_one));
+
+    harness.emulator.stop();
+    // -1
+    let mut stack = harness.invoke(neg, &[neg_one]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // i32::MAX
+    let mut stack = harness.invoke(neg, &[max]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(Felt::new(-i32::MAX as u32 as u64)));
+}
+
+#[test]
+#[should_panic(expected = "assertion failed: expected false, got true")]
+fn i32_checked_neg() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
+        )
+        .expect("failed to load intrinsics::i32");
+
+    let min = Felt::new(i32::MIN as u32 as u64);
+
+    let neg = "intrinsics::i32::checked_neg".parse().unwrap();
+    // i32::MIN
+    harness.invoke(neg, &[min]).expect("execution failed");
+}
