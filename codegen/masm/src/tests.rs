@@ -35,14 +35,16 @@ struct TestByEmulationHarness {
 impl TestByEmulationHarness {
     #[allow(unused)]
     pub fn with_emulator_config(memory_size: usize, hp: usize, lp: usize) -> Self {
-        Self {
+        let mut harness = Self {
             context: TestContext::default(),
             emulator: Emulator::new(
                 memory_size.try_into().expect("invalid memory size"),
                 hp.try_into().expect("invalid address"),
                 lp.try_into().expect("invalid address"),
             ),
-        }
+        };
+        harness.set_cycle_budget(2000);
+        harness
     }
 
     pub fn stackify(
@@ -94,31 +96,26 @@ impl TestByEmulationHarness {
     }
 
     #[allow(unused)]
-    pub fn clear_breakpoint(&mut self) {
-        self.emulator.clear_breakpoint();
+    pub fn clear_breakpoint(&mut self, bp: Breakpoint) {
+        self.emulator.clear_breakpoint(bp);
     }
 
     #[allow(unused)]
-    pub fn step(&mut self) {
-        match self.resume() {
-            Ok(_) | Err(EmulationError::BreakpointHit) => return,
+    pub fn resume_until_break(&mut self) {
+        match self.emulator.resume() {
+            Ok(_) | Err(EmulationError::BreakpointHit(_)) => return,
             Err(other) => panic!("unexpected emulation error: {other}"),
         }
     }
 
     #[allow(unused)]
-    pub fn step_with_info(&mut self) {
+    pub fn resume_until_break_with_info(&mut self) {
         match self.emulator.resume() {
-            Ok(_) | Err(EmulationError::BreakpointHit) => {
+            Ok(_) | Err(EmulationError::BreakpointHit(_)) => {
                 dbg!(self.emulator.info());
             }
             Err(other) => panic!("unexpected emulation error: {other}"),
         }
-    }
-
-    #[allow(unused)]
-    pub fn resume(&mut self) -> Result<OperandStack<Felt>, EmulationError> {
-        self.emulator.resume()
     }
 
     pub fn malloc(&mut self, size: usize) -> u32 {
@@ -190,6 +187,8 @@ fn fib_emulator() {
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
     let program = compiler.compile(program).expect("compilation failed");
+
+    println!("{}", program.get("test").unwrap());
 
     // Test it via the emulator
     let n = Felt::new(10);
@@ -354,7 +353,11 @@ fn verify_i32_intrinsics_syntax() {
     harness
         .emulator
         .load_module(
-            Box::new(Module::load_intrinsic("intrinsics::i32").expect("parsing failed")).freeze(),
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
         )
         .expect("failed to load intrinsics::i32");
 }
@@ -402,7 +405,6 @@ fn stackify_sum_matrix() {
     harness.store(addr + 24, Felt::ONE);
     harness.store(addr + 28, Felt::ONE);
     harness.store(addr + 32, Felt::ONE);
-    harness.set_cycle_budget(1000);
 
     // Execute test::sum_matrix
     let mut stack = harness

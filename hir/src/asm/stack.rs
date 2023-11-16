@@ -29,6 +29,10 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     /// Return a mutable reference to the underlying "raw" stack data structure, a vector
     fn stack_mut(&mut self) -> &mut Vec<Self::Element>;
 
+    /// Clear the contents of this stack while keeping the underlying
+    /// memory allocated for reuse.
+    fn clear(&mut self);
+
     /// Display this stack using its debugging representation
     fn debug(&self) -> DebugStack<Self> {
         DebugStack(self)
@@ -376,6 +380,10 @@ impl<T: StackElement> Stack for OperandStack<T> {
     #[inline(always)]
     fn stack_mut(&mut self) -> &mut Vec<Self::Element> {
         &mut self.stack
+    }
+    #[inline(always)]
+    fn clear(&mut self) {
+        self.stack.clear();
     }
 }
 impl OperandStack<Felt> {
