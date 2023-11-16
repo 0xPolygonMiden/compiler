@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dlmalloc = { version = "0.2.4", features = ["global"], optional = true}
+dlmalloc = { version = "0.2.4", features = ["global"]}
 
 [[bin]]
 name = "dlmalloc_app"
