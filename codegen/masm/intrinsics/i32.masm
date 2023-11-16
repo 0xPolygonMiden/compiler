@@ -129,26 +129,69 @@ end
 export.overflowing_mul # [b, a]
     u32assert2
 
-    # is `b` signed?
-    dup.0 exec.is_signed # [is_b_signed, b, a]
+    # is `b` i32::MIN?
+    dup.0 push.MIN eq    # [is_b_MIN, b, a]
 
-    # is `a` signed?
-    dup.2 exec.is_signed # [is_a_signed, is_b_signed, b, a]
+    # is `a` i32::MIN?
+    dup.2 push.MIN eq    # [is_a_MIN, is_b_MIN, b, a]
 
-    # compute result
-    movup.3 movup.3 u32wrapping_mul
+    # are either `a` or `b` i32::MIN?
+    or                   # [is_either_MIN, b, a]
 
-    # if `b` and `result` have the same sign, which is different than the sign of `a`,
-    # then overflow has occurred. In all other cases, the result is valid
-    movup.3         # [is_b_signed, is_result_signed, result, is_a_signed]
-    dup.1 eq       # [do_b_and_result_have_same_sign, is_result_signed, result, is_a_signed]
-    swap.1 movup.3 # [is_a_signed, is_result_signed, do_b_and_result_have_same_sign, result]
-    neq             # [do_a_and_result_have_different_sign, do_b_and_result_have_same_sign, result]
-    and             # [overflowed, result]
+    # if either operand are MIN, then the following rules apply
+    #
+    # 1. If the other operand is 1, then there is no overflow and the result is MIN
+    # 2. If the other operand is -1, then there is overflow and the result is MIN
+    # 3. For any other value, there is overflow, and the result is zero
+    if.true
+        # if either are 1, rule 1 applies
+        dup.0 eq.1  # [is_b_1, b, a]
+        dup.2 eq.1  # [is_a_1, is_b_1, b, a]
+        or          # [is_either_1, b, a]
+        # either are -1, rule 2 applies
+        movup.2 push.NEG1 eq # [is_a_neg1, is_either_1, b]
+        movup.2 push.NEG1 eq # [is_b_neg1, is_a_neg1, is_either_1]
+        or                   # [is_either_neg1, is_either_1]
+        # choose between rule 1/2 or rule 3 result
+        dup.1 or           # [result_is_MIN, is_either_1]
+        push.MIN push.0    # [0, MIN, result_is_MIN, is_either_1]
+        swap.2 cdrop       # [result, is_either_1]
+        # overflow occurred if neither operand was 1
+        swap.1 not         # [overflowed, result]
+    else
+        # determine what sign the result should have
+        #
+        # 1. If only one operand is negative, the result is negative
+        # 2. If both operands are positive or negative, the result is positive
+        dup.0 exec.is_signed # [is_b_signed, b, a]
+        dup.2 exec.is_signed # [is_a_signed, is_b_signed, b, a]
+        dup.1 dup.1 neq      # [negate_result, is_a_signed, is_b_signed, b, a]
+        movdn.4              # [is_a_signed, is_b_signed, b, a, negate_result]
+
+        # negate negative operands, use standard unsigned wrapping multiplication,
+        # then negate the result if the result should be negative
+        movup.3 dup.0 exec.unchecked_neg  # [-a, a, is_a_signed, is_b_signed, b, negate_result]
+        movup.2 cdrop                     # [-a or a, is_b_signed, b, negate_result]
+        swap.2 dup.0 exec.unchecked_neg   # [-b, b, is_b_signed, -a or a, negate_result]
+        movup.2 cdrop                     # [-b or b, -a or a, negate_result]
+        u32overflowing_mul                # [overflowed, result, negate_result]
+
+        # if the unsigned op overflowed, we definitely overflowed, but overflow
+        # also occurred if the supposedly unsigned result has its sign bit set,
+        # which could only happen if we overflowed the positive i32 range
+        dup.1 exec.is_signed or           # [overflowed, result, negate_result]
+        swap.1 dup.0 exec.unchecked_neg   # [-result, result, overflowed, negate_result]
+        movup.3 cdrop swap.1              # [overflowed, -result or result]
+    end
 end
 
-# Multiplies `a` by `b`, asserting that both inputs are valid i32,
-# and asserting that the multiplication does not underflow.
+# Multiplies `a` by `b`, wrapping on overflow.
+export.wrapping_mul # [b, a]
+    exec.overflowing_mul # [overflowed, result]
+    drop
+end
+
+# Multiplies `a` by `b`, asserting on overflow
 export.checked_mul # [b, a]
     exec.overflowing_mul # [overflowed, result]
     assertz # [result]
