@@ -4,7 +4,9 @@ pub mod stackify;
 #[cfg(test)]
 mod tests;
 
-pub use self::emulator::{Breakpoint, DebugInfo, EmulationError, Emulator, InstructionPointer};
+pub use self::emulator::{
+    Breakpoint, DebugInfo, EmulationError, Emulator, InstructionPointer, Watchpoint, WatchpointId,
+};
 pub use self::masm::*;
 pub use self::stackify::ConvertHirToMasm;
 
