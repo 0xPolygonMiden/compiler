@@ -91,7 +91,7 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
                 if masm_program.contains(import.name) {
                     continue;
                 }
-                match masm::Module::load_intrinsic(import.name.as_str()) {
+                match masm::Module::load_intrinsic(import.name.as_str(), &session.codemap) {
                     Some(loaded) => {
                         masm_program.insert(Box::new(loaded));
                     }

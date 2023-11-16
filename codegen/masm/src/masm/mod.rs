@@ -3,7 +3,7 @@ mod module;
 mod program;
 
 pub use self::function::{FrozenFunctionListAdapter, Function, FunctionListAdapter};
-pub use self::module::{FrozenModuleTreeAdapter, Module, ModuleTreeAdapter};
+pub use self::module::{FrozenModuleTreeAdapter, LoadModuleError, Module, ModuleTreeAdapter};
 pub use self::program::Program;
 pub use miden_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,

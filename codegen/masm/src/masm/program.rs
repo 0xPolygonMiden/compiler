@@ -35,6 +35,17 @@ impl Modules {
         }
     }
 
+    pub fn get<Q>(&self, name: &Q) -> Option<&Module>
+    where
+        Q: ?Sized + Ord,
+        Ident: core::borrow::Borrow<Q>,
+    {
+        match self {
+            Self::Open(ref tree) => tree.find(name).get(),
+            Self::Frozen(ref tree) => tree.find(name).get(),
+        }
+    }
+
     pub fn insert(&mut self, module: Box<Module>) {
         match self {
             Self::Open(ref mut tree) => {
@@ -96,6 +107,15 @@ impl Program {
 
     pub fn is_library(&self) -> bool {
         self.entrypoint.is_none()
+    }
+
+    /// Get a reference to a module in this program by name
+    pub fn get<Q>(&self, name: &Q) -> Option<&Module>
+    where
+        Q: ?Sized + Ord,
+        Ident: core::borrow::Borrow<Q>,
+    {
+        self.modules.get(name)
     }
 
     /// Returns true if this program contains a [Module] named `name`
@@ -163,6 +183,58 @@ impl Program {
                 .with_import_info(imports)
         } else {
             todo!("0xPolygonMiden/miden-vm#1108")
+        }
+    }
+
+    /// Load a [Program] from a `.masl` file
+    pub fn from_masl<P: AsRef<Path>>(
+        path: P,
+        codemap: &miden_diagnostics::CodeMap,
+    ) -> Result<Self, miden_assembly::LibraryError> {
+        use miden_assembly::MaslLibrary;
+
+        MaslLibrary::read_from_file(path.as_ref()).map(|lib| Self::from_masl_library(&lib, codemap))
+    }
+
+    /// Load a [Program] from a MASL directory hierarchy, with the given root namespace.
+    pub fn from_dir<P: AsRef<Path>, S: AsRef<str>>(
+        path: P,
+        root_ns: S,
+        codemap: &miden_diagnostics::CodeMap,
+    ) -> Result<Self, miden_assembly::LibraryError> {
+        use miden_assembly::{LibraryError, LibraryNamespace, MaslLibrary};
+
+        let root_ns = LibraryNamespace::new(root_ns.as_ref())?;
+        let path = path.as_ref();
+        let library = MaslLibrary::read_from_dir(
+            path,
+            root_ns,
+            /*with_source_locations=*/ true,
+            Default::default(),
+        )
+        .map_err(|err| LibraryError::file_error(path.to_str().unwrap(), &format!("{err}")))?;
+
+        Ok(Self::from_masl_library(&library, codemap))
+    }
+
+    /// Convert a [miden_assembly::MaslLibrary] into a [Program]
+    pub fn from_masl_library(
+        library: &miden_assembly::MaslLibrary,
+        codemap: &miden_diagnostics::CodeMap,
+    ) -> Self {
+        use miden_assembly::Library;
+        use miden_diagnostics::SourceSpan;
+
+        let mut modules = RBTree::<ModuleTreeAdapter>::default();
+        for module in library.modules() {
+            let module = Module::from_module(module, SourceSpan::UNKNOWN, codemap);
+            modules.insert(Box::new(module));
+        }
+
+        Self {
+            entrypoint: None,
+            modules: Modules::Open(modules),
+            segments: DataSegmentTable::default(),
         }
     }
 }
