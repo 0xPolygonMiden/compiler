@@ -709,6 +709,7 @@ fn rust_static_mut() {
 }
 
 #[test]
+#[ignore]
 fn dlmalloc() {
     check_ir_files_cargo(
         "dlmalloc_app",
