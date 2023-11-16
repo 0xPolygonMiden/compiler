@@ -383,6 +383,58 @@ fn stackify_fundamental_loops() {
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
 }
 
+/// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
+#[test]
+fn stackify_sum_matrix() {
+    let mut harness = TestByEmulationHarness::default();
+
+    // Build a simple program
+    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
+
+    // Build test module with fib function
+    let mut mb = builder.module("test");
+    testing::sum_matrix(mb.as_mut(), &harness.context);
+    mb.build()
+        .expect("unexpected error constructing test module");
+
+    // Link the program
+    let program = builder
+        .with_entrypoint("test::sum_matrix".parse().unwrap())
+        .link()
+        .expect("failed to link program");
+
+    // Compile
+    let mut compiler = MasmCompiler::new(&harness.context.session);
+    let program = compiler.compile(program).expect("compilation failed");
+
+    // Prep emulator
+    let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
+    let ptr = Felt::new(addr as u64);
+    let rows = Felt::new(3);
+    let cols = Felt::new(3);
+
+    // [1, 0, 1,
+    //  0, 1, 0,
+    //  1, 1, 1] == 6
+    let addr = addr as usize;
+    harness.store(addr, Felt::ONE);
+    harness.store(addr + 4, Felt::ZERO);
+    harness.store(addr + 8, Felt::ONE);
+    harness.store(addr + 12, Felt::ZERO);
+    harness.store(addr + 16, Felt::ONE);
+    harness.store(addr + 20, Felt::ZERO);
+    harness.store(addr + 24, Felt::ONE);
+    harness.store(addr + 28, Felt::ONE);
+    harness.store(addr + 32, Felt::ONE);
+
+    // Execute test::sum_matrix
+    let mut stack = harness
+        .execute_program(program.freeze(), &[ptr, rows, cols])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop().map(|e| e.as_int()), Some(6));
+}
+
 #[test]
 fn i32_icmp() {
     let mut harness = TestByEmulationHarness::default();
@@ -655,54 +707,129 @@ fn i32_is_lt() {
     assert_eq!(stack.pop(), Some(one));
 }
 
-/// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
 #[test]
-fn stackify_sum_matrix() {
+fn i32_is_signed() {
     let mut harness = TestByEmulationHarness::default();
 
-    // Build a simple program
-    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
+    harness
+        .emulator
+        .load_module(
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
+        )
+        .expect("failed to load intrinsics::i32");
 
-    // Build test module with fib function
-    let mut mb = builder.module("test");
-    testing::sum_matrix(mb.as_mut(), &harness.context);
-    mb.build()
-        .expect("unexpected error constructing test module");
+    let zero = Felt::new(0i32 as u32 as u64);
+    let neg_one = Felt::new(-1i32 as u32 as u64);
+    let one = Felt::new(1i32 as u32 as u64);
+    let max = Felt::new(i32::MAX as u32 as u64);
+    let min = Felt::new(i32::MIN as u32 as u64);
 
-    // Link the program
-    let program = builder
-        .with_entrypoint("test::sum_matrix".parse().unwrap())
-        .link()
-        .expect("failed to link program");
-
-    // Compile
-    let mut compiler = MasmCompiler::new(&harness.context.session);
-    let program = compiler.compile(program).expect("compilation failed");
-
-    // Prep emulator
-    let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
-    let ptr = Felt::new(addr as u64);
-    let rows = Felt::new(3);
-    let cols = Felt::new(3);
-
-    // [1, 0, 1,
-    //  0, 1, 0,
-    //  1, 1, 1] == 6
-    let addr = addr as usize;
-    harness.store(addr, Felt::ONE);
-    harness.store(addr + 4, Felt::ZERO);
-    harness.store(addr + 8, Felt::ONE);
-    harness.store(addr + 12, Felt::ZERO);
-    harness.store(addr + 16, Felt::ONE);
-    harness.store(addr + 20, Felt::ZERO);
-    harness.store(addr + 24, Felt::ONE);
-    harness.store(addr + 28, Felt::ONE);
-    harness.store(addr + 32, Felt::ONE);
-
-    // Execute test::sum_matrix
+    let is_signed = "intrinsics::i32::is_signed".parse().unwrap();
+    // 0
     let mut stack = harness
-        .execute_program(program.freeze(), &[ptr, rows, cols])
+        .invoke(is_signed, &[zero])
         .expect("execution failed");
     assert_eq!(stack.len(), 1);
-    assert_eq!(stack.pop().map(|e| e.as_int()), Some(6));
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // 1
+    let mut stack = harness.invoke(is_signed, &[one]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // -1
+    let mut stack = harness
+        .invoke(is_signed, &[neg_one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // i32::MAX
+    let mut stack = harness.invoke(is_signed, &[max]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // i32::MIN
+    let mut stack = harness.invoke(is_signed, &[min]).expect("execution failed");
+    assert_eq!(stack.len(), 1);
+    assert_eq!(stack.pop(), Some(one));
+}
+
+#[test]
+fn i32_overflowing_add() {
+    let mut harness = TestByEmulationHarness::default();
+
+    harness
+        .emulator
+        .load_module(
+            Box::new(
+                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("parsing failed"),
+            )
+            .freeze(),
+        )
+        .expect("failed to load intrinsics::i32");
+
+    let zero = Felt::new(0i32 as u32 as u64);
+    let neg_one = Felt::new(-1i32 as u32 as u64);
+    let one = Felt::new(1i32 as u32 as u64);
+    let max = Felt::new(i32::MAX as u32 as u64);
+    let min = Felt::new(i32::MIN as u32 as u64);
+
+    // NOTE: arguments are passed in reverse, i.e. [b, a] not [a, b]
+    let add = "intrinsics::i32::overflowing_add".parse().unwrap();
+    // 0 + 0
+    let mut stack = harness
+        .invoke(add, &[zero, zero])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 2);
+    assert_eq!(stack.pop(), Some(zero)); // overflowed
+    assert_eq!(stack.pop(), Some(zero)); // result
+
+    harness.emulator.stop();
+    // 0 + 1
+    let mut stack = harness.invoke(add, &[one, zero]).expect("execution failed");
+    assert_eq!(stack.len(), 2);
+    assert_eq!(stack.pop(), Some(zero));
+    assert_eq!(stack.pop(), Some(one));
+
+    harness.emulator.stop();
+    // -1 + 1
+    let mut stack = harness
+        .invoke(add, &[one, neg_one])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 2);
+    assert_eq!(stack.pop(), Some(zero));
+    assert_eq!(stack.pop(), Some(zero));
+
+    harness.emulator.stop();
+    // i32::MAX + 1
+    let mut stack = harness.invoke(add, &[one, max]).expect("execution failed");
+    assert_eq!(stack.len(), 2);
+    assert_eq!(stack.pop(), Some(one));
+    assert_eq!(stack.pop(), Some(min));
+
+    harness.emulator.stop();
+    // i32::MIN + i32::MAX
+    let mut stack = harness.invoke(add, &[max, min]).expect("execution failed");
+    assert_eq!(stack.len(), 2);
+    assert_eq!(stack.pop(), Some(zero));
+    assert_eq!(stack.pop(), Some(neg_one));
+
+    harness.emulator.stop();
+    // i32::MIN + -1
+    let mut stack = harness
+        .invoke(add, &[neg_one, min])
+        .expect("execution failed");
+    assert_eq!(stack.len(), 2);
+    assert_eq!(stack.pop(), Some(one));
+    assert_eq!(stack.pop(), Some(max));
 }

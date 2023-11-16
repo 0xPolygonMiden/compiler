@@ -21,19 +21,24 @@ export.overflowing_add # [b, a]
     # is `a` signed?
     dup.2 exec.is_signed # [is_a_signed, is_b_signed, b, a]
 
+    # do both operands have the same sign?
+    #
+    # NOTE: We refer to `is_b_signed` as `is_signed` after this,
+    # because if `is_same_sign` is true, then `is_signed` reflects
+    # whether both `a` and `b` are signed. If `is_same_sign` is false,
+    # then overflow is not possible, and the value of `is_b_signed`
+    # will have no effect on the result
+    dup.1 eq # [is_same_sign, is_signed, b, a]
+
     # compute result
     movup.3 movup.3 u32wrapping_add
 
     # is `result` signed?
-    dup.0 exec.is_signed # [is_result_signed, result, is_a_signed, is_b_signed]
+    dup.0 exec.is_signed # [is_result_signed, result, is_same_sign, is_signed]
 
-    # if `b` and `result` have the same sign, which is different than the sign of `a`,
-    # then overflow has occurred. In all other cases, the result is valid
-    movup.3         # [is_b_signed, is_result_signed, result, is_a_signed]
-    dup.1 eq       # [do_b_and_result_have_same_sign, is_result_signed, result, is_a_signed]
-    swap.1 movup.3 # [is_a_signed, is_result_signed, do_b_and_result_have_same_sign, result]
-    neq             # [do_a_and_result_have_different_sign, do_b_and_result_have_same_sign, result]
-    and             # [overflowed, result]
+    # if both operands have the same sign, and the result differs, overflow has occurred
+    movup.3 neq # [signs_differ, result, is_same_sign]
+    movup.2 and # [overflowed, result]
 end
 
 # Adds `b` to `a`, asserting that both inputs are valid i32,
