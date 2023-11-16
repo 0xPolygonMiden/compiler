@@ -3,7 +3,7 @@
 
 extern crate dlmalloc;
 
-use crate::dlmalloc::vec_alloc;
+use miden_integration_tests_rust::dlmalloc::vec_alloc;
 
 #[global_allocator]
 static A: dlmalloc::GlobalDlmalloc = dlmalloc::GlobalDlmalloc;
