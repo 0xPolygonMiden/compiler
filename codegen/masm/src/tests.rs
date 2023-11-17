@@ -703,4 +703,57 @@ proptest! {
         let result = u32::try_from(raw_result).map_err(|_| raw_result).map(|res| res as i32);
         prop_assert_eq!(result, Ok(a / b.get()));
     }
+
+    #[test]
+    fn i32_pow2(a in 0u32..30u32) {
+        let mut harness = TestByEmulationHarness::default();
+
+        harness
+            .emulator
+            .load_module(
+                Box::new(
+                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("parsing failed"),
+                )
+                .freeze(),
+            )
+            .expect("failed to load intrinsics::i32");
+
+        let a_felt = Felt::new(a as u64);
+        let pow2 = "intrinsics::i32::pow2".parse().unwrap();
+        let mut stack = harness.invoke(pow2, &[a_felt]).expect("execution failed");
+        harness.emulator.stop();
+
+        prop_assert_eq!(stack.len(), 1);
+        let raw_result = stack.pop().unwrap().as_int();
+        let result = u32::try_from(raw_result).map_err(|_| raw_result).map(|res| res as i32);
+        prop_assert_eq!(result, Ok(2i32.pow(a)));
+    }
+
+    #[test]
+    fn i32_ipow(a: i32, b in 0u32..30u32) {
+        let mut harness = TestByEmulationHarness::default();
+
+        harness
+            .emulator
+            .load_module(
+                Box::new(
+                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("parsing failed"),
+                )
+                .freeze(),
+            )
+            .expect("failed to load intrinsics::i32");
+
+        let a_felt = Felt::new(a as u32 as u64);
+        let b_felt = Felt::new(b as u64);
+        let ipow = "intrinsics::i32::ipow".parse().unwrap();
+        let mut stack = harness.invoke(ipow, &[b_felt, a_felt]).expect("execution failed");
+        harness.emulator.stop();
+
+        prop_assert_eq!(stack.len(), 1);
+        let raw_result = stack.pop().unwrap().as_int();
+        let result = u32::try_from(raw_result).map_err(|_| raw_result).map(|res| res as i32);
+        prop_assert_eq!(result, Ok(a.wrapping_pow(b)));
+    }
 }

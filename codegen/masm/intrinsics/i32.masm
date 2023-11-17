@@ -288,52 +288,54 @@ export.pow2 # [n]
     push.31
     u32checked_lt  # [n < 31, pow]
     assert         # [n]
-    push.1 swap.1 # [n, 1]
+    push.1 swap.1  # [n, 1]
     u32checked_shl # [1 << n]
 end
 
 # Compute a^b, where `b` must be a positive i32 value < 31
 export.ipow # [b, a]
-    dup.0 eq.0      # [b == 0, b, a]
-    dup.2 eq.0      # [a == 0, b == 0, b, a]
+    dup.0 push.31 u32checked_lt assert # assert that `b` is < 31
+    dup.0 eq.0       # [b == 0, b, a]
+    dup.2 eq.0       # [a == 0, b == 0, b, a]
     or               # [a == 0 || b == 0, b, a]
     # if a == 0, the result is always 0; otherwise if b == 0, then the result is always 1
     if.true
         eq.0                # [b == 0, a]
-        push.1 push.0      # [0, 1, b == 0, a]
+        push.1 push.0       # [0, 1, b == 0, a]
         swap.2              # [b == 0, 1, 0, a]
         cdrop               # [1 or 0, a]
-        swap.1 drop        # [1 or 0]
+        swap.1 drop         # [1 or 0]
     else  # [b, a]
-      # for all other values, we do exponentiation by squaring
-      push.1         # [acc, b, a]
-      dup.1          # [b, acc, b, a]
-      push.1         # [1, b, acc, b, a]
-      u32checked_gt  # [b > 1, acc, b, a]
-      while.true     # [acc, b, a => base]
-          dup.2 dup.1      # [acc, base, acc, b, base]
-          mul              # [base * acc, acc, b, base]
-          dup.2            # [b, base * acc, acc, b, base]
-          push.1           # [1, b, base * acc, acc, b, base]
-          u32checked_and   # [b & 1, base * acc, acc, b, base]
-          eq.1             # [b & 1 == 1, base * acc, acc, b, base]
-          cdrop            # [acc, b, base]
-          u32assert
-          swap.1           # [b, acc, base]
-          u32checked_div.2 # [b /= 2, acc, base]
-          movup.2 dup.0   # [base, base, b, acc]
-          u32checked_mul   # [base * base, b, acc]
-          swap.1           # [b, base, acc]
-          movup.2          # [acc, b, base]
-          dup.1 push.1    # [1, b, acc, b, base]
-          u32checked_gt    # [b > 1, acc, b, base]
-      end
-      swap.1 drop   # [acc, base]
-      u32checked_mul # [acc * base]
+        # for all other values, we do exponentiation by squaring
+        push.1         # [acc, b, a]
+        dup.1          # [b, acc, b, a]
+        push.1         # [1, b, acc, b, a]
+        u32checked_gt  # [b > 1, acc, b, a]
+        while.true     # [acc, b, a => base]
+            dup.2 dup.1      # [acc, base, acc, b, base]
+            u32wrapping_mul  # [base * acc, acc, b, base]
+            dup.2            # [b, base * acc, acc, b, base]
+            push.1           # [1, b, base * acc, acc, b, base]
+            u32checked_and   # [b & 1, base * acc, acc, b, base]
+            eq.1             # [b & 1 == 1, base * acc, acc, b, base]
+            cdrop            # [acc, b, base]
+            swap.1           # [b, acc, base]
+            u32checked_div.2 # [b /= 2, acc, base]
+            movup.2 dup.0    # [base, base, b, acc]
+            u32wrapping_mul  # [base * base, b, acc]
+            swap.1           # [b, base, acc]
+            movup.2          # [acc, b, base]
+            dup.1 push.1     # [1, b, acc, b, base]
+            u32checked_gt    # [b > 1, acc, b, base]
+        end
+        swap.1 drop     # [acc, base]
+        u32wrapping_mul # [acc * base]
     end
 end
 
 # Arithmetic shift-right, i.e. `a >> b` preserves the signedness of the value
+#
+# This function will assert if `b` is > 31.
 #
 # This implementation is checked, so it will assert if the inputs are invalid
 export.checked_shr # [b, a]
