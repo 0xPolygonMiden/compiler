@@ -19,7 +19,6 @@ use miden_diagnostics::NullEmitter;
 use miden_diagnostics::SourceSpan;
 use miden_diagnostics::Verbosity;
 use miden_frontend_wasm::translate_module;
-use miden_frontend_wasm::translate_program;
 use miden_frontend_wasm::WasmTranslationConfig;
 
 use miden_hir::pass::AnalysisManager;
@@ -131,12 +130,16 @@ impl CompilerTest {
     pub fn rust_source_program(rust_source: &str) -> Self {
         let wasm_bytes = compile_rust_file(rust_source);
         let session = default_session();
-        let ir_program = translate_program(
+        let ir_module = translate_module(
             &wasm_bytes,
             &WasmTranslationConfig::default(),
             &session.diagnostics,
         )
         .expect("Failed to translate Wasm to IR program");
+        let builder = ProgramBuilder::new(&session.diagnostics)
+            .with_module(ir_module.into())
+            .unwrap();
+        let ir_program = builder.link().expect("Failed to link IR program");
         CompilerTest {
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
