@@ -10,7 +10,7 @@ use crate::sections_translator::{
 use crate::wasm_types::FuncIndex;
 use crate::{unsupported_diag, WasmTranslationConfig};
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{FunctionIdent, Module, Program, ProgramBuilder};
+use miden_hir::{FunctionIdent, Module};
 use std::prelude::v1::*;
 use wasmparser::{NameSectionReader, Parser, Payload, Validator, WasmFeatures};
 
@@ -23,23 +23,7 @@ pub fn translate_module(
     translate_module_inner(wasm, config, diagnostics).map(|res| res.module)
 }
 
-/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR program
-pub fn translate_program(
-    wasm: &[u8],
-    config: &WasmTranslationConfig,
-    diagnostics: &DiagnosticsHandler,
-) -> WasmResult<Box<Program>> {
-    let res = translate_module_inner(wasm, config, diagnostics)?;
-    let mut builder = ProgramBuilder::new(diagnostics)
-        .with_module(res.module.into())
-        .unwrap();
-    if let Some(entrypoint) = res.entrypoint {
-        builder = builder.with_entrypoint(entrypoint);
-    }
-    let program = builder.link()?;
-    Ok(program)
-}
-
+#[allow(dead_code)]
 struct WasmTranslationResult {
     module: Module,
     entrypoint: Option<FunctionIdent>,

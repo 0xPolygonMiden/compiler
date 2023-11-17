@@ -24,4 +24,3 @@ mod test_utils;
 pub use self::config::WasmTranslationConfig;
 pub use self::error::WasmError;
 pub use self::module_translator::translate_module;
-pub use self::module_translator::translate_program;
