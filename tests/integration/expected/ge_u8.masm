@@ -1,14 +1,14 @@
 export.is_signed
   push.2147483648
-  u32.and
+  u32checked_and
   push.2147483648
   eq
 
 end
 
 export.unchecked_neg
-  u32.not
-  u32.add.wrapping.1
+  u32checked_not
+  u32wrapping_add.1
 
 end
 
@@ -22,7 +22,7 @@ export.checked_neg
 end
 
 export.overflowing_add
-  u32.assert2
+  u32assert2
   dup.0
   exec.is_signed
   dup.2
@@ -31,7 +31,7 @@ export.overflowing_add
   eq
   movup.3
   movup.3
-  u32.add.wrapping
+  u32wrapping_add
   dup.0
   exec.is_signed
   movup.3
@@ -54,7 +54,7 @@ export.checked_add
 end
 
 export.overflowing_sub
-  u32.assert2
+  u32assert2
   dup.0
   push.2147483648
   eq
@@ -67,9 +67,9 @@ export.overflowing_sub
     eq.0
     movup.3
     movup.3
-    u32.add.wrapping
+    u32wrapping_add
     push.1
-    u32.add.wrapping
+    u32wrapping_add
     dup.0
     exec.is_signed
     movup.3
@@ -96,7 +96,7 @@ export.checked_sub
 end
 
 export.overflowing_mul
-  u32.assert2
+  u32assert2
   dup.0
   push.2147483648
   eq
@@ -144,7 +144,7 @@ export.overflowing_mul
     exec.unchecked_neg
     movup.2
     cdrop
-    u32.mul.overflowing
+    u32overflowing_mul
     dup.1
     exec.is_signed
     or
@@ -171,7 +171,7 @@ export.checked_mul
 end
 
 export.checked_div
-  u32.assert2
+  u32assert2
   dup.1
   exec.unchecked_neg
   dup.2
@@ -190,7 +190,7 @@ export.checked_div
   dup.0
   movdn.5
   cdrop
-  u32.div.unchecked
+  u32unchecked_div
   movdn.2
   neq
   dup.1
@@ -204,10 +204,10 @@ export.icmp
   dup.1
   dup.1
   push.2147483648
-  u32.and
+  u32checked_and
   swap.1
   push.2147483648
-  u32.and
+  u32checked_and
   eq.0
   swap.1
   eq.0
@@ -226,9 +226,9 @@ export.icmp
     drop
     dup.1
     dup.1
-    u32.gt.unchecked
+    u32unchecked_gt
     movdn.2
-    u32.lt.unchecked
+    u32unchecked_lt
     push.0
     push.4294967295
     push.1
@@ -269,18 +269,18 @@ end
 export.pow2
   dup.0
   push.31
-  u32.lt.checked
+  u32checked_lt
   assert
   push.1
   swap.1
-  u32.shl.checked
+  u32checked_shl
 
 end
 
 export.ipow
   dup.0
   push.31
-  u32.lt.checked
+  u32checked_lt
   assert
   dup.0
   eq.0
@@ -299,30 +299,30 @@ export.ipow
     push.1
     dup.1
     push.1
-    u32.gt.checked
+    u32checked_gt
     while.true
       dup.2
       dup.1
-      u32.mul.wrapping
+      u32wrapping_mul
       dup.2
       push.1
-      u32.and
+      u32checked_and
       eq.1
       cdrop
       swap.1
-      u32.div.checked.2
+      u32checked_div.2
       movup.2
       dup.0
-      u32.mul.wrapping
+      u32wrapping_mul
       swap.1
       movup.2
       dup.1
       push.1
-      u32.gt.checked
+      u32checked_gt
     end
     swap.1
     drop
-    u32.mul.wrapping
+    u32wrapping_mul
   end
 
 end
@@ -330,7 +330,7 @@ end
 export.checked_shr
   dup.0
   push.32
-  u32.lt.checked
+  u32checked_lt
   assert
   dup.0
   eq.0
@@ -346,24 +346,24 @@ export.checked_shr
   else
     dup.1
     push.2147483648
-    u32.and
+    u32checked_and
     push.2147483648
     eq
     if.true
       swap.1
       dup.1
-      u32.shr.checked
+      u32checked_shr
       push.1
       dup.2
-      u32.shl.unchecked
+      u32unchecked_shl
       sub.1
       push.32
       movup.3
       sub
-      u32.shl.unchecked
-      u32.or
+      u32unchecked_shl
+      u32checked_or
     else
-      u32.shr.checked
+      u32checked_shr
     end
   end
 
@@ -413,7 +413,7 @@ export.load_sw
   eq.0
   dup.3
   push.8
-  u32.lt.checked
+  u32checked_lt
   assert
   if.true
     movup.2
@@ -433,13 +433,13 @@ export.load_sw
       drop
       drop
       dup.2
-      u32.shl.checked
+      u32checked_shl
       swap.1
       push.32
       movup.3
-      u32.sub.checked
-      u32.shr.checked
-      u32.or
+      u32checked_sub
+      u32checked_shr
+      u32checked_or
     else
       dup.1
       eq.1
@@ -454,13 +454,13 @@ export.load_sw
         movdn.2
         drop
         dup.2
-        u32.shl.checked
+        u32checked_shl
         swap.1
         push.32
         movup.3
-        u32.sub.checked
-        u32.shr.checked
-        u32.or
+        u32checked_sub
+        u32checked_shr
+        u32checked_or
       else
         swap.1
         eq.2
@@ -471,16 +471,16 @@ export.load_sw
           drop
           drop
           dup.2
-          u32.shl.checked
+          u32checked_shl
           swap.1
           push.32
           movup.3
-          u32.sub.checked
-          u32.shr.checked
-          u32.or
+          u32checked_sub
+          u32checked_shr
+          u32checked_or
         else
           dup.0
-          u32.add.checked.1
+          u32checked_add.1
           padw
           movup.4
           mem_loadw
@@ -490,8 +490,8 @@ export.load_sw
           drop
           push.32
           dup.3
-          u32.sub.checked
-          u32.shr.checked
+          u32checked_sub
+          u32checked_shr
           swap.1
           padw
           movup.4
@@ -500,8 +500,8 @@ export.load_sw
           drop
           drop
           movup.2
-          u32.shl.checked
-          u32.or
+          u32checked_shl
+          u32checked_or
         end
       end
     end
@@ -511,22 +511,22 @@ end
 
 export.realign_dw
   dup.3
-  u32.shl.checked
+  u32checked_shl
   movdn.2
   dup.0
   push.32
   dup.4
-  u32.shr.checked
+  u32checked_shr
   movup.4
-  u32.or
+  u32checked_or
   movdn.2
   dup.3
-  u32.shl.checked
+  u32checked_shl
   swap.1
   push.32
   movup.4
-  u32.shr.checked
-  u32.or
+  u32checked_shr
+  u32checked_or
   swap.1
 
 end
@@ -536,7 +536,7 @@ export.load_dw
   eq.0
   dup.3
   push.8
-  u32.lt.checked
+  u32checked_lt
   assert
   if.true
     movup.2
@@ -576,7 +576,7 @@ export.load_dw
           drop
         else
           dup.0
-          u32.add.checked.1
+          u32checked_add.1
           padw
           movup.4
           mem_loadw
@@ -624,7 +624,7 @@ export.load_dw
         eq.2
         if.true
           dup.0
-          u32.add.checked.1
+          u32checked_add.1
           padw
           movup.4
           mem_loadw
@@ -643,7 +643,7 @@ export.load_dw
           exec.realign_dw
         else
           dup.0
-          u32.add.checked.1
+          u32checked_add.1
           padw
           movup.4
           mem_loadw
@@ -669,16 +669,16 @@ end
 export.entrypoint
   dup.0
   push.2147483648
-  u32.and
+  u32checked_and
   eq.2147483648
   assertz
   swap.1
   dup.0
   push.2147483648
-  u32.and
+  u32checked_and
   eq.2147483648
   assertz
-  u32.gte.checked
+  u32checked_gte
 
 end
 begin
