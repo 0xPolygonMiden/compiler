@@ -1,10 +1,13 @@
 mod function;
+pub mod intrinsics;
 mod module;
 mod program;
+mod region;
 
-pub use self::function::{FrozenFunctionListAdapter, Function, FunctionListAdapter};
-pub use self::module::{FrozenModuleTreeAdapter, LoadModuleError, Module, ModuleTreeAdapter};
+pub use self::function::{FrozenFunctionList, Function, FunctionList};
+pub use self::module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree};
 pub use self::program::Program;
+pub use self::region::{Begin, Region};
 pub use miden_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,
     ModuleImportInfo,

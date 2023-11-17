@@ -169,6 +169,7 @@ pub enum Token {
     Ampersand,
     Bang,
     Dollar,
+    Hash,
     At,
 }
 impl Token {
@@ -506,6 +507,7 @@ impl fmt::Display for Token {
             Self::Ampersand => write!(f, "&"),
             Self::Bang => write!(f, "!"),
             Self::Dollar => write!(f, "$"),
+            Self::Hash => write!(f, "#"),
             Self::At => write!(f, "@"),
         }
     }

@@ -70,16 +70,10 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
         // Ensure global variable analysis is computed
         analyses.get_or_compute::<ProgramGlobalVariableAnalysis>(&program, session)?;
 
-        let entrypoint = program.entrypoint();
         for module in modules.into_iter() {
-            // If this module contains the program entrypoint, handle that here
-            let entry = match entrypoint {
-                Some(entry) if entry.module == module.name => Some(entry),
-                _ => None,
-            };
             // Convert the module
             let mut convert_to_masm = ConvertHirToMasm::<hir::Module>::default();
-            let mut masm_module = convert_to_masm.convert(module, analyses, session)?;
+            let masm_module = convert_to_masm.convert(module, analyses, session)?;
 
             // If this module makes use of any intrinsics modules, and those modules are not
             // already present, add them to the program.
@@ -91,16 +85,13 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
                 if masm_program.contains(import.name) {
                     continue;
                 }
-                match masm::Module::load_intrinsic(import.name.as_str(), &session.codemap) {
+                match masm::intrinsics::load(import.name.as_str(), &session.codemap) {
                     Some(loaded) => {
                         masm_program.insert(Box::new(loaded));
                     }
                     None => unimplemented!("unrecognized intrinsic module: '{}'", &import.name),
                 }
             }
-
-            // Record the entrypoint, if applicable
-            masm_module.entry = entry;
 
             // Add to the final Miden Assembly program
             masm_program.insert(masm_module);
@@ -163,7 +154,7 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
         // Start at the function entry
         {
             let entry = f.dfg.entry_block();
-            let entry_prime = f_prime.body;
+            let entry_prime = f_prime.body.id();
 
             let globals = analyses
                 .get::<ProgramGlobalVariableAnalysis>(&ProgramAnalysisKey)

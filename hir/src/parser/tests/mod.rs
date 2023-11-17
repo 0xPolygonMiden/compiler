@@ -42,6 +42,7 @@ fn parser_integration_test() {
     // pub cc(fast) fn foo(u32, sext u32) -> u32 {
     let mut foo = FunctionDeclaration {
         span: dummy_sourcespan,
+        attrs: Default::default(),
         name: ident!(foo),
         signature: Signature {
             params: vec![
@@ -162,5 +163,5 @@ fn parser_integration_test() {
 #[allow(unused)]
 fn roundtrip(module: &crate::Module) {
     let formatted = module.to_string();
-    ParseTest::new().expect_module(&formatted, &module);
+    ParseTest::new().expect_module(&formatted, module);
 }

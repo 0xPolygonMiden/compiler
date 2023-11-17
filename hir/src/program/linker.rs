@@ -191,7 +191,7 @@ impl Linker {
     ///
     /// Returns a [LinkerError] if a different entrypoint was already declared.
     pub fn with_entrypoint(&mut self, id: FunctionIdent) -> Result<(), LinkerError> {
-        if let Some(prev) = self.program.entrypoint {
+        if let Some(prev) = self.program.entrypoint() {
             if prev != id {
                 return Err(LinkerError::InvalidMultipleEntry { current: id, prev });
             }
@@ -349,7 +349,7 @@ impl Linker {
         validate_callgraph(&self.callgraph)?;
 
         // Verify the entrypoint, if declared
-        if let Some(entry) = self.program.entrypoint {
+        if let Some(entry) = self.program.entrypoint() {
             let is_linked = self.pending.contains_key(&entry.module);
             if !is_linked {
                 return Err(LinkerError::MissingModule(entry.module));

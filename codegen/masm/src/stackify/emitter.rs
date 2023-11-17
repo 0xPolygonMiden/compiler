@@ -1684,13 +1684,13 @@ impl<'a> MasmEmitter<'a> {
     /// Get a mutable reference to the current block of code in the stack machine IR
     #[inline(always)]
     fn current_block(&mut self) -> &mut masm::Block {
-        &mut self.f_prime.blocks[self.current_block]
+        self.f_prime.body.block_mut(self.current_block)
     }
 
     /// Get a mutable reference to a specific block of code in the stack machine IR
     #[inline(always)]
     fn block(&mut self, block: masm::BlockId) -> &mut masm::Block {
-        &mut self.f_prime.blocks[block]
+        self.f_prime.body.block_mut(block)
     }
 
     #[inline(always)]
@@ -1752,7 +1752,7 @@ fn rewrite_inline_assembly_block(
             }
             _ => (),
         }
-        f_prime.blocks[new].push(op);
+        f_prime.body.block_mut(new).push(op);
     }
 }
 

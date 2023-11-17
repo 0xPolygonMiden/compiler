@@ -71,21 +71,21 @@ impl<'a> MasmCompiler<'a> {
 
         let modules = input.modules_mut().take();
         for mut module in modules.into_iter() {
-            rewrites.apply(&mut module, &mut self.analyses, &self.session)?;
+            rewrites.apply(&mut module, &mut self.analyses, self.session)?;
             input.modules_mut().insert(module);
         }
 
         let mut convert_to_masm = ConvertHirToMasm::<hir::Program>::default();
-        let mut program = convert_to_masm.convert(input, &mut self.analyses, &self.session)?;
+        let mut program = convert_to_masm.convert(input, &mut self.analyses, self.session)?;
 
         // Ensure intrinsics modules are linked
         program.insert(Box::new(
-            Module::load_intrinsic("intrinsics::mem", &self.session.codemap)
-                .expect("parsing failed"),
+            intrinsics::load("intrinsics::mem", &self.session.codemap)
+                .expect("undefined intrinsics module"),
         ));
         program.insert(Box::new(
-            Module::load_intrinsic("intrinsics::i32", &self.session.codemap)
-                .expect("parsing failed"),
+            intrinsics::load("intrinsics::i32", &self.session.codemap)
+                .expect("undefined intrinsics module"),
         ));
 
         Ok(program)

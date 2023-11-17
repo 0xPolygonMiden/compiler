@@ -85,3 +85,6 @@ const = {}
 inline_blocks = { value = "inline-blocks" }
 split_critical_edges = { value = "split-critical-edges" }
 treeify = { value = "treeify" }
+
+[attributes]
+entrypoint = {}

@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{Ident, Signature};
+use crate::{AttributeSet, Ident, Signature};
 
 use super::*;
 
@@ -9,14 +9,22 @@ use super::*;
 pub struct FunctionDeclaration {
     #[span]
     pub span: SourceSpan,
+    pub attrs: AttributeSet,
     pub name: Ident,
     pub signature: Signature,
     pub blocks: Vec<Block>,
 }
 impl FunctionDeclaration {
-    pub fn new(span: SourceSpan, name: Ident, signature: Signature, blocks: Vec<Block>) -> Self {
+    pub fn new(
+        span: SourceSpan,
+        name: Ident,
+        signature: Signature,
+        blocks: Vec<Block>,
+        attrs: AttributeSet,
+    ) -> Self {
         Self {
             span,
+            attrs,
             name,
             signature,
             blocks,

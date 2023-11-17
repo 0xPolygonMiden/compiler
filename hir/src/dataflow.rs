@@ -11,6 +11,7 @@ use super::*;
 
 pub struct DataFlowGraph {
     pub entry: Block,
+    pub attrs: AttributeSet,
     pub blocks: OrderedArenaMap<Block, BlockData>,
     pub insts: ArenaMap<Inst, InstNode>,
     pub results: SecondaryMap<Inst, ValueList>,
@@ -34,6 +35,7 @@ impl DataFlowGraph {
     pub fn new_uninit() -> Self {
         Self {
             entry: Block::from_u32(0),
+            attrs: AttributeSet::default(),
             blocks: OrderedArenaMap::new(),
             insts: ArenaMap::new(),
             results: SecondaryMap::new(),
@@ -43,6 +45,38 @@ impl DataFlowGraph {
             globals: PrimaryMap::new(),
             constants: ConstantPool::default(),
         }
+    }
+
+    /// Return the value associated with attribute `name` for this function
+    pub fn get_attribute<Q>(&self, name: &Q) -> Option<&AttributeValue>
+    where
+        Symbol: std::borrow::Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        self.attrs.get(name)
+    }
+
+    /// Return true if this function has an attributed named `name`
+    pub fn has_attribute<Q>(&self, name: &Q) -> bool
+    where
+        Symbol: std::borrow::Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        self.attrs.contains_key(name)
+    }
+
+    /// Set the attribute `name` with `value` for this function.
+    pub fn set_attribute(&mut self, name: impl Into<Symbol>, value: impl Into<AttributeValue>) {
+        self.attrs.insert(name, value);
+    }
+
+    /// Remove any attribute with the given name from this function
+    pub fn remove_attribute<Q>(&mut self, name: &Q)
+    where
+        Symbol: std::borrow::Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        self.attrs.remove(name);
     }
 
     /// Returns an [ExternalFunction] given its [FunctionIdent]

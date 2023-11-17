@@ -383,6 +383,15 @@ impl Function {
         self.signature.cc = cc;
     }
 
+    /// Return true if this function has attribute `name`
+    pub fn has_attribute<Q>(&self, name: &Q) -> bool
+    where
+        Q: Ord + ?Sized,
+        Symbol: std::borrow::Borrow<Q>,
+    {
+        self.dfg.has_attribute(name)
+    }
+
     /// Iterate over all of the external functions imported by this function
     pub fn imports<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a ExternalFunction> + 'a {
         self.dfg.imports().filter(|ext| ext.id != self.id)

@@ -129,25 +129,12 @@ impl TestByEmulationHarness {
         self.emulator.store(addr, value);
     }
 
-    #[allow(unused)]
-    pub fn execute(
-        &mut self,
-        program: Arc<Program>,
-        args: &[Felt],
-    ) -> Result<OperandStack<Felt>, EmulationError> {
-        let entrypoint = program.entrypoint.expect("cannot execute a library");
-        self.emulator
-            .load_program(program)
-            .expect("failed to load program");
-        self.emulator.invoke(entrypoint, args)
-    }
-
     pub fn execute_module(
         &mut self,
         module: Arc<Module>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
-        let entrypoint = module.entry.expect("cannot execute a library");
+        let entrypoint = module.entrypoint().expect("cannot execute a library");
         self.emulator
             .load_module(module)
             .expect("failed to load module");
@@ -159,7 +146,25 @@ impl TestByEmulationHarness {
         program: Arc<Program>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
-        let entrypoint = program.entrypoint.expect("cannot execute a library");
+        self.emulator
+            .load_program(program)
+            .expect("failed to load program");
+        {
+            let stack = self.emulator.stack_mut();
+            for arg in args.iter().copied().rev() {
+                stack.push(arg);
+            }
+        }
+        self.emulator.start()
+    }
+
+    #[allow(unused)]
+    pub fn execute_program_with_entry(
+        &mut self,
+        program: Arc<Program>,
+        entrypoint: FunctionIdent,
+        args: &[Felt],
+    ) -> Result<OperandStack<Felt>, EmulationError> {
         self.emulator
             .load_program(program)
             .expect("failed to load program");
@@ -446,8 +451,8 @@ fn i32_checked_neg() {
         .emulator
         .load_module(
             Box::new(
-                Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                    .expect("parsing failed"),
+                intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    .expect("undefined intrinsic module"),
             )
             .freeze(),
         )
@@ -473,8 +478,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsics module"),
                 )
                 .freeze(),
             )
@@ -533,8 +538,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -543,7 +548,6 @@ proptest! {
         let a_felt = Felt::new(a as u32 as u64);
         let is_signed = "intrinsics::i32::is_signed".parse().unwrap();
         let mut stack = harness.invoke(is_signed, &[a_felt]).expect("execution failed");
-        harness.emulator.stop();
         prop_assert_eq!(stack.len(), 1);
         let result = stack.pop().unwrap().as_int();
 
@@ -558,8 +562,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -572,7 +576,6 @@ proptest! {
         let mut stack = harness
             .invoke(add, &[b_felt, a_felt])
             .expect("execution failed");
-        harness.emulator.stop();
         prop_assert_eq!(stack.len(), 2);
 
         let overflowed = stack.pop().unwrap() == Felt::ONE;
@@ -591,8 +594,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -605,7 +608,6 @@ proptest! {
         let mut stack = harness
             .invoke(sub, &[b_felt, a_felt])
             .expect("execution failed");
-        harness.emulator.stop();
         prop_assert_eq!(stack.len(), 2);
 
         let overflowed = stack.pop().unwrap() == Felt::ONE;
@@ -624,8 +626,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -638,7 +640,6 @@ proptest! {
         let mut stack = harness
             .invoke(mul, &[b_felt, a_felt])
             .expect("execution failed");
-        harness.emulator.stop();
         prop_assert_eq!(stack.len(), 2);
 
         let overflowed = stack.pop().unwrap() == Felt::ONE;
@@ -659,8 +660,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -669,7 +670,6 @@ proptest! {
         let a_felt = Felt::new(a as u32 as u64);
         let neg = "intrinsics::i32::unchecked_neg".parse().unwrap();
         let mut stack = harness.invoke(neg, &[a_felt]).expect("execution failed");
-        harness.emulator.stop();
 
         prop_assert_eq!(stack.len(), 1);
         let raw_result = stack.pop().unwrap().as_int();
@@ -685,8 +685,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -696,7 +696,6 @@ proptest! {
         let b_felt = Felt::new(b.get() as u32 as u64);
         let div = "intrinsics::i32::checked_div".parse().unwrap();
         let mut stack = harness.invoke(div, &[b_felt, a_felt]).expect("execution failed");
-        harness.emulator.stop();
 
         prop_assert_eq!(stack.len(), 1);
         let raw_result = stack.pop().unwrap().as_int();
@@ -712,8 +711,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -722,7 +721,6 @@ proptest! {
         let a_felt = Felt::new(a as u64);
         let pow2 = "intrinsics::i32::pow2".parse().unwrap();
         let mut stack = harness.invoke(pow2, &[a_felt]).expect("execution failed");
-        harness.emulator.stop();
 
         prop_assert_eq!(stack.len(), 1);
         let raw_result = stack.pop().unwrap().as_int();
@@ -738,8 +736,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -749,7 +747,6 @@ proptest! {
         let b_felt = Felt::new(b as u64);
         let ipow = "intrinsics::i32::ipow".parse().unwrap();
         let mut stack = harness.invoke(ipow, &[b_felt, a_felt]).expect("execution failed");
-        harness.emulator.stop();
 
         prop_assert_eq!(stack.len(), 1);
         let raw_result = stack.pop().unwrap().as_int();
@@ -765,8 +762,8 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    Module::load_intrinsic("intrinsics::i32", &harness.context.session.codemap)
-                        .expect("parsing failed"),
+                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                        .expect("undefined intrinsic module"),
                 )
                 .freeze(),
             )
@@ -776,7 +773,6 @@ proptest! {
         let b_felt = Felt::new(b as u32 as u64);
         let shr = "intrinsics::i32::checked_shr".parse().unwrap();
         let mut stack = harness.invoke(shr, &[b_felt, a_felt]).expect("execution failed");
-        harness.emulator.stop();
 
         prop_assert_eq!(stack.len(), 1);
         let raw_result = stack.pop().unwrap().as_int();

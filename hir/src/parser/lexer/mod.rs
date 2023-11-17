@@ -247,6 +247,7 @@ where
             '!' => pop!(self, Token::Bang),
             '@' => pop!(self, Token::At),
             '$' => pop!(self, Token::Dollar),
+            '#' => pop!(self, Token::Hash),
             '0' => match self.peek() {
                 'x' => {
                     self.skip();

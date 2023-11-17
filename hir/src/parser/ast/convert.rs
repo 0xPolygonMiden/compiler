@@ -105,6 +105,8 @@ impl ConversionPass for ConvertAstToHir {
 
             // Build the HIR function
             let mut f = Box::new(crate::Function::new_uninit(id, function.signature));
+            // Move attributes from the AST to the DFG
+            f.dfg.attrs = function.attrs;
             // The entry block is always the first in the layout
             f.dfg.entry = entry;
             // Visit each block and build it, but do not yet write to the DataFlowGraph

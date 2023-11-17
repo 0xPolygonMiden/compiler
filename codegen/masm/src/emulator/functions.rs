@@ -347,12 +347,9 @@ impl Instruction {
         })
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn op(&self, function: &Function) -> Option<Op> {
-        function.blocks[self.ip.block]
-            .ops
-            .get(self.ip.index)
-            .copied()
+        function.body.get(self.ip)
     }
 }
 
@@ -387,7 +384,7 @@ pub struct Activation {
 impl Activation {
     /// Create a new activation record for `function`, using `fp` as the frame pointer for this activation
     pub fn new(function: Arc<Function>, fp: Addr) -> Self {
-        let block = function.body;
+        let block = function.body.id();
         let control_stack = ControlStack::new(InstructionPointer::new(block));
         Self {
             function,
@@ -497,7 +494,7 @@ mod tests {
     #[test]
     fn activation_record_start_of_block() {
         let mut activation = Activation::new(test_function(), 0);
-        let body_blk = activation.function.body;
+        let body_blk = activation.function.body.id();
         assert_eq!(
             activation.peek(),
             Some(Instruction {
@@ -536,7 +533,7 @@ mod tests {
     #[test]
     fn activation_record_if_true_entry() {
         let function = test_function();
-        let body_blk = function.body;
+        let body_blk = function.body.id();
         let control_stack = ControlStack::new(InstructionPointer {
             block: body_blk,
             index: 5,
@@ -600,7 +597,7 @@ mod tests {
     #[test]
     fn activation_record_nested_control_flow_exit() {
         let function = test_function();
-        let body_blk = function.body;
+        let body_blk = function.body.id();
         let control_stack = ControlStack::new(InstructionPointer {
             block: body_blk,
             index: 5,
@@ -750,7 +747,7 @@ mod tests {
         let else_blk = function.create_block();
         let while_blk = function.create_block();
         {
-            let body = function.block_mut(function.body);
+            let body = function.block_mut(function.body.id());
             body.push(Op::PushU8(2));
             body.push(Op::PushU8(1));
             body.push(Op::Dup(1));
