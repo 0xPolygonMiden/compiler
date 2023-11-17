@@ -6,24 +6,44 @@ export.is_signed
 
 end
 
+export.unchecked_neg
+  u32.not
+  u32.add.wrapping.1
+
+end
+
+export.checked_neg
+  dup.0
+  push.2147483648
+  eq
+  assertz
+  exec.unchecked_neg
+
+end
+
 export.overflowing_add
   u32.assert2
   dup.0
   exec.is_signed
   dup.2
   exec.is_signed
+  dup.1
+  eq
   movup.3
   movup.3
   u32.add.wrapping
   dup.0
   exec.is_signed
   movup.3
-  dup.1
-  eq
-  swap.1
-  movup.3
   neq
+  movup.2
   and
+
+end
+
+export.wrapping_add
+  exec.overflowing_add
+  drop
 
 end
 
@@ -33,47 +53,39 @@ export.checked_add
 
 end
 
-export.checked_neg
-  dup.0
-  push.2147483648
-  eq
-  assertz
-  u32.not
-  u32.add.wrapping.1
-
-end
-
-export.unchecked_neg
-  u32.not
-  u32.add.wrapping.1
-
-end
-
-export.unchecked_sub
-  u32.not
-  add
-  incr
-
-end
-
 export.overflowing_sub
   u32.assert2
   dup.0
-  exec.is_signed
-  dup.2
-  exec.is_signed
-  movup.3
-  movup.3
-  u32.sub.wrapping
-  dup.0
-  exec.is_signed
-  movup.3
-  dup.1
+  push.2147483648
   eq
-  swap.1
-  movup.3
-  neq
-  and
+  if.true
+    drop
+    push.2147483647
+    dup.1
+    exec.is_signed
+    dup.0
+    eq.0
+    movup.3
+    movup.3
+    u32.add.wrapping
+    push.1
+    u32.add.wrapping
+    dup.0
+    exec.is_signed
+    movup.3
+    neq
+    movup.2
+    and
+  else
+    exec.unchecked_neg
+    exec.overflowing_add
+  end
+
+end
+
+export.wrapping_sub
+  exec.overflowing_sub
+  drop
 
 end
 
@@ -86,19 +98,69 @@ end
 export.overflowing_mul
   u32.assert2
   dup.0
-  exec.is_signed
-  dup.2
-  exec.is_signed
-  movup.3
-  movup.3
-  u32.mul.wrapping
-  movup.3
-  dup.1
+  push.2147483648
   eq
-  swap.1
-  movup.3
-  neq
-  and
+  dup.2
+  push.2147483648
+  eq
+  or
+  if.true
+    dup.0
+    eq.1
+    dup.2
+    eq.1
+    or
+    movup.2
+    push.4294967295
+    eq
+    movup.2
+    push.4294967295
+    eq
+    or
+    dup.1
+    or
+    push.2147483648
+    push.0
+    swap.2
+    cdrop
+    swap.1
+    not
+  else
+    dup.0
+    exec.is_signed
+    dup.2
+    exec.is_signed
+    dup.1
+    dup.1
+    neq
+    movdn.4
+    movup.3
+    dup.0
+    exec.unchecked_neg
+    movup.2
+    cdrop
+    swap.2
+    dup.0
+    exec.unchecked_neg
+    movup.2
+    cdrop
+    u32.mul.overflowing
+    dup.1
+    exec.is_signed
+    or
+    swap.1
+    dup.0
+    exec.unchecked_neg
+    movup.3
+    cdrop
+    swap.1
+  end
+
+end
+
+export.wrapping_mul
+  exec.overflowing_mul
+  drop
 
 end
 
@@ -126,7 +188,7 @@ export.checked_div
   movup.3
   exec.is_signed
   dup.0
-  movdn.4
+  movdn.5
   cdrop
   u32.div.unchecked
   movdn.2
@@ -156,8 +218,8 @@ export.icmp
     movdn.2
     drop
     drop
-    push.1
     push.4294967295
+    push.1
     swap.2
     cdrop
   else
@@ -217,6 +279,10 @@ end
 
 export.ipow
   dup.0
+  push.31
+  u32.lt.checked
+  assert
+  dup.0
   eq.0
   dup.2
   eq.0
@@ -237,18 +303,17 @@ export.ipow
     while.true
       dup.2
       dup.1
-      mul
+      u32.mul.wrapping
       dup.2
       push.1
       u32.and
       eq.1
       cdrop
-      u32.assert
       swap.1
       u32.div.checked.2
       movup.2
       dup.0
-      u32.mul.checked
+      u32.mul.wrapping
       swap.1
       movup.2
       dup.1
@@ -257,7 +322,7 @@ export.ipow
     end
     swap.1
     drop
-    u32.mul.checked
+    u32.mul.wrapping
   end
 
 end
