@@ -62,7 +62,7 @@ impl DataFlowGraph {
         Symbol: std::borrow::Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        self.attrs.contains_key(name)
+        self.attrs.has(name)
     }
 
     /// Set the attribute `name` with `value` for this function.
@@ -680,7 +680,7 @@ impl DataFlowGraph {
             match &mut value_data_clone {
                 ValueData::Param { ref mut num, .. } => {
                     *num -= 1;
-                    *value_data = value_data_clone.into();
+                    *value_data = value_data_clone;
                 }
                 _ => panic!(
                     "{} must be a block parameter",

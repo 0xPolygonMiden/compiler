@@ -176,14 +176,14 @@ impl From<Verbosity> for VerbosityFlag {
         }
     }
 }
-impl Into<Verbosity> for VerbosityFlag {
-    fn into(self) -> Verbosity {
-        match self {
-            Self::Debug => Verbosity::Debug,
-            Self::Info => Verbosity::Info,
-            Self::Warning => Verbosity::Warning,
-            Self::Error => Verbosity::Error,
-            Self::Silent => Verbosity::Silent,
+impl From<VerbosityFlag> for Verbosity {
+    fn from(flag: VerbosityFlag) -> Self {
+        match flag {
+            VerbosityFlag::Debug => Self::Debug,
+            VerbosityFlag::Info => Self::Info,
+            VerbosityFlag::Warning => Self::Warning,
+            VerbosityFlag::Error => Self::Error,
+            VerbosityFlag::Silent => Self::Silent,
         }
     }
 }

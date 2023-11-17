@@ -512,7 +512,7 @@ where
                     // happens.
                     Token::Module | Token::Kernel => {
                         let module_name = format!("{}::{}", mid, fid);
-                        let module_id = Symbol::intern(&module_name);
+                        let module_id = Symbol::intern(module_name);
                         Some(Ok((start, Token::Ident(module_id), end)))
                     }
                     _ => Some(Ok((start, Token::FunctionIdent((mid, fid)), end))),

@@ -174,17 +174,11 @@ impl ControlStack {
     /// Get the next instruction to execute without moving the instruction pointer
     pub fn peek(&self) -> Option<Instruction> {
         match self.pending {
-            None => {
-                if let Some(frame) = self.pending_frame {
-                    Some(Instruction {
-                        continuing_from: None,
-                        ip: frame.ip(),
-                        effect: ControlEffect::Enter,
-                    })
-                } else {
-                    None
-                }
-            }
+            None => self.pending_frame.map(|frame| Instruction {
+                continuing_from: None,
+                ip: frame.ip(),
+                effect: ControlEffect::Enter,
+            }),
             pending @ Some(_) => pending,
         }
     }

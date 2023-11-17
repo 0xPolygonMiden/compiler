@@ -199,6 +199,7 @@ impl ConversionPass for ConvertAstToHir {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn try_insert_inst(
     mut inst: Inst,
     num: u16,
@@ -211,6 +212,8 @@ fn try_insert_inst(
     function: &mut crate::Function,
     diagnostics: &DiagnosticsHandler,
 ) -> bool {
+    use std::collections::hash_map::Entry;
+
     use crate::{BinaryOp, BinaryOpImm, Instruction, PrimOp, PrimOpImm, UnaryOp, UnaryOpImm};
 
     let id = function.dfg.insts.alloc_key();
@@ -554,9 +557,9 @@ fn try_insert_inst(
             operands,
         } => {
             let mut is_valid = true;
-            if !function.dfg.imports.contains_key(&callee) {
+            if let Entry::Vacant(entry) = function.dfg.imports.entry(callee) {
                 if let Some(ef) = imports_by_id.get(&callee) {
-                    function.dfg.imports.insert(callee, ef.item.clone());
+                    entry.insert(ef.item.clone());
                 } else {
                     diagnostics.diagnostic(Severity::Error)
                         .with_message("invalid call instruction")
@@ -844,9 +847,9 @@ fn smallint_to_immediate(
         Type::U8 => u8::try_from(i as usize).ok().map(Immediate::U8),
         Type::U16 => u16::try_from(i as usize).ok().map(Immediate::U16),
         Type::U32 => u32::try_from(i as usize).ok().map(Immediate::U32),
-        Type::I64 => return Some(Immediate::I64(i as i64)),
-        Type::U64 => return Some(Immediate::U64(i as u64)),
-        Type::I128 => return Some(Immediate::I128(i as i128)),
+        Type::I64 => Some(Immediate::I64(i as i64)),
+        Type::U64 => Some(Immediate::U64(i as u64)),
+        Type::I128 => Some(Immediate::I128(i as i128)),
         Type::U128 | Type::U256 | Type::F64 => {
             diagnostics
                 .diagnostic(Severity::Error)

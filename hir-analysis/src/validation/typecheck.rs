@@ -584,7 +584,7 @@ impl InstPattern {
                 }
                 let actual_in = imm.ty();
                 let actual_out = dfg.value_type(results[0]);
-                self.into_unary_match(&actual_in, Some(&actual_out))
+                self.into_unary_match(&actual_in, Some(actual_out))
             }
             Self::UnaryNoResult(_) => {
                 if !args.is_empty() {

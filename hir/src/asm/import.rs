@@ -66,17 +66,11 @@ impl ModuleImportInfo {
                     alias: alias_id.name,
                 });
                 self.aliases.insert(alias_id, module_id);
-                self.functions
-                    .entry(alias_id)
-                    .or_insert_with(FxHashSet::default)
-                    .insert(id);
+                self.functions.entry(alias_id).or_default().insert(id);
             }
             Entry::Occupied(_) => {
                 let alias = self.aliases[&module_id];
-                let functions = self
-                    .functions
-                    .entry(alias)
-                    .or_insert_with(FxHashSet::default);
+                let functions = self.functions.entry(alias).or_default();
                 functions.insert(id);
             }
         }

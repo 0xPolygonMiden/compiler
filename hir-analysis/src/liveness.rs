@@ -479,7 +479,7 @@ fn compute_liveness(
                         let mut inst_next_uses = liveness
                             .live_in
                             .entry(ProgramPoint::Inst(succ.key))
-                            .or_insert_with(Default::default)
+                            .or_default()
                             .clone();
                         for (_value, dist) in inst_next_uses.iter_mut() {
                             *dist = dist.saturating_add(1);
@@ -502,7 +502,7 @@ fn compute_liveness(
                     let mut inst_next_uses = liveness
                         .live_in
                         .entry(ProgramPoint::Block(succ))
-                        .or_insert_with(Default::default)
+                        .or_default()
                         .clone();
                     let mut inst_next_uses_after = inst_next_uses.clone();
 
@@ -570,7 +570,7 @@ fn compute_liveness(
                         let mut jt_next_uses = liveness
                             .live_in
                             .entry(ProgramPoint::Block(destination))
-                            .or_insert_with(Default::default)
+                            .or_default()
                             .clone();
                         let mut jt_next_uses_after = jt_next_uses.clone();
                         // As is done for unconditional branches, propagate next-use distance for

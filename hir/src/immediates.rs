@@ -380,16 +380,16 @@ impl Ord for Immediate {
         }
     }
 }
-impl Into<Type> for Immediate {
+impl From<Immediate> for Type {
     #[inline]
-    fn into(self) -> Type {
-        self.ty()
+    fn from(imm: Immediate) -> Self {
+        imm.ty()
     }
 }
-impl Into<Type> for &Immediate {
+impl From<&Immediate> for Type {
     #[inline(always)]
-    fn into(self) -> Type {
-        self.ty()
+    fn from(imm: &Immediate) -> Self {
+        imm.ty()
     }
 }
 impl From<bool> for Immediate {

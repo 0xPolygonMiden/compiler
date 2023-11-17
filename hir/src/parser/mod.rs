@@ -139,7 +139,7 @@ impl Parse for crate::Module {
                 let mut analyses = AnalysisManager::new();
                 let mut convert_to_hir = ConvertAstToHir;
                 convert_to_hir
-                    .convert(ast, &mut analyses, &parser.session)
+                    .convert(ast, &mut analyses, parser.session)
                     .map_err(|err| match err {
                         ConversionError::Failed(err) => match err.downcast::<ParseError>() {
                             Ok(err) => err,

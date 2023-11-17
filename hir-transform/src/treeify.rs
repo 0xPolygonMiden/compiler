@@ -344,6 +344,7 @@ impl RewritePass for Treeify {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn treeify(
     b: BlockId,
     p: &BlockPredecessor,
@@ -403,6 +404,7 @@ fn treeify(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn treeify_loop(
     b: BlockId,
     p: &BlockPredecessor,
@@ -468,6 +470,7 @@ fn detach_tree(root: BlockId, function: &mut hir::Function, cfg: &ControlFlowGra
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn copy_children(
     b: BlockId,
     b_prime: BlockId,

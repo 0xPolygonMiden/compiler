@@ -105,7 +105,7 @@ impl TestByEmulationHarness {
     #[allow(unused)]
     pub fn resume_until_break(&mut self) {
         match self.emulator.resume() {
-            Ok(_) | Err(EmulationError::BreakpointHit(_)) => return,
+            Ok(_) | Err(EmulationError::BreakpointHit(_)) => (),
             Err(other) => panic!("unexpected emulation error: {other}"),
         }
     }

@@ -287,12 +287,10 @@ impl BreakpointManager {
                     }
                 }
             },
-            EmulatorEvent::MemoryWrite { addr, size } => {
-                match self.matches_watchpoint(addr, size) {
-                    Some(wp) => Some(BreakpointEvent::Watch(*wp)),
-                    None => None,
-                }
-            }
+            EmulatorEvent::MemoryWrite { addr, size } => self
+                .matches_watchpoint(addr, size)
+                .copied()
+                .map(BreakpointEvent::Watch),
             EmulatorEvent::Stopped | EmulatorEvent::Suspended => None,
             EmulatorEvent::Breakpoint(bp) => Some(bp),
         }
@@ -315,8 +313,7 @@ impl BreakpointManager {
         self.break_on_writes.iter().find(|wp| {
             let wp_end = wp.addr + wp.size;
             if let WatchMode::Break = wp.mode {
-                let is_hit = addr <= wp_end && end_addr >= wp.addr;
-                is_hit
+                addr <= wp_end && end_addr >= wp.addr
             } else {
                 false
             }

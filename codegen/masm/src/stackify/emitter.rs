@@ -575,6 +575,7 @@ impl<'a> MasmEmitter<'a> {
     /// last-use oracle to determine if that dependent represents the last use of the current
     /// dependency node, which allows us to elide unnecessary stack copies
     #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
     fn emit_node(
         &mut self,
         node: Node,
@@ -661,6 +662,7 @@ impl<'a> MasmEmitter<'a> {
     /// Specifically, `dependent` is an instruction that requires `value` as an argument.
     /// We must move or copy it into the desired position on the operand stack, depending
     /// on whether this is the last known use of `value` in this block or it's successors.
+    #[allow(clippy::too_many_arguments)]
     fn emit_stack_dependency(
         &mut self,
         node: Node,
@@ -739,6 +741,7 @@ impl<'a> MasmEmitter<'a> {
     /// by `inst`. We must do some extra work to determine whether to emit code for
     /// `inst` itself, or to fetch the result needed by `dependent` from the operand
     /// stack.
+    #[allow(clippy::too_many_arguments)]
     fn emit_inst_dependency(
         &mut self,
         node: Node,
@@ -934,6 +937,7 @@ impl<'a> MasmEmitter<'a> {
     }
 
     /// Emit code for a single instruction and it's dependencies
+    #[allow(clippy::too_many_arguments)]
     fn emit_inst(
         &mut self,
         inst: hir::Inst,

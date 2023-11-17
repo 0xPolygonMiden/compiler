@@ -1497,7 +1497,6 @@ impl Emulator {
                     return Ok(EmulatorEvent::EnterLoop(body_blk));
                 }
                 Op::Exec(callee) => {
-                    let callee = callee;
                     let fun = self
                         .functions
                         .get(&callee)

@@ -63,7 +63,7 @@ pub struct DebugInfoWithStack {
     /// The current state of the operand stack
     pub stack: OperandStack<Felt>,
 }
-impl<'a> fmt::Debug for DebugInfoWithStack {
+impl fmt::Debug for DebugInfoWithStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use miden_hir::Stack;
 
