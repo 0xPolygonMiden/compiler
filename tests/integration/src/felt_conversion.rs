@@ -1,8 +1,7 @@
 use miden_core::Felt;
 use miden_core::StarkField;
 
-/// Wrapper around `Felt` that implements `From` for a bunch of types that are missing in Winterfell
-/// Should be moved to Winterfell eventually
+/// Wrapper around `Felt` that implements `From` for a bunch of types that are want to support in tests
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TestFelt(pub Felt);
 
