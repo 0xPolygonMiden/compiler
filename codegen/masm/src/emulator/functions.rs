@@ -25,9 +25,12 @@ pub enum Stub {
 /// This enum represents a frame on the control stack
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ControlFrame {
+    /// A control frame used to revisit a single instruction
+    /// used to control entry into a loop, e.g. `while.true`
+    Loopback(InstructionPointer),
     /// Control is in a normal block
     Block(InstructionPointer),
-    /// Control was transferred to a while.true loop
+    /// Control was transferred into a while.true loop
     While(InstructionPointer),
     /// Control was transferred to a repeat loop
     Repeat(RepeatState),
@@ -40,7 +43,10 @@ impl Default for ControlFrame {
 impl ControlFrame {
     pub const fn ip(&self) -> InstructionPointer {
         match self {
-            Self::Block(ip) | Self::While(ip) | Self::Repeat(RepeatState { ip, .. }) => *ip,
+            Self::Loopback(ip)
+            | Self::Block(ip)
+            | Self::While(ip)
+            | Self::Repeat(RepeatState { ip, .. }) => *ip,
         }
     }
 
@@ -53,6 +59,7 @@ impl ControlFrame {
                 ip.index += 1;
                 *ip
             }
+            Self::Loopback(_) => panic!("cannot move a loopback control frame"),
         }
     }
 
@@ -67,6 +74,7 @@ impl ControlFrame {
                 ip.index = index;
                 *ip
             }
+            Self::Loopback(_) => panic!("cannot move a loopback control frame"),
         }
     }
 }
@@ -81,6 +89,7 @@ pub struct RepeatState {
     pub iterations: u8,
 }
 
+#[derive(Debug)]
 pub struct ControlStack {
     /// The control frame for the current instruction being executed
     current: ControlFrame,
@@ -136,14 +145,17 @@ impl ControlStack {
     #[inline]
     pub fn enter_while_loop(&mut self, block: BlockId) {
         let ip = InstructionPointer::new(block);
-        let continue_after = self.pending_frame.replace(ControlFrame::While(ip));
-        let pending_frame = self.current;
+        let pending_frame = self.pending_frame.replace(ControlFrame::While(ip));
+        // Make sure we preserve the pending frame for when we loopback to the
+        // while the final time, and skip over it
+        if let Some(pending_frame) = pending_frame {
+            self.frames.push(pending_frame);
+        }
+        // We need to revisit the `while.true` at least once, so we stage a special
+        // control frame that expires as soon as that instruction is visited.
+        self.frames.push(ControlFrame::Loopback(self.current.ip()));
         self.pending = None;
         self.current = ControlFrame::While(ip);
-        if let Some(continue_after) = continue_after {
-            self.frames.push(continue_after);
-        }
-        self.frames.push(pending_frame);
     }
 
     /// Push a new control frame for a normal block on the stack, and move the instruction
@@ -197,7 +209,7 @@ impl ControlStack {
         let mut pending_frame = self.pending_frame.unwrap();
         let current_frame = pending_frame;
 
-        if is_last_instruction(pending.ip, function) {
+        if is_last_instruction(current_frame, function) {
             let pending_frame_and_effect = self.find_continuation_frame(current_frame, function);
             match pending_frame_and_effect {
                 Some((pending_frame, effect)) => {
@@ -235,6 +247,13 @@ impl ControlStack {
         function: &Function,
     ) -> Option<(ControlFrame, ControlEffect)> {
         match current {
+            ControlFrame::Loopback(_) => {
+                // This frame is usually preceded by a top-level block frame, but if
+                // the body of a function starts with a loop header, then there may not
+                // be any parent frames, in which case we're returning from the function
+                let continuation = self.frames.pop()?;
+                return Some((continuation, ControlEffect::Exit));
+            }
             ControlFrame::While(_) => {
                 // There will always be a frame available when a while frame is on the stack
                 let continuation = self.frames.pop().unwrap();
@@ -279,7 +298,7 @@ impl ControlStack {
                     }
                     current = transfer_to?;
                 }
-                ControlFrame::Block(_) => {
+                ControlFrame::Loopback(_) | ControlFrame::Block(_) => {
                     let pending_frame = transfer_to?;
                     if is_valid_instruction(pending_frame.ip(), function) {
                         break Some((pending_frame, ControlEffect::Exit));
@@ -292,8 +311,14 @@ impl ControlStack {
 }
 
 #[inline(always)]
-fn is_last_instruction(ip: InstructionPointer, function: &Function) -> bool {
-    ip.index >= function.block(ip.block).ops.len().saturating_sub(1)
+fn is_last_instruction(frame: ControlFrame, function: &Function) -> bool {
+    match frame {
+        ControlFrame::Loopback(_) => true,
+        frame => {
+            let ip = frame.ip();
+            ip.index >= function.block(ip.block).ops.len().saturating_sub(1)
+        }
+    }
 }
 
 #[inline(always)]
@@ -624,7 +649,6 @@ mod tests {
 
         // Advance the instruction pointer to the end of the loop body
         let next = activation.next().unwrap();
-        dbg!(activation.peek_with_op());
         assert_eq!(next.op, Op::Dup(1));
         let next = activation.next().unwrap();
         assert_eq!(next.op, Op::Dup(1));
@@ -679,7 +703,6 @@ mod tests {
                 effect: ControlEffect::Loopback,
             })
         );
-        dbg!(activation.control_stack.ip());
 
         // Exit if.true
         let callee = "test::foo".parse().unwrap();
@@ -687,7 +710,7 @@ mod tests {
             activation.peek_with_op(),
             Some(InstructionWithOp {
                 op: Op::Exec(callee),
-                continuing_from: Some(ControlFrame::Block(InstructionPointer {
+                continuing_from: Some(ControlFrame::Loopback(InstructionPointer {
                     block: then_blk,
                     index: 1
                 })),
@@ -702,7 +725,7 @@ mod tests {
             activation.next(),
             Some(InstructionWithOp {
                 op: Op::Exec(callee),
-                continuing_from: Some(ControlFrame::Block(InstructionPointer {
+                continuing_from: Some(ControlFrame::Loopback(InstructionPointer {
                     block: then_blk,
                     index: 1
                 })),
