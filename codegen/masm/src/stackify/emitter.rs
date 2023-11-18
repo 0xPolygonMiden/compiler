@@ -721,7 +721,7 @@ impl<'a> MasmEmitter<'a> {
         };
         let pos = stack
             .find(&value)
-            .expect("value not found on operand stack");
+            .expect(format!("value {} not found on operand stack", value).as_str());
         let mut emitter = self.emitter(stack);
         if is_last_dependent {
             // This is the last usage, so move, rather than copy the value

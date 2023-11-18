@@ -1,0 +1,19 @@
+module noname
+
+const $0 = 0x00100000;
+
+global external @__stack_pointer : i32 = $0 { id = 0 };
+global external @gv1 : i32 = $0 { id = 1 };
+global external @gv2 : i32 = $0 { id = 2 };
+
+pub fn entrypoint(i64, i64) -> i32 {
+block0(v0: i64, v1: i64):
+    v3 = cast v0 : u64;
+    v4 = cast v1 : u64;
+    v5 = lte v3, v4 : i1;
+    v6 = cast v5 : i32;
+    br block1(v6);
+
+block1(v2: i32):
+    ret v2;
+}

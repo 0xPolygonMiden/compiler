@@ -1,7 +1,9 @@
+use core::fmt;
 use std::{collections::BTreeMap, path::Path, sync::Arc};
 
+use hir::Ident;
 use intrusive_collections::RBTree;
-use miden_hir::{self as hir, DataSegmentTable, FunctionIdent, Ident};
+use miden_hir::{self as hir, DataSegmentTable, FunctionIdent};
 
 use super::*;
 
@@ -162,14 +164,8 @@ impl Program {
                 masm::LibraryPath::new(entry_import.name.as_str()).expect("invalid module path");
             let entry_id =
                 masm::ProcedureId::from_name(entry.function.as_str(), &entry_module_path);
-            let entry_name = masm::ProcedureName::try_from(
-                FunctionIdent {
-                    module: Ident::with_empty_span(entry_import.alias),
-                    ..entry
-                }
-                .to_string(),
-            )
-            .expect("invalid entrypoint function name");
+            let entry_name = masm::ProcedureName::try_from(entry.function.as_str())
+                .expect("invalid entrypoint function name");
             let imported =
                 BTreeMap::from([(entry_import.alias.to_string(), entry_module_path.clone())]);
             let invoked = BTreeMap::from([(entry_id, (entry_name, entry_module_path))]);
@@ -247,6 +243,15 @@ impl From<&hir::Program> for Program {
             entrypoint,
             segments,
         }
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for module in self.modules.iter() {
+            writeln!(f, "{}", module)?;
+        }
+        Ok(())
     }
 }
 

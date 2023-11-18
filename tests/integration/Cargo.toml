@@ -1,0 +1,33 @@
+[package]
+name = "miden-integration-tests"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+miden-frontend-wasm.workspace = true
+miden-hir.workspace = true
+miden-hir-transform.workspace = true
+miden-codegen-masm.workspace = true
+miden-assembly.workspace = true
+miden-core.workspace = true
+miden-processor.workspace = true
+miden-stdlib.workspace = true
+miden-diagnostics.workspace = true
+midenc-session.workspace = true
+expect-test = "1.4.1"
+miden-integration-tests-rust-fib = {path = "../rust-apps/fib"}
+wat = "1.0.69"
+wasmprinter = "0.2.63"
+sha2 = "0.10"
+rustc-demangle = {version = "0.1.19", features = ["std"]}    
+
+[dev-dependencies]
+proptest = "1.3"
+concat-idents = "1.1"

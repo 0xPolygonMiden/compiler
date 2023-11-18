@@ -14,8 +14,10 @@ members = [
   "midenc-session",
   "tools/*",
   "frontend-wasm",
-  "tests/rust-wasm-tests"
+  "tests/rust-apps/*",
+  "tests/integration",
 ]
+exclude = ["tests/rust-apps-wasm"]
 
 [workspace.package]
 version = "0.1.0"
@@ -58,6 +60,9 @@ smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
 toml = { version = "0.5", features = ["preserve_order"] }
 miden-assembly = "0.7"
+miden-core = "0.7"
+miden-processor = "0.7"
+miden-stdlib = "0.6"
 miden-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 miden-hir = { path = "hir" }
@@ -71,6 +76,7 @@ miden-frontend-wasm = { path = "frontend-wasm" }
 midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
+miden-integration-tests = { path = "tests/integration" }
 
 
 [profile.dev]

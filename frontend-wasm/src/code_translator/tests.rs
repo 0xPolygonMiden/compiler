@@ -760,7 +760,9 @@ fn i64_extend_i32_u() {
         "#,
         expect![[r#"
             v0 = const.i32 1 : i32;
-            v1 = zext v0 : i64;
+            v1 = cast v0 : u32;
+            v2 = zext v1 : u64;
+            v3 = cast v2 : i64;
         "#]],
     )
 }
