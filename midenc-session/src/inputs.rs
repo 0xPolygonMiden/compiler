@@ -79,6 +79,10 @@ impl InputFile {
         }
     }
 
+    pub fn is_real(&self) -> bool {
+        matches!(self.file, InputType::Real(_))
+    }
+
     pub fn filestem(&self) -> &str {
         match &self.file {
             InputType::Real(ref path) => path.file_stem().unwrap().to_str().unwrap(),
