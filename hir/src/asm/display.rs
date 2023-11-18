@@ -139,6 +139,9 @@ impl<'a> fmt::Display for DisplayOp<'a> {
             | MasmOp::MemStoreOffsetImm(addr, offset)) => {
                 write!(f, "{op}.{}.{offset}", Address(*addr))
             }
+            op @ MasmOp::AdvPush(n) => {
+                write!(f, "{op}.{n}")
+            }
             MasmOp::If(then_blk, else_blk) => {
                 write!(
                     f,
@@ -185,20 +188,13 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                     DisplayIndent(self.indent),
                 )
             }
-            MasmOp::Exec(FunctionIdent { module, function }) => {
+            op @ (MasmOp::Exec(id) | MasmOp::Syscall(id) | MasmOp::ProcRef(id)) => {
+                let FunctionIdent { module, function } = id;
                 if self.is_local_module(module) {
-                    write!(f, "exec.{function}")
+                    write!(f, "{op}.{function}")
                 } else {
                     let alias = self.get_module_alias(*module);
-                    write!(f, "exec.{alias}::{function}")
-                }
-            }
-            MasmOp::Syscall(FunctionIdent { module, function }) => {
-                if self.is_local_module(module) {
-                    write!(f, "syscall.{function}")
-                } else {
-                    let alias = self.get_module_alias(*module);
-                    write!(f, "syscall.{alias}::{function}")
+                    write!(f, "{op}.{alias}::{function}")
                 }
             }
             op @ (MasmOp::AndImm(imm) | MasmOp::OrImm(imm) | MasmOp::XorImm(imm)) => {
@@ -215,31 +211,19 @@ impl<'a> fmt::Display for DisplayOp<'a> {
             | MasmOp::GteImm(imm)
             | MasmOp::LtImm(imm)
             | MasmOp::LteImm(imm)) => write!(f, "{op}.{imm}"),
-            op @ (MasmOp::U32CheckedAddImm(imm)
-            | MasmOp::U32OverflowingAddImm(imm)
+            op @ (MasmOp::U32OverflowingAddImm(imm)
             | MasmOp::U32WrappingAddImm(imm)
-            | MasmOp::U32CheckedSubImm(imm)
             | MasmOp::U32OverflowingSubImm(imm)
             | MasmOp::U32WrappingSubImm(imm)
-            | MasmOp::U32CheckedMulImm(imm)
             | MasmOp::U32OverflowingMulImm(imm)
             | MasmOp::U32WrappingMulImm(imm)
-            | MasmOp::U32CheckedDivImm(imm)
-            | MasmOp::U32UncheckedDivImm(imm)
-            | MasmOp::U32CheckedModImm(imm)
-            | MasmOp::U32UncheckedModImm(imm)
-            | MasmOp::U32CheckedDivModImm(imm)
-            | MasmOp::U32UncheckedDivModImm(imm)
-            | MasmOp::U32CheckedShlImm(imm)
-            | MasmOp::U32UncheckedShlImm(imm)
-            | MasmOp::U32CheckedShrImm(imm)
-            | MasmOp::U32UncheckedShrImm(imm)
-            | MasmOp::U32CheckedRotlImm(imm)
-            | MasmOp::U32UncheckedRotlImm(imm)
-            | MasmOp::U32CheckedRotrImm(imm)
-            | MasmOp::U32UncheckedRotrImm(imm)
-            | MasmOp::U32EqImm(imm)
-            | MasmOp::U32NeqImm(imm)) => write!(f, "{op}.{imm}"),
+            | MasmOp::U32DivImm(imm)
+            | MasmOp::U32ModImm(imm)
+            | MasmOp::U32DivModImm(imm)
+            | MasmOp::U32ShlImm(imm)
+            | MasmOp::U32ShrImm(imm)
+            | MasmOp::U32RotlImm(imm)
+            | MasmOp::U32RotrImm(imm)) => write!(f, "{op}.{imm}"),
             op => write!(f, "{op}"),
         }
     }

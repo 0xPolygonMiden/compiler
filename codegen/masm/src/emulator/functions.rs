@@ -650,7 +650,7 @@ mod tests {
         assert_eq!(
             activation.peek_with_op(),
             Some(InstructionWithOp {
-                op: Op::U32UncheckedLt,
+                op: Op::U32Lt,
                 continuing_from: None,
                 ip: InstructionPointer {
                     block: loop_body,
@@ -661,7 +661,7 @@ mod tests {
         );
 
         // Advance the instruction pointer, obtaining the last instruction of the loop body
-        assert_eq!(activation.next().map(|ix| ix.op), Some(Op::U32UncheckedLt));
+        assert_eq!(activation.next().map(|ix| ix.op), Some(Op::U32Lt));
 
         // Exit while.true
         assert_eq!(
@@ -746,7 +746,7 @@ mod tests {
             body.push(Op::PushU8(1));
             body.push(Op::Dup(1));
             body.push(Op::Dup(1));
-            body.push(Op::U32UncheckedLt);
+            body.push(Op::U32Lt);
             body.push(Op::If(then_blk, else_blk));
             body.push(Op::Exec("test::foo".parse().unwrap()));
         }
@@ -757,14 +757,14 @@ mod tests {
         }
         {
             let else_body = function.block_mut(else_blk);
-            else_body.push(Op::U32UncheckedMax);
+            else_body.push(Op::U32Max);
         }
         {
             let while_body = function.block_mut(while_blk);
             while_body.push(Op::Dup(1));
             while_body.push(Op::Dup(1));
             while_body.push(Op::Incr);
-            while_body.push(Op::U32UncheckedLt);
+            while_body.push(Op::U32Lt);
         }
 
         Arc::new(function)

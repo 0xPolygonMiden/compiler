@@ -290,6 +290,30 @@ impl PartialEq for Immediate {
         }
     }
 }
+impl PartialEq<isize> for Immediate {
+    fn eq(&self, other: &isize) -> bool {
+        let y = *other;
+        match *self {
+            Self::I1(x) => x == (y == 1),
+            Self::U8(_) if y < 0 => false,
+            Self::U8(x) => x as isize == y,
+            Self::I8(x) => x as isize == y,
+            Self::U16(_) if y < 0 => false,
+            Self::U16(x) => x as isize == y,
+            Self::I16(x) => x as isize == y,
+            Self::U32(_) if y < 0 => false,
+            Self::U32(x) => x as isize == y,
+            Self::I32(x) => x as isize == y,
+            Self::U64(_) if y < 0 => false,
+            Self::U64(x) => x == y as i64 as u64,
+            Self::I64(x) => x == y as i64,
+            Self::I128(x) => x == y as i128,
+            Self::F64(_) => false,
+            Self::Felt(_) if y < 0 => false,
+            Self::Felt(x) => x.as_int() == y as i64 as u64,
+        }
+    }
+}
 impl PartialOrd for Immediate {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))

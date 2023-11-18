@@ -59,7 +59,7 @@ end
 export.load_sw # [waddr, index, offset]
     # check for alignment and offset validity
     dup.2 eq.0
-    dup.3 push.8 u32checked_lt assert # offset must be < 8
+    dup.3 push.8 u32lt assert # offset must be < 8
     # if the pointer is naturally aligned..
     if.true
         # drop the byte offset
@@ -78,13 +78,13 @@ export.load_sw # [waddr, index, offset]
             # drop the unused elements
             movup.3 movup.3 drop drop
             # shift high bits left by the offset
-            dup.2 u32checked_shl  # [hi, w1, offset]
+            dup.2 u32shl # [hi, w1, offset]
             # move the low bits to the top and shift them as well
             swap.1 push.32 movup.3 # [offset, 32, w1, hi]
-            u32checked_sub # [32 - offset, w1, hi]
-            u32checked_shr # [lo, hi]
+            u32overflowing_sub assertz # [32 - offset, w1, hi]
+            u32shr           # [lo, hi]
             # combine the two halves
-            u32checked_or  # [result]
+            u32or            # [result]
         else
             # check if the load starts in the second element
             dup.1 eq.1
@@ -97,13 +97,13 @@ export.load_sw # [waddr, index, offset]
                 # drop the unused elements
                 drop movdn.2 movdn.2 drop # [w1, w2, offset]
                 # shift the high bits
-                dup.2 u32checked_shl  # [hi, w2, offset]
+                dup.2 u32shl # [hi, w2, offset]
                 # shift the low bits
-                swap.1 push.32 movup.3  # [offset, 32, w2, hi]
-                u32checked_sub  # [32 - offset, w2, hi]
-                u32checked_shr  # [lo, hi]
+                swap.1 push.32 movup.3     # [offset, 32, w2, hi]
+                u32overflowing_sub assertz # [32 - offset, w2, hi]
+                u32shr # [lo, hi]
                 # combine the two halves
-                u32checked_or   # [result]
+                u32or  # [result]
             else
                 # check if the load starts in the third element
                 swap.1 eq.2
@@ -113,30 +113,30 @@ export.load_sw # [waddr, index, offset]
                     # drop first two unused
                     drop drop # [w2, w3, offset]
                     # shift the high bits
-                    dup.2 u32checked_shl  # [hi, w3, offset]
+                    dup.2 u32shl # [hi, w3, offset]
                     # shift the low bits
-                    swap.1 push.32 movup.3  # [offset, 32, w3, hi]
-                    u32checked_sub  # [32 - offset, w3, hi]
-                    u32checked_shr  # [lo, hi]
+                    swap.1 push.32 movup.3     # [offset, 32, w3, hi]
+                    u32overflowing_sub assertz # [32 - offset, w3, hi]
+                    u32shr # [lo, hi]
                     # combine the two halves
-                    u32checked_or   # [result]
+                    u32or  # [result]
                 else
                     # the load crosses a word boundary
                     # start with the word containing the low bits
                     dup.0  # [waddr, waddr, offset]
-                    u32checked_add.1 # [waddr + 1, waddr, offset]
+                    u32overflowing_add.1 assertz # [waddr + 1, waddr, offset]
                     # load the word and drop the unused elements
                     padw movup.4 mem_loadw movdn.4 drop drop drop # [w0, waddr, offset]
                     # shift the low bits
                     push.32 dup.3  # [offset, 32, w0, waddr, offset]
-                    u32checked_sub # [32 - offset, w0, waddr, offset]
-                    u32checked_shr # [lo, waddr, offset]
+                    u32overflowing_sub assertz # [32 - offset, w0, waddr, offset]
+                    u32shr # [lo, waddr, offset]
                     # load the word with the high bits, drop unused elements
                     swap.1 padw movup.4 mem_loadw drop drop drop # [w3, lo, offset]
                     # shift high bits
-                    movup.2 u32checked_shl  # [hi, lo]
+                    movup.2 u32shl # [hi, lo]
                     # combine the two halves
-                    u32checked_or # [result]
+                    u32or # [result]
                 end
             end
         end
@@ -191,7 +191,7 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     # Re-align the high bits by shifting out the offset
     #
     # This gives us the first half of the first word.
-    dup.3 u32checked_shl # [x_hi_hi, chunk_mid, chunk__lo, offset]
+    dup.3 u32shl # [x_hi_hi, chunk_mid, chunk__lo, offset]
 
     # Move the value below the other chunks temporarily
     movdn.2 # [chunk_mid, chunk_lo, x_hi_hi, offset]
@@ -209,7 +209,7 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     # Then, we shift the chunk right by 32 - offset bits,
     # re-aligning the low bits of the first word, and
     # isolating them.
-    push.32 dup.4 u32checked_shr  # [x_hi_lo, chunk_mid, chunk_lo, offset, x_hi_hi]
+    push.32 dup.4 u32shr  # [x_hi_lo, chunk_mid, chunk_lo, offset, x_hi_hi]
 
     # Move the high bits back to the top
     #
@@ -217,7 +217,7 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     movup.4 # [x_hi_hi, x_hi_lo, chunk_mid, chunk_lo, offset]
 
     # OR the two parts of the `x_hi` chunk together
-    u32checked_or # [x_hi, chunk_mid, chunk_lo, offset]
+    u32or # [x_hi, chunk_mid, chunk_lo, offset]
 
     # Move `x_hi` to the bottom for later
     movdn.2 # [chunk_mid, chunk_lo, x_hi, offset]
@@ -229,16 +229,16 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     # This gives us the first half of the second word.
     #
     # [x_lo_hi, chunk_lo, x_hi]
-    dup.3 u32checked_shl # [x_lo_hi, chunk_lo, x_hi, offset]
+    dup.3 u32shl # [x_lo_hi, chunk_lo, x_hi, offset]
 
     # Next, swap the low bit chunk to the top temporarily
     swap.1
 
     # Shift the value right, as done previously for the middle chunk
-    push.32 movup.4 u32checked_shr # [x_lo_lo, x_lo_hi, x_hi]
+    push.32 movup.4 u32shr # [x_lo_lo, x_lo_hi, x_hi]
 
     # OR the two halves together, giving us our second word, `x_lo`
-    u32checked_or # [x_lo, x_hi]
+    u32or # [x_lo, x_hi]
 
     # Swap the words so they are in the correct order
     swap.1 # [x_hi, x_lo]
@@ -249,7 +249,7 @@ end
 export.load_dw # [waddr, index, offset]
     # check for alignment and offset validity
     dup.2 eq.0
-    dup.3 push.8 u32checked_lt assert # offset must be < 8
+    dup.3 push.8 u32lt assert # offset must be < 8
     # if the pointer is naturally aligned..
     if.true
         # drop byte offset
@@ -279,7 +279,7 @@ export.load_dw # [waddr, index, offset]
                 padw movup.4 mem_loadw drop drop
               else
                 # load first element of next word, drop the rest
-                dup.0 u32checked_add.1 padw movup.4 mem_loadw
+                dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
                 movup.4 movup.4 movup.4
                 drop drop drop
                 # load fourth element, and we're done
@@ -312,7 +312,7 @@ export.load_dw # [waddr, index, offset]
                 swap.1 eq.2
                 if.true
                     # load one element from the next word
-                    dup.0 u32checked_add.1 padw movup.4 mem_loadw
+                    dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
                     movup.4 movup.4 movup.4 drop drop drop
                     # load two elements from the first word
                     swap.1 padw movup.4 mem_loadw drop drop
@@ -320,7 +320,7 @@ export.load_dw # [waddr, index, offset]
                     exec.realign_dw
                 else
                     # load the two least-significant elements from the next word first
-                    dup.0 u32checked_add.1 padw movup.4 mem_loadw
+                    dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
                     movup.4 movup.4 drop drop
                     # load the most significant element from the first word
                     movup.2 padw movup.4 mem_loadw drop drop drop

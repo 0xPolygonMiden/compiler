@@ -1,4 +1,4 @@
-use miden_hir::{assert_matches, Immediate, Overflow, Type};
+use miden_hir::{assert_matches, Felt, Immediate, Overflow, Type};
 
 use crate::masm::Op;
 
@@ -15,12 +15,22 @@ impl<'a> OpEmitter<'a> {
                 self.eq_i128();
             }
             Type::I64 | Type::U64 => {
-                self.emit(Op::Eqw);
+                // context: [b_hi, b_lo, a_hi, a_lo]
+                self.emit_all(&[
+                    // [a_hi, b_hi, b_lo, a_lo]
+                    Op::Movup(2),
+                    // [hi_equal, b_lo, a_lo]
+                    Op::Eq,
+                    // [b_lo, a_lo, hi_equal]
+                    Op::Movdn(3),
+                    // [lo_equal, hi_equal]
+                    Op::Eq,
+                    // [is_equal]
+                    Op::And,
+                ]);
             }
-            Type::Felt => {
-                self.emit(Op::Eq);
-            }
-            Type::Ptr(_)
+            Type::Felt
+            | Type::Ptr(_)
             | Type::U32
             | Type::I32
             | Type::U16
@@ -28,7 +38,7 @@ impl<'a> OpEmitter<'a> {
             | Type::I8
             | Type::U8
             | Type::I1 => {
-                self.emit(Op::U32Eq);
+                self.emit(Op::Eq);
             }
             ty => unimplemented!("eq is not yet implemented for {ty}"),
         }
@@ -46,16 +56,25 @@ impl<'a> OpEmitter<'a> {
             }
             Type::I64 | Type::U64 => {
                 self.push_immediate(imm);
-                self.emit(Op::Eqw);
+                // context: [b_hi, b_lo, a_hi, a_lo]
+                self.emit_all(&[
+                    // [a_hi, b_hi, b_lo, a_lo]
+                    Op::Movup(2),
+                    // [hi_equal, b_lo, a_lo]
+                    Op::Eq,
+                    // [b_lo, a_lo, hi_equal]
+                    Op::Movdn(3),
+                    // [lo_equal, hi_equal]
+                    Op::Eq,
+                    // [is_equal]
+                    Op::And,
+                ]);
             }
-            Type::Felt => {
+            Type::Felt | Type::Ptr(_) | Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::EqImm(imm.as_felt().unwrap()));
             }
-            Type::Ptr(_) | Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32EqImm(imm.as_u32().unwrap()));
-            }
             Type::I32 | Type::I16 | Type::I8 => {
-                self.emit(Op::U32EqImm(imm.as_i32().unwrap() as u32));
+                self.emit(Op::EqImm(Felt::new(imm.as_i32().unwrap() as u32 as u64)));
             }
             ty => unimplemented!("eq is not yet implemented for {ty}"),
         }
@@ -69,15 +88,24 @@ impl<'a> OpEmitter<'a> {
         assert_eq!(ty, rhs.ty(), "expected neq operands to be the same type");
         match &ty {
             Type::I128 => {
-                self.eq_i128();
+                self.neq_i128();
             }
             Type::I64 | Type::U64 => {
-                self.emit_all(&[Op::Eqw, Op::Not]);
+                self.emit_all(&[
+                    // [a_hi, b_hi, b_lo, a_lo]
+                    Op::Movup(2),
+                    // [hi_not_equal, b_lo, a_lo]
+                    Op::Neq,
+                    // [b_lo, a_lo, hi_not_equal]
+                    Op::Movdn(3),
+                    // [lo_not_equal, hi_not_equal]
+                    Op::Neq,
+                    // [is_not_equal]
+                    Op::Or,
+                ]);
             }
-            Type::Felt => {
-                self.emit(Op::Neq);
-            }
-            Type::Ptr(_)
+            Type::Felt
+            | Type::Ptr(_)
             | Type::U32
             | Type::I32
             | Type::U16
@@ -85,7 +113,7 @@ impl<'a> OpEmitter<'a> {
             | Type::I8
             | Type::U8
             | Type::I1 => {
-                self.emit(Op::U32Neq);
+                self.emit(Op::Neq);
             }
             ty => unimplemented!("neq is not yet implemented for {ty}"),
         }
@@ -103,16 +131,24 @@ impl<'a> OpEmitter<'a> {
             }
             Type::I64 | Type::U64 => {
                 self.push_immediate(imm);
-                self.emit_all(&[Op::Eqw, Op::Not]);
+                self.emit_all(&[
+                    // [a_hi, b_hi, b_lo, a_lo]
+                    Op::Movup(2),
+                    // [hi_not_equal, b_lo, a_lo]
+                    Op::Neq,
+                    // [b_lo, a_lo, hi_not_equal]
+                    Op::Movdn(3),
+                    // [lo_not_equal, hi_not_equal]
+                    Op::Neq,
+                    // [is_not_equal]
+                    Op::Or,
+                ]);
             }
-            Type::Felt => {
+            Type::Felt | Type::Ptr(_) | Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::NeqImm(imm.as_felt().unwrap()));
             }
-            Type::Ptr(_) | Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32NeqImm(imm.as_u32().unwrap()));
-            }
             Type::I32 | Type::I16 | Type::I8 => {
-                self.emit(Op::U32NeqImm(imm.as_i32().unwrap() as u32));
+                self.emit(Op::NeqImm(Felt::new(imm.as_i32().unwrap() as u32 as u64)));
             }
             ty => unimplemented!("neq is not yet implemented for {ty}"),
         }
@@ -129,7 +165,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Gt);
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32CheckedGt);
+                self.emit(Op::U32Gt);
             }
             Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_gt".parse().unwrap())),
             ty => unimplemented!("gt is not yet implemented for {ty}"),
@@ -146,7 +182,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::GtImm(imm.as_felt().unwrap()));
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedGt]);
+                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Gt]);
             }
             Type::I32 => {
                 self.emit_all(&[
@@ -169,7 +205,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Gte);
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32CheckedGte);
+                self.emit(Op::U32Gte);
             }
             Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_gte".parse().unwrap())),
             ty => unimplemented!("gte is not yet implemented for {ty}"),
@@ -186,7 +222,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::GteImm(imm.as_felt().unwrap()));
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedGte]);
+                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Gte]);
             }
             Type::I32 => {
                 self.emit_all(&[
@@ -209,7 +245,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Lt);
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32CheckedLt);
+                self.emit(Op::U32Lt);
             }
             Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_lt".parse().unwrap())),
             ty => unimplemented!("lt is not yet implemented for {ty}"),
@@ -226,7 +262,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::LtImm(imm.as_felt().unwrap()));
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedLt]);
+                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Lt]);
             }
             Type::I32 => {
                 self.emit_all(&[
@@ -249,7 +285,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::Lte);
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32CheckedLte);
+                self.emit(Op::U32Lte);
             }
             Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_lte".parse().unwrap())),
             ty => unimplemented!("lte is not yet implemented for {ty}"),
@@ -266,7 +302,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit(Op::LteImm(imm.as_felt().unwrap()));
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
-                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32CheckedLte]);
+                self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Lte]);
             }
             Type::I32 => {
                 self.emit_all(&[
@@ -313,6 +349,7 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected add operands to be the same type");
         match &ty {
+            Type::Felt if imm == 1 => self.emit(Op::Incr),
             Type::Felt => {
                 self.emit(Op::AddImm(imm.as_felt().unwrap()));
             }

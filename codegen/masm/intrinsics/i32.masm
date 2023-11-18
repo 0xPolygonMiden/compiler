@@ -7,14 +7,14 @@ const.NEG1=4294967295 # u32::MAX
 #
 # This function consumes `a`.
 export.is_signed # [a]
-    push.SIGN_BIT u32checked_and push.SIGN_BIT eq
+    push.SIGN_BIT u32and push.SIGN_BIT eq
 end
 
 # Get the negation of `a`
 #
 # This operation is unchecked, so if the input is not a valid i32 the behavior is undefined
 export.unchecked_neg # [a]
-    u32checked_not u32wrapping_add.1
+    u32not u32wrapping_add.1
 end
 
 # Get the negation of `a`
@@ -214,7 +214,7 @@ export.checked_div # [b, a]
     dup.0 movdn.5 cdrop         # [|b|, |a|, is_a_signed, is_b_signed]
 
     # divide
-    u32unchecked_div            # [|a / b|, is_a_signed, is_b_signed]
+    u32div            # [|a / b|, is_a_signed, is_b_signed]
 
     # if the signs differ, negate the result
     movdn.2 neq                 # [signs_differ, |a / b|]
@@ -230,12 +230,12 @@ export.icmp # [b, a]
 
     # get the most-significant bit of `b`
     push.SIGN_BIT   # [1<<31, b, a, b, a]
-    u32checked_and  # [b_msb, a, b, a]
+    u32and          # [b_msb, a, b, a]
 
     # get the most-significant bit of `a`
     swap.1          # [a, b_msb, b, a]
     push.SIGN_BIT   # [1<<31, a, b_msb, b, a]
-    u32checked_and  # [a_msb, b_msb, b, a]
+    u32and          # [a_msb, b_msb, b, a]
 
     eq.0             # [a_msb == 0, b_msb, b, a]
     swap.1 eq.0      # [b_msb == 0, a_msb == 0, b, a]
@@ -252,8 +252,8 @@ export.icmp # [b, a]
         # which we get for free via the lt/gt ops
         drop                      # [b, a]
         dup.1 dup.1               # [b, a, b, a]
-        u32unchecked_gt movdn.2   # [b, a, a > b]
-        u32unchecked_lt           # [a < b, a > b]
+        u32gt movdn.2             # [b, a, a > b]
+        u32lt                     # [a < b, a > b]
         push.0 push.NEG1 push.1
         swap.3                    # [a < b, -1, 0, 1, a > b]
         cdrop                     # [-1 or 0, 1, a > b]
@@ -286,15 +286,15 @@ end
 export.pow2 # [n]
     dup.0
     push.31
-    u32checked_lt  # [n < 31, pow]
+    u32lt          # [n < 31, pow]
     assert         # [n]
     push.1 swap.1  # [n, 1]
-    u32checked_shl # [1 << n]
+    u32shl         # [1 << n]
 end
 
 # Compute a^b, where `b` must be a positive i32 value < 31
 export.ipow # [b, a]
-    dup.0 push.31 u32checked_lt assert # assert that `b` is < 31
+    dup.0 push.31 u32lt assert # assert that `b` is < 31
     dup.0 eq.0       # [b == 0, b, a]
     dup.2 eq.0       # [a == 0, b == 0, b, a]
     or               # [a == 0 || b == 0, b, a]
@@ -310,23 +310,23 @@ export.ipow # [b, a]
         push.1         # [acc, b, a]
         dup.1          # [b, acc, b, a]
         push.1         # [1, b, acc, b, a]
-        u32checked_gt  # [b > 1, acc, b, a]
+        u32gt          # [b > 1, acc, b, a]
         while.true     # [acc, b, a => base]
             dup.2 dup.1      # [acc, base, acc, b, base]
             u32wrapping_mul  # [base * acc, acc, b, base]
             dup.2            # [b, base * acc, acc, b, base]
             push.1           # [1, b, base * acc, acc, b, base]
-            u32checked_and   # [b & 1, base * acc, acc, b, base]
+            u32and           # [b & 1, base * acc, acc, b, base]
             eq.1             # [b & 1 == 1, base * acc, acc, b, base]
             cdrop            # [acc, b, base]
             swap.1           # [b, acc, base]
-            u32checked_div.2 # [b /= 2, acc, base]
+            u32div.2         # [b /= 2, acc, base]
             movup.2 dup.0    # [base, base, b, acc]
             u32wrapping_mul  # [base * base, b, acc]
             swap.1           # [b, base, acc]
             movup.2          # [acc, b, base]
             dup.1 push.1     # [1, b, acc, b, base]
-            u32checked_gt    # [b > 1, acc, b, base]
+            u32gt            # [b > 1, acc, b, base]
         end
         swap.1 drop     # [acc, base]
         u32wrapping_mul # [acc * base]
@@ -341,7 +341,7 @@ end
 export.checked_shr # [b, a]
     # validate the shift is valid
     dup.0 push.32
-    u32checked_lt   # [b < 32, b, a]
+    u32lt          # [b < 32, b, a]
     assert
 
     # if the input is zero, the output is always zero,
@@ -359,27 +359,29 @@ export.checked_shr # [b, a]
         # get the signedness of the value
         dup.1                           # [a, b, a]
         push.SIGN_BIT                   # [1<<31, a, b, a]
-        u32checked_and push.SIGN_BIT eq # [is_signed, b, a]
+        u32and push.SIGN_BIT eq         # [is_signed, b, a]
 
         # if the value is signed, we must sign-extend the result,
         # otherwise we can treat it as an unsigned shift
         if.true  # [b, a]
             swap.1             # [a, b]
             dup.1              # [b, a, b]
-            u32checked_shr     # [shifted, b]
+            u32shr             # [shifted, b]
 
             # compute the extension mask
             push.1 dup.2       # [b, 1, shifted, b]
-            u32unchecked_shl
+            u32shl
             sub.1              # [(1 << b) - 1, shifted, b]
 
             # shift the mask into place
             push.32 movup.3    # [b, 32, mask, shifted]
             sub                # [32 - b, mask, shifted]
-            u32unchecked_shl   # [mask << (32 - b), shifted]
-            u32checked_or      # [shifted | mask]
+            u32shl             # [mask << (32 - b), shifted]
+            u32or              # [shifted | mask]
+            u32assert
         else
-            u32checked_shr
+            u32shr
+            u32assert
         end
     end
 end

@@ -91,25 +91,25 @@ impl<'a> OpEmitter<'a> {
             // Obtain the absolute offset
             //
             // [abs_offset, addr]
-            Op::U32CheckedModImm(16),
+            Op::U32ModImm(16),
             // Obtain the byte offset
             //
             // [abs_offset, abs_offset, addr]
             Op::Dup(0),
             // [offset, abs_offset, addr]
-            Op::U32CheckedModImm(4),
+            Op::U32ModImm(4),
             // Obtain the element index
             //
             // [abs_offset, offset, addr]
             Op::Swap(1),
             // [index, byte_offset, addr]
-            Op::U32CheckedDivImm(4),
+            Op::U32DivImm(4),
             // Translate the address to Miden's address space
             //
             // [addr, index, offset]
             Op::Movup(2),
             // [waddr, index, offset]
-            Op::U32CheckedDivImm(16),
+            Op::U32DivImm(16),
         ]);
     }
 
@@ -195,10 +195,10 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Shift the high bits left by the offset
-                    Op::U32CheckedShlImm(ptr.offset as u32),
+                    Op::U32ShlImm(ptr.offset as u32),
                     // Move the low bits to the top and shift them right
                     Op::Swap(1),
-                    Op::U32CheckedShrImm(rshift),
+                    Op::U32ShrImm(rshift),
                     // OR the high and low bits together
                     Op::U32Or,
                 ]);
@@ -229,10 +229,10 @@ impl<'a> OpEmitter<'a> {
                     // Drop the remaining unused element
                     Op::Drop,
                     // Shift the high bits left by the offset
-                    Op::U32CheckedShlImm(ptr.offset as u32),
+                    Op::U32ShlImm(ptr.offset as u32),
                     // Move the low bits to the top and shift them right
                     Op::Swap(1),
-                    Op::U32CheckedShrImm(rshift),
+                    Op::U32ShrImm(rshift),
                     // OR the high and low bits together
                     Op::U32Or,
                 ]);
@@ -257,10 +257,10 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Shift the high bits left by the offset
-                    Op::U32CheckedShlImm(ptr.offset as u32),
+                    Op::U32ShlImm(ptr.offset as u32),
                     // Move the low bits to the top and shift them right
                     Op::Swap(1),
-                    Op::U32CheckedShrImm(rshift),
+                    Op::U32ShrImm(rshift),
                     // OR the high and low bits together
                     Op::U32Or,
                 ]);
@@ -286,7 +286,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Shift the low bits right by the offset
-                    Op::U32CheckedShrImm(rshift),
+                    Op::U32ShrImm(rshift),
                     // Load the quad-word containing the high bits
                     Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
@@ -295,7 +295,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Drop,
                     Op::Drop,
                     // Shift the high bits left by the offset
-                    Op::U32CheckedShlImm(ptr.offset as u32),
+                    Op::U32ShlImm(ptr.offset as u32),
                     // OR the high and low bits together
                     Op::U32Or,
                 ]);
@@ -621,7 +621,7 @@ impl<'a> OpEmitter<'a> {
             // This gives us the first half of the first word.
             //
             // [x_hi_hi, chunk_mid, chunk__lo]
-            Op::U32CheckedShlImm(ptr.offset as u32),
+            Op::U32ShlImm(ptr.offset as u32),
             // Move the value below the other chunks temporarily
             //
             // [chunk_mid, chunk_lo, x_hi_hi]
@@ -641,7 +641,7 @@ impl<'a> OpEmitter<'a> {
             // isolating them.
             //
             // [x_hi_lo, chunk_mid, chunk_lo, x_hi_hi]
-            Op::U32CheckedShrImm(32 - ptr.offset as u32),
+            Op::U32ShrImm(32 - ptr.offset as u32),
             // Move the high bits back to the top
             //
             // [x_hi_hi, x_hi_lo, chunk_mid, chunk_lo]
@@ -659,11 +659,11 @@ impl<'a> OpEmitter<'a> {
             // This gives us the first half of the second word.
             //
             // [x_lo_hi, chunk_lo, x_hi]
-            Op::U32CheckedShlImm(ptr.offset as u32),
+            Op::U32ShlImm(ptr.offset as u32),
             // Next, swap the low bit chunk to the top temporarily
             Op::Swap(1),
             // Shift the value right, as done previously for the middle chunk
-            Op::U32CheckedShrImm(32 - ptr.offset as u32),
+            Op::U32ShrImm(32 - ptr.offset as u32),
             // OR the two halves together, giving us our second word, `x_lo`
             //
             // [x_lo, x_hi]
@@ -702,7 +702,7 @@ impl<'a> OpEmitter<'a> {
             // This gives us the first half of `x_hi2`.
             //
             // [x_hi2_hi, chunk_mid_hi, chunk_mid_mid, chunk_mid_lo, chunk__lo]
-            Op::U32CheckedShlImm(ptr.offset as u32),
+            Op::U32ShlImm(ptr.offset as u32),
             // Move the value below the other chunks temporarily
             //
             // [chunk_mid_hi, chunk_mid_mid, chunk_mid_lo, chunk__lo, x_hi2_hi]
@@ -720,7 +720,7 @@ impl<'a> OpEmitter<'a> {
             // re-aligning the low bits of `x_hi2`, and isolating them.
             //
             // [x_hi2_lo, chunk_mid_hi, chunk_mid_mid, chunk_mid_lo, chunk_lo, x_hi2_hi]
-            Op::U32CheckedShrImm(32 - ptr.offset as u32),
+            Op::U32ShrImm(32 - ptr.offset as u32),
             // Move the high bits of `x_hi2` back to the top
             //
             // [x_hi2_hi, x_hi2_lo, chunk_mid_hi, chunk_mid_mid, chunk_mid_lo, chunk_lo]
@@ -739,7 +739,7 @@ impl<'a> OpEmitter<'a> {
             // This gives us the first half of `x_hi1`
             //
             // [x_hi1_hi, chunk_mid_mid, chunk_mid_lo, chunk_lo, x_hi2]
-            Op::U32CheckedShlImm(ptr.offset as u32),
+            Op::U32ShlImm(ptr.offset as u32),
             // Next, move the chunk containing the low bits of `x_hi1` to the top temporarily
             //
             // [chunk_mid_mid, chunk_mid_lo, chunk_lo, x_hi2, x_hi1_hi]
@@ -751,7 +751,7 @@ impl<'a> OpEmitter<'a> {
             // Shift the value right, as done previously for the low bits of `x_hi2`
             //
             // [x_hi1_lo, chunk_mid_mid, chunk_mid_lo, chunk_lo, x_hi2, x_hi1_hi]
-            Op::U32CheckedShrImm(32 - ptr.offset as u32),
+            Op::U32ShrImm(32 - ptr.offset as u32),
             // Move the high bits of `x_hi1` to the top
             Op::Movup(5),
             // OR the two halves together, giving us our second word, `x_hi1`
@@ -766,7 +766,7 @@ impl<'a> OpEmitter<'a> {
             // the remaining copy of `chunk_mid_mid`, as done previously.
             //
             // [x_lo2_hi, chunk_mid_lo, chunk_lo, x_hi2, x_hi1]
-            Op::U32CheckedShlImm(ptr.offset as u32),
+            Op::U32ShlImm(ptr.offset as u32),
             // Next, move the chunk containing the low bits of `x_lo2` to the top temporarily
             //
             // [chunk_mid_lo, chunk_lo, x_hi2, x_hi1, x_lo2_hi]
@@ -778,7 +778,7 @@ impl<'a> OpEmitter<'a> {
             // Shift the value right to get the low bits of `x_lo2`
             //
             // [x_lo2_lo, chunk_mid_lo, chunk_lo, x_hi2, x_hi1, x_lo2_hi]
-            Op::U32CheckedShrImm(32 - ptr.offset as u32),
+            Op::U32ShrImm(32 - ptr.offset as u32),
             // Move the high bits of `x_lo2` to the top
             //
             // [x_lo2_hi, x_lo2_lo, chunk_mid_lo, chunk_lo, x_hi2, x_hi1]
@@ -794,13 +794,13 @@ impl<'a> OpEmitter<'a> {
             // Re-align the high bits of `x_lo1`
             //
             // [x_lo1_hi, chunk_lo, x_hi2, x_hi1, x_lo2]
-            Op::U32CheckedShlImm(ptr.offset as u32),
+            Op::U32ShlImm(ptr.offset as u32),
             // Move the chunk containing the low bits to the top
             //
             // [chunk_lo, x_hi2, x_hi1, x_lo2, x_lo1_hi]
             Op::Movdn(5),
             // Shift the value right to get the low bits of `x_lo1`
-            Op::U32CheckedShrImm(32 - ptr.offset as u32),
+            Op::U32ShrImm(32 - ptr.offset as u32),
             // Move the high bits of `x_lo1` to the top
             //
             // [x_lo1_hi, x_lo1_lo, x_hi2, x_hi1, x_lo2]

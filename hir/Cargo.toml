@@ -34,7 +34,7 @@ rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
-winter-math = { version = "0.6", default-features = false }
+winter-math = { version = "0.7", default-features = false }
 
 [dev-dependencies]
 pretty_assertions = "1.0"
