@@ -77,7 +77,7 @@ impl<'a> Rule<BlockData> for DefsDominateUses<'a> {
                     // If the value comes from another block, then as long as all paths to the current
                     // block flow through that block, then this use is dominated by its definition
                     ValueData::Param { block, .. } => {
-                        if self.domtree.dominates(*block, current_block, &self.dfg) {
+                        if self.domtree.dominates(*block, current_block, self.dfg) {
                             continue;
                         }
                     }
@@ -85,7 +85,7 @@ impl<'a> Rule<BlockData> for DefsDominateUses<'a> {
                     // instruction flow through the defining instruction, then this use is dominated
                     // by its definition
                     ValueData::Inst { inst, .. } => {
-                        if self.domtree.dominates(*inst, node.key, &self.dfg) {
+                        if self.domtree.dominates(*inst, node.key, self.dfg) {
                             continue;
                         }
                     }

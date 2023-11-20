@@ -1,11 +1,10 @@
 use core::fmt;
 use std::{collections::BTreeMap, path::Path, sync::Arc};
 
-use hir::Ident;
-use intrusive_collections::RBTree;
-use miden_hir::{self as hir, DataSegmentTable, FunctionIdent};
+use miden_hir::{self as hir, DataSegmentTable, FunctionIdent, Ident};
+use rustc_hash::FxHashMap;
 
-use super::*;
+use super::{module::Modules, *};
 
 /// A [Program] represents a complete set of modules which are intended to
 /// be shipped together as an artifact, either as an executable, or as a library
@@ -14,63 +13,11 @@ use super::*;
 pub struct Program {
     /// The set of modules which belong to this program
     modules: Modules,
-    /// The function identifier for the program entrypoint, if this is an executable module
-    pub entrypoint: Option<FunctionIdent>,
     /// The data segment table for this program
     pub segments: DataSegmentTable,
+    /// The top-level global initialization code for this program, if applicable
+    pub body: Option<Begin>,
 }
-
-enum Modules {
-    Open(RBTree<ModuleTreeAdapter>),
-    Frozen(RBTree<FrozenModuleTreeAdapter>),
-}
-impl Default for Modules {
-    fn default() -> Self {
-        Self::Open(Default::default())
-    }
-}
-impl Modules {
-    pub fn iter(&self) -> ModulesIter<'_> {
-        match self {
-            Self::Open(ref tree) => ModulesIter::Open(tree.iter()),
-            Self::Frozen(ref tree) => ModulesIter::Frozen(tree.iter()),
-        }
-    }
-
-    pub fn get<Q>(&self, name: &Q) -> Option<&Module>
-    where
-        Q: ?Sized + Ord,
-        Ident: core::borrow::Borrow<Q>,
-    {
-        match self {
-            Self::Open(ref tree) => tree.find(name).get(),
-            Self::Frozen(ref tree) => tree.find(name).get(),
-        }
-    }
-
-    pub fn insert(&mut self, module: Box<Module>) {
-        match self {
-            Self::Open(ref mut tree) => {
-                tree.insert(module);
-            }
-            Self::Frozen(_) => panic!("cannot insert module into frozen program"),
-        }
-    }
-
-    fn freeze(&mut self) {
-        if let Self::Open(ref mut modules) = self {
-            let mut frozen = RBTree::<FrozenModuleTreeAdapter>::default();
-
-            let mut open = modules.front_mut();
-            while let Some(module) = open.remove() {
-                frozen.insert(module.freeze());
-            }
-
-            *self = Self::Frozen(frozen);
-        }
-    }
-}
-
 impl Program {
     /// Create a new, empty [Program]
     pub fn new() -> Self {
@@ -89,7 +36,7 @@ impl Program {
     }
 
     /// Access the frozen module tree of this program, and panic if not frozen
-    pub fn unwrap_frozen_modules(&self) -> &RBTree<FrozenModuleTreeAdapter> {
+    pub fn unwrap_frozen_modules(&self) -> &FrozenModuleTree {
         match self.modules {
             Modules::Frozen(ref modules) => modules,
             Modules::Open(_) => panic!("expected program to be frozen"),
@@ -104,11 +51,11 @@ impl Program {
     }
 
     pub fn is_executable(&self) -> bool {
-        self.entrypoint.is_some()
+        self.body.is_some()
     }
 
     pub fn is_library(&self) -> bool {
-        self.entrypoint.is_none()
+        self.body.is_none()
     }
 
     /// Get a reference to a module in this program by name
@@ -141,7 +88,7 @@ impl Program {
         let path = path.as_ref();
         assert!(path.is_dir());
 
-        let program = self.to_program_ast();
+        let program = self.to_program_ast(codemap);
         program.write_to_file(path.join(masm::LibraryPath::EXEC_PATH))?;
 
         for module in self.modules.iter() {
@@ -152,13 +99,45 @@ impl Program {
     }
 
     /// Convert this program to its [miden_assembly::ast::ProgramAst] representation
-    pub fn to_program_ast(&self) -> miden_assembly::ast::ProgramAst {
+    pub fn to_program_ast(
+        &self,
+        codemap: &miden_diagnostics::CodeMap,
+    ) -> miden_assembly::ast::ProgramAst {
         use miden_assembly::{
             self as masm,
             ast::{Instruction, ModuleImports, Node, ProgramAst},
         };
 
-        if let Some(entry) = self.entrypoint {
+        if let Some(begin) = &self.body {
+            // Create module import table
+            let mut imported = BTreeMap::<String, masm::LibraryPath>::default();
+            let mut invoked = BTreeMap::<masm::ProcedureId, _>::default();
+            let mut proc_ids = FxHashMap::<FunctionIdent, masm::ProcedureId>::default();
+            for import in begin.imports.iter() {
+                let path =
+                    masm::LibraryPath::new(import.name.as_str()).expect("invalid module name");
+                imported.insert(import.alias.to_string(), path.clone());
+                if let Some(imported_fns) = begin.imports.imported(&import.alias) {
+                    for import_fn in imported_fns.iter().copied() {
+                        let name = masm::ProcedureName::try_from(import_fn.function.as_str())
+                            .expect("invalid function name");
+                        let id = masm::ProcedureId::from_name(import_fn.function.as_str(), &path);
+                        invoked.insert(id, (name, path.clone()));
+                        proc_ids.insert(import_fn, id);
+                    }
+                }
+            }
+            let imports = ModuleImports::new(imported, invoked);
+            let local_ids = Default::default();
+            let (nodes, _) = begin
+                .body
+                .to_code_body(codemap, &begin.imports, &local_ids, &proc_ids)
+                .into_parts();
+
+            ProgramAst::new(nodes, vec![])
+                .expect("invalid program")
+                .with_import_info(imports)
+        } else if let Some(entry) = self.modules.iter().find_map(|m| m.entrypoint()) {
             let entry_import = Import::try_from(entry.module).expect("invalid module name");
             let entry_module_path =
                 masm::LibraryPath::new(entry_import.name.as_str()).expect("invalid module path");
@@ -221,51 +200,62 @@ impl Program {
         use miden_assembly::Library;
         use miden_diagnostics::SourceSpan;
 
-        let mut modules = RBTree::<ModuleTreeAdapter>::default();
+        let mut modules = ModuleTree::default();
         for module in library.modules() {
             let module = Module::from_module(module, SourceSpan::UNKNOWN, codemap);
             modules.insert(Box::new(module));
         }
 
         Self {
-            entrypoint: None,
             modules: Modules::Open(modules),
             segments: DataSegmentTable::default(),
+            body: None,
         }
     }
 }
 impl From<&hir::Program> for Program {
     fn from(program: &hir::Program) -> Self {
-        let entrypoint = program.entrypoint();
         let segments = program.segments().clone();
+        let body = if let Some(entry) = program.entrypoint() {
+            let mut begin = Begin::default();
+            begin.imports.add(entry);
+            let entry_module = begin.imports.alias(&entry.module);
+            begin
+                .body
+                .block_mut(begin.body.body)
+                .ops
+                .push(Op::Exec(FunctionIdent {
+                    module: entry_module.unwrap_or(entry.module),
+                    function: entry.function,
+                }));
+            Some(begin)
+        } else {
+            None
+        };
         Self {
             modules: Default::default(),
-            entrypoint,
             segments,
+            body,
         }
     }
 }
-
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for module in self.modules.iter() {
+        for module in self.modules() {
+            writeln!(f, "mod {}\n", &module.name)?;
             writeln!(f, "{}", module)?;
         }
-        Ok(())
-    }
-}
-
-enum ModulesIter<'a> {
-    Open(intrusive_collections::rbtree::Iter<'a, ModuleTreeAdapter>),
-    Frozen(intrusive_collections::rbtree::Iter<'a, FrozenModuleTreeAdapter>),
-}
-impl<'a> Iterator for ModulesIter<'a> {
-    type Item = &'a Module;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Open(ref mut iter) => iter.next(),
-            Self::Frozen(ref mut iter) => iter.next(),
+        if let Some(entry) = self.body.as_ref() {
+            writeln!(f, "program\n")?;
+            for import in entry.imports.iter() {
+                if import.is_aliased() {
+                    writeln!(f, "use {}->{}", &import.name, &import.alias)?;
+                } else {
+                    writeln!(f, "use {}", &import.name)?;
+                }
+            }
+            writeln!(f, "\n{entry}")?;
         }
+        Ok(())
     }
 }

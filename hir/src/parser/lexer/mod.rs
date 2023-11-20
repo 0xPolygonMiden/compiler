@@ -247,6 +247,7 @@ where
             '!' => pop!(self, Token::Bang),
             '@' => pop!(self, Token::At),
             '$' => pop!(self, Token::Dollar),
+            '#' => pop!(self, Token::Hash),
             '0' => match self.peek() {
                 'x' => {
                     self.skip();
@@ -511,7 +512,7 @@ where
                     // happens.
                     Token::Module | Token::Kernel => {
                         let module_name = format!("{}::{}", mid, fid);
-                        let module_id = Symbol::intern(&module_name);
+                        let module_id = Symbol::intern(module_name);
                         Some(Ok((start, Token::Ident(module_id), end)))
                     }
                     _ => Some(Ok((start, Token::FunctionIdent((mid, fid)), end))),

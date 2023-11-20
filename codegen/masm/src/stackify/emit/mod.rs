@@ -524,7 +524,7 @@ impl<'a> OpEmitter<'a> {
     /// Get mutable access to the current block we're emitting to
     #[inline(always)]
     pub fn current_block<'c, 'b: 'c>(&'b mut self) -> &'c mut masm::Block {
-        &mut self.function.blocks[self.current_block]
+        self.function.body.block_mut(self.current_block)
     }
 
     #[allow(unused)]
@@ -555,7 +555,7 @@ mod tests {
     #[test]
     fn op_emitter_stack_manipulation_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -743,7 +743,7 @@ mod tests {
     #[test]
     fn op_emitter_copy_operand_to_position_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -804,7 +804,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_add_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -839,7 +839,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_sub_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -874,7 +874,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_mul_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -909,7 +909,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_eq_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -937,7 +937,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_neq_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -965,7 +965,7 @@ mod tests {
     #[test]
     fn op_emitter_i1_and_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -988,7 +988,7 @@ mod tests {
     #[test]
     fn op_emitter_i1_or_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1011,7 +1011,7 @@ mod tests {
     #[test]
     fn op_emitter_i1_xor_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1034,7 +1034,7 @@ mod tests {
     #[test]
     fn op_emitter_i1_not_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1050,7 +1050,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_gt_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1075,7 +1075,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_gte_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1100,7 +1100,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_lt_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1125,7 +1125,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_lte_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1150,7 +1150,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_checked_div_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1173,7 +1173,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_unchecked_div_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1196,7 +1196,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_checked_mod_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1219,7 +1219,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_unchecked_mod_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1242,7 +1242,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_checked_divmod_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1268,7 +1268,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_unchecked_divmod_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1294,7 +1294,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_exp_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1317,7 +1317,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_band_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1340,7 +1340,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_bor_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1363,7 +1363,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_bxor_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1386,7 +1386,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_shl_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1409,7 +1409,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_shr_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1432,7 +1432,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_rotl_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1455,7 +1455,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_rotr_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1478,7 +1478,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_min_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1501,7 +1501,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_max_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1524,7 +1524,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_trunc_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1540,7 +1540,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_zext_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1556,7 +1556,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_sext_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1572,7 +1572,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_cast_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1588,7 +1588,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_inttoptr_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1605,7 +1605,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_is_odd_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1621,7 +1621,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_popcnt_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1637,7 +1637,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_bnot_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1653,7 +1653,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_pow2_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1669,7 +1669,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_incr_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1685,7 +1685,7 @@ mod tests {
     #[test]
     fn op_emitter_inv_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1701,7 +1701,7 @@ mod tests {
     #[test]
     fn op_emitter_neg_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1717,7 +1717,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_assert_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1733,7 +1733,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_assertz_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1749,7 +1749,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_assert_eq_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1770,7 +1770,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_select_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1793,7 +1793,7 @@ mod tests {
         use miden_hir::ExternalFunction;
 
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 
@@ -1821,7 +1821,7 @@ mod tests {
     #[test]
     fn op_emitter_u32_load_test() {
         let mut function = setup();
-        let entry = function.body;
+        let entry = function.body.id();
         let mut stack = OperandStack::default();
         let mut emitter = OpEmitter::new(&mut function, entry, &mut stack);
 

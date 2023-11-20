@@ -575,6 +575,7 @@ impl<'a> MasmEmitter<'a> {
     /// last-use oracle to determine if that dependent represents the last use of the current
     /// dependency node, which allows us to elide unnecessary stack copies
     #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
     fn emit_node(
         &mut self,
         node: Node,
@@ -661,6 +662,7 @@ impl<'a> MasmEmitter<'a> {
     /// Specifically, `dependent` is an instruction that requires `value` as an argument.
     /// We must move or copy it into the desired position on the operand stack, depending
     /// on whether this is the last known use of `value` in this block or it's successors.
+    #[allow(clippy::too_many_arguments)]
     fn emit_stack_dependency(
         &mut self,
         node: Node,
@@ -739,6 +741,7 @@ impl<'a> MasmEmitter<'a> {
     /// by `inst`. We must do some extra work to determine whether to emit code for
     /// `inst` itself, or to fetch the result needed by `dependent` from the operand
     /// stack.
+    #[allow(clippy::too_many_arguments)]
     fn emit_inst_dependency(
         &mut self,
         node: Node,
@@ -934,6 +937,7 @@ impl<'a> MasmEmitter<'a> {
     }
 
     /// Emit code for a single instruction and it's dependencies
+    #[allow(clippy::too_many_arguments)]
     fn emit_inst(
         &mut self,
         inst: hir::Inst,
@@ -1684,13 +1688,13 @@ impl<'a> MasmEmitter<'a> {
     /// Get a mutable reference to the current block of code in the stack machine IR
     #[inline(always)]
     fn current_block(&mut self) -> &mut masm::Block {
-        &mut self.f_prime.blocks[self.current_block]
+        self.f_prime.body.block_mut(self.current_block)
     }
 
     /// Get a mutable reference to a specific block of code in the stack machine IR
     #[inline(always)]
     fn block(&mut self, block: masm::BlockId) -> &mut masm::Block {
-        &mut self.f_prime.blocks[block]
+        self.f_prime.body.block_mut(block)
     }
 
     #[inline(always)]
@@ -1752,7 +1756,7 @@ fn rewrite_inline_assembly_block(
             }
             _ => (),
         }
-        f_prime.blocks[new].push(op);
+        f_prime.body.block_mut(new).push(op);
     }
 }
 

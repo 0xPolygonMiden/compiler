@@ -235,7 +235,7 @@ impl CompilerTest {
         let program = self.ir_masm_program();
         // TODO: get code map from the self.diagnotics
         let codemap = CodeMap::new();
-        let program_ast = program.to_program_ast();
+        let program_ast = program.to_program_ast(&codemap);
         for module in program.modules() {
             let core_module = module.to_module_ast(&codemap);
             let _ = assembler

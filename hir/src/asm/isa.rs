@@ -1080,7 +1080,7 @@ impl MasmOp {
                     let id = proc_ids
                         .get(&aliased)
                         .copied()
-                        .unwrap_or_else(|| miden_assembly::ProcedureId::new(&aliased.to_string()));
+                        .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
                     Instruction::ExecImported(id)
                 }
             }
@@ -1101,7 +1101,7 @@ impl MasmOp {
                 let id = proc_ids
                     .get(&aliased)
                     .copied()
-                    .unwrap_or_else(|| miden_assembly::ProcedureId::new(&aliased.to_string()));
+                    .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
                 Instruction::SysCall(id)
             }
             Self::Add => Instruction::Add,

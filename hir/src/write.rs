@@ -3,6 +3,9 @@ use std::fmt::{self, Write};
 use super::*;
 
 pub fn write_function(w: &mut dyn Write, func: &Function) -> fmt::Result {
+    for attr in func.dfg.attrs.iter() {
+        writeln!(w, "{attr}")?;
+    }
     write_signature(w, None, func.id.function, &func.signature)?;
     writeln!(w, " {{")?;
     for (i, (block, block_data)) in func.dfg.blocks().enumerate() {

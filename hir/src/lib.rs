@@ -139,6 +139,7 @@ macro_rules! diagnostic {
 }
 
 mod asm;
+mod attribute;
 mod block;
 mod builder;
 mod constants;
@@ -163,6 +164,7 @@ mod value;
 mod write;
 
 pub use self::asm::*;
+pub use self::attribute::{attributes, Attribute, AttributeSet, AttributeValue};
 pub use self::block::{Block, BlockData};
 pub use self::builder::{
     DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder,

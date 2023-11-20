@@ -32,9 +32,11 @@ impl Analysis for GlobalVariableAnalysis<Program> {
         _analyses: &mut AnalysisManager,
         _session: &Session,
     ) -> AnalysisResult<Self> {
-        let mut layout = GlobalVariableLayout::default();
+        let mut layout = GlobalVariableLayout {
+            global_table_offset: program.segments().next_available_offset(),
+            ..GlobalVariableLayout::default()
+        };
 
-        layout.global_table_offset = program.segments().next_available_offset();
         let globals = program.globals();
         for module in program.modules().iter() {
             for function in module.functions() {
@@ -65,9 +67,11 @@ impl Analysis for GlobalVariableAnalysis<Module> {
         _analyses: &mut AnalysisManager,
         _session: &Session,
     ) -> AnalysisResult<Self> {
-        let mut layout = GlobalVariableLayout::default();
+        let mut layout = GlobalVariableLayout {
+            global_table_offset: module.segments().next_available_offset(),
+            ..GlobalVariableLayout::default()
+        };
 
-        layout.global_table_offset = module.segments().next_available_offset();
         let globals = module.globals();
         for function in module.functions() {
             let mut function_offsets = FxHashMap::default();

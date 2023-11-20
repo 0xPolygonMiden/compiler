@@ -326,7 +326,7 @@ fn dyn_rewrite_pass_ctor<P>() -> Box<dyn RewritePass<Entity = <P as RewritePass>
 where
     P: RewritePass + Default + 'static,
 {
-    Box::new(P::default())
+    Box::<P>::default()
 }
 
 // Register rewrite passes for modules

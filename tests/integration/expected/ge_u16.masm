@@ -1,15 +1,15 @@
+mod intrinsics::i32
+
 export.is_signed
   push.2147483648
   u32checked_and
   push.2147483648
   eq
-
 end
 
 export.unchecked_neg
   u32checked_not
   u32wrapping_add.1
-
 end
 
 export.checked_neg
@@ -18,7 +18,6 @@ export.checked_neg
   eq
   assertz
   exec.unchecked_neg
-
 end
 
 export.overflowing_add
@@ -38,19 +37,16 @@ export.overflowing_add
   neq
   movup.2
   and
-
 end
 
 export.wrapping_add
   exec.overflowing_add
   drop
-
 end
 
 export.checked_add
   exec.overflowing_add
   assertz
-
 end
 
 export.overflowing_sub
@@ -80,19 +76,16 @@ export.overflowing_sub
     exec.unchecked_neg
     exec.overflowing_add
   end
-
 end
 
 export.wrapping_sub
   exec.overflowing_sub
   drop
-
 end
 
 export.checked_sub
   exec.overflowing_sub
   assertz
-
 end
 
 export.overflowing_mul
@@ -155,19 +148,16 @@ export.overflowing_mul
     cdrop
     swap.1
   end
-
 end
 
 export.wrapping_mul
   exec.overflowing_mul
   drop
-
 end
 
 export.checked_mul
   exec.overflowing_mul
   assertz
-
 end
 
 export.checked_div
@@ -197,7 +187,6 @@ export.checked_div
   exec.unchecked_neg
   swap.1
   cdrop
-
 end
 
 export.icmp
@@ -237,33 +226,28 @@ export.icmp
     swap.2
     cdrop
   end
-
 end
 
 export.is_lt
   exec.icmp
   push.4294967295
   eq
-
 end
 
 export.is_lte
   exec.icmp
   neq.1
-
 end
 
 export.is_gt
   exec.icmp
   eq.1
-
 end
 
 export.is_gte
   exec.icmp
   push.4294967295
   neq
-
 end
 
 export.pow2
@@ -274,7 +258,6 @@ export.pow2
   push.1
   swap.1
   u32checked_shl
-
 end
 
 export.ipow
@@ -324,7 +307,6 @@ export.ipow
     drop
     u32wrapping_mul
   end
-
 end
 
 export.checked_shr
@@ -366,8 +348,9 @@ export.checked_shr
       u32checked_shr
     end
   end
-
 end
+
+mod intrinsics::mem
 
 export.extract_element
   dup.0
@@ -389,7 +372,6 @@ export.extract_element
   cdrop
   movup.2
   cdrop
-
 end
 
 proc.load_felt_unchecked
@@ -398,14 +380,12 @@ proc.load_felt_unchecked
   mem_loadw
   movup.4
   exec.extract_element
-
 end
 
 export.load_felt
   movup.2
   assertz
   exec.load_felt_unchecked
-
 end
 
 export.load_sw
@@ -506,7 +486,6 @@ export.load_sw
       end
     end
   end
-
 end
 
 export.realign_dw
@@ -528,7 +507,6 @@ export.realign_dw
   u32checked_shr
   u32checked_or
   swap.1
-
 end
 
 export.load_dw
@@ -663,8 +641,9 @@ export.load_dw
       end
     end
   end
-
 end
+
+mod noname
 
 export.entrypoint
   dup.0
@@ -679,9 +658,12 @@ export.entrypoint
   eq.2147483648
   assertz
   u32checked_gte
-
 end
+
+program
+
+use noname
+
 begin
-    exec.entrypoint
+  exec.noname::entrypoint
 end
-

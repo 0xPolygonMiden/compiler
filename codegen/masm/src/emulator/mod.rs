@@ -11,15 +11,17 @@ pub use self::functions::{Instruction, InstructionWithOp, NativeFn};
 
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
-use miden_hir::{Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack, StarkField};
+use miden_hir::{
+    assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack, StarkField,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{BlockId, Function, Module, Op, Program};
+use crate::{Begin, BlockId, Function, Module, Op, Program};
 
 /// This type represents the various sorts of errors which can occur when
 /// running the emulator on a MASM program. Some errors may result in panics,
 /// but those which we can handle are represented here.
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum EmulationError {
     /// The given module is already loaded
     #[error("unable to load module: '{0}' is already loaded")]
@@ -39,6 +41,9 @@ pub enum EmulationError {
     /// A breakpoint was reached, so execution was suspended and can be resumed
     #[error("execution suspended by breakpoint")]
     BreakpointHit(BreakpointEvent),
+    /// An attempt was made to run the emulator without specifying an entrypoint
+    #[error("unable to start the emulator without an entrypoint")]
+    NoEntrypoint,
 }
 
 /// The size/type of pointers in the emulator
@@ -57,6 +62,43 @@ impl InstructionPointer {
     }
 }
 
+/// This enum represents the state transitions for the emulator.
+///
+/// * The emulator starts in `Init`
+/// * Once some code is loaded, it becomes `Loaded`
+/// * Once the emulator has started executing some code, it becomes `Started`
+/// * If the emulator suspends due to a breakpoint or stepping, it becomes `Suspended`
+/// * Once the emulator finishes executing whatever entrypoint was invoked, it becomes `Stopped`
+/// * If an error occurs between `Started` and `Stopped`, it becomes `Faulted`
+///
+/// Once `Started`, it is not possible to `start` the emulator again until it reaches the
+/// `Stopped` state, or is explicitly reset to the `Init` or `Loaded` states using `reset`
+/// or `stop` respectively.
+#[derive(Debug, Default)]
+enum Status {
+    /// The emulator is in its initial state
+    ///
+    /// In this state, the emulator cannot execute any code because there
+    /// is no code loaded yet.
+    #[default]
+    Init,
+    /// A program has been loaded into the emulator, but not yet started
+    ///
+    /// This is the clean initial state from which a program or function can
+    /// start executing. Once the emulator leaves this status, the state of
+    /// the emulator is "dirty", i.e. it is no longer a clean slate.
+    Loaded,
+    /// The emulator has started running the current program, or a specified function.
+    Started,
+    /// The emulator is suspended, and awaiting resumption
+    Suspended,
+    /// The emulator finished running the current program, or a specified function,
+    /// and the state of the emulator has not yet been reset.
+    Stopped,
+    /// The emulator has stopped due to an error, and cannot proceed further
+    Faulted(EmulationError),
+}
+
 /// [Emulator] provides us with a means to execute our MASM IR directly
 /// without having to emit "real" MASM and run it via the Miden VM.
 /// In other words, it's a convenient way to run tests to verify the
@@ -71,14 +113,17 @@ impl InstructionPointer {
 /// library functions available. Users must emit Miden IR for all functions
 /// they wish to call, or alternatively, provide native stubs.
 pub struct Emulator {
+    status: Status,
     functions: FxHashMap<FunctionIdent, Stub>,
     locals: FxHashMap<FunctionIdent, Addr>,
-    modules_loaded: FxHashSet<Ident>,
+    modules_loaded: FxHashMap<Ident, Arc<Module>>,
     modules_pending: FxHashSet<Ident>,
     memory: Vec<[Felt; 4]>,
     stack: OperandStack<Felt>,
     callstack: Vec<Activation>,
+    hp_start: u32,
     hp: u32,
+    lp_start: u32,
     lp: u32,
     breakpoints: BreakpointManager,
     step_over: Option<InstructionPointer>,
@@ -110,6 +155,7 @@ impl Emulator {
     pub fn new(memory_size: u32, hp: u32, lp: u32) -> Self {
         let memory = vec![Self::EMPTY_WORD; memory_size as usize];
         Self {
+            status: Status::Init,
             functions: Default::default(),
             locals: Default::default(),
             modules_loaded: Default::default(),
@@ -117,7 +163,9 @@ impl Emulator {
             memory,
             stack: Default::default(),
             callstack: vec![],
+            hp_start: hp,
             hp,
+            lp_start: lp,
             lp,
             breakpoints: Default::default(),
             step_over: None,
@@ -224,8 +272,25 @@ impl Emulator {
             .map(|activation| activation.function().name)
     }
 
+    /// Get access to the current state of the operand stack
+    pub fn stack(&mut self) -> &OperandStack<Felt> {
+        &self.stack
+    }
+
+    /// Get mutable access to the current state of the operand stack
+    pub fn stack_mut(&mut self) -> &mut OperandStack<Felt> {
+        &mut self.stack
+    }
+
     /// Load `program` into this emulator
+    ///
+    /// This resets the emulator state, as only one program may be loaded at a time.
     pub fn load_program(&mut self, program: Arc<Program>) -> Result<(), EmulationError> {
+        // Ensure the emulator state is reset
+        if !matches!(self.status, Status::Init) {
+            self.reset();
+        }
+
         let modules = program.unwrap_frozen_modules();
         let mut cursor = modules.front();
         while let Some(module) = cursor.clone_pointer() {
@@ -235,19 +300,34 @@ impl Emulator {
 
         // TODO: Load data segments
 
+        if let Some(begin) = program.body.as_ref() {
+            self.load_init(begin)?;
+        }
+
+        self.status = Status::Loaded;
+
         Ok(())
     }
 
     /// Load `module` into this emulator
+    ///
+    /// An error is returned if a module with the same name is already loaded.
     pub fn load_module(&mut self, module: Arc<Module>) -> Result<(), EmulationError> {
-        if !self.modules_loaded.insert(module.name) {
-            return Err(EmulationError::AlreadyLoaded(module.name));
+        use std::collections::hash_map::Entry;
+
+        assert_matches!(self.status, Status::Init | Status::Loaded, "cannot load modules once execution has started without calling stop() or reset() first");
+
+        match self.modules_loaded.entry(module.name) {
+            Entry::Occupied(_) => return Err(EmulationError::AlreadyLoaded(module.name)),
+            Entry::Vacant(entry) => {
+                entry.insert(module.clone());
+            }
         }
 
         // Register module dependencies
         for import in module.imports.iter() {
             let name = Ident::with_empty_span(import.name);
-            if self.modules_loaded.contains(&name) {
+            if self.modules_loaded.contains_key(&name) {
                 continue;
             }
             self.modules_pending.insert(name);
@@ -261,6 +341,59 @@ impl Emulator {
             self.load_function(function)?;
             cursor.move_next();
         }
+
+        self.status = Status::Loaded;
+
+        Ok(())
+    }
+
+    /// Reloads a loaded module, `name`.
+    ///
+    /// This function will panic if the named module is not currently loaded.
+    pub fn reload_module(&mut self, module: Arc<Module>) -> Result<(), EmulationError> {
+        self.unload_module(module.name);
+        self.load_module(module)
+    }
+
+    /// Unloads a loaded module, `name`.
+    ///
+    /// This function will panic if the named module is not currently loaded.
+    pub fn unload_module(&mut self, name: Ident) {
+        assert_matches!(self.status, Status::Loaded, "cannot unload modules once execution has started without calling stop() or reset() first");
+
+        let prev = self
+            .modules_loaded
+            .remove(&name)
+            .expect("cannot reload a module that was not previously loaded");
+
+        // Unload all functions associated with the previous load
+        for f in prev.functions() {
+            self.functions.remove(&f.name);
+            self.locals.remove(&f.name);
+        }
+
+        // Determine if we need to add `name` to `modules_pending` if there are dependents still loaded
+        for module in self.modules_loaded.values() {
+            if module.imports.is_import(&name) {
+                self.modules_pending.insert(name);
+                break;
+            }
+        }
+    }
+
+    /// Load the `begin` block which constitutes the initialization region for a [Program]
+    fn load_init(&mut self, init: &Begin) -> Result<(), EmulationError> {
+        use miden_hir::{attributes, Signature};
+
+        let main_fn = FunctionIdent {
+            module: miden_assembly::LibraryPath::EXEC_PATH.into(),
+            function: miden_assembly::ProcedureName::MAIN_PROC_NAME.into(),
+        };
+        let mut main = Function::new(main_fn, Signature::new([], []));
+        main.attrs.set(attributes::ENTRYPOINT);
+        main.body = init.body.clone();
+
+        self.load_function(Arc::new(main))?;
 
         Ok(())
     }
@@ -289,6 +422,12 @@ impl Emulator {
         id: FunctionIdent,
         function: Box<NativeFn>,
     ) -> Result<(), EmulationError> {
+        assert_matches!(
+            self.status,
+            Status::Init | Status::Loaded,
+            "cannot load nifs once execution has started without calling stop() or reset() first"
+        );
+
         if self.functions.contains_key(&id) {
             return Err(EmulationError::DuplicateFunction(id));
         }
@@ -368,14 +507,105 @@ impl Emulator {
         self.memory[addr][ptr.index as usize] = value;
     }
 
-    /// Stop running the currently executing function, and reset the cycle counter and operand stack
+    /// Start executing the current program by `invoke`ing the top-level initialization block (the entrypoint).
+    ///
+    /// This function will run the program to completion, and return the state of the operand stack on exit.
+    ///
+    /// NOTE: If no entrypoint has been loaded, an error is returned.
+    ///
+    /// The emulator is automatically reset when it exits successfully.
+    pub fn start(&mut self) -> Result<OperandStack<Felt>, EmulationError> {
+        match self.status {
+            Status::Init => return Err(EmulationError::NoEntrypoint),
+            Status::Loaded => (),
+            Status::Stopped => {
+                self.stop();
+            }
+            Status::Started | Status::Suspended => panic!("cannot start the emulator when it is already started without calling stop() or reset() first"),
+            Status::Faulted(ref err) => return Err(err.clone()),
+        }
+
+        let main_fn = FunctionIdent {
+            module: miden_assembly::LibraryPath::EXEC_PATH.into(),
+            function: miden_assembly::ProcedureName::MAIN_PROC_NAME.into(),
+        };
+
+        // Run to completion
+        let stack = self.invoke(main_fn, &[]).map_err(|err| match err {
+            EmulationError::UndefinedFunction(f) if f == main_fn => EmulationError::NoEntrypoint,
+            err => err,
+        })?;
+
+        // Reset the emulator on exit
+        self.stop();
+
+        // Return the output contained on the operand stack
+        Ok(stack)
+    }
+
+    /// Start emulation by `enter`ing the top-level initialization block (the entrypoint).
+    ///
+    /// This should be called instead of `start` when stepping through a program rather than
+    /// executing it to completion in one call.
+    ///
+    /// NOTE: If no entrypoint has been loaded, an error is returned.
+    ///
+    /// It is up to the caller to reset the emulator when the program exits, unlike `start`.
+    pub fn init(&mut self) -> Result<EmulatorEvent, EmulationError> {
+        match self.status {
+            Status::Init => return Err(EmulationError::NoEntrypoint),
+            Status::Loaded => (),
+            Status::Stopped => {
+                self.stop();
+            }
+            Status::Started | Status::Suspended => panic!("cannot start the emulator when it is already started without calling stop() or reset() first"),
+            Status::Faulted(ref err) => return Err(err.clone()),
+        }
+
+        let main_fn = FunctionIdent {
+            module: miden_assembly::LibraryPath::EXEC_PATH.into(),
+            function: miden_assembly::ProcedureName::MAIN_PROC_NAME.into(),
+        };
+
+        // Step into the entrypoint
+        self.enter(main_fn, &[]).map_err(|err| match err {
+            EmulationError::UndefinedFunction(f) if f == main_fn => EmulationError::NoEntrypoint,
+            err => err,
+        })
+    }
+
+    /// Stop running the currently executing function, and reset the cycle counter, operand stack,
+    /// and linear memory.
+    ///
+    /// This function preserves loaded code, breakpoints, and other configuration items.
     ///
     /// If an attempt is made to run the emulator in the stopped state, a panic will occur
     pub fn stop(&mut self) {
         self.callstack.clear();
         self.stack.clear();
+        self.memory.clear();
+        self.hp = self.hp_start;
+        self.lp = self.lp_start;
         self.step_over = None;
         self.clk = 0;
+        self.status = Status::Loaded;
+    }
+
+    /// Reset the emulator state to its initial state at creation.
+    ///
+    /// In addition to resetting the cycle counter, operand stack, and linear memory,
+    /// this function also unloads all code, and clears all breakpoints. Only the
+    /// configuration used to initialize the emulator is preserved.
+    ///
+    /// To use the emulator after calling this function, you must load a program or module again.
+    pub fn reset(&mut self) {
+        self.stop();
+        self.functions.clear();
+        self.locals.clear();
+        self.modules_loaded.clear();
+        self.modules_pending.clear();
+        self.breakpoints.clear();
+        self.status = Status::Init;
     }
 
     /// Run the emulator by invoking `callee` with `args` placed on the
@@ -392,13 +622,28 @@ impl Emulator {
         callee: FunctionIdent,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
+        assert_matches!(self.status, Status::Loaded, "cannot start executing a function when the emulator is already started without calling stop() or reset() first");
         let fun = self
             .functions
             .get(&callee)
             .cloned()
             .ok_or(EmulationError::UndefinedFunction(callee))?;
+        self.status = Status::Started;
         match fun {
-            Stub::Asm(ref function) => self.invoke_function(function.clone(), args),
+            Stub::Asm(ref function) => match self.invoke_function(function.clone(), args) {
+                done @ Ok(_) => {
+                    self.status = Status::Stopped;
+                    done
+                }
+                Err(err @ EmulationError::BreakpointHit(_)) => {
+                    self.status = Status::Suspended;
+                    Err(err)
+                }
+                Err(err) => {
+                    self.status = Status::Faulted(err.clone());
+                    Err(err)
+                }
+            },
             Stub::Native(function) => {
                 let mut function = function.borrow_mut();
                 function(self, args)?;
@@ -434,7 +679,7 @@ impl Emulator {
         {
             Some(bp) => Err(EmulationError::BreakpointHit(bp)),
             None => {
-                self.resume()?;
+                self.run()?;
 
                 Ok(self.stack.clone())
             }
@@ -455,11 +700,14 @@ impl Emulator {
         callee: FunctionIdent,
         args: &[Felt],
     ) -> Result<EmulatorEvent, EmulationError> {
+        assert_matches!(self.status, Status::Loaded, "cannot start executing a function when the emulator is already started without calling stop() or reset() first");
+
         let fun = self
             .functions
             .get(&callee)
             .cloned()
             .ok_or(EmulationError::UndefinedFunction(callee))?;
+        self.status = Status::Started;
         match fun {
             Stub::Asm(ref function) => self.enter_function(function.clone(), args),
             Stub::Native(function) => {
@@ -490,12 +738,19 @@ impl Emulator {
         let state = Activation::new(function, fp);
         self.callstack.push(state);
 
+        self.status = Status::Suspended;
+
         Ok(EmulatorEvent::Suspended)
     }
 
     /// Resume execution when the emulator suspended due to a breakpoint
     #[inline]
     pub fn resume(&mut self) -> Result<EmulatorEvent, EmulationError> {
+        assert_matches!(
+            self.status,
+            Status::Suspended,
+            "cannot resume the emulator from any state other than suspended"
+        );
         self.run()
     }
 }
@@ -806,8 +1061,24 @@ impl Emulator {
             .breakpoints
             .handle_event(EmulatorEvent::CycleStart(self.clk), self.current_ip())
         {
-            Some(bp) => Ok(EmulatorEvent::Breakpoint(bp)),
-            None => self.run_once(),
+            Some(bp) => {
+                self.status = Status::Suspended;
+                Ok(EmulatorEvent::Breakpoint(bp))
+            }
+            None => match self.run_once() {
+                Ok(EmulatorEvent::Stopped) => {
+                    self.status = Status::Stopped;
+                    Ok(EmulatorEvent::Stopped)
+                }
+                suspended @ Ok(_) => {
+                    self.status = Status::Suspended;
+                    suspended
+                }
+                Err(err) => {
+                    self.status = Status::Faulted(err.clone());
+                    Err(err)
+                }
+            },
         }
     }
 
@@ -819,8 +1090,12 @@ impl Emulator {
             Some(ip) => {
                 self.breakpoints.set(Breakpoint::At(ip));
                 match self.run() {
-                    Ok(EmulatorEvent::Stopped) => Ok(EmulatorEvent::Stopped),
+                    Ok(EmulatorEvent::Stopped) => {
+                        self.status = Status::Stopped;
+                        Ok(EmulatorEvent::Stopped)
+                    }
                     Ok(EmulatorEvent::Breakpoint(bp)) | Err(EmulationError::BreakpointHit(bp)) => {
+                        self.status = Status::Suspended;
                         if self.current_ip().map(|ix| ix.ip) == Some(ip) {
                             return Ok(EmulatorEvent::Suspended);
                         }
@@ -829,7 +1104,10 @@ impl Emulator {
                     Ok(event) => panic!(
                         "unexpected event produced by emulator loop when stepping over: {event:?}"
                     ),
-                    Err(err) => return Err(err),
+                    Err(err) => {
+                        self.status = Status::Faulted(err.clone());
+                        Err(err)
+                    }
                 }
             }
         }
@@ -840,8 +1118,12 @@ impl Emulator {
         let current_function = self.current_function();
         self.breakpoints.break_on_return(true);
         match self.run() {
-            Ok(EmulatorEvent::Stopped) => Ok(EmulatorEvent::Stopped),
+            Ok(EmulatorEvent::Stopped) => {
+                self.status = Status::Stopped;
+                Ok(EmulatorEvent::Stopped)
+            }
             Ok(EmulatorEvent::Breakpoint(bp)) | Err(EmulationError::BreakpointHit(bp)) => {
+                self.status = Status::Suspended;
                 if self.current_function() == current_function {
                     return Ok(EmulatorEvent::Suspended);
                 }
@@ -850,7 +1132,10 @@ impl Emulator {
             Ok(event) => {
                 panic!("unexpected event produced by emulator loop when stepping over: {event:?}")
             }
-            Err(err) => return Err(err),
+            Err(err) => {
+                self.status = Status::Faulted(err.clone());
+                Err(err)
+            }
         }
     }
 
@@ -1212,7 +1497,6 @@ impl Emulator {
                     return Ok(EmulatorEvent::EnterLoop(body_blk));
                 }
                 Op::Exec(callee) => {
-                    let callee = callee;
                     let fun = self
                         .functions
                         .get(&callee)

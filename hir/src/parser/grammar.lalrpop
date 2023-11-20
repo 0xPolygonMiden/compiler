@@ -4,7 +4,8 @@ use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan, 
 
 use crate::{AbiParam, AddressSpace, ArgumentExtension, ArgumentPurpose};
 use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
-use crate::{Ident, Linkage, Opcode, Overflow, Signature, StructType, Symbol, Type};
+use crate::{Ident, Linkage, Opcode, Overflow, Signature, StructType, symbols, Symbol, Type};
+use crate::{AttributeSet, Attribute, AttributeValue};
 use crate::parser::{
     ast::*,
     lexer::Token,
@@ -108,6 +109,27 @@ ArrayType: Type = {
     "[" <element:Type> ";" <len:Index> "]" => Type::Array(Box::new(element), usize::try_from(len).unwrap()),
 }
 
+// ATTRIBUTES
+// ==============================================================================================
+
+Attribute: Attribute = {
+    "#" "[" <name:Ident> "]" => Attribute { name: name.as_symbol(), value: AttributeValue::Unit },
+
+    "#" "[" <name:Ident> "(" <value:AttributeValue> ")" => Attribute { name: name.as_symbol(), value },
+}
+
+AttributeValue: AttributeValue = {
+    <name:Ident> => match name.as_symbol() {
+        symbols::True => AttributeValue::Bool(true),
+        symbols::False => AttributeValue::Bool(false),
+        symbol => AttributeValue::String(symbol),
+    },
+
+    <n:Int> => AttributeValue::Int(n),
+
+    => AttributeValue::Unit,
+}
+
 // FUNCTIONS
 // ==============================================================================================
 
@@ -129,7 +151,7 @@ ExternalFunctionDeclaration: Span<ExternalFunction> = {
 }
 
 FunctionDeclaration: FunctionDeclaration = {
-    <l:@L> <linkage:FunctionVisibility> <cc:CallConv?> "fn" <name:Ident> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> "{" <blocks:Block+> "}" <r:@R> => {
+    <l:@L> <attrs:Attribute*> <linkage:FunctionVisibility> <cc:CallConv?> "fn" <name:Ident> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> "{" <blocks:Block+> "}" <r:@R> => {
         let cc = cc.unwrap_or(CallConv::SystemV);
         let results = results.unwrap_or_default();
         let signature = Signature {
@@ -138,7 +160,7 @@ FunctionDeclaration: FunctionDeclaration = {
             cc,
             linkage,
         };
-        FunctionDeclaration::new(span!(l, r), name, signature, blocks)
+        FunctionDeclaration::new(span!(l, r), name, signature, blocks, AttributeSet::from_iter(attrs))
     },
 }
 
@@ -644,6 +666,7 @@ extern {
         "{" => Token::LBrace,
         "}" => Token::RBrace,
         "." => Token::Dot,
+        "#" => Token::Hash,
         "$" => Token::Dollar,
         "@" => Token::At,
     }

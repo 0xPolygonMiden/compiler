@@ -5,24 +5,13 @@ use std::{
     sync::Arc,
 };
 
-use intrusive_collections::{intrusive_adapter, LinkedList, RBTreeAtomicLink};
+use intrusive_collections::{intrusive_adapter, RBTree, RBTreeAtomicLink};
 use miden_assembly::ast::ModuleAst;
 use miden_diagnostics::{CodeMap, SourceFile, SourceSpan, Spanned};
 use miden_hir::{FunctionIdent, Ident, Symbol};
 use rustc_hash::FxHashMap;
 
-use super::{FrozenFunctionListAdapter, Function, FunctionListAdapter, Import, ModuleImportInfo};
-
-const I32_INTRINSICS: &'static str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/i32.masm"));
-const MEM_INTRINSICS: &'static str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"));
-
-/// This is a mapping of intrinsics module name to the raw MASM source for that module
-const INTRINSICS: [(&'static str, &'static str, &'static str); 2] = [
-    ("intrinsics::i32", I32_INTRINSICS, "i32.masm"),
-    ("intrinsics::mem", MEM_INTRINSICS, "mem.masm"),
-];
+use super::{function::Functions, FrozenFunctionList, Function, Import, ModuleImportInfo};
 
 #[derive(Debug, thiserror::Error)]
 pub enum LoadModuleError {
@@ -47,13 +36,10 @@ pub struct Module {
     pub name: Ident,
     /// The module-scoped documentation for this module
     pub docs: Option<String>,
-    /// If this module contains a program entrypoint, this is the
-    /// function identifier which should be used for that purpose.
-    pub entry: Option<FunctionIdent>,
     /// The modules to import, along with their local aliases
     pub imports: ModuleImportInfo,
     /// The functions defined in this module
-    functions: FunctionList,
+    functions: Functions,
 }
 impl Module {
     /// Create a new, empty [Module] with the given name.
@@ -63,10 +49,26 @@ impl Module {
             span: SourceSpan::UNKNOWN,
             name,
             docs: None,
-            entry: None,
             imports: Default::default(),
             functions: Default::default(),
         }
+    }
+
+    /// If this module contains a function marked with the `entrypoint` attribute,
+    /// return the fully-qualified name of that function
+    pub fn entrypoint(&self) -> Option<FunctionIdent> {
+        self.functions.iter().find_map(|f| {
+            if f.is_entrypoint() {
+                Some(f.name)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns true if this module contains a [Function] `name`
+    pub fn contains(&self, name: Ident) -> bool {
+        self.functions.iter().any(|f| f.name.function == name)
     }
 
     /// Parse a [Module] from the given string
@@ -102,7 +104,7 @@ impl Module {
             .to_str()
             .unwrap();
         let name = match root_ns {
-            None => format!("{basename}"),
+            None => basename.to_string(),
             Some(root_ns) => format!("{}::{basename}", root_ns.as_str()),
         };
         Self::parse_source_file(source_file, name.as_str(), codemap)
@@ -154,10 +156,7 @@ impl Module {
                     .iter()
                     .find(|p| id == ProcedureId::from_name(name.as_ref(), p))
                     .expect("could not find module for imported procedure");
-                invoked.insert(
-                    id.clone(),
-                    (name.clone(), miden_assembly::LibraryPath::clone(path)),
-                );
+                invoked.insert(id, (name.clone(), miden_assembly::LibraryPath::clone(path)));
             }
             ModuleImports::new(imports, invoked)
         };
@@ -191,10 +190,10 @@ impl Module {
     }
 
     /// Access the frozen functions list of this module, and panic if not frozen
-    pub fn unwrap_frozen_functions(&self) -> &LinkedList<FrozenFunctionListAdapter> {
+    pub fn unwrap_frozen_functions(&self) -> &FrozenFunctionList {
         match self.functions {
-            FunctionList::Frozen(ref functions) => functions,
-            FunctionList::Open(_) => panic!("expected module to be frozen"),
+            Functions::Frozen(ref functions) => functions,
+            Functions::Open(_) => panic!("expected module to be frozen"),
         }
     }
 
@@ -312,12 +311,6 @@ impl fmt::Display for Module {
             }
         }
 
-        if let Some(entry) = self.entry {
-            f.write_str("begin\n")?;
-            writeln!(f, "    exec.{}", entry.function)?;
-            f.write_str("end\n")?;
-        }
-
         Ok(())
     }
 }
@@ -352,38 +345,57 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for FrozenModuleTreeAdapter {
     }
 }
 
-enum FunctionList {
-    Open(LinkedList<FunctionListAdapter>),
-    Frozen(LinkedList<FrozenFunctionListAdapter>),
+pub type ModuleTree = RBTree<ModuleTreeAdapter>;
+pub type ModuleTreeIter<'a> = intrusive_collections::rbtree::Iter<'a, ModuleTreeAdapter>;
+
+pub type FrozenModuleTree = RBTree<FrozenModuleTreeAdapter>;
+pub type FrozenModuleTreeIter<'a> =
+    intrusive_collections::rbtree::Iter<'a, FrozenModuleTreeAdapter>;
+
+pub(super) enum Modules {
+    Open(ModuleTree),
+    Frozen(FrozenModuleTree),
 }
-impl Default for FunctionList {
+impl Default for Modules {
     fn default() -> Self {
         Self::Open(Default::default())
     }
 }
-impl FunctionList {
-    pub fn iter(&self) -> FunctionListIter<'_> {
+impl Modules {
+    pub fn iter(&self) -> impl Iterator<Item = &Module> + '_ {
         match self {
-            Self::Open(ref list) => FunctionListIter::Open(list.iter()),
-            Self::Frozen(ref list) => FunctionListIter::Frozen(list.iter()),
+            Self::Open(ref tree) => ModulesIter::Open(tree.iter()),
+            Self::Frozen(ref tree) => ModulesIter::Frozen(tree.iter()),
         }
     }
 
-    pub fn push_back(&mut self, function: Box<Function>) {
+    pub fn get<Q>(&self, name: &Q) -> Option<&Module>
+    where
+        Q: ?Sized + Ord,
+        Ident: core::borrow::Borrow<Q>,
+    {
         match self {
-            Self::Open(ref mut list) => {
-                list.push_back(function);
+            Self::Open(ref tree) => tree.find(name).get(),
+            Self::Frozen(ref tree) => tree.find(name).get(),
+        }
+    }
+
+    pub fn insert(&mut self, module: Box<Module>) {
+        match self {
+            Self::Open(ref mut tree) => {
+                tree.insert(module);
             }
-            Self::Frozen(_) => panic!("cannot insert function into frozen module"),
+            Self::Frozen(_) => panic!("cannot insert module into frozen program"),
         }
     }
 
-    fn freeze(&mut self) {
-        if let Self::Open(ref mut functions) = self {
-            let mut frozen = LinkedList::<FrozenFunctionListAdapter>::default();
+    pub fn freeze(&mut self) {
+        if let Self::Open(ref mut modules) = self {
+            let mut frozen = FrozenModuleTree::default();
 
-            while let Some(function) = functions.pop_front() {
-                frozen.push_back(Arc::from(function));
+            let mut open = modules.front_mut();
+            while let Some(module) = open.remove() {
+                frozen.insert(module.freeze());
             }
 
             *self = Self::Frozen(frozen);
@@ -391,32 +403,17 @@ impl FunctionList {
     }
 }
 
-enum FunctionListIter<'a> {
-    Open(intrusive_collections::linked_list::Iter<'a, FunctionListAdapter>),
-    Frozen(intrusive_collections::linked_list::Iter<'a, FrozenFunctionListAdapter>),
+enum ModulesIter<'a> {
+    Open(ModuleTreeIter<'a>),
+    Frozen(FrozenModuleTreeIter<'a>),
 }
-impl<'a> Iterator for FunctionListIter<'a> {
-    type Item = &'a Function;
+impl<'a> Iterator for ModulesIter<'a> {
+    type Item = &'a Module;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Open(ref mut iter) => iter.next(),
             Self::Frozen(ref mut iter) => iter.next(),
         }
-    }
-}
-
-impl Module {
-    /// This helper loads the named module from the set of intrinsics modules defined in this crate.
-    ///
-    /// Expects the fully-qualified name to be given, e.g. `intrinsics::mem`
-    pub fn load_intrinsic<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Self> {
-        use miden_diagnostics::FileName;
-
-        let name = name.as_ref();
-        let (name, source, filename) = INTRINSICS.iter().copied().find(|(n, _, _)| *n == name)?;
-        let id = codemap.add(FileName::Virtual(filename.into()), source.to_string());
-        let source_file = codemap.get(id).unwrap();
-        Some(Self::parse_source_file(source_file, name, codemap).expect("invalid module"))
     }
 }

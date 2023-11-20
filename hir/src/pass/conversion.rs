@@ -119,5 +119,5 @@ fn dyn_conversion_pass_ctor<P, T, U>() -> Box<dyn ConversionPass<From = T, To = 
 where
     P: Default + ConversionPass<From = T, To = U> + 'static,
 {
-    Box::new(P::default())
+    Box::<P>::default()
 }

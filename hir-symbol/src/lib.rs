@@ -164,14 +164,14 @@ impl Interner {
 // If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    let table = SYMBOL_TABLE.get_or_init(|| SymbolTable::new());
+    let table = SYMBOL_TABLE.get_or_init(SymbolTable::new);
     let mut r = table.interner.write().unwrap();
     f(&mut r)
 }
 
 #[inline]
 fn with_read_only_interner<T, F: FnOnce(&Interner) -> T>(f: F) -> T {
-    let table = SYMBOL_TABLE.get_or_init(|| SymbolTable::new());
+    let table = SYMBOL_TABLE.get_or_init(SymbolTable::new);
     let r = table.interner.read().unwrap();
     f(&r)
 }

@@ -353,6 +353,17 @@ impl Module {
         self.globals.find(name).map(|gv| self.globals.get(gv))
     }
 
+    /// Find the first function in this module marked with the `entrypoint` attribute
+    pub fn entrypoint(&self) -> Option<FunctionIdent> {
+        self.functions.iter().find_map(|f| {
+            if f.has_attribute(&symbols::Entrypoint) {
+                Some(f.id)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Return an iterator over the functions in this module
     ///
     /// The iterator is double-ended, so can be used to traverse the module body in either direction
@@ -766,6 +777,10 @@ impl<'m> ModuleFunctionBuilder<'m> {
 
     pub fn first_result(&self, inst: Inst) -> Value {
         self.data_flow_graph().first_result(inst)
+    }
+
+    pub fn set_attribute(&mut self, name: impl Into<Symbol>, value: impl Into<AttributeValue>) {
+        self.data_flow_graph_mut().set_attribute(name, value);
     }
 
     pub fn import_function<M, F>(

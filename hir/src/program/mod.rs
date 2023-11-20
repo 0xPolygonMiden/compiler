@@ -30,11 +30,15 @@ use super::*;
 pub struct Program {
     /// This tree stores all of the modules being compiled as part of the current program.
     modules: RBTree<ModuleTreeAdapter>,
-    /// If set, this field indicates which function is the entrypoint for the program.
+    /// If set, this field is used to determine which function is the entrypoint for the program.
     ///
     /// When generating Miden Assembly, this will determine whether or not we're emitting
     /// a program or just a collection of modules; and in the case of the former, what code
     /// to emit in the root code block.
+    ///
+    /// If not present, but there is a function in the program with the `entrypoint` attribute,
+    /// that function will be used instead. If there are multiple functions with the `entrypoint`
+    /// attribute, and this field is `None`, the linker will raise an error.
     entrypoint: Option<FunctionIdent>,
     /// The data segments gathered from all modules in the program, and laid out in address order.
     segments: DataSegmentTable,
@@ -52,21 +56,22 @@ impl Program {
     }
 
     /// Returns true if this program has a defined entrypoint
-    pub const fn has_entrypoint(&self) -> bool {
-        self.entrypoint.is_none()
+    pub fn has_entrypoint(&self) -> bool {
+        self.entrypoint().is_none()
     }
 
     /// Returns true if this program is executable.
     ///
     /// An executable program is one which has an entrypoint that will be called
     /// after the program is loaded.
-    pub const fn is_executable(&self) -> bool {
+    pub fn is_executable(&self) -> bool {
         self.has_entrypoint()
     }
 
     /// Returns the [FunctionIdent] corresponding to the program entrypoint
     pub fn entrypoint(&self) -> Option<FunctionIdent> {
         self.entrypoint
+            .or_else(|| self.modules.iter().find_map(|m| m.entrypoint()))
     }
 
     /// Return a reference to the module table for this program
@@ -184,7 +189,10 @@ impl<'a> ProgramBuilder<'a> {
     /// Link a [Program] from the current [ProgramBuilder] state
     pub fn link(self) -> Result<Box<Program>, LinkerError> {
         let mut linker = Linker::new();
-        if let Some(entry) = self.entry {
+        let entrypoint = self
+            .entry
+            .or_else(|| self.modules.values().find_map(|m| m.entrypoint()));
+        if let Some(entry) = entrypoint {
             linker.with_entrypoint(entry)?;
         }
 
