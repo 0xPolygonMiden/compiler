@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Write};
 
 use cranelift_entity::PrimaryMap;
 
@@ -66,8 +66,11 @@ impl<'a> fmt::Display for DisplayMasmBlock<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let block = &self.blocks[self.block];
         let indent = self.indent;
-        for op in block.ops.iter() {
-            writeln!(
+        for (i, op) in block.ops.iter().enumerate() {
+            if i > 0 {
+                f.write_char('\n')?;
+            }
+            write!(
                 f,
                 "{}",
                 DisplayOp {
@@ -137,81 +140,50 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                 write!(f, "{op}.{}.{offset}", Address(*addr))
             }
             MasmOp::If(then_blk, else_blk) => {
-                f.write_str("if.true\n")?;
-                {
-                    let then_block = &self.blocks[*then_blk];
-                    let indent = self.indent + 1;
-                    for op in then_block.ops.iter() {
-                        writeln!(
-                            f,
-                            "{}",
-                            DisplayOp {
-                                imports: self.imports,
-                                blocks: self.blocks,
-                                op,
-                                indent
-                            }
-                        )?;
-                    }
-                }
-                writeln!(f, "{}else", DisplayIndent(self.indent))?;
-                {
-                    let else_block = &self.blocks[*else_blk];
-                    let indent = self.indent + 1;
-                    for op in else_block.ops.iter() {
-                        writeln!(
-                            f,
-                            "{}",
-                            DisplayOp {
-                                imports: self.imports,
-                                blocks: self.blocks,
-                                op,
-                                indent
-                            }
-                        )?;
-                    }
-                }
-                write!(f, "{}end", DisplayIndent(self.indent))
+                write!(
+                    f,
+                    "if.true\n{}\n{}else\n{}\n{}end",
+                    DisplayMasmBlock {
+                        imports: self.imports,
+                        blocks: self.blocks,
+                        block: *then_blk,
+                        indent: self.indent + 1
+                    },
+                    DisplayIndent(self.indent),
+                    DisplayMasmBlock {
+                        imports: self.imports,
+                        blocks: self.blocks,
+                        block: *else_blk,
+                        indent: self.indent + 1
+                    },
+                    DisplayIndent(self.indent),
+                )
             }
             MasmOp::While(blk) => {
-                f.write_str("while.true\n")?;
-                {
-                    let body = &self.blocks[*blk];
-                    let indent = self.indent + 1;
-                    for op in body.ops.iter() {
-                        writeln!(
-                            f,
-                            "{}",
-                            DisplayOp {
-                                imports: self.imports,
-                                blocks: self.blocks,
-                                op,
-                                indent
-                            }
-                        )?;
-                    }
-                }
-                write!(f, "{}end", DisplayIndent(self.indent))
+                write!(
+                    f,
+                    "while.true\n{}\n{}end",
+                    DisplayMasmBlock {
+                        imports: self.imports,
+                        blocks: self.blocks,
+                        block: *blk,
+                        indent: self.indent + 1
+                    },
+                    DisplayIndent(self.indent),
+                )
             }
             MasmOp::Repeat(n, blk) => {
-                writeln!(f, "repeat.{}", n)?;
-                {
-                    let body = &self.blocks[*blk];
-                    let indent = self.indent + 1;
-                    for op in body.ops.iter() {
-                        writeln!(
-                            f,
-                            "{}",
-                            DisplayOp {
-                                imports: self.imports,
-                                blocks: self.blocks,
-                                op,
-                                indent
-                            }
-                        )?;
-                    }
-                }
-                write!(f, "{}end", DisplayIndent(self.indent))
+                write!(
+                    f,
+                    "repeat.{n}\n{}\n{}end",
+                    DisplayMasmBlock {
+                        imports: self.imports,
+                        blocks: self.blocks,
+                        block: *blk,
+                        indent: self.indent + 1
+                    },
+                    DisplayIndent(self.indent),
+                )
             }
             MasmOp::Exec(FunctionIdent { module, function }) => {
                 if self.is_local_module(module) {
