@@ -22,8 +22,8 @@ pub struct MidenArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Invoke the compiler frontend
-    #[command(next_display_order(10), name = "compile", about = "Compile to MASM")]
+    /// Compile the current project to MASM
+    #[command(next_display_order(10), name = "compile")]
     Compile {
         /// The target environment to compile for
         #[arg(long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base, display_order(2))]
@@ -42,4 +42,7 @@ pub enum Commands {
         )]
         output_file: PathBuf,
     },
+    /// Scaffold a new Miden project at the given path
+    #[command(next_display_order(10), name = "new")]
+    New { path: PathBuf },
 }
