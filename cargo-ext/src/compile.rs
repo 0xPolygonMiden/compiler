@@ -117,5 +117,5 @@ pub fn compile(
             // .with_arg_matches(matches)
             .with_project_type(project_type),
     );
-    midenc_driver::commands::compile(session.clone()).context("Wasm to MASM compilation failed!")
+    midenc_compile::compile(session.clone()).context("Wasm to MASM compilation failed!")
 }

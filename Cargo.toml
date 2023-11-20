@@ -14,7 +14,7 @@ members = [
   "midenc-session",
   "tools/*",
   "frontend-wasm",
-  "tests/rust",
+  "tests/rust-apps/*",
   "tests/integration",
   "cargo-ext",
 ]
