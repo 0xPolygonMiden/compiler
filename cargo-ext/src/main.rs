@@ -1,8 +1,9 @@
+use cargo_miden::compile;
 use clap::Parser;
-use commands::CargoCli;
-use commands::Commands;
+use cli_commands::CargoCli;
+use cli_commands::Commands;
 
-mod commands;
+mod cli_commands;
 
 fn main() {
     let args = match CargoCli::parse() {
@@ -13,11 +14,11 @@ fn main() {
         Commands::Compile {
             target,
             bin_name,
-            is_library,
             output_file,
         } => {
+            // TODO: ensure wasm32-unknown-unknown target is installed
             // TODO: pass unrecognized flags to the midenc
-            todo!("run cargo");
+            compile(target, bin_name, output_file);
         }
     }
 }

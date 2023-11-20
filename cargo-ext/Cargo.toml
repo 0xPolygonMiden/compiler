@@ -13,8 +13,20 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 publish.workspace = true
+autotests = false # disable autodiscovery of tests
+
+[[bin]]
+name = "cargo-miden"
+
+[[test]]
+name = "integration"
+path = "tests/mod.rs"
 
 [dependencies]
 midenc-driver.workspace = true
 midenc-session.workspace = true
+miden-diagnostics.workspace = true
 clap.workspace = true
+
+[dev-dependencies]
+rusty-fork = "0.3.0"

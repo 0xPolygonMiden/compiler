@@ -29,18 +29,9 @@ pub enum Commands {
         #[arg(long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base, display_order(2))]
         target: TargetEnv,
 
-        /// Tells the compiler to produce an executable Miden program from the binary target
+        /// Tells the compiler to produce an executable Miden program from the binary target or a library from the lib target if not specified
         #[arg(long = "bin-name", display_order(3))]
-        bin_name: String,
-
-        /// Tells the compiler to produce a Miden library from the lib target
-        #[arg(
-            long = "lib",
-            conflicts_with("bin-name"),
-            default_value_t = false,
-            display_order(4)
-        )]
-        is_library: bool,
+        bin_name: Option<String>,
 
         /// Write output to `<filename>`
         #[arg(
@@ -49,6 +40,6 @@ pub enum Commands {
             id = "output-file",
             display_order(6)
         )]
-        output_file: Option<PathBuf>,
+        output_file: PathBuf,
     },
 }

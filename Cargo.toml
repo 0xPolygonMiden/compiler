@@ -18,7 +18,7 @@ members = [
   "tests/integration",
   "cargo-ext",
 ]
-exclude = ["tests/rust-apps-wasm"]
+exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 
 [workspace.package]
 version = "0.1.0"
