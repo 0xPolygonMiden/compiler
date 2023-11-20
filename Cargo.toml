@@ -14,8 +14,9 @@ members = [
   "midenc-session",
   "tools/*",
   "frontend-wasm",
-  "tests/rust-apps/*",
+  "tests/rust",
   "tests/integration",
+  "cargo-ext",
 ]
 exclude = ["tests/rust-apps-wasm"]
 
@@ -77,6 +78,7 @@ midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
+miden-cargo-extension = { path = "cargo-ext" }
 
 
 [profile.dev]
