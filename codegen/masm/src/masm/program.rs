@@ -119,10 +119,9 @@ impl Program {
                 imported.insert(import.alias.to_string(), path.clone());
                 if let Some(imported_fns) = begin.imports.imported(&import.alias) {
                     for import_fn in imported_fns.iter().copied() {
-                        let fname = import_fn.to_string();
-                        let name = masm::ProcedureName::try_from(fname.as_str())
+                        let name = masm::ProcedureName::try_from(import_fn.function.as_str())
                             .expect("invalid function name");
-                        let id = masm::ProcedureId::from_name(fname.as_str(), &path);
+                        let id = masm::ProcedureId::from_name(import_fn.function.as_str(), &path);
                         invoked.insert(id, (name, path.clone()));
                         proc_ids.insert(import_fn, id);
                     }
