@@ -262,23 +262,35 @@ impl<'a> MasmOpBuilder<'a> {
     }
 
     /// Pops the top element on the stack, and traps if that element is != 1.
-    pub fn assert(mut self) {
-        self.build(self.ip, MasmOp::Assert);
+    pub fn assert(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::AssertWithError)
+            .unwrap_or(MasmOp::Assert);
+        self.build(self.ip, op);
     }
 
     /// Pops the top element on the stack, and traps if that element is != 0.
-    pub fn assertz(mut self) {
-        self.build(self.ip, MasmOp::Assertz);
+    pub fn assertz(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::AssertzWithError)
+            .unwrap_or(MasmOp::Assertz);
+        self.build(self.ip, op);
     }
 
     /// Pops the top two elements on the stack, and traps if they are not equal.
-    pub fn assert_eq(mut self) {
-        self.build(self.ip, MasmOp::AssertEq);
+    pub fn assert_eq(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::AssertEqWithError)
+            .unwrap_or(MasmOp::AssertEq);
+        self.build(self.ip, op);
     }
 
     /// Pops the top two words on the stack, and traps if they are not equal.
-    pub fn assert_eqw(mut self) {
-        self.build(self.ip, MasmOp::AssertEq);
+    pub fn assert_eqw(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::AssertEqwWithError)
+            .unwrap_or(MasmOp::AssertEqw);
+        self.build(self.ip, op);
     }
 
     /// Pops an element containing a memory address from the top of the stack,
@@ -464,9 +476,21 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Exec(id));
     }
 
+    /// Execute a procedure indirectly.
+    ///
+    /// Expects the hash of a function's MAST root on the stack, see `procref`
+    pub fn dynexec(mut self) {
+        self.build(self.ip, MasmOp::DynExec)
+    }
+
     /// Executes the named procedure as a syscall.
     pub fn syscall(mut self, id: FunctionIdent) {
         self.build(self.ip, MasmOp::Syscall(id));
+    }
+
+    /// Push the hash of the named function on the stack for use with dyn(exec|call)
+    pub fn procref(mut self, id: FunctionIdent) {
+        self.build(self.ip, MasmOp::ProcRef(id))
     }
 
     /// Pops two field elements from the stack, adds them, and places the result on the stack.
@@ -670,6 +694,11 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Clk);
     }
 
+    /// Pushes the hash of the caller on the stack
+    pub fn caller(mut self) {
+        self.build(self.ip, MasmOp::Caller);
+    }
+
     /// Pushes 1 on the stack if the element on top of the stack is less than 2^32, else 0.
     pub fn test_u32(mut self) {
         self.build(self.ip, MasmOp::U32Test);
@@ -681,18 +710,27 @@ impl<'a> MasmOpBuilder<'a> {
     }
 
     /// Traps if the element on top of the stack is greater than or equal to 2^32
-    pub fn assert_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Assert);
+    pub fn assert_u32(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::U32AssertWithError)
+            .unwrap_or(MasmOp::U32Assert);
+        self.build(self.ip, op);
     }
 
     /// Traps if either of the first two elements on top of the stack are greater than or equal to 2^32
-    pub fn assert2_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Assert2);
+    pub fn assert2_u32(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::U32Assert2WithError)
+            .unwrap_or(MasmOp::U32Assert2);
+        self.build(self.ip, op);
     }
 
     /// Traps if any element of the first word on the stack are greater than or equal to 2^32
-    pub fn assertw_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Assertw);
+    pub fn assertw_u32(mut self, error_code: Option<u32>) {
+        let op = error_code
+            .map(MasmOp::U32AssertwWithError)
+            .unwrap_or(MasmOp::U32Assertw);
+        self.build(self.ip, op);
     }
 
     /// Casts the element on top of the stack, `a`, to a valid u32 value, by computing `a mod 2^32`
@@ -715,7 +753,12 @@ impl<'a> MasmOpBuilder<'a> {
     pub fn add_u32(mut self, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Add,
-            Overflow::Checked => MasmOp::U32CheckedAdd,
+            Overflow::Checked => {
+                return self.build_many(
+                    self.ip,
+                    [MasmOp::U32Assert2, MasmOp::Add, MasmOp::U32Assert],
+                );
+            }
             Overflow::Overflowing => MasmOp::U32OverflowingAdd,
             Overflow::Wrapping => MasmOp::U32WrappingAdd,
         };
@@ -725,8 +768,18 @@ impl<'a> MasmOpBuilder<'a> {
     /// Same as above, but `a` is provided by the given immediate.
     pub fn add_imm_u32(mut self, imm: u32, overflow: Overflow) {
         let op = match overflow {
+            Overflow::Unchecked if imm == 1 => MasmOp::Incr,
             Overflow::Unchecked => MasmOp::AddImm(Felt::new(imm as u64)),
-            Overflow::Checked => MasmOp::U32CheckedAddImm(imm),
+            Overflow::Checked => {
+                return self.build_many(
+                    self.ip,
+                    [
+                        MasmOp::U32Assert,
+                        MasmOp::AddImm(Felt::new(imm as u64)),
+                        MasmOp::U32Assert,
+                    ],
+                );
+            }
             Overflow::Overflowing => MasmOp::U32OverflowingAddImm(imm),
             Overflow::Wrapping => MasmOp::U32WrappingAddImm(imm),
         };
@@ -753,7 +806,12 @@ impl<'a> MasmOpBuilder<'a> {
     pub fn sub_u32(mut self, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Sub,
-            Overflow::Checked => MasmOp::U32CheckedSub,
+            Overflow::Checked => {
+                return self.build_many(
+                    self.ip,
+                    [MasmOp::U32Assert2, MasmOp::Sub, MasmOp::U32Assert],
+                );
+            }
             Overflow::Overflowing => MasmOp::U32OverflowingSub,
             Overflow::Wrapping => MasmOp::U32WrappingSub,
         };
@@ -764,7 +822,16 @@ impl<'a> MasmOpBuilder<'a> {
     pub fn sub_imm_u32(mut self, imm: u32, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::SubImm(Felt::new(imm as u64)),
-            Overflow::Checked => MasmOp::U32CheckedSubImm(imm),
+            Overflow::Checked => {
+                return self.build_many(
+                    self.ip,
+                    [
+                        MasmOp::U32Assert,
+                        MasmOp::SubImm(Felt::new(imm as u64)),
+                        MasmOp::U32Assert,
+                    ],
+                );
+            }
             Overflow::Overflowing => MasmOp::U32OverflowingSubImm(imm),
             Overflow::Wrapping => MasmOp::U32WrappingSubImm(imm),
         };
@@ -778,7 +845,12 @@ impl<'a> MasmOpBuilder<'a> {
     pub fn mul_u32(mut self, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Mul,
-            Overflow::Checked => MasmOp::U32CheckedMul,
+            Overflow::Checked => {
+                return self.build_many(
+                    self.ip,
+                    [MasmOp::U32Assert2, MasmOp::Mul, MasmOp::U32Assert],
+                );
+            }
             Overflow::Overflowing => MasmOp::U32OverflowingMul,
             Overflow::Wrapping => MasmOp::U32WrappingMul,
         };
@@ -789,7 +861,16 @@ impl<'a> MasmOpBuilder<'a> {
     pub fn mul_imm_u32(mut self, imm: u32, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::MulImm(Felt::new(imm as u64)),
-            Overflow::Checked => MasmOp::U32CheckedMulImm(imm),
+            Overflow::Checked => {
+                return self.build_many(
+                    self.ip,
+                    [
+                        MasmOp::U32Assert,
+                        MasmOp::MulImm(Felt::new(imm as u64)),
+                        MasmOp::U32Assert,
+                    ],
+                );
+            }
             Overflow::Overflowing => MasmOp::U32OverflowingMulImm(imm),
             Overflow::Wrapping => MasmOp::U32WrappingMulImm(imm),
         };
@@ -812,74 +893,30 @@ impl<'a> MasmOpBuilder<'a> {
     /// Performs unsigned division of the top two elements on the stack, `b` and `a` respectively, which
     /// are expected to be valid u32 values.
     ///
-    /// This operation is checked, meaning that if either operand is >= 2^32, then it will trap.
+    /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
     ///
     /// Traps if `b` is 0.
     pub fn div_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedDiv);
+        self.build(self.ip, MasmOp::U32Div);
     }
 
     /// Same as above, but `b` is provided by the given immediate
     pub fn div_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedDivImm(imm));
-    }
-
-    /// Performs unsigned division of the top two elements on the stack, `b` and `a` respectively, which
-    /// are expected to be valid u32 values.
-    ///
-    /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
-    ///
-    /// Traps if `b` is 0.
-    pub fn div_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedDiv);
-    }
-
-    /// Same as above, but `b` is provided by the given immediate
-    pub fn div_imm_unchecked_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedDivImm(imm));
+        self.build(self.ip, MasmOp::U32DivImm(imm));
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and computes `a mod b`.
     ///
-    /// This operation is checked, meaning that if either operand is >= 2^32, then it will trap.
+    /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
     ///
     /// Traps if `b` is 0.
     pub fn mod_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedMod);
+        self.build(self.ip, MasmOp::U32Mod);
     }
 
     /// Same as above, but `b` is provided by the given immediate
     pub fn mod_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedModImm(imm));
-    }
-
-    /// Pops two elements off the stack, `b` and `a` respectively, and computes `a mod b`.
-    ///
-    /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
-    ///
-    /// Traps if `b` is 0.
-    pub fn mod_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedMod);
-    }
-
-    /// Same as above, but `b` is provided by the given immediate
-    pub fn mod_imm_unchecked_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedModImm(imm));
-    }
-
-    /// Pops two elements off the stack, `b` and `a` respectively, and computes `a / b`, and `a mod b`,
-    /// pushing the results of each on the stack in that order.
-    ///
-    /// This operation is checked, meaning that if either operand is >= 2^32, then it will trap.
-    ///
-    /// Traps if `b` is 0.
-    pub fn divmod_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedDivMod);
-    }
-
-    /// Same as above, but `b` is provided by the given immediate
-    pub fn divmod_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedDivModImm(imm));
+        self.build(self.ip, MasmOp::U32ModImm(imm));
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and computes `a / b`, and `a mod b`,
@@ -888,13 +925,13 @@ impl<'a> MasmOpBuilder<'a> {
     /// This operation is unchecked, so if either operand is >= 2^32, the results are undefined.
     ///
     /// Traps if `b` is 0.
-    pub fn divmod_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedDivMod);
+    pub fn divmod_u32(mut self) {
+        self.build(self.ip, MasmOp::U32DivMod);
     }
 
     /// Same as above, but `b` is provided by the given immediate
-    pub fn divmod_imm_unchecked_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedDivModImm(imm));
+    pub fn divmod_imm_u32(mut self, imm: u32) {
+        self.build(self.ip, MasmOp::U32DivModImm(imm));
     }
 
     /// Pops two elements off the stack, and computes the bitwise AND of those values, placing the result on the stack.
@@ -928,207 +965,117 @@ impl<'a> MasmOpBuilder<'a> {
     /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` left by `b` bits. More precisely,
     /// the result is computed as `(a * 2^b) mod 2^32`.
     ///
-    /// Traps if `a` is not a valid u32, or `b` > 31.
+    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn shl_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedShl);
+        self.build(self.ip, MasmOp::U32Shl);
     }
 
     /// Same as `shl_u32`, but `b` is provided by immediate.
     pub fn shl_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedShlImm(imm));
-    }
-
-    /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` left by `b` bits. More precisely,
-    /// the result is computed as `(a * 2^b) mod 2^32`.
-    ///
-    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn shl_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedShl);
-    }
-
-    /// Same as `shl_unchecked_u32`, but `b` is provided by immediate.
-    pub fn shl_unchecked_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedShlImm(imm));
+        self.build(self.ip, MasmOp::U32ShlImm(imm));
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` right by `b` bits. More precisely,
     /// the result is computed as `a / 2^b`.
     ///
-    /// Traps if `a` is not a valid u32, or `b` > 31.
+    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn shr_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedShr);
+        self.build(self.ip, MasmOp::U32Shr);
     }
 
     /// Same as `shr_u32`, but `b` is provided by immediate.
     pub fn shr_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedShrImm(imm));
-    }
-
-    /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` right by `b` bits. More precisely,
-    /// the result is computed as `a / 2^b`.
-    ///
-    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn shr_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedShr);
-    }
-
-    /// Same as `shr_unchecked_u32`, but `b` is provided by immediate.
-    pub fn shr_unchecked_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedShrImm(imm));
+        self.build(self.ip, MasmOp::U32ShrImm(imm));
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary representation of `a`
     /// left by `b` bits.
     ///
-    /// Traps if `a` is not a valid u32, or `b` > 31
+    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn rotl_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedRotl);
+        self.build(self.ip, MasmOp::U32Rotl);
     }
 
     /// Same as `rotl_u32`, but `b` is provided by immediate.
     pub fn rotl_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedRotlImm(imm));
-    }
-
-    /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary representation of `a`
-    /// left by `b` bits.
-    ///
-    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn rotl_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedRotl);
-    }
-
-    /// Same as `rotl_unchecked_u32`, but `b` is provided by immediate.
-    pub fn rotl_unchecked_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedRotlImm(imm));
+        self.build(self.ip, MasmOp::U32RotlImm(imm));
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary representation of `a`
     /// right by `b` bits.
     ///
-    /// Traps if `a` is not a valid u32, or `b` > 31
+    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn rotr_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedRotr);
+        self.build(self.ip, MasmOp::U32Rotr);
     }
 
     /// Same as `rotr_u32`, but `b` is provided by immediate.
     pub fn rotr_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32CheckedRotrImm(imm));
-    }
-
-    /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary representation of `a`
-    /// right by `b` bits.
-    ///
-    /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn rotr_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedRotr);
-    }
-
-    /// Same as `rotr_unchecked_u32`, but `b` is provided by immediate.
-    pub fn rotr_unchecked_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32UncheckedRotrImm(imm));
-    }
-
-    /// Pops an element off the stack, and computes the number of set bits in its binary representation, i.e.
-    /// its hamming weight, and places the result on the stack.
-    ///
-    /// Traps if the input value is not a valid u32.
-    pub fn popcnt_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedPopcnt);
+        self.build(self.ip, MasmOp::U32RotrImm(imm));
     }
 
     /// Pops an element off the stack, and computes the number of set bits in its binary representation, i.e.
     /// its hamming weight, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
-    pub fn popcnt_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedPopcnt);
+    pub fn popcnt_u32(mut self) {
+        self.build(self.ip, MasmOp::U32Popcnt);
     }
 
-    /// This is the same as `eq`, but also asserts that both operands are valid u32 values.
-    pub fn eq_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Eq);
-    }
-
-    /// This is the same as `eq_imm`, but also asserts that both operands are valid u32 values.
-    pub fn eq_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32EqImm(imm));
-    }
-
-    /// This is the same as `neq`, but also asserts that both operands are valid u32 values.
-    pub fn neq_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Neq);
-    }
-
-    /// This is the same as `neq_imm`, but also asserts that both operands are valid u32 values.
-    pub fn neq_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32NeqImm(imm));
-    }
-
-    /// This is the same as `lt`, but also asserts that both operands are valid u32 values.
+    /// Pushes a boolean on the stack by computing `a < b` for `[b, a]`
+    ///
+    /// The result is undefined if either operand is not a valid u32 value.
     pub fn lt_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedLt);
+        self.build(self.ip, MasmOp::U32Lt);
     }
 
-    /// This is the same as `lt`, but the result is undefined if either operand is not a valid u32 value.
-    pub fn lt_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedLt);
-    }
-
-    /// This is the same as `lte`, but also asserts that both operands are valid u32 values.
+    /// Pushes a boolean on the stack by computing `a <= b` for `[b, a]`
+    ///
+    /// The result is undefined if either operand is not a valid u32 value.
     pub fn lte_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedLte);
+        self.build(self.ip, MasmOp::U32Lte);
     }
 
-    /// This is the same as `lte`, but the result is undefined if either operand is not a valid u32 value.
-    pub fn lte_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedLte);
-    }
-
-    /// This is the same as `gt`, but also asserts that both operands are valid u32 values.
+    /// Pushes a boolean on the stack by computing `a > b` for `[b, a]`
+    ///
+    /// The result is undefined if either operand is not a valid u32 value.
     pub fn gt_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedGt);
+        self.build(self.ip, MasmOp::U32Gt);
     }
 
-    /// This is the same as `gt`, but the result is undefined if either operand is not a valid u32 value.
-    pub fn gt_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedGt);
-    }
-
-    /// This is the same as `gte`, but also asserts that both operands are valid u32 values.
+    /// Pushes a boolean on the stack by computing `a >= b` for `[b, a]`
+    ///
+    /// The result is undefined if either operand is not a valid u32 value.
     pub fn gte_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedGte);
+        self.build(self.ip, MasmOp::U32Gte);
     }
 
-    /// This is the same as `gte`, but the result is undefined if either operand is not a valid u32 value.
-    pub fn gte_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedGte);
-    }
-
-    /// This is the same as `min`, but also asserts that both operands are valid u32 values.
+    /// Computes the minimum of the two elements on top of the stack.
+    ///
+    /// The result is undefined if either operand is not a valid u32 value.
     pub fn min_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedMin);
+        self.build(self.ip, MasmOp::U32Min);
     }
 
-    /// This is the same as `min`, but the result is undefined if either operand is not a valid u32 value.
-    pub fn min_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedMin);
-    }
-
-    /// This is the same as `max`, but also asserts that both operands are valid u32 values.
+    /// Computes the maximum of the two elements on top of the stack.
+    ///
+    /// The result is undefined if either operand is not a valid u32 value.
     pub fn max_u32(mut self) {
-        self.build(self.ip, MasmOp::U32CheckedMax);
-    }
-
-    /// This is the same as `max`, but the result is undefined if either operand is not a valid u32 value.
-    pub fn max_unchecked_u32(mut self) {
-        self.build(self.ip, MasmOp::U32UncheckedMax);
+        self.build(self.ip, MasmOp::U32Max);
     }
 
     #[inline(never)]
     fn build(&mut self, ip: MasmBlockId, op: MasmOp) {
         apply_op_stack_effects(&op, self.stack, self.dfg, self.asm);
         self.asm.push(ip, op);
+    }
+
+    #[inline(never)]
+    fn build_many(&mut self, ip: MasmBlockId, ops: impl IntoIterator<Item = MasmOp>) {
+        for op in ops.into_iter() {
+            apply_op_stack_effects(&op, self.stack, self.dfg, self.asm);
+            self.asm.push(ip, op);
+        }
     }
 }
 
@@ -1535,6 +1482,26 @@ macro_rules! assert_compatible_u32_operands {
     };
 }
 
+/// Asserts that the given value is an integer or pointer type which is compatible with basic felt arithmetic
+macro_rules! assert_compatible_arithmetic_operand {
+    ($ty:ident) => {
+        assert!(
+            $ty.is_pointer() || Type::Felt.is_compatible_operand(&$ty),
+            "expected operand to be felt-compatible, got {}",
+            $ty
+        );
+    };
+
+    ($ty:ident, $op:expr) => {
+        assert!(
+            $ty.is_pointer() || Type::Felt.is_compatible_operand(&$ty),
+            "expected operand for {} to be felt-compatible, got {}",
+            $op,
+            $ty
+        );
+    };
+}
+
 /// Asserts that the given value is an integer type which is compatible with felt operations
 macro_rules! assert_compatible_felt_operand {
     ($ty:ident) => {
@@ -1552,6 +1519,45 @@ macro_rules! assert_compatible_felt_operand {
             $op,
             $ty
         );
+    };
+}
+
+/// Asserts that the given value is an integer or pointer type which is compatible with basic
+/// arithmetic operations as a felt
+macro_rules! assert_compatible_arithmetic_operands {
+    ($lty:ident, $rty:ident) => {
+        assert_matches!(
+            $lty,
+            Type::U8
+                | Type::I8
+                | Type::U16
+                | Type::I16
+                | Type::U32
+                | Type::I32
+                | Type::Ptr(_)
+                | Type::Felt,
+            "expected controlling type to be felt-compatible, got {}",
+            $lty
+        );
+        assert_compatible_operand_types!($lty, $rty);
+    };
+
+    ($lty:ident, $rty:ident, $op:expr) => {
+        assert_matches!(
+            $lty,
+            Type::U8
+                | Type::I8
+                | Type::U16
+                | Type::I16
+                | Type::U32
+                | Type::I32
+                | Type::Ptr(_)
+                | Type::Felt,
+            "expected controlling type for {} to be felt-compatible, got {}",
+            $op,
+            $lty
+        );
+        assert_compatible_operand_types!($lty, $rty, $op);
     };
 }
 
@@ -1663,13 +1669,16 @@ fn apply_op_stack_effects(
             assert_eq!(ty, Type::I1, "expected boolean operand on top of the stack");
             stack.dropw();
         }
-        MasmOp::Assert | MasmOp::Assertz => {
+        MasmOp::Assert
+        | MasmOp::Assertz
+        | MasmOp::AssertWithError(_)
+        | MasmOp::AssertzWithError(_) => {
             stack.drop();
         }
-        MasmOp::AssertEq => {
+        MasmOp::AssertEq | MasmOp::AssertEqWithError(_) => {
             stack.dropn(2);
         }
-        MasmOp::AssertEqw => {
+        MasmOp::AssertEqw | MasmOp::AssertEqwWithError(_) => {
             stack.dropn(8);
         }
         MasmOp::LocAddr(_id) | MasmOp::LocStore(_id) | MasmOp::LocStorew(_id) => unreachable!(),
@@ -1724,6 +1733,47 @@ fn apply_op_stack_effects(
         MasmOp::MemStorewImm(_) => {
             stack.dropw();
         }
+        MasmOp::MemStream => {
+            // Read two sequential words from memory starting at `a`, overwriting the first two words on the stack,
+            // and advancing `a` to the next address following the two that were loaded
+            // [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
+            assert!(
+                stack.len() > 12,
+                "expected at least 13 elements on the stack for mem_stream"
+            );
+            stack.dropw();
+            stack.dropw();
+            stack.padw();
+            stack.padw();
+        }
+        MasmOp::AdvPipe => {
+            // Pops the next two words from the advice stack, overwrites the
+            // top of the operand stack with them, and also writes these words
+            // into memory at `a` and `a + 1`
+            //
+            // [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
+            assert!(
+                stack.len() > 12,
+                "expected at least 13 elements on the stack for mem_stream"
+            );
+            stack.dropw();
+            stack.dropw();
+            stack.padw();
+            stack.padw();
+        }
+        MasmOp::AdvPush(n) => {
+            for _ in 0..(*n) {
+                stack.push(Type::Felt);
+            }
+        }
+        MasmOp::AdvLoadw => {
+            assert!(
+                stack.len() > 3,
+                "expected at least 4 elements on the stack for mem_stream"
+            );
+            stack.dropw();
+            stack.padw();
+        }
         // This function is not called from [MasmOpBuilder] when building an `if.true` instruction,
         // instead, the only time we are evaluating this is when traversing the body of a `repeat.n`
         // instruction and applying the stack effects of instructions which have already been inserted
@@ -1768,19 +1818,35 @@ fn apply_op_stack_effects(
         MasmOp::Syscall(ref id) => {
             execute_call(id, false, stack, dfg);
         }
-        MasmOp::Add | MasmOp::Sub | MasmOp::Mul | MasmOp::Div => {
+        MasmOp::DynExec | MasmOp::DynCall => {
+            assert!(
+                stack.len() > 3,
+                "expected at least 4 elements on the stack for dynexec/dyncall"
+            );
+        }
+        MasmOp::ProcRef(_) => {
+            stack.pushw([Type::Felt, Type::Felt, Type::Felt, Type::Felt]);
+        }
+        MasmOp::Add | MasmOp::Sub => {
+            let rty = stack.pop().expect("operand stack is empty");
+            let lty = stack.pop().expect("operand stack is empty");
+            assert_compatible_arithmetic_operands!(lty, rty, op);
+            stack.push(lty);
+        }
+        MasmOp::Mul | MasmOp::Div => {
             let rty = stack.pop().expect("operand stack is empty");
             let lty = stack.pop().expect("operand stack is empty");
             assert_compatible_felt_operands!(lty, rty, op);
             stack.push(lty);
         }
-        MasmOp::AddImm(_)
-        | MasmOp::SubImm(_)
-        | MasmOp::MulImm(_)
+        MasmOp::AddImm(_) | MasmOp::SubImm(_) | MasmOp::Incr => {
+            let ty = stack.peek().expect("operand stack is empty");
+            assert_compatible_arithmetic_operand!(ty, op);
+        }
+        MasmOp::MulImm(_)
         | MasmOp::DivImm(_)
         | MasmOp::Neg
         | MasmOp::Inv
-        | MasmOp::Incr
         | MasmOp::Pow2
         | MasmOp::ExpImm(_) => {
             let ty = stack.peek().expect("operand stack is empty");
@@ -1828,6 +1894,14 @@ fn apply_op_stack_effects(
         MasmOp::Clk => {
             stack.push(Type::Felt);
         }
+        MasmOp::Caller => {
+            assert!(
+                stack.len() > 3,
+                "expected at least 4 elements on the operand stack"
+            );
+            stack.popw();
+            stack.pushw([Type::Felt, Type::Felt, Type::Felt, Type::Felt]);
+        }
         MasmOp::U32Test => {
             assert!(!stack.is_empty());
             stack.push(Type::I1);
@@ -1839,16 +1913,16 @@ fn apply_op_stack_effects(
             );
             stack.push(Type::I1);
         }
-        MasmOp::U32Assert => {
+        MasmOp::U32Assert | MasmOp::U32AssertWithError(_) => {
             assert!(!stack.is_empty());
         }
-        MasmOp::U32Assert2 => {
+        MasmOp::U32Assert2 | MasmOp::U32Assert2WithError(_) => {
             assert!(
                 stack.len() > 1,
                 "expected at least 2 elements on the operand stack"
             );
         }
-        MasmOp::U32Assertw => {
+        MasmOp::U32Assertw | MasmOp::U32AssertwWithError(_) => {
             assert!(
                 stack.len() > 3,
                 "expected at least 4 elements on the operand stack"
@@ -1865,30 +1939,24 @@ fn apply_op_stack_effects(
             stack.push(Type::U32);
             stack.push(Type::U32);
         }
-        MasmOp::U32CheckedAdd
-        | MasmOp::U32CheckedSub
-        | MasmOp::U32CheckedMul
-        | MasmOp::U32CheckedDiv
-        | MasmOp::U32CheckedMod
-        | MasmOp::U32CheckedDivMod
-        | MasmOp::U32CheckedShl
-        | MasmOp::U32CheckedShr
-        | MasmOp::U32CheckedRotl
-        | MasmOp::U32CheckedRotr
-        | MasmOp::U32CheckedMin
-        | MasmOp::U32CheckedMax
+        MasmOp::U32Lt | MasmOp::U32Gt | MasmOp::U32Lte | MasmOp::U32Gte => {
+            let rty = stack.pop().expect("failed to pop right operand: stack is empty");
+            let lty = stack.pop().expect("failed to pop left operand: stack is empty");
+            assert_compatible_u32_operands!(lty, rty, op);
+            stack.push(Type::I1);
+        }
+        MasmOp::U32Div
+        | MasmOp::U32Mod
+        | MasmOp::U32DivMod
+        | MasmOp::U32Shl
+        | MasmOp::U32Shr
+        | MasmOp::U32Rotl
+        | MasmOp::U32Rotr
+        | MasmOp::U32Min
+        | MasmOp::U32Max
         | MasmOp::U32WrappingAdd
         | MasmOp::U32WrappingSub
         | MasmOp::U32WrappingMul
-        | MasmOp::U32UncheckedDiv
-        | MasmOp::U32UncheckedMod
-        | MasmOp::U32UncheckedDivMod
-        | MasmOp::U32UncheckedShl
-        | MasmOp::U32UncheckedShr
-        | MasmOp::U32UncheckedRotl
-        | MasmOp::U32UncheckedRotr
-        | MasmOp::U32UncheckedMin
-        | MasmOp::U32UncheckedMax
         | MasmOp::U32And
         | MasmOp::U32Or
         | MasmOp::U32Xor => {
@@ -1897,28 +1965,17 @@ fn apply_op_stack_effects(
             assert_compatible_u32_operands!(lty, rty, op);
             stack.push(lty);
         }
-        MasmOp::U32CheckedAddImm(_)
-        | MasmOp::U32CheckedSubImm(_)
-        | MasmOp::U32CheckedMulImm(_)
-        | MasmOp::U32CheckedDivImm(_)
-        | MasmOp::U32CheckedModImm(_)
-        | MasmOp::U32CheckedDivModImm(_)
-        | MasmOp::U32CheckedShlImm(_)
-        | MasmOp::U32CheckedShrImm(_)
-        | MasmOp::U32CheckedRotlImm(_)
-        | MasmOp::U32CheckedRotrImm(_)
-        | MasmOp::U32CheckedPopcnt
+        MasmOp::U32DivImm(_)
+        | MasmOp::U32ModImm(_)
+        | MasmOp::U32DivModImm(_)
+        | MasmOp::U32ShlImm(_)
+        | MasmOp::U32ShrImm(_)
+        | MasmOp::U32RotlImm(_)
+        | MasmOp::U32RotrImm(_)
+        | MasmOp::U32Popcnt
         | MasmOp::U32WrappingAddImm(_)
         | MasmOp::U32WrappingSubImm(_)
         | MasmOp::U32WrappingMulImm(_)
-        | MasmOp::U32UncheckedDivImm(_)
-        | MasmOp::U32UncheckedModImm(_)
-        | MasmOp::U32UncheckedDivModImm(_)
-        | MasmOp::U32UncheckedShlImm(_)
-        | MasmOp::U32UncheckedShrImm(_)
-        | MasmOp::U32UncheckedRotlImm(_)
-        | MasmOp::U32UncheckedRotrImm(_)
-        | MasmOp::U32UncheckedPopcnt
         | MasmOp::U32Not => {
             let ty = stack.pop().expect("operand stack is empty");
             assert_compatible_u32_operand!(ty, op);
@@ -1972,34 +2029,6 @@ fn apply_op_stack_effects(
             assert_compatible_u32_operands!(aty, bty);
             assert_compatible_u32_operands!(aty, cty);
             stack.push(aty);
-        }
-        MasmOp::U32Eq
-        | MasmOp::U32Neq
-        | MasmOp::U32CheckedLt
-        | MasmOp::U32CheckedLte
-        | MasmOp::U32CheckedGt
-        | MasmOp::U32CheckedGte
-        | MasmOp::U32UncheckedLt
-        | MasmOp::U32UncheckedLte
-        | MasmOp::U32UncheckedGt
-        | MasmOp::U32UncheckedGte => {
-            let rty = stack.pop().expect("operand stack is empty");
-            let lty = stack.pop().expect("operand stack is empty");
-            // We support pointer operands for these operators, but unlike
-            // other u32 ops, both operands may be pointer values, so we
-            // handle that here by checking compatiblity separately
-            if lty.is_pointer() {
-                assert_compatible_u32_operand!(rty, op);
-                stack.push(Type::I1);
-            } else {
-                assert_compatible_u32_operands!(lty, rty, op);
-                stack.push(Type::I1);
-            }
-        }
-        MasmOp::U32EqImm(_) | MasmOp::U32NeqImm(_) => {
-            let ty = stack.pop().expect("operand stack is empty");
-            assert_compatible_u32_operand!(ty, op);
-            stack.push(Type::I1);
         }
     }
 }

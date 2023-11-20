@@ -367,21 +367,21 @@ impl<'a> OpEmitter<'a> {
             Type::I128 => {
                 self.emit_all(&[
                     // [x3, x2, x1, x0]
-                    Op::U32CheckedPopcnt,
+                    Op::U32Popcnt,
                     // [popcnt3, x2, x1, x0]
                     Op::Swap(1),
                     // [x2, popcnt3, x1, x0]
-                    Op::U32CheckedPopcnt,
+                    Op::U32Popcnt,
                     // [popcnt2, popcnt3, x1, x0]
                     Op::Add,
                     // [popcnt_hi, x1, x0]
                     Op::Movdn(2),
                     // [x1, x0, popcnt]
-                    Op::U32CheckedPopcnt,
+                    Op::U32Popcnt,
                     // [popcnt1, x0, popcnt]
                     Op::Swap(1),
                     // [x0, popcnt1, popcnt]
-                    Op::U32CheckedPopcnt,
+                    Op::U32Popcnt,
                     // [popcnt0, popcnt1, popcnt]
                     //
                     // This last instruction adds all three values together mod 2^32
@@ -391,16 +391,16 @@ impl<'a> OpEmitter<'a> {
             Type::I64 | Type::U64 => {
                 self.emit_all(&[
                     // Get popcnt of high bits
-                    Op::U32CheckedPopcnt,
+                    Op::U32Popcnt,
                     // Swap to low bits and repeat
                     Op::Swap(1),
-                    Op::U32CheckedPopcnt,
+                    Op::U32Popcnt,
                     // Add both counts to get the total count
                     Op::Add,
                 ]);
             }
             Type::I32 | Type::U32 | Type::I16 | Type::U16 | Type::I8 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32CheckedPopcnt);
+                self.emit(Op::U32Popcnt);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid popcnt on {ty}: only integral types can be negated")

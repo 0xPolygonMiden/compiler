@@ -162,12 +162,20 @@ pub enum MasmOp {
     Cdropw,
     /// Pops a value off the stack and asserts that it is equal to 1
     Assert,
+    /// Pops a value off the stack and asserts that it is equal to 1, raising the given error code
+    AssertWithError(u32),
     /// Pops a value off the stack and asserts that it is equal to 0
     Assertz,
+    /// Pops a value off the stack and asserts that it is equal to 0, raising the given error code
+    AssertzWithError(u32),
     /// Pops two values off the stack and asserts that they are equal
     AssertEq,
+    /// Pops two values off the stack and asserts that they are equal, raising the given error code
+    AssertEqWithError(u32),
     /// Pops two words off the stack and asserts that they are equal
     AssertEqw,
+    /// Pops two words off the stack and asserts that they are equal, raising the given error code
+    AssertEqwWithError(u32),
     /// Places the memory address of the given local index on top of the stack
     LocAddr(LocalId),
     /// Writes a value to the first element of the word at the address corresponding to the given local index
@@ -225,6 +233,20 @@ pub enum MasmOp {
     MemStorew,
     /// Same as above, but the address is given as an immediate
     MemStorewImm(u32),
+    /// Read two sequential words from memory starting at `a`, overwriting the first two words on the stack,
+    /// and advancing `a` to the next address following the two that were loaded
+    /// [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
+    MemStream,
+    /// Pops the next two words from the advice stack, overwrites the
+    /// top of the operand stack with them, and also writes these words
+    /// into memory at `a` and `a + 1`
+    ///
+    /// [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
+    AdvPipe,
+    /// TODO
+    AdvPush(u8),
+    /// TODO
+    AdvLoadw,
     /// Pops the top of the stack, and evaluates the ops in
     /// the block of code corresponding to the branch taken.
     ///
@@ -244,6 +266,12 @@ pub enum MasmOp {
     Exec(FunctionIdent),
     /// Pops `N` args off the stack, executes the procedure in the root context, results will be placed on the stack
     Syscall(FunctionIdent),
+    /// Pops the address (MAST root hash) of a callee off the stack, and dynamically `exec` the function
+    DynExec,
+    /// TODO
+    DynCall,
+    /// Pushes the address (MAST root hash) of the given function on the stack, to be used by `dynexec` or `dyncall`
+    ProcRef(FunctionIdent),
     /// Pops `b, a` off the stack, and places the result of `(a + b) mod p` on the stack
     Add,
     /// Same as above, but the immediate is used for `b`
@@ -341,6 +369,8 @@ pub enum MasmOp {
     ///
     /// The comparison works by comparing pairs of elements from each word
     Eqw,
+    /// When called via `syscall`, this pushes the hash of the caller's MAST root on the stack
+    Caller,
     /// Pushes the current value of the cycle counter (clock) on the stack
     Clk,
     /// Peeks `a` from the top of the stack, and places the 1 on the stack if `a < 2^32`, else 0
@@ -349,10 +379,16 @@ pub enum MasmOp {
     U32Testw,
     /// Peeks `a` from the top of the stack, and traps if `a >= 2^32`
     U32Assert,
+    /// Peeks `a` from the top of the stack, and traps if `a >= 2^32`, raising the given error code
+    U32AssertWithError(u32),
     /// Peeks `b, a` from the top of the stack, and traps if either `a` or `b` is >= 2^32
     U32Assert2,
+    /// Peeks `b, a` from the top of the stack, and traps if either `a` or `b` is >= 2^32, raising the given error code
+    U32Assert2WithError(u32),
     /// Peeks `A` from the top of the stack, and traps unless `forall a : A, a < 2^32`, else 0
     U32Assertw,
+    /// Peeks `A` from the top of the stack, and traps unless `forall a : A, a < 2^32`, else 0, raising the given error code
+    U32AssertwWithError(u32),
     /// Pops `a` from the top of the stack, and places the result of `a mod 2^32` on the stack
     ///
     /// This is used to cast a field element to the u32 range
@@ -361,11 +397,6 @@ pub enum MasmOp {
     /// placing them back on the stack. The lower part is calculated as `a mod 2^32`,
     /// and the higher part as `a / 2^32`. The higher part will be on top of the stack after.
     U32Split,
-    /// Pops `b, a` from the stack, and places the result of `a + b` on the stack,
-    /// trapping if the result, or either operand, are >= 2^32
-    U32CheckedAdd,
-    /// Same as above, but with `b` provided by the immediate
-    U32CheckedAddImm(u32),
     /// Pops `b, a` from the stack, and places the result of `(a + b) mod 2^32` on the stack,
     /// followed by 1 if `(a + b) >= 2^32`, else 0. Thus the first item on the stack will be
     /// a boolean indicating whether the arithmetic overflowed, and the second will be the
@@ -393,11 +424,6 @@ pub enum MasmOp {
     ///
     /// The behavior is undefined if any of `c`, `b` or `a` are >= 2^32
     U32WrappingAdd3,
-    /// Pops `b, a` from the stack, and places the result of `a - b` on the stack,
-    /// trapping if the result, or either operand, are >= 2^32; OR if `a < b`.
-    U32CheckedSub,
-    /// Same as above, but with `b` provided by the immediate
-    U32CheckedSubImm(u32),
     /// Pops `b, a` from the stack, and places the result of `(a - b) mod 2^32` on the stack,
     /// followed by 1 if `a < b`, else 0. Thus the first item on the stack will be
     /// a boolean indicating whether the arithmetic underflowed, and the second will be the
@@ -413,11 +439,6 @@ pub enum MasmOp {
     U32WrappingSub,
     /// Same as above, but with `b` provided by the immediate
     U32WrappingSubImm(u32),
-    /// Pops `b, a` from the stack, and places the result of `a * b` on the stack,
-    /// trapping if the result, or either operand, are >= 2^32.
-    U32CheckedMul,
-    /// Same as above, but with `b` provided by the immediate
-    U32CheckedMulImm(u32),
     /// Pops `b, a` from the stack, and places the result of `(a * b) mod 2^32` on the stack,
     /// followed by `(a * b) / 2^32`. Thus the first item on the stack will be the number
     /// of times the multiplication overflowed, followed by the result.
@@ -444,46 +465,28 @@ pub enum MasmOp {
     U32WrappingMadd,
     /// Pops `b, a` off the stack, and pushes `a / b` on the stack.
     ///
-    /// Traps if `b` is 0, or if `a` or `b` >= 2^32
-    U32CheckedDiv,
-    /// Same as above, except `b` is provided by the immediate
-    U32CheckedDivImm(u32),
-    /// Pops `b, a` off the stack, and pushes `a / b` on the stack.
+    /// This operation traps if `b` is zero.
     ///
-    /// Traps if `b` is 0.
-    ///
-    /// Behavior is undefined if `a` or `b` >= 2^32
-    U32UncheckedDiv,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Div,
     /// Same as above, except `b` is provided by the immediate
-    U32UncheckedDivImm(u32),
+    U32DivImm(u32),
     /// Pops `b, a` off the stack, and pushes `a mod b` on the stack.
     ///
-    /// Traps if `b` is 0, or if `a` or `b` >= 2^32
-    U32CheckedMod,
-    /// Same as above, except `b` is provided by the immediate
-    U32CheckedModImm(u32),
-    /// Pops `b, a` off the stack, and pushes `a mod b` on the stack.
+    /// This operation traps if `b` is zero.
     ///
-    /// Traps if `b` is 0.
-    ///
-    /// Behavior is undefined if `a` or `b` >= 2^32
-    U32UncheckedMod,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Mod,
     /// Same as above, except `b` is provided by the immediate
-    U32UncheckedModImm(u32),
+    U32ModImm(u32),
     /// Pops `b, a` off the stack, and first pushes `a / b` on the stack, followed by `a mod b`.
     ///
-    /// Traps if `b` is 0, or if `a` or `b` >= 2^32
-    U32CheckedDivMod,
-    /// Same as above, except `b` is provided by the immediate
-    U32CheckedDivModImm(u32),
-    /// Pops `b, a` off the stack, and first pushes `a / b` on the stack, followed by `a mod b`.
+    /// This operation traps if `b` is zero.
     ///
-    /// Traps if `b` is 0.
-    ///
-    /// Behavior is undefined if `a` or `b` >= 2^32
-    U32UncheckedDivMod,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32DivMod,
     /// Same as above, except `b` is provided by the immediate
-    U32UncheckedDivModImm(u32),
+    U32DivModImm(u32),
     /// Pops `b, a` off the stack, and places the bitwise AND of `a` and `b` on the stack.
     ///
     /// Traps if either `a` or `b` >= 2^32
@@ -502,124 +505,62 @@ pub enum MasmOp {
     U32Not,
     /// Pops `b, a` off the stack, and places the result of `(a * 2^b) mod 2^32` on the stack.
     ///
-    /// Traps if `a >= 2^32` or `b > 31`
-    U32CheckedShl,
-    /// Same as above, except `b` is provided by the immediate
-    U32CheckedShlImm(u32),
-    /// Pops `b, a` off the stack, and places the result of `(a * 2^b) mod 2^32` on the stack.
+    /// Truncates if the shift would cause overflow.
     ///
-    /// Behavior is undefined if `a >= 2^32` or `b > 31`
-    U32UncheckedShl,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Shl,
     /// Same as above, except `b` is provided by the immediate
-    U32UncheckedShlImm(u32),
+    U32ShlImm(u32),
     /// Pops `b, a` off the stack, and places the result of `a / 2^b` on the stack.
     ///
-    /// Traps if `a >= 2^32` or `b > 31`
-    U32CheckedShr,
-    /// Same as above, except `b` is provided by the immediate
-    U32CheckedShrImm(u32),
-    /// Pops `b, a` off the stack, and places the result of `a / 2^b` on the stack.
+    /// Truncates if the shift would cause overflow.
     ///
-    /// Behavior is undefined if `a >= 2^32` or `b > 31`
-    U32UncheckedShr,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Shr,
     /// Same as above, except `b` is provided by the immediate
-    U32UncheckedShrImm(u32),
+    U32ShrImm(u32),
     /// Pops `b, a` off the stack, and places the result of rotating the 32-bit
     /// representation of `a` to the left by `b` bits.
     ///
-    /// Traps if `a` >= 2^32, or `b` > 31
-    U32CheckedRotl,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Rotl,
     /// Same as above, except `b` is provided by the immediate
-    U32CheckedRotlImm(u32),
-    /// Pops `b, a` off the stack, and places the result of rotating the 32-bit
-    /// representation of `a` to the left by `b` bits.
-    ///
-    /// Behavior is undefined if `a` >= 2^32, or `b` > 31
-    U32UncheckedRotl,
-    /// Same as above, except `b` is provided by the immediate
-    U32UncheckedRotlImm(u32),
+    U32RotlImm(u32),
     /// Pops `b, a` off the stack, and places the result of rotating the 32-bit
     /// representation of `a` to the right by `b` bits.
     ///
-    /// Traps if `a` >= 2^32, or `b` > 31
-    U32CheckedRotr,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Rotr,
     /// Same as above, except `b` is provided by the immediate
-    U32CheckedRotrImm(u32),
-    /// Pops `b, a` off the stack, and places the result of rotating the 32-bit
-    /// representation of `a` to the right by `b` bits.
-    ///
-    /// Behavior is undefined if `a` >= 2^32, or `b` > 31
-    U32UncheckedRotr,
-    /// Same as above, except `b` is provided by the immediate
-    U32UncheckedRotrImm(u32),
+    U32RotrImm(u32),
     /// Pops `a` off the stack, and places the number of set bits in `a` (it's hamming weight).
     ///
-    /// Traps if `a` >= 2^32
-    U32CheckedPopcnt,
-    /// Pops `a` off the stack, and places the number of set bits in `a` (it's hamming weight).
-    ///
-    /// Behavior is undefined if `a` >= 2^32
-    U32UncheckedPopcnt,
-    /// Pops `b, a` from the stack, and places 1 on the stack if `a == b`, else 0
-    ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32Eq,
-    /// Same as above, except `b` is provided by the immediate
-    U32EqImm(u32),
-    /// Pops `b, a` from the stack, and places 1 on the stack if `a != b`, else 0
-    ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32Neq,
-    /// Same as above, except `b` is provided by the immediate
-    U32NeqImm(u32),
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Popcnt,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a < b`, else 0
     ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32CheckedLt,
-    /// Pops `b, a` from the stack, and places 1 on the stack if `a < b`, else 0
-    ///
-    /// The behavior is undefined if either `a` or `b` are >= 2^32
-    U32UncheckedLt,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Lt,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a <= b`, else 0
     ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32CheckedLte,
-    /// Pops `b, a` from the stack, and places 1 on the stack if `a <= b`, else 0
-    ///
-    /// The behavior is undefined if either `a` or `b` are >= 2^32
-    U32UncheckedLte,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Lte,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a > b`, else 0
     ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32CheckedGt,
-    /// Pops `b, a` from the stack, and places 1 on the stack if `a > b`, else 0
-    ///
-    /// The behavior is undefined if either `a` or `b` are >= 2^32
-    U32UncheckedGt,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Gt,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a >= b`, else 0
     ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32CheckedGte,
-    /// Pops `b, a` from the stack, and places 1 on the stack if `a >= b`, else 0
-    ///
-    /// The behavior is undefined if either `a` or `b` are >= 2^32
-    U32UncheckedGte,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Gte,
     /// Pops `b, a` from the stack, and places `a` back on the stack if `a < b`, else `b`
     ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32CheckedMin,
-    /// Pops `b, a` from the stack, and places `a` back on the stack if `a < b`, else `b`
-    ///
-    /// The behavior is undefined if either `a` or `b` are >= 2^32
-    U32UncheckedMin,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Min,
     /// Pops `b, a` from the stack, and places `a` back on the stack if `a > b`, else `b`
     ///
-    /// Traps if either `a` or `b` are >= 2^32
-    U32CheckedMax,
-    /// Pops `b, a` from the stack, and places `a` back on the stack if `a > b`, else `b`
-    ///
-    /// The behavior is undefined if either `a` or `b` are >= 2^32
-    U32UncheckedMax,
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Max,
 }
 impl MasmOp {
     pub fn from_masm(
@@ -632,17 +573,13 @@ impl MasmOp {
 
         let op = match ix {
             Instruction::Assert => Self::Assert,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::AssertWithError(_) => Self::Assert,
+            Instruction::AssertWithError(code) => Self::AssertWithError(code),
             Instruction::AssertEq => Self::AssertEq,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::AssertEqWithError(_) => Self::AssertEq,
+            Instruction::AssertEqWithError(code) => Self::AssertEqWithError(code),
             Instruction::AssertEqw => Self::AssertEqw,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::AssertEqwWithError(_) => Self::AssertEqw,
+            Instruction::AssertEqwWithError(code) => Self::AssertEqwWithError(code),
             Instruction::Assertz => Self::Assertz,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::AssertzWithError(_) => Self::Assertz,
+            Instruction::AssertzWithError(code) => Self::AssertzWithError(code),
             Instruction::Add => Self::Add,
             Instruction::AddImm(imm) => Self::AddImm(imm),
             Instruction::Sub => Self::Sub,
@@ -683,88 +620,54 @@ impl MasmOp {
             Instruction::U32Test => Self::U32Test,
             Instruction::U32TestW => Self::U32Testw,
             Instruction::U32Assert => Self::U32Assert,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::U32AssertWithError(_) => Self::U32Assert,
+            Instruction::U32AssertWithError(code) => Self::U32AssertWithError(code),
             Instruction::U32Assert2 => Self::U32Assert2,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::U32Assert2WithError(_) => Self::U32Assert2,
+            Instruction::U32Assert2WithError(code) => Self::U32Assert2WithError(code),
             Instruction::U32AssertW => Self::U32Assertw,
-            // TODO: Handle assertion error code when support is added to the IR
-            Instruction::U32AssertWWithError(_) => Self::U32Assertw,
+            Instruction::U32AssertWWithError(code) => Self::U32AssertwWithError(code),
             Instruction::U32Split => Self::U32Split,
             Instruction::U32Cast => Self::U32Cast,
-            Instruction::U32CheckedAdd => Self::U32CheckedAdd,
-            Instruction::U32CheckedAddImm(imm) => Self::U32CheckedAddImm(imm),
             Instruction::U32WrappingAdd => Self::U32WrappingAdd,
             Instruction::U32WrappingAddImm(imm) => Self::U32WrappingAddImm(imm),
             Instruction::U32OverflowingAdd => Self::U32OverflowingAdd,
             Instruction::U32OverflowingAddImm(imm) => Self::U32OverflowingAddImm(imm),
             Instruction::U32OverflowingAdd3 => Self::U32OverflowingAdd3,
             Instruction::U32WrappingAdd3 => Self::U32WrappingAdd3,
-            Instruction::U32CheckedSub => Self::U32CheckedSub,
-            Instruction::U32CheckedSubImm(imm) => Self::U32CheckedSubImm(imm),
             Instruction::U32WrappingSub => Self::U32WrappingSub,
             Instruction::U32WrappingSubImm(imm) => Self::U32WrappingSubImm(imm),
             Instruction::U32OverflowingSub => Self::U32OverflowingSub,
             Instruction::U32OverflowingSubImm(imm) => Self::U32OverflowingSubImm(imm),
-            Instruction::U32CheckedMul => Self::U32CheckedMul,
-            Instruction::U32CheckedMulImm(imm) => Self::U32CheckedMulImm(imm),
             Instruction::U32WrappingMul => Self::U32WrappingMul,
             Instruction::U32WrappingMulImm(imm) => Self::U32WrappingMulImm(imm),
             Instruction::U32OverflowingMul => Self::U32OverflowingMul,
             Instruction::U32OverflowingMulImm(imm) => Self::U32OverflowingMulImm(imm),
             Instruction::U32OverflowingMadd => Self::U32OverflowingMadd,
             Instruction::U32WrappingMadd => Self::U32WrappingMadd,
-            Instruction::U32CheckedDiv => Self::U32CheckedDiv,
-            Instruction::U32CheckedDivImm(imm) => Self::U32CheckedDivImm(imm),
-            Instruction::U32UncheckedDiv => Self::U32UncheckedDiv,
-            Instruction::U32UncheckedDivImm(imm) => Self::U32UncheckedDivImm(imm),
-            Instruction::U32CheckedMod => Self::U32CheckedMod,
-            Instruction::U32CheckedModImm(imm) => Self::U32CheckedModImm(imm),
-            Instruction::U32UncheckedMod => Self::U32UncheckedMod,
-            Instruction::U32UncheckedModImm(imm) => Self::U32UncheckedModImm(imm),
-            Instruction::U32CheckedDivMod => Self::U32CheckedDivMod,
-            Instruction::U32CheckedDivModImm(imm) => Self::U32CheckedDivModImm(imm),
-            Instruction::U32UncheckedDivMod => Self::U32UncheckedDivMod,
-            Instruction::U32UncheckedDivModImm(imm) => Self::U32UncheckedDivModImm(imm),
-            Instruction::U32CheckedAnd => Self::U32And,
-            Instruction::U32CheckedOr => Self::U32Or,
-            Instruction::U32CheckedXor => Self::U32Xor,
-            Instruction::U32CheckedNot => Self::U32Not,
-            Instruction::U32CheckedShr => Self::U32CheckedShr,
-            Instruction::U32CheckedShrImm(imm) => Self::U32CheckedShrImm(imm as u32),
-            Instruction::U32UncheckedShr => Self::U32UncheckedShr,
-            Instruction::U32UncheckedShrImm(imm) => Self::U32UncheckedShrImm(imm as u32),
-            Instruction::U32CheckedShl => Self::U32CheckedShl,
-            Instruction::U32CheckedShlImm(imm) => Self::U32CheckedShlImm(imm as u32),
-            Instruction::U32UncheckedShl => Self::U32UncheckedShl,
-            Instruction::U32UncheckedShlImm(imm) => Self::U32UncheckedShlImm(imm as u32),
-            Instruction::U32CheckedRotr => Self::U32CheckedRotr,
-            Instruction::U32CheckedRotrImm(imm) => Self::U32CheckedRotrImm(imm as u32),
-            Instruction::U32UncheckedRotr => Self::U32UncheckedRotr,
-            Instruction::U32UncheckedRotrImm(imm) => Self::U32UncheckedRotrImm(imm as u32),
-            Instruction::U32CheckedRotl => Self::U32CheckedRotl,
-            Instruction::U32CheckedRotlImm(imm) => Self::U32CheckedRotlImm(imm as u32),
-            Instruction::U32UncheckedRotl => Self::U32UncheckedRotl,
-            Instruction::U32UncheckedRotlImm(imm) => Self::U32UncheckedRotlImm(imm as u32),
-            Instruction::U32CheckedPopcnt => Self::U32CheckedPopcnt,
-            Instruction::U32UncheckedPopcnt => Self::U32UncheckedPopcnt,
-            Instruction::U32CheckedEq => Self::U32Eq,
-            Instruction::U32CheckedEqImm(imm) => Self::U32EqImm(imm),
-            Instruction::U32CheckedNeq => Self::U32Neq,
-            Instruction::U32CheckedNeqImm(imm) => Self::U32NeqImm(imm),
-            Instruction::U32CheckedLt => Self::U32CheckedLt,
-            Instruction::U32UncheckedLt => Self::U32UncheckedLt,
-            Instruction::U32CheckedLte => Self::U32CheckedLte,
-            Instruction::U32UncheckedLte => Self::U32UncheckedLte,
-            Instruction::U32CheckedGt => Self::U32CheckedGt,
-            Instruction::U32UncheckedGt => Self::U32UncheckedGt,
-            Instruction::U32CheckedGte => Self::U32CheckedGte,
-            Instruction::U32UncheckedGte => Self::U32UncheckedGte,
-            Instruction::U32CheckedMin => Self::U32CheckedMin,
-            Instruction::U32UncheckedMin => Self::U32UncheckedMin,
-            Instruction::U32CheckedMax => Self::U32CheckedMax,
-            Instruction::U32UncheckedMax => Self::U32UncheckedMax,
+            Instruction::U32Div => Self::U32Div,
+            Instruction::U32DivImm(imm) => Self::U32DivImm(imm),
+            Instruction::U32Mod => Self::U32Mod,
+            Instruction::U32ModImm(imm) => Self::U32ModImm(imm),
+            Instruction::U32DivMod => Self::U32DivMod,
+            Instruction::U32DivModImm(imm) => Self::U32DivModImm(imm),
+            Instruction::U32And => Self::U32And,
+            Instruction::U32Or => Self::U32Or,
+            Instruction::U32Xor => Self::U32Xor,
+            Instruction::U32Not => Self::U32Not,
+            Instruction::U32Shr => Self::U32Shr,
+            Instruction::U32ShrImm(imm) => Self::U32ShrImm(imm as u32),
+            Instruction::U32Shl => Self::U32Shl,
+            Instruction::U32ShlImm(imm) => Self::U32ShlImm(imm as u32),
+            Instruction::U32Rotr => Self::U32Rotr,
+            Instruction::U32RotrImm(imm) => Self::U32RotrImm(imm as u32),
+            Instruction::U32Rotl => Self::U32Rotl,
+            Instruction::U32RotlImm(imm) => Self::U32RotlImm(imm as u32),
+            Instruction::U32Popcnt => Self::U32Popcnt,
+            Instruction::U32Lt => Self::U32Lt,
+            Instruction::U32Lte => Self::U32Lte,
+            Instruction::U32Gt => Self::U32Gt,
+            Instruction::U32Gte => Self::U32Gte,
+            Instruction::U32Min => Self::U32Min,
+            Instruction::U32Max => Self::U32Max,
             Instruction::Drop => Self::Drop,
             Instruction::DropW => Self::Dropw,
             Instruction::PadW => Self::Padw,
@@ -875,11 +778,11 @@ impl MasmOp {
             Instruction::LocLoad(_) | Instruction::LocLoadW(_) => {
                 unimplemented!("load by local id")
             }
-            Instruction::MemStream => unimplemented!("mem_stream"),
-            Instruction::AdvPipe
-            | Instruction::AdvPush(_)
-            | Instruction::AdvLoadW
-            | Instruction::AdvInject(_) => unimplemented!("advice provider operations"),
+            Instruction::MemStream => Self::MemStream,
+            Instruction::AdvPipe => Self::AdvPipe,
+            Instruction::AdvPush(byte) => Self::AdvPush(byte),
+            Instruction::AdvLoadW => Self::AdvLoadw,
+            Instruction::AdvInject(_) => unimplemented!("adv_inject"),
             Instruction::Hash
             | Instruction::HMerge
             | Instruction::HPerm
@@ -889,27 +792,55 @@ impl MasmOp {
             | Instruction::MTreeVerify => unimplemented!("cryptographic operations"),
             Instruction::ExecLocal(local_index) => Self::Exec(locals[local_index as usize]),
             Instruction::ExecImported(ref proc_id) => {
-                let invoked = &imported.invoked_procs()[proc_id];
+                let module = imported
+                    .get_procedure_path(proc_id)
+                    .expect("reference to import that doesn't exist")
+                    .last();
+                let name = imported
+                    .get_procedure_name(proc_id)
+                    .expect("reference to import that doesn't exist");
                 Self::Exec(FunctionIdent {
-                    module: Ident::with_empty_span(Symbol::intern(invoked.1.last())),
-                    function: Ident::with_empty_span(Symbol::intern(invoked.0.as_ref())),
+                    module: Ident::with_empty_span(Symbol::intern(module)),
+                    function: Ident::with_empty_span(Symbol::intern(name.as_ref())),
                 })
             }
             Instruction::CallLocal(_)
             | Instruction::CallMastRoot(_)
             | Instruction::CallImported(_) => unimplemented!("contract calls"),
             Instruction::SysCall(ref proc_id) => {
-                let invoked = &imported.invoked_procs()[proc_id];
+                let module = imported
+                    .get_procedure_path(proc_id)
+                    .expect("reference to import that doesn't exist")
+                    .last();
+                let name = imported
+                    .get_procedure_name(proc_id)
+                    .expect("reference to import that doesn't exist");
                 Self::Syscall(FunctionIdent {
-                    module: Ident::with_empty_span(Symbol::intern(invoked.1.last())),
-                    function: Ident::with_empty_span(Symbol::intern(invoked.0.as_ref())),
+                    module: Ident::with_empty_span(Symbol::intern(module)),
+                    function: Ident::with_empty_span(Symbol::intern(name.as_ref())),
                 })
             }
-            Instruction::DynExec | Instruction::DynCall => unimplemented!("indirect calls"),
+            Instruction::DynExec => Self::DynExec,
+            Instruction::DynCall => Self::DynCall,
+            Instruction::ProcRefLocal(local_index) => Self::ProcRef(locals[local_index as usize]),
+            Instruction::ProcRefImported(ref proc_id) => {
+                let module = imported
+                    .get_procedure_path(proc_id)
+                    .expect("reference to import that doesn't exist")
+                    .last();
+                let name = imported
+                    .get_procedure_name(proc_id)
+                    .expect("reference to import that doesn't exist");
+                Self::ProcRef(FunctionIdent {
+                    module: Ident::with_empty_span(Symbol::intern(module)),
+                    function: Ident::with_empty_span(Symbol::intern(name.as_ref())),
+                })
+            }
+            Instruction::Caller => Self::Caller,
             Instruction::Sdepth
-            | Instruction::Caller
             | Instruction::FriExt2Fold4
             | Instruction::Breakpoint
+            | Instruction::Emit(_)
             | Instruction::Debug(_) => unimplemented!("miscellaneous instructions"),
         };
         smallvec![op]
@@ -1037,9 +968,13 @@ impl MasmOp {
             Self::Cdrop => Instruction::CDrop,
             Self::Cdropw => Instruction::CDropW,
             Self::Assert => Instruction::Assert,
+            Self::AssertWithError(code) => Instruction::AssertWithError(code),
             Self::Assertz => Instruction::Assertz,
+            Self::AssertzWithError(code) => Instruction::AssertzWithError(code),
             Self::AssertEq => Instruction::AssertEq,
+            Self::AssertEqWithError(code) => Instruction::AssertEqWithError(code),
             Self::AssertEqw => Instruction::AssertEqw,
+            Self::AssertEqwWithError(code) => Instruction::AssertEqwWithError(code),
             Self::LocAddr(id) => Instruction::Locaddr(id.as_usize() as u16),
             Self::LocStore(id) => Instruction::LocStore(id.as_usize() as u16),
             Self::LocStorew(id) => Instruction::LocStoreW(id.as_usize() as u16),
@@ -1057,6 +992,10 @@ impl MasmOp {
             | Self::MemStoreOffsetImm(_, _) => unimplemented!(
                 "this is an experimental instruction that is not supported by the Miden VM"
             ),
+            Self::MemStream => Instruction::MemStream,
+            Self::AdvPipe => Instruction::AdvPipe,
+            Self::AdvPush(n) => Instruction::AdvPush(n),
+            Self::AdvLoadw => Instruction::AdvLoadW,
             Self::If(_, _) | Self::While(_) | Self::Repeat(_, _) => {
                 panic!("control flow instructions are meant to be handled specially by the caller")
             }
@@ -1103,6 +1042,32 @@ impl MasmOp {
                     .copied()
                     .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
                 Instruction::SysCall(id)
+            }
+            Self::DynExec => Instruction::DynExec,
+            Self::DynCall => Instruction::DynCall,
+            Self::ProcRef(ref callee) => {
+                if let Some(idx) = local_ids.get(callee).copied() {
+                    Instruction::ProcRefLocal(idx)
+                } else {
+                    let aliased = if let Some(alias) = imports.alias(&callee.module) {
+                        FunctionIdent {
+                            module: alias,
+                            function: callee.function,
+                        }
+                    } else {
+                        let module_as_import = super::MasmImport::try_from(callee.module)
+                            .expect("invalid module name");
+                        FunctionIdent {
+                            module: Ident::with_empty_span(module_as_import.alias),
+                            function: callee.function,
+                        }
+                    };
+                    let id = proc_ids
+                        .get(&aliased)
+                        .copied()
+                        .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
+                    Instruction::ProcRefImported(id)
+                }
             }
             Self::Add => Instruction::Add,
             Self::AddImm(imm) => Instruction::AddImm(imm),
@@ -1175,101 +1140,66 @@ impl MasmOp {
             Self::IsOdd => Instruction::IsOdd,
             Self::Eqw => Instruction::Eqw,
             Self::Clk => Instruction::Clk,
+            Self::Caller => Instruction::Caller,
             Self::U32Test => Instruction::U32Test,
             Self::U32Testw => Instruction::U32TestW,
             Self::U32Assert => Instruction::U32Assert,
+            Self::U32AssertWithError(code) => Instruction::U32AssertWithError(code),
             Self::U32Assert2 => Instruction::U32Assert2,
+            Self::U32Assert2WithError(code) => Instruction::U32Assert2WithError(code),
             Self::U32Assertw => Instruction::U32AssertW,
+            Self::U32AssertwWithError(code) => Instruction::U32AssertWWithError(code),
             Self::U32Cast => Instruction::U32Cast,
             Self::U32Split => Instruction::U32Split,
-            Self::U32CheckedAdd => Instruction::U32CheckedAdd,
-            Self::U32CheckedAddImm(imm) => Instruction::U32CheckedAddImm(imm),
             Self::U32OverflowingAdd => Instruction::U32OverflowingAdd,
             Self::U32OverflowingAddImm(imm) => Instruction::U32OverflowingAddImm(imm),
             Self::U32WrappingAdd => Instruction::U32WrappingAdd,
             Self::U32WrappingAddImm(imm) => Instruction::U32WrappingAddImm(imm),
             Self::U32OverflowingAdd3 => Instruction::U32OverflowingAdd3,
             Self::U32WrappingAdd3 => Instruction::U32WrappingAdd3,
-            Self::U32CheckedSub => Instruction::U32CheckedSub,
-            Self::U32CheckedSubImm(imm) => Instruction::U32CheckedSubImm(imm),
             Self::U32OverflowingSub => Instruction::U32OverflowingSub,
             Self::U32OverflowingSubImm(imm) => Instruction::U32OverflowingSubImm(imm),
             Self::U32WrappingSub => Instruction::U32WrappingSub,
             Self::U32WrappingSubImm(imm) => Instruction::U32WrappingSubImm(imm),
-            Self::U32CheckedMul => Instruction::U32CheckedMul,
-            Self::U32CheckedMulImm(imm) => Instruction::U32CheckedMulImm(imm),
             Self::U32OverflowingMul => Instruction::U32OverflowingMul,
             Self::U32OverflowingMulImm(imm) => Instruction::U32OverflowingMulImm(imm),
             Self::U32WrappingMul => Instruction::U32WrappingMul,
             Self::U32WrappingMulImm(imm) => Instruction::U32WrappingMulImm(imm),
             Self::U32OverflowingMadd => Instruction::U32OverflowingMadd,
             Self::U32WrappingMadd => Instruction::U32WrappingMadd,
-            Self::U32CheckedDiv => Instruction::U32CheckedDiv,
-            Self::U32CheckedDivImm(imm) => Instruction::U32CheckedDivImm(imm),
-            Self::U32UncheckedDiv => Instruction::U32UncheckedDiv,
-            Self::U32UncheckedDivImm(imm) => Instruction::U32UncheckedDivImm(imm),
-            Self::U32CheckedMod => Instruction::U32CheckedMod,
-            Self::U32CheckedModImm(imm) => Instruction::U32CheckedModImm(imm),
-            Self::U32UncheckedMod => Instruction::U32UncheckedMod,
-            Self::U32UncheckedModImm(imm) => Instruction::U32UncheckedModImm(imm),
-            Self::U32CheckedDivMod => Instruction::U32CheckedDivMod,
-            Self::U32CheckedDivModImm(imm) => Instruction::U32CheckedDivModImm(imm),
-            Self::U32UncheckedDivMod => Instruction::U32UncheckedDivMod,
-            Self::U32UncheckedDivModImm(imm) => Instruction::U32UncheckedDivModImm(imm),
-            Self::U32And => Instruction::U32CheckedAnd,
-            Self::U32Or => Instruction::U32CheckedOr,
-            Self::U32Xor => Instruction::U32CheckedXor,
-            Self::U32Not => Instruction::U32CheckedNot,
-            Self::U32CheckedShl => Instruction::U32CheckedShl,
-            Self::U32CheckedShlImm(imm) => {
-                Instruction::U32CheckedShlImm(imm.try_into().expect("invalid rotation"))
+            Self::U32Div => Instruction::U32Div,
+            Self::U32DivImm(imm) => Instruction::U32DivImm(imm),
+            Self::U32Mod => Instruction::U32Mod,
+            Self::U32ModImm(imm) => Instruction::U32ModImm(imm),
+            Self::U32DivMod => Instruction::U32DivMod,
+            Self::U32DivModImm(imm) => Instruction::U32DivModImm(imm),
+            Self::U32And => Instruction::U32And,
+            Self::U32Or => Instruction::U32Or,
+            Self::U32Xor => Instruction::U32Xor,
+            Self::U32Not => Instruction::U32Not,
+            Self::U32Shl => Instruction::U32Shl,
+            Self::U32ShlImm(imm) => {
+                Instruction::U32ShlImm(imm.try_into().expect("invalid rotation"))
             }
-            Self::U32UncheckedShl => Instruction::U32UncheckedShl,
-            Self::U32UncheckedShlImm(imm) => {
-                Instruction::U32UncheckedShlImm(imm.try_into().expect("invalid rotation"))
+            Self::U32Shr => Instruction::U32Shr,
+            Self::U32ShrImm(imm) => {
+                Instruction::U32ShrImm(imm.try_into().expect("invalid rotation"))
             }
-            Self::U32CheckedShr => Instruction::U32CheckedShr,
-            Self::U32CheckedShrImm(imm) => {
-                Instruction::U32CheckedShrImm(imm.try_into().expect("invalid rotation"))
+            Self::U32Rotl => Instruction::U32Rotl,
+            Self::U32RotlImm(imm) => {
+                Instruction::U32RotlImm(imm.try_into().expect("invalid rotation"))
             }
-            Self::U32UncheckedShr => Instruction::U32UncheckedShr,
-            Self::U32UncheckedShrImm(imm) => {
-                Instruction::U32UncheckedShrImm(imm.try_into().expect("invalid rotation"))
+            Self::U32Rotr => Instruction::U32Rotr,
+            Self::U32RotrImm(imm) => {
+                Instruction::U32RotrImm(imm.try_into().expect("invalid rotation"))
             }
-            Self::U32CheckedRotl => Instruction::U32CheckedRotl,
-            Self::U32CheckedRotlImm(imm) => {
-                Instruction::U32CheckedRotlImm(imm.try_into().expect("invalid rotation"))
-            }
-            Self::U32UncheckedRotl => Instruction::U32UncheckedRotl,
-            Self::U32UncheckedRotlImm(imm) => {
-                Instruction::U32UncheckedRotlImm(imm.try_into().expect("invalid rotation"))
-            }
-            Self::U32CheckedRotr => Instruction::U32CheckedRotr,
-            Self::U32CheckedRotrImm(imm) => {
-                Instruction::U32CheckedRotrImm(imm.try_into().expect("invalid rotation"))
-            }
-            Self::U32UncheckedRotr => Instruction::U32UncheckedRotr,
-            Self::U32UncheckedRotrImm(imm) => {
-                Instruction::U32UncheckedRotrImm(imm.try_into().expect("invalid rotation"))
-            }
-            Self::U32CheckedPopcnt => Instruction::U32CheckedPopcnt,
-            Self::U32UncheckedPopcnt => Instruction::U32UncheckedPopcnt,
-            Self::U32Eq => Instruction::U32CheckedEq,
-            Self::U32EqImm(imm) => Instruction::U32CheckedEqImm(imm),
-            Self::U32Neq => Instruction::U32CheckedNeq,
-            Self::U32NeqImm(imm) => Instruction::U32CheckedNeqImm(imm),
-            Self::U32CheckedLt => Instruction::U32CheckedLt,
-            Self::U32UncheckedLt => Instruction::U32UncheckedLt,
-            Self::U32CheckedLte => Instruction::U32CheckedLte,
-            Self::U32UncheckedLte => Instruction::U32UncheckedLte,
-            Self::U32CheckedGt => Instruction::U32CheckedGt,
-            Self::U32UncheckedGt => Instruction::U32UncheckedGt,
-            Self::U32CheckedGte => Instruction::U32CheckedGte,
-            Self::U32UncheckedGte => Instruction::U32UncheckedGte,
-            Self::U32CheckedMin => Instruction::U32CheckedMin,
-            Self::U32UncheckedMin => Instruction::U32UncheckedMin,
-            Self::U32CheckedMax => Instruction::U32CheckedMax,
-            Self::U32UncheckedMax => Instruction::U32UncheckedMax,
+            Self::U32Popcnt => Instruction::U32Popcnt,
+            Self::U32Lt => Instruction::U32Lt,
+            Self::U32Lte => Instruction::U32Lte,
+            Self::U32Gt => Instruction::U32Gt,
+            Self::U32Gte => Instruction::U32Gte,
+            Self::U32Min => Instruction::U32Min,
+            Self::U32Max => Instruction::U32Max,
         };
         smallvec![Node::Instruction(node)]
     }
@@ -1301,9 +1231,13 @@ impl fmt::Display for MasmOp {
             Self::Cdrop => f.write_str("cdrop"),
             Self::Cdropw => f.write_str("cdropw"),
             Self::Assert => f.write_str("assert"),
+            Self::AssertWithError(code) => write!(f, "assert.err={code}"),
             Self::Assertz => f.write_str("assertz"),
+            Self::AssertzWithError(code) => write!(f, "assertz.err={code}"),
             Self::AssertEq => f.write_str("assert_eq"),
+            Self::AssertEqWithError(code) => write!(f, "assert_eq.err={code}"),
             Self::AssertEqw => f.write_str("assert_eqw"),
+            Self::AssertEqwWithError(code) => write!(f, "assert_eqw.err={code}"),
             Self::LocAddr(_) => f.write_str("locaddr"),
             Self::LocStore(_) => f.write_str("loc_store"),
             Self::LocStorew(_) => f.write_str("loc_storew"),
@@ -1317,21 +1251,28 @@ impl fmt::Display for MasmOp {
             | Self::MemStoreImm(_)
             | Self::MemStoreOffsetImm(_, _) => f.write_str("mem_store"),
             Self::MemStorew | Self::MemStorewImm(_) => f.write_str("mem_storew"),
+            Self::MemStream => f.write_str("mem_stream"),
+            Self::AdvPipe => f.write_str("adv_pipe"),
+            Self::AdvPush(_) => f.write_str("adv_push"),
+            Self::AdvLoadw => f.write_str("adv_loadw"),
             Self::If(_, _) => f.write_str("if.true"),
             Self::While(_) => f.write_str("while.true"),
             Self::Repeat(_, _) => f.write_str("repeat"),
             Self::Exec(_) => f.write_str("exec"),
             Self::Syscall(_) => f.write_str("syscall"),
+            Self::DynExec => f.write_str("dynexec"),
+            Self::DynCall => f.write_str("dyncall"),
+            Self::ProcRef(_) => f.write_str("procref"),
             Self::Add | Self::AddImm(_) => f.write_str("add"),
             Self::Sub | Self::SubImm(_) => f.write_str("sub"),
             Self::Mul | Self::MulImm(_) => f.write_str("mul"),
             Self::Div | Self::DivImm(_) => f.write_str("div"),
             Self::Neg => f.write_str("neg"),
             Self::Inv => f.write_str("inv"),
-            Self::Incr => f.write_str("incr"),
+            Self::Incr => f.write_str("add.1"),
             Self::Pow2 => f.write_str("pow2"),
-            Self::Exp => f.write_str("exp.u64"),
-            Self::ExpImm(imm) => write!(f, "exp.{imm}"),
+            Self::Exp => f.write_str("exp"),
+            Self::ExpImm(imm) => write!(f, "exp.u{imm}"),
             Self::Not => f.write_str("not"),
             Self::And | Self::AndImm(_) => f.write_str("and"),
             Self::Or | Self::OrImm(_) => f.write_str("or"),
@@ -1345,74 +1286,51 @@ impl fmt::Display for MasmOp {
             Self::IsOdd => f.write_str("is_odd"),
             Self::Eqw => f.write_str("eqw"),
             Self::Clk => f.write_str("clk"),
+            Self::Caller => f.write_str("caller"),
             Self::U32Test => f.write_str("u32test"),
             Self::U32Testw => f.write_str("u32testw"),
             Self::U32Assert => f.write_str("u32assert"),
+            Self::U32AssertWithError(code) => write!(f, "u32assert.err={code}"),
             Self::U32Assert2 => f.write_str("u32assert2"),
+            Self::U32Assert2WithError(code) => write!(f, "u32assert2.err={code}"),
             Self::U32Assertw => f.write_str("u32assertw"),
-            Self::U32Cast => f.write_str("u23cast"),
+            Self::U32AssertwWithError(code) => write!(f, "u32assertw.err={code}"),
+            Self::U32Cast => f.write_str("u32cast"),
             Self::U32Split => f.write_str("u32split"),
-            Self::U32CheckedAdd | Self::U32CheckedAddImm(_) => f.write_str("u32checked_add"),
             Self::U32OverflowingAdd | Self::U32OverflowingAddImm(_) => {
                 f.write_str("u32overflowing_add")
             }
             Self::U32WrappingAdd | Self::U32WrappingAddImm(_) => f.write_str("u32wrapping_add"),
             Self::U32OverflowingAdd3 => f.write_str("u32overflowing_add3"),
             Self::U32WrappingAdd3 => f.write_str("u32wrapping_add3"),
-            Self::U32CheckedSub | Self::U32CheckedSubImm(_) => f.write_str("u32checked_sub"),
             Self::U32OverflowingSub | Self::U32OverflowingSubImm(_) => {
                 f.write_str("u32overflowing_sub")
             }
             Self::U32WrappingSub | Self::U32WrappingSubImm(_) => f.write_str("u32wrapping_sub"),
-            Self::U32CheckedMul | Self::U32CheckedMulImm(_) => f.write_str("u32checked_mul"),
             Self::U32OverflowingMul | Self::U32OverflowingMulImm(_) => {
                 f.write_str("u32overflowing_mul")
             }
             Self::U32WrappingMul | Self::U32WrappingMulImm(_) => f.write_str("u32wrapping_mul"),
             Self::U32OverflowingMadd => f.write_str("u32overflowing_madd"),
             Self::U32WrappingMadd => f.write_str("u32wrapping_madd"),
-            Self::U32CheckedDiv | Self::U32CheckedDivImm(_) => f.write_str("u32checked_div"),
-            Self::U32UncheckedDiv | Self::U32UncheckedDivImm(_) => f.write_str("u32unchecked_div"),
-            Self::U32CheckedMod | Self::U32CheckedModImm(_) => f.write_str("u32checked_mod"),
-            Self::U32UncheckedMod | Self::U32UncheckedModImm(_) => f.write_str("u32unchecked_mod"),
-            Self::U32CheckedDivMod | Self::U32CheckedDivModImm(_) => {
-                f.write_str("u32checked_divmod")
-            }
-            Self::U32UncheckedDivMod | Self::U32UncheckedDivModImm(_) => {
-                f.write_str("u32unchecked_divmod")
-            }
-            Self::U32And => f.write_str("u32checked_and"),
-            Self::U32Or => f.write_str("u32checked_or"),
-            Self::U32Xor => f.write_str("u32checked_xor"),
-            Self::U32Not => f.write_str("u32checked_not"),
-            Self::U32CheckedShl | Self::U32CheckedShlImm(_) => f.write_str("u32checked_shl"),
-            Self::U32UncheckedShl | Self::U32UncheckedShlImm(_) => f.write_str("u32unchecked_shl"),
-            Self::U32CheckedShr | Self::U32CheckedShrImm(_) => f.write_str("u32checked_shr"),
-            Self::U32UncheckedShr | Self::U32UncheckedShrImm(_) => f.write_str("u32unchecked_shr"),
-            Self::U32CheckedRotl | Self::U32CheckedRotlImm(_) => f.write_str("u32checked_rotl"),
-            Self::U32UncheckedRotl | Self::U32UncheckedRotlImm(_) => {
-                f.write_str("u32unchecked_rotl")
-            }
-            Self::U32CheckedRotr | Self::U32CheckedRotrImm(_) => f.write_str("u32checked_rotr"),
-            Self::U32UncheckedRotr | Self::U32UncheckedRotrImm(_) => {
-                f.write_str("u32unchecked_rotr")
-            }
-            Self::U32CheckedPopcnt => f.write_str("u32checked_popcnt"),
-            Self::U32UncheckedPopcnt => f.write_str("u32unchecked_popcnt"),
-            Self::U32Eq | Self::U32EqImm(_) => f.write_str("u32checked_eq"),
-            Self::U32Neq | Self::U32NeqImm(_) => f.write_str("u32checked_neq"),
-            Self::U32CheckedLt => f.write_str("u32checked_lt"),
-            Self::U32UncheckedLt => f.write_str("u32unchecked_lt"),
-            Self::U32CheckedLte => f.write_str("u32checked_lte"),
-            Self::U32UncheckedLte => f.write_str("u32unchecked_lte"),
-            Self::U32CheckedGt => f.write_str("u32checked_gt"),
-            Self::U32UncheckedGt => f.write_str("u32unchecked_gt"),
-            Self::U32CheckedGte => f.write_str("u32checked_gte"),
-            Self::U32UncheckedGte => f.write_str("u32unchecked_gte"),
-            Self::U32CheckedMin => f.write_str("u32checked_min"),
-            Self::U32UncheckedMin => f.write_str("u32unchecked_min"),
-            Self::U32CheckedMax => f.write_str("u32checked_max"),
-            Self::U32UncheckedMax => f.write_str("u32unchecked_max"),
+            Self::U32Div | Self::U32DivImm(_) => f.write_str("u32d_div"),
+            Self::U32Mod | Self::U32ModImm(_) => f.write_str("u32mod"),
+            Self::U32DivMod | Self::U32DivModImm(_) => f.write_str("u32divmod"),
+            Self::U32And => f.write_str("u32and"),
+            Self::U32Or => f.write_str("u32or"),
+            Self::U32Xor => f.write_str("u32xor"),
+            Self::U32Not => f.write_str("u32not"),
+            Self::U32Shl | Self::U32ShlImm(_) => f.write_str("u32shl"),
+            Self::U32Shr | Self::U32ShrImm(_) => f.write_str("u32shr"),
+            Self::U32Rotl | Self::U32RotlImm(_) => f.write_str("u32rotl"),
+            Self::U32Rotr | Self::U32RotrImm(_) => f.write_str("u32rotr"),
+            Self::U32Popcnt => f.write_str("u32popcnt"),
+            Self::U32Lt => f.write_str("u32lt"),
+            Self::U32Lte => f.write_str("u32lte"),
+            Self::U32Gt => f.write_str("u32gt"),
+            Self::U32Gte => f.write_str("u32gte"),
+            Self::U32Min => f.write_str("u32min"),
+            Self::U32Max => f.write_str("u32max"),
         }
     }
 }

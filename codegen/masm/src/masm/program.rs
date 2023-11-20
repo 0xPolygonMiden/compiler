@@ -192,6 +192,41 @@ impl Program {
         Ok(Self::from_masl_library(&library, codemap))
     }
 
+    pub fn to_masl_library<S: AsRef<str>>(
+        &self,
+        root_ns: S,
+        codemap: &miden_diagnostics::CodeMap,
+    ) -> Result<miden_assembly::MaslLibrary, miden_assembly::LibraryError> {
+        use miden_assembly::{LibraryNamespace, MaslLibrary, Version};
+        use std::collections::BTreeSet;
+
+        let ns = LibraryNamespace::new(root_ns)?;
+        let version = Version::default();
+        let has_source_locations = false;
+        let mut modules = Vec::with_capacity(self.modules.iter().count());
+        let mut dependencies = BTreeSet::default();
+        for module in self.modules() {
+            for import in module.imports.iter() {
+                if self.modules.get(&import.name).is_some() {
+                    continue;
+                }
+                let root = match import.name.as_str().split_once("::") {
+                    None => LibraryNamespace::new(import.name.as_str())?,
+                    Some((root, _)) => LibraryNamespace::new(root)?,
+                };
+                dependencies.insert(root);
+            }
+            modules.push(module.to_module_ast(codemap));
+        }
+        MaslLibrary::new(
+            ns,
+            version,
+            has_source_locations,
+            modules,
+            dependencies.into_iter().collect(),
+        )
+    }
+
     /// Convert a [miden_assembly::MaslLibrary] into a [Program]
     pub fn from_masl_library(
         library: &miden_assembly::MaslLibrary,

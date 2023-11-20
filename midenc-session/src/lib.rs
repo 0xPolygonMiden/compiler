@@ -180,6 +180,28 @@ impl Session {
         &self.arg_matches
     }
 
+    /// The name of this session (used as the name of the project, output file, etc.)
+    pub fn name(&self) -> String {
+        self.options
+            .name
+            .clone()
+            .or_else(|| {
+                if self.input.is_real() {
+                    Some(self.input.filestem().to_string())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| {
+                self.options
+                    .current_dir
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+    }
+
     pub fn out_filename(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
         let default_filename = self.filename_for_input(outputs, progname);
         let out_filename = outputs
@@ -238,6 +260,23 @@ impl Session {
 
     pub fn should_emit(&self, ty: OutputType) -> bool {
         self.options.output_types.contains_key(&ty)
+    }
+
+    /// Get the path to emit the given [OutputType] to
+    pub fn emit_to(&self, ty: OutputType, name: Option<Symbol>) -> Option<PathBuf> {
+        if self.should_emit(ty) {
+            match self.output_files.path(ty) {
+                OutputFile::Real(path) => name
+                    .map(|name| {
+                        path.with_file_name(name.as_str())
+                            .with_extension(ty.extension())
+                    })
+                    .or(Some(path)),
+                OutputFile::Stdout => None,
+            }
+        } else {
+            None
+        }
     }
 
     /// Emit an item to stdout/file system depending on the current configuration

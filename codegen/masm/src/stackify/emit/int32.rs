@@ -118,25 +118,6 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Assertz);
     }
 
-    /// Check if the 32-bit value on the stack is a valid i32 value
-    pub fn is_i32(&mut self) {
-        self.emit_all(&[
-            // Copy the input
-            Op::Dup(0),
-            // Check the value does not overflow i32::MAX or underflow i32::MIN
-            // This can be done by validating that when interpreted as a u32,
-            // the value is <= i32::MIN, which is 1 more than i32::MAX.
-            Op::PushU32(i32::MIN as u32),
-            Op::U32CheckedLte,
-        ]);
-    }
-
-    /// Assert that the 32-bit value on the stack is a valid i32 value
-    pub fn assert_i32(&mut self) {
-        self.is_i32();
-        self.emit(Op::Assert);
-    }
-
     /// Emits code to assert that a 32-bit value on the operand stack is equal to the given constant value.
     ///
     /// The value on top of the stack IS NOT consumed.
@@ -216,7 +197,7 @@ impl<'a> OpEmitter<'a> {
     pub fn int32_to_int(&mut self, n: u32) {
         assert_valid_integer_size!(n, 1, 32);
         // Push is_signed on the stack
-        self.is_i32();
+        self.is_signed_int32();
         // Pop the is_signed flag, and replace it with a selected mask
         // for the upper reserved bits of the N-bit range
         let reserved = 32 - n;
@@ -242,7 +223,7 @@ impl<'a> OpEmitter<'a> {
     pub fn try_int32_to_int(&mut self, n: u32) {
         assert_valid_integer_size!(n, 1, 32);
         // Push is_signed on the stack
-        self.is_i32();
+        self.is_signed_int32();
         // Pop the is_signed flag, and replace it with a selected mask
         // for the upper reserved bits of the N-bit range
         let reserved = 32 - n;
@@ -389,7 +370,7 @@ impl<'a> OpEmitter<'a> {
     pub fn add_u32(&mut self, overflow: Overflow) {
         self.emit(match overflow {
             Overflow::Unchecked => Op::Add,
-            Overflow::Checked => Op::U32CheckedAdd,
+            Overflow::Checked => return self.emit_all(&[Op::Add, Op::U32Assert]),
             Overflow::Wrapping => Op::U32WrappingAdd,
             Overflow::Overflowing => Op::U32OverflowingAdd,
         });
@@ -420,7 +401,9 @@ impl<'a> OpEmitter<'a> {
         self.emit(match overflow {
             Overflow::Unchecked if imm == 1 => Op::Incr,
             Overflow::Unchecked => Op::AddImm(Felt::new(imm as u64)),
-            Overflow::Checked => Op::U32CheckedAddImm(imm),
+            Overflow::Checked => {
+                return self.emit_all(&[Op::AddImm(Felt::new(imm as u64)), Op::U32Assert]);
+            }
             Overflow::Wrapping => Op::U32WrappingAddImm(imm),
             Overflow::Overflowing => Op::U32OverflowingAddImm(imm),
         });
@@ -457,7 +440,9 @@ impl<'a> OpEmitter<'a> {
     pub fn sub_u32(&mut self, overflow: Overflow) {
         self.emit(match overflow {
             Overflow::Unchecked => Op::Sub,
-            Overflow::Checked => Op::U32CheckedSub,
+            Overflow::Checked => {
+                return self.emit_all(&[Op::Sub, Op::U32Assert]);
+            }
             Overflow::Wrapping => Op::U32WrappingSub,
             Overflow::Overflowing => Op::U32OverflowingSub,
         });
@@ -490,7 +475,9 @@ impl<'a> OpEmitter<'a> {
         }
         self.emit(match overflow {
             Overflow::Unchecked => Op::SubImm(Felt::new(imm as u64)),
-            Overflow::Checked => Op::U32CheckedSubImm(imm),
+            Overflow::Checked => {
+                return self.emit_all(&[Op::SubImm(Felt::new(imm as u64)), Op::U32Assert])
+            }
             Overflow::Wrapping => Op::U32WrappingSubImm(imm),
             Overflow::Overflowing => Op::U32OverflowingSubImm(imm),
         });
@@ -525,7 +512,7 @@ impl<'a> OpEmitter<'a> {
     pub fn mul_u32(&mut self, overflow: Overflow) {
         self.emit(match overflow {
             Overflow::Unchecked => Op::Mul,
-            Overflow::Checked => Op::U32CheckedMul,
+            Overflow::Checked => return self.emit_all(&[Op::Mul, Op::U32Assert]),
             Overflow::Wrapping => Op::U32WrappingMul,
             Overflow::Overflowing => Op::U32OverflowingMul,
         });
@@ -536,7 +523,9 @@ impl<'a> OpEmitter<'a> {
     /// See the [Overflow] type for how overflow semantics can change the operation.
     pub fn mul_i32(&mut self, overflow: Overflow) {
         match overflow {
-            Overflow::Unchecked | Overflow::Wrapping => self.mul_u32(overflow),
+            Overflow::Unchecked | Overflow::Wrapping => {
+                self.emit(Op::Exec("intrinsics::i32::wrapping_mul".parse().unwrap()))
+            }
             Overflow::Checked => {
                 self.emit(Op::Exec("intrinsics::i32::checked_mul".parse().unwrap()))
             }
@@ -564,7 +553,9 @@ impl<'a> OpEmitter<'a> {
             imm => {
                 self.emit(match overflow {
                     Overflow::Unchecked => Op::MulImm(Felt::new(imm as u64)),
-                    Overflow::Checked => Op::U32CheckedMulImm(imm),
+                    Overflow::Checked => {
+                        return self.emit_all(&[Op::MulImm(Felt::new(imm as u64)), Op::U32Assert])
+                    }
                     Overflow::Wrapping => Op::U32WrappingMulImm(imm),
                     Overflow::Overflowing => Op::U32OverflowingMulImm(imm),
                 });
@@ -588,9 +579,10 @@ impl<'a> OpEmitter<'a> {
             }
             1 => (),
             imm => match overflow {
-                Overflow::Unchecked | Overflow::Wrapping => {
-                    self.emit(Op::MulImm(Felt::new(imm as u32 as u64)));
-                }
+                Overflow::Unchecked | Overflow::Wrapping => self.emit_all(&[
+                    Op::PushU32(imm as u32),
+                    Op::Exec("intrinsics::i32::wrapping_mul".parse().unwrap()),
+                ]),
                 Overflow::Checked => self.emit_all(&[
                     Op::PushU32(imm as u32),
                     Op::Exec("intrinsics::i32::checked_mul".parse().unwrap()),
@@ -607,7 +599,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, so if the operands or result are not valid u32, execution traps.
     pub fn checked_div_u32(&mut self) {
-        self.emit(Op::U32CheckedDiv);
+        self.emit_all(&[Op::U32Div, Op::U32Assert]);
     }
 
     /// Pops two i32 values off the stack, `b` and `a`, and performs `a / b`.
@@ -624,7 +616,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the operand or result are not valid u32, execution traps.
     pub fn checked_div_imm_u32(&mut self, imm: u32) {
         assert_ne!(imm, 0, "division by zero is not allowed");
-        self.emit(Op::U32CheckedDivImm(imm));
+        self.emit_all(&[Op::U32DivImm(imm), Op::U32Assert]);
     }
 
     /// Pops a i32 value off the stack, `a`, and performs `a / <imm>`.
@@ -644,7 +636,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is unchecked, so the result is not guaranteed to be a valid u32
     pub fn unchecked_div_u32(&mut self) {
-        self.emit(Op::U32UncheckedDiv);
+        self.emit(Op::U32Div);
     }
 
     /// Pops a u32 value off the stack, `a`, and performs `a / <imm>`.
@@ -652,14 +644,14 @@ impl<'a> OpEmitter<'a> {
     /// This function will panic if the divisor is zero.
     pub fn unchecked_div_imm_u32(&mut self, imm: u32) {
         assert_ne!(imm, 0, "division by zero is not allowed");
-        self.emit(Op::U32UncheckedDivImm(imm));
+        self.emit(Op::U32DivImm(imm));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a % b`.
     ///
     /// This operation is checked, so if the operands or result are not valid u32, execution traps.
     pub fn checked_mod_u32(&mut self) {
-        self.emit(Op::U32CheckedMod);
+        self.emit_all(&[Op::U32Mod, Op::U32Assert]);
     }
 
     /// Pops a u32 value off the stack, `a`, and performs `a % <imm>`.
@@ -669,14 +661,14 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the operand or result are not valid u32, execution traps.
     pub fn checked_mod_imm_u32(&mut self, imm: u32) {
         assert_ne!(imm, 0, "division by zero is not allowed");
-        self.emit(Op::U32CheckedModImm(imm));
+        self.emit_all(&[Op::U32ModImm(imm), Op::U32Assert]);
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a % b`.
     ///
     /// This operation is unchecked, so the result is not guaranteed to be a valid u32
     pub fn unchecked_mod_u32(&mut self) {
-        self.emit(Op::U32UncheckedMod);
+        self.emit(Op::U32Mod);
     }
 
     /// Pops a u32 value off the stack, `a`, and performs `a % <imm>`.
@@ -684,14 +676,14 @@ impl<'a> OpEmitter<'a> {
     /// This function will panic if the divisor is zero.
     pub fn unchecked_mod_imm_u32(&mut self, imm: u32) {
         assert_ne!(imm, 0, "division by zero is not allowed");
-        self.emit(Op::U32UncheckedModImm(imm));
+        self.emit(Op::U32ModImm(imm));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
     ///
     /// This operation is checked, so if the operands or result are not valid u32, execution traps.
     pub fn checked_divmod_u32(&mut self) {
-        self.emit(Op::U32CheckedDivMod);
+        self.emit_all(&[Op::U32DivMod, Op::U32Assert]);
     }
 
     /// Pops a u32 value off the stack, `a`, and pushes `a / <imm>`, then `a % <imm>` on the stack.
@@ -699,14 +691,14 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the operands or result are not valid u32, execution traps.
     pub fn checked_divmod_imm_u32(&mut self, imm: u32) {
         assert_ne!(imm, 0, "division by zero is not allowed");
-        self.emit(Op::U32CheckedDivModImm(imm));
+        self.emit_all(&[Op::U32DivModImm(imm), Op::U32Assert]);
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
     ///
     /// This operation is unchecked, so the result is not guaranteed to be a valid u32
     pub fn unchecked_divmod_u32(&mut self) {
-        self.emit(Op::U32UncheckedDivMod);
+        self.emit(Op::U32DivMod);
     }
 
     /// Pops a u32 value off the stack, `a`, and pushes `a / <imm>`, then `a % <imm>` on the stack.
@@ -714,7 +706,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is unchecked, so the result is not guaranteed to be a valid u32
     pub fn unchecked_divmod_imm_u32(&mut self, imm: u32) {
         assert_ne!(imm, 0, "division by zero is not allowed");
-        self.emit(Op::U32UncheckedDivModImm(imm));
+        self.emit(Op::U32DivModImm(imm));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a & b`
@@ -763,7 +755,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn bnot_u32(&mut self) {
-        self.emit(Op::U32CheckedSubImm(-1i32 as u32));
+        self.emit(Op::U32WrappingSubImm(-1i32 as u32));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a << b`
@@ -772,7 +764,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn shl_u32(&mut self) {
-        self.emit(Op::U32CheckedShl);
+        self.emit(Op::U32Shl);
     }
 
     /// Pops a u32 value off the stack, `a`, and performs `a << <imm>`
@@ -780,7 +772,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn shl_imm_u32(&mut self, imm: u32) {
         assert!(imm < 32, "invalid shift value: must be < 32, got {imm}");
-        self.emit(Op::U32CheckedShlImm(imm));
+        self.emit(Op::U32ShlImm(imm));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a >> b`
@@ -789,7 +781,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn shr_u32(&mut self) {
-        self.emit(Op::U32CheckedShr);
+        self.emit(Op::U32Shr);
     }
 
     /// Pops two i32 values off the stack, `b` and `a`, and performs `a >> b`
@@ -806,7 +798,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn shr_imm_u32(&mut self, imm: u32) {
         assert!(imm < 32, "invalid shift value: must be < 32, got {imm}");
-        self.emit(Op::U32CheckedShrImm(imm));
+        self.emit(Op::U32ShrImm(imm));
     }
 
     /// Pops a i32 value off the stack, `a`, and performs `a >> <imm>`
@@ -826,7 +818,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn rotl_u32(&mut self) {
-        self.emit(Op::U32CheckedRotl);
+        self.emit(Op::U32Rotl);
     }
 
     /// Pops a u32 value off the stack, `a`, and rotates the bits of `a` left by `imm` bits
@@ -834,7 +826,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn rotl_imm_u32(&mut self, imm: u32) {
         assert!(imm < 32, "invalid rotation value: must be < 32, got {imm}");
-        self.emit(Op::U32CheckedRotlImm(imm));
+        self.emit(Op::U32RotlImm(imm));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and rotates the bits of `a` right by `b` bits
@@ -843,7 +835,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn rotr_u32(&mut self) {
-        self.emit(Op::U32CheckedRotr);
+        self.emit(Op::U32Rotr);
     }
 
     /// Pops a u32 value off the stack, `a`, and rotates the bits of `a` right by `imm` bits
@@ -851,14 +843,14 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn rotr_imm_u32(&mut self, imm: u32) {
         assert!(imm < 32, "invalid rotation value: must be < 32, got {imm}");
-        self.emit(Op::U32CheckedRotrImm(imm));
+        self.emit(Op::U32RotrImm(imm));
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and puts the result of `min(a, b)` on the stack
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn min_u32(&mut self) {
-        self.emit(Op::U32CheckedMin);
+        self.emit(Op::U32Min);
     }
 
     /// Pops two i32 values off the stack, `b` and `a`, and puts the result of `min(a, b)` on the stack
@@ -872,7 +864,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn min_imm_u32(&mut self, imm: u32) {
-        self.emit_all(&[Op::PushU32(imm), Op::U32CheckedMin]);
+        self.emit_all(&[Op::PushU32(imm), Op::U32Min]);
     }
 
     /// Pops a i32 value off the stack, `a`, and puts the result of `min(a, imm)` on the stack
@@ -889,7 +881,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn max_u32(&mut self) {
-        self.emit(Op::U32CheckedMax);
+        self.emit(Op::U32Max);
     }
 
     /// Pops two i32 values off the stack, `b` and `a`, and puts the result of `max(a, b)` on the stack
@@ -903,7 +895,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operand or result are not valid u32, execution traps.
     pub fn max_imm_u32(&mut self, imm: u32) {
-        self.emit_all(&[Op::PushU32(imm), Op::U32CheckedMax]);
+        self.emit_all(&[Op::PushU32(imm), Op::U32Max]);
     }
 
     /// Pops a i32 value off the stack, `a`, and puts the result of `max(a, imm)` on the stack

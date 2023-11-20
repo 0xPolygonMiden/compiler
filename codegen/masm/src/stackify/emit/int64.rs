@@ -38,7 +38,7 @@ impl<'a> OpEmitter<'a> {
             // Check that the remaining bits fit in range
             Op::Dup(0),
             Op::Push(Felt::new(2u64.pow(n) - 1)),
-            Op::U32UncheckedLte,
+            Op::U32Lte,
         ]);
     }
 

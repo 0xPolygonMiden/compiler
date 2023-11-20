@@ -313,13 +313,13 @@ impl<'a> OpEmitter<'a> {
         match overflow {
             Overflow::Unchecked => (),
             Overflow::Checked => self.int32_to_uint(n),
-            Overflow::Wrapping => self.emit(Op::U32CheckedModImm(2u32.pow(n))),
+            Overflow::Wrapping => self.emit(Op::U32ModImm(2u32.pow(n))),
             Overflow::Overflowing => {
                 self.try_int32_to_uint(n);
                 self.emit_all(&[
                     // move result to top, and wrap it at 2^n
                     Op::Swap(1),
-                    Op::U32CheckedModImm(2u32.pow(n)),
+                    Op::U32ModImm(2u32.pow(n)),
                     // move is_valid flag to top, and invert it
                     Op::Swap(1),
                     Op::Not,

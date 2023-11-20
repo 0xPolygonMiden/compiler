@@ -8,8 +8,9 @@ use self::stages::*;
 
 use std::sync::Arc;
 
-use miden_hir::pass::AnalysisManager;
-use midenc_session::Session;
+use miden_codegen_masm as masm;
+use miden_hir::{pass::AnalysisManager, Symbol};
+use midenc_session::{OutputType, Session};
 
 pub use self::stages::Compiled;
 
@@ -44,6 +45,9 @@ pub enum CompilerError {
     /// An error occurred while linking a program
     #[error(transparent)]
     Linker(#[from] miden_hir::LinkerError),
+    /// An error occurred while emitting a MASL library
+    #[error(transparent)]
+    Masl(#[from] miden_assembly::LibraryError),
     /// An error ocurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -122,7 +126,49 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
     let inputs = vec![session.input.clone()];
     let mut analyses = AnalysisManager::new();
     match compile_inputs(inputs, &mut analyses, &session) {
-        Ok(_) | Err(CompilerError::Stopped) => return Ok(()),
+        Ok(Compiled::Program(ref program)) => {
+            if let Some(path) = session.emit_to(OutputType::Masl, None) {
+                use miden_assembly::utils::Serializable;
+                let masl = program.to_masl_library(session.name(), &session.codemap)?;
+                let bytes = masl.to_bytes();
+                std::fs::write(&path, bytes)?;
+            }
+            if session.should_emit(OutputType::Masm) {
+                for module in program.modules() {
+                    session.emit(module)?;
+                }
+                if program.is_executable() {
+                    use miden_assembly::LibraryPath;
+                    let ast = program.to_program_ast(&session.codemap);
+                    if let Some(path) = session.emit_to(
+                        OutputType::Masm,
+                        Some(Symbol::intern(LibraryPath::EXEC_PATH)),
+                    ) {
+                        ast.write_to_file(path)?;
+                    } else {
+                        println!("{ast}");
+                    }
+                }
+            }
+        }
+        Ok(Compiled::Modules(modules)) => {
+            let mut program = masm::Program::new();
+            for module in modules.into_iter() {
+                program.insert(module);
+            }
+            if let Some(path) = session.emit_to(OutputType::Masl, None) {
+                use miden_assembly::utils::Serializable;
+                let masl = program.to_masl_library(session.name(), &session.codemap)?;
+                let bytes = masl.to_bytes();
+                std::fs::write(&path, bytes)?;
+            }
+            if session.should_emit(OutputType::Masm) {
+                for module in program.modules() {
+                    session.emit(module)?;
+                }
+            }
+        }
+        Err(CompilerError::Stopped) => return Ok(()),
         Err(CompilerError::Reported) => return Err(CompilerError::Reported),
         Err(err) => {
             session.diagnostics.error(err);

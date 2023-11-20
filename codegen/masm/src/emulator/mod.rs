@@ -897,48 +897,6 @@ macro_rules! binop_unchecked_u32 {
     }};
 }
 
-/// Applies a checked binary operator to two u32 values, either:
-///
-/// 1. The top two elements of the stack
-/// 2. The top element of the stack and an immediate.
-macro_rules! binop_checked_u32 {
-    ($emu:ident, $op:ident) => {{
-        paste::paste! {
-            binop_checked_u32_impl!($emu, [<checked_ $op>]);
-        }
-    }};
-
-    ($emu:ident, $op:ident, $imm:expr) => {{
-        paste::paste! {
-            binop_checked_u32_impl!($emu, [<checked_ $op>], $imm);
-        }
-    }};
-}
-
-#[doc(hidden)]
-macro_rules! binop_checked_u32_impl {
-    ($emu:ident, $op:ident) => {{
-        #[allow(unused)]
-        use core::ops::*;
-        let b = pop_u32!($emu);
-        let a = pop_u32!($emu);
-        let result = a
-            .$op(b)
-            .expect("checked operation failed: result has overflowed the u32 range");
-        $emu.stack.push(Felt::new(result as u64));
-    }};
-
-    ($emu:ident, $op:ident, $imm:expr) => {{
-        #[allow(unused)]
-        use core::ops::*;
-        let a = pop_u32!($emu);
-        let result = a
-            .$op($imm)
-            .expect("checked operation failed: result has overflowed the u32 range");
-        $emu.stack.push(Felt::new(result as u64));
-    }};
-}
-
 /// Applies an overflowing binary operator to two u32 values, either:
 ///
 /// 1. The top two elements of the stack
@@ -1029,25 +987,6 @@ macro_rules! comparison {
 
     ($emu:ident, $op:ident, $imm:expr) => {{
         let a = pop!($emu).as_int();
-        let result: bool = a.$op(&$imm);
-        $emu.stack.push_u8(result as u8);
-    }};
-}
-
-/// Applies a binary comparison operator to two u32 values, either:
-///
-/// 1. The top two elements of the stack
-/// 2. The top element of the stack and an immediate.
-macro_rules! comparison32 {
-    ($emu:ident, $op:ident) => {{
-        let b = pop_u32!($emu);
-        let a = pop_u32!($emu);
-        let result: bool = a.$op(&b);
-        $emu.stack.push_u8(result as u8);
-    }};
-
-    ($emu:ident, $op:ident, $imm:expr) => {{
-        let a = pop_u32!($emu);
         let result: bool = a.$op(&$imm);
         $emu.stack.push_u8(result as u8);
     }};
@@ -1654,22 +1593,16 @@ impl Emulator {
                     self.stack.push(Felt::new(lo));
                     self.stack.push(Felt::new(hi));
                 }
-                Op::U32CheckedAdd => binop_checked_u32!(self, add),
-                Op::U32CheckedAddImm(imm) => binop_checked_u32!(self, add, imm),
                 Op::U32OverflowingAdd => binop_overflowing_u32!(self, add),
                 Op::U32OverflowingAddImm(imm) => binop_overflowing_u32!(self, add, imm),
                 Op::U32WrappingAdd => binop_wrapping_u32!(self, add),
                 Op::U32WrappingAddImm(imm) => binop_wrapping_u32!(self, add, imm),
                 Op::U32OverflowingAdd3 => todo!(),
                 Op::U32WrappingAdd3 => todo!(),
-                Op::U32CheckedSub => binop_checked_u32!(self, sub),
-                Op::U32CheckedSubImm(imm) => binop_checked_u32!(self, sub, imm),
                 Op::U32OverflowingSub => binop_overflowing_u32!(self, sub),
                 Op::U32OverflowingSubImm(imm) => binop_overflowing_u32!(self, sub, imm),
                 Op::U32WrappingSub => binop_wrapping_u32!(self, sub),
                 Op::U32WrappingSubImm(imm) => binop_wrapping_u32!(self, sub, imm),
-                Op::U32CheckedMul => binop_checked_u32!(self, mul),
-                Op::U32CheckedMulImm(imm) => binop_checked_u32!(self, mul, imm),
                 Op::U32OverflowingMul => binop_overflowing_u32!(self, mul),
                 Op::U32OverflowingMulImm(imm) => binop_overflowing_u32!(self, mul, imm),
                 Op::U32WrappingMul => binop_wrapping_u32!(self, mul),
@@ -1691,39 +1624,24 @@ impl Emulator {
                     let d = (a * b + c) % 2u64.pow(32);
                     self.stack.push(Felt::new(d));
                 }
-                Op::U32CheckedDiv => binop_checked_u32!(self, div),
-                Op::U32CheckedDivImm(imm) => binop_checked_u32!(self, div, imm),
-                Op::U32UncheckedDiv => binop_unchecked_u32!(self, div),
-                Op::U32UncheckedDivImm(imm) => binop_unchecked_u32!(self, div, imm as u64),
-                Op::U32CheckedMod => binop_checked_u32!(self, rem),
-                Op::U32CheckedModImm(imm) => binop_checked_u32!(self, rem, imm),
-                Op::U32UncheckedMod => {
+                Op::U32Div => binop_unchecked_u32!(self, div),
+                Op::U32DivImm(imm) => binop_unchecked_u32!(self, div, imm as u64),
+                Op::U32Mod => {
                     let b = pop!(self).as_int();
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a % b));
                 }
-                Op::U32UncheckedModImm(imm) => {
+                Op::U32ModImm(imm) => {
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a % imm as u64));
                 }
-                Op::U32CheckedDivMod => {
-                    let b = pop_u32!(self);
-                    let a = pop_u32!(self);
-                    self.stack.push_u32(a / b);
-                    self.stack.push_u32(a % b);
-                }
-                Op::U32CheckedDivModImm(imm) => {
-                    let a = pop_u32!(self);
-                    self.stack.push_u32(a / imm);
-                    self.stack.push_u32(a % imm);
-                }
-                Op::U32UncheckedDivMod => {
+                Op::U32DivMod => {
                     let b = pop!(self).as_int();
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a / b));
                     self.stack.push(Felt::new(a % b));
                 }
-                Op::U32UncheckedDivModImm(b) => {
+                Op::U32DivModImm(b) => {
                     let b = b as u64;
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a / b));
@@ -1736,76 +1654,47 @@ impl Emulator {
                     let a = pop_u32!(self);
                     self.stack.push_u32(!a);
                 }
-                Op::U32CheckedShl => binop_checked_u32!(self, shl),
-                Op::U32CheckedShlImm(imm) => binop_checked_u32!(self, shl, imm),
-                Op::U32UncheckedShl => binop_wrapping_u32!(self, shl),
-                Op::U32UncheckedShlImm(imm) => binop_wrapping_u32!(self, shl, imm),
-                Op::U32CheckedShr => binop_checked_u32!(self, shr),
-                Op::U32CheckedShrImm(imm) => binop_checked_u32!(self, shr, imm),
-                Op::U32UncheckedShr => binop_wrapping_u32!(self, shr),
-                Op::U32UncheckedShrImm(imm) => binop_wrapping_u32!(self, shr, imm),
-                Op::U32CheckedRotl => binop32!(self, rotate_left),
-                Op::U32CheckedRotlImm(imm) => binop32!(self, rotate_left, imm),
-                Op::U32UncheckedRotl => {
+                Op::U32Shl => binop_wrapping_u32!(self, shl),
+                Op::U32ShlImm(imm) => binop_wrapping_u32!(self, shl, imm),
+                Op::U32Shr => binop_wrapping_u32!(self, shr),
+                Op::U32ShrImm(imm) => binop_wrapping_u32!(self, shr, imm),
+                Op::U32Rotl => {
                     let b = pop_u32!(self);
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a.rotate_left(b)));
                 }
-                Op::U32UncheckedRotlImm(imm) => {
+                Op::U32RotlImm(imm) => {
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a.rotate_left(imm)));
                 }
-                Op::U32CheckedRotr => binop32!(self, rotate_right),
-                Op::U32CheckedRotrImm(imm) => binop32!(self, rotate_right, imm),
-                Op::U32UncheckedRotr => {
+                Op::U32Rotr => {
                     let b = pop_u32!(self);
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a.rotate_right(b)));
                 }
-                Op::U32UncheckedRotrImm(imm) => {
+                Op::U32RotrImm(imm) => {
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(a.rotate_right(imm)));
                 }
-                Op::U32CheckedPopcnt => {
-                    let a = pop_u32!(self);
-                    self.stack.push_u32(a.count_ones());
-                }
-                Op::U32UncheckedPopcnt => {
+                Op::U32Popcnt => {
                     let a = pop!(self).as_int();
                     self.stack.push_u32(a.count_ones());
                 }
-                Op::U32Eq => comparison32!(self, eq),
-                Op::U32EqImm(imm) => comparison32!(self, eq, imm),
-                Op::U32Neq => comparison32!(self, ne),
-                Op::U32NeqImm(imm) => comparison32!(self, ne, imm),
-                Op::U32CheckedGt => comparison32!(self, gt),
-                Op::U32UncheckedGt => comparison!(self, gt),
-                Op::U32CheckedGte => comparison32!(self, ge),
-                Op::U32UncheckedGte => comparison!(self, ge),
-                Op::U32CheckedLt => comparison32!(self, lt),
-                Op::U32UncheckedLt => comparison!(self, lt),
-                Op::U32CheckedLte => comparison32!(self, le),
-                Op::U32UncheckedLte => comparison!(self, le),
-                Op::U32CheckedMin => {
-                    let b = pop_u32!(self);
-                    let a = pop_u32!(self);
-                    self.stack.push_u32(cmp::min(a, b));
-                }
-                Op::U32UncheckedMin => {
+                Op::U32Gt => comparison!(self, gt),
+                Op::U32Gte => comparison!(self, ge),
+                Op::U32Lt => comparison!(self, lt),
+                Op::U32Lte => comparison!(self, le),
+                Op::U32Min => {
                     let b = pop!(self).as_int();
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(cmp::min(a, b)));
                 }
-                Op::U32CheckedMax => {
-                    let b = pop_u32!(self);
-                    let a = pop_u32!(self);
-                    self.stack.push_u32(cmp::max(a, b));
-                }
-                Op::U32UncheckedMax => {
+                Op::U32Max => {
                     let b = pop!(self).as_int();
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(cmp::max(a, b)));
                 }
+                op => unimplemented!("missing opcode implementation for {op:?}"),
             }
 
             match ix_with_op.effect {

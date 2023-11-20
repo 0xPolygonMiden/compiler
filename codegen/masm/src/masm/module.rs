@@ -7,11 +7,11 @@ use std::{
 
 use intrusive_collections::{intrusive_adapter, RBTree, RBTreeAtomicLink};
 use miden_assembly::ast::ModuleAst;
-use miden_diagnostics::{CodeMap, SourceFile, SourceSpan, Spanned};
+use miden_diagnostics::{CodeMap, SourceFile, SourceSpan};
 use miden_hir::{FunctionIdent, Ident, Symbol};
 use rustc_hash::FxHashMap;
 
-use super::{function::Functions, FrozenFunctionList, Function, Import, ModuleImportInfo};
+use super::{function::Functions, FrozenFunctionList, Function, ModuleImportInfo};
 
 #[derive(Debug, thiserror::Error)]
 pub enum LoadModuleError {
@@ -126,41 +126,12 @@ impl Module {
         span: SourceSpan,
         _codemap: &CodeMap,
     ) -> Self {
-        use miden_assembly::{ast::ModuleImports, ProcedureId};
-
         let module_name = name.into();
         let mut module = Self::new(module_name);
         module.span = span;
         module.docs = ast.docs().cloned();
 
-        // HACK: We're waiting on 0xPolygonMiden/miden-vm#1110
-        let imported = {
-            let mut imports = BTreeMap::<_, miden_assembly::LibraryPath>::default();
-            let mut invoked = BTreeMap::<_, (_, miden_assembly::LibraryPath)>::default();
-            let import_paths = ast.import_paths();
-            for path in import_paths.iter() {
-                let alias = Symbol::intern(path.last());
-                let name = Symbol::intern(path.as_ref());
-                module.imports.insert(Import {
-                    span: module_name.span(),
-                    alias,
-                    name,
-                });
-                imports.insert(
-                    path.last().to_string(),
-                    miden_assembly::LibraryPath::clone(path),
-                );
-            }
-            for (id, name) in ast.get_imported_procedures_map().into_iter() {
-                let path = import_paths
-                    .iter()
-                    .find(|p| id == ProcedureId::from_name(name.as_ref(), p))
-                    .expect("could not find module for imported procedure");
-                invoked.insert(id, (name.clone(), miden_assembly::LibraryPath::clone(path)));
-            }
-            ModuleImports::new(imports, invoked)
-        };
-
+        let imported = ast.import_info().clone();
         let locals = ast
             .procs()
             .iter()
