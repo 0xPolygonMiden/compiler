@@ -1,6 +1,8 @@
 use anyhow::bail;
+use cargo_metadata::Message;
 use std::path::PathBuf;
 use std::process::Command;
+use std::process::Stdio;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -25,70 +27,86 @@ pub fn compile(
         .arg("build")
         .arg("--release")
         .arg("--target=wasm32-unknown-unknown");
-
-    let (project_type, artifact_name) = if let Some(bin_name) = bin_name {
+    let project_type = if let Some(ref bin_name) = bin_name {
         cargo_build_cmd.arg("--bin").arg(bin_name.clone());
-        (ProjectType::Program, bin_name)
+        ProjectType::Program
     } else {
-        // TODO: parse artifact name for lib from Cargo.toml (package.name?)
-        (ProjectType::Library, "miden_lib".to_string())
+        ProjectType::Library
     };
-    let cwd = std::env::current_dir().context("Failed to get current working directory")?;
-    let target_dir = std::env::var("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| cwd.join("target"));
-    let release_folder = target_dir.join("wasm32-unknown-unknown").join("release");
-    let target_bin_file_path = release_folder
-        .join(artifact_name.clone())
-        .with_extension("wasm");
-    if target_bin_file_path.exists() {
-        // remove existing Wasm file since cargo build might not generate a new one silently
-        //  e.g. if crate-type = ["cdylib"] is not set in Cargo.toml
-        std::fs::remove_file(&target_bin_file_path).with_context(|| {
+    println!("Compiling Wasm with cargo build ...");
+    let mut child = cargo_build_cmd
+        .arg("--message-format=json-render-diagnostics")
+        .stdout(Stdio::piped())
+        .spawn()
+        .with_context(|| {
             format!(
-                "Failed to remove existing Wasm file {}",
-                &target_bin_file_path.to_str().unwrap()
+                "Failed to execute cargo build {}.",
+                cargo_build_cmd
+                    .get_args()
+                    .map(|arg| format!("'{}'", arg.to_str().unwrap()))
+                    .collect::<Vec<_>>()
+                    .join(" ")
             )
         })?;
+    let reader = std::io::BufReader::new(child.stdout.take().unwrap());
+    let mut wasm_artifacts = Vec::new();
+    for message in cargo_metadata::Message::parse_stream(reader) {
+        match message.context("Failed to parse cargo metadata")? {
+            Message::CompilerArtifact(artifact) => {
+                // find the Wasm artifact in artifact.filenames
+                for filename in artifact.filenames {
+                    if filename.as_str().ends_with(".wasm") {
+                        wasm_artifacts.push(filename.into_std_path_buf());
+                    }
+                }
+            }
+            _ => (),
+        }
     }
-
-    println!("Compiling '{artifact_name}' Rust to Wasm with cargo build ...");
-    let output = cargo_build_cmd.output().with_context(|| {
-        format!(
-            "Failed to execute cargo build {}.",
-            cargo_build_cmd
-                .get_args()
-                .map(|arg| format!("'{}'", arg.to_str().unwrap()))
-                .collect::<Vec<_>>()
-                .join(" ")
-        )
-    })?;
-    if !output.status.success() {
-        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+    let output = child.wait().expect("Couldn't get cargo's exit status");
+    if !output.success() {
         bail!("Rust to Wasm compilation failed!");
     }
-    if !release_folder.exists() {
+
+    if wasm_artifacts.is_empty() {
+        match project_type {
+            ProjectType::Library => bail!("Cargo build failed, no Wasm artifact found. Check if crate-type = [\"cdylib\"] is set in Cargo.toml"),
+            ProjectType::Program => bail!("Cargo build failed, no Wasm artifact found."),
+        }
+    }
+    if wasm_artifacts.len() > 1 {
         bail!(
-            "Cargo build failed, expected release folder at path: {}",
-            release_folder.to_str().unwrap()
+            "Cargo build failed, multiple Wasm artifacts found: {:?}. Only one Wasm artifact is expected.",
+            wasm_artifacts
         );
     }
-    if !target_bin_file_path.exists() {
-        bail!(
-            "Cargo build failed, expected Wasm artifact at path: {}",
-            target_bin_file_path.to_str().unwrap()
+    let wasm_file_path = wasm_artifacts[0].clone();
+    match project_type {
+        ProjectType::Program => {
+            let bin_name = bin_name.unwrap();
+            if !wasm_file_path.ends_with(format!("{}.wasm", bin_name)) {
+                bail!(
+            "Cargo build failed, Wasm artifact name {} does not match the expected name '{}'.",
+            wasm_file_path.to_str().unwrap(),
+            bin_name
         );
+            }
+        }
+        ProjectType::Library => (),
     }
+
     println!(
-        "Compiling '{}' Wasm to MASM with midenc ...",
+        "Compiling '{}' Wasm to {} MASM with midenc ...",
+        wasm_file_path.to_str().unwrap(),
         &output_file.as_path().to_str().unwrap()
     );
-    let input = InputFile::from_path(target_bin_file_path).context("Invalid input file")?;
+    let input = InputFile::from_path(wasm_file_path).context("Invalid input file")?;
     let output_file = OutputFile::Real(output_file.clone());
     let output_types = OutputTypes::new(vec![OutputTypeSpec {
         output_type: OutputType::Masm,
         path: Some(output_file.clone()),
     }]);
+    let cwd = std::env::current_dir().context("Failed to get current working directory")?;
     let options = midenc_session::Options::new(cwd)
         // .with_color(color)
         .with_verbosity(Verbosity::Debug)

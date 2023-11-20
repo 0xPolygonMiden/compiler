@@ -28,5 +28,6 @@ midenc-session.workspace = true
 miden-diagnostics.workspace = true
 clap.workspace = true
 anyhow.workspace = true
+cargo_metadata = "0.18"
 
 [dev-dependencies]
