@@ -18,7 +18,7 @@ fn main() {
         } => {
             // TODO: ensure wasm32-unknown-unknown target is installed
             // TODO: pass unrecognized flags to the midenc
-            compile(target, bin_name, output_file);
+            compile(target, bin_name, &output_file);
         }
     }
 }

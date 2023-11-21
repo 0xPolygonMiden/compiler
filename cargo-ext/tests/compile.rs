@@ -2,8 +2,7 @@ use crate::utils::get_test_path;
 use cargo_miden::compile;
 use midenc_session::TargetEnv;
 use std::env;
-
-// rusty_fork::rusty_fork_test! {
+use std::fs;
 
 #[test]
 fn compile_template() {
@@ -12,11 +11,11 @@ fn compile_template() {
     env::set_current_dir(&test_dir).unwrap();
     let masm_path_rel = "target/miden_lib.masm";
     // dbg!(&test_dir);
-    compile(TargetEnv::Base, None, test_dir.join(masm_path_rel));
+    let output_file = test_dir.join(masm_path_rel);
+    // dbg!(&output_file);
+    compile(TargetEnv::Base, None, &output_file);
     env::set_current_dir(restore_dir).unwrap();
-    let masm_file_path = test_dir.join(masm_path_rel);
-    assert!(masm_file_path.exists());
-    assert!(masm_file_path.metadata().unwrap().len() > 0);
+    assert!(output_file.exists());
+    assert!(output_file.metadata().unwrap().len() > 0);
+    fs::remove_file(output_file).unwrap();
 }
-
-// }

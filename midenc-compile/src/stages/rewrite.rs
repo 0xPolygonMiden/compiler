@@ -26,10 +26,12 @@ impl Stage for ApplyRewritesStage {
         let matches = session.matches();
         for rewrite in inventory::iter::<RewritePassRegistration<hir::Module>> {
             let flag = rewrite.name();
-            if let Some(index) = matches.index_of(flag) {
-                let is_enabled = matches.get_flag(flag);
-                if is_enabled {
-                    registered.push((index, rewrite.get()));
+            if matches.try_contains_id(flag).is_ok() {
+                if let Some(index) = matches.index_of(flag) {
+                    let is_enabled = matches.get_flag(flag);
+                    if is_enabled {
+                        registered.push((index, rewrite.get()));
+                    }
                 }
             }
         }
@@ -41,10 +43,7 @@ impl Stage for ApplyRewritesStage {
         // Otherwise, assume that the intent was to skip those rewrites and do not add them
         let mut rewrites = RewriteSet::default();
         if registered.is_empty() {
-            let convert_to_masm_flag = <masm::ConvertHirToMasm<hir::Module> as PassInfo>::FLAG;
-            let convert_to_masm = matches.get_flag(convert_to_masm_flag);
-
-            if convert_to_masm {
+            if session.should_codegen() {
                 rewrites.push(ModuleRewritePassAdapter::new(
                     transforms::SplitCriticalEdges,
                 ));

@@ -294,3 +294,29 @@ impl fmt::Display for Program {
         Ok(())
     }
 }
+impl midenc_session::Emit for Program {
+    fn name(&self) -> Option<miden_hir::Symbol> {
+        None
+    }
+    fn output_type(&self) -> midenc_session::OutputType {
+        midenc_session::OutputType::Masm
+    }
+    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+        writer.write_fmt(format_args!("{}", self))
+    }
+}
+
+enum ModulesIter<'a> {
+    Open(intrusive_collections::rbtree::Iter<'a, ModuleTreeAdapter>),
+    Frozen(intrusive_collections::rbtree::Iter<'a, FrozenModuleTreeAdapter>),
+}
+impl<'a> Iterator for ModulesIter<'a> {
+    type Item = &'a Module;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Open(ref mut iter) => iter.next(),
+            Self::Frozen(ref mut iter) => iter.next(),
+        }
+    }
+}

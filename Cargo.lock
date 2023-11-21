@@ -220,7 +220,6 @@ dependencies = [
  "miden-diagnostics",
  "midenc-driver",
  "midenc-session",
- "rusty-fork",
 ]
 
 [[package]]
