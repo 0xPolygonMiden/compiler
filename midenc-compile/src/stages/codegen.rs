@@ -27,7 +27,6 @@ impl Stage for CodegenStage {
             MaybeLinked::Linked(program) => {
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();
                 let program = convert_to_masm.convert(program, analyses, session)?;
-                session.emit(&program)?;
                 Ok(Compiled::Program(program))
             }
             MaybeLinked::Unlinked(modules) => {
@@ -35,7 +34,6 @@ impl Stage for CodegenStage {
                 let mut masm_modules = Vec::with_capacity(modules.len());
                 for module in modules.into_iter() {
                     let masm_module = convert_to_masm.convert(module, analyses, session)?;
-                    session.emit(&masm_module)?;
                     masm_modules.push(masm_module);
                 }
                 Ok(Compiled::Modules(masm_modules))

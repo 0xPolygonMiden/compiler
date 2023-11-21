@@ -19,7 +19,7 @@ use midenc_session::TargetEnv;
 pub fn compile(
     target: TargetEnv,
     bin_name: Option<String>,
-    output_file: &PathBuf,
+    output_folder: &PathBuf,
 ) -> anyhow::Result<()> {
     // for cargo env var see https://doc.rust-lang.org/cargo/reference/environment-variables.html
     let mut cargo_build_cmd = Command::new("cargo");
@@ -95,16 +95,23 @@ pub fn compile(
         ProjectType::Library => (),
     }
 
+    if !output_folder.exists() {
+        bail!(
+            "Output folder '{}' does not exist.",
+            output_folder.to_str().unwrap()
+        );
+    }
+
     println!(
-        "Compiling '{}' Wasm to {} MASM with midenc ...",
+        "Compiling '{}' Wasm to '{}' directory with midenc ...",
         wasm_file_path.to_str().unwrap(),
-        &output_file.as_path().to_str().unwrap()
+        &output_folder.as_path().to_str().unwrap()
     );
     let input = InputFile::from_path(wasm_file_path).context("Invalid input file")?;
-    let output_file = OutputFile::Real(output_file.clone());
+    let output_file_folder = OutputFile::Real(output_folder.clone());
     let output_types = OutputTypes::new(vec![OutputTypeSpec {
         output_type: OutputType::Masm,
-        path: Some(output_file.clone()),
+        path: Some(output_file_folder.clone()),
     }]);
     let cwd = std::env::current_dir().context("Failed to get current working directory")?;
     let options = midenc_session::Options::new(cwd)
@@ -113,9 +120,16 @@ pub fn compile(
         // .with_warnings(self.warn)
         .with_output_types(output_types);
     let session = Arc::new(
-        Session::new(target, input, None, Some(output_file), None, options, None)
-            // .with_arg_matches(matches)
-            .with_project_type(project_type),
+        Session::new(
+            target,
+            input,
+            Some(output_folder.clone()),
+            None,
+            None,
+            options,
+            None,
+        )
+        .with_project_type(project_type),
     );
     midenc_compile::compile(session.clone()).context("Wasm to MASM compilation failed!")
 }

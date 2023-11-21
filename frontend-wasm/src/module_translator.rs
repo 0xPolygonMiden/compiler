@@ -32,10 +32,15 @@ struct WasmTranslationResult {
 /// Translate a sequence of bytes forming a valid Wasm binary into Miden IR
 fn translate_module_inner(
     wasm: &[u8],
-    _config: &WasmTranslationConfig,
+    config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<WasmTranslationResult> {
-    let mut module_env = ModuleEnvironment::new();
+    let mut module_env = ModuleEnvironment::new(
+        config
+            .module_name_fallback
+            .clone()
+            .unwrap_or("noname".to_owned()),
+    );
     let env = &mut module_env;
     let wasm_features = WasmFeatures::default();
     let mut validator = Validator::new_with_features(wasm_features);

@@ -113,9 +113,9 @@ pub struct ModuleEnvironment<'a> {
 
 impl<'a> ModuleEnvironment<'a> {
     /// Creates a new `ModuleEnvironment` instance.
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         Self {
-            info: ModuleInfo::new(Ident::with_empty_span(Symbol::intern("noname"))),
+            info: ModuleInfo::new(Ident::with_empty_span(Symbol::intern(name))),
             trans: FuncTranslator::new(),
             function_bodies: PrimaryMap::new(),
             data_segments: PrimaryMap::new(),

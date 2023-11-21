@@ -16,10 +16,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Compile {
             target,
             bin_name,
-            output_file,
-        } => {
-            compile(target, bin_name, &output_file).context(format!("Failed to compile {}", target))
-        }
+            output_folder,
+        } => compile(target, bin_name, &output_folder)
+            .context(format!("Failed to compile {}", target)),
         Commands::New { path } => new_project(path).context("Failed to scaffold a new project"),
     }
 }

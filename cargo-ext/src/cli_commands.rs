@@ -33,14 +33,14 @@ pub enum Commands {
         #[arg(long = "bin-name", display_order(3))]
         bin_name: Option<String>,
 
-        /// Write output to `<filename>`
+        /// Output directory for the compiled MASM file(s)
         #[arg(
-            short = 'o',
-            value_name = "FILENAME",
-            id = "output-file",
+            long = "out-dir",
+            value_name = "FOLDER",
+            id = "output-folder",
             display_order(6)
         )]
-        output_file: PathBuf,
+        output_folder: PathBuf,
     },
     /// Scaffold a new Miden project at the given path
     #[command(next_display_order(10), name = "new")]
