@@ -18,7 +18,8 @@ pub fn new_project(path: PathBuf) -> anyhow::Result<()> {
 
     let generate_args = GenerateArgs {
         template_path: TemplatePath {
-            git: Some("https://github.com/greenhat/miden-project-template".into()),
+            git: Some("https://github.com/0xPolygonMiden/rust-templates".into()),
+            auto_path: Some("library".into()),
             ..Default::default()
         },
         destination: path
