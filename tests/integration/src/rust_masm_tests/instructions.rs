@@ -209,13 +209,29 @@ test_bool_op!(eq, ==, i32);
 test_bool_op!(eq, ==, i16);
 test_bool_op!(eq, ==, i8);
 
-// enable when i32 ops support is merged https://github.com/0xPolygonMiden/compiler/pull/37
-// test_int_op!(add, +, u32);
-// test_int_op!(add, +, u16);
-// test_int_op!(add, +, u8);
-// test_int_op!(sub, -, u32);
+// test_int_op!(add, +, u64);
+test_int_op!(add, +, u32);
+test_int_op!(add, +, u16);
+test_int_op!(add, +, u8);
+// test_int_op!(add, +, i64);
+test_int_op!(add, +, i32);
+test_int_op!(add, +, i16);
+test_int_op!(add, +, i8);
+
+// test_int_op!(sub, -, u64);
+test_int_op!(sub, -, u32);
+test_int_op!(sub, -, u16);
+test_int_op!(sub, -, u8);
+// test_int_op!(sub, -, i64);
+test_int_op!(sub, -, i32);
+test_int_op!(sub, -, i16);
+test_int_op!(sub, -, i8);
+
+// test_int_op!(mul, *, u64);
+// test_int_op!(mul, *, u32);
+
 // ...
-// add tests for sub, mul, div, rem,
+// add tests for mul, div, rem,
 
 test_bool_op!(and, &&, bool);
 test_bool_op!(or, ||, bool);
