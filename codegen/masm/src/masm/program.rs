@@ -305,18 +305,3 @@ impl midenc_session::Emit for Program {
         writer.write_fmt(format_args!("{}", self))
     }
 }
-
-enum ModulesIter<'a> {
-    Open(intrusive_collections::rbtree::Iter<'a, ModuleTreeAdapter>),
-    Frozen(intrusive_collections::rbtree::Iter<'a, FrozenModuleTreeAdapter>),
-}
-impl<'a> Iterator for ModulesIter<'a> {
-    type Item = &'a Module;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Open(ref mut iter) => iter.next(),
-            Self::Frozen(ref mut iter) => iter.next(),
-        }
-    }
-}
