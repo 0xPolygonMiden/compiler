@@ -12,6 +12,9 @@ fn compile_template() {
     env::set_current_dir(&test_dir).unwrap();
     let masm_path_rel = "target";
     let output_folder = test_dir.join(masm_path_rel);
+    if !output_folder.exists() {
+        fs::create_dir_all(&output_folder).unwrap();
+    }
     compile(TargetEnv::Base, None, &output_folder).expect("Failed to compile");
     env::set_current_dir(restore_dir).unwrap();
     let expected_masm_path = output_folder.join("miden_wallet_lib.masm");
