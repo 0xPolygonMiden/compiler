@@ -1,12 +1,9 @@
 (module
-  (type (;0;) (func (param i32 i32) (result i32)))
-  (func $entrypoint (;0;) (type 0) (param i32 i32) (result i32)
-    local.get 0
+  (type (;0;) (func (param i64 i64) (result i64)))
+  (func $entrypoint (;0;) (type 0) (param i64 i64) (result i64)
     local.get 1
-    i32.const 7
-    i32.and
-    i32.shl
-    i32.extend8_s
+    local.get 0
+    i64.or
   )
   (memory (;0;) 16)
   (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)

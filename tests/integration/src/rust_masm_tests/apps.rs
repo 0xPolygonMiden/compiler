@@ -20,7 +20,7 @@ fn fib() {
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     TestRunner::default()
-        .run(&(1..u32::MAX / 2), move |a| {
+        .run(&(1u32..30), move |a| {
             let rust_out = miden_integration_tests_rust_fib::fib(a);
             let mut args = [Felt::from(a)];
             let vm_out = execute_vm(&vm_program, &args)

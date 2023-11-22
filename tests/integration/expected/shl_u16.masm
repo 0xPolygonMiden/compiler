@@ -656,8 +656,13 @@ end
 mod noname
 
 export.entrypoint
-  push.4294967295.4294967295
-  exec.checked_xor
+  push.15
+  movup.2
+  u32and
+  swap.1
+  u32shl
+  push.65535
+  u32and
 end
 
 program

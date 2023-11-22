@@ -1,11 +1,9 @@
 (module
-  (type (;0;) (func (param i32 i32) (result i32)))
-  (func $entrypoint (;0;) (type 0) (param i32 i32) (result i32)
+  (type (;0;) (func (param i32) (result i32)))
+  (func $entrypoint (;0;) (type 0) (param i32) (result i32)
+    i32.const 0
     local.get 0
-    local.get 1
-    i32.const 7
-    i32.and
-    i32.shl
+    i32.sub
     i32.extend8_s
   )
   (memory (;0;) 16)

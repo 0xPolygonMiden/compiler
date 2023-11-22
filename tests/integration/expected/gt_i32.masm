@@ -656,8 +656,9 @@ end
 mod noname
 
 export.entrypoint
-  push.4294967295.4294967295
-  exec.checked_xor
+  swap.1
+  swap.1
+  exec.is_gt
 end
 
 program

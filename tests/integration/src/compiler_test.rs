@@ -246,7 +246,7 @@ impl CompilerTest {
                 )
                 .expect(
                     format!(
-                        "VM Assembler failed to compile module:\n{:?}",
+                        "VM Assembler failed to compile module:\n{:?}\n with error",
                         core_module.ast
                     )
                     .as_str(),
