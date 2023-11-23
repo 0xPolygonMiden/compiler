@@ -16,6 +16,7 @@ members = [
   "frontend-wasm",
   "tests/rust-apps/*",
   "tests/integration",
+  "sdk",
 ]
 exclude = ["tests/rust-apps-wasm"]
 

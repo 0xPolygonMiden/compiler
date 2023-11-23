@@ -406,7 +406,9 @@ impl Module {
     /// Unlinks the given function from this module
     pub fn unlink(&mut self, id: Ident) -> Box<Function> {
         let mut cursor = self.cursor_mut_at(id);
-        cursor.remove().expect("invalid function id")
+        cursor
+            .remove()
+            .expect(format!("invalid function id {}", id).as_str())
     }
 
     /// Append `function` to the end of this module's body, returning the [FuncId]

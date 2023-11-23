@@ -9,8 +9,11 @@ use crate::CompilerTest;
 
 #[test]
 fn fib() {
-    let mut test =
-        CompilerTest::rust_source_cargo("fib", "miden_integration_tests_rust_fib_wasm", "fib");
+    let mut test = CompilerTest::rust_source_cargo(
+        "fib",
+        "miden_integration_tests_rust_fib_wasm",
+        Some("fib".to_owned()),
+    );
     // Test expected compilation artifacts
     test.expect_wasm(expect_file!["../../expected/fib.wat"]);
     test.expect_ir(expect_file!["../../expected/fib.hir"]);

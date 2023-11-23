@@ -39,15 +39,18 @@ enum CompilerTestSource {
         cargo_project_folder_name: String,
         artifact_name: String,
     },
-    // Wasm(String),
-    // Ir(String),
+}
+
+struct WasmArtifact {
+    bytes: Vec<u8>,
+    entrypoint: Option<String>,
 }
 
 /// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected output
 pub struct CompilerTest {
     session: Session,
     source: CompilerTestSource,
-    wasm_bytes: Vec<u8>,
+    wasm: WasmArtifact,
     hir: Option<Box<miden_hir::Program>>,
     ir_masm: Option<Arc<miden_codegen_masm::Program>>,
 }
@@ -57,10 +60,12 @@ impl CompilerTest {
     pub fn rust_source_cargo(
         cargo_project_folder: &str,
         artifact_name: &str,
-        entrypoint: &str,
+        entrypoint: Option<String>,
     ) -> Self {
         let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
         // dbg!(&pwd);
+        let target_triple = "wasm32-wasi";
+        // let target_triple = "wasm32-unknown-unknown";
         let temp_dir = std::env::temp_dir();
         let target_dir = temp_dir.join(cargo_project_folder);
         let output = Command::new("cargo")
@@ -69,7 +74,7 @@ impl CompilerTest {
             .arg(manifest_path)
             .arg("--release")
             // .arg("--bins")
-            .arg("--target=wasm32-unknown-unknown")
+            .arg(format!("--target={target_triple}"))
             // .arg("--features=wasm-target")
             .arg("--target-dir")
             .arg(target_dir.clone())
@@ -88,40 +93,33 @@ impl CompilerTest {
             panic!("Rust to Wasm compilation failed!");
         }
         let target_bin_file_path = Path::new(&target_dir)
-            .join("wasm32-unknown-unknown")
+            .join(target_triple)
             .join("release")
             .join(artifact_name)
             .with_extension("wasm");
-        // dbg!(&target_bin_file_path);
-        let mut target_bin_file = fs::File::open(target_bin_file_path).unwrap();
+        let mut target_bin_file = fs::File::open(target_bin_file_path.clone()).expect(
+            format!(
+                "Failed to open expected Wasm file: {:?}",
+                target_bin_file_path
+            )
+            .as_str(),
+        );
         let mut wasm_bytes = vec![];
         Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
         fs::remove_dir_all(target_dir).unwrap();
 
         let session = default_session();
-
-        let entrypoint = FunctionIdent {
-            module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
-            function: Ident::new(
-                Symbol::intern(entrypoint.to_string()),
-                SourceSpan::default(),
-            ),
-        };
-        let hir_module = wasm_to_ir(&wasm_bytes, &session);
-        let mut builder = ProgramBuilder::new(&session.diagnostics)
-            .with_module(hir_module.into())
-            .unwrap();
-        builder = builder.with_entrypoint(entrypoint);
-        let hir_program = builder.link().expect("Failed to link IR program");
-
         CompilerTest {
             session,
             source: CompilerTestSource::RustCargo {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name: artifact_name.to_string(),
             },
-            wasm_bytes,
-            hir: Some(hir_program.into()),
+            wasm: WasmArtifact {
+                bytes: wasm_bytes,
+                entrypoint,
+            },
+            hir: None,
             ir_masm: None,
         }
     }
@@ -143,7 +141,10 @@ impl CompilerTest {
         CompilerTest {
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
-            wasm_bytes,
+            wasm: WasmArtifact {
+                bytes: wasm_bytes,
+                entrypoint: None,
+            },
             hir: Some(ir_program),
             ir_masm: None,
         }
@@ -169,13 +170,14 @@ impl CompilerTest {
         let wasm_bytes = compile_rust_file(&rust_source);
         let session = default_session();
         let ir_module = wasm_to_ir(&wasm_bytes, &session);
+        let entrypoint_name = "entrypoint";
         let entrypoint = FunctionIdent {
             module: Ident {
                 name: Symbol::intern("noname"),
                 span: SourceSpan::default(),
             },
             function: Ident {
-                name: Symbol::intern("entrypoint"),
+                name: Symbol::intern(entrypoint_name),
                 span: SourceSpan::default(),
             },
         };
@@ -188,7 +190,10 @@ impl CompilerTest {
         CompilerTest {
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
-            wasm_bytes,
+            wasm: WasmArtifact {
+                bytes: wasm_bytes,
+                entrypoint: Some(entrypoint_name.to_owned()),
+            },
             hir: Some(ir_program_with_entrypoint),
             ir_masm: None,
         }
@@ -196,9 +201,33 @@ impl CompilerTest {
 
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&mut self, expected_wat_file: expect_test::ExpectFile) {
-        let wasm_bytes = self.wasm_bytes.as_ref();
+        let wasm_bytes = &self.wasm.bytes;
         let wat = demangle(&wasm_to_wat(wasm_bytes));
         expected_wat_file.assert_eq(&wat);
+    }
+
+    /// Get the compiled IR
+    pub fn hir(&mut self) -> &miden_hir::Program {
+        if self.hir.is_none() {
+            let session = default_session();
+            let hir_module = wasm_to_ir(&self.wasm.bytes, &session);
+            let mut builder = ProgramBuilder::new(&session.diagnostics)
+                .with_module(hir_module.into())
+                .unwrap();
+            if let Some(entrypoint) = &self.wasm.entrypoint {
+                let entrypoint = FunctionIdent {
+                    module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
+                    function: Ident::new(
+                        Symbol::intern(entrypoint.to_string()),
+                        SourceSpan::default(),
+                    ),
+                };
+                builder = builder.with_entrypoint(entrypoint);
+            }
+            let hir_program = builder.link().expect("Failed to link IR program");
+            self.hir = Some(hir_program);
+        }
+        self.hir.as_ref().unwrap()
     }
 
     /// Compare the compiled IR against the expected output
@@ -206,9 +235,7 @@ impl CompilerTest {
         // Program does not implement pretty printer yet, use the first module
         let ir_module = demangle(
             &self
-                .hir
-                .as_ref()
-                .expect("IR is not compiled")
+                .hir()
                 .modules()
                 .iter()
                 .take(1)

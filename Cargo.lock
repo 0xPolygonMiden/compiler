@@ -816,6 +816,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden"
+version = "0.1.0"
+
+[[package]]
 name = "miden-air"
 version = "0.8.0"
 source = "git+https://github.com/0xPolygonMiden/miden-vm?branch=next#ed0e87019fd1354b782cfab9bfbe5daa183a4e16"
