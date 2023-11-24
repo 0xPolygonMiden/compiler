@@ -12,3 +12,4 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
+derive_more = "0.99"

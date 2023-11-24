@@ -818,6 +818,9 @@ dependencies = [
 [[package]]
 name = "miden"
 version = "0.1.0"
+dependencies = [
+ "derive_more",
+]
 
 [[package]]
 name = "miden-air"

@@ -1,0 +1,27 @@
+[package]
+name = "basic-wallet-test"
+version = "0.1.0"
+rust-version = "1.71"
+authors = ["Miden Team"]
+description = "Basic wallet implementation for Miden"
+license = "MIT"
+edition = "2021"
+publish = false
+
+[lib]
+name = "basic_wallet"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "note_send"
+path = "src/note_send.rs"
+
+[[bin]]
+name = "note_recv"
+path = "src/note_recv.rs"
+
+[dependencies]
+miden = { path = "../../../sdk" }
+
+[profile.release]
+opt-level = "z"

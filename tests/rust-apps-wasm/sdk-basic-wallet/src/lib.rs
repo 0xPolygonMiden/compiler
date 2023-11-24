@@ -9,7 +9,7 @@ use miden::account;
 use miden::asset::Asset;
 use miden::note::Recipient;
 use miden::note::Tag;
-use miden::tx;
+use miden::sat::tx;
 
 pub struct MyWallet;
 
@@ -20,9 +20,8 @@ impl MyWallet {
     }
 
     #[no_mangle]
-    pub fn send_asset(&self, asset: Asset, recipient: Recipient) {
+    pub fn send_asset(&self, asset: Asset, tag: Tag, recipient: Recipient) {
         let asset = account::remove_asset(asset);
-        let tag = Tag::new(4);
         tx::create_note(asset, tag, recipient);
     }
 }
