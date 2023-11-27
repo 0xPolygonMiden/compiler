@@ -27,6 +27,7 @@ wat = "1.0.69"
 wasmprinter = "0.2.63"
 sha2 = "0.10"
 rustc-demangle = {version = "0.1.19", features = ["std"]}    
+cargo_metadata = "0.18"
 
 [dev-dependencies]
 proptest = "1.3"

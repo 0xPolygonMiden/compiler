@@ -6,6 +6,7 @@ version = 3
 name = "basic-wallet-test"
 version = "0.1.0"
 dependencies = [
+ "dlmalloc",
  "miden",
 ]
 
@@ -27,6 +28,21 @@ dependencies = [
  "rustc_version",
  "syn",
 ]
+
+[[package]]
+name = "dlmalloc"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "203540e710bfadb90e5e29930baf5d10270cec1f43ab34f46f78b147b2de715a"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "libc"
+version = "0.2.150"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89d92a4743f9a61002fae18374ed11e7973f530cb3a3255fb354818118b2203c"
 
 [[package]]
 name = "miden"

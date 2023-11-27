@@ -1,13 +1,11 @@
 #![no_std]
-
-// #[panic_handler]
-// fn my_panic(_info: &core::panic::PanicInfo) -> ! {
-//     loop {}
-// }
+#![no_main]
 
 use basic_wallet;
 
-fn main() {
+// WASI runtime expects the following function to be "main"
+#[no_mangle]
+pub extern "C" fn __main_void() -> i32 {
     /*
     Expected Miden program:
 
@@ -27,4 +25,5 @@ fn main() {
     let asset = miden::sat::note::get_assets();
     // TODO: should be invoked via `call` op
     basic_wallet::MyWallet.receive_asset(asset);
+    0
 }

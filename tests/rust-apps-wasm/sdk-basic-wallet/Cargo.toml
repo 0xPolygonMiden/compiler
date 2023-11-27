@@ -14,14 +14,16 @@ crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "note_send"
-path = "src/note_send.rs"
+path = "bin/note_send.rs"
 
 [[bin]]
 name = "note_recv"
-path = "src/note_recv.rs"
+path = "bin/note_recv.rs"
 
 [dependencies]
 miden = { path = "../../../sdk" }
+dlmalloc = { version = "0.2.4", features = ["global"]}
 
 [profile.release]
 opt-level = "z"
+panic = "abort"

@@ -26,14 +26,14 @@ fn fib() {
         .run(&(1..u32::MAX / 2), move |a| {
             let rust_out = miden_integration_tests_rust_fib::fib(a);
             let mut args = [Felt::from(a)];
-            let vm_out = execute_vm(&vm_program, &args)
+            let vm_out: u32 = execute_vm(&vm_program, &args)
                 .first()
                 .unwrap()
                 .clone()
                 .into();
             prop_assert_eq!(rust_out, vm_out);
             args.reverse();
-            let emul_out = execute_emulator(ir_masm.clone(), &args)
+            let emul_out: u32 = execute_emulator(ir_masm.clone(), &args)
                 .first()
                 .unwrap()
                 .clone()

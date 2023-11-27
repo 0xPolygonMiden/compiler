@@ -1,11 +1,89 @@
-use crate::CompilerTest;
+use std::io::Read;
+use std::process::Command;
+use std::process::Stdio;
+
+use crate::compiler_test::demangle;
+use crate::compiler_test::wasm_to_wat;
+use cargo_metadata::Message;
 use expect_test::expect_file;
 
+fn rust_cargo(cargo_project_folder: &str) -> Vec<std::path::PathBuf> {
+    let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
+    // dbg!(&pwd);
+    let target_triple = "wasm32-wasi";
+    // let target_triple = "wasm32-unknown-unknown";
+    let temp_dir = std::env::temp_dir();
+    let target_dir = temp_dir.join(cargo_project_folder);
+    dbg!(&target_dir);
+    let mut cargo_build_cmd = Command::new("cargo");
+    cargo_build_cmd
+        .arg("build")
+        .arg("--manifest-path")
+        .arg(manifest_path)
+        .arg("--release")
+        .arg(format!("--target={target_triple}"));
+    let mut child = cargo_build_cmd
+        .arg("--message-format=json-render-diagnostics")
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect(
+            format!(
+                "Failed to execute cargo build {}.",
+                cargo_build_cmd
+                    .get_args()
+                    .map(|arg| format!("'{}'", arg.to_str().unwrap()))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            )
+            .as_str(),
+        );
+    let reader = std::io::BufReader::new(child.stdout.take().unwrap());
+    let mut wasm_artifacts = Vec::new();
+    for message in cargo_metadata::Message::parse_stream(reader) {
+        match message.expect("Failed to parse cargo metadata") {
+            Message::CompilerArtifact(artifact) => {
+                // find the Wasm artifact in artifact.filenames
+                for filename in artifact.filenames {
+                    if filename.as_str().ends_with(".wasm") {
+                        wasm_artifacts.push(filename.into_std_path_buf());
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
+    let output = child.wait().expect("Couldn't get cargo's exit status");
+    if !output.success() {
+        eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
+        let mut stderr = Vec::new();
+        child
+            .stderr
+            .unwrap()
+            .read(&mut stderr)
+            .expect("Failed to read stderr");
+        let stderr = String::from_utf8(stderr).expect("Failed to parse stderr");
+        eprintln!("stderr: {}", stderr);
+        panic!("Rust to Wasm compilation failed!");
+    }
+    assert!(output.success());
+    wasm_artifacts
+}
+
+pub fn expect_wasm(wasm_bytes: &[u8], expected_wat_file: expect_test::ExpectFile) {
+    let wat = demangle(&wasm_to_wat(wasm_bytes));
+    expected_wat_file.assert_eq(&wat);
+}
+
 #[test]
-fn sdk_account() {
-    let mut test = CompilerTest::rust_source_cargo("sdk-basic-wallet", "basic_wallet", None);
-    // Test expected compilation artifacts
-    test.expect_wasm(expect_file!["../../expected/sdk_basic_wallet.wat"]);
-    // test.expect_ir(expect_file!["../../expected/sdk_account.hir"]);
-    // test.expect_masm(expect_file!["../../expected/sdk_account.masm"]);
+fn sdk_account_basic_wallet() {
+    let wasm_artifacts = rust_cargo("sdk-basic-wallet");
+    assert_eq!(wasm_artifacts.len(), 3);
+    for wasm_file in &wasm_artifacts {
+        let file_name = wasm_file.file_stem().unwrap().to_str().unwrap();
+        let wasm_bytes = std::fs::read(wasm_file).unwrap();
+        expect_wasm(
+            &wasm_bytes,
+            expect_file![format!("../../expected/sdk_account_{file_name}.wat")],
+        );
+    }
 }

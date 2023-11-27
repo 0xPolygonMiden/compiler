@@ -17,6 +17,7 @@ pub fn remove_asset(asset: Asset) -> Asset {
 }
 
 #[repr(transparent)]
+#[derive(Clone, derive_more::Into)]
 pub struct AccountId(Felt);
 
 impl AccountId {

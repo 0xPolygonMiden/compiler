@@ -1,20 +1,18 @@
 #![no_std]
-
-// #[panic_handler]
-// fn my_panic(_info: &core::panic::PanicInfo) -> ! {
-//     loop {}
-// }
+#![no_main]
 
 use basic_wallet;
 
 use miden::account::AccountId;
-use miden::asset::Asset;
-use miden::asset::FungibleAsset;
-use miden::felt::Word;
-use miden::note::Recipient;
-use miden::note::Tag;
+use miden::Asset;
+use miden::FungibleAsset;
+use miden::Recipient;
+use miden::Tag;
+use miden::Word;
 
-fn main() {
+// WASI runtime expects the following function to be "main"
+#[no_mangle]
+pub extern "C" fn __original_main() -> i32 {
     /*
        Expected Miden program:
 
@@ -41,4 +39,5 @@ fn main() {
     basic_wallet::MyWallet.send_asset(asset, tag, recipient);
     // TODO: should be invoked via `call` op
     miden::eoa::basic::auth_tx_rpo_falcon512();
+    0
 }

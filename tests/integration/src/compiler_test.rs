@@ -68,6 +68,7 @@ impl CompilerTest {
         // let target_triple = "wasm32-unknown-unknown";
         let temp_dir = std::env::temp_dir();
         let target_dir = temp_dir.join(cargo_project_folder);
+        dbg!(&target_dir);
         let output = Command::new("cargo")
             .arg("build")
             .arg("--manifest-path")
@@ -325,7 +326,7 @@ fn compile_rust_file(rust_source: &str) -> Vec<u8> {
     return wasm;
 }
 
-fn wasm_to_wat(wasm_bytes: &Vec<u8>) -> String {
+pub(crate) fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
     let mut wasm_printer = wasmprinter::Printer::new();
     // disable printing of the "producers" section because it contains a rustc version
     // to not brake tests when rustc is updated
@@ -378,7 +379,7 @@ fn hash_string(inputs: &[&str]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn demangle(name: &str) -> String {
+pub(crate) fn demangle(name: &str) -> String {
     let mut input = name.as_bytes();
     let mut demangled = Vec::new();
     let include_hash = false;
