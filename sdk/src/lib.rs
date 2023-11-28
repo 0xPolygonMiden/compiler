@@ -15,8 +15,8 @@ pub use felt::Felt;
 pub use felt::Word;
 pub use note::Recipient;
 pub use note::Tag;
-pub use serialization::FeltDeserialize;
-pub use serialization::FeltSerialize;
+pub use serialization::bytes_to_felts;
+pub use serialization::felts_to_bytes;
 
 pub mod account;
 

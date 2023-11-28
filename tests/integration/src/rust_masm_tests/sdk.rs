@@ -21,6 +21,13 @@ fn rust_cargo(cargo_project_folder: &str, features: Option<&str>) -> Vec<std::pa
         .arg("--manifest-path")
         .arg(manifest_path)
         .arg("--release")
+        // compile std as part of crate graph compilation
+        // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+        .arg("-Z")
+        .arg("build-std=core,alloc")
+        .arg("-Z")
+        // abort on panic without message formatting (core::fmt uses call_indirect)
+        .arg("build-std-features=panic_immediate_abort")
         .arg(format!("--target={target_triple}"));
     if features.is_some() {
         cargo_build_cmd.arg("--features").arg(features.unwrap());

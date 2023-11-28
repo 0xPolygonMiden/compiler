@@ -2,10 +2,10 @@ use alloc::vec::Vec;
 
 use crate::Felt;
 
-pub trait FeltSerialize {
-    fn to_felts(&self) -> Vec<Felt>;
+pub fn bytes_to_felts(_args_bytes: Vec<u8>) -> Vec<Felt> {
+    todo!()
 }
 
-pub trait FeltDeserialize {
-    fn from_felts(felts: &[Felt]) -> Self;
+pub fn felts_to_bytes(_felts: Vec<Felt>) -> Vec<u8> {
+    todo!()
 }

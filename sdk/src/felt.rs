@@ -1,12 +1,9 @@
-use alloc::vec::Vec;
-
-use crate::FeltSerialize;
-
 /// Number of field elements in a word.
 pub const WORD_SIZE: usize = 4;
 
 /// A group of four field elements in the Miden base field.
 #[repr(transparent)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Word([Felt; WORD_SIZE]);
 
 impl Word {
@@ -24,16 +21,8 @@ impl Word {
     }
 }
 
-impl FeltSerialize for Word {
-    fn to_felts(&self) -> Vec<Felt> {
-        let mut felts = Vec::with_capacity(WORD_SIZE);
-        felts.extend_from_slice(&self.0);
-        felts
-    }
-}
-
 #[repr(transparent)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Felt(u64);
 
 impl From<u64> for Felt {

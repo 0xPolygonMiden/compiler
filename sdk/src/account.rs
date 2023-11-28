@@ -17,7 +17,7 @@ pub fn remove_asset(asset: Asset) -> Asset {
 }
 
 #[repr(transparent)]
-#[derive(Clone, derive_more::Into)]
+#[derive(Clone, derive_more::Into, serde::Serialize, serde::Deserialize)]
 pub struct AccountId(Felt);
 
 impl AccountId {

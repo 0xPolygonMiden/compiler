@@ -28,6 +28,8 @@ required-features = ["build_notes"]
 
 [dependencies]
 miden = { path = "../../../sdk" }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+postcard = { version = "1.0", features = ["alloc"] }
 dlmalloc = { version = "0.2.4", features = ["global"]}
 
 [profile.release]

@@ -858,6 +858,7 @@ name = "miden"
 version = "0.1.0"
 dependencies = [
  "derive_more",
+ "serde",
 ]
 
 [[package]]

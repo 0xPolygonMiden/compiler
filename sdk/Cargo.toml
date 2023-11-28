@@ -13,3 +13,4 @@ edition.workspace = true
 
 [dependencies]
 derive_more = "0.99"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
