@@ -1,7 +1,7 @@
 use crate::asset::Asset;
 
 extern "C" {
-    #[link_name = "miden::sat::note::create_note"]
+    #[link_name = "miden::sat::note::get_assets"]
     pub fn get_assets_inner() -> Asset;
 }
 
