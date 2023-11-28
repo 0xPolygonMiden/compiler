@@ -23,6 +23,7 @@ use miden::Tag;
 pub struct MyWallet;
 
 //#[miden::account]
+#[cfg(not(feature = "build_notes"))]
 impl MyWallet {
     pub fn receive_asset(&self, asset: Asset) {
         account::add_asset(asset);
@@ -49,9 +50,10 @@ extern "C" {
     );
 }
 
+// Substitution for the user's code for the note's code
 #[cfg(feature = "build_notes")]
 impl MyWallet {
-    pub fn receive_asset_note_call(&self, asset: miden::Asset) {
+    pub fn receive_asset(&self, asset: miden::Asset) {
         // TODO: make a struct for all args and serialize it with serde
         // TODO: serialized bytes are packed into felts and are passed via sv1, sv2, ...
         let felts = miden::FeltSerialize::to_felts(&asset);
@@ -66,12 +68,7 @@ impl MyWallet {
         }
     }
 
-    pub fn send_asset_note_call(
-        &self,
-        _asset: miden::Asset,
-        _tag: miden::Tag,
-        _recipient: miden::Recipient,
-    ) {
+    pub fn send_asset(&self, _asset: miden::Asset, _tag: miden::Tag, _recipient: miden::Recipient) {
         todo!("");
     }
 }

@@ -203,5 +203,5 @@
   (export "memory" (memory 0))
   (export "my_wallet::receive_asset" (func $my_wallet::receive_asset))
   (elem (;0;) (i32.const 1) func $core::ptr::drop_in_place<core::fmt::Error> $<T as core::any::Any>::type_id)
-  (data $.rodata (;0;) (i32.const 1048576) "not yet implemented: use advice provider\00\00\10\00(\00\00\00src/lib.rs\00\000\00\10\00\0a\00\00\00_\00\00\00\0d\00\00\00not yet implemented/Users/dzadorozhnyi/src/miden-ir/sdk/src/asset.rs_\00\10\001\00\00\00&\00\00\00\09\00\00\00\01\00\00\00\00\00\00\00\01\00\00\00\02\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "not yet implemented: use advice provider\00\00\10\00(\00\00\00src/lib.rs\00\000\00\10\00\0a\00\00\00\5c\00\00\00\0d\00\00\00not yet implemented/Users/dzadorozhnyi/src/miden-ir/sdk/src/asset.rs_\00\10\001\00\00\00&\00\00\00\09\00\00\00\01\00\00\00\00\00\00\00\01\00\00\00\02\00\00\00")
 )
