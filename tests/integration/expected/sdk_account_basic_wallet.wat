@@ -13,7 +13,6 @@
   (type (;11;) (func (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)))
   (type (;12;) (func (result i32)))
   (type (;13;) (func))
-  (type (;14;) (func (param i64) (result i64)))
   (import "env" "memcpy" (func $memcpy (;0;) (type 0)))
   (import "env" "memset" (func $memset (;1;) (type 0)))
   (import "env" "miden::sat::account::add_asset" (func $miden::sat::account::add_asset (;2;) (type 1)))
@@ -4193,23 +4192,24 @@
     i32.sub
     local.tee 17
     global.set $__stack_pointer
+    local.get 17
+    i32.const 8
+    i32.add
+    local.get 1
+    call $miden::call_conv::FuncArgPassingConv::from_felt
     block ;; label = @1
-      i64.const 1
-      call $miden::note::Tag::new
-      local.get 1
-      i64.ne
+      local.get 17
+      i32.load8_u offset=12
       br_if 0 (;@1;)
       local.get 17
-      i32.const 8
-      i32.add
       i32.const 3
       i32.const 0
       call $alloc::raw_vec::RawVec<T,A>::allocate_in
       local.get 17
-      i32.load offset=12
+      i32.load offset=4
       local.set 18
       local.get 17
-      i32.load offset=8
+      i32.load
       local.tee 19
       local.get 3
       i64.store offset=8
@@ -4278,25 +4278,30 @@
   (func $my_wallet::send_asset (;65;) (type 11) (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)
     (local i32 i32 i32)
     global.get $__stack_pointer
-    i32.const 176
+    i32.const 192
     i32.sub
     local.tee 17
     global.set $__stack_pointer
+    local.get 17
+    i32.const 16
+    i32.add
+    local.get 1
+    call $miden::call_conv::FuncArgPassingConv::from_felt
     block ;; label = @1
-      i64.const 1
-      call $miden::note::Tag::new
-      local.get 1
-      i64.ne
+      local.get 17
+      i32.load8_u offset=20
       br_if 0 (;@1;)
       local.get 17
+      i32.const 8
+      i32.add
       i32.const 7
       i32.const 0
       call $alloc::raw_vec::RawVec<T,A>::allocate_in
       local.get 17
-      i32.load offset=4
+      i32.load offset=12
       local.set 18
       local.get 17
-      i32.load
+      i32.load offset=8
       local.tee 19
       local.get 3
       i64.store offset=8
@@ -4320,45 +4325,61 @@
       i64.store offset=16
       local.get 17
       i32.const 7
-      i32.store offset=32
+      i32.store offset=48
       local.get 17
       local.get 18
-      i32.store offset=28
+      i32.store offset=44
       local.get 17
       local.get 19
-      i32.store offset=24
+      i32.store offset=40
       local.get 17
-      i32.const 12
+      i32.const 28
       i32.add
       local.get 17
-      i32.const 24
+      i32.const 40
       i32.add
       call $miden::serialization::bytes_to_felts
       local.get 17
-      i32.const 24
+      i32.const 40
       i32.add
       local.get 17
-      i32.load offset=12
+      i32.load offset=28
       local.get 17
-      i32.load offset=20
+      i32.load offset=36
       call $postcard::de::from_bytes
       local.get 17
-      i32.load offset=24
+      i32.load offset=40
       i32.const 2
       i32.eq
       br_if 0 (;@1;)
       local.get 17
-      i32.const 104
+      i32.const 120
       i32.add
       local.get 17
-      i32.const 24
+      i32.const 40
       i32.add
       i32.const 40
       call $memcpy
       drop
       local.get 17
-      i64.load offset=64
+      i64.load offset=80
       local.set 1
+      local.get 17
+      i32.const 184
+      i32.add
+      local.get 17
+      i32.const 112
+      i32.add
+      i64.load
+      i64.store
+      local.get 17
+      i32.const 176
+      i32.add
+      local.get 17
+      i32.const 104
+      i32.add
+      i64.load
+      i64.store
       local.get 17
       i32.const 168
       i32.add
@@ -4368,40 +4389,24 @@
       i64.load
       i64.store
       local.get 17
-      i32.const 160
-      i32.add
       local.get 17
-      i32.const 88
-      i32.add
-      i64.load
-      i64.store
-      local.get 17
-      i32.const 152
-      i32.add
-      local.get 17
-      i32.const 80
-      i32.add
-      i64.load
-      i64.store
+      i64.load offset=88
+      i64.store offset=160
       local.get 17
       local.get 17
-      i64.load offset=72
-      i64.store offset=144
-      local.get 17
-      local.get 17
-      i32.const 104
+      i32.const 120
       i32.add
       local.get 1
       local.get 17
-      i32.const 144
+      i32.const 160
       i32.add
       call $basic_wallet::MyWallet::send_asset
       local.get 17
-      i32.const 12
+      i32.const 28
       i32.add
       call $core::ptr::drop_in_place<alloc::vec::Vec<u8>>
       local.get 17
-      i32.const 176
+      i32.const 192
       i32.add
       global.set $__stack_pointer
       return
@@ -4736,10 +4741,11 @@
     i32.const 1
   )
   (func $dlmalloc::sys::enable_alloc_after_fork (;104;) (type 13))
-  (func $miden::note::Tag::new (;105;) (type 14) (param i64) (result i64)
-    local.get 0
+  (func $miden::serialization::bytes_to_felts (;105;) (type 1) (param i32 i32)
+    unreachable
+    unreachable
   )
-  (func $miden::serialization::bytes_to_felts (;106;) (type 1) (param i32 i32)
+  (func $miden::call_conv::FuncArgPassingConv::from_felt (;106;) (type 9) (param i32 i64)
     unreachable
     unreachable
   )

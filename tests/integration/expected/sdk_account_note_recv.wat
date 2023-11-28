@@ -12,7 +12,8 @@
   (type (;10;) (func (param i32 i32 i32 i32) (result i32)))
   (type (;11;) (func (param i32 i32 i32 i32 i32) (result i32)))
   (type (;12;) (func (param i64) (result i64)))
-  (type (;13;) (func (param i32 i32 i32 i32 i32)))
+  (type (;13;) (func (param i32) (result i64)))
+  (type (;14;) (func (param i32 i32 i32 i32 i32)))
   (import "env" "__wasm_call_dtors" (func $__wasm_call_dtors (;0;) (type 0)))
   (import "env" "__wasi_proc_exit" (func $__wasi_proc_exit (;1;) (type 1)))
   (import "env" "memcpy" (func $memcpy (;2;) (type 2)))
@@ -3340,8 +3341,16 @@
       i32.const 16
       i32.ge_u
       br_if 0 (;@1;)
-      i64.const 1
-      call $miden::note::Tag::new
+      local.get 2
+      local.get 1
+      i32.store offset=16
+      local.get 2
+      i32.const 0
+      i32.store8 offset=20
+      local.get 2
+      i32.const 16
+      i32.add
+      call $miden::call_conv::FuncArgPassingConv::to_felt
       local.set 3
       block ;; label = @2
         local.get 1
@@ -3355,31 +3364,31 @@
       local.get 1
       i64.load offset=8
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       i64.const 0
-      call $miden::note::Tag::new
+      call $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from
       call $my_wallet::receive_asset
       local.get 2
       i32.const 4
@@ -3846,18 +3855,22 @@
     i32.const 65536
   )
   (func $dlmalloc::sys::enable_alloc_after_fork (;102;) (type 0))
-  (func $miden::note::Tag::new (;103;) (type 12) (param i64) (result i64)
+  (func $miden::felt::<impl core::convert::From<miden::felt::Felt> for u64>::from (;103;) (type 12) (param i64) (result i64)
     local.get 0
   )
   (func $miden::serialization::bytes_to_felts (;104;) (type 5) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $miden::sat::note::get_assets (;105;) (type 1) (param i32)
+  (func $miden::call_conv::FuncArgPassingConv::to_felt (;105;) (type 13) (param i32) (result i64)
+    unreachable
+    unreachable
+  )
+  (func $miden::sat::note::get_assets (;106;) (type 1) (param i32)
     local.get 0
     call $miden::sat::note::get_assets
   )
-  (func $alloc::vec::Vec<T,A>::extend_from_slice (;106;) (type 7) (param i32 i32 i32)
+  (func $alloc::vec::Vec<T,A>::extend_from_slice (;107;) (type 7) (param i32 i32 i32)
     local.get 0
     local.get 1
     local.get 1
@@ -3865,7 +3878,7 @@
     i32.add
     call $<alloc::vec::Vec<T,A> as alloc::vec::spec_extend::SpecExtend<&T,core::slice::iter::Iter<T>>>::spec_extend
   )
-  (func $<alloc::vec::Vec<T,A> as alloc::vec::spec_extend::SpecExtend<&T,core::slice::iter::Iter<T>>>::spec_extend (;107;) (type 7) (param i32 i32 i32)
+  (func $<alloc::vec::Vec<T,A> as alloc::vec::spec_extend::SpecExtend<&T,core::slice::iter::Iter<T>>>::spec_extend (;108;) (type 7) (param i32 i32 i32)
     (local i32)
     local.get 0
     local.get 2
@@ -3889,7 +3902,7 @@
     i32.add
     i32.store offset=8
   )
-  (func $alloc::vec::Vec<T,A>::reserve (;108;) (type 5) (param i32 i32)
+  (func $alloc::vec::Vec<T,A>::reserve (;109;) (type 5) (param i32 i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -3907,23 +3920,23 @@
       call $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle
     end
   )
-  (func $alloc::alloc::handle_alloc_error (;109;) (type 5) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error (;110;) (type 5) (param i32 i32)
     local.get 0
     local.get 1
     call $alloc::alloc::handle_alloc_error::rt_error
     unreachable
   )
-  (func $alloc::alloc::handle_alloc_error::rt_error (;110;) (type 5) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error::rt_error (;111;) (type 5) (param i32 i32)
     local.get 1
     local.get 0
     call $__rust_alloc_error_handler
     unreachable
   )
-  (func $alloc::alloc::handle_alloc_error::ct_error (;111;) (type 5) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error::ct_error (;112;) (type 5) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $<alloc::alloc::Global as core::alloc::Allocator>::allocate (;112;) (type 7) (param i32 i32 i32)
+  (func $<alloc::alloc::Global as core::alloc::Allocator>::allocate (;113;) (type 7) (param i32 i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3952,7 +3965,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $alloc::alloc::Global::alloc_impl (;113;) (type 8) (param i32 i32 i32 i32)
+  (func $alloc::alloc::Global::alloc_impl (;114;) (type 8) (param i32 i32 i32 i32)
     block ;; label = @1
       local.get 2
       i32.eqz
@@ -3981,7 +3994,7 @@
     local.get 1
     i32.store
   )
-  (func $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle (;114;) (type 7) (param i32 i32 i32)
+  (func $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle (;115;) (type 7) (param i32 i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -4005,7 +4018,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $alloc::raw_vec::RawVec<T,A>::grow_amortized (;115;) (type 8) (param i32 i32 i32 i32)
+  (func $alloc::raw_vec::RawVec<T,A>::grow_amortized (;116;) (type 8) (param i32 i32 i32 i32)
     (local i32 i32)
     global.get $__stack_pointer
     i32.const 32
@@ -4113,7 +4126,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $alloc::raw_vec::handle_reserve (;116;) (type 5) (param i32 i32)
+  (func $alloc::raw_vec::handle_reserve (;117;) (type 5) (param i32 i32)
     block ;; label = @1
       block ;; label = @2
         local.get 0
@@ -4133,7 +4146,7 @@
     unreachable
     unreachable
   )
-  (func $alloc::raw_vec::finish_grow (;117;) (type 13) (param i32 i32 i32 i32 i32)
+  (func $alloc::raw_vec::finish_grow (;118;) (type 14) (param i32 i32 i32 i32 i32)
     (local i32 i32)
     global.get $__stack_pointer
     i32.const 16

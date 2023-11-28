@@ -103,11 +103,13 @@ impl MyWallet {
             miden::bytes_to_felts(args_bytes)
         };
         if felts.len() <= 15 {
-            // TODO: pack arg passing method (1 - 15 felts "on stack", 2 - via advice provider) and total felts count. Packed into single Felt.
-            let call_conv = miden::Felt::from(1);
+            let call_conv = miden::call_conv::FuncArgPassingConv {
+                medium: miden::call_conv::FuncArgPassingMedium::Stack,
+                felt_count: felts.len() as u32,
+            };
             unsafe {
                 receive_asset_extern(
-                    call_conv,
+                    call_conv.to_felt(),
                     felts[0],
                     felts[1],
                     0.into(),
@@ -147,8 +149,10 @@ impl MyWallet {
             miden::bytes_to_felts(args_bytes)
         };
         if felts.len() <= 15 {
-            // TODO: pack arg passing method (1 - 15 felts "on stack", 2 - via advice provider) and total felts count. Packed into single Felt.
-            let call_conv = miden::Felt::from(1);
+            let call_conv = miden::call_conv::FuncArgPassingConv {
+                medium: miden::call_conv::FuncArgPassingMedium::Stack,
+                felt_count: felts.len() as u32,
+            };
             unsafe {
                 /*
                 The actual macro-generated code will actually look like this:
@@ -162,7 +166,7 @@ impl MyWallet {
 
                  */
                 send_asset_extern(
-                    call_conv,
+                    call_conv.to_felt(),
                     felts[0],
                     felts[1],
                     felts[2],
@@ -208,11 +212,12 @@ impl MyWallet {
         sv14: miden::Felt,
         sv15: miden::Felt,
     ) {
-        if call_conv == 1.into() {
+        let call_conv = miden::call_conv::FuncArgPassingConv::from_felt(call_conv);
+        if call_conv.medium == miden::call_conv::FuncArgPassingMedium::Stack {
             /*
 
             The actual macro-generated code will actually look like this:
-            let len = call_conv.stack_felt_len;
+            let len = call_conv.felt_count;
             if len == 1 {
                 [sv1]
             } else if len == 2 {
@@ -254,7 +259,8 @@ impl MyWallet {
         sv14: miden::Felt,
         sv15: miden::Felt,
     ) {
-        if call_conv == 1.into() {
+        let call_conv = miden::call_conv::FuncArgPassingConv::from_felt(call_conv);
+        if call_conv.medium == miden::call_conv::FuncArgPassingMedium::Stack {
             let felts = [sv1, sv2, sv3, sv4, sv5, sv6, sv7];
             let bytes = miden::felts_to_bytes(felts.to_vec());
 

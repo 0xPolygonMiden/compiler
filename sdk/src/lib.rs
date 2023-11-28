@@ -18,6 +18,8 @@ pub use note::Tag;
 pub use serialization::bytes_to_felts;
 pub use serialization::felts_to_bytes;
 
+pub mod call_conv;
+
 pub mod account;
 
 pub mod eoa;

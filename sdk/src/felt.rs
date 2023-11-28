@@ -30,3 +30,9 @@ impl From<u64> for Felt {
         Self(value)
     }
 }
+
+impl From<Felt> for u64 {
+    fn from(value: Felt) -> Self {
+        value.0
+    }
+}
