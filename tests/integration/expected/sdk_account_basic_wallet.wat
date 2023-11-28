@@ -4146,7 +4146,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $basic_wallet::MyWallet::receive_asset (;62;) (type 1) (param i32 i32)
+  (func $basic_wallet::MyWallet::add_asset (;62;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 48
@@ -4261,7 +4261,7 @@
       local.get 17
       i32.const 72
       i32.add
-      call $basic_wallet::MyWallet::receive_asset
+      call $basic_wallet::MyWallet::add_asset
       local.get 17
       i32.const 20
       i32.add

@@ -10,8 +10,6 @@ static A: dlmalloc::GlobalDlmalloc = dlmalloc::GlobalDlmalloc;
 
 extern crate alloc;
 
-use miden::account;
-use miden::sat::tx;
 use miden::Asset;
 use miden::Recipient;
 use miden::Tag;
@@ -26,17 +24,27 @@ pub struct MyWallet;
 #[cfg(not(feature = "build_notes"))]
 impl MyWallet {
     pub fn receive_asset(&self, asset: Asset) {
-        account::add_asset(asset);
+        self.add_asset(asset);
     }
 
     pub fn send_asset(&self, asset: Asset, tag: Tag, recipient: Recipient) {
-        let asset = account::remove_asset(asset);
-        tx::create_note(asset, tag, recipient);
+        let asset = self.remove_asset(asset);
+        miden::sat::tx::create_note(asset, tag, recipient);
     }
 }
 
 // Macros-generated code
 // ------------------------------------------------------------------------------------------------
+
+impl MyWallet {
+    pub fn add_asset(&self, asset: Asset) {
+        miden::account::add_asset(asset);
+    }
+
+    pub fn remove_asset(&self, asset: Asset) -> Asset {
+        miden::account::remove_asset(asset)
+    }
+}
 
 // To be compiled with `cargo build --features build_notes` to build a note's side of the account code.
 #[cfg(feature = "build_notes")]
