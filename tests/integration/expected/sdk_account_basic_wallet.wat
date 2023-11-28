@@ -1,21 +1,25 @@
 (module
   (type (;0;) (func (param i32 i32 i32) (result i32)))
   (type (;1;) (func (param i32 i32)))
-  (type (;2;) (func (param i32 i32 i32)))
-  (type (;3;) (func (param i32 i32 i32 i32)))
-  (type (;4;) (func (param i32 i32) (result i32)))
-  (type (;5;) (func (param i32) (result i32)))
-  (type (;6;) (func (param i32 i32 i32 i32) (result i32)))
-  (type (;7;) (func (param i32)))
-  (type (;8;) (func (param i32 i64)))
-  (type (;9;) (func (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)))
-  (type (;10;) (func (result i32)))
-  (type (;11;) (func))
-  (type (;12;) (func (param i64) (result i64)))
+  (type (;2;) (func (param i32 i64 i32)))
+  (type (;3;) (func (param i32 i32 i32)))
+  (type (;4;) (func (param i32 i32 i32 i32)))
+  (type (;5;) (func (param i32 i32) (result i32)))
+  (type (;6;) (func (param i32) (result i32)))
+  (type (;7;) (func (param i32 i32 i32 i32) (result i32)))
+  (type (;8;) (func (param i32)))
+  (type (;9;) (func (param i32 i64)))
+  (type (;10;) (func (param i32 i32 i64 i32)))
+  (type (;11;) (func (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)))
+  (type (;12;) (func (result i32)))
+  (type (;13;) (func))
+  (type (;14;) (func (param i64) (result i64)))
   (import "env" "memcpy" (func $memcpy (;0;) (type 0)))
   (import "env" "memset" (func $memset (;1;) (type 0)))
   (import "env" "miden::sat::account::add_asset" (func $miden::sat::account::add_asset (;2;) (type 1)))
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::replace_dv (;3;) (type 2) (param i32 i32 i32)
+  (import "env" "miden::sat::account::remove_asset" (func $miden::sat::account::remove_asset (;3;) (type 1)))
+  (import "env" "miden::sat::tx::create_note" (func $miden::sat::tx::create_note (;4;) (type 2)))
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::replace_dv (;5;) (type 3) (param i32 i32 i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -36,7 +40,7 @@
     local.get 2
     i32.store offset=416
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::insert_small_chunk (;4;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::insert_small_chunk (;6;) (type 3) (param i32 i32 i32)
     (local i32 i32)
     local.get 0
     local.get 2
@@ -86,7 +90,7 @@
     local.get 0
     i32.store offset=8
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::add_segment (;5;) (type 3) (param i32 i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::add_segment (;7;) (type 4) (param i32 i32 i32 i32)
     (local i32 i32 i32 i32 i32 i32 i64)
     local.get 0
     local.get 0
@@ -204,7 +208,7 @@
       call $dlmalloc::dlmalloc::Dlmalloc<A>::insert_chunk
     end
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::segment_holding (;6;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::segment_holding (;8;) (type 5) (param i32 i32) (result i32)
     local.get 0
     i32.const 128
     i32.add
@@ -234,19 +238,19 @@
     end
     local.get 0
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::align_offset_usize (;7;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::align_offset_usize (;9;) (type 5) (param i32 i32) (result i32)
     local.get 1
     i32.const 8
     call $dlmalloc::dlmalloc::align_up
     local.get 1
     i32.sub
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::min_chunk_size (;8;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::min_chunk_size (;10;) (type 6) (param i32) (result i32)
     i32.const 16
     i32.const 8
     call $dlmalloc::dlmalloc::align_up
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::top_foot_size (;9;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::top_foot_size (;11;) (type 6) (param i32) (result i32)
     (local i32)
     local.get 1
     call $dlmalloc::dlmalloc::Chunk::mem_offset
@@ -259,7 +263,7 @@
     call $dlmalloc::dlmalloc::Dlmalloc<A>::min_chunk_size
     i32.add
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::init_top (;10;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::init_top (;12;) (type 3) (param i32 i32 i32)
     (local i32)
     local.get 1
     local.get 0
@@ -297,7 +301,7 @@
     local.get 3
     i32.store offset=4
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::insert_chunk (;11;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::insert_chunk (;13;) (type 3) (param i32 i32 i32)
     block ;; label = @1
       local.get 2
       i32.const 256
@@ -314,7 +318,7 @@
     local.get 2
     call $dlmalloc::dlmalloc::Dlmalloc<A>::insert_small_chunk
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::max_request (;12;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::max_request (;14;) (type 6) (param i32) (result i32)
     (local i32 i32)
     local.get 1
     call $dlmalloc::dlmalloc::Dlmalloc<A>::top_foot_size
@@ -339,21 +343,21 @@
     i32.lt_u
     select
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::min_request (;13;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::min_request (;15;) (type 6) (param i32) (result i32)
     (local i32)
     local.get 1
     call $dlmalloc::dlmalloc::Dlmalloc<A>::min_chunk_size
     i32.const -5
     i32.add
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::pad_request (;14;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::pad_request (;16;) (type 5) (param i32 i32) (result i32)
     local.get 1
     i32.const 4
     i32.add
     i32.const 8
     call $dlmalloc::dlmalloc::align_up
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk (;15;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::insert_large_chunk (;17;) (type 3) (param i32 i32 i32)
     (local i32 i32 i32 i32 i32)
     local.get 1
     i64.const 0
@@ -470,7 +474,7 @@
     local.get 5
     i32.store offset=12
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::request2size (;16;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::request2size (;18;) (type 5) (param i32 i32) (result i32)
     block ;; label = @1
       local.get 1
       call $dlmalloc::dlmalloc::Dlmalloc<A>::min_request
@@ -485,7 +489,7 @@
     local.get 1
     call $dlmalloc::dlmalloc::Dlmalloc<A>::min_chunk_size
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_chunk (;17;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_chunk (;19;) (type 3) (param i32 i32 i32)
     block ;; label = @1
       local.get 2
       i32.const 256
@@ -501,7 +505,7 @@
     local.get 2
     call $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_small_chunk
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk (;18;) (type 1) (param i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_large_chunk (;20;) (type 1) (param i32 i32)
     (local i32 i32 i32 i32 i32)
     local.get 1
     i32.load offset=24
@@ -662,7 +666,7 @@
       i32.store offset=24
     end
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_small_chunk (;19;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_small_chunk (;21;) (type 3) (param i32 i32 i32)
     (local i32)
     block ;; label = @1
       local.get 1
@@ -692,7 +696,7 @@
     i32.and
     i32.store offset=408
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk (;20;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::dispose_chunk (;22;) (type 3) (param i32 i32 i32)
     (local i32 i32)
     local.get 1
     local.get 2
@@ -861,7 +865,7 @@
     local.get 2
     call $dlmalloc::dlmalloc::Dlmalloc<A>::insert_chunk
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::prepend_alloc (;21;) (type 6) (param i32 i32 i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::prepend_alloc (;23;) (type 7) (param i32 i32 i32 i32) (result i32)
     (local i32 i32)
     local.get 2
     local.get 1
@@ -961,7 +965,7 @@
     local.get 1
     call $dlmalloc::dlmalloc::Chunk::to_mem
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::align_as_chunk (;22;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::align_as_chunk (;24;) (type 5) (param i32 i32) (result i32)
     local.get 1
     local.get 1
     local.get 1
@@ -969,7 +973,7 @@
     call $dlmalloc::dlmalloc::Dlmalloc<A>::align_offset_usize
     i32.add
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::tmalloc_large (;23;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::tmalloc_large (;25;) (type 5) (param i32 i32) (result i32)
     (local i32 i32 i32 i32 i32 i32 i32)
     i32.const 0
     local.set 2
@@ -1190,7 +1194,7 @@
       br 0 (;@1;)
     end
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::compute_tree_index (;24;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::compute_tree_index (;26;) (type 5) (param i32 i32) (result i32)
     (local i32)
     i32.const 0
     local.set 2
@@ -1226,7 +1230,7 @@
     end
     local.get 2
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::tmalloc_small (;25;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::tmalloc_small (;27;) (type 5) (param i32 i32) (result i32)
     (local i32 i32 i32 i32)
     local.get 0
     local.get 0
@@ -1313,7 +1317,7 @@
     local.get 2
     call $dlmalloc::dlmalloc::Chunk::to_mem
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::has_segment_link (;26;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::has_segment_link (;28;) (type 5) (param i32 i32) (result i32)
     local.get 0
     i32.const 128
     i32.add
@@ -1341,7 +1345,7 @@
       br 0 (;@1;)
     end
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::calloc_must_clear (;27;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::calloc_must_clear (;29;) (type 5) (param i32 i32) (result i32)
     (local i32)
     i32.const 1
     local.set 2
@@ -1359,7 +1363,7 @@
     end
     local.get 2
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments (;28;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::release_unused_segments (;30;) (type 6) (param i32) (result i32)
     (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
     local.get 0
     i32.const 128
@@ -1490,7 +1494,7 @@
     i32.store offset=448
     local.get 4
   )
-  (func $dlmalloc::dlmalloc::Segment::can_release_part (;29;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Segment::can_release_part (;31;) (type 5) (param i32 i32) (result i32)
     local.get 0
     local.get 1
     i32.load offset=12
@@ -1498,7 +1502,7 @@
     i32.shr_u
     call $<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_first_small_chunk (;30;) (type 3) (param i32 i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::unlink_first_small_chunk (;32;) (type 4) (param i32 i32 i32 i32)
     block ;; label = @1
       local.get 2
       i32.load offset=8
@@ -1523,7 +1527,7 @@
     i32.and
     i32.store offset=408
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::free (;31;) (type 1) (param i32 i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::free (;33;) (type 1) (param i32 i32)
     (local i32 i32 i32)
     local.get 1
     call $dlmalloc::dlmalloc::Chunk::from_mem
@@ -1733,7 +1737,7 @@
       call $dlmalloc::dlmalloc::Dlmalloc<A>::insert_small_chunk
     end
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::sys_trim (;32;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::sys_trim (;34;) (type 5) (param i32 i32) (result i32)
     (local i32 i32 i32 i32)
     i32.const 0
     local.set 2
@@ -1856,7 +1860,7 @@
     end
     local.get 2
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::malloc (;33;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::malloc (;35;) (type 5) (param i32 i32) (result i32)
     (local i32 i32 i32)
     block ;; label = @1
       block ;; label = @2
@@ -2100,7 +2104,7 @@
     local.get 2
     call $dlmalloc::dlmalloc::Chunk::to_mem
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::sys_alloc (;34;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::sys_alloc (;36;) (type 5) (param i32 i32) (result i32)
     (local i32 i32 i32 i32 i32 i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -2358,7 +2362,7 @@
     global.set $__stack_pointer
     local.get 4
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::memalign (;35;) (type 0) (param i32 i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::memalign (;37;) (type 0) (param i32 i32 i32) (result i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 1
@@ -2510,7 +2514,7 @@
     end
     local.get 3
   )
-  (func $dlmalloc::dlmalloc::Dlmalloc<A>::init_bins (;36;) (type 7) (param i32)
+  (func $dlmalloc::dlmalloc::Dlmalloc<A>::init_bins (;38;) (type 8) (param i32)
     (local i32 i32 i32)
     i32.const 0
     local.set 1
@@ -2545,7 +2549,7 @@
       br 0 (;@1;)
     end
   )
-  (func $<miden::asset::_::<impl serde::de::Deserialize for miden::asset::Asset>::deserialize::__Visitor as serde::de::Visitor>::visit_enum (;37;) (type 1) (param i32 i32)
+  (func $<miden::asset::_::<impl serde::de::Deserialize for miden::asset::Asset>::deserialize::__Visitor as serde::de::Visitor>::visit_enum (;39;) (type 1) (param i32 i32)
     (local i32 i32 i32 i32 i32 i32)
     global.get $__stack_pointer
     i32.const 96
@@ -2682,7 +2686,7 @@
       i32.const 16
       i32.add
       local.get 1
-      call $miden::asset::_::<impl serde::de::Deserialize for miden::asset::NonFungibleAsset>::deserialize
+      call $miden::note::_::<impl serde::de::Deserialize for miden::note::Recipient>::deserialize
       block ;; label = @2
         block ;; label = @3
           local.get 2
@@ -2745,7 +2749,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<postcard::de::flavors::Slice as postcard::de::flavors::Flavor>::pop (;38;) (type 1) (param i32 i32)
+  (func $<postcard::de::flavors::Slice as postcard::de::flavors::Flavor>::pop (;40;) (type 1) (param i32 i32)
     (local i32 i32)
     block ;; label = @1
       block ;; label = @2
@@ -2778,7 +2782,7 @@
     local.get 3
     i32.store8
   )
-  (func $<serde::de::value::U32Deserializer<E> as serde::de::Deserializer>::deserialize_any (;39;) (type 1) (param i32 i32)
+  (func $<serde::de::value::U32Deserializer<E> as serde::de::Deserializer>::deserialize_any (;41;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -2807,7 +2811,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden::asset::_::<impl serde::de::Deserialize for miden::asset::FungibleAsset>::deserialize (;40;) (type 1) (param i32 i32)
+  (func $miden::asset::_::<impl serde::de::Deserialize for miden::asset::FungibleAsset>::deserialize (;42;) (type 1) (param i32 i32)
     (local i32 i64)
     global.get $__stack_pointer
     i32.const 16
@@ -2816,7 +2820,7 @@
     global.set $__stack_pointer
     local.get 2
     local.get 1
-    call $miden::account::_::<impl serde::de::Deserialize for miden::account::AccountId>::deserialize
+    call $miden::note::_::<impl serde::de::Deserialize for miden::note::Tag>::deserialize
     block ;; label = @1
       block ;; label = @2
         block ;; label = @3
@@ -2868,7 +2872,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden::asset::_::<impl serde::de::Deserialize for miden::asset::NonFungibleAsset>::deserialize (;41;) (type 1) (param i32 i32)
+  (func $miden::note::_::<impl serde::de::Deserialize for miden::note::Recipient>::deserialize (;43;) (type 1) (param i32 i32)
     (local i32 i64 i64 i64 i64)
     global.get $__stack_pointer
     i32.const 80
@@ -2960,7 +2964,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<miden::asset::_::<impl serde::de::Deserialize for miden::asset::Asset>::deserialize::__FieldVisitor as serde::de::Visitor>::visit_u64 (;42;) (type 8) (param i32 i64)
+  (func $<miden::asset::_::<impl serde::de::Deserialize for miden::asset::Asset>::deserialize::__FieldVisitor as serde::de::Visitor>::visit_u64 (;44;) (type 9) (param i32 i64)
     (local i32 i32)
     block ;; label = @1
       block ;; label = @2
@@ -2993,7 +2997,13 @@
     local.get 2
     i32.store8
   )
-  (func $alloc::raw_vec::RawVec<T,A>::allocate_in (;43;) (type 2) (param i32 i32 i32)
+  (func $core::ptr::drop_in_place<alloc::vec::Vec<u8>> (;45;) (type 8) (param i32)
+    local.get 0
+    call $<alloc::vec::Vec<T,A> as core::ops::drop::Drop>::drop
+    local.get 0
+    call $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop
+  )
+  (func $alloc::raw_vec::RawVec<T,A>::allocate_in (;46;) (type 3) (param i32 i32 i32)
     (local i32 i32)
     i32.const 8
     local.set 3
@@ -3055,7 +3065,7 @@
     call $alloc::alloc::handle_alloc_error
     unreachable
   )
-  (func $__rust_alloc (;44;) (type 4) (param i32 i32) (result i32)
+  (func $__rust_alloc (;47;) (type 5) (param i32 i32) (result i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3081,7 +3091,7 @@
     global.set $__stack_pointer
     local.get 1
   )
-  (func $__rust_alloc_zeroed (;45;) (type 4) (param i32 i32) (result i32)
+  (func $__rust_alloc_zeroed (;48;) (type 5) (param i32 i32) (result i32)
     (local i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3122,7 +3132,7 @@
     global.set $__stack_pointer
     local.get 1
   )
-  (func $miden::felt::_::<impl serde::de::Deserialize for miden::felt::Felt>::deserialize (;46;) (type 1) (param i32 i32)
+  (func $miden::felt::_::<impl serde::de::Deserialize for miden::felt::Felt>::deserialize (;49;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3160,7 +3170,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $serde::de::impls::<impl serde::de::Deserialize for u64>::deserialize (;47;) (type 1) (param i32 i32)
+  (func $serde::de::impls::<impl serde::de::Deserialize for u64>::deserialize (;50;) (type 1) (param i32 i32)
     (local i32 i64 i64 i32 i32 i64)
     global.get $__stack_pointer
     i32.const 16
@@ -3252,7 +3262,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden::felt::_::<impl serde::de::Deserialize for miden::felt::Word>::deserialize (;48;) (type 1) (param i32 i32)
+  (func $miden::felt::_::<impl serde::de::Deserialize for miden::felt::Word>::deserialize (;51;) (type 1) (param i32 i32)
     (local i32 i64 i64 i64 i64)
     global.get $__stack_pointer
     i32.const 80
@@ -3344,7 +3354,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $serde::de::impls::<impl serde::de::Deserialize for [T; 4]>::deserialize (;49;) (type 1) (param i32 i32)
+  (func $serde::de::impls::<impl serde::de::Deserialize for [T; 4]>::deserialize (;52;) (type 1) (param i32 i32)
     (local i32 i64 i64 i64 i64)
     global.get $__stack_pointer
     i32.const 80
@@ -3528,7 +3538,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden::account::_::<impl serde::de::Deserialize for miden::account::AccountId>::deserialize (;50;) (type 1) (param i32 i32)
+  (func $miden::note::_::<impl serde::de::Deserialize for miden::note::Tag>::deserialize (;53;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3566,7 +3576,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $serde::de::SeqAccess::next_element (;51;) (type 1) (param i32 i32)
+  (func $serde::de::SeqAccess::next_element (;54;) (type 1) (param i32 i32)
     (local i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3621,7 +3631,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $serde::de::Visitor::visit_u32 (;52;) (type 1) (param i32 i32)
+  (func $serde::de::Visitor::visit_u32 (;55;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3651,7 +3661,80 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $dlmalloc::Dlmalloc<A>::malloc (;53;) (type 0) (param i32 i32 i32) (result i32)
+  (func $serde::de::SeqAccess::next_element (;56;) (type 1) (param i32 i32)
+    (local i32 i32)
+    global.get $__stack_pointer
+    i32.const 48
+    i32.sub
+    local.tee 2
+    global.set $__stack_pointer
+    block ;; label = @1
+      block ;; label = @2
+        local.get 1
+        i32.load offset=4
+        local.tee 3
+        br_if 0 (;@2;)
+        local.get 0
+        i32.const 2
+        i32.store
+        br 1 (;@1;)
+      end
+      local.get 1
+      local.get 3
+      i32.const -1
+      i32.add
+      i32.store offset=4
+      local.get 2
+      i32.const 8
+      i32.add
+      local.get 1
+      i32.load
+      call $<miden::asset::_::<impl serde::de::Deserialize for miden::asset::Asset>::deserialize::__Visitor as serde::de::Visitor>::visit_enum
+      block ;; label = @2
+        local.get 2
+        i32.load offset=8
+        local.tee 1
+        i32.const 2
+        i32.eq
+        br_if 0 (;@2;)
+        local.get 2
+        i32.load8_u offset=12
+        local.set 3
+        local.get 0
+        i32.const 5
+        i32.add
+        local.get 2
+        i32.const 8
+        i32.add
+        i32.const 5
+        i32.or
+        i32.const 35
+        call $memcpy
+        drop
+        local.get 0
+        local.get 3
+        i32.store8 offset=4
+        local.get 0
+        local.get 1
+        i32.store
+        br 1 (;@1;)
+      end
+      local.get 2
+      i32.load8_u offset=12
+      local.set 1
+      local.get 0
+      i32.const 3
+      i32.store
+      local.get 0
+      local.get 1
+      i32.store8 offset=4
+    end
+    local.get 2
+    i32.const 48
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $dlmalloc::Dlmalloc<A>::malloc (;57;) (type 0) (param i32 i32 i32) (result i32)
     block ;; label = @1
       local.get 2
       i32.const 9
@@ -3667,7 +3750,257 @@
     local.get 1
     call $dlmalloc::dlmalloc::Dlmalloc<A>::malloc
   )
-  (func $postcard::de::from_bytes (;54;) (type 2) (param i32 i32 i32)
+  (func $postcard::de::from_bytes (;58;) (type 3) (param i32 i32 i32)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 96
+    i32.sub
+    local.tee 3
+    global.set $__stack_pointer
+    local.get 3
+    local.get 1
+    local.get 2
+    call $postcard::de::deserializer::Deserializer<postcard::de::flavors::Slice>::from_bytes
+    local.get 3
+    local.get 3
+    i64.load
+    i64.store offset=8 align=4
+    local.get 3
+    i32.const 16
+    i32.add
+    local.get 3
+    i32.const 8
+    i32.add
+    call $basic_wallet::MyWallet::send_asset_account_export::_::<impl serde::de::Deserialize for basic_wallet::MyWallet::send_asset_account_export::Args>::deserialize
+    block ;; label = @1
+      block ;; label = @2
+        local.get 3
+        i32.load offset=16
+        local.tee 2
+        i32.const 2
+        i32.eq
+        br_if 0 (;@2;)
+        local.get 3
+        i32.load8_u offset=20
+        local.set 1
+        local.get 0
+        i32.const 5
+        i32.add
+        local.get 3
+        i32.const 16
+        i32.add
+        i32.const 5
+        i32.or
+        i32.const 75
+        call $memcpy
+        drop
+        local.get 0
+        local.get 1
+        i32.store8 offset=4
+        br 1 (;@1;)
+      end
+      local.get 0
+      local.get 3
+      i32.load8_u offset=20
+      i32.store8 offset=4
+    end
+    local.get 0
+    local.get 2
+    i32.store
+    local.get 3
+    i32.const 96
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $basic_wallet::MyWallet::send_asset_account_export::_::<impl serde::de::Deserialize for basic_wallet::MyWallet::send_asset_account_export::Args>::deserialize (;59;) (type 1) (param i32 i32)
+    (local i32 i32 i32 i32 i32 i64)
+    global.get $__stack_pointer
+    i32.const 96
+    i32.sub
+    local.tee 2
+    global.set $__stack_pointer
+    local.get 2
+    local.get 1
+    i32.store offset=12
+    local.get 2
+    i32.const 3
+    i32.store offset=16
+    local.get 2
+    i32.const 56
+    i32.add
+    local.get 2
+    i32.const 12
+    i32.add
+    call $serde::de::SeqAccess::next_element
+    block ;; label = @1
+      block ;; label = @2
+        block ;; label = @3
+          block ;; label = @4
+            block ;; label = @5
+              local.get 2
+              i32.load offset=56
+              local.tee 3
+              i32.const 3
+              i32.eq
+              br_if 0 (;@5;)
+              local.get 2
+              i32.load8_u offset=60
+              local.set 4
+              local.get 2
+              i32.const 21
+              i32.add
+              local.get 2
+              i32.const 56
+              i32.add
+              i32.const 5
+              i32.or
+              i32.const 35
+              call $memcpy
+              drop
+              i32.const 14
+              local.set 1
+              local.get 3
+              i32.const 2
+              i32.eq
+              br_if 1 (;@4;)
+              local.get 2
+              i32.load offset=16
+              local.tee 1
+              i32.eqz
+              br_if 2 (;@3;)
+              local.get 2
+              i32.const 56
+              i32.add
+              local.get 2
+              i32.load offset=12
+              local.tee 5
+              call $miden::note::_::<impl serde::de::Deserialize for miden::note::Tag>::deserialize
+              local.get 2
+              i32.load8_u offset=56
+              i32.eqz
+              br_if 3 (;@2;)
+              local.get 2
+              i32.load8_u offset=57
+              local.set 1
+              local.get 0
+              i32.const 2
+              i32.store
+              local.get 0
+              local.get 1
+              i32.store8 offset=4
+              br 4 (;@1;)
+            end
+            local.get 2
+            i32.load8_u offset=60
+            local.set 1
+          end
+          local.get 0
+          i32.const 2
+          i32.store
+          local.get 0
+          local.get 1
+          i32.store8 offset=4
+          br 2 (;@1;)
+        end
+        local.get 0
+        i32.const 2
+        i32.store
+        local.get 0
+        i32.const 14
+        i32.store8 offset=4
+        br 1 (;@1;)
+      end
+      i32.const 14
+      local.set 6
+      block ;; label = @2
+        block ;; label = @3
+          local.get 1
+          i32.const 1
+          i32.eq
+          br_if 0 (;@3;)
+          local.get 2
+          i64.load offset=64
+          local.set 7
+          local.get 2
+          i32.const 56
+          i32.add
+          local.get 5
+          call $miden::note::_::<impl serde::de::Deserialize for miden::note::Recipient>::deserialize
+          local.get 2
+          i32.load8_u offset=56
+          i32.eqz
+          br_if 1 (;@2;)
+          local.get 2
+          i32.load8_u offset=57
+          local.set 6
+        end
+        local.get 0
+        i32.const 2
+        i32.store
+        local.get 0
+        local.get 6
+        i32.store8 offset=4
+        br 1 (;@1;)
+      end
+      local.get 0
+      local.get 2
+      i64.load offset=65 align=1
+      i64.store offset=49 align=1
+      local.get 0
+      i32.const 57
+      i32.add
+      local.get 2
+      i32.const 73
+      i32.add
+      i64.load align=1
+      i64.store align=1
+      local.get 0
+      i32.const 65
+      i32.add
+      local.get 2
+      i32.const 81
+      i32.add
+      i64.load align=1
+      i64.store align=1
+      local.get 0
+      i32.const 72
+      i32.add
+      local.get 2
+      i32.const 88
+      i32.add
+      i64.load align=1
+      i64.store align=1
+      local.get 2
+      i32.load8_u offset=64
+      local.set 1
+      local.get 0
+      i32.const 5
+      i32.add
+      local.get 2
+      i32.const 21
+      i32.add
+      i32.const 35
+      call $memcpy
+      drop
+      local.get 0
+      local.get 1
+      i32.store8 offset=48
+      local.get 0
+      local.get 7
+      i64.store offset=40
+      local.get 0
+      local.get 4
+      i32.store8 offset=4
+      local.get 0
+      local.get 3
+      i32.store
+    end
+    local.get 2
+    i32.const 96
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $postcard::de::from_bytes (;60;) (type 3) (param i32 i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 64
@@ -3731,59 +4064,89 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $basic_wallet::MyWallet::receive_asset_account_export::_::<impl serde::de::Deserialize for basic_wallet::MyWallet::receive_asset_account_export::Args>::deserialize (;55;) (type 1) (param i32 i32)
-    (local i32 i32)
+  (func $basic_wallet::MyWallet::receive_asset_account_export::_::<impl serde::de::Deserialize for basic_wallet::MyWallet::receive_asset_account_export::Args>::deserialize (;61;) (type 1) (param i32 i32)
+    (local i32 i32 i32)
     global.get $__stack_pointer
-    i32.const 48
+    i32.const 96
     i32.sub
     local.tee 2
     global.set $__stack_pointer
     local.get 2
+    i32.const 1
+    i32.store offset=12
+    local.get 2
+    local.get 1
+    i32.store offset=8
+    local.get 2
+    i32.const 16
+    i32.add
+    local.get 2
     i32.const 8
     i32.add
-    local.get 1
-    call $<miden::asset::_::<impl serde::de::Deserialize for miden::asset::Asset>::deserialize::__Visitor as serde::de::Visitor>::visit_enum
+    call $serde::de::SeqAccess::next_element
     block ;; label = @1
       block ;; label = @2
+        block ;; label = @3
+          local.get 2
+          i32.load offset=16
+          local.tee 1
+          i32.const 3
+          i32.eq
+          br_if 0 (;@3;)
+          local.get 2
+          i32.load8_u offset=20
+          local.set 3
+          local.get 2
+          i32.const 61
+          i32.add
+          local.get 2
+          i32.const 16
+          i32.add
+          i32.const 5
+          i32.or
+          i32.const 35
+          call $memcpy
+          drop
+          i32.const 14
+          local.set 4
+          local.get 1
+          i32.const 2
+          i32.eq
+          br_if 1 (;@2;)
+          local.get 0
+          i32.const 5
+          i32.add
+          local.get 2
+          i32.const 61
+          i32.add
+          i32.const 35
+          call $memcpy
+          drop
+          local.get 0
+          local.get 3
+          i32.store8 offset=4
+          local.get 0
+          local.get 1
+          i32.store
+          br 2 (;@1;)
+        end
         local.get 2
-        i32.load offset=8
-        local.tee 1
-        i32.const 2
-        i32.eq
-        br_if 0 (;@2;)
-        local.get 2
-        i32.load8_u offset=12
-        local.set 3
-        local.get 0
-        i32.const 5
-        i32.add
-        local.get 2
-        i32.const 8
-        i32.add
-        i32.const 5
-        i32.or
-        i32.const 35
-        call $memcpy
-        drop
-        local.get 0
-        local.get 3
-        i32.store8 offset=4
-        br 1 (;@1;)
+        i32.load8_u offset=20
+        local.set 4
       end
       local.get 0
-      local.get 2
-      i32.load8_u offset=12
+      i32.const 2
+      i32.store
+      local.get 0
+      local.get 4
       i32.store8 offset=4
     end
-    local.get 0
-    local.get 1
-    i32.store
     local.get 2
-    i32.const 48
+    i32.const 96
     i32.add
     global.set $__stack_pointer
   )
-  (func $basic_wallet::MyWallet::receive_asset (;56;) (type 1) (param i32 i32)
+  (func $basic_wallet::MyWallet::receive_asset (;62;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 48
@@ -3800,7 +4163,30 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $my_wallet::receive_asset (;57;) (type 9) (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)
+  (func $basic_wallet::MyWallet::send_asset (;63;) (type 10) (param i32 i32 i64 i32)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 48
+    i32.sub
+    local.tee 4
+    global.set $__stack_pointer
+    local.get 4
+    i32.const 8
+    i32.add
+    local.get 1
+    call $miden::account::remove_asset
+    local.get 4
+    i32.const 8
+    i32.add
+    local.get 2
+    local.get 3
+    call $miden::sat::tx::create_note
+    local.get 4
+    i32.const 48
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $my_wallet::receive_asset (;64;) (type 11) (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)
     (local i32 i32 i32)
     global.get $__stack_pointer
     i32.const 112
@@ -3843,47 +4229,43 @@
       local.get 19
       i32.store offset=72
       local.get 17
-      i32.const 60
+      i32.const 20
       i32.add
       local.get 17
       i32.const 72
       i32.add
       call $miden::serialization::bytes_to_felts
       local.get 17
-      i32.const 72
+      i32.const 32
       i32.add
       local.get 17
-      i32.load offset=60
+      i32.load offset=20
       local.get 17
-      i32.load offset=68
+      i32.load offset=28
       call $postcard::de::from_bytes
       local.get 17
-      i32.load offset=72
+      i32.load offset=32
       i32.const 2
       i32.eq
       br_if 0 (;@1;)
       local.get 17
-      i32.const 16
+      i32.const 72
       i32.add
       local.get 17
-      i32.const 72
+      i32.const 32
       i32.add
       i32.const 40
       call $memcpy
       drop
       local.get 17
-      i32.const 60
-      i32.add
-      call $<alloc::vec::Vec<T,A> as core::ops::drop::Drop>::drop
       local.get 17
-      i32.const 60
-      i32.add
-      call $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop
-      local.get 17
-      local.get 17
-      i32.const 16
+      i32.const 72
       i32.add
       call $basic_wallet::MyWallet::receive_asset
+      local.get 17
+      i32.const 20
+      i32.add
+      call $core::ptr::drop_in_place<alloc::vec::Vec<u8>>
       local.get 17
       i32.const 112
       i32.add
@@ -3893,7 +4275,141 @@
     unreachable
     unreachable
   )
-  (func $__rust_dealloc (;58;) (type 2) (param i32 i32 i32)
+  (func $my_wallet::send_asset (;65;) (type 11) (param i32 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64 i64)
+    (local i32 i32 i32)
+    global.get $__stack_pointer
+    i32.const 176
+    i32.sub
+    local.tee 17
+    global.set $__stack_pointer
+    block ;; label = @1
+      i64.const 1
+      call $miden::note::Tag::new
+      local.get 1
+      i64.ne
+      br_if 0 (;@1;)
+      local.get 17
+      i32.const 7
+      i32.const 0
+      call $alloc::raw_vec::RawVec<T,A>::allocate_in
+      local.get 17
+      i32.load offset=4
+      local.set 18
+      local.get 17
+      i32.load
+      local.tee 19
+      local.get 3
+      i64.store offset=8
+      local.get 19
+      local.get 2
+      i64.store
+      local.get 19
+      local.get 8
+      i64.store offset=48
+      local.get 19
+      local.get 7
+      i64.store offset=40
+      local.get 19
+      local.get 6
+      i64.store offset=32
+      local.get 19
+      local.get 5
+      i64.store offset=24
+      local.get 19
+      local.get 4
+      i64.store offset=16
+      local.get 17
+      i32.const 7
+      i32.store offset=32
+      local.get 17
+      local.get 18
+      i32.store offset=28
+      local.get 17
+      local.get 19
+      i32.store offset=24
+      local.get 17
+      i32.const 12
+      i32.add
+      local.get 17
+      i32.const 24
+      i32.add
+      call $miden::serialization::bytes_to_felts
+      local.get 17
+      i32.const 24
+      i32.add
+      local.get 17
+      i32.load offset=12
+      local.get 17
+      i32.load offset=20
+      call $postcard::de::from_bytes
+      local.get 17
+      i32.load offset=24
+      i32.const 2
+      i32.eq
+      br_if 0 (;@1;)
+      local.get 17
+      i32.const 104
+      i32.add
+      local.get 17
+      i32.const 24
+      i32.add
+      i32.const 40
+      call $memcpy
+      drop
+      local.get 17
+      i64.load offset=64
+      local.set 1
+      local.get 17
+      i32.const 168
+      i32.add
+      local.get 17
+      i32.const 96
+      i32.add
+      i64.load
+      i64.store
+      local.get 17
+      i32.const 160
+      i32.add
+      local.get 17
+      i32.const 88
+      i32.add
+      i64.load
+      i64.store
+      local.get 17
+      i32.const 152
+      i32.add
+      local.get 17
+      i32.const 80
+      i32.add
+      i64.load
+      i64.store
+      local.get 17
+      local.get 17
+      i64.load offset=72
+      i64.store offset=144
+      local.get 17
+      local.get 17
+      i32.const 104
+      i32.add
+      local.get 1
+      local.get 17
+      i32.const 144
+      i32.add
+      call $basic_wallet::MyWallet::send_asset
+      local.get 17
+      i32.const 12
+      i32.add
+      call $core::ptr::drop_in_place<alloc::vec::Vec<u8>>
+      local.get 17
+      i32.const 176
+      i32.add
+      global.set $__stack_pointer
+      return
+    end
+    unreachable
+    unreachable
+  )
+  (func $__rust_dealloc (;66;) (type 3) (param i32 i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -3916,13 +4432,13 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $__rust_alloc_error_handler (;59;) (type 1) (param i32 i32)
+  (func $__rust_alloc_error_handler (;67;) (type 1) (param i32 i32)
     local.get 0
     local.get 1
     call $alloc::alloc::handle_alloc_error::ct_error
     return
   )
-  (func $postcard::de::deserializer::Deserializer<postcard::de::flavors::Slice>::from_bytes (;60;) (type 2) (param i32 i32 i32)
+  (func $postcard::de::deserializer::Deserializer<postcard::de::flavors::Slice>::from_bytes (;68;) (type 3) (param i32 i32 i32)
     local.get 0
     local.get 1
     local.get 2
@@ -3932,7 +4448,7 @@
     local.get 1
     i32.store
   )
-  (func $dlmalloc::dlmalloc::align_up (;61;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::align_up (;69;) (type 5) (param i32 i32) (result i32)
     local.get 0
     local.get 1
     i32.add
@@ -3943,7 +4459,7 @@
     i32.sub
     i32.and
   )
-  (func $dlmalloc::dlmalloc::left_bits (;62;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::left_bits (;70;) (type 6) (param i32) (result i32)
     local.get 0
     i32.const 1
     i32.shl
@@ -3953,14 +4469,14 @@
     i32.sub
     i32.or
   )
-  (func $dlmalloc::dlmalloc::least_bit (;63;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::least_bit (;71;) (type 6) (param i32) (result i32)
     i32.const 0
     local.get 0
     i32.sub
     local.get 0
     i32.and
   )
-  (func $dlmalloc::dlmalloc::leftshift_for_tree_index (;64;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::leftshift_for_tree_index (;72;) (type 6) (param i32) (result i32)
     i32.const 0
     i32.const 25
     local.get 0
@@ -3972,16 +4488,16 @@
     i32.eq
     select
   )
-  (func $dlmalloc::dlmalloc::Chunk::fencepost_head (;65;) (type 10) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::fencepost_head (;73;) (type 12) (result i32)
     i32.const 7
   )
-  (func $dlmalloc::dlmalloc::Chunk::size (;66;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::size (;74;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=4
     i32.const -8
     i32.and
   )
-  (func $dlmalloc::dlmalloc::Chunk::cinuse (;67;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::cinuse (;75;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load8_u offset=4
     i32.const 2
@@ -3989,13 +4505,13 @@
     i32.const 1
     i32.shr_u
   )
-  (func $dlmalloc::dlmalloc::Chunk::pinuse (;68;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::pinuse (;76;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=4
     i32.const 1
     i32.and
   )
-  (func $dlmalloc::dlmalloc::Chunk::inuse (;69;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::inuse (;77;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=4
     i32.const 3
@@ -4003,14 +4519,14 @@
     i32.const 1
     i32.ne
   )
-  (func $dlmalloc::dlmalloc::Chunk::mmapped (;70;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::mmapped (;78;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load8_u offset=4
     i32.const 3
     i32.and
     i32.eqz
   )
-  (func $dlmalloc::dlmalloc::Chunk::set_inuse (;71;) (type 1) (param i32 i32)
+  (func $dlmalloc::dlmalloc::Chunk::set_inuse (;79;) (type 1) (param i32 i32)
     local.get 0
     local.get 0
     i32.load offset=4
@@ -4031,7 +4547,7 @@
     i32.or
     i32.store offset=4
   )
-  (func $dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse (;72;) (type 1) (param i32 i32)
+  (func $dlmalloc::dlmalloc::Chunk::set_inuse_and_pinuse (;80;) (type 1) (param i32 i32)
     local.get 0
     local.get 1
     i32.const 3
@@ -4047,14 +4563,14 @@
     i32.or
     i32.store offset=4
   )
-  (func $dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk (;73;) (type 1) (param i32 i32)
+  (func $dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_inuse_chunk (;81;) (type 1) (param i32 i32)
     local.get 0
     local.get 1
     i32.const 3
     i32.or
     i32.store offset=4
   )
-  (func $dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk (;74;) (type 1) (param i32 i32)
+  (func $dlmalloc::dlmalloc::Chunk::set_size_and_pinuse_of_free_chunk (;82;) (type 1) (param i32 i32)
     local.get 0
     local.get 1
     i32.const 1
@@ -4066,7 +4582,7 @@
     local.get 1
     i32.store
   )
-  (func $dlmalloc::dlmalloc::Chunk::set_free_with_pinuse (;75;) (type 2) (param i32 i32 i32)
+  (func $dlmalloc::dlmalloc::Chunk::set_free_with_pinuse (;83;) (type 3) (param i32 i32 i32)
     local.get 2
     local.get 2
     i32.load offset=4
@@ -4084,30 +4600,30 @@
     local.get 1
     i32.store
   )
-  (func $dlmalloc::dlmalloc::Chunk::plus_offset (;76;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::plus_offset (;84;) (type 5) (param i32 i32) (result i32)
     local.get 0
     local.get 1
     i32.add
   )
-  (func $dlmalloc::dlmalloc::Chunk::minus_offset (;77;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::minus_offset (;85;) (type 5) (param i32 i32) (result i32)
     local.get 0
     local.get 1
     i32.sub
   )
-  (func $dlmalloc::dlmalloc::Chunk::to_mem (;78;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::to_mem (;86;) (type 6) (param i32) (result i32)
     local.get 0
     i32.const 8
     i32.add
   )
-  (func $dlmalloc::dlmalloc::Chunk::mem_offset (;79;) (type 10) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::mem_offset (;87;) (type 12) (result i32)
     i32.const 8
   )
-  (func $dlmalloc::dlmalloc::Chunk::from_mem (;80;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Chunk::from_mem (;88;) (type 6) (param i32) (result i32)
     local.get 0
     i32.const -8
     i32.add
   )
-  (func $dlmalloc::dlmalloc::TreeChunk::leftmost_child (;81;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::TreeChunk::leftmost_child (;89;) (type 6) (param i32) (result i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -4122,30 +4638,30 @@
     end
     local.get 1
   )
-  (func $dlmalloc::dlmalloc::TreeChunk::chunk (;82;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::TreeChunk::chunk (;90;) (type 6) (param i32) (result i32)
     local.get 0
   )
-  (func $dlmalloc::dlmalloc::TreeChunk::next (;83;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::TreeChunk::next (;91;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=12
   )
-  (func $dlmalloc::dlmalloc::TreeChunk::prev (;84;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::TreeChunk::prev (;92;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=8
   )
-  (func $dlmalloc::dlmalloc::Segment::is_extern (;85;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Segment::is_extern (;93;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=12
     i32.const 1
     i32.and
   )
-  (func $dlmalloc::dlmalloc::Segment::sys_flags (;86;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Segment::sys_flags (;94;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load offset=12
     i32.const 1
     i32.shr_u
   )
-  (func $dlmalloc::dlmalloc::Segment::holds (;87;) (type 4) (param i32 i32) (result i32)
+  (func $dlmalloc::dlmalloc::Segment::holds (;95;) (type 5) (param i32 i32) (result i32)
     (local i32 i32)
     i32.const 0
     local.set 2
@@ -4166,18 +4682,18 @@
     end
     local.get 2
   )
-  (func $dlmalloc::dlmalloc::Segment::top (;88;) (type 5) (param i32) (result i32)
+  (func $dlmalloc::dlmalloc::Segment::top (;96;) (type 6) (param i32) (result i32)
     local.get 0
     i32.load
     local.get 0
     i32.load offset=4
     i32.add
   )
-  (func $<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut (;89;) (type 5) (param i32) (result i32)
+  (func $<dlmalloc::global::Instance as core::ops::deref::DerefMut>::deref_mut (;97;) (type 6) (param i32) (result i32)
     i32.const 1048580
   )
-  (func $<dlmalloc::global::Instance as core::ops::drop::Drop>::drop (;90;) (type 7) (param i32))
-  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::alloc (;91;) (type 2) (param i32 i32 i32)
+  (func $<dlmalloc::global::Instance as core::ops::drop::Drop>::drop (;98;) (type 8) (param i32))
+  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::alloc (;99;) (type 3) (param i32 i32 i32)
     (local i32)
     local.get 2
     i32.const 16
@@ -4207,27 +4723,27 @@
     select
     i32.store
   )
-  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::free_part (;92;) (type 6) (param i32 i32 i32 i32) (result i32)
+  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::free_part (;100;) (type 7) (param i32 i32 i32 i32) (result i32)
     i32.const 0
   )
-  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::free (;93;) (type 0) (param i32 i32 i32) (result i32)
+  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::free (;101;) (type 0) (param i32 i32 i32) (result i32)
     i32.const 0
   )
-  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part (;94;) (type 4) (param i32 i32) (result i32)
+  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::can_release_part (;102;) (type 5) (param i32 i32) (result i32)
     i32.const 0
   )
-  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::allocates_zeros (;95;) (type 5) (param i32) (result i32)
+  (func $<dlmalloc::sys::System as dlmalloc::Allocator>::allocates_zeros (;103;) (type 6) (param i32) (result i32)
     i32.const 1
   )
-  (func $dlmalloc::sys::enable_alloc_after_fork (;96;) (type 11))
-  (func $miden::note::Tag::new (;97;) (type 12) (param i64) (result i64)
+  (func $dlmalloc::sys::enable_alloc_after_fork (;104;) (type 13))
+  (func $miden::note::Tag::new (;105;) (type 14) (param i64) (result i64)
     local.get 0
   )
-  (func $miden::serialization::bytes_to_felts (;98;) (type 1) (param i32 i32)
+  (func $miden::serialization::bytes_to_felts (;106;) (type 1) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $miden::account::add_asset (;99;) (type 1) (param i32 i32)
+  (func $miden::account::add_asset (;107;) (type 1) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 48
@@ -4251,24 +4767,109 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<alloc::vec::Vec<T,A> as core::ops::drop::Drop>::drop (;100;) (type 7) (param i32))
-  (func $alloc::alloc::handle_alloc_error (;101;) (type 1) (param i32 i32)
+  (func $miden::account::remove_asset (;108;) (type 1) (param i32 i32)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 48
+    i32.sub
+    local.tee 2
+    global.set $__stack_pointer
+    local.get 2
+    i32.const 8
+    i32.add
+    local.get 1
+    i32.const 40
+    call $memcpy
+    drop
+    local.get 0
+    local.get 2
+    i32.const 8
+    i32.add
+    call $miden::sat::account::remove_asset
+    local.get 2
+    i32.const 48
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $miden::sat::tx::create_note (;109;) (type 2) (param i32 i64 i32)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 80
+    i32.sub
+    local.tee 3
+    global.set $__stack_pointer
+    local.get 3
+    i32.const 40
+    i32.add
+    local.get 0
+    i32.const 40
+    call $memcpy
+    drop
+    local.get 3
+    i32.const 8
+    i32.add
+    i32.const 24
+    i32.add
+    local.get 2
+    i32.const 24
+    i32.add
+    i64.load
+    i64.store
+    local.get 3
+    i32.const 8
+    i32.add
+    i32.const 16
+    i32.add
+    local.get 2
+    i32.const 16
+    i32.add
+    i64.load
+    i64.store
+    local.get 3
+    i32.const 8
+    i32.add
+    i32.const 8
+    i32.add
+    local.get 2
+    i32.const 8
+    i32.add
+    i64.load
+    i64.store
+    local.get 3
+    local.get 2
+    i64.load
+    i64.store offset=8
+    local.get 3
+    i32.const 40
+    i32.add
+    local.get 1
+    local.get 3
+    i32.const 8
+    i32.add
+    call $miden::sat::tx::create_note
+    local.get 3
+    i32.const 80
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $<alloc::vec::Vec<T,A> as core::ops::drop::Drop>::drop (;110;) (type 8) (param i32))
+  (func $alloc::alloc::handle_alloc_error (;111;) (type 1) (param i32 i32)
     local.get 0
     local.get 1
     call $alloc::alloc::handle_alloc_error::rt_error
     unreachable
   )
-  (func $alloc::alloc::handle_alloc_error::rt_error (;102;) (type 1) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error::rt_error (;112;) (type 1) (param i32 i32)
     local.get 1
     local.get 0
     call $__rust_alloc_error_handler
     unreachable
   )
-  (func $alloc::alloc::handle_alloc_error::ct_error (;103;) (type 1) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error::ct_error (;113;) (type 1) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $<alloc::alloc::Global as core::alloc::Allocator>::deallocate (;104;) (type 2) (param i32 i32 i32)
+  (func $<alloc::alloc::Global as core::alloc::Allocator>::deallocate (;114;) (type 3) (param i32 i32 i32)
     block ;; label = @1
       local.get 2
       i32.eqz
@@ -4279,7 +4880,7 @@
       call $__rust_dealloc
     end
   )
-  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;105;) (type 7) (param i32)
+  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;115;) (type 8) (param i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -4294,7 +4895,7 @@
       call $<alloc::alloc::Global as core::alloc::Allocator>::deallocate
     end
   )
-  (func $alloc::raw_vec::capacity_overflow (;106;) (type 11)
+  (func $alloc::raw_vec::capacity_overflow (;116;) (type 13)
     unreachable
     unreachable
   )
@@ -4303,4 +4904,5 @@
   (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
   (export "memory" (memory 0))
   (export "my_wallet::receive_asset" (func $my_wallet::receive_asset))
+  (export "my_wallet::send_asset" (func $my_wallet::send_asset))
 )
