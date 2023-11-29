@@ -6,4 +6,4 @@ src = "src"
 title = "Miden Compiler Documentation"
 
 [output.html]
-git-repository-url = "https://github.com/0xPolygonMiden/miden-ir/"
+git-repository-url = "https://github.com/0xPolygonMiden/compiler/"
