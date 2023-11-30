@@ -17,13 +17,13 @@ crate-type = ["cdylib", "rlib"]
 build_notes = []
 
 [[bin]]
-name = "note_send"
-path = "bin/note_send.rs"
+name = "tx_script_send"
+path = "bin/tx_script_send.rs"
 required-features = ["build_notes"]
 
 [[bin]]
-name = "note_recv"
-path = "bin/note_recv.rs"
+name = "tx_script_recv"
+path = "bin/tx_script_recv.rs"
 required-features = ["build_notes"]
 
 [dependencies]
