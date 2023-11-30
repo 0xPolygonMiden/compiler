@@ -26,6 +26,11 @@ name = "tx_script_recv"
 path = "bin/tx_script_recv.rs"
 required-features = ["build_notes"]
 
+[[bin]]
+name = "note_p2id"
+path = "bin/note_p2id.rs"
+required-features = ["build_notes"]
+
 [dependencies]
 miden = { path = "../../../sdk" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

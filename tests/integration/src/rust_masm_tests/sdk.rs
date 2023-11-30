@@ -105,7 +105,7 @@ fn sdk_account_basic_wallet() {
     );
     // TODO: lib artifact is overriden in this cargo call
     let wasm_artifacts_bin = rust_cargo("sdk-basic-wallet", Some("build_notes"));
-    assert_eq!(wasm_artifacts_bin.len(), 3);
+    assert_eq!(wasm_artifacts_bin.len(), 4);
     for wasm_file in &wasm_artifacts_bin {
         let file_name = wasm_file.file_stem().unwrap().to_str().unwrap();
         if file_name == lib_file_name {
