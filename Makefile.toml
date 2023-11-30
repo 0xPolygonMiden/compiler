@@ -169,6 +169,12 @@ description = "Install wasm32-unknown-unknown target"
 command = "rustup"
 args = ["target", "add", "wasm32-unknown-unknown", "--toolchain", "${CARGO_MAKE_TOOLCHAIN}"]
 
+[tasks.install-wasm-wasi-target]
+category = "Test"
+description = "Install wasm32-wasi target"
+command = "rustup"
+args = ["target", "add", "wasm32-wasi", "--toolchain", "${CARGO_MAKE_TOOLCHAIN}"]
+
 [tasks.install-rust-src]
 category = "Test"
 description = "Install rust-src component"
@@ -180,7 +186,7 @@ category = "Test"
 description = "Runs tests written in Rust"
 command = "rustup"
 args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "test", "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)", "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )", "${@}"]
-dependencies = ["install-wasm-target", "install-rust-src"]
+dependencies = ["install-wasm-target", "install-wasm-wasi-target", "install-rust-src"]
 
 [tasks.test-filecheck]
 category = "Test"
