@@ -186,6 +186,10 @@ pub fn translate_operator(
             let val = state.pop1();
             state.push1(builder.ins().popcnt(val, span));
         }
+        Operator::I32Extend8S | Operator::I32Extend16S => {
+            let val = state.pop1();
+            state.push1(builder.ins().sext(val, I32, span));
+        }
         Operator::I64ExtendI32S => {
             let val = state.pop1();
             state.push1(builder.ins().sext(val, I64, span));

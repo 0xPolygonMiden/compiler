@@ -163,42 +163,108 @@ macro_rules! test_int_op {
     };
 }
 
-// add u64 and i8, i16, i32, i64 tests when they are implemented in the codegen
+// 64-bit ops are not implemented yet
 // test_bool_op!(ge, >=, u64);
-test_bool_op!(ge, >=, u32);
-test_bool_op!(ge, >=, u16);
-test_bool_op!(ge, >=, u8);
 // test_bool_op!(ge, >=, i64);
+// test_bool_op!(gt, >, u64);
+// test_bool_op!(gt, >, i64);
+// test_bool_op!(le, <=, u64);
+// test_bool_op!(le, <=, i64);
+// test_bool_op!(lt, <, u64);
+// test_bool_op!(lt, <, i64);
+// test_int_op!(add, +, u64);
+// test_int_op!(add, +, i64);
+// test_int_op!(sub, -, u64);
+// test_int_op!(sub, -, i64);
+// test_int_op!(mul, *, u64);
+// test_int_op!(mul, *, i64);
+// test_int_op!(div, /, u64);
+// test_int_op!(div, /, i64);
+// test_int_op!(rem, %, u64);
+// test_int_op!(rem, %, i64);
+// test_unary_op!(neg, -, u64);
+// test_unary_op!(neg, -, i64);
+// test_unary_op!(not, !, u64);
+// test_unary_op!(not, !, i64);
+// test_int_op!(shl, <<, u64);
+// test_int_op!(shl, <<, i64);
+// test_int_op!(shr, >>, u64);
+// test_int_op!(shr, >>, i64);
+// test_unary_op!(neg, -, i64);
+
+// MASM compilation error (missing import for intrinsic)
+//
+// Comparison ops
+//
 // test_bool_op!(ge, >=, i32);
 // test_bool_op!(ge, >=, i16);
 // test_bool_op!(ge, >=, i8);
-
-// test_bool_op!(gt, >, u64);
-test_bool_op!(gt, >, u32);
-test_bool_op!(gt, >, u16);
-test_bool_op!(gt, >, u8);
-// test_bool_op!(gt, >, i64);
+//
 // test_bool_op!(gt, >, i32);
 // test_bool_op!(gt, >, i16);
 // test_bool_op!(gt, >, i8);
-
-// test_bool_op!(le, <=, u64);
-test_bool_op!(le, <=, u32);
-test_bool_op!(le, <=, u16);
-test_bool_op!(le, <=, u8);
-// test_bool_op!(le, <=, i64);
+//
 // test_bool_op!(le, <=, i32);
 // test_bool_op!(le, <=, i16);
 // test_bool_op!(le, <=, i8);
-
-// test_bool_op!(lt, <, u64);
-test_bool_op!(lt, <, u32);
-test_bool_op!(lt, <, u16);
-test_bool_op!(lt, <, u8);
-// test_bool_op!(lt, <, i64);
+//
 // test_bool_op!(lt, <, i32);
 // test_bool_op!(lt, <, i16);
 // test_bool_op!(lt, <, i8);
+//
+// Arithmetic ops
+//
+// test_int_op!(mul, *, u32);
+// test_int_op!(mul, *, u16);
+// test_int_op!(mul, *, u8);
+// test_int_op!(mul, *, i32);
+// test_int_op!(mul, *, i16);
+// test_int_op!(mul, *, i8);
+//
+// Bitwise ops
+//
+// test_int_op!(shr, >>, i8);
+// test_int_op!(shr, >>, i16);
+// test_int_op!(shr, >>, i32);
+//
+// test_unary_op!(not, !, u64);
+// test_unary_op!(not, !, i64);
+
+// stdlib is not linked (missing import for stdlib)
+// test_int_op!(and, &, u64);
+// test_int_op!(and, &, i64);
+// test_int_op!(or, |, u64);
+// test_int_op!(or, |, i64);
+// test_int_op!(xor, ^, u64);
+// test_int_op!(xor, ^, i64);
+
+// TODO: build with cargo to avoid core::panicking
+// TODO: separate macro for div and rem tests to filter out division by zero
+// test_int_op!(div, /, u32);
+// ...
+// add tests for div, rem,
+
+// enable when https://github.com/0xPolygonMiden/compiler/issues/56 is fixed
+// test_func_two_arg!(min, core::cmp::min, i32, i32, i32);
+// test_func_two_arg!(min, core::cmp::min, u32, u32, u32);
+// test_func_two_arg!(min, core::cmp::min, u8, u8, u8);
+// test_func_two_arg!(max, core::cmp::max, u8, u8, u8);
+
+test_bool_op!(ge, >=, u32);
+test_bool_op!(ge, >=, u16);
+test_bool_op!(ge, >=, u8);
+
+test_bool_op!(gt, >, u32);
+test_bool_op!(gt, >, u16);
+test_bool_op!(gt, >, u8);
+
+test_bool_op!(le, <=, u32);
+test_bool_op!(le, <=, u16);
+test_bool_op!(le, <=, u8);
+
+test_bool_op!(lt, <, u32);
+test_bool_op!(lt, <, u16);
+test_bool_op!(lt, <, u8);
 
 test_bool_op!(eq, ==, u64);
 test_bool_op!(eq, ==, u32);
@@ -209,22 +275,23 @@ test_bool_op!(eq, ==, i32);
 test_bool_op!(eq, ==, i16);
 test_bool_op!(eq, ==, i8);
 
-// enable when i32 ops support is merged https://github.com/0xPolygonMiden/compiler/pull/37
-// test_int_op!(add, +, u32);
-// test_int_op!(add, +, u16);
-// test_int_op!(add, +, u8);
-// test_int_op!(sub, -, u32);
-// ...
-// add tests for sub, mul, div, rem,
+test_int_op!(add, +, u32);
+test_int_op!(add, +, u16);
+test_int_op!(add, +, u8);
+test_int_op!(add, +, i32);
+test_int_op!(add, +, i16);
+test_int_op!(add, +, i8);
+
+test_int_op!(sub, -, u32);
+test_int_op!(sub, -, u16);
+test_int_op!(sub, -, u8);
+test_int_op!(sub, -, i32);
+test_int_op!(sub, -, i16);
+test_int_op!(sub, -, i8);
 
 test_bool_op!(and, &&, bool);
 test_bool_op!(or, ||, bool);
 test_bool_op!(xor, ^, bool);
-
-// enable after miden stdlib is linked (missing `use` in the IR)
-// test_int_op!(and, &, u64);
-// test_int_op!(and, &, i64);
-// add tests for or, xor
 
 test_int_op!(and, &, u8);
 test_int_op!(and, &, u16);
@@ -247,28 +314,20 @@ test_int_op!(xor, ^, i8);
 test_int_op!(xor, ^, i16);
 test_int_op!(xor, ^, i32);
 
-// enable when implemented in the codegen for i32
-// test_int_op!(shl, <<, u8);
-// test_int_op!(shl, <<, u16);
-// test_int_op!(shl, <<, u32);
-// test_int_op!(shl, <<, i8);
-// test_int_op!(shl, <<, i16);
-// test_int_op!(shl, <<, i32);
+test_int_op!(shl, <<, u8);
+test_int_op!(shl, <<, u16);
+test_int_op!(shl, <<, u32);
+test_int_op!(shl, <<, i8);
+test_int_op!(shl, <<, i16);
+test_int_op!(shl, <<, i32);
 
 test_int_op!(shr, >>, u8);
 test_int_op!(shr, >>, u16);
 test_int_op!(shr, >>, u32);
-// enable when implemented in the codegen for i32
-// test_int_op!(shr, >>, i8);
-// test_int_op!(shr, >>, i16);
-// test_int_op!(shr, >>, i32);
 
-// enable when subtraction is implemented in the codegen for i32
-// test_unary_op!(neg, -, i32);
-
-// enable when stdlib is linked
-// test_unary_op!(not, !, u64);
-// test_unary_op!(not, !, i64);
+test_unary_op!(neg, -, i32);
+test_unary_op!(neg, -, i16);
+test_unary_op!(neg, -, i8);
 
 test_unary_op!(not, !, i32);
 test_unary_op!(not, !, i16);
@@ -278,9 +337,3 @@ test_unary_op!(not, !, u16);
 test_unary_op!(not, !, u8);
 
 test_unary_op!(not, !, bool);
-
-// enable when https://github.com/0xPolygonMiden/compiler/issues/56 is fixed
-// test_func_two_arg!(min, core::cmp::min, i32, i32, i32);
-// test_func_two_arg!(min, core::cmp::min, u32, u32, u32);
-// test_func_two_arg!(min, core::cmp::min, u8, u8, u8);
-// test_func_two_arg!(max, core::cmp::max, u8, u8, u8);
