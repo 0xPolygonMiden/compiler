@@ -24,10 +24,7 @@ pub fn new_project(path: PathBuf) -> anyhow::Result<()> {
         },
         destination: path
             .parent()
-            .map(|p| {
-                use path_absolutize::Absolutize;
-                p.absolutize().map(|p| p.to_path_buf())
-            })
+            .map(|p| p.canonicalize().map(|p| p.to_path_buf()))
             .transpose()
             .context("Failed to convert destination path to an absolute path")?,
         name: Some(name),

@@ -353,7 +353,6 @@ dependencies = [
  "miden-diagnostics",
  "midenc-compile",
  "midenc-session",
- "path-absolutize",
 ]
 
 [[package]]
