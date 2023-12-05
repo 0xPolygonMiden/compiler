@@ -77,8 +77,6 @@ midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
-miden-cargo-extension = { path = "cargo-ext" }
-
 
 [profile.dev]
 lto = false
