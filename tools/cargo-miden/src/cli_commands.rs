@@ -23,10 +23,10 @@ pub struct MidenArgs {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Compile the current project to MASM
-    #[command(next_display_order(10), name = "compile")]
+    #[command(name = "compile")]
     Compile {
         /// The target environment to compile for
-        #[arg(long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base, display_order(2))]
+        #[arg(long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base)]
         target: TargetEnv,
 
         /// Tells the compiler to produce an executable Miden program from the binary target or a library from the lib target if not specified
@@ -43,6 +43,6 @@ pub enum Commands {
         output_folder: PathBuf,
     },
     /// Scaffold a new Miden project at the given path
-    #[command(next_display_order(10), name = "new")]
+    #[command(name = "new")]
     New { path: PathBuf },
 }
