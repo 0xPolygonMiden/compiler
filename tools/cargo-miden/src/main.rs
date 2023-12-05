@@ -13,7 +13,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     match args.command {
-        Commands::Compile {
+        Commands::Build {
             target,
             bin_name,
             output_folder,

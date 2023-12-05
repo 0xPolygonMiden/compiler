@@ -1,20 +1,14 @@
 use anyhow::bail;
 use cargo_metadata::Message;
-use std::path::PathBuf;
 use std::process::Command;
-use std::process::Stdio;
 use std::sync::Arc;
+use std::{path::PathBuf, process::Stdio};
 
 use anyhow::Context;
 use miden_diagnostics::Verbosity;
-use midenc_session::InputFile;
-use midenc_session::OutputFile;
-use midenc_session::OutputType;
-use midenc_session::OutputTypeSpec;
-use midenc_session::OutputTypes;
-use midenc_session::ProjectType;
-use midenc_session::Session;
-use midenc_session::TargetEnv;
+use midenc_session::{
+    InputFile, OutputFile, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session, TargetEnv,
+};
 
 pub fn compile(
     target: TargetEnv,

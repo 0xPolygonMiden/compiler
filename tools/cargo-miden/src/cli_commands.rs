@@ -23,8 +23,8 @@ pub struct MidenArgs {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Compile the current project to MASM
-    #[command(name = "compile")]
-    Compile {
+    #[command(name = "build")]
+    Build {
         /// The target environment to compile for
         #[arg(long = "target", value_name = "TARGET", default_value_t = TargetEnv::Base)]
         target: TargetEnv,
