@@ -10,14 +10,6 @@ To install the extension, run:
 cargo install cargo-miden
 ```
 
-## Requirements
-
-Since Rust is first compiled to Wasm, you'll need to have the `wasm32-unknown-unknown` target installed:
-
-```bash
-rustup target add wasm32-unknown-unknown
-```
-
 ## Usage
 
 ### Getting help
@@ -44,7 +36,7 @@ cargo miden new <project-name>
 To compile a Rust crate to Miden VM MASM, run:
 
 ```bash
-cargo miden compile -o <output-file>
+cargo miden build 
 ```
 
-Without any additional arguments, this will compile the library target of the crate in the current directory.
+Without any additional arguments, this will compile the library target in the target directory in the `miden` folder.

@@ -1,2 +1,2 @@
-mod compile;
+mod build;
 mod utils;

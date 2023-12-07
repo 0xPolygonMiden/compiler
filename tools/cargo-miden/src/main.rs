@@ -1,24 +1,30 @@
-use anyhow::Context;
-use cargo_miden::compile;
-use cargo_miden::new_project;
-use clap::Parser;
-use cli_commands::CargoCli;
-use cli_commands::Commands;
-
-mod cli_commands;
+use cargo_component_core::terminal::{Terminal, Verbosity};
+use cargo_miden::{config::CargoArguments, run};
 
 fn main() -> anyhow::Result<()> {
-    let args = match CargoCli::parse() {
-        CargoCli::Miden(args) => args,
-    };
+    // Initialize logger
+    let mut builder = env_logger::Builder::from_env("CARGO_MIDEN_TRACE");
+    builder.format_indent(Some(2));
+    builder.format_timestamp(None);
+    builder.init();
 
-    match args.command {
-        Commands::Build {
-            target,
-            bin_name,
-            output_folder,
-        } => compile(target, bin_name, &output_folder)
-            .context(format!("Failed to compile {}", target)),
-        Commands::New { path } => new_project(path).context("Failed to scaffold a new project"),
+    let cargo_args = CargoArguments::parse_from(std::env::args())?;
+    let terminal = Terminal::new(
+        if cargo_args.quiet {
+            Verbosity::Quiet
+        } else {
+            match cargo_args.verbose {
+                0 => Verbosity::Normal,
+                _ => Verbosity::Verbose,
+            }
+        },
+        cargo_args.color.unwrap_or_default(),
+    );
+
+    if let Err(e) = run(std::env::args(), &terminal) {
+        terminal.error(format!("{e:?}"))?;
+        std::process::exit(1);
     }
+
+    Ok(())
 }
