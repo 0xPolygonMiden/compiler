@@ -3,7 +3,7 @@ use crate::{CompilerError, CompilerResult};
 use miden_codegen_masm as masm;
 use miden_frontend_wasm as wasm;
 use miden_hir::pass::{AnalysisManager, ConversionPass, RewritePass};
-use miden_hir::{self as hir, parser::ast, PassInfo};
+use miden_hir::{self as hir, parser::ast};
 use midenc_session::Session;
 
 mod codegen;

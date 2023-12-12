@@ -285,13 +285,17 @@ impl Session {
         if self.should_emit(output_type) {
             match self.output_files.path(output_type) {
                 OutputFile::Real(path) => {
-                    let path = if let Some(name) = item.name() {
-                        path.with_file_name(name.as_str())
+                    let file_path = if path.is_dir() {
+                        let item_name = item
+                            .name()
+                            .map(|s| s.to_string())
+                            .unwrap_or("noname".to_string());
+                        path.join(item_name.as_str())
                             .with_extension(output_type.extension())
                     } else {
                         path
                     };
-                    item.write_to_file(&path)?;
+                    item.write_to_file(&file_path)?;
                 }
                 OutputFile::Stdout => {
                     item.write_to_stdout()?;

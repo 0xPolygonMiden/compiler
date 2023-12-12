@@ -1,5 +1,6 @@
 use midenc_session::InputFile;
 use std::path::Path;
+use wasm::WasmTranslationConfig;
 
 use super::*;
 
@@ -35,9 +36,15 @@ impl Stage for ParseStage {
                 FileType::Wasm => self.parse_hir_from_wasm_file(path.as_ref(), &session),
                 unsupported => unreachable!("unsupported file type: {unsupported}"),
             },
-            InputType::Stdin { ref input, .. } => match file_type {
+            InputType::Stdin { name, ref input } => match file_type {
                 FileType::Hir => self.parse_ast_from_bytes(&input, &session),
-                FileType::Wasm => self.parse_hir_from_wasm_bytes(&input, &session),
+                FileType::Wasm => self.parse_hir_from_wasm_bytes(
+                    &input,
+                    &session,
+                    &WasmTranslationConfig {
+                        module_name_fallback: name.to_string().clone(),
+                    },
+                ),
                 unsupported => unreachable!("unsupported file type: {unsupported}"),
             },
         }
@@ -80,16 +87,20 @@ impl ParseStage {
         let mut file = std::fs::File::open(path)?;
         let mut bytes = Vec::with_capacity(1024);
         file.read_to_end(&mut bytes)?;
-        self.parse_hir_from_wasm_bytes(&bytes, session)
+        let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
+        let config = wasm::WasmTranslationConfig {
+            module_name_fallback: file_name,
+        };
+        self.parse_hir_from_wasm_bytes(&bytes, session, &config)
     }
 
     fn parse_hir_from_wasm_bytes(
         &self,
         bytes: &[u8],
         session: &Session,
+        config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
-        let config = wasm::WasmTranslationConfig::default();
-        let module = wasm::translate_module(bytes, &config, &session.diagnostics)?;
+        let module = wasm::translate_module(bytes, config, &session.diagnostics)?;
 
         Ok(ParseOutput::Hir(Box::new(module)))
     }

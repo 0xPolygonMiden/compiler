@@ -26,9 +26,8 @@ impl Stage for CodegenStage {
         match input {
             MaybeLinked::Linked(program) => {
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();
-                Ok(convert_to_masm
-                    .convert(program, analyses, session)
-                    .map(Compiled::Program)?)
+                let program = convert_to_masm.convert(program, analyses, session)?;
+                Ok(Compiled::Program(program))
             }
             MaybeLinked::Unlinked(modules) => {
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Module>::default();

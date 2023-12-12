@@ -17,7 +17,7 @@ members = [
   "tests/rust-apps/*",
   "tests/integration",
 ]
-exclude = ["tests/rust-apps-wasm"]
+exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 
 [workspace.package]
 version = "0.1.0"
@@ -77,7 +77,6 @@ midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
-
 
 [profile.dev]
 lto = false
