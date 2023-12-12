@@ -269,6 +269,22 @@ impl CompilerTest {
     }
 }
 
+pub(crate) fn demangle(name: &str) -> String {
+    let mut input = name.as_bytes();
+    let mut demangled = Vec::new();
+    let include_hash = false;
+    rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
+    String::from_utf8(demangled).unwrap()
+}
+
+pub(crate) fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
+    let mut wasm_printer = wasmprinter::Printer::new();
+    // disable printing of the "producers" section because it contains a rustc version
+    // to not brake tests when rustc is updated
+    wasm_printer.add_custom_section_printer("producers", |_, _, _| Ok(()));
+    let wat = wasm_printer.print(wasm_bytes.as_ref()).unwrap();
+    wat
+}
 fn compile_rust_file(rust_source: &str) -> Vec<u8> {
     let rustc_opts = [
         "-C",
@@ -296,15 +312,6 @@ fn compile_rust_file(rust_source: &str) -> Vec<u8> {
     fs::remove_file(&input_file).unwrap();
     fs::remove_file(&output_file).unwrap();
     return wasm;
-}
-
-fn wasm_to_wat(wasm_bytes: &Vec<u8>) -> String {
-    let mut wasm_printer = wasmprinter::Printer::new();
-    // disable printing of the "producers" section because it contains a rustc version
-    // to not brake tests when rustc is updated
-    wasm_printer.add_custom_section_printer("producers", |_, _, _| Ok(()));
-    let wat = wasm_printer.print(wasm_bytes.as_ref()).unwrap();
-    wat
 }
 
 fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
@@ -349,14 +356,6 @@ fn hash_string(inputs: &[&str]) -> String {
         hasher.update(input);
     }
     format!("{:x}", hasher.finalize())
-}
-
-fn demangle(name: &str) -> String {
-    let mut input = name.as_bytes();
-    let mut demangled = Vec::new();
-    let include_hash = false;
-    rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
-    String::from_utf8(demangled).unwrap()
 }
 
 fn wasm_to_ir(wasm_bytes: &[u8], session: &Session) -> miden_hir::Module {

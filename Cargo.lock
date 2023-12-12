@@ -2777,6 +2777,7 @@ dependencies = [
 name = "miden-integration-tests"
 version = "0.1.0"
 dependencies = [
+ "cargo_metadata",
  "concat-idents",
  "expect-test",
  "miden-assembly",

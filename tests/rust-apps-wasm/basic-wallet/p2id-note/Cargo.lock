@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "basic-wallet-notes"
+name = "basic-wallet-p2id-note"
 version = "0.1.0"
 dependencies = [
  "cargo-component-bindings",

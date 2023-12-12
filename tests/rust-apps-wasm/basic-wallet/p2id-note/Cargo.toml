@@ -1,9 +1,9 @@
 [package]
-name = "basic-wallet-notes"
+name = "basic-wallet-p2id-note"
 version = "0.1.0"
 rust-version = "1.71"
 authors = ["Miden Team"]
-description = "Notes for basic wallet"
+description = "p2id-note for basic wallet"
 repository = "https://github.com/0xPolygonMiden/miden-ir"
 homepage = "https://github.com/0xPolygonMiden/miden-ir"
 documentation = "https://github.com/0xPolygonMiden/miden-ir"
@@ -15,7 +15,7 @@ publish = false
 cargo-component-bindings = "0.5.0"
 
 [package.metadata.component]
-package = "miden:basic-wallet-notes"
+package = "miden:basic-wallet-p2id-note"
 
 [package.metadata.component.dependencies]
 
