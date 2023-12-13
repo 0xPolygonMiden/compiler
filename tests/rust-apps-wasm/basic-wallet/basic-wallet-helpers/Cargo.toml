@@ -1,9 +1,9 @@
 [package]
-name = "basic-wallet-p2id-note"
+name = "basic-wallet-helpers"
 version = "0.1.0"
 rust-version = "1.71"
 authors = ["Miden Team"]
-description = "p2id-note for basic wallet"
+description = "Basic wallet"
 repository = "https://github.com/0xPolygonMiden/miden-ir"
 homepage = "https://github.com/0xPolygonMiden/miden-ir"
 documentation = "https://github.com/0xPolygonMiden/miden-ir"
@@ -14,12 +14,14 @@ publish = false
 [dependencies]
 cargo-component-bindings = "0.5.0"
 
+[lib]
+crate-type = ["cdylib"]
+
 [package.metadata.component]
-package = "miden:basic-wallet-p2id-note"
+package = "miden:basic-wallet-helpers"
 
 [package.metadata.component.dependencies]
 
 [package.metadata.component.target.dependencies]
 "miden:base" = { path = "../../../../sdk/wit" }
 "miden:basic-wallet" = { path = "../basic-wallet/wit" }
-"miden:basic-wallet-helpers" = { path = "../basic-wallet-helpers/wit" }

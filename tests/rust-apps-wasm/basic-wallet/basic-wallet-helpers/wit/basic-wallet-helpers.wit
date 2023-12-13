@@ -1,0 +1,14 @@
+package miden:basic-wallet-helpers@1.0.0;
+
+use miden:base/types@1.0.0;
+
+interface check-helpers {
+    use types.{asset};
+
+    /// Some wallet's helper function that checks if an asset meets some criteria.
+    some-asset-check: func(asset: asset) -> bool;
+}
+
+world basic-wallet-helpers-world {
+    export check-helpers;
+}

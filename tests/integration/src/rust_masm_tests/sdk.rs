@@ -92,6 +92,22 @@ fn sdk_basic_wallet() {
 }
 
 #[test]
+fn sdk_basic_wallet_helpers() {
+    let wasm_comp = rust_cargo_component("basic-wallet/basic-wallet-helpers")
+        .first()
+        .cloned()
+        .unwrap();
+    let wasm_comp_filename = wasm_comp.file_stem().unwrap().to_str().unwrap().to_string();
+    let wasm_bytes = std::fs::read(wasm_comp.clone()).unwrap();
+    expect_wasm(
+        &wasm_bytes,
+        expect_file![format!(
+            "../../expected/sdk_basic_wallet/{wasm_comp_filename}.wat"
+        )],
+    );
+}
+
+#[test]
 fn sdk_basic_wallet_p2id_note() {
     let wasm_comp = rust_cargo_component("basic-wallet/p2id-note")
         .first()
