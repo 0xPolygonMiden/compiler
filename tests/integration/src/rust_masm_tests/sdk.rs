@@ -76,6 +76,19 @@ fn expect_wasm(wasm_bytes: &[u8], expected_wat_file: expect_test::ExpectFile) {
 }
 
 #[test]
+fn sdk() {
+    let wasm_comp = rust_cargo_component("../../sdk").first().cloned().unwrap();
+    let wasm_comp_filename = wasm_comp.file_stem().unwrap().to_str().unwrap().to_string();
+    let wasm_bytes = std::fs::read(wasm_comp.clone()).unwrap();
+    expect_wasm(
+        &wasm_bytes,
+        expect_file![format!(
+            "../../expected/sdk_basic_wallet/{wasm_comp_filename}.wat"
+        )],
+    );
+}
+
+#[test]
 fn sdk_basic_wallet() {
     let wasm_comp = rust_cargo_component("basic-wallet/basic-wallet")
         .first()

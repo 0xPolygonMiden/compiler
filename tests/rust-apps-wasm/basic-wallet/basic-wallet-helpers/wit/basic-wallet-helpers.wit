@@ -6,7 +6,7 @@ interface check-helpers {
     use types.{asset};
 
     /// Some wallet's helper function that checks if an asset meets some criteria.
-    some-asset-check: func(asset: asset) -> bool;
+    some-asset-check: func(asset: borrow<asset>) -> bool;
 }
 
 world basic-wallet-helpers-world {
