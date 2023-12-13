@@ -1,46 +1,96 @@
 package miden:base@1.0.0;
 
 interface types {
+    /// Represents base field element in the field using Montgomery representation.
+    /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
+    /// The backing type is `u64` but the internal values are always in the range [0, M).
+    /// Field modulus M = 2^64 - 2^32 + 1
     type felt = u64;
+    /// A group of four field elements in the Miden base field.
     type word = tuple<felt, felt, felt, felt>;
     
+    /// Unique identifier of an account.
+    ///
+    /// Account ID consists of 1 field element (~64 bits). This field element uniquely identifies a
+    /// single account and also specifies the type of the underlying account. Specifically:
+    /// - The two most significant bits of the ID specify the type of the account:
+    ///  - 00 - regular account with updatable code.
+    ///  - 01 - regular account with immutable code.
+    ///  - 10 - fungible asset faucet with immutable code.
+    ///  - 11 - non-fungible asset faucet with immutable code.
+    ///  - The third most significant bit of the ID specifies whether the account data is stored on-chain:
+    ///  - 0 - full account data is stored on-chain.
+    ///  - 1 - only the account hash is stored on-chain which serves as a commitment to the account state.
+    /// As such the three most significant bits fully describes the type of the account.
     type account-id = felt;
+
+    /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash), input_hash)
     type recipient = word;
+
     type tag = felt;
 
+    /// A fungible asset 
     record fungible-asset {
+        /// Faucet ID of the faucet which issued the asset as well as the asset amount. 
         asset: account-id,
+        /// Asset amount is guaranteed to be 2^63 - 1 or smaller.
         amount: u64
     }
 
+    /// A commitment to a non-fungible asset.
+    ///
+    /// A non-fungible asset consists of 4 field elements which are computed by hashing asset data
+    /// (which can be of arbitrary length) to produce: [d0, d1, d2, d3].  We then replace d1 with the
+    /// faucet_id that issued the asset: [d0, faucet_id, d2, d3]. We then set the most significant bit
+    /// of the most significant element to ZERO.
     type non-fungible-asset = word;
 
+    /// A fungible or a non-fungible asset.
+    ///
+    /// All assets are encoded using a single word (4 elements) such that it is easy to determine the
+    /// type of an asset both inside and outside Miden VM. Specifically:
+    ///   Element 1 will be:
+    ///    - ZERO for a fungible asset
+    ///    - non-ZERO for a non-fungible asset
+    ///   The most significant bit will be:
+    ///    - ONE for a fungible asset
+    ///    - ZERO for a non-fungible asset
+    ///
+    /// The above properties guarantee that there can never be a collision between a fungible and a
+    /// non-fungible asset.
+    ///
+    /// The methodology for constructing fungible and non-fungible assets is described below.
+    ///
+    /// # Fungible assets
+    /// The most significant element of a fungible asset is set to the ID of the faucet which issued
+    /// the asset. This guarantees the properties described above (the first bit is ONE).
+    ///
+    /// The least significant element is set to the amount of the asset. This amount cannot be greater
+    /// than 2^63 - 1 and thus requires 63-bits to store.
+    ///
+    /// Elements 1 and 2 are set to ZERO.
+    ///
+    /// It is impossible to find a collision between two fungible assets issued by different faucets as
+    /// the faucet_id is included in the description of the asset and this is guaranteed to be different
+    /// for each faucet as per the faucet creation logic.
+    ///
+    /// # Non-fungible assets
+    /// The 4 elements of non-fungible assets are computed as follows:
+    /// - First the asset data is hashed. This compresses an asset of an arbitrary length to 4 field
+    ///   elements: [d0, d1, d2, d3].
+    /// - d1 is then replaced with the faucet_id which issues the asset: [d0, faucet_id, d2, d3].
+    /// - Lastly, the most significant bit of d3 is set to ZERO.
+    ///
+    /// It is impossible to find a collision between two non-fungible assets issued by different faucets
+    /// as the faucet_id is included in the description of the non-fungible asset and this is guaranteed
+    /// to be different as per the faucet creation logic. Collision resistance for non-fungible assets
+    /// issued by the same faucet is ~2^95.
     variant asset {
         fungible(fungible-asset),
         non-fungible(non-fungible-asset),
     }
 
-    /// Get the inputs of the currently executed note (4 words = 16 felts)
-    // TODO: use list<felt> or tuple<...16 felts>?
-//    record note-inputs {
-        //i0: felt,
-        //i1: felt,
-        //i2: felt,
-        //i3: felt,
-        //i4: felt,
-        //i5: felt,
-        //i6: felt,
-        //i7: felt,
-        //i8: felt,
-        //i9: felt,
-        //i10: felt,
-        //i11: felt,
-        //i12: felt,
-        //i13: felt,
-        //i14: felt,
-        //i15: felt,
-    //}
-
+    /// Inputs of the currently executed note (4 words = 16 felts)
     type note-inputs = tuple<felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt>;
 }
 
@@ -59,7 +109,7 @@ interface tx-kernel {
 
     // Note-related functions 
     
-    /// Creates a new note and returns a pointer to the memory address at which the note is stored.
+    /// Creates a new note.
     /// asset is the asset to be included in the note.
     /// tag is the tag to be included in the note.
     /// recipient is the recipient of the note.
@@ -75,6 +125,4 @@ interface account {}
 
 world base-world {
     export types;
-//    export account;
-    //export tx;
 }
