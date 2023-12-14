@@ -1,4 +1,5 @@
 use std::io::Read;
+use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
@@ -70,9 +71,30 @@ fn rust_cargo_component(cargo_project_folder: &str) -> Vec<std::path::PathBuf> {
     assert!(output.success());
     wasm_artifacts
 }
+
 fn expect_wasm(wasm_bytes: &[u8], expected_wat_file: expect_test::ExpectFile) {
     let wat = demangle(&wasm_to_wat(wasm_bytes));
     expected_wat_file.assert_eq(&wat);
+}
+
+fn expect_wit_bind(wasm_comp: &Path, expected_wit_bind_file: expect_test::ExpectFile) {
+    let wasm_comp_filename = wasm_comp.file_stem().unwrap().to_str().unwrap().to_string();
+    let target_dir = &wasm_comp
+        .parent() // remove file
+        .unwrap()
+        .parent() // remove release
+        .unwrap()
+        .parent() // remove wasm32-wasi (target)
+        .unwrap();
+    let crate_name_dashed = wasm_comp_filename.replace("_", "-");
+    let wit_bind_path = target_dir
+        .join("bindings")
+        .join(crate_name_dashed)
+        .join("bindings.rs");
+    dbg!(&wit_bind_path);
+    let bytes = std::fs::read(wit_bind_path).unwrap();
+    let str = String::from_utf8(bytes).unwrap();
+    expected_wit_bind_file.assert_eq(&str);
 }
 
 #[test]
@@ -102,6 +124,12 @@ fn sdk_basic_wallet() {
             "../../expected/sdk_basic_wallet/{wasm_comp_filename}.wat"
         )],
     );
+    expect_wit_bind(
+        &wasm_comp,
+        expect_file![format!(
+            "../../expected/sdk_basic_wallet/bindings/{wasm_comp_filename}_bindings.rs"
+        )],
+    );
 }
 
 #[test]
@@ -118,6 +146,12 @@ fn sdk_basic_wallet_helpers() {
             "../../expected/sdk_basic_wallet/{wasm_comp_filename}.wat"
         )],
     );
+    expect_wit_bind(
+        &wasm_comp,
+        expect_file![format!(
+            "../../expected/sdk_basic_wallet/bindings/{wasm_comp_filename}_bindings.rs"
+        )],
+    );
 }
 
 #[test]
@@ -132,6 +166,12 @@ fn sdk_basic_wallet_p2id_note() {
         &wasm_bytes,
         expect_file![format!(
             "../../expected/sdk_basic_wallet/{wasm_comp_filename}.wat"
+        )],
+    );
+    expect_wit_bind(
+        &wasm_comp,
+        expect_file![format!(
+            "../../expected/sdk_basic_wallet/bindings/{wasm_comp_filename}_bindings.rs"
         )],
     );
 }

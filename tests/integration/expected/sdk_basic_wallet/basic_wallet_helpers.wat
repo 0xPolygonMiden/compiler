@@ -2,26 +2,51 @@
   (type (;0;)
     (instance
       (export (;0;) "asset" (type (sub resource)))
+      (type (;1;) u64)
+      (export (;2;) "felt" (type (eq 1)))
+      (type (;3;) (tuple 2 2 2 2))
+      (export (;4;) "word" (type (eq 3)))
+      (type (;5;) (borrow 0))
+      (type (;6;) (func (param "self" 5) (result 4)))
+      (export (;0;) "[method]asset.as-word" (func (type 6)))
     )
   )
   (import (interface "miden:base/types@1.0.0") (instance (;0;) (type 0)))
   (core module (;0;)
-    (type (;0;) (func (param i32)))
-    (type (;1;) (func))
-    (type (;2;) (func (param i32) (result i32)))
-    (type (;3;) (func (param i32 i32) (result i32)))
-    (type (;4;) (func (param i32 i32 i32 i32) (result i32)))
-    (type (;5;) (func (param i32 i32)))
+    (type (;0;) (func (param i32 i32)))
+    (type (;1;) (func (param i32)))
+    (type (;2;) (func))
+    (type (;3;) (func (param i32) (result i32)))
+    (type (;4;) (func (param i32 i32) (result i32)))
+    (type (;5;) (func (param i32 i32 i32 i32) (result i32)))
     (type (;6;) (func (param i32 i32 i32) (result i32)))
-    (import "miden:base/types@1.0.0" "[resource-drop]asset" (func $<basic_wallet_helpers::bindings::miden::base::types::Asset as wit_bindgen::WasmResource>::drop::drop (;0;) (type 0)))
-    (func $__wasm_call_ctors (;1;) (type 1))
-    (func $miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check (;2;) (type 2) (param i32) (result i32)
+    (import "miden:base/types@1.0.0" "[method]asset.as-word" (func $basic_wallet_helpers::bindings::miden::base::types::Asset::as_word::wit_import (;0;) (type 0)))
+    (import "miden:base/types@1.0.0" "[resource-drop]asset" (func $<basic_wallet_helpers::bindings::miden::base::types::Asset as wit_bindgen::WasmResource>::drop::drop (;1;) (type 1)))
+    (func $__wasm_call_ctors (;2;) (type 2))
+    (func $miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check (;3;) (type 3) (param i32) (result i32)
+      (local i32 i64)
+      global.get $__stack_pointer
+      i32.const 32
+      i32.sub
+      local.tee 1
+      global.set $__stack_pointer
       call $wit_bindgen::rt::run_ctors_once
       local.get 0
+      local.get 1
+      call $basic_wallet_helpers::bindings::miden::base::types::Asset::as_word::wit_import
+      local.get 1
+      i64.load
+      local.set 2
+      local.get 0
       call $<basic_wallet_helpers::bindings::miden::base::types::Asset as wit_bindgen::WasmResource>::drop::drop
-      i32.const 1
+      local.get 1
+      i32.const 32
+      i32.add
+      global.set $__stack_pointer
+      local.get 2
+      i64.eqz
     )
-    (func $__rust_alloc (;3;) (type 3) (param i32 i32) (result i32)
+    (func $__rust_alloc (;4;) (type 4) (param i32 i32) (result i32)
       (local i32)
       local.get 0
       local.get 1
@@ -30,7 +55,7 @@
       local.get 2
       return
     )
-    (func $__rust_realloc (;4;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;5;) (type 5) (param i32 i32 i32 i32) (result i32)
       (local i32)
       local.get 0
       local.get 1
@@ -41,7 +66,7 @@
       local.get 4
       return
     )
-    (func $wit_bindgen::rt::run_ctors_once (;5;) (type 1)
+    (func $wit_bindgen::rt::run_ctors_once (;6;) (type 2)
       block ;; label = @1
         i32.const 0
         i32.load8_u offset=1048577
@@ -52,7 +77,7 @@
         i32.store8 offset=1048577
       end
     )
-    (func $cabi_realloc (;6;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_realloc (;7;) (type 5) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
@@ -84,7 +109,7 @@
       end
       local.get 2
     )
-    (func $__rdl_alloc (;7;) (type 3) (param i32 i32) (result i32)
+    (func $__rdl_alloc (;8;) (type 4) (param i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           local.get 1
@@ -104,7 +129,7 @@
       local.get 0
       call $malloc
     )
-    (func $__rdl_realloc (;8;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $__rdl_realloc (;9;) (type 5) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           local.get 2
@@ -144,11 +169,11 @@
       local.get 3
       call $realloc
     )
-    (func $malloc (;9;) (type 2) (param i32) (result i32)
+    (func $malloc (;10;) (type 3) (param i32) (result i32)
       local.get 0
       call $dlmalloc
     )
-    (func $dlmalloc (;10;) (type 2) (param i32) (result i32)
+    (func $dlmalloc (;11;) (type 3) (param i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3171,11 +3196,11 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $free (;11;) (type 0) (param i32)
+    (func $free (;12;) (type 1) (param i32)
       local.get 0
       call $dlfree
     )
-    (func $dlfree (;12;) (type 0) (param i32)
+    (func $dlfree (;13;) (type 1) (param i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -3973,7 +3998,7 @@
         i32.store offset=1048612
       end
     )
-    (func $realloc (;13;) (type 3) (param i32 i32) (result i32)
+    (func $realloc (;14;) (type 4) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -4527,7 +4552,7 @@
       end
       local.get 0
     )
-    (func $dispose_chunk (;14;) (type 5) (param i32 i32)
+    (func $dispose_chunk (;15;) (type 0) (param i32 i32)
       (local i32 i32 i32 i32 i32 i32)
       local.get 0
       local.get 1
@@ -5285,7 +5310,7 @@
         i32.store offset=8
       end
     )
-    (func $internal_memalign (;15;) (type 3) (param i32 i32) (result i32)
+    (func $internal_memalign (;16;) (type 4) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -5517,7 +5542,7 @@
       i32.const 8
       i32.add
     )
-    (func $aligned_alloc (;16;) (type 3) (param i32 i32) (result i32)
+    (func $aligned_alloc (;17;) (type 4) (param i32 i32) (result i32)
       block ;; label = @1
         local.get 0
         i32.const 16
@@ -5531,11 +5556,11 @@
       local.get 1
       call $internal_memalign
     )
-    (func $abort (;17;) (type 1)
+    (func $abort (;18;) (type 2)
       unreachable
       unreachable
     )
-    (func $sbrk (;18;) (type 2) (param i32) (result i32)
+    (func $sbrk (;19;) (type 3) (param i32) (result i32)
       block ;; label = @1
         local.get 0
         br_if 0 (;@1;)
@@ -5576,7 +5601,7 @@
       call $abort
       unreachable
     )
-    (func $memcpy (;19;) (type 6) (param i32 i32 i32) (result i32)
+    (func $memcpy (;20;) (type 6) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -6100,22 +6125,54 @@
     (export "miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check" (func $miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check))
     (export "cabi_realloc" (func $cabi_realloc))
   )
+  (core module (;1;)
+    (type (;0;) (func (param i32 i32)))
+    (func $#func0<indirect-miden:base/types@1.0.0-_method_asset.as-word> (@name "indirect-miden:base/types@1.0.0-[method]asset.as-word") (;0;) (type 0) (param i32 i32)
+      local.get 0
+      local.get 1
+      i32.const 0
+      call_indirect (type 0)
+    )
+    (table (;0;) 1 1 funcref)
+    (export "0" (func $#func0<indirect-miden:base/types@1.0.0-_method_asset.as-word>))
+    (export "$imports" (table 0))
+  )
+  (core module (;2;)
+    (type (;0;) (func (param i32 i32)))
+    (import "" "0" (func (;0;) (type 0)))
+    (import "" "$imports" (table (;0;) 1 1 funcref))
+    (elem (;0;) (i32.const 0) func 0)
+  )
+  (core instance (;0;) (instantiate 1))
   (alias export 0 "asset" (type (;1;)))
   (core func (;0;) (canon resource.drop 1))
-  (core instance (;0;)
+  (alias core export 0 "0" (core func (;1;)))
+  (core instance (;1;)
     (export "[resource-drop]asset" (func 0))
+    (export "[method]asset.as-word" (func 1))
   )
-  (core instance (;1;) (instantiate 0
-      (with "miden:base/types@1.0.0" (instance 0))
+  (core instance (;2;) (instantiate 0
+      (with "miden:base/types@1.0.0" (instance 1))
     )
   )
-  (alias core export 1 "memory" (core memory (;0;)))
-  (alias core export 1 "cabi_realloc" (core func (;1;)))
+  (alias core export 2 "memory" (core memory (;0;)))
+  (alias core export 2 "cabi_realloc" (core func (;2;)))
+  (alias core export 0 "$imports" (core table (;0;)))
+  (alias export 0 "[method]asset.as-word" (func (;0;)))
+  (core func (;3;) (canon lower (func 0) (memory 0)))
+  (core instance (;3;)
+    (export "$imports" (table 0))
+    (export "0" (func 3))
+  )
+  (core instance (;4;) (instantiate 2
+      (with "" (instance 3))
+    )
+  )
   (alias export 0 "asset" (type (;2;)))
   (type (;3;) (borrow 2))
   (type (;4;) (func (param "asset" 3) (result bool)))
-  (alias core export 1 "miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check" (core func (;2;)))
-  (func (;0;) (type 4) (canon lift (core func 2)))
+  (alias core export 2 "miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check" (core func (;4;)))
+  (func (;1;) (type 4) (canon lift (core func 4)))
   (alias export 0 "asset" (type (;5;)))
   (component (;0;)
     (import "import-type-asset" (type (;0;) (sub resource)))
@@ -6129,7 +6186,7 @@
     (export (;1;) "some-asset-check" (func 0) (func (type 6)))
   )
   (instance (;1;) (instantiate 0
-      (with "import-func-some-asset-check" (func 0))
+      (with "import-func-some-asset-check" (func 1))
       (with "import-type-asset" (type 5))
       (with "import-type-asset0" (type 2))
     )
