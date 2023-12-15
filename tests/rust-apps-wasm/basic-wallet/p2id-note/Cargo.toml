@@ -11,6 +11,9 @@ license = "MIT"
 edition = "2021"
 publish = false
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 cargo-component-bindings = "0.5.0"
 

@@ -123,6 +123,10 @@ interface tx-kernel {
 /// Marker interface. Expected to be implemented by the account/wallet
 interface account {}
 
+interface note {
+    note-script: func();
+}
+
 world base-world {
     export types;
 }
