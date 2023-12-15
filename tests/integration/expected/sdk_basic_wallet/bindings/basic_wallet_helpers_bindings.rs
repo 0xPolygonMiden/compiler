@@ -32,107 +32,86 @@ pub mod miden {
       /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash), input_hash)
       pub type Recipient = Word;
       pub type Tag = Felt;
-      
-      #[derive(Debug)]
-      #[repr(transparent)]
-      pub struct Asset{
-        handle: ::cargo_component_bindings::rt::Resource<Asset>,
+      /// A fungible asset
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct FungibleAsset {
+        /// Faucet ID of the faucet which issued the asset as well as the asset amount.
+        pub asset: AccountId,
+        /// Asset amount is guaranteed to be 2^63 - 1 or smaller.
+        pub amount: u64,
       }
-      
-      impl Asset{
-        #[doc(hidden)]
-        pub unsafe fn from_handle(handle: u32) -> Self {
-          Self {
-            handle: ::cargo_component_bindings::rt::Resource::from_handle(handle),
-          }
-        }
-        
-        #[doc(hidden)]
-        pub fn into_handle(self) -> u32 {
-          ::cargo_component_bindings::rt::Resource::into_handle(self.handle)
-        }
-        
-        #[doc(hidden)]
-        pub fn handle(&self) -> u32 {
-          ::cargo_component_bindings::rt::Resource::handle(&self.handle)
+      impl ::core::fmt::Debug for FungibleAsset {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("FungibleAsset").field("asset", &self.asset).field("amount", &self.amount).finish()
         }
       }
-      
-      
-      unsafe impl ::cargo_component_bindings::rt::WasmResource for Asset{
-        #[inline]
-        unsafe fn drop(_handle: u32) {
-          #[cfg(not(target_arch = "wasm32"))]
-          unreachable!();
-          
-          #[cfg(target_arch = "wasm32")]
-          {
-            #[link(wasm_import_module = "miden:base/types@1.0.0")]
-            extern "C" {
-              #[link_name = "[resource-drop]asset"]
-              fn drop(_: u32);
+      /// A commitment to a non-fungible asset.
+      /// 
+      /// A non-fungible asset consists of 4 field elements which are computed by hashing asset data
+      /// (which can be of arbitrary length) to produce: [d0, d1, d2, d3].  We then replace d1 with the
+      /// faucet_id that issued the asset: [d0, faucet_id, d2, d3]. We then set the most significant bit
+      /// of the most significant element to ZERO.
+      pub type NonFungibleAsset = Word;
+      /// A fungible or a non-fungible asset.
+      /// 
+      /// All assets are encoded using a single word (4 elements) such that it is easy to determine the
+      /// type of an asset both inside and outside Miden VM. Specifically:
+      /// Element 1 will be:
+      /// - ZERO for a fungible asset
+      /// - non-ZERO for a non-fungible asset
+      /// The most significant bit will be:
+      /// - ONE for a fungible asset
+      /// - ZERO for a non-fungible asset
+      /// 
+      /// The above properties guarantee that there can never be a collision between a fungible and a
+      /// non-fungible asset.
+      /// 
+      /// The methodology for constructing fungible and non-fungible assets is described below.
+      /// 
+      /// # Fungible assets
+      /// The most significant element of a fungible asset is set to the ID of the faucet which issued
+      /// the asset. This guarantees the properties described above (the first bit is ONE).
+      /// 
+      /// The least significant element is set to the amount of the asset. This amount cannot be greater
+      /// than 2^63 - 1 and thus requires 63-bits to store.
+      /// 
+      /// Elements 1 and 2 are set to ZERO.
+      /// 
+      /// It is impossible to find a collision between two fungible assets issued by different faucets as
+      /// the faucet_id is included in the description of the asset and this is guaranteed to be different
+      /// for each faucet as per the faucet creation logic.
+      /// 
+      /// # Non-fungible assets
+      /// The 4 elements of non-fungible assets are computed as follows:
+      /// - First the asset data is hashed. This compresses an asset of an arbitrary length to 4 field
+      /// elements: [d0, d1, d2, d3].
+      /// - d1 is then replaced with the faucet_id which issues the asset: [d0, faucet_id, d2, d3].
+      /// - Lastly, the most significant bit of d3 is set to ZERO.
+      /// 
+      /// It is impossible to find a collision between two non-fungible assets issued by different faucets
+      /// as the faucet_id is included in the description of the non-fungible asset and this is guaranteed
+      /// to be different as per the faucet creation logic. Collision resistance for non-fungible assets
+      /// issued by the same faucet is ~2^95.
+      #[derive(Clone, Copy)]
+      pub enum Asset{
+        Fungible(FungibleAsset),
+        NonFungible(NonFungibleAsset),
+      }
+      impl ::core::fmt::Debug for Asset {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          match self {
+            Asset::Fungible(e) => {
+              f.debug_tuple("Asset::Fungible").field(e).finish()
             }
-            
-            drop(_handle);
+            Asset::NonFungible(e) => {
+              f.debug_tuple("Asset::NonFungible").field(e).finish()
+            }
           }
         }
       }
-      
       /// Inputs of the currently executed note (4 words = 16 felts)
       pub type NoteInputs = (Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,Felt,);
-      impl Asset {
-        #[allow(unused_unsafe, clippy::all)]
-        pub fn new(word: Word,) -> Self{
-          
-          #[allow(unused_imports)]
-          use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
-          unsafe {
-            let (t0_0, t0_1, t0_2, t0_3, ) = word;
-            
-            #[cfg(target_arch = "wasm32")]
-            #[link(wasm_import_module = "miden:base/types@1.0.0")]
-            extern "C" {
-              #[link_name = "[constructor]asset"]
-              fn wit_import(_: i64, _: i64, _: i64, _: i64, ) -> i32;
-            }
-            
-            #[cfg(not(target_arch = "wasm32"))]
-            fn wit_import(_: i64, _: i64, _: i64, _: i64, ) -> i32{ unreachable!() }
-            let ret = wit_import(::cargo_component_bindings::rt::as_i64(t0_0), ::cargo_component_bindings::rt::as_i64(t0_1), ::cargo_component_bindings::rt::as_i64(t0_2), ::cargo_component_bindings::rt::as_i64(t0_3));
-            Asset::from_handle(ret as u32)
-          }
-        }
-      }
-      impl Asset {
-        #[allow(unused_unsafe, clippy::all)]
-        pub fn as_word(&self,) -> Word{
-          
-          #[allow(unused_imports)]
-          use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
-          unsafe {
-            
-            #[repr(align(8))]
-            struct RetArea([u8; 32]);
-            let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-            let ptr0 = ret_area.as_mut_ptr() as i32;
-            #[cfg(target_arch = "wasm32")]
-            #[link(wasm_import_module = "miden:base/types@1.0.0")]
-            extern "C" {
-              #[link_name = "[method]asset.as-word"]
-              fn wit_import(_: i32, _: i32, );
-            }
-            
-            #[cfg(not(target_arch = "wasm32"))]
-            fn wit_import(_: i32, _: i32, ){ unreachable!() }
-            wit_import((self).handle() as i32, ptr0);
-            let l1 = *((ptr0 + 0) as *const i64);
-            let l2 = *((ptr0 + 8) as *const i64);
-            let l3 = *((ptr0 + 16) as *const i64);
-            let l4 = *((ptr0 + 24) as *const i64);
-            (l1 as u64, l2 as u64, l3 as u64, l4 as u64)
-          }
-        }
-      }
       
     }
     
@@ -154,7 +133,7 @@ pub mod exports {
           #[doc(hidden)]
           #[export_name = "miden:basic-wallet-helpers/check-helpers@1.0.0#some-asset-check"]
           #[allow(non_snake_case)]
-          unsafe extern "C" fn __export_some_asset_check(arg0: i32,) -> i32 {
+          unsafe extern "C" fn __export_some_asset_check(arg0: i32,arg1: i64,arg2: i64,arg3: i64,arg4: i64,) -> i32 {
             #[allow(unused_imports)]
             use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
             
@@ -172,14 +151,29 @@ pub mod exports {
             #[cfg(target_arch="wasm32")]
             ::cargo_component_bindings::rt::run_ctors_once();
             
-            let result0 = <_GuestImpl as Guest>::some_asset_check(&super::super::super::super::miden::base::types::Asset::from_handle(arg0 as u32));
-            match result0 { true => 1, false => 0 }
+            use super::super::super::super::miden::base::types::Asset as V0;
+            let v0 = match arg0 {
+              0 => {
+                let e0 = super::super::super::super::miden::base::types::FungibleAsset{
+                  asset: arg1 as u64,
+                  amount: arg2 as u64,
+                };
+                V0::Fungible(e0)
+              }
+              n => {
+                debug_assert_eq!(n, 1, "invalid enum discriminant");
+                let e0 = (arg1 as u64, arg2 as u64, arg3 as u64, arg4 as u64);
+                V0::NonFungible(e0)
+              }
+            };
+            let result1 = <_GuestImpl as Guest>::some_asset_check(v0);
+            match result1 { true => 1, false => 0 }
           }
         };
         use super::super::super::super::super::Component as _GuestImpl;
         pub trait Guest {
           /// Some wallet's helper function that checks if an asset meets some criteria.
-          fn some_asset_check(asset: &Asset,) -> bool;
+          fn some_asset_check(asset: Asset,) -> bool;
         }
         
       }
@@ -191,7 +185,7 @@ pub mod exports {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:basic-wallet-helpers-world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1223] = [3, 0, 26, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 45, 119, 111, 114, 108, 100, 0, 97, 115, 109, 13, 0, 1, 0, 7, 248, 2, 1, 65, 5, 1, 66, 15, 1, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 1, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 3, 4, 0, 3, 116, 97, 103, 3, 0, 1, 1, 114, 2, 5, 97, 115, 115, 101, 116, 4, 6, 97, 109, 111, 117, 110, 116, 119, 4, 0, 14, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 7, 4, 0, 18, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 3, 1, 113, 2, 8, 102, 117, 110, 103, 105, 98, 108, 101, 1, 8, 0, 12, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 1, 9, 0, 4, 0, 13, 97, 115, 115, 101, 116, 45, 100, 101, 116, 97, 105, 108, 115, 3, 0, 10, 4, 0, 5, 97, 115, 115, 101, 116, 3, 1, 1, 111, 16, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 13, 3, 1, 22, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 5, 97, 115, 115, 101, 116, 1, 66, 5, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 1, 104, 1, 1, 64, 1, 5, 97, 115, 115, 101, 116, 2, 0, 127, 4, 0, 16, 115, 111, 109, 101, 45, 97, 115, 115, 101, 116, 45, 99, 104, 101, 99, 107, 1, 3, 4, 1, 46, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 47, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 64, 49, 46, 48, 46, 48, 5, 2, 11, 19, 1, 0, 13, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 3, 0, 0, 7, 136, 4, 1, 65, 2, 1, 65, 5, 1, 66, 21, 1, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 1, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 3, 4, 0, 3, 116, 97, 103, 3, 0, 1, 1, 114, 2, 5, 97, 115, 115, 101, 116, 4, 6, 97, 109, 111, 117, 110, 116, 119, 4, 0, 14, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 7, 4, 0, 18, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 3, 1, 113, 2, 8, 102, 117, 110, 103, 105, 98, 108, 101, 1, 8, 0, 12, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 1, 9, 0, 4, 0, 13, 97, 115, 115, 101, 116, 45, 100, 101, 116, 97, 105, 108, 115, 3, 0, 10, 4, 0, 5, 97, 115, 115, 101, 116, 3, 1, 1, 111, 16, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 13, 1, 105, 12, 1, 64, 1, 4, 119, 111, 114, 100, 3, 0, 15, 4, 0, 18, 91, 99, 111, 110, 115, 116, 114, 117, 99, 116, 111, 114, 93, 97, 115, 115, 101, 116, 1, 16, 1, 104, 12, 1, 64, 1, 4, 115, 101, 108, 102, 17, 0, 3, 4, 0, 21, 91, 109, 101, 116, 104, 111, 100, 93, 97, 115, 115, 101, 116, 46, 97, 115, 45, 119, 111, 114, 100, 1, 18, 3, 1, 22, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 5, 97, 115, 115, 101, 116, 1, 66, 5, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 1, 104, 1, 1, 64, 1, 5, 97, 115, 115, 101, 116, 2, 0, 127, 4, 0, 16, 115, 111, 109, 101, 45, 97, 115, 115, 101, 116, 45, 99, 104, 101, 99, 107, 1, 3, 4, 1, 46, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 47, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 64, 49, 46, 48, 46, 48, 5, 2, 4, 1, 59, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 45, 119, 111, 114, 108, 100, 64, 49, 46, 48, 46, 48, 4, 0, 11, 32, 1, 0, 26, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 45, 119, 111, 114, 108, 100, 3, 2, 0, 0, 154, 1, 12, 112, 97, 99, 107, 97, 103, 101, 45, 100, 111, 99, 115, 0, 123, 34, 105, 110, 116, 101, 114, 102, 97, 99, 101, 115, 34, 58, 123, 34, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 34, 58, 123, 34, 102, 117, 110, 99, 115, 34, 58, 123, 34, 115, 111, 109, 101, 45, 97, 115, 115, 101, 116, 45, 99, 104, 101, 99, 107, 34, 58, 34, 83, 111, 109, 101, 32, 119, 97, 108, 108, 101, 116, 39, 115, 32, 104, 101, 108, 112, 101, 114, 32, 102, 117, 110, 99, 116, 105, 111, 110, 32, 116, 104, 97, 116, 32, 99, 104, 101, 99, 107, 115, 32, 105, 102, 32, 97, 110, 32, 97, 115, 115, 101, 116, 32, 109, 101, 101, 116, 115, 32, 115, 111, 109, 101, 32, 99, 114, 105, 116, 101, 114, 105, 97, 46, 34, 125, 125, 125, 125, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 49, 56, 46, 50, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 52, 46, 48];
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1104] = [3, 0, 26, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 45, 119, 111, 114, 108, 100, 0, 97, 115, 109, 13, 0, 1, 0, 7, 227, 2, 1, 65, 5, 1, 66, 14, 1, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 1, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 3, 4, 0, 3, 116, 97, 103, 3, 0, 1, 1, 114, 2, 5, 97, 115, 115, 101, 116, 4, 6, 97, 109, 111, 117, 110, 116, 119, 4, 0, 14, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 7, 4, 0, 18, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 3, 1, 113, 2, 8, 102, 117, 110, 103, 105, 98, 108, 101, 1, 8, 0, 12, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 1, 9, 0, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 10, 1, 111, 16, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 12, 3, 1, 22, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 5, 97, 115, 115, 101, 116, 1, 66, 4, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 1, 64, 1, 5, 97, 115, 115, 101, 116, 1, 0, 127, 4, 0, 16, 115, 111, 109, 101, 45, 97, 115, 115, 101, 116, 45, 99, 104, 101, 99, 107, 1, 2, 4, 1, 46, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 47, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 64, 49, 46, 48, 46, 48, 5, 2, 11, 19, 1, 0, 13, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 3, 0, 0, 7, 166, 3, 1, 65, 2, 1, 65, 5, 1, 66, 14, 1, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 1, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 3, 4, 0, 3, 116, 97, 103, 3, 0, 1, 1, 114, 2, 5, 97, 115, 115, 101, 116, 4, 6, 97, 109, 111, 117, 110, 116, 119, 4, 0, 14, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 7, 4, 0, 18, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 3, 1, 113, 2, 8, 102, 117, 110, 103, 105, 98, 108, 101, 1, 8, 0, 12, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 1, 9, 0, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 10, 1, 111, 16, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 12, 3, 1, 22, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 5, 97, 115, 115, 101, 116, 1, 66, 4, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 1, 64, 1, 5, 97, 115, 115, 101, 116, 1, 0, 127, 4, 0, 16, 115, 111, 109, 101, 45, 97, 115, 115, 101, 116, 45, 99, 104, 101, 99, 107, 1, 2, 4, 1, 46, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 47, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 64, 49, 46, 48, 46, 48, 5, 2, 4, 1, 59, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 45, 119, 111, 114, 108, 100, 64, 49, 46, 48, 46, 48, 4, 0, 11, 32, 1, 0, 26, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 104, 101, 108, 112, 101, 114, 115, 45, 119, 111, 114, 108, 100, 3, 2, 0, 0, 154, 1, 12, 112, 97, 99, 107, 97, 103, 101, 45, 100, 111, 99, 115, 0, 123, 34, 105, 110, 116, 101, 114, 102, 97, 99, 101, 115, 34, 58, 123, 34, 99, 104, 101, 99, 107, 45, 104, 101, 108, 112, 101, 114, 115, 34, 58, 123, 34, 102, 117, 110, 99, 115, 34, 58, 123, 34, 115, 111, 109, 101, 45, 97, 115, 115, 101, 116, 45, 99, 104, 101, 99, 107, 34, 58, 34, 83, 111, 109, 101, 32, 119, 97, 108, 108, 101, 116, 39, 115, 32, 104, 101, 108, 112, 101, 114, 32, 102, 117, 110, 99, 116, 105, 111, 110, 32, 116, 104, 97, 116, 32, 99, 104, 101, 99, 107, 115, 32, 105, 102, 32, 97, 110, 32, 97, 115, 115, 101, 116, 32, 109, 101, 101, 116, 115, 32, 115, 111, 109, 101, 32, 99, 114, 105, 116, 101, 114, 105, 97, 46, 34, 125, 125, 125, 125, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 49, 56, 46, 50, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 52, 46, 48];
 
 #[inline(never)]
 #[doc(hidden)]

@@ -8,7 +8,7 @@ use crate::bindings::miden::base::types::Asset;
 struct Component;
 
 impl Guest for Component {
-    fn some_asset_check(asset: &Asset) -> bool {
-        asset.as_word().0 == 0
+    fn some_asset_check(asset: Asset) -> bool {
+        true
     }
 }

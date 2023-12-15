@@ -14,7 +14,7 @@ fn main() {
     let assets = get_assets();
     for asset in assets {
         // using some helper function from the basic_wallet_helpers component
-        if some_asset_check(&asset) {
+        if some_asset_check(asset) {
             receive_asset(asset);
         }
     }

@@ -1,12 +1,18 @@
 (component
   (type (;0;)
     (instance
-      (export (;0;) "asset" (type (sub resource)))
-      (type (;1;) u64)
-      (export (;2;) "felt" (type (eq 1)))
-      (export (;3;) "account-id" (type (eq 2)))
-      (type (;4;) (tuple 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2))
-      (export (;5;) "note-inputs" (type (eq 4)))
+      (type (;0;) u64)
+      (export (;1;) "felt" (type (eq 0)))
+      (export (;2;) "account-id" (type (eq 1)))
+      (type (;3;) (tuple 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+      (export (;4;) "note-inputs" (type (eq 3)))
+      (type (;5;) (record (field "asset" 2) (field "amount" u64)))
+      (export (;6;) "fungible-asset" (type (eq 5)))
+      (type (;7;) (tuple 1 1 1 1))
+      (export (;8;) "word" (type (eq 7)))
+      (export (;9;) "non-fungible-asset" (type (eq 8)))
+      (type (;10;) (variant (case "fungible" 6) (case "non-fungible" 9)))
+      (export (;11;) "asset" (type (eq 10)))
     )
   )
   (import (interface "miden:base/types@1.0.0") (instance (;0;) (type 0)))
@@ -25,10 +31,9 @@
       (export (;0;) "get-id" (func (type 6)))
       (type (;7;) (func (result 3)))
       (export (;1;) "get-inputs" (func (type 7)))
-      (type (;8;) (own 5))
-      (type (;9;) (list 8))
-      (type (;10;) (func (result 9)))
-      (export (;2;) "get-assets" (func (type 10)))
+      (type (;8;) (list 5))
+      (type (;9;) (func (result 8)))
+      (export (;2;) "get-assets" (func (type 9)))
     )
   )
   (import (interface "miden:base/tx-kernel@1.0.0") (instance (;1;) (type 4)))
@@ -37,9 +42,8 @@
     (instance
       (alias outer 1 5 (type (;0;)))
       (export (;1;) "asset" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (func (param "asset" 2)))
-      (export (;0;) "receive-asset" (func (type 3)))
+      (type (;2;) (func (param "asset" 1)))
+      (export (;0;) "receive-asset" (func (type 2)))
     )
   )
   (import (interface "miden:basic-wallet/basic-wallet@1.0.0") (instance (;2;) (type 6)))
@@ -48,9 +52,8 @@
     (instance
       (alias outer 1 7 (type (;0;)))
       (export (;1;) "asset" (type (eq 0)))
-      (type (;2;) (borrow 1))
-      (type (;3;) (func (param "asset" 2) (result bool)))
-      (export (;0;) "some-asset-check" (func (type 3)))
+      (type (;2;) (func (param "asset" 1) (result bool)))
+      (export (;0;) "some-asset-check" (func (type 2)))
     )
   )
   (import (interface "miden:basic-wallet-helpers/check-helpers@1.0.0") (instance (;3;) (type 8)))
@@ -253,33 +256,34 @@
     (type (;5;) (func (param i32 i32 i32) (result i32)))
     (type (;6;) (func (param i32 i32) (result i32)))
     (type (;7;) (func (result i64)))
-    (type (;8;) (func (param i32 i32 i32 i32) (result i32)))
-    (type (;9;) (func (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
-    (type (;10;) (func (param i32 i32 i32 i32)))
-    (type (;11;) (func (result i32)))
-    (type (;12;) (func (param i32 i32 i32 i32 i32)))
-    (type (;13;) (func (param i32 i32 i32 i32 i32) (result i32)))
-    (type (;14;) (func (param i32 i32 i32 i32 i32 i32 i64 i64 i32)))
-    (type (;15;) (func (param i32 i32 i32 i32 i32 i32) (result i32)))
-    (type (;16;) (func (param i32 i32 i32 i32 i32 i32 i32)))
-    (type (;17;) (func (param i32 i32 i32 i32 i32 i32 i32) (result i32)))
-    (type (;18;) (func (param i64 i32 i32) (result i32)))
+    (type (;8;) (func (param i32 i64 i64 i64 i64) (result i32)))
+    (type (;9;) (func (param i32 i64 i64 i64 i64)))
+    (type (;10;) (func (param i32 i32 i32 i32) (result i32)))
+    (type (;11;) (func (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+    (type (;12;) (func (param i32 i32 i32 i32)))
+    (type (;13;) (func (result i32)))
+    (type (;14;) (func (param i32 i32 i32 i32 i32)))
+    (type (;15;) (func (param i32 i32 i32 i32 i32) (result i32)))
+    (type (;16;) (func (param i32 i32 i32 i32 i32 i32 i64 i64 i32)))
+    (type (;17;) (func (param i32 i32 i32 i32 i32 i32) (result i32)))
+    (type (;18;) (func (param i32 i32 i32 i32 i32 i32 i32)))
+    (type (;19;) (func (param i32 i32 i32 i32 i32 i32 i32) (result i32)))
+    (type (;20;) (func (param i64 i32 i32) (result i32)))
     (import "miden:base/tx-kernel@1.0.0" "get-inputs" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_inputs::wit_import (;0;) (type $.data)))
     (import "miden:base/tx-kernel@1.0.0" "get-id" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import (;1;) (type 7)))
     (import "miden:base/tx-kernel@1.0.0" "get-assets" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import (;2;) (type $.data)))
-    (import "miden:basic-wallet-helpers/check-helpers@1.0.0" "some-asset-check" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet_helpers::check_helpers::some_asset_check::wit_import (;3;) (type 3)))
-    (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;4;) (type $.data)))
-    (import "miden:base/types@1.0.0" "[resource-drop]asset" (func $<basic_wallet_p2id_note::bindings::miden::base::types::Asset as wit_bindgen::WasmResource>::drop::drop (;5;) (type $.data)))
-    (import "wasi_snapshot_preview1" "fd_write" (func $wasi::lib_generated::wasi_snapshot_preview1::fd_write (;6;) (type 8)))
-    (import "wasi_snapshot_preview1" "path_open" (func $wasi::lib_generated::wasi_snapshot_preview1::path_open (;7;) (type 9)))
-    (import "wasi_snapshot_preview1" "environ_get" (func $__imported_wasi_snapshot_preview1_environ_get (;8;) (type 6)))
-    (import "wasi_snapshot_preview1" "environ_sizes_get" (func $__imported_wasi_snapshot_preview1_environ_sizes_get (;9;) (type 6)))
-    (import "wasi_snapshot_preview1" "fd_close" (func $__imported_wasi_snapshot_preview1_fd_close (;10;) (type 3)))
-    (import "wasi_snapshot_preview1" "fd_prestat_get" (func $__imported_wasi_snapshot_preview1_fd_prestat_get (;11;) (type 6)))
-    (import "wasi_snapshot_preview1" "fd_prestat_dir_name" (func $__imported_wasi_snapshot_preview1_fd_prestat_dir_name (;12;) (type 5)))
-    (import "wasi_snapshot_preview1" "proc_exit" (func $__imported_wasi_snapshot_preview1_proc_exit (;13;) (type $.data)))
-    (func $__wasm_call_ctors (;14;) (type $.rodata))
-    (func $_start (;15;) (type $.rodata)
+    (import "miden:basic-wallet-helpers/check-helpers@1.0.0" "some-asset-check" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet_helpers::check_helpers::some_asset_check::wit_import (;3;) (type 8)))
+    (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;4;) (type 9)))
+    (import "wasi_snapshot_preview1" "fd_write" (func $wasi::lib_generated::wasi_snapshot_preview1::fd_write (;5;) (type 10)))
+    (import "wasi_snapshot_preview1" "path_open" (func $wasi::lib_generated::wasi_snapshot_preview1::path_open (;6;) (type 11)))
+    (import "wasi_snapshot_preview1" "environ_get" (func $__imported_wasi_snapshot_preview1_environ_get (;7;) (type 6)))
+    (import "wasi_snapshot_preview1" "environ_sizes_get" (func $__imported_wasi_snapshot_preview1_environ_sizes_get (;8;) (type 6)))
+    (import "wasi_snapshot_preview1" "fd_close" (func $__imported_wasi_snapshot_preview1_fd_close (;9;) (type 3)))
+    (import "wasi_snapshot_preview1" "fd_prestat_get" (func $__imported_wasi_snapshot_preview1_fd_prestat_get (;10;) (type 6)))
+    (import "wasi_snapshot_preview1" "fd_prestat_dir_name" (func $__imported_wasi_snapshot_preview1_fd_prestat_dir_name (;11;) (type 5)))
+    (import "wasi_snapshot_preview1" "proc_exit" (func $__imported_wasi_snapshot_preview1_proc_exit (;12;) (type $.data)))
+    (func $__wasm_call_ctors (;13;) (type $.rodata))
+    (func $_start (;14;) (type $.rodata)
       (local i32)
       block ;; label = @1
         block ;; label = @2
@@ -304,11 +308,11 @@
       call $__wasi_proc_exit
       unreachable
     )
-    (func $std::sys_common::backtrace::__rust_begin_short_backtrace (;16;) (type $.data) (param i32)
+    (func $std::sys_common::backtrace::__rust_begin_short_backtrace (;15;) (type $.data) (param i32)
       local.get 0
       call_indirect (type $.rodata)
     )
-    (func $std::rt::lang_start::{{closure}} (;17;) (type 3) (param i32) (result i32)
+    (func $std::rt::lang_start::{{closure}} (;16;) (type 3) (param i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -332,7 +336,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&T as core::fmt::Debug>::fmt (;18;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;17;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.set 0
@@ -358,7 +362,7 @@
       local.get 1
       call $core::fmt::num::<impl core::fmt::LowerHex for i64>::fmt
     )
-    (func $core::ops::function::FnOnce::call_once{{vtable.shim}} (;19;) (type 3) (param i32) (result i32)
+    (func $core::ops::function::FnOnce::call_once{{vtable.shim}} (;18;) (type 3) (param i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -382,8 +386,8 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::ptr::drop_in_place<&u64> (;20;) (type $.data) (param i32))
-    (func $core::panicking::assert_failed (;21;) (type 4) (param i32 i32 i32)
+    (func $core::ptr::drop_in_place<&u64> (;19;) (type $.data) (param i32))
+    (func $core::panicking::assert_failed (;20;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -410,7 +414,7 @@
       call $core::panicking::assert_failed_inner
       unreachable
     )
-    (func $alloc::raw_vec::finish_grow (;22;) (type 10) (param i32 i32 i32 i32)
+    (func $alloc::raw_vec::finish_grow (;21;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       block ;; label = @1
         block ;; label = @2
@@ -518,7 +522,7 @@
       i32.const 1
       i32.store
     )
-    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;23;) (type 2) (param i32 i32)
+    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;22;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -551,13 +555,13 @@
           i32.gt_u
           select
           local.tee 1
-          i32.const 2
-          i32.shl
+          i32.const 40
+          i32.mul
           local.set 4
           local.get 1
-          i32.const 536870912
+          i32.const 53687092
           i32.lt_u
-          i32.const 2
+          i32.const 3
           i32.shl
           local.set 5
           block ;; label = @3
@@ -566,12 +570,12 @@
               i32.eqz
               br_if 0 (;@4;)
               local.get 2
-              i32.const 4
+              i32.const 8
               i32.store offset=24
               local.get 2
               local.get 3
-              i32.const 2
-              i32.shl
+              i32.const 40
+              i32.mul
               i32.store offset=28
               local.get 2
               local.get 0
@@ -630,8 +634,8 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $basic_wallet_p2id_note::main (;24;) (type $.rodata)
-      (local i32 i64 i64 i32 i32 i32 i32 i32 i32 i32 i32)
+    (func $basic_wallet_p2id_note::main (;23;) (type $.rodata)
+      (local i32 i64 i64 i32 i32 i32 i32 i32 i32 i64 i64 i64 i32)
       global.get $__stack_pointer
       i32.const 160
       i32.sub
@@ -651,43 +655,41 @@
       local.tee 2
       i64.store offset=16
       block ;; label = @1
-        local.get 2
-        local.get 1
-        i64.ne
-        br_if 0 (;@1;)
-        local.get 0
-        i32.const 152
-        i32.add
-        call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import
-        local.get 0
-        i32.load offset=152
-        local.set 3
         block ;; label = @2
           block ;; label = @3
             block ;; label = @4
+              local.get 2
+              local.get 1
+              i64.ne
+              br_if 0 (;@4;)
+              local.get 0
+              i32.const 152
+              i32.add
+              call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import
+              local.get 0
+              i32.load offset=152
+              local.set 3
               block ;; label = @5
                 block ;; label = @6
                   local.get 0
-                  i32.const 152
-                  i32.add
-                  i32.const 4
+                  i32.const 156
                   i32.add
                   i32.load
                   local.tee 4
                   i32.eqz
                   br_if 0 (;@6;)
                   local.get 4
-                  i32.const 536870911
+                  i32.const 53687091
                   i32.gt_u
-                  br_if 2 (;@4;)
+                  br_if 3 (;@3;)
                   local.get 4
-                  i32.const 2
-                  i32.shl
+                  i32.const 40
+                  i32.mul
                   local.tee 5
                   i32.const -1
                   i32.le_s
-                  br_if 2 (;@4;)
-                  i32.const 4
+                  br_if 3 (;@3;)
+                  i32.const 8
                   local.set 6
                   local.get 5
                   i32.eqz
@@ -696,20 +698,20 @@
                   i32.load8_u offset=1056309
                   drop
                   local.get 5
-                  i32.const 4
+                  i32.const 8
                   call $__rust_alloc
                   local.tee 6
                   br_if 1 (;@5;)
-                  i32.const 4
+                  i32.const 8
                   local.get 5
                   call $alloc::alloc::handle_alloc_error
                   unreachable
                 end
                 local.get 3
                 i32.const 0
-                i32.const 4
+                i32.const 8
                 call $wit_bindgen::rt::dealloc
-                br 3 (;@2;)
+                br 4 (;@1;)
               end
               i32.const 0
               local.set 7
@@ -725,20 +727,44 @@
               local.get 3
               local.set 8
               loop ;; label = @5
-                local.get 8
-                i32.load
-                local.set 9
                 block ;; label = @6
                   block ;; label = @7
-                    local.get 7
-                    local.get 0
-                    i32.load offset=28
-                    i32.eq
+                    local.get 8
+                    i32.load8_u
                     br_if 0 (;@7;)
-                    local.get 7
-                    local.set 10
+                    i64.const 0
+                    local.set 1
                     br 1 (;@6;)
                   end
+                  local.get 8
+                  i32.const 32
+                  i32.add
+                  i64.load
+                  local.set 9
+                  local.get 8
+                  i32.const 24
+                  i32.add
+                  i64.load
+                  local.set 10
+                  i64.const 1
+                  local.set 1
+                end
+                local.get 8
+                i32.const 8
+                i32.add
+                i64.load
+                local.set 2
+                local.get 8
+                i32.const 16
+                i32.add
+                i64.load
+                local.set 11
+                block ;; label = @6
+                  local.get 7
+                  local.get 0
+                  i32.load offset=28
+                  i32.ne
+                  br_if 0 (;@6;)
                   local.get 0
                   i32.const 24
                   i32.add
@@ -749,23 +775,36 @@
                   local.set 6
                   local.get 0
                   i32.load offset=32
-                  local.set 10
+                  local.set 7
                 end
                 local.get 6
-                local.get 10
-                i32.const 2
-                i32.shl
+                local.get 7
+                i32.const 40
+                i32.mul
                 i32.add
+                local.tee 12
                 local.get 9
-                i32.store
-                local.get 0
+                i64.store offset=32
+                local.get 12
                 local.get 10
+                i64.store offset=24
+                local.get 12
+                local.get 11
+                i64.store offset=16
+                local.get 12
+                local.get 2
+                i64.store offset=8
+                local.get 12
+                local.get 1
+                i64.store
+                local.get 0
+                local.get 7
                 i32.const 1
                 i32.add
                 local.tee 7
                 i32.store offset=32
                 local.get 8
-                i32.const 4
+                i32.const 40
                 i32.add
                 local.set 8
                 local.get 4
@@ -776,89 +815,110 @@
               end
               local.get 0
               i32.load offset=28
-              local.set 4
+              local.set 6
               local.get 0
               i32.load offset=24
-              local.set 9
+              local.set 4
               local.get 3
               local.get 5
-              i32.const 4
+              i32.const 8
               call $wit_bindgen::rt::dealloc
               local.get 7
               i32.eqz
-              br_if 1 (;@3;)
-              local.get 10
-              i32.const 2
-              i32.shl
-              i32.const 4
+              br_if 2 (;@2;)
+              local.get 4
+              local.get 7
+              i32.const 40
+              i32.mul
               i32.add
+              local.set 12
+              local.get 4
               local.set 8
-              local.get 9
-              local.set 7
               loop ;; label = @5
-                block ;; label = @6
-                  block ;; label = @7
-                    local.get 7
-                    i32.load
-                    local.tee 10
-                    call $basic_wallet_p2id_note::bindings::miden::basic_wallet_helpers::check_helpers::some_asset_check::wit_import
-                    call $wit_bindgen::rt::bool_lift
-                    i32.eqz
-                    br_if 0 (;@7;)
-                    local.get 10
-                    call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
-                    br 1 (;@6;)
-                  end
-                  local.get 10
-                  call $<basic_wallet_p2id_note::bindings::miden::base::types::Asset as wit_bindgen::WasmResource>::drop::drop
-                end
-                local.get 7
-                i32.const 4
-                i32.add
-                local.set 7
                 local.get 8
-                i32.const -4
+                i64.load
+                local.tee 1
+                i64.const 2
+                i64.eq
+                br_if 3 (;@2;)
+                block ;; label = @6
+                  local.get 1
+                  i64.const 0
+                  i64.ne
+                  local.tee 7
+                  local.get 8
+                  i64.load offset=8
+                  local.tee 1
+                  local.get 8
+                  i64.load offset=16
+                  local.tee 2
+                  local.get 8
+                  i64.load offset=24
+                  i64.const 0
+                  local.get 7
+                  select
+                  local.tee 11
+                  local.get 8
+                  i64.load offset=32
+                  i64.const 0
+                  local.get 7
+                  select
+                  local.tee 9
+                  call $basic_wallet_p2id_note::bindings::miden::basic_wallet_helpers::check_helpers::some_asset_check::wit_import
+                  call $wit_bindgen::rt::bool_lift
+                  i32.eqz
+                  br_if 0 (;@6;)
+                  local.get 7
+                  local.get 1
+                  local.get 2
+                  local.get 11
+                  local.get 9
+                  call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
+                end
+                local.get 8
+                i32.const 40
                 i32.add
                 local.tee 8
+                local.get 12
+                i32.ne
                 br_if 0 (;@5;)
-                br 2 (;@3;)
+                br 3 (;@2;)
               end
             end
-            call $alloc::raw_vec::capacity_overflow
+            local.get 0
+            i32.const 0
+            i32.store offset=24
+            local.get 0
+            i32.const 16
+            i32.add
+            local.get 0
+            i32.const 8
+            i32.add
+            local.get 0
+            i32.const 24
+            i32.add
+            call $core::panicking::assert_failed
             unreachable
           end
-          local.get 4
-          i32.eqz
-          br_if 0 (;@2;)
-          local.get 9
-          local.get 4
-          i32.const 2
-          i32.shl
-          i32.const 4
-          call $__rust_dealloc
+          call $alloc::raw_vec::capacity_overflow
+          unreachable
         end
-        local.get 0
-        i32.const 160
-        i32.add
-        global.set $__stack_pointer
-        return
+        local.get 6
+        i32.eqz
+        br_if 0 (;@1;)
+        local.get 4
+        local.get 6
+        i32.const 40
+        i32.mul
+        i32.const 8
+        call $__rust_dealloc
       end
       local.get 0
-      i32.const 0
-      i32.store offset=24
-      local.get 0
-      i32.const 16
+      i32.const 160
       i32.add
-      local.get 0
-      i32.const 8
-      i32.add
-      local.get 0
-      i32.const 24
-      i32.add
-      call $core::panicking::assert_failed
-      unreachable
+      global.set $__stack_pointer
     )
-    (func $__main_void (;25;) (type 11) (result i32)
+    (func $__main_void (;24;) (type 13) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -883,7 +943,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $__rust_alloc (;26;) (type 6) (param i32 i32) (result i32)
+    (func $__rust_alloc (;25;) (type 6) (param i32 i32) (result i32)
       (local i32)
       local.get 0
       local.get 1
@@ -892,14 +952,14 @@
       local.get 2
       return
     )
-    (func $__rust_dealloc (;27;) (type 4) (param i32 i32 i32)
+    (func $__rust_dealloc (;26;) (type 4) (param i32 i32 i32)
       local.get 0
       local.get 1
       local.get 2
       call $__rdl_dealloc
       return
     )
-    (func $__rust_realloc (;28;) (type 8) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;27;) (type 10) (param i32 i32 i32 i32) (result i32)
       (local i32)
       local.get 0
       local.get 1
@@ -910,13 +970,13 @@
       local.get 4
       return
     )
-    (func $__rust_alloc_error_handler (;29;) (type 2) (param i32 i32)
+    (func $__rust_alloc_error_handler (;28;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       call $__rg_oom
       return
     )
-    (func $cabi_realloc (;30;) (type 8) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_realloc (;29;) (type 10) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
@@ -948,7 +1008,7 @@
       end
       local.get 2
     )
-    (func $wit_bindgen::rt::dealloc (;31;) (type 4) (param i32 i32 i32)
+    (func $wit_bindgen::rt::dealloc (;30;) (type 4) (param i32 i32 i32)
       block ;; label = @1
         local.get 1
         i32.eqz
@@ -959,14 +1019,14 @@
         call $__rust_dealloc
       end
     )
-    (func $wit_bindgen::rt::bool_lift (;32;) (type 3) (param i32) (result i32)
+    (func $wit_bindgen::rt::bool_lift (;31;) (type 3) (param i32) (result i32)
       local.get 0
       i32.const 255
       i32.and
       i32.const 0
       i32.ne
     )
-    (func $<T as core::any::Any>::type_id (;33;) (type 2) (param i32 i32)
+    (func $<T as core::any::Any>::type_id (;32;) (type 2) (param i32 i32)
       local.get 0
       i64.const -3751304911407043677
       i64.store offset=8
@@ -974,7 +1034,7 @@
       i64.const 118126004786499436
       i64.store
     )
-    (func $<T as core::any::Any>::type_id (;34;) (type 2) (param i32 i32)
+    (func $<T as core::any::Any>::type_id (;33;) (type 2) (param i32 i32)
       local.get 0
       i64.const -1151673474265811458
       i64.store offset=8
@@ -982,7 +1042,7 @@
       i64.const -6622677684352136008
       i64.store
     )
-    (func $<T as core::any::Any>::type_id (;35;) (type 2) (param i32 i32)
+    (func $<T as core::any::Any>::type_id (;34;) (type 2) (param i32 i32)
       local.get 0
       i64.const -163230743173927068
       i64.store offset=8
@@ -990,7 +1050,7 @@
       i64.const -4493808902380553279
       i64.store
     )
-    (func $<&T as core::fmt::Debug>::fmt (;36;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;35;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 0
@@ -998,7 +1058,7 @@
       local.get 1
       call $<core::ffi::c_str::CStr as core::fmt::Debug>::fmt
     )
-    (func $<&T as core::fmt::Debug>::fmt (;37;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;36;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.set 0
@@ -1024,26 +1084,26 @@
       local.get 1
       call $core::fmt::num::<impl core::fmt::LowerHex for i32>::fmt
     )
-    (func $<&T as core::fmt::Debug>::fmt (;38;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;37;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       i32.load
       local.get 1
       call $<alloc::ffi::c_str::NulError as core::fmt::Debug>::fmt
     )
-    (func $<&T as core::fmt::Debug>::fmt (;39;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;38;) (type 6) (param i32 i32) (result i32)
       local.get 1
       i32.const 1048644
       i32.const 2
       call $core::fmt::Formatter::pad
     )
-    (func $<&T as core::fmt::Debug>::fmt (;40;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;39;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       call $<bool as core::fmt::Display>::fmt
     )
-    (func $<&T as core::fmt::Display>::fmt (;41;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Display>::fmt (;40;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 0
@@ -1051,13 +1111,13 @@
       local.get 1
       call $<str as core::fmt::Display>::fmt
     )
-    (func $<&T as core::fmt::Display>::fmt (;42;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Display>::fmt (;41;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       call $<core::panic::location::Location as core::fmt::Display>::fmt
     )
-    (func $core::fmt::Write::write_char (;43;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_char (;42;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1185,7 +1245,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;44;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;43;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -1335,7 +1395,7 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $core::fmt::Write::write_char (;45;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_char (;44;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1463,7 +1523,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;46;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;45;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -1617,7 +1677,7 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $core::fmt::Write::write_char (;47;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_char (;46;) (type 6) (param i32 i32) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1773,7 +1833,7 @@
       global.set $__stack_pointer
       i32.const 0
     )
-    (func $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle (;48;) (type 4) (param i32 i32 i32)
+    (func $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle (;47;) (type 4) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -1880,7 +1940,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $core::fmt::Write::write_fmt (;49;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_fmt (;48;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1903,7 +1963,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::Write::write_fmt (;50;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_fmt (;49;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1926,7 +1986,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::Write::write_fmt (;51;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_fmt (;50;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1949,7 +2009,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::Arguments::new_v1 (;52;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $core::fmt::Arguments::new_v1 (;51;) (type 14) (param i32 i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -2011,7 +2071,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $std::panicking::panic_hook_with_disk_dump (;53;) (type 4) (param i32 i32 i32)
+    (func $std::panicking::panic_hook_with_disk_dump (;52;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 160
@@ -2571,13 +2631,13 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $core::ptr::drop_in_place<&mut std::io::Write::write_fmt::Adapter<alloc::vec::Vec<u8>>> (;54;) (type $.data) (param i32))
-    (func $std::panicking::panic_count::is_zero_slow_path (;55;) (type 11) (result i32)
+    (func $core::ptr::drop_in_place<&mut std::io::Write::write_fmt::Adapter<alloc::vec::Vec<u8>>> (;53;) (type $.data) (param i32))
+    (func $std::panicking::panic_count::is_zero_slow_path (;54;) (type 13) (result i32)
       i32.const 0
       i32.load offset=1056392
       i32.eqz
     )
-    (func $core::ptr::drop_in_place<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError> (;56;) (type $.data) (param i32)
+    (func $core::ptr::drop_in_place<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError> (;55;) (type $.data) (param i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -2592,14 +2652,14 @@
         call $__rust_dealloc
       end
     )
-    (func $core::ptr::drop_in_place<()> (;57;) (type $.data) (param i32))
-    (func $core::ptr::drop_in_place<std::fs::File> (;58;) (type $.data) (param i32)
+    (func $core::ptr::drop_in_place<()> (;56;) (type $.data) (param i32))
+    (func $core::ptr::drop_in_place<std::fs::File> (;57;) (type $.data) (param i32)
       local.get 0
       i32.load
       call $close
       drop
     )
-    (func $alloc::sync::Arc<T,A>::drop_slow (;59;) (type $.data) (param i32)
+    (func $alloc::sync::Arc<T,A>::drop_slow (;58;) (type $.data) (param i32)
       (local i32 i32)
       block ;; label = @1
         local.get 0
@@ -2649,7 +2709,7 @@
         call $__rust_dealloc
       end
     )
-    (func $core::ptr::drop_in_place<alloc::string::String> (;60;) (type $.data) (param i32)
+    (func $core::ptr::drop_in_place<alloc::string::String> (;59;) (type $.data) (param i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -2664,7 +2724,7 @@
         call $__rust_dealloc
       end
     )
-    (func $core::ptr::drop_in_place<alloc::vec::Vec<u8>> (;61;) (type $.data) (param i32)
+    (func $core::ptr::drop_in_place<alloc::vec::Vec<u8>> (;60;) (type $.data) (param i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -2679,7 +2739,7 @@
         call $__rust_dealloc
       end
     )
-    (func $core::ptr::drop_in_place<std::panicking::begin_panic_handler::PanicPayload> (;62;) (type $.data) (param i32)
+    (func $core::ptr::drop_in_place<std::panicking::begin_panic_handler::PanicPayload> (;61;) (type $.data) (param i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -2700,7 +2760,7 @@
         call $__rust_dealloc
       end
     )
-    (func $core::ptr::drop_in_place<std::io::Write::write_fmt::Adapter<std::fs::File>> (;63;) (type $.data) (param i32)
+    (func $core::ptr::drop_in_place<std::io::Write::write_fmt::Adapter<std::fs::File>> (;62;) (type $.data) (param i32)
       (local i32 i32 i32)
       local.get 0
       i32.load offset=4
@@ -2746,7 +2806,7 @@
         call $__rust_dealloc
       end
     )
-    (func $core::ptr::drop_in_place<core::result::Result<(),std::io::error::Error>> (;64;) (type 2) (param i32 i32)
+    (func $core::ptr::drop_in_place<core::result::Result<(),std::io::error::Error>> (;63;) (type 2) (param i32 i32)
       (local i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -2790,13 +2850,13 @@
         call $__rust_dealloc
       end
     )
-    (func $core::error::Error::cause (;65;) (type 2) (param i32 i32)
+    (func $core::error::Error::cause (;64;) (type 2) (param i32 i32)
       local.get 0
       i32.const 0
       i32.store
     )
-    (func $core::error::Error::provide (;66;) (type 4) (param i32 i32 i32))
-    (func $core::error::Error::type_id (;67;) (type 2) (param i32 i32)
+    (func $core::error::Error::provide (;65;) (type 4) (param i32 i32 i32))
+    (func $core::error::Error::type_id (;66;) (type 2) (param i32 i32)
       local.get 0
       i64.const -1279653969975287714
       i64.store offset=8
@@ -2804,7 +2864,7 @@
       i64.const -1088588774072656362
       i64.store
     )
-    (func $core::panicking::assert_failed (;68;) (type 2) (param i32 i32)
+    (func $core::panicking::assert_failed (;67;) (type 2) (param i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -2831,7 +2891,7 @@
       call $core::panicking::assert_failed_inner
       unreachable
     )
-    (func $core::panicking::assert_failed (;69;) (type 2) (param i32 i32)
+    (func $core::panicking::assert_failed (;68;) (type 2) (param i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -2858,7 +2918,7 @@
       call $core::panicking::assert_failed_inner
       unreachable
     )
-    (func $<&mut W as core::fmt::Write>::write_char (;70;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_char (;69;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -2989,7 +3049,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $<&mut W as core::fmt::Write>::write_char (;71;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_char (;70;) (type 6) (param i32 i32) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3169,7 +3229,7 @@
       global.set $__stack_pointer
       i32.const 0
     )
-    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;72;) (type 2) (param i32 i32)
+    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;71;) (type 2) (param i32 i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -3275,13 +3335,13 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<&mut W as core::fmt::Write>::write_char (;73;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_char (;72;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       call $core::fmt::Write::write_char
     )
-    (func $<&mut W as core::fmt::Write>::write_char (;74;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_char (;73;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3412,7 +3472,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;75;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;74;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3436,7 +3496,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;76;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;75;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3460,7 +3520,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;77;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;76;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3484,7 +3544,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;78;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;77;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3508,59 +3568,59 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_str (;79;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_str (;78;) (type 5) (param i32 i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       local.get 2
       call $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str
+    )
+    (func $<&mut W as core::fmt::Write>::write_str (;79;) (type 5) (param i32 i32 i32) (result i32)
+      (local i32)
+      block ;; label = @1
+        local.get 0
+        i32.load
+        i32.load offset=8
+        local.tee 0
+        i32.load offset=4
+        local.get 0
+        i32.load offset=8
+        local.tee 3
+        i32.sub
+        local.get 2
+        i32.ge_u
+        br_if 0 (;@1;)
+        local.get 0
+        local.get 3
+        local.get 2
+        call $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle
+        local.get 0
+        i32.load offset=8
+        local.set 3
+      end
+      local.get 0
+      i32.load
+      local.get 3
+      i32.add
+      local.get 1
+      local.get 2
+      call $memcpy
+      drop
+      local.get 0
+      local.get 3
+      local.get 2
+      i32.add
+      i32.store offset=8
+      i32.const 0
     )
     (func $<&mut W as core::fmt::Write>::write_str (;80;) (type 5) (param i32 i32 i32) (result i32)
-      (local i32)
-      block ;; label = @1
-        local.get 0
-        i32.load
-        i32.load offset=8
-        local.tee 0
-        i32.load offset=4
-        local.get 0
-        i32.load offset=8
-        local.tee 3
-        i32.sub
-        local.get 2
-        i32.ge_u
-        br_if 0 (;@1;)
-        local.get 0
-        local.get 3
-        local.get 2
-        call $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle
-        local.get 0
-        i32.load offset=8
-        local.set 3
-      end
-      local.get 0
-      i32.load
-      local.get 3
-      i32.add
-      local.get 1
-      local.get 2
-      call $memcpy
-      drop
-      local.get 0
-      local.get 3
-      local.get 2
-      i32.add
-      i32.store offset=8
-      i32.const 0
-    )
-    (func $<&mut W as core::fmt::Write>::write_str (;81;) (type 5) (param i32 i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       local.get 2
       call $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str
     )
-    (func $<&mut W as core::fmt::Write>::write_str (;82;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_str (;81;) (type 5) (param i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -3597,7 +3657,7 @@
       i32.store offset=8
       i32.const 0
     )
-    (func $alloc::sync::Arc<T,A>::drop_slow (;83;) (type $.data) (param i32)
+    (func $alloc::sync::Arc<T,A>::drop_slow (;82;) (type $.data) (param i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -3639,7 +3699,7 @@
         call $__rust_dealloc
       end
     )
-    (func $alloc::raw_vec::finish_grow (;84;) (type 10) (param i32 i32 i32 i32)
+    (func $alloc::raw_vec::finish_grow (;83;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       block ;; label = @1
         block ;; label = @2
@@ -3747,7 +3807,7 @@
       i32.const 1
       i32.store
     )
-    (func $<core::result::Result<T,E> as core::fmt::Debug>::fmt (;85;) (type 6) (param i32 i32) (result i32)
+    (func $<core::result::Result<T,E> as core::fmt::Debug>::fmt (;84;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -3792,7 +3852,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $std::sys::wasi::once::Once::call (;86;) (type $.data) (param i32)
+    (func $std::sys::wasi::once::Once::call (;85;) (type $.data) (param i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -4047,7 +4107,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $std::rt::lang_start_internal (;87;) (type 13) (param i32 i32 i32 i32 i32) (result i32)
+    (func $std::rt::lang_start_internal (;86;) (type 15) (param i32 i32 i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i64 i64 i64)
       global.get $__stack_pointer
       i32.const 80
@@ -4242,7 +4302,7 @@
       call $std::sys::wasi::abort_internal
       unreachable
     )
-    (func $std::sys_common::thread_info::set (;88;) (type $.data) (param i32)
+    (func $std::sys_common::thread_info::set (;87;) (type $.data) (param i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -4310,7 +4370,7 @@
       call $std::sys::wasi::abort_internal
       unreachable
     )
-    (func $std::thread::ThreadId::new::exhausted (;89;) (type $.rodata)
+    (func $std::thread::ThreadId::new::exhausted (;88;) (type $.rodata)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -4338,7 +4398,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $std::io::Write::write_fmt (;90;) (type 4) (param i32 i32 i32)
+    (func $std::io::Write::write_fmt (;89;) (type 4) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -4429,11 +4489,11 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::sys::wasi::abort_internal (;91;) (type $.rodata)
+    (func $std::sys::wasi::abort_internal (;90;) (type $.rodata)
       call $abort
       unreachable
     )
-    (func $std::sys_common::thread_info::current_thread (;92;) (type 11) (result i32)
+    (func $std::sys_common::thread_info::current_thread (;91;) (type 13) (result i32)
       (local i32 i32 i32 i32 i64 i64 i64)
       global.get $__stack_pointer
       i32.const 16
@@ -4570,7 +4630,7 @@
       call $std::thread::ThreadId::new::exhausted
       unreachable
     )
-    (func $std::env::current_dir (;93;) (type $.data) (param i32)
+    (func $std::env::current_dir (;92;) (type $.data) (param i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -4739,7 +4799,7 @@
       call $alloc::alloc::handle_alloc_error
       unreachable
     )
-    (func $std::env::_var_os (;94;) (type 4) (param i32 i32 i32)
+    (func $std::env::_var_os (;93;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 416
@@ -4932,7 +4992,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::sys::common::small_c_string::run_with_cstr_allocating (;95;) (type 4) (param i32 i32 i32)
+    (func $std::sys::common::small_c_string::run_with_cstr_allocating (;94;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -5058,7 +5118,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::sys::wasi::fs::File::open (;96;) (type 10) (param i32 i32 i32 i32)
+    (func $std::sys::wasi::fs::File::open (;95;) (type 12) (param i32 i32 i32 i32)
       (local i32 i64)
       global.get $__stack_pointer
       i32.const 416
@@ -5169,7 +5229,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::io::Write::write_all (;97;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::Write::write_all (;96;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -5279,7 +5339,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::fs::File as std::io::Write>::write (;98;) (type 10) (param i32 i32 i32 i32)
+    (func $<std::fs::File as std::io::Write>::write (;97;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -5339,7 +5399,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::fs::File as std::io::Write>::write_vectored (;99;) (type 10) (param i32 i32 i32 i32)
+    (func $<std::fs::File as std::io::Write>::write_vectored (;98;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -5389,7 +5449,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::sys::wasi::decode_error_kind (;100;) (type 3) (param i32) (result i32)
+    (func $std::sys::wasi::decode_error_kind (;99;) (type 3) (param i32) (result i32)
       (local i32)
       i32.const 40
       local.set 1
@@ -5553,7 +5613,7 @@
       end
       local.get 1
     )
-    (func $std::io::buffered::bufwriter::BufWriter<W>::flush_buf (;101;) (type 2) (param i32 i32)
+    (func $std::io::buffered::bufwriter::BufWriter<W>::flush_buf (;100;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -5731,7 +5791,7 @@
       call $core::slice::index::slice_end_index_len_fail
       unreachable
     )
-    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::write (;102;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::write (;101;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       block ;; label = @1
         local.get 1
@@ -5771,7 +5831,7 @@
       i32.const 4
       i32.store8
     )
-    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::write_vectored (;103;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::write_vectored (;102;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -5953,10 +6013,10 @@
       local.get 4
       i32.store offset=4
     )
-    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::is_write_vectored (;104;) (type 3) (param i32) (result i32)
+    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::is_write_vectored (;103;) (type 3) (param i32) (result i32)
       i32.const 1
     )
-    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::write_all (;105;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::write_all (;104;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       block ;; label = @1
         local.get 1
@@ -5993,12 +6053,12 @@
       i32.add
       i32.store offset=8
     )
-    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::flush (;106;) (type 2) (param i32 i32)
+    (func $std::io::impls::<impl std::io::Write for alloc::vec::Vec<u8,A>>::flush (;105;) (type 2) (param i32 i32)
       local.get 0
       i32.const 4
       i32.store8
     )
-    (func $std::io::Write::write_all_vectored (;107;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::Write::write_all_vectored (;106;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -6299,7 +6359,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::io::Write::write_all (;108;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::Write::write_all (;107;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -6406,7 +6466,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::io::Write::write_all_vectored (;109;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::Write::write_all_vectored (;108;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -6817,7 +6877,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::io::Write::write_all_vectored (;110;) (type 10) (param i32 i32 i32 i32)
+    (func $std::io::Write::write_all_vectored (;109;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -7121,7 +7181,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::io::Write::write_fmt (;111;) (type 4) (param i32 i32 i32)
+    (func $std::io::Write::write_fmt (;110;) (type 4) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -7212,7 +7272,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::io::Write::write_fmt (;112;) (type 4) (param i32 i32 i32)
+    (func $std::io::Write::write_fmt (;111;) (type 4) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -7303,7 +7363,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;113;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;112;) (type 5) (param i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -7340,7 +7400,7 @@
       i32.store offset=8
       i32.const 0
     )
-    (func $std::panic::get_backtrace_style (;114;) (type 11) (result i32)
+    (func $std::panic::get_backtrace_style (;113;) (type 13) (result i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -7445,7 +7505,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $<std::path::Display as core::fmt::Display>::fmt (;115;) (type 6) (param i32 i32) (result i32)
+    (func $<std::path::Display as core::fmt::Display>::fmt (;114;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 0
@@ -7453,7 +7513,7 @@
       local.get 1
       call $<std::sys::wasi::os_str::Slice as core::fmt::Display>::fmt
     )
-    (func $<std::sys::wasi::os_str::Slice as core::fmt::Display>::fmt (;116;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<std::sys::wasi::os_str::Slice as core::fmt::Display>::fmt (;115;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 64
@@ -7573,11 +7633,11 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $std::process::abort (;117;) (type $.rodata)
+    (func $std::process::abort (;116;) (type $.rodata)
       call $std::sys::wasi::abort_internal
       unreachable
     )
-    (func $std::sync::once_lock::OnceLock<T>::initialize (;118;) (type $.data) (param i32)
+    (func $std::sync::once_lock::OnceLock<T>::initialize (;117;) (type $.data) (param i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -7609,7 +7669,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::sys::wasi::once::Once::call (;119;) (type $.data) (param i32)
+    (func $std::sys::wasi::once::Once::call (;118;) (type $.data) (param i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -7703,7 +7763,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $std::sys::common::small_c_string::run_with_cstr_allocating (;120;) (type 4) (param i32 i32 i32)
+    (func $std::sys::common::small_c_string::run_with_cstr_allocating (;119;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -7764,7 +7824,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $std::sys::wasi::fs::open_parent::{{closure}} (;121;) (type 4) (param i32 i32 i32)
+    (func $std::sys::wasi::fs::open_parent::{{closure}} (;120;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 80
@@ -8040,7 +8100,7 @@
       call $alloc::alloc::handle_alloc_error
       unreachable
     )
-    (func $std::sys_common::backtrace::print (;122;) (type 10) (param i32 i32 i32 i32)
+    (func $std::sys_common::backtrace::print (;121;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -8156,7 +8216,7 @@
       call $core::panicking::assert_failed
       unreachable
     )
-    (func $<std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt (;123;) (type 6) (param i32 i32) (result i32)
+    (func $<std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt (;122;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i64 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -8293,12 +8353,12 @@
       global.set $__stack_pointer
       local.get 5
     )
-    (func $std::sys_common::backtrace::__rust_end_short_backtrace (;124;) (type $.data) (param i32)
+    (func $std::sys_common::backtrace::__rust_end_short_backtrace (;123;) (type $.data) (param i32)
       local.get 0
       call $std::panicking::begin_panic_handler::{{closure}}
       unreachable
     )
-    (func $std::panicking::begin_panic_handler::{{closure}} (;125;) (type $.data) (param i32)
+    (func $std::panicking::begin_panic_handler::{{closure}} (;124;) (type $.data) (param i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -8377,7 +8437,7 @@
       call $std::panicking::rust_panic_with_hook
       unreachable
     )
-    (func $std::alloc::default_alloc_error_hook (;126;) (type 2) (param i32 i32)
+    (func $std::alloc::default_alloc_error_hook (;125;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 64
@@ -8561,7 +8621,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $__rdl_alloc (;127;) (type 6) (param i32 i32) (result i32)
+    (func $__rdl_alloc (;126;) (type 6) (param i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           local.get 1
@@ -8581,11 +8641,11 @@
       local.get 0
       call $malloc
     )
-    (func $__rdl_dealloc (;128;) (type 4) (param i32 i32 i32)
+    (func $__rdl_dealloc (;127;) (type 4) (param i32 i32 i32)
       local.get 0
       call $free
     )
-    (func $__rdl_realloc (;129;) (type 8) (param i32 i32 i32 i32) (result i32)
+    (func $__rdl_realloc (;128;) (type 10) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           local.get 2
@@ -8625,7 +8685,7 @@
       local.get 3
       call $realloc
     )
-    (func $std::panicking::panic_hook_with_disk_dump::{{closure}} (;130;) (type 10) (param i32 i32 i32 i32)
+    (func $std::panicking::panic_hook_with_disk_dump::{{closure}} (;129;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 64
@@ -9004,7 +9064,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $rust_begin_unwind (;131;) (type $.data) (param i32)
+    (func $rust_begin_unwind (;130;) (type $.data) (param i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -9050,7 +9110,7 @@
       call $core::panicking::panic
       unreachable
     )
-    (func $<std::panicking::begin_panic_handler::PanicPayload as core::panic::BoxMeUp>::take_box (;132;) (type 2) (param i32 i32)
+    (func $<std::panicking::begin_panic_handler::PanicPayload as core::panic::BoxMeUp>::take_box (;131;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32 i64)
       global.get $__stack_pointer
       i32.const 48
@@ -9172,7 +9232,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::panicking::begin_panic_handler::PanicPayload as core::panic::BoxMeUp>::get (;133;) (type 2) (param i32 i32)
+    (func $<std::panicking::begin_panic_handler::PanicPayload as core::panic::BoxMeUp>::get (;132;) (type 2) (param i32 i32)
       (local i32 i32 i32 i64)
       global.get $__stack_pointer
       i32.const 32
@@ -9245,7 +9305,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::panicking::begin_panic_handler::StrPanicPayload as core::panic::BoxMeUp>::take_box (;134;) (type 2) (param i32 i32)
+    (func $<std::panicking::begin_panic_handler::StrPanicPayload as core::panic::BoxMeUp>::take_box (;133;) (type 2) (param i32 i32)
       (local i32 i32)
       i32.const 0
       i32.load8_u offset=1056309
@@ -9280,7 +9340,7 @@
       local.get 1
       i32.store
     )
-    (func $<std::panicking::begin_panic_handler::StrPanicPayload as core::panic::BoxMeUp>::get (;135;) (type 2) (param i32 i32)
+    (func $<std::panicking::begin_panic_handler::StrPanicPayload as core::panic::BoxMeUp>::get (;134;) (type 2) (param i32 i32)
       local.get 0
       i32.const 1051132
       i32.store offset=4
@@ -9288,7 +9348,7 @@
       local.get 1
       i32.store
     )
-    (func $std::panicking::rust_panic_with_hook (;136;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $std::panicking::rust_panic_with_hook (;135;) (type 14) (param i32 i32 i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 80
@@ -9741,7 +9801,7 @@
       call $rust_panic
       unreachable
     )
-    (func $rust_panic (;137;) (type 2) (param i32 i32)
+    (func $rust_panic (;136;) (type 2) (param i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -9787,7 +9847,7 @@
       call $std::sys::wasi::abort_internal
       unreachable
     )
-    (func $std::sys::wasi::fs::open_at (;138;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $std::sys::wasi::fs::open_at (;137;) (type 14) (param i32 i32 i32 i32 i32)
       (local i32 i32 i32 i64 i64)
       global.get $__stack_pointer
       i32.const 48
@@ -9955,11 +10015,11 @@
       call $core::panicking::assert_failed
       unreachable
     )
-    (func $std::sys::wasi::process::ExitCode::as_i32 (;139;) (type 3) (param i32) (result i32)
+    (func $std::sys::wasi::process::ExitCode::as_i32 (;138;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load8_u
     )
-    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::write (;140;) (type 10) (param i32 i32 i32 i32)
+    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::write (;139;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -10016,7 +10076,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::write_vectored (;141;) (type 10) (param i32 i32 i32 i32)
+    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::write_vectored (;140;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -10065,15 +10125,15 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::is_write_vectored (;142;) (type 3) (param i32) (result i32)
+    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::is_write_vectored (;141;) (type 3) (param i32) (result i32)
       i32.const 1
     )
-    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::flush (;143;) (type 2) (param i32 i32)
+    (func $<std::sys::wasi::stdio::Stderr as std::io::Write>::flush (;142;) (type 2) (param i32 i32)
       local.get 0
       i32.const 4
       i32.store8
     )
-    (func $std::alloc::rust_oom (;144;) (type 2) (param i32 i32)
+    (func $std::alloc::rust_oom (;143;) (type 2) (param i32 i32)
       (local i32)
       local.get 0
       local.get 1
@@ -10087,21 +10147,21 @@
       call $std::process::abort
       unreachable
     )
-    (func $__rg_oom (;145;) (type 2) (param i32 i32)
+    (func $__rg_oom (;144;) (type 2) (param i32 i32)
       local.get 1
       local.get 0
       call $std::alloc::rust_oom
       unreachable
     )
-    (func $__rust_start_panic (;146;) (type 6) (param i32 i32) (result i32)
+    (func $__rust_start_panic (;145;) (type 6) (param i32 i32) (result i32)
       unreachable
       unreachable
     )
-    (func $wasi::lib_generated::Errno::raw (;147;) (type 3) (param i32) (result i32)
+    (func $wasi::lib_generated::Errno::raw (;146;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load16_u
     )
-    (func $wasi::lib_generated::fd_write (;148;) (type 10) (param i32 i32 i32 i32)
+    (func $wasi::lib_generated::fd_write (;147;) (type 12) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -10141,7 +10201,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi::lib_generated::path_open (;149;) (type 14) (param i32 i32 i32 i32 i32 i32 i64 i64 i32)
+    (func $wasi::lib_generated::path_open (;148;) (type 16) (param i32 i32 i32 i32 i32 i32 i64 i64 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -10190,11 +10250,11 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $malloc (;150;) (type 3) (param i32) (result i32)
+    (func $malloc (;149;) (type 3) (param i32) (result i32)
       local.get 0
       call $dlmalloc
     )
-    (func $dlmalloc (;151;) (type 3) (param i32) (result i32)
+    (func $dlmalloc (;150;) (type 3) (param i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -13217,11 +13277,11 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $free (;152;) (type $.data) (param i32)
+    (func $free (;151;) (type $.data) (param i32)
       local.get 0
       call $dlfree
     )
-    (func $dlfree (;153;) (type $.data) (param i32)
+    (func $dlfree (;152;) (type $.data) (param i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -14019,7 +14079,7 @@
         i32.store offset=1056452
       end
     )
-    (func $calloc (;154;) (type 6) (param i32 i32) (result i32)
+    (func $calloc (;153;) (type 6) (param i32 i32) (result i32)
       (local i32 i64)
       block ;; label = @1
         block ;; label = @2
@@ -14076,7 +14136,7 @@
       end
       local.get 0
     )
-    (func $realloc (;155;) (type 6) (param i32 i32) (result i32)
+    (func $realloc (;154;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -14630,7 +14690,7 @@
       end
       local.get 0
     )
-    (func $dispose_chunk (;156;) (type 2) (param i32 i32)
+    (func $dispose_chunk (;155;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32 i32 i32)
       local.get 0
       local.get 1
@@ -15388,7 +15448,7 @@
         i32.store offset=8
       end
     )
-    (func $internal_memalign (;157;) (type 6) (param i32 i32) (result i32)
+    (func $internal_memalign (;156;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -15620,7 +15680,7 @@
       i32.const 8
       i32.add
     )
-    (func $aligned_alloc (;158;) (type 6) (param i32 i32) (result i32)
+    (func $aligned_alloc (;157;) (type 6) (param i32 i32) (result i32)
       block ;; label = @1
         local.get 0
         i32.const 16
@@ -15634,7 +15694,7 @@
       local.get 1
       call $internal_memalign
     )
-    (func $close (;159;) (type 3) (param i32) (result i32)
+    (func $close (;158;) (type 3) (param i32) (result i32)
       call $__wasilibc_populate_preopens
       block ;; label = @1
         local.get 0
@@ -15649,12 +15709,12 @@
       i32.store offset=1056916
       i32.const -1
     )
-    (func $_Exit (;160;) (type $.data) (param i32)
+    (func $_Exit (;159;) (type $.data) (param i32)
       local.get 0
       call $__wasi_proc_exit
       unreachable
     )
-    (func $__wasilibc_ensure_environ (;161;) (type $.rodata)
+    (func $__wasilibc_ensure_environ (;160;) (type $.rodata)
       block ;; label = @1
         i32.const 0
         i32.load offset=1056296
@@ -15664,7 +15724,7 @@
         call $__wasilibc_initialize_environ
       end
     )
-    (func $__wasilibc_initialize_environ (;162;) (type $.rodata)
+    (func $__wasilibc_initialize_environ (;161;) (type $.rodata)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -15738,34 +15798,34 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $__wasi_environ_get (;163;) (type 6) (param i32 i32) (result i32)
+    (func $__wasi_environ_get (;162;) (type 6) (param i32 i32) (result i32)
       local.get 0
       local.get 1
       call $__imported_wasi_snapshot_preview1_environ_get
       i32.const 65535
       i32.and
     )
-    (func $__wasi_environ_sizes_get (;164;) (type 6) (param i32 i32) (result i32)
+    (func $__wasi_environ_sizes_get (;163;) (type 6) (param i32 i32) (result i32)
       local.get 0
       local.get 1
       call $__imported_wasi_snapshot_preview1_environ_sizes_get
       i32.const 65535
       i32.and
     )
-    (func $__wasi_fd_close (;165;) (type 3) (param i32) (result i32)
+    (func $__wasi_fd_close (;164;) (type 3) (param i32) (result i32)
       local.get 0
       call $__imported_wasi_snapshot_preview1_fd_close
       i32.const 65535
       i32.and
     )
-    (func $__wasi_fd_prestat_get (;166;) (type 6) (param i32 i32) (result i32)
+    (func $__wasi_fd_prestat_get (;165;) (type 6) (param i32 i32) (result i32)
       local.get 0
       local.get 1
       call $__imported_wasi_snapshot_preview1_fd_prestat_get
       i32.const 65535
       i32.and
     )
-    (func $__wasi_fd_prestat_dir_name (;167;) (type 5) (param i32 i32 i32) (result i32)
+    (func $__wasi_fd_prestat_dir_name (;166;) (type 5) (param i32 i32 i32) (result i32)
       local.get 0
       local.get 1
       local.get 2
@@ -15773,16 +15833,16 @@
       i32.const 65535
       i32.and
     )
-    (func $__wasi_proc_exit (;168;) (type $.data) (param i32)
+    (func $__wasi_proc_exit (;167;) (type $.data) (param i32)
       local.get 0
       call $__imported_wasi_snapshot_preview1_proc_exit
       unreachable
     )
-    (func $abort (;169;) (type $.rodata)
+    (func $abort (;168;) (type $.rodata)
       unreachable
       unreachable
     )
-    (func $__wasilibc_find_relpath_alloc (;170;) (type 13) (param i32 i32 i32 i32 i32) (result i32)
+    (func $__wasilibc_find_relpath_alloc (;169;) (type 15) (param i32 i32 i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -15997,7 +16057,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $getcwd (;171;) (type 6) (param i32 i32) (result i32)
+    (func $getcwd (;170;) (type 6) (param i32 i32) (result i32)
       (local i32)
       i32.const 0
       i32.load offset=1056300
@@ -16037,7 +16097,7 @@
       end
       local.get 0
     )
-    (func $__wasilibc_populate_preopens (;172;) (type $.rodata)
+    (func $__wasilibc_populate_preopens (;171;) (type $.rodata)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -16129,7 +16189,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $internal_register_preopened_fd_unlocked (;173;) (type 6) (param i32 i32) (result i32)
+    (func $internal_register_preopened_fd_unlocked (;172;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -16251,7 +16311,7 @@
       call $abort
       unreachable
     )
-    (func $__wasilibc_find_relpath (;174;) (type 8) (param i32 i32 i32 i32) (result i32)
+    (func $__wasilibc_find_relpath (;173;) (type 10) (param i32 i32 i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -16289,7 +16349,7 @@
       global.set $__stack_pointer
       local.get 3
     )
-    (func $__wasilibc_find_abspath (;175;) (type 5) (param i32 i32 i32) (result i32)
+    (func $__wasilibc_find_abspath (;174;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       local.get 0
       i32.const -1
@@ -16446,7 +16506,7 @@
       i32.store
       local.get 7
     )
-    (func $sbrk (;176;) (type 3) (param i32) (result i32)
+    (func $sbrk (;175;) (type 3) (param i32) (result i32)
       block ;; label = @1
         local.get 0
         br_if 0 (;@1;)
@@ -16487,7 +16547,7 @@
       call $abort
       unreachable
     )
-    (func $getenv (;177;) (type 3) (param i32) (result i32)
+    (func $getenv (;176;) (type 3) (param i32) (result i32)
       (local i32 i32 i32 i32)
       call $__wasilibc_ensure_environ
       block ;; label = @1
@@ -16562,12 +16622,12 @@
       end
       local.get 2
     )
-    (func $dummy (;178;) (type $.rodata))
-    (func $__wasm_call_dtors (;179;) (type $.rodata)
+    (func $dummy (;177;) (type $.rodata))
+    (func $__wasm_call_dtors (;178;) (type $.rodata)
       call $dummy
       call $dummy
     )
-    (func $memcmp (;180;) (type 5) (param i32 i32 i32) (result i32)
+    (func $memcmp (;179;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32)
       i32.const 0
       local.set 3
@@ -16608,7 +16668,7 @@
       end
       local.get 3
     )
-    (func $memcpy (;181;) (type 5) (param i32 i32 i32) (result i32)
+    (func $memcpy (;180;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -17125,7 +17185,7 @@
       end
       local.get 0
     )
-    (func $memmove (;182;) (type 5) (param i32 i32 i32) (result i32)
+    (func $memmove (;181;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -17773,7 +17833,7 @@
       end
       local.get 0
     )
-    (func $memset (;183;) (type 5) (param i32 i32 i32) (result i32)
+    (func $memset (;182;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i64)
       block ;; label = @1
         local.get 2
@@ -17972,7 +18032,7 @@
       end
       local.get 0
     )
-    (func $__strchrnul (;184;) (type 6) (param i32 i32) (result i32)
+    (func $__strchrnul (;183;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -18158,7 +18218,7 @@
       end
       local.get 3
     )
-    (func $strcmp (;185;) (type 6) (param i32 i32) (result i32)
+    (func $strcmp (;184;) (type 6) (param i32 i32) (result i32)
       (local i32 i32)
       local.get 1
       i32.load8_u
@@ -18214,7 +18274,7 @@
       i32.and
       i32.sub
     )
-    (func $__stpcpy (;186;) (type 6) (param i32 i32) (result i32)
+    (func $__stpcpy (;185;) (type 6) (param i32 i32) (result i32)
       (local i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -18410,14 +18470,14 @@
       end
       local.get 2
     )
-    (func $strcpy (;187;) (type 6) (param i32 i32) (result i32)
+    (func $strcpy (;186;) (type 6) (param i32 i32) (result i32)
       local.get 0
       local.get 1
       call $__stpcpy
       drop
       local.get 0
     )
-    (func $strdup (;188;) (type 3) (param i32) (result i32)
+    (func $strdup (;187;) (type 3) (param i32) (result i32)
       (local i32 i32)
       block ;; label = @1
         local.get 0
@@ -18437,7 +18497,7 @@
       end
       local.get 2
     )
-    (func $strlen (;189;) (type 3) (param i32) (result i32)
+    (func $strlen (;188;) (type 3) (param i32) (result i32)
       (local i32 i32)
       local.get 0
       local.set 1
@@ -18535,7 +18595,7 @@
       local.get 0
       i32.sub
     )
-    (func $strncmp (;190;) (type 5) (param i32 i32 i32) (result i32)
+    (func $strncmp (;189;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32)
       block ;; label = @1
         local.get 2
@@ -18613,7 +18673,7 @@
       i32.load8_u
       i32.sub
     )
-    (func $<&T as core::fmt::Debug>::fmt (;191;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;190;) (type 6) (param i32 i32) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -18672,7 +18732,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&T as core::fmt::Debug>::fmt (;192;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;191;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.set 0
@@ -18698,7 +18758,7 @@
       local.get 1
       call $core::fmt::num::<impl core::fmt::LowerHex for i8>::fmt
     )
-    (func $core::fmt::num::<impl core::fmt::Debug for usize>::fmt (;193;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::Debug for usize>::fmt (;192;) (type 6) (param i32 i32) (result i32)
       block ;; label = @1
         local.get 1
         call $core::fmt::Formatter::debug_lower_hex
@@ -18721,16 +18781,16 @@
       local.get 1
       call $core::fmt::num::<impl core::fmt::LowerHex for i32>::fmt
     )
-    (func $core::ptr::drop_in_place<usize> (;194;) (type $.data) (param i32))
-    (func $core::ptr::drop_in_place<core::fmt::Error> (;195;) (type $.data) (param i32))
-    (func $<&mut W as core::fmt::Write>::write_char (;196;) (type 6) (param i32 i32) (result i32)
+    (func $core::ptr::drop_in_place<usize> (;193;) (type $.data) (param i32))
+    (func $core::ptr::drop_in_place<core::fmt::Error> (;194;) (type $.data) (param i32))
+    (func $<&mut W as core::fmt::Write>::write_char (;195;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       call $alloc::string::String::push
       i32.const 0
     )
-    (func $alloc::string::String::push (;197;) (type 2) (param i32 i32)
+    (func $alloc::string::String::push (;196;) (type 2) (param i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -18906,7 +18966,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;198;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;197;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -18930,7 +18990,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_str (;199;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_str (;198;) (type 5) (param i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -18967,7 +19027,7 @@
       i32.store offset=8
       i32.const 0
     )
-    (func $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle (;200;) (type 4) (param i32 i32 i32)
+    (func $alloc::raw_vec::RawVec<T,A>::reserve::do_reserve_and_handle (;199;) (type 4) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -19074,7 +19134,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $alloc::raw_vec::finish_grow (;201;) (type 10) (param i32 i32 i32 i32)
+    (func $alloc::raw_vec::finish_grow (;200;) (type 12) (param i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
           local.get 1
@@ -19189,13 +19249,13 @@
       i32.const 1
       i32.store
     )
-    (func $alloc::alloc::handle_alloc_error (;202;) (type 2) (param i32 i32)
+    (func $alloc::alloc::handle_alloc_error (;201;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       call $alloc::alloc::handle_alloc_error::rt_error
       unreachable
     )
-    (func $alloc::raw_vec::capacity_overflow (;203;) (type $.rodata)
+    (func $alloc::raw_vec::capacity_overflow (;202;) (type $.rodata)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -19223,7 +19283,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;204;) (type 2) (param i32 i32)
+    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;203;) (type 2) (param i32 i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -19329,13 +19389,13 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $alloc::alloc::handle_alloc_error::rt_error (;205;) (type 2) (param i32 i32)
+    (func $alloc::alloc::handle_alloc_error::rt_error (;204;) (type 2) (param i32 i32)
       local.get 1
       local.get 0
       call $__rust_alloc_error_handler
       unreachable
     )
-    (func $<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError as core::error::Error>::description (;206;) (type 2) (param i32 i32)
+    (func $<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError as core::error::Error>::description (;205;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       i32.load offset=8
@@ -19345,7 +19405,7 @@
       i32.load
       i32.store
     )
-    (func $<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError as core::fmt::Display>::fmt (;207;) (type 6) (param i32 i32) (result i32)
+    (func $<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError as core::fmt::Display>::fmt (;206;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 0
@@ -19353,7 +19413,7 @@
       local.get 1
       call $<str as core::fmt::Display>::fmt
     )
-    (func $<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError as core::fmt::Debug>::fmt (;208;) (type 6) (param i32 i32) (result i32)
+    (func $<<alloc::boxed::Box<dyn core::error::Error+core::marker::Send+core::marker::Sync> as core::convert::From<alloc::string::String>>::from::StringError as core::fmt::Debug>::fmt (;207;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 0
@@ -19361,7 +19421,7 @@
       local.get 1
       call $<str as core::fmt::Debug>::fmt
     )
-    (func $<&str as alloc::ffi::c_str::CString::new::SpecNewImpl>::spec_new_impl (;209;) (type 4) (param i32 i32 i32)
+    (func $<&str as alloc::ffi::c_str::CString::new::SpecNewImpl>::spec_new_impl (;208;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -19573,7 +19633,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $alloc::ffi::c_str::CString::_from_vec_unchecked (;210;) (type 2) (param i32 i32)
+    (func $alloc::ffi::c_str::CString::_from_vec_unchecked (;209;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -19743,7 +19803,7 @@
       call $alloc::alloc::handle_alloc_error
       unreachable
     )
-    (func $alloc::fmt::format::format_inner (;211;) (type 2) (param i32 i32)
+    (func $alloc::fmt::format::format_inner (;210;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -19961,7 +20021,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $alloc::sync::arcinner_layout_for_value_layout (;212;) (type 4) (param i32 i32 i32)
+    (func $alloc::sync::arcinner_layout_for_value_layout (;211;) (type 4) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -20031,7 +20091,7 @@
       call $core::result::unwrap_failed
       unreachable
     )
-    (func $<alloc::ffi::c_str::NulError as core::fmt::Debug>::fmt (;213;) (type 6) (param i32 i32) (result i32)
+    (func $<alloc::ffi::c_str::NulError as core::fmt::Debug>::fmt (;212;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -20060,7 +20120,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::ops::function::FnOnce::call_once (;214;) (type 6) (param i32 i32) (result i32)
+    (func $core::ops::function::FnOnce::call_once (;213;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       drop
@@ -20068,9 +20128,9 @@
         br 0 (;@1;)
       end
     )
-    (func $core::ptr::drop_in_place<&core::iter::adapters::copied::Copied<core::slice::iter::Iter<u8>>> (;215;) (type $.data) (param i32))
-    (func $core::ptr::drop_in_place<core::fmt::Error> (;216;) (type $.data) (param i32))
-    (func $core::panicking::panic_fmt (;217;) (type 2) (param i32 i32)
+    (func $core::ptr::drop_in_place<&core::iter::adapters::copied::Copied<core::slice::iter::Iter<u8>>> (;214;) (type $.data) (param i32))
+    (func $core::ptr::drop_in_place<core::fmt::Error> (;215;) (type $.data) (param i32))
+    (func $core::panicking::panic_fmt (;216;) (type 2) (param i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -20098,7 +20158,7 @@
       call $rust_begin_unwind
       unreachable
     )
-    (func $core::slice::index::slice_start_index_len_fail (;218;) (type 4) (param i32 i32 i32)
+    (func $core::slice::index::slice_start_index_len_fail (;217;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -20136,7 +20196,7 @@
       i32.const 32
       i32.add
       i32.const 2
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 3
       i32.const 8
       i32.add
@@ -20144,7 +20204,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $core::panicking::panic_bounds_check (;219;) (type 4) (param i32 i32 i32)
+    (func $core::panicking::panic_bounds_check (;218;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -20182,7 +20242,7 @@
       i32.const 32
       i32.add
       i32.const 2
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 3
       i32.const 8
       i32.add
@@ -20190,7 +20250,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $core::slice::index::slice_end_index_len_fail (;220;) (type 4) (param i32 i32 i32)
+    (func $core::slice::index::slice_end_index_len_fail (;219;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -20228,7 +20288,7 @@
       i32.const 32
       i32.add
       i32.const 2
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 3
       i32.const 8
       i32.add
@@ -20236,7 +20296,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $core::fmt::Formatter::pad (;221;) (type 5) (param i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::pad (;220;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -20746,7 +20806,7 @@
       i32.load offset=12
       call_indirect (type 5)
     )
-    (func $core::panicking::panic (;222;) (type 4) (param i32 i32 i32)
+    (func $core::panicking::panic (;221;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -20780,14 +20840,14 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $core::fmt::num::imp::<impl core::fmt::Display for u32>::fmt (;223;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::imp::<impl core::fmt::Display for u32>::fmt (;222;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i64.load32_u
       i32.const 1
       local.get 1
       call $core::fmt::num::imp::fmt_u64
     )
-    (func $#func224<core::fmt::Arguments::new_v1> (@name "core::fmt::Arguments::new_v1") (;224;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $#func223<core::fmt::Arguments::new_v1> (@name "core::fmt::Arguments::new_v1") (;223;) (type 14) (param i32 i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -20849,7 +20909,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $core::fmt::num::<impl core::fmt::Debug for u32>::fmt (;225;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::Debug for u32>::fmt (;224;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -21021,7 +21081,7 @@
       call $core::slice::index::slice_start_index_len_fail
       unreachable
     )
-    (func $core::fmt::write (;226;) (type 5) (param i32 i32 i32) (result i32)
+    (func $core::fmt::write (;225;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -21352,7 +21412,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $core::fmt::Formatter::pad_integral (;227;) (type 15) (param i32 i32 i32 i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::pad_integral (;226;) (type 17) (param i32 i32 i32 i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -21752,7 +21812,7 @@
       end
       local.get 1
     )
-    (func $<core::ops::range::Range<Idx> as core::fmt::Debug>::fmt (;228;) (type 6) (param i32 i32) (result i32)
+    (func $<core::ops::range::Range<Idx> as core::fmt::Debug>::fmt (;227;) (type 6) (param i32 i32) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -21806,7 +21866,7 @@
       global.set $__stack_pointer
       local.get 3
     )
-    (func $<T as core::any::Any>::type_id (;229;) (type 2) (param i32 i32)
+    (func $<T as core::any::Any>::type_id (;228;) (type 2) (param i32 i32)
       local.get 0
       i64.const -3751304911407043677
       i64.store offset=8
@@ -21814,7 +21874,7 @@
       i64.const 118126004786499436
       i64.store
     )
-    (func $core::fmt::builders::DebugInner::entry (;230;) (type 4) (param i32 i32 i32)
+    (func $core::fmt::builders::DebugInner::entry (;229;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32 i64)
       global.get $__stack_pointer
       i32.const 64
@@ -21965,7 +22025,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $core::slice::index::slice_index_order_fail (;231;) (type 4) (param i32 i32 i32)
+    (func $core::slice::index::slice_index_order_fail (;230;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -22003,7 +22063,7 @@
       i32.const 32
       i32.add
       i32.const 2
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 3
       i32.const 8
       i32.add
@@ -22011,7 +22071,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $<core::cell::BorrowMutError as core::fmt::Debug>::fmt (;232;) (type 6) (param i32 i32) (result i32)
+    (func $<core::cell::BorrowMutError as core::fmt::Debug>::fmt (;231;) (type 6) (param i32 i32) (result i32)
       local.get 1
       i32.load offset=20
       i32.const 1052404
@@ -22023,7 +22083,7 @@
       i32.load offset=12
       call_indirect (type 5)
     )
-    (func $core::char::methods::<impl char>::escape_debug_ext (;233;) (type 4) (param i32 i32 i32)
+    (func $core::char::methods::<impl char>::escape_debug_ext (;232;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -22419,7 +22479,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $core::unicode::unicode_data::grapheme_extend::lookup (;234;) (type 3) (param i32) (result i32)
+    (func $core::unicode::unicode_data::grapheme_extend::lookup (;233;) (type 3) (param i32) (result i32)
       (local i32 i32 i32 i32 i32)
       local.get 0
       i32.const 11
@@ -22618,7 +22678,7 @@
       call $core::panicking::panic_bounds_check
       unreachable
     )
-    (func $core::unicode::printable::is_printable (;235;) (type 3) (param i32) (result i32)
+    (func $core::unicode::printable::is_printable (;234;) (type 3) (param i32) (result i32)
       (local i32)
       block ;; label = @1
         local.get 0
@@ -22752,7 +22812,7 @@
       i32.const 303
       call $core::unicode::printable::check
     )
-    (func $<core::ffi::c_str::CStr as core::fmt::Debug>::fmt (;236;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<core::ffi::c_str::CStr as core::fmt::Debug>::fmt (;235;) (type 5) (param i32 i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 64
@@ -22818,7 +22878,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<core::slice::ascii::EscapeAscii as core::fmt::Display>::fmt (;237;) (type 6) (param i32 i32) (result i32)
+    (func $<core::slice::ascii::EscapeAscii as core::fmt::Display>::fmt (;236;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -23355,7 +23415,7 @@
       call $core::panicking::panic_bounds_check
       unreachable
     )
-    (func $core::ffi::c_str::CStr::from_bytes_with_nul (;238;) (type 4) (param i32 i32 i32)
+    (func $core::ffi::c_str::CStr::from_bytes_with_nul (;237;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -23592,7 +23652,7 @@
       i32.const 0
       i32.store
     )
-    (func $core::str::converts::from_utf8 (;239;) (type 4) (param i32 i32 i32)
+    (func $core::str::converts::from_utf8 (;238;) (type 4) (param i32 i32 i32)
       (local i32 i32 i32 i32 i32 i64 i64 i32)
       block ;; label = @1
         local.get 2
@@ -23973,14 +24033,14 @@
       i32.const 0
       i32.store
     )
-    (func $core::fmt::num::imp::<impl core::fmt::Display for u8>::fmt (;240;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::imp::<impl core::fmt::Display for u8>::fmt (;239;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i64.load8_u
       i32.const 1
       local.get 1
       call $core::fmt::num::imp::fmt_u64
     )
-    (func $core::result::unwrap_failed (;241;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $core::result::unwrap_failed (;240;) (type 14) (param i32 i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 64
@@ -24026,7 +24086,7 @@
       i32.const 48
       i32.add
       i32.const 2
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 5
       i32.const 24
       i32.add
@@ -24034,7 +24094,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $core::option::expect_failed (;242;) (type 4) (param i32 i32 i32)
+    (func $core::option::expect_failed (;241;) (type 4) (param i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -24064,7 +24124,7 @@
       i32.const 40
       i32.add
       i32.const 1
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 3
       i32.const 16
       i32.add
@@ -24072,7 +24132,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $<&T as core::fmt::Display>::fmt (;243;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Display>::fmt (;242;) (type 6) (param i32 i32) (result i32)
       local.get 1
       local.get 0
       i32.load
@@ -24080,7 +24140,7 @@
       i32.load offset=4
       call $core::fmt::Formatter::pad
     )
-    (func $<core::panic::location::Location as core::fmt::Display>::fmt (;244;) (type 6) (param i32 i32) (result i32)
+    (func $<core::panic::location::Location as core::fmt::Display>::fmt (;243;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -24148,25 +24208,25 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::panic::panic_info::PanicInfo::payload (;245;) (type 2) (param i32 i32)
+    (func $core::panic::panic_info::PanicInfo::payload (;244;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       i64.load align=4
       i64.store
     )
-    (func $core::panic::panic_info::PanicInfo::message (;246;) (type 3) (param i32) (result i32)
+    (func $core::panic::panic_info::PanicInfo::message (;245;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load offset=12
     )
-    (func $core::panic::panic_info::PanicInfo::location (;247;) (type 3) (param i32) (result i32)
+    (func $core::panic::panic_info::PanicInfo::location (;246;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load offset=8
     )
-    (func $core::panic::panic_info::PanicInfo::can_unwind (;248;) (type 3) (param i32) (result i32)
+    (func $core::panic::panic_info::PanicInfo::can_unwind (;247;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load8_u offset=16
     )
-    (func $<core::panic::panic_info::PanicInfo as core::fmt::Display>::fmt (;249;) (type 6) (param i32 i32) (result i32)
+    (func $<core::panic::panic_info::PanicInfo as core::fmt::Display>::fmt (;248;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 64
@@ -24338,7 +24398,7 @@
       global.set $__stack_pointer
       local.get 3
     )
-    (func $core::fmt::num::<impl core::fmt::LowerHex for i32>::fmt (;250;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::LowerHex for i32>::fmt (;249;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -24418,7 +24478,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::panicking::assert_failed_inner (;251;) (type 16) (param i32 i32 i32 i32 i32 i32 i32)
+    (func $core::panicking::assert_failed_inner (;250;) (type 18) (param i32 i32 i32 i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 112
@@ -24510,7 +24570,7 @@
         i32.const 56
         i32.add
         i32.const 3
-        call $#func224<core::fmt::Arguments::new_v1>
+        call $#func223<core::fmt::Arguments::new_v1>
         local.get 7
         i32.const 88
         i32.add
@@ -24589,7 +24649,7 @@
       i32.const 56
       i32.add
       i32.const 4
-      call $#func224<core::fmt::Arguments::new_v1>
+      call $#func223<core::fmt::Arguments::new_v1>
       local.get 7
       i32.const 88
       i32.add
@@ -24597,7 +24657,7 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $<&T as core::fmt::Debug>::fmt (;252;) (type 6) (param i32 i32) (result i32)
+    (func $<&T as core::fmt::Debug>::fmt (;251;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
@@ -24606,7 +24666,7 @@
       i32.load offset=12
       call_indirect (type 6)
     )
-    (func $<core::fmt::Arguments as core::fmt::Display>::fmt (;253;) (type 6) (param i32 i32) (result i32)
+    (func $<core::fmt::Arguments as core::fmt::Display>::fmt (;252;) (type 6) (param i32 i32) (result i32)
       local.get 1
       i32.load offset=20
       local.get 1
@@ -24616,7 +24676,7 @@
       local.get 0
       call $core::fmt::write
     )
-    (func $<core::fmt::builders::PadAdapter as core::fmt::Write>::write_str (;254;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<core::fmt::builders::PadAdapter as core::fmt::Write>::write_str (;253;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       local.get 0
       i32.load offset=4
@@ -24924,7 +24984,7 @@
       end
       local.get 6
     )
-    (func $core::fmt::builders::DebugTuple::field (;255;) (type 5) (param i32 i32 i32) (result i32)
+    (func $core::fmt::builders::DebugTuple::field (;254;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i64)
       global.get $__stack_pointer
       i32.const 64
@@ -25073,14 +25133,14 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::builders::DebugSet::entry (;256;) (type 5) (param i32 i32 i32) (result i32)
+    (func $core::fmt::builders::DebugSet::entry (;255;) (type 5) (param i32 i32 i32) (result i32)
       local.get 0
       local.get 1
       local.get 2
       call $core::fmt::builders::DebugInner::entry
       local.get 0
     )
-    (func $core::fmt::builders::DebugList::finish (;257;) (type 3) (param i32) (result i32)
+    (func $core::fmt::builders::DebugList::finish (;256;) (type 3) (param i32) (result i32)
       (local i32)
       i32.const 1
       local.set 1
@@ -25104,7 +25164,7 @@
       end
       local.get 1
     )
-    (func $core::fmt::Write::write_char (;258;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_char (;257;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -25232,7 +25292,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $core::fmt::Write::write_fmt (;259;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_fmt (;258;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -25255,14 +25315,14 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_str (;260;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_str (;259;) (type 5) (param i32 i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       local.get 2
       call $<core::fmt::builders::PadAdapter as core::fmt::Write>::write_str
     )
-    (func $<&mut W as core::fmt::Write>::write_char (;261;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_char (;260;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -25393,7 +25453,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;262;) (type 6) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;261;) (type 6) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -25417,7 +25477,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::str::count::do_count_chars (;263;) (type 6) (param i32 i32) (result i32)
+    (func $core::str::count::do_count_chars (;262;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -25910,7 +25970,7 @@
       end
       local.get 2
     )
-    (func $core::fmt::Formatter::pad_integral::write_prefix (;264;) (type 13) (param i32 i32 i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::pad_integral::write_prefix (;263;) (type 15) (param i32 i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         block ;; label = @2
@@ -25943,7 +26003,7 @@
       i32.load offset=12
       call_indirect (type 5)
     )
-    (func $core::fmt::Formatter::write_str (;265;) (type 5) (param i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::write_str (;264;) (type 5) (param i32 i32 i32) (result i32)
       local.get 0
       i32.load offset=20
       local.get 1
@@ -25955,7 +26015,7 @@
       i32.load offset=12
       call_indirect (type 5)
     )
-    (func $core::fmt::Formatter::write_fmt (;266;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::Formatter::write_fmt (;265;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load offset=20
       local.get 0
@@ -25965,7 +26025,7 @@
       local.get 1
       call $core::fmt::write
     )
-    (func $core::fmt::Formatter::debug_lower_hex (;267;) (type 3) (param i32) (result i32)
+    (func $core::fmt::Formatter::debug_lower_hex (;266;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load8_u offset=28
       i32.const 16
@@ -25973,7 +26033,7 @@
       i32.const 4
       i32.shr_u
     )
-    (func $core::fmt::Formatter::debug_upper_hex (;268;) (type 3) (param i32) (result i32)
+    (func $core::fmt::Formatter::debug_upper_hex (;267;) (type 3) (param i32) (result i32)
       local.get 0
       i32.load8_u offset=28
       i32.const 32
@@ -25981,7 +26041,7 @@
       i32.const 5
       i32.shr_u
     )
-    (func $core::fmt::Formatter::debug_tuple_field1_finish (;269;) (type 13) (param i32 i32 i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::debug_tuple_field1_finish (;268;) (type 15) (param i32 i32 i32 i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -26091,7 +26151,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::Formatter::debug_tuple_field2_finish (;270;) (type 17) (param i32 i32 i32 i32 i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::debug_tuple_field2_finish (;269;) (type 19) (param i32 i32 i32 i32 i32 i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -26204,7 +26264,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::Formatter::debug_list (;271;) (type 2) (param i32 i32)
+    (func $core::fmt::Formatter::debug_list (;270;) (type 2) (param i32 i32)
       (local i32)
       local.get 1
       i32.load offset=20
@@ -26227,7 +26287,7 @@
       local.get 1
       i32.store
     )
-    (func $<core::fmt::Formatter as core::fmt::Write>::write_char (;272;) (type 6) (param i32 i32) (result i32)
+    (func $<core::fmt::Formatter as core::fmt::Write>::write_char (;271;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load offset=20
       local.get 1
@@ -26238,7 +26298,7 @@
       i32.load offset=16
       call_indirect (type 6)
     )
-    (func $<bool as core::fmt::Display>::fmt (;273;) (type 6) (param i32 i32) (result i32)
+    (func $<bool as core::fmt::Display>::fmt (;272;) (type 6) (param i32 i32) (result i32)
       block ;; label = @1
         local.get 0
         i32.load8_u
@@ -26254,7 +26314,7 @@
       i32.const 4
       call $core::fmt::Formatter::pad
     )
-    (func $<str as core::fmt::Debug>::fmt (;274;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<str as core::fmt::Debug>::fmt (;273;) (type 5) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i64 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -26733,7 +26793,7 @@
       call $core::str::slice_error_fail
       unreachable
     )
-    (func $core::str::slice_error_fail (;275;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $core::str::slice_error_fail (;274;) (type 14) (param i32 i32 i32 i32 i32)
       local.get 0
       local.get 1
       local.get 2
@@ -26742,13 +26802,13 @@
       call $core::str::slice_error_fail_rt
       unreachable
     )
-    (func $<str as core::fmt::Display>::fmt (;276;) (type 5) (param i32 i32 i32) (result i32)
+    (func $<str as core::fmt::Display>::fmt (;275;) (type 5) (param i32 i32 i32) (result i32)
       local.get 2
       local.get 0
       local.get 1
       call $core::fmt::Formatter::pad
     )
-    (func $<char as core::fmt::Debug>::fmt (;277;) (type 6) (param i32 i32) (result i32)
+    (func $<char as core::fmt::Debug>::fmt (;276;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -26910,7 +26970,7 @@
       call $core::panicking::panic_bounds_check
       unreachable
     )
-    (func $core::slice::memchr::memchr_aligned (;278;) (type 10) (param i32 i32 i32 i32)
+    (func $core::slice::memchr::memchr_aligned (;277;) (type 12) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -27071,19 +27131,19 @@
       local.get 7
       i32.store
     )
-    (func $core::str::lossy::Utf8Chunk::valid (;279;) (type 2) (param i32 i32)
+    (func $core::str::lossy::Utf8Chunk::valid (;278;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       i64.load align=4
       i64.store
     )
-    (func $core::str::lossy::Utf8Chunk::invalid (;280;) (type 2) (param i32 i32)
+    (func $core::str::lossy::Utf8Chunk::invalid (;279;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       i64.load offset=8 align=4
       i64.store
     )
-    (func $<core::str::lossy::Utf8Chunks as core::iter::traits::iterator::Iterator>::next (;281;) (type 2) (param i32 i32)
+    (func $<core::str::lossy::Utf8Chunks as core::iter::traits::iterator::Iterator>::next (;280;) (type 2) (param i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 1
@@ -27359,7 +27419,7 @@
       i32.const 0
       i32.store
     )
-    (func $core::fmt::num::<impl core::fmt::UpperHex for i8>::fmt (;282;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::UpperHex for i8>::fmt (;281;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -27439,7 +27499,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::str::lossy::Utf8Chunks::new (;283;) (type 4) (param i32 i32 i32)
+    (func $core::str::lossy::Utf8Chunks::new (;282;) (type 4) (param i32 i32 i32)
       local.get 0
       local.get 2
       i32.store offset=4
@@ -27447,7 +27507,7 @@
       local.get 1
       i32.store
     )
-    (func $core::str::slice_error_fail_rt (;284;) (type 12) (param i32 i32 i32 i32 i32)
+    (func $core::str::slice_error_fail_rt (;283;) (type 14) (param i32 i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 112
@@ -27775,7 +27835,7 @@
               i32.const 72
               i32.add
               i32.const 3
-              call $#func224<core::fmt::Arguments::new_v1>
+              call $#func223<core::fmt::Arguments::new_v1>
               local.get 5
               i32.const 48
               i32.add
@@ -27836,7 +27896,7 @@
           i32.const 72
           i32.add
           i32.const 4
-          call $#func224<core::fmt::Arguments::new_v1>
+          call $#func223<core::fmt::Arguments::new_v1>
           local.get 5
           i32.const 48
           i32.add
@@ -28025,7 +28085,7 @@
         i32.const 72
         i32.add
         i32.const 5
-        call $#func224<core::fmt::Arguments::new_v1>
+        call $#func223<core::fmt::Arguments::new_v1>
         local.get 5
         i32.const 48
         i32.add
@@ -28039,14 +28099,14 @@
       call $core::panicking::panic
       unreachable
     )
-    (func $core::fmt::num::imp::<impl core::fmt::Display for u64>::fmt (;285;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::imp::<impl core::fmt::Display for u64>::fmt (;284;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i64.load
       i32.const 1
       local.get 1
       call $core::fmt::num::imp::fmt_u64
     )
-    (func $core::unicode::printable::check (;286;) (type 17) (param i32 i32 i32 i32 i32 i32 i32) (result i32)
+    (func $core::unicode::printable::check (;285;) (type 19) (param i32 i32 i32 i32 i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       i32.const 1
       local.set 7
@@ -28245,7 +28305,7 @@
       i32.const 1
       i32.and
     )
-    (func $core::fmt::num::<impl core::fmt::LowerHex for i8>::fmt (;287;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::LowerHex for i8>::fmt (;286;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -28325,7 +28385,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::num::imp::fmt_u64 (;288;) (type 18) (param i64 i32 i32) (result i32)
+    (func $core::fmt::num::imp::fmt_u64 (;287;) (type 20) (param i64 i32 i32) (result i32)
       (local i32 i32 i64 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -28498,7 +28558,7 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $core::fmt::num::<impl core::fmt::UpperHex for i32>::fmt (;289;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::UpperHex for i32>::fmt (;288;) (type 6) (param i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -28578,7 +28638,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::num::<impl core::fmt::LowerHex for i64>::fmt (;290;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::LowerHex for i64>::fmt (;289;) (type 6) (param i32 i32) (result i32)
       (local i32 i64 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -28659,7 +28719,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::num::<impl core::fmt::UpperHex for i64>::fmt (;291;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::<impl core::fmt::UpperHex for i64>::fmt (;290;) (type 6) (param i32 i32) (result i32)
       (local i32 i64 i32)
       global.get $__stack_pointer
       i32.const 128
@@ -28740,7 +28800,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::fmt::num::imp::<impl core::fmt::Display for i32>::fmt (;292;) (type 6) (param i32 i32) (result i32)
+    (func $core::fmt::num::imp::<impl core::fmt::Display for i32>::fmt (;291;) (type 6) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.tee 0
@@ -28758,7 +28818,7 @@
       local.get 1
       call $core::fmt::num::imp::fmt_u64
     )
-    (func $<core::fmt::Error as core::fmt::Debug>::fmt (;293;) (type 6) (param i32 i32) (result i32)
+    (func $<core::fmt::Error as core::fmt::Debug>::fmt (;292;) (type 6) (param i32 i32) (result i32)
       local.get 1
       i32.load offset=20
       i32.const 1055412
@@ -28770,7 +28830,7 @@
       i32.load offset=12
       call_indirect (type 5)
     )
-    (func $<core::alloc::layout::LayoutError as core::fmt::Debug>::fmt (;294;) (type 6) (param i32 i32) (result i32)
+    (func $<core::alloc::layout::LayoutError as core::fmt::Debug>::fmt (;293;) (type 6) (param i32 i32) (result i32)
       local.get 1
       i32.load offset=20
       i32.const 1056279
@@ -34749,240 +34809,234 @@
   (core instance (;3;)
     (export "receive-asset" (func 4))
   )
-  (alias export 0 "asset" (type (;34;)))
-  (core func (;5;) (canon resource.drop 34))
+  (alias core export 0 "16" (core func (;5;)))
+  (alias core export 0 "17" (core func (;6;)))
+  (alias core export 0 "18" (core func (;7;)))
+  (alias core export 0 "19" (core func (;8;)))
+  (alias core export 0 "20" (core func (;9;)))
+  (alias core export 0 "21" (core func (;10;)))
+  (alias core export 0 "22" (core func (;11;)))
+  (alias core export 0 "23" (core func (;12;)))
   (core instance (;4;)
-    (export "[resource-drop]asset" (func 5))
+    (export "fd_write" (func 5))
+    (export "path_open" (func 6))
+    (export "environ_get" (func 7))
+    (export "environ_sizes_get" (func 8))
+    (export "fd_close" (func 9))
+    (export "fd_prestat_get" (func 10))
+    (export "fd_prestat_dir_name" (func 11))
+    (export "proc_exit" (func 12))
   )
-  (alias core export 0 "16" (core func (;6;)))
-  (alias core export 0 "17" (core func (;7;)))
-  (alias core export 0 "18" (core func (;8;)))
-  (alias core export 0 "19" (core func (;9;)))
-  (alias core export 0 "20" (core func (;10;)))
-  (alias core export 0 "21" (core func (;11;)))
-  (alias core export 0 "22" (core func (;12;)))
-  (alias core export 0 "23" (core func (;13;)))
-  (core instance (;5;)
-    (export "fd_write" (func 6))
-    (export "path_open" (func 7))
-    (export "environ_get" (func 8))
-    (export "environ_sizes_get" (func 9))
-    (export "fd_close" (func 10))
-    (export "fd_prestat_get" (func 11))
-    (export "fd_prestat_dir_name" (func 12))
-    (export "proc_exit" (func 13))
-  )
-  (core instance (;6;) (instantiate 0
+  (core instance (;5;) (instantiate 0
       (with "miden:base/tx-kernel@1.0.0" (instance 1))
       (with "miden:basic-wallet-helpers/check-helpers@1.0.0" (instance 2))
       (with "miden:basic-wallet/basic-wallet@1.0.0" (instance 3))
-      (with "miden:base/types@1.0.0" (instance 4))
-      (with "wasi_snapshot_preview1" (instance 5))
+      (with "wasi_snapshot_preview1" (instance 4))
     )
   )
-  (alias core export 6 "memory" (core memory (;0;)))
-  (alias core export 6 "cabi_realloc" (core func (;14;)))
-  (alias core export 6 "_start" (core func (;15;)))
-  (alias core export 6 "cabi_realloc" (core func (;16;)))
-  (core instance (;7;)
-    (export "_start" (func 15))
-    (export "cabi_realloc" (func 16))
+  (alias core export 5 "memory" (core memory (;0;)))
+  (alias core export 5 "cabi_realloc" (core func (;13;)))
+  (alias core export 5 "_start" (core func (;14;)))
+  (alias core export 5 "cabi_realloc" (core func (;15;)))
+  (core instance (;6;)
+    (export "_start" (func 14))
+    (export "cabi_realloc" (func 15))
   )
-  (core instance (;8;)
+  (core instance (;7;)
     (export "memory" (memory 0))
   )
-  (alias core export 0 "2" (core func (;17;)))
-  (core instance (;9;)
-    (export "get-directories" (func 17))
+  (alias core export 0 "2" (core func (;16;)))
+  (core instance (;8;)
+    (export "get-directories" (func 16))
   )
-  (alias export 6 "descriptor" (type (;35;)))
+  (alias export 6 "descriptor" (type (;34;)))
+  (core func (;17;) (canon resource.drop 34))
+  (alias export 6 "directory-entry-stream" (type (;35;)))
   (core func (;18;) (canon resource.drop 35))
-  (alias export 6 "directory-entry-stream" (type (;36;)))
-  (core func (;19;) (canon resource.drop 36))
-  (alias core export 0 "3" (core func (;20;)))
-  (alias core export 0 "4" (core func (;21;)))
-  (alias core export 0 "5" (core func (;22;)))
-  (alias core export 0 "6" (core func (;23;)))
-  (alias core export 0 "7" (core func (;24;)))
+  (alias core export 0 "3" (core func (;19;)))
+  (alias core export 0 "4" (core func (;20;)))
+  (alias core export 0 "5" (core func (;21;)))
+  (alias core export 0 "6" (core func (;22;)))
+  (alias core export 0 "7" (core func (;23;)))
+  (core instance (;9;)
+    (export "[resource-drop]descriptor" (func 17))
+    (export "[resource-drop]directory-entry-stream" (func 18))
+    (export "[method]descriptor.write-via-stream" (func 19))
+    (export "[method]descriptor.append-via-stream" (func 20))
+    (export "[method]descriptor.get-type" (func 21))
+    (export "[method]descriptor.open-at" (func 22))
+    (export "filesystem-error-code" (func 23))
+  )
+  (alias export 4 "error" (type (;36;)))
+  (core func (;24;) (canon resource.drop 36))
   (core instance (;10;)
-    (export "[resource-drop]descriptor" (func 18))
-    (export "[resource-drop]directory-entry-stream" (func 19))
-    (export "[method]descriptor.write-via-stream" (func 20))
-    (export "[method]descriptor.append-via-stream" (func 21))
-    (export "[method]descriptor.get-type" (func 22))
-    (export "[method]descriptor.open-at" (func 23))
-    (export "filesystem-error-code" (func 24))
+    (export "[resource-drop]error" (func 24))
   )
-  (alias export 4 "error" (type (;37;)))
+  (alias export 5 "input-stream" (type (;37;)))
   (core func (;25;) (canon resource.drop 37))
-  (core instance (;11;)
-    (export "[resource-drop]error" (func 25))
-  )
-  (alias export 5 "input-stream" (type (;38;)))
+  (alias export 5 "output-stream" (type (;38;)))
   (core func (;26;) (canon resource.drop 38))
-  (alias export 5 "output-stream" (type (;39;)))
-  (core func (;27;) (canon resource.drop 39))
-  (alias core export 0 "8" (core func (;28;)))
-  (alias core export 0 "9" (core func (;29;)))
-  (alias core export 0 "10" (core func (;30;)))
-  (alias core export 0 "11" (core func (;31;)))
+  (alias core export 0 "8" (core func (;27;)))
+  (alias core export 0 "9" (core func (;28;)))
+  (alias core export 0 "10" (core func (;29;)))
+  (alias core export 0 "11" (core func (;30;)))
+  (core instance (;11;)
+    (export "[resource-drop]input-stream" (func 25))
+    (export "[resource-drop]output-stream" (func 26))
+    (export "[method]output-stream.check-write" (func 27))
+    (export "[method]output-stream.write" (func 28))
+    (export "[method]output-stream.blocking-write-and-flush" (func 29))
+    (export "[method]output-stream.blocking-flush" (func 30))
+  )
+  (alias core export 0 "12" (core func (;31;)))
   (core instance (;12;)
-    (export "[resource-drop]input-stream" (func 26))
-    (export "[resource-drop]output-stream" (func 27))
-    (export "[method]output-stream.check-write" (func 28))
-    (export "[method]output-stream.write" (func 29))
-    (export "[method]output-stream.blocking-write-and-flush" (func 30))
-    (export "[method]output-stream.blocking-flush" (func 31))
+    (export "get-environment" (func 31))
   )
-  (alias core export 0 "12" (core func (;32;)))
+  (alias export 15 "terminal-output" (type (;39;)))
+  (core func (;32;) (canon resource.drop 39))
   (core instance (;13;)
-    (export "get-environment" (func 32))
+    (export "[resource-drop]terminal-output" (func 32))
   )
-  (alias export 15 "terminal-output" (type (;40;)))
+  (alias export 8 "tcp-socket" (type (;40;)))
   (core func (;33;) (canon resource.drop 40))
   (core instance (;14;)
-    (export "[resource-drop]terminal-output" (func 33))
+    (export "[resource-drop]tcp-socket" (func 33))
   )
-  (alias export 8 "tcp-socket" (type (;41;)))
+  (alias export 14 "terminal-input" (type (;41;)))
   (core func (;34;) (canon resource.drop 41))
   (core instance (;15;)
-    (export "[resource-drop]tcp-socket" (func 34))
-  )
-  (alias export 14 "terminal-input" (type (;42;)))
-  (core func (;35;) (canon resource.drop 42))
-  (core instance (;16;)
-    (export "[resource-drop]terminal-input" (func 35))
+    (export "[resource-drop]terminal-input" (func 34))
   )
   (alias export 13 "get-stderr" (func (;3;)))
-  (core func (;36;) (canon lower (func 3)))
-  (core instance (;17;)
-    (export "get-stderr" (func 36))
+  (core func (;35;) (canon lower (func 3)))
+  (core instance (;16;)
+    (export "get-stderr" (func 35))
   )
   (alias export 10 "exit" (func (;4;)))
-  (core func (;37;) (canon lower (func 4)))
-  (core instance (;18;)
-    (export "exit" (func 37))
+  (core func (;36;) (canon lower (func 4)))
+  (core instance (;17;)
+    (export "exit" (func 36))
   )
   (alias export 11 "get-stdin" (func (;5;)))
-  (core func (;38;) (canon lower (func 5)))
-  (core instance (;19;)
-    (export "get-stdin" (func 38))
+  (core func (;37;) (canon lower (func 5)))
+  (core instance (;18;)
+    (export "get-stdin" (func 37))
   )
   (alias export 12 "get-stdout" (func (;6;)))
-  (core func (;39;) (canon lower (func 6)))
+  (core func (;38;) (canon lower (func 6)))
+  (core instance (;19;)
+    (export "get-stdout" (func 38))
+  )
+  (alias core export 0 "13" (core func (;39;)))
   (core instance (;20;)
-    (export "get-stdout" (func 39))
+    (export "get-terminal-stdin" (func 39))
   )
-  (alias core export 0 "13" (core func (;40;)))
+  (alias core export 0 "14" (core func (;40;)))
   (core instance (;21;)
-    (export "get-terminal-stdin" (func 40))
+    (export "get-terminal-stdout" (func 40))
   )
-  (alias core export 0 "14" (core func (;41;)))
+  (alias core export 0 "15" (core func (;41;)))
   (core instance (;22;)
-    (export "get-terminal-stdout" (func 41))
+    (export "get-terminal-stderr" (func 41))
   )
-  (alias core export 0 "15" (core func (;42;)))
-  (core instance (;23;)
-    (export "get-terminal-stderr" (func 42))
-  )
-  (core instance (;24;) (instantiate 1
-      (with "__main_module__" (instance 7))
-      (with "env" (instance 8))
-      (with "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance 9))
-      (with "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance 10))
-      (with "wasi:io/error@0.2.0-rc-2023-11-10" (instance 11))
-      (with "wasi:io/streams@0.2.0-rc-2023-11-10" (instance 12))
-      (with "wasi:cli/environment@0.2.0-rc-2023-11-10" (instance 13))
-      (with "wasi:cli/terminal-output@0.2.0-rc-2023-11-10" (instance 14))
-      (with "wasi:sockets/tcp@0.2.0-rc-2023-11-10" (instance 15))
-      (with "wasi:cli/terminal-input@0.2.0-rc-2023-11-10" (instance 16))
-      (with "wasi:cli/stderr@0.2.0-rc-2023-11-10" (instance 17))
-      (with "wasi:cli/exit@0.2.0-rc-2023-11-10" (instance 18))
-      (with "wasi:cli/stdin@0.2.0-rc-2023-11-10" (instance 19))
-      (with "wasi:cli/stdout@0.2.0-rc-2023-11-10" (instance 20))
-      (with "wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10" (instance 21))
-      (with "wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10" (instance 22))
-      (with "wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10" (instance 23))
+  (core instance (;23;) (instantiate 1
+      (with "__main_module__" (instance 6))
+      (with "env" (instance 7))
+      (with "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance 8))
+      (with "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance 9))
+      (with "wasi:io/error@0.2.0-rc-2023-11-10" (instance 10))
+      (with "wasi:io/streams@0.2.0-rc-2023-11-10" (instance 11))
+      (with "wasi:cli/environment@0.2.0-rc-2023-11-10" (instance 12))
+      (with "wasi:cli/terminal-output@0.2.0-rc-2023-11-10" (instance 13))
+      (with "wasi:sockets/tcp@0.2.0-rc-2023-11-10" (instance 14))
+      (with "wasi:cli/terminal-input@0.2.0-rc-2023-11-10" (instance 15))
+      (with "wasi:cli/stderr@0.2.0-rc-2023-11-10" (instance 16))
+      (with "wasi:cli/exit@0.2.0-rc-2023-11-10" (instance 17))
+      (with "wasi:cli/stdin@0.2.0-rc-2023-11-10" (instance 18))
+      (with "wasi:cli/stdout@0.2.0-rc-2023-11-10" (instance 19))
+      (with "wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10" (instance 20))
+      (with "wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10" (instance 21))
+      (with "wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10" (instance 22))
     )
   )
-  (alias core export 24 "cabi_export_realloc" (core func (;43;)))
-  (alias core export 24 "cabi_import_realloc" (core func (;44;)))
+  (alias core export 23 "cabi_export_realloc" (core func (;42;)))
+  (alias core export 23 "cabi_import_realloc" (core func (;43;)))
   (alias core export 0 "$imports" (core table (;0;)))
   (alias export 1 "get-inputs" (func (;7;)))
-  (core func (;45;) (canon lower (func 7) (memory 0)))
+  (core func (;44;) (canon lower (func 7) (memory 0)))
   (alias export 1 "get-assets" (func (;8;)))
-  (core func (;46;) (canon lower (func 8) (memory 0) (realloc 14)))
+  (core func (;45;) (canon lower (func 8) (memory 0) (realloc 13)))
   (alias export 7 "get-directories" (func (;9;)))
-  (core func (;47;) (canon lower (func 9) (memory 0) (realloc 44) string-encoding=utf8))
+  (core func (;46;) (canon lower (func 9) (memory 0) (realloc 43) string-encoding=utf8))
   (alias export 6 "[method]descriptor.write-via-stream" (func (;10;)))
-  (core func (;48;) (canon lower (func 10) (memory 0)))
+  (core func (;47;) (canon lower (func 10) (memory 0)))
   (alias export 6 "[method]descriptor.append-via-stream" (func (;11;)))
-  (core func (;49;) (canon lower (func 11) (memory 0)))
+  (core func (;48;) (canon lower (func 11) (memory 0)))
   (alias export 6 "[method]descriptor.get-type" (func (;12;)))
-  (core func (;50;) (canon lower (func 12) (memory 0)))
+  (core func (;49;) (canon lower (func 12) (memory 0)))
   (alias export 6 "[method]descriptor.open-at" (func (;13;)))
-  (core func (;51;) (canon lower (func 13) (memory 0) string-encoding=utf8))
+  (core func (;50;) (canon lower (func 13) (memory 0) string-encoding=utf8))
   (alias export 6 "filesystem-error-code" (func (;14;)))
-  (core func (;52;) (canon lower (func 14) (memory 0)))
+  (core func (;51;) (canon lower (func 14) (memory 0)))
   (alias export 5 "[method]output-stream.check-write" (func (;15;)))
-  (core func (;53;) (canon lower (func 15) (memory 0)))
+  (core func (;52;) (canon lower (func 15) (memory 0)))
   (alias export 5 "[method]output-stream.write" (func (;16;)))
-  (core func (;54;) (canon lower (func 16) (memory 0)))
+  (core func (;53;) (canon lower (func 16) (memory 0)))
   (alias export 5 "[method]output-stream.blocking-write-and-flush" (func (;17;)))
-  (core func (;55;) (canon lower (func 17) (memory 0)))
+  (core func (;54;) (canon lower (func 17) (memory 0)))
   (alias export 5 "[method]output-stream.blocking-flush" (func (;18;)))
-  (core func (;56;) (canon lower (func 18) (memory 0)))
+  (core func (;55;) (canon lower (func 18) (memory 0)))
   (alias export 9 "get-environment" (func (;19;)))
-  (core func (;57;) (canon lower (func 19) (memory 0) (realloc 44) string-encoding=utf8))
+  (core func (;56;) (canon lower (func 19) (memory 0) (realloc 43) string-encoding=utf8))
   (alias export 16 "get-terminal-stdin" (func (;20;)))
-  (core func (;58;) (canon lower (func 20) (memory 0)))
+  (core func (;57;) (canon lower (func 20) (memory 0)))
   (alias export 17 "get-terminal-stdout" (func (;21;)))
-  (core func (;59;) (canon lower (func 21) (memory 0)))
+  (core func (;58;) (canon lower (func 21) (memory 0)))
   (alias export 18 "get-terminal-stderr" (func (;22;)))
-  (core func (;60;) (canon lower (func 22) (memory 0)))
-  (alias core export 24 "fd_write" (core func (;61;)))
-  (alias core export 24 "path_open" (core func (;62;)))
-  (alias core export 24 "environ_get" (core func (;63;)))
-  (alias core export 24 "environ_sizes_get" (core func (;64;)))
-  (alias core export 24 "fd_close" (core func (;65;)))
-  (alias core export 24 "fd_prestat_get" (core func (;66;)))
-  (alias core export 24 "fd_prestat_dir_name" (core func (;67;)))
-  (alias core export 24 "proc_exit" (core func (;68;)))
-  (core instance (;25;)
+  (core func (;59;) (canon lower (func 22) (memory 0)))
+  (alias core export 23 "fd_write" (core func (;60;)))
+  (alias core export 23 "path_open" (core func (;61;)))
+  (alias core export 23 "environ_get" (core func (;62;)))
+  (alias core export 23 "environ_sizes_get" (core func (;63;)))
+  (alias core export 23 "fd_close" (core func (;64;)))
+  (alias core export 23 "fd_prestat_get" (core func (;65;)))
+  (alias core export 23 "fd_prestat_dir_name" (core func (;66;)))
+  (alias core export 23 "proc_exit" (core func (;67;)))
+  (core instance (;24;)
     (export "$imports" (table 0))
-    (export "0" (func 45))
-    (export "1" (func 46))
-    (export "2" (func 47))
-    (export "3" (func 48))
-    (export "4" (func 49))
-    (export "5" (func 50))
-    (export "6" (func 51))
-    (export "7" (func 52))
-    (export "8" (func 53))
-    (export "9" (func 54))
-    (export "10" (func 55))
-    (export "11" (func 56))
-    (export "12" (func 57))
-    (export "13" (func 58))
-    (export "14" (func 59))
-    (export "15" (func 60))
-    (export "16" (func 61))
-    (export "17" (func 62))
-    (export "18" (func 63))
-    (export "19" (func 64))
-    (export "20" (func 65))
-    (export "21" (func 66))
-    (export "22" (func 67))
-    (export "23" (func 68))
+    (export "0" (func 44))
+    (export "1" (func 45))
+    (export "2" (func 46))
+    (export "3" (func 47))
+    (export "4" (func 48))
+    (export "5" (func 49))
+    (export "6" (func 50))
+    (export "7" (func 51))
+    (export "8" (func 52))
+    (export "9" (func 53))
+    (export "10" (func 54))
+    (export "11" (func 55))
+    (export "12" (func 56))
+    (export "13" (func 57))
+    (export "14" (func 58))
+    (export "15" (func 59))
+    (export "16" (func 60))
+    (export "17" (func 61))
+    (export "18" (func 62))
+    (export "19" (func 63))
+    (export "20" (func 64))
+    (export "21" (func 65))
+    (export "22" (func 66))
+    (export "23" (func 67))
   )
-  (core instance (;26;) (instantiate 3
-      (with "" (instance 25))
+  (core instance (;25;) (instantiate 3
+      (with "" (instance 24))
     )
   )
-  (type (;43;) (result))
-  (type (;44;) (func (result 43)))
-  (alias core export 24 "wasi:cli/run@0.2.0-rc-2023-11-10#run" (core func (;69;)))
-  (func (;23;) (type 44) (canon lift (core func 69)))
+  (type (;42;) (result))
+  (type (;43;) (func (result 42)))
+  (alias core export 23 "wasi:cli/run@0.2.0-rc-2023-11-10#run" (core func (;68;)))
+  (func (;23;) (type 43) (canon lift (core func 68)))
   (component (;0;)
     (type (;0;) (result))
     (type (;1;) (func (result 0)))
