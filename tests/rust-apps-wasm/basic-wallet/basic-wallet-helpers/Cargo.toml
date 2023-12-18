@@ -25,3 +25,6 @@ package = "miden:basic-wallet-helpers"
 [package.metadata.component.target.dependencies]
 "miden:base" = { path = "../../../../sdk/wit" }
 "miden:basic-wallet" = { path = "../basic-wallet/wit" }
+
+[profile.release]
+panic = "abort"

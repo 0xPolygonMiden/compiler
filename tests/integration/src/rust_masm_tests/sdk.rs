@@ -17,14 +17,14 @@ fn rust_cargo_component(cargo_project_folder: &str) -> Vec<std::path::PathBuf> {
         .arg("build")
         .arg("--manifest-path")
         .arg(manifest_path)
-        .arg("--release");
-    // compile std as part of crate graph compilation
-    // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-    // .arg("-Z")
-    // .arg("build-std=core,alloc")
-    // .arg("-Z")
-    // // abort on panic without message formatting (core::fmt uses call_indirect)
-    // .arg("build-std-features=panic_immediate_abort");
+        .arg("--release")
+        // compile std as part of crate graph compilation
+        // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+        .arg("-Z")
+        .arg("build-std=std,core,alloc,panic_abort")
+        .arg("-Z")
+        // abort on panic without message formatting (core::fmt uses call_indirect)
+        .arg("build-std-features=panic_immediate_abort");
     let mut child = cargo_build_cmd
         .arg("--message-format=json-render-diagnostics")
         .stdout(Stdio::piped())

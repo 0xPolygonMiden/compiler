@@ -21,3 +21,6 @@ crate-type = ["cdylib"]
 package = "component:miden"
 
 [package.metadata.component.dependencies]
+
+[profile.release]
+panic = "abort"
