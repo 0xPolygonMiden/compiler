@@ -8,10 +8,10 @@ use wasmparser::MemArg;
 use wasmparser::Operator;
 use wasmparser::Operator::*;
 
-use crate::func_translation_state::FuncTranslationState;
-use crate::function_builder_ext::FunctionBuilderContext;
-use crate::function_builder_ext::FunctionBuilderExt;
-use crate::module_env::ModuleInfo;
+use crate::module::environ::ModuleInfo;
+use crate::module::func_translation_state::FuncTranslationState;
+use crate::module::function_builder_ext::FunctionBuilderContext;
+use crate::module::function_builder_ext::FunctionBuilderExt;
 use crate::test_utils::test_diagnostics;
 
 use super::translate_operator;

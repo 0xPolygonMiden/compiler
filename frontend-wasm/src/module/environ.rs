@@ -1,7 +1,7 @@
 //! Wasm to Miden IR translation environment
 
 use crate::error::{WasmError, WasmResult};
-use crate::func_translator::FuncTranslator;
+use crate::module::func_translator::FuncTranslator;
 use crate::translation_utils::sig_from_funct_type;
 use crate::wasm_types::{
     DataSegment, DataSegmentIndex, DefinedFuncIndex, FuncIndex, Global, GlobalIndex, Memory,
