@@ -593,8 +593,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
-            vlist.push(lhs, pool);
-            vlist.push(rhs, pool);
+            vlist.extend([rhs, lhs], pool);
         }
         self.PrimOp(Opcode::AssertEq, Type::Unit, vlist, span).0
     }
@@ -1373,7 +1372,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let data = Instruction::BinaryOp(BinaryOp {
             op,
             overflow: None,
-            args: [lhs, rhs],
+            // We place arguments in stack order for more efficient codegen
+            args: [rhs, lhs],
         });
         self.build(data, ty, span)
     }
@@ -1391,7 +1391,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let data = Instruction::BinaryOp(BinaryOp {
             op,
             overflow: Some(overflow),
-            args: [lhs, rhs],
+            // We place arguments in stack order for more efficient codegen
+            args: [rhs, lhs],
         });
         self.build(data, ty, span)
     }
