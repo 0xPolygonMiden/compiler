@@ -184,6 +184,7 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
+    #[cfg(test)]
     #[inline(always)]
     pub fn stack_len(&self) -> usize {
         self.stack.len()
@@ -416,6 +417,10 @@ impl<'a> OpEmitter<'a> {
         let stack_size = self.stack.len();
         let num_to_drop = stack_size - n;
 
+        if num_to_drop == 0 {
+            return;
+        }
+
         if stack_size == num_to_drop {
             let raw_size = self.stack.raw_len();
             self.stack.dropn(num_to_drop);
@@ -424,6 +429,26 @@ impl<'a> OpEmitter<'a> {
             return;
         }
 
+        // This is the common case, and can be handled simply
+        // by moving the value to the bottom of the stack and
+        // dropping everything in-between
+        if n == 1 {
+            match stack_size {
+                2 => {
+                    self.swap(1);
+                    self.drop();
+                }
+                n => {
+                    self.movdn(n as u8 - 1);
+                    self.dropn(n - 1);
+                }
+            }
+            return;
+        }
+
+        // TODO: This is a very neive algorithm for clearing
+        // the stack of all but the top `n` values, we should
+        // come up with a smarter/more efficient method
         for offset in 0..num_to_drop {
             let index = stack_size - 1 - offset;
             self.drop_operand_at_position(index);
@@ -548,8 +573,8 @@ mod tests {
 
     use super::*;
     use crate::{
+        codegen::{OperandStack, TypedValue},
         masm::Function,
-        stackify::{OperandStack, TypedValue},
     };
 
     #[test]

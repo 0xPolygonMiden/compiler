@@ -1,13 +1,3 @@
-mod dependency_graph;
-pub(crate) mod emit;
-mod emitter;
-mod operand_stack;
-mod treegraph;
-
-pub(crate) use self::dependency_graph::{Dependency, DependencyGraph, DependencyId, Node};
-pub(crate) use self::operand_stack::{Operand, OperandStack, OperandType, TypedValue};
-pub(crate) use self::treegraph::TreeGraph;
-
 use miden_hir::{
     self as hir,
     pass::{AnalysisManager, ConversionPass, ConversionResult},
@@ -16,8 +6,10 @@ use miden_hir::{
 use miden_hir_analysis as analysis;
 use midenc_session::Session;
 
-use self::emitter::MasmEmitter;
-use crate::masm;
+use crate::{
+    codegen::{FunctionEmitter, OperandStack, Scheduler, TypedValue},
+    masm,
+};
 
 type ProgramGlobalVariableAnalysis = analysis::GlobalVariableAnalysis<hir::Program>;
 type ModuleGlobalVariableAnalysis = analysis::GlobalVariableAnalysis<hir::Module>;
@@ -154,7 +146,6 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
         // Start at the function entry
         {
             let entry = f.dfg.entry_block();
-            let entry_prime = f_prime.body.id();
 
             let globals = analyses
                 .get::<ProgramGlobalVariableAnalysis>(&ProgramAnalysisKey)
@@ -170,7 +161,6 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
             let domtree = analyses.get_or_compute::<analysis::DominatorTree>(f, session)?;
             let loops = analyses.get_or_compute::<analysis::LoopAnalysis>(f, session)?;
             let liveness = analyses.get_or_compute::<analysis::LivenessAnalysis>(f, session)?;
-            let mut emitter = MasmEmitter::new(f, &mut f_prime, domtree, loops, liveness, globals);
 
             let mut stack = OperandStack::default();
             for arg in f.dfg.block_args(entry).iter().rev().copied() {
@@ -178,7 +168,11 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
                 stack.push(TypedValue { value: arg, ty });
             }
 
-            emitter.emit(entry, entry_prime, stack);
+            let scheduler = Scheduler::new(f, &mut f_prime, &domtree, &loops, &liveness);
+            let schedule = scheduler.build();
+
+            let emitter = FunctionEmitter::new(f, &mut f_prime, &loops, &globals);
+            emitter.emit(schedule, stack);
         }
 
         Ok(f_prime)
