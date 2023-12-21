@@ -1319,7 +1319,7 @@ impl fmt::Display for MasmOp {
             Self::U32WrappingMul | Self::U32WrappingMulImm(_) => f.write_str("u32wrapping_mul"),
             Self::U32OverflowingMadd => f.write_str("u32overflowing_madd"),
             Self::U32WrappingMadd => f.write_str("u32wrapping_madd"),
-            Self::U32Div | Self::U32DivImm(_) => f.write_str("u32d_div"),
+            Self::U32Div | Self::U32DivImm(_) => f.write_str("u32div"),
             Self::U32Mod | Self::U32ModImm(_) => f.write_str("u32mod"),
             Self::U32DivMod | Self::U32DivModImm(_) => f.write_str("u32divmod"),
             Self::U32And => f.write_str("u32and"),
