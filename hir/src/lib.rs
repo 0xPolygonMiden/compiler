@@ -138,6 +138,7 @@ macro_rules! diagnostic {
     }};
 }
 
+pub mod adt;
 mod asm;
 mod attribute;
 mod block;
