@@ -69,6 +69,12 @@ impl MasmBlock {
         self.ops.extend_from_slice(slice);
     }
 
+    /// Appends instructions from `slice` to the end of this block
+    #[inline]
+    pub fn extend(&mut self, ops: impl IntoIterator<Item = MasmOp>) {
+        self.ops.extend(ops);
+    }
+
     /// Appends instructions from `other` to the end of this block
     #[inline]
     pub fn append<B>(&mut self, other: &mut SmallVec<B>)

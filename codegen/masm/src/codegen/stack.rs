@@ -9,6 +9,20 @@ use smallvec::{smallvec, SmallVec};
 
 use miden_hir::{Felt, FieldElement, Immediate, Type, Value};
 
+/// This represents a constraint an operand's usage at
+/// a given program point, namely when used as an instruction
+/// or block argument.
+#[derive(Debug, Copy, Clone)]
+pub enum Constraint {
+    /// The operand should be moved, consuming it
+    /// from the stack and making it unavailable for
+    /// further use.
+    Move,
+    /// The operand should be copied, preserving the
+    /// original value for later use.
+    Copy,
+}
+
 /// A [TypedValue] is a pair of an SSA value with its known type
 #[derive(Debug, Clone)]
 pub struct TypedValue {
@@ -560,6 +574,7 @@ impl OperandStack {
 
     /// Returns the index in the actual runtime stack which corresponds to
     /// the first element of the operand at `index`.
+    #[track_caller]
     pub fn effective_index(&self, index: usize) -> usize {
         assert!(
             index < self.stack.len(),
@@ -573,6 +588,7 @@ impl OperandStack {
 
     /// Returns the index in the actual runtime stack which corresponds to
     /// the last element of the operand at `index`.
+    #[track_caller]
     pub fn effective_index_inclusive(&self, index: usize) -> usize {
         assert!(index < self.stack.len());
 

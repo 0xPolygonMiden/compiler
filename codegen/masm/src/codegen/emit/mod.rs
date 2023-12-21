@@ -276,6 +276,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Duplicate an item on the stack to the top
     #[inline]
+    #[track_caller]
     pub fn dup(&mut self, i: u8) {
         assert_valid_stack_index!(i);
         let index = i as usize;
@@ -292,6 +293,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Move an item on the stack to the top
     #[inline]
+    #[track_caller]
     pub fn movup(&mut self, i: u8) {
         assert_valid_stack_index!(i);
         let index = i as usize;
@@ -308,6 +310,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Move an item from the top of the stack to the `n`th position
     #[inline]
+    #[track_caller]
     pub fn movdn(&mut self, i: u8) {
         assert_valid_stack_index!(i);
         let index = i as usize;
@@ -323,6 +326,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Swap an item with the top of the stack
     #[inline]
+    #[track_caller]
     pub fn swap(&mut self, i: u8) {
         assert!(i > 0, "swap requires a non-zero index");
         assert_valid_stack_index!(i);
@@ -373,6 +377,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Drop the top operand on the stack
     #[inline]
+    #[track_caller]
     pub fn drop(&mut self) {
         let elem = self.stack.pop().expect("operand stack is empty");
         match elem.size() {
@@ -391,8 +396,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     /// Drop the top `n` operands on the stack
-    #[allow(unused)]
     #[inline]
+    #[track_caller]
     pub fn dropn(&mut self, n: usize) {
         assert!(self.stack.len() >= n);
         assert_ne!(n, 0);

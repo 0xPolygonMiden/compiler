@@ -111,6 +111,10 @@ impl BlockData {
     pub fn is_empty(&self) -> bool {
         self.insts.is_empty()
     }
+
+    pub fn len(&self) -> usize {
+        self.insts.iter().count()
+    }
 }
 
 struct Insts<'f> {

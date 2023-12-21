@@ -1,3 +1,6 @@
+#![feature(array_windows)]
+#![feature(is_sorted)]
+
 mod codegen;
 mod convert;
 mod emulator;

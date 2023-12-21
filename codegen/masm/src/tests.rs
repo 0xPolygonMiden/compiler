@@ -49,7 +49,7 @@ impl TestByEmulationHarness {
         harness
     }
 
-    pub fn stackify(
+    pub fn codegen(
         &self,
         program: &hir::Program,
         function: &mut hir::Function,
@@ -210,6 +210,24 @@ impl TestByEmulationHarness {
     }
 }
 
+#[test]
+fn issue56() {
+    let harness = TestByEmulationHarness::default();
+
+    let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
+    let mut mb = builder.module("test");
+    testing::issue56(mb.as_mut(), &harness.context);
+    mb.build().unwrap();
+
+    let program = builder
+        .with_entrypoint("test::entrypoint".parse().unwrap())
+        .link()
+        .unwrap();
+
+    let mut compiler = MasmCompiler::new(&harness.context.session);
+    compiler.compile(program).expect("compilation failed");
+}
+
 /// Test the emulator on the fibonacci function
 #[test]
 fn fib_emulator() {
@@ -244,9 +262,9 @@ fn fib_emulator() {
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(55));
 }
 
-/// Test the [Stackify] pass on a very simple program with a conditional as a sanity check
+/// Test the code generator on a very simple program with a conditional as a sanity check
 #[test]
-fn stackify_fundamental_if() {
+fn codegen_fundamental_if() {
     let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
@@ -282,9 +300,11 @@ fn stackify_fundamental_if() {
             SourceSpan::UNKNOWN,
         );
         fb.switch_to_block(is_odd_blk);
-        fb.ins().add_checked(a, b, SourceSpan::UNKNOWN);
+        let c = fb.ins().add_checked(a, b, SourceSpan::UNKNOWN);
+        fb.ins().ret(Some(c), SourceSpan::UNKNOWN);
         fb.switch_to_block(is_even_blk);
-        fb.ins().mul_checked(a, b, SourceSpan::UNKNOWN);
+        let d = fb.ins().mul_checked(a, b, SourceSpan::UNKNOWN);
+        fb.ins().ret(Some(d), SourceSpan::UNKNOWN);
         fb.build().expect("unexpected error building function")
     };
 
@@ -310,9 +330,9 @@ fn stackify_fundamental_if() {
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(12));
 }
 
-/// Test the [Stackify] pass on a very simple program with a loop as a sanity check
+/// Test the code generator on a very simple program with a loop as a sanity check
 #[test]
-fn stackify_fundamental_loops() {
+fn codegen_fundamental_loops() {
     let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
@@ -390,9 +410,9 @@ fn stackify_fundamental_loops() {
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
 }
 
-/// Test the [Stackify] pass on a simple program containing [testing::sum_matrix].
+/// Test the code generator on a simple program containing [testing::sum_matrix].
 #[test]
-fn stackify_sum_matrix() {
+fn codegen_sum_matrix() {
     let mut harness = TestByEmulationHarness::default();
 
     // Build a simple program
@@ -413,6 +433,8 @@ fn stackify_sum_matrix() {
     // Compile
     let mut compiler = MasmCompiler::new(&harness.context.session);
     let program = compiler.compile(program).expect("compilation failed");
+
+    println!("{}", program.get("test").unwrap());
 
     // Prep emulator
     let addr = harness.malloc(core::mem::size_of::<u32>() * 3 * 3);
