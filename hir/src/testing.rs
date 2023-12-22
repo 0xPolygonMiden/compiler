@@ -106,6 +106,72 @@ macro_rules! span {
     };
 }
 
+/// pub fn issue_56(i32, i32) -> i32 {
+/// block0(v0: i32, v1: i32):
+///     v3 = lt v0, v1 : i1;
+///     v4 = cast v3 : i32;
+///     v5 = neq 0, v4 : i1;
+///     v6 = select v5, v0, v1 : i32;
+///     v7 = const.i32 0
+///     cond_br v7, block1(v6), block2(v6)
+///
+/// block1(v8: i32):
+///     v9 = add.wrapping v7, v8
+///     ret v9;
+///
+/// block2(v10: i32):
+///     v11 = add.wrapping v7, v10
+///     ret v11
+///}
+pub fn issue56(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent {
+    // Declare the `fib` function, with the appropriate type signature
+    let sig = Signature {
+        params: vec![AbiParam::new(Type::I32), AbiParam::new(Type::I32)],
+        results: vec![AbiParam::new(Type::I32)],
+        cc: CallConv::SystemV,
+        linkage: Linkage::External,
+    };
+    let mut fb = builder
+        .function("entrypoint", sig)
+        .expect("unexpected symbol conflict");
+
+    let entry = fb.current_block();
+    // Get the value for `v0` and `v1`
+    let (v0, v1) = {
+        let args = fb.block_params(entry);
+        (args[0], args[1])
+    };
+
+    let v3 = fb.ins().lt(v0, v1, context.current_span());
+    let v4 = fb.ins().cast(v3, Type::I32, context.current_span());
+    let v5 = fb
+        .ins()
+        .neq_imm(v4, Immediate::I32(0), context.current_span());
+    let v6 = fb.ins().select(v5, v0, v1, context.current_span());
+    let v7 = fb.ins().i32(0, context.current_span());
+    let cond = fb.ins().i1(true, context.current_span());
+
+    let block1 = fb.create_block();
+    let block2 = fb.create_block();
+    let v8 = fb.append_block_param(block1, Type::I32, context.current_span());
+    let v10 = fb.append_block_param(block2, Type::I32, context.current_span());
+
+    fb.ins()
+        .cond_br(cond, block1, &[v6], block2, &[v6], context.current_span());
+
+    fb.switch_to_block(block1);
+    let v9 = fb.ins().add_wrapping(v7, v8, context.current_span());
+    fb.ins().ret(Some(v9), context.current_span());
+
+    fb.switch_to_block(block2);
+    let v11 = fb.ins().add_wrapping(v7, v10, context.current_span());
+    fb.ins().ret(Some(v11), context.current_span());
+
+    // We're done
+    fb.build(&context.session.diagnostics)
+        .expect("unexpected validation error, see diagnostics output")
+}
+
 /// Construct an implementation of a function which computes the sum
 /// of a Fibonnaci sequence of length `n`, using the provided builder.
 ///
