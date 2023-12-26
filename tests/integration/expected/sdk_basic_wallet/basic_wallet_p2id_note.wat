@@ -87,42 +87,93 @@
     )
   )
   (import (interface "wasi:io/streams@0.2.0-rc-2023-11-10") (instance (;5;) (type 11)))
-  (alias export 5 "output-stream" (type (;12;)))
-  (alias export 5 "error" (type (;13;)))
-  (type (;14;)
+  (alias export 5 "input-stream" (type (;12;)))
+  (type (;13;)
+    (instance
+      (alias outer 1 12 (type (;0;)))
+      (export (;1;) "input-stream" (type (eq 0)))
+      (type (;2;) (own 1))
+      (type (;3;) (func (result 2)))
+      (export (;0;) "get-stdin" (func (type 3)))
+    )
+  )
+  (import (interface "wasi:cli/stdin@0.2.0-rc-2023-12-05") (instance (;6;) (type 13)))
+  (alias export 5 "output-stream" (type (;14;)))
+  (type (;15;)
+    (instance
+      (alias outer 1 14 (type (;0;)))
+      (export (;1;) "output-stream" (type (eq 0)))
+      (type (;2;) (own 1))
+      (type (;3;) (func (result 2)))
+      (export (;0;) "get-stdout" (func (type 3)))
+    )
+  )
+  (import (interface "wasi:cli/stdout@0.2.0-rc-2023-12-05") (instance (;7;) (type 15)))
+  (alias export 5 "output-stream" (type (;16;)))
+  (type (;17;)
+    (instance
+      (alias outer 1 16 (type (;0;)))
+      (export (;1;) "output-stream" (type (eq 0)))
+      (type (;2;) (own 1))
+      (type (;3;) (func (result 2)))
+      (export (;0;) "get-stderr" (func (type 3)))
+    )
+  )
+  (import (interface "wasi:cli/stderr@0.2.0-rc-2023-12-05") (instance (;8;) (type 17)))
+  (type (;18;)
+    (instance
+      (type (;0;) (record (field "seconds" u64) (field "nanoseconds" u32)))
+      (export (;1;) "datetime" (type (eq 0)))
+    )
+  )
+  (import (interface "wasi:clocks/wall-clock@0.2.0-rc-2023-11-10") (instance (;9;) (type 18)))
+  (alias export 5 "output-stream" (type (;19;)))
+  (alias export 9 "datetime" (type (;20;)))
+  (alias export 5 "error" (type (;21;)))
+  (type (;22;)
     (instance
       (export (;0;) "descriptor" (type (sub resource)))
       (type (;1;) u64)
       (export (;2;) "filesize" (type (eq 1)))
-      (alias outer 1 12 (type (;3;)))
+      (alias outer 1 19 (type (;3;)))
       (export (;4;) "output-stream" (type (eq 3)))
       (type (;5;) (enum "access" "would-block" "already" "bad-descriptor" "busy" "deadlock" "quota" "exist" "file-too-large" "illegal-byte-sequence" "in-progress" "interrupted" "invalid" "io" "is-directory" "loop" "too-many-links" "message-size" "name-too-long" "no-device" "no-entry" "no-lock" "insufficient-memory" "insufficient-space" "not-directory" "not-empty" "not-recoverable" "unsupported" "no-tty" "no-such-device" "overflow" "not-permitted" "pipe" "read-only" "invalid-seek" "text-file-busy" "cross-device"))
       (export (;6;) "error-code" (type (eq 5)))
       (type (;7;) (enum "unknown" "block-device" "character-device" "directory" "fifo" "symbolic-link" "regular-file" "socket"))
       (export (;8;) "descriptor-type" (type (eq 7)))
-      (alias outer 1 13 (type (;9;)))
-      (export (;10;) "error" (type (eq 9)))
-      (type (;11;) (borrow 0))
-      (type (;12;) (own 4))
-      (type (;13;) (result 12 (error 6)))
-      (type (;14;) (func (param "self" 11) (param "offset" 2) (result 13)))
-      (export (;0;) "[method]descriptor.write-via-stream" (func (type 14)))
-      (type (;15;) (func (param "self" 11) (result 13)))
-      (export (;1;) "[method]descriptor.append-via-stream" (func (type 15)))
-      (type (;16;) (result 8 (error 6)))
-      (type (;17;) (func (param "self" 11) (result 16)))
-      (export (;2;) "[method]descriptor.get-type" (func (type 17)))
-      (type (;18;) (borrow 10))
-      (type (;19;) (option 6))
-      (type (;20;) (func (param "err" 18) (result 19)))
-      (export (;3;) "filesystem-error-code" (func (type 20)))
+      (type (;9;) u64)
+      (export (;10;) "link-count" (type (eq 9)))
+      (alias outer 1 20 (type (;11;)))
+      (export (;12;) "datetime" (type (eq 11)))
+      (type (;13;) (option 12))
+      (type (;14;) (record (field "type" 8) (field "link-count" 10) (field "size" 2) (field "data-access-timestamp" 13) (field "data-modification-timestamp" 13) (field "status-change-timestamp" 13)))
+      (export (;15;) "descriptor-stat" (type (eq 14)))
+      (alias outer 1 21 (type (;16;)))
+      (export (;17;) "error" (type (eq 16)))
+      (type (;18;) (borrow 0))
+      (type (;19;) (own 4))
+      (type (;20;) (result 19 (error 6)))
+      (type (;21;) (func (param "self" 18) (param "offset" 2) (result 20)))
+      (export (;0;) "[method]descriptor.write-via-stream" (func (type 21)))
+      (type (;22;) (func (param "self" 18) (result 20)))
+      (export (;1;) "[method]descriptor.append-via-stream" (func (type 22)))
+      (type (;23;) (result 8 (error 6)))
+      (type (;24;) (func (param "self" 18) (result 23)))
+      (export (;2;) "[method]descriptor.get-type" (func (type 24)))
+      (type (;25;) (result 15 (error 6)))
+      (type (;26;) (func (param "self" 18) (result 25)))
+      (export (;3;) "[method]descriptor.stat" (func (type 26)))
+      (type (;27;) (borrow 17))
+      (type (;28;) (option 6))
+      (type (;29;) (func (param "err" 27) (result 28)))
+      (export (;4;) "filesystem-error-code" (func (type 29)))
     )
   )
-  (import (interface "wasi:filesystem/types@0.2.0-rc-2023-11-10") (instance (;6;) (type 14)))
-  (alias export 6 "descriptor" (type (;15;)))
-  (type (;16;)
+  (import (interface "wasi:filesystem/types@0.2.0-rc-2023-11-10") (instance (;10;) (type 22)))
+  (alias export 10 "descriptor" (type (;23;)))
+  (type (;24;)
     (instance
-      (alias outer 1 15 (type (;0;)))
+      (alias outer 1 23 (type (;0;)))
       (export (;1;) "descriptor" (type (eq 0)))
       (type (;2;) (own 1))
       (type (;3;) (tuple 2 string))
@@ -131,94 +182,7 @@
       (export (;0;) "get-directories" (func (type 5)))
     )
   )
-  (import (interface "wasi:filesystem/preopens@0.2.0-rc-2023-11-10") (instance (;7;) (type 16)))
-  (type (;17;)
-    (instance
-      (export (;0;) "tcp-socket" (type (sub resource)))
-    )
-  )
-  (import (interface "wasi:sockets/tcp@0.2.0-rc-2023-11-10") (instance (;8;) (type 17)))
-  (alias export 5 "input-stream" (type (;18;)))
-  (type (;19;)
-    (instance
-      (alias outer 1 18 (type (;0;)))
-      (export (;1;) "input-stream" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (func (result 2)))
-      (export (;0;) "get-stdin" (func (type 3)))
-    )
-  )
-  (import (interface "wasi:cli/stdin@0.2.0-rc-2023-11-10") (instance (;9;) (type 19)))
-  (alias export 5 "output-stream" (type (;20;)))
-  (type (;21;)
-    (instance
-      (alias outer 1 20 (type (;0;)))
-      (export (;1;) "output-stream" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (func (result 2)))
-      (export (;0;) "get-stdout" (func (type 3)))
-    )
-  )
-  (import (interface "wasi:cli/stdout@0.2.0-rc-2023-11-10") (instance (;10;) (type 21)))
-  (alias export 5 "output-stream" (type (;22;)))
-  (type (;23;)
-    (instance
-      (alias outer 1 22 (type (;0;)))
-      (export (;1;) "output-stream" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (func (result 2)))
-      (export (;0;) "get-stderr" (func (type 3)))
-    )
-  )
-  (import (interface "wasi:cli/stderr@0.2.0-rc-2023-11-10") (instance (;11;) (type 23)))
-  (type (;24;)
-    (instance
-      (export (;0;) "terminal-input" (type (sub resource)))
-    )
-  )
-  (import (interface "wasi:cli/terminal-input@0.2.0-rc-2023-11-10") (instance (;12;) (type 24)))
-  (type (;25;)
-    (instance
-      (export (;0;) "terminal-output" (type (sub resource)))
-    )
-  )
-  (import (interface "wasi:cli/terminal-output@0.2.0-rc-2023-11-10") (instance (;13;) (type 25)))
-  (alias export 12 "terminal-input" (type (;26;)))
-  (type (;27;)
-    (instance
-      (alias outer 1 26 (type (;0;)))
-      (export (;1;) "terminal-input" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (option 2))
-      (type (;4;) (func (result 3)))
-      (export (;0;) "get-terminal-stdin" (func (type 4)))
-    )
-  )
-  (import (interface "wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10") (instance (;14;) (type 27)))
-  (alias export 13 "terminal-output" (type (;28;)))
-  (type (;29;)
-    (instance
-      (alias outer 1 28 (type (;0;)))
-      (export (;1;) "terminal-output" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (option 2))
-      (type (;4;) (func (result 3)))
-      (export (;0;) "get-terminal-stdout" (func (type 4)))
-    )
-  )
-  (import (interface "wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10") (instance (;15;) (type 29)))
-  (alias export 13 "terminal-output" (type (;30;)))
-  (type (;31;)
-    (instance
-      (alias outer 1 30 (type (;0;)))
-      (export (;1;) "terminal-output" (type (eq 0)))
-      (type (;2;) (own 1))
-      (type (;3;) (option 2))
-      (type (;4;) (func (result 3)))
-      (export (;0;) "get-terminal-stderr" (func (type 4)))
-    )
-  )
-  (import (interface "wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10") (instance (;16;) (type 31)))
+  (import (interface "wasi:filesystem/preopens@0.2.0-rc-2023-11-10") (instance (;11;) (type 24)))
   (core module (;0;)
     (type $.rodata (;0;) (func (param i32)))
     (type (;1;) (func (param i32 i32)))
@@ -9369,7 +9333,7 @@
     (type (;10;) (func (param i32 i32) (result i32)))
     (type (;11;) (func))
     (import "env" "memory" (memory (;0;) 0))
-    (import "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" "get-directories" (func $wasi_snapshot_preview1::descriptors::Descriptors::new::get_preopens_import (;0;) (type 0)))
+    (import "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" "get-directories" (func $wasi_snapshot_preview1::descriptors::Descriptors::open_preopens::get_preopens_import (;0;) (type 0)))
     (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" "[method]descriptor.get-type" (func $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::get_type::wit_import (;1;) (type 1)))
     (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" "filesystem-error-code" (func $wasi_snapshot_preview1::bindings::wasi::filesystem::types::filesystem_error_code::wit_import (;2;) (type 1)))
     (import "wasi:io/error@0.2.0-rc-2023-11-10" "[resource-drop]error" (func $<wasi_snapshot_preview1::bindings::wasi::io::error::Error as wit_bindgen::WasmResource>::drop::drop (;3;) (type 0)))
@@ -9379,20 +9343,27 @@
     (import "__main_module__" "cabi_realloc" (func $wasi_snapshot_preview1::State::new::cabi_realloc (;7;) (type 6)))
     (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" "[method]descriptor.write-via-stream" (func $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::write_via_stream::wit_import (;8;) (type 2)))
     (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" "[method]descriptor.append-via-stream" (func $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::append_via_stream::wit_import (;9;) (type 1)))
-    (import "wasi:cli/terminal-input@0.2.0-rc-2023-11-10" "[resource-drop]terminal-input" (func $<wasi_snapshot_preview1::bindings::wasi::cli::terminal_input::TerminalInput as wit_bindgen::WasmResource>::drop::drop (;10;) (type 0)))
-    (import "wasi:sockets/tcp@0.2.0-rc-2023-11-10" "[resource-drop]tcp-socket" (func $<wasi_snapshot_preview1::bindings::wasi::sockets::tcp::TcpSocket as wit_bindgen::WasmResource>::drop::drop (;11;) (type 0)))
-    (import "wasi:cli/terminal-output@0.2.0-rc-2023-11-10" "[resource-drop]terminal-output" (func $<wasi_snapshot_preview1::bindings::wasi::cli::terminal_output::TerminalOutput as wit_bindgen::WasmResource>::drop::drop (;12;) (type 0)))
-    (import "wasi:cli/stderr@0.2.0-rc-2023-11-10" "get-stderr" (func $wasi_snapshot_preview1::bindings::wasi::cli::stderr::get_stderr::wit_import (;13;) (type 8)))
-    (import "wasi:cli/stdin@0.2.0-rc-2023-11-10" "get-stdin" (func $wasi_snapshot_preview1::bindings::wasi::cli::stdin::get_stdin::wit_import (;14;) (type 8)))
-    (import "wasi:cli/stdout@0.2.0-rc-2023-11-10" "get-stdout" (func $wasi_snapshot_preview1::bindings::wasi::cli::stdout::get_stdout::wit_import (;15;) (type 8)))
-    (import "wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10" "get-terminal-stdin" (func $wasi_snapshot_preview1::bindings::wasi::cli::terminal_stdin::get_terminal_stdin::wit_import (;16;) (type 0)))
-    (import "wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10" "get-terminal-stdout" (func $wasi_snapshot_preview1::bindings::wasi::cli::terminal_stdout::get_terminal_stdout::wit_import (;17;) (type 0)))
-    (import "wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10" "get-terminal-stderr" (func $wasi_snapshot_preview1::bindings::wasi::cli::terminal_stderr::get_terminal_stderr::wit_import (;18;) (type 0)))
-    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.check-write" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::check_write::wit_import (;19;) (type 1)))
-    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.write" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::write::wit_import (;20;) (type 3)))
-    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.blocking-write-and-flush" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_write_and_flush::wit_import (;21;) (type 3)))
-    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.blocking-flush" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_flush::wit_import (;22;) (type 1)))
-    (func $cabi_import_realloc (;23;) (type 6) (param i32 i32 i32 i32) (result i32)
+    (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" "[method]descriptor.stat" (func $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::stat::wit_import (;10;) (type 1)))
+    (import "wasi:cli/stderr@0.2.0-rc-2023-12-05" "get-stderr" (func $wasi_snapshot_preview1::bindings::wasi::cli::stderr::get_stderr::wit_import (;11;) (type 8)))
+    (import "wasi:cli/stdin@0.2.0-rc-2023-12-05" "get-stdin" (func $wasi_snapshot_preview1::bindings::wasi::cli::stdin::get_stdin::wit_import (;12;) (type 8)))
+    (import "wasi:cli/stdout@0.2.0-rc-2023-12-05" "get-stdout" (func $wasi_snapshot_preview1::bindings::wasi::cli::stdout::get_stdout::wit_import (;13;) (type 8)))
+    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.check-write" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::check_write::wit_import (;14;) (type 1)))
+    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.write" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::write::wit_import (;15;) (type 3)))
+    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.blocking-write-and-flush" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_write_and_flush::wit_import (;16;) (type 3)))
+    (import "wasi:io/streams@0.2.0-rc-2023-11-10" "[method]output-stream.blocking-flush" (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_flush::wit_import (;17;) (type 1)))
+    (func $wasi_snapshot_preview1::State::ptr (;18;) (type 8) (result i32)
+      (local i32)
+      block ;; label = @1
+        call $get_state_ptr
+        local.tee 0
+        br_if 0 (;@1;)
+        call $wasi_snapshot_preview1::State::new
+        local.tee 0
+        call $set_state_ptr
+      end
+      local.get 0
+    )
+    (func $cabi_import_realloc (;19;) (type 6) (param i32 i32 i32 i32) (result i32)
       (local i32)
       call $allocate_stack
       global.get $__stack_pointer
@@ -9505,7 +9476,7 @@
               i32.add
               i32.const 37
               call $wasi_snapshot_preview1::macros::print
-              i32.const 113
+              i32.const 184
               call $wasi_snapshot_preview1::macros::eprint_u32
               local.get 4
               i32.const 10
@@ -9541,7 +9512,7 @@
             i32.add
             i32.const 37
             call $wasi_snapshot_preview1::macros::print
-            i32.const 2404
+            i32.const 2552
             call $wasi_snapshot_preview1::macros::eprint_u32
             local.get 4
             i32.const 8250
@@ -9599,7 +9570,7 @@
           i32.add
           i32.const 37
           call $wasi_snapshot_preview1::macros::print
-          i32.const 2405
+          i32.const 2553
           call $wasi_snapshot_preview1::macros::eprint_u32
           local.get 4
           i32.const 8250
@@ -9657,7 +9628,7 @@
         i32.add
         i32.const 37
         call $wasi_snapshot_preview1::macros::print
-        i32.const 219
+        i32.const 290
         call $wasi_snapshot_preview1::macros::eprint_u32
         local.get 4
         i32.const 8250
@@ -9724,7 +9695,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 226
+      i32.const 297
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 4
       i32.const 8250
@@ -9759,19 +9730,7 @@
       unreachable
       unreachable
     )
-    (func $wasi_snapshot_preview1::State::ptr (;24;) (type 8) (result i32)
-      (local i32)
-      block ;; label = @1
-        call $get_state_ptr
-        local.tee 0
-        br_if 0 (;@1;)
-        call $wasi_snapshot_preview1::State::new
-        local.tee 0
-        call $set_state_ptr
-      end
-      local.get 0
-    )
-    (func $wasi_snapshot_preview1::BumpArena::alloc (;25;) (type 9) (param i32 i32 i32) (result i32)
+    (func $wasi_snapshot_preview1::BumpArena::alloc (;20;) (type 9) (param i32 i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -9833,7 +9792,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 143
+      i32.const 214
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 3
       i32.const 8250
@@ -9868,7 +9827,7 @@
       unreachable
       unreachable
     )
-    (func $wasi_snapshot_preview1::ImportAlloc::with_arena (;26;) (type 5) (param i32 i32 i32)
+    (func $wasi_snapshot_preview1::ImportAlloc::with_arena (;21;) (type 5) (param i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -9912,7 +9871,7 @@
           i32.add
           i32.const 37
           call $wasi_snapshot_preview1::macros::print
-          i32.const 205
+          i32.const 276
           call $wasi_snapshot_preview1::macros::eprint_u32
           local.get 3
           i32.const 8250
@@ -9970,7 +9929,7 @@
         i32.add
         i32.const 37
         call $wasi_snapshot_preview1::macros::print
-        i32.const 198
+        i32.const 269
         call $wasi_snapshot_preview1::macros::eprint_u32
         local.get 3
         i32.const 8250
@@ -10003,7 +9962,7 @@
         unreachable
       end
       local.get 2
-      call $wasi_snapshot_preview1::descriptors::Descriptors::new::get_preopens_import
+      call $wasi_snapshot_preview1::descriptors::Descriptors::open_preopens::get_preopens_import
       local.get 0
       i32.const 0
       i32.store offset=8
@@ -10012,7 +9971,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $cabi_export_realloc (;27;) (type 6) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_export_realloc (;22;) (type 6) (param i32 i32 i32 i32) (result i32)
       (local i32)
       call $allocate_stack
       global.get $__stack_pointer
@@ -10075,7 +10034,7 @@
           i32.add
           i32.const 37
           call $wasi_snapshot_preview1::macros::print
-          i32.const 249
+          i32.const 320
           call $wasi_snapshot_preview1::macros::eprint_u32
           local.get 4
           i32.const 10
@@ -10111,7 +10070,7 @@
         i32.add
         i32.const 37
         call $wasi_snapshot_preview1::macros::print
-        i32.const 2404
+        i32.const 2552
         call $wasi_snapshot_preview1::macros::eprint_u32
         local.get 4
         i32.const 8250
@@ -10169,7 +10128,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 2405
+      i32.const 2553
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 4
       i32.const 8250
@@ -10204,7 +10163,7 @@
       unreachable
       unreachable
     )
-    (func $wasi_snapshot_preview1::State::descriptors (;28;) (type 1) (param i32 i32)
+    (func $wasi_snapshot_preview1::State::descriptors (;23;) (type 1) (param i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 6176
@@ -10291,7 +10250,7 @@
         i32.add
         i32.const 37
         call $wasi_snapshot_preview1::macros::print
-        i32.const 2493
+        i32.const 2646
         call $wasi_snapshot_preview1::macros::eprint_u32
         local.get 2
         i32.const 10
@@ -10327,7 +10286,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 2497
+      i32.const 2650
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 2
       i32.const 10
@@ -10340,7 +10299,7 @@
       unreachable
       unreachable
     )
-    (func $wasi_snapshot_preview1::stream_error_to_errno (;29;) (type 4) (param i32) (result i32)
+    (func $wasi_snapshot_preview1::stream_error_to_errno (;24;) (type 4) (param i32) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -10374,227 +10333,217 @@
       global.set $__stack_pointer
       local.get 2
     )
-    (func $fd_write (;30;) (type 6) (param i32 i32 i32 i32) (result i32)
+    (func $fd_write (;25;) (type 6) (param i32 i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       call $allocate_stack
       global.get $__stack_pointer
-      i32.const 48
+      i32.const 112
       i32.sub
       local.tee 4
       global.set $__stack_pointer
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
+            call $get_allocation_state
+            i32.const -2
+            i32.add
+            i32.const -3
+            i32.and
+            br_if 0 (;@3;)
+            block ;; label = @4
+              local.get 2
+              i32.eqz
+              br_if 0 (;@4;)
+              loop ;; label = @5
+                local.get 1
+                i32.const 4
+                i32.add
+                i32.load
+                local.tee 5
+                br_if 3 (;@2;)
+                local.get 1
+                i32.const 8
+                i32.add
+                local.set 1
+                local.get 2
+                i32.const -1
+                i32.add
+                local.tee 2
+                br_if 0 (;@5;)
+              end
+            end
+            i32.const 0
+            local.set 1
+            local.get 3
+            i32.const 0
+            i32.store
+            br 2 (;@1;)
+          end
+          local.get 3
+          i32.const 0
+          i32.store
+          i32.const 29
+          local.set 1
+          br 1 (;@1;)
+        end
+        local.get 1
+        i32.load
+        local.set 6
+        block ;; label = @2
+          block ;; label = @3
             block ;; label = @4
               block ;; label = @5
+                call $wasi_snapshot_preview1::State::ptr
+                local.tee 1
+                i32.load
+                i32.const 560490357
+                i32.ne
+                br_if 0 (;@5;)
+                local.get 1
+                i32.load offset=65532
+                i32.const 560490357
+                i32.ne
+                br_if 1 (;@4;)
+                local.get 4
+                i32.const 8
+                i32.add
+                local.get 1
+                call $wasi_snapshot_preview1::State::descriptors
+                local.get 4
+                i32.load offset=8
+                local.tee 7
+                i32.load16_u offset=6144
+                local.set 8
+                local.get 4
+                i32.load offset=12
+                local.set 2
+                i32.const 8
+                local.set 1
+                i32.const 0
+                local.get 0
+                call $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap
+                local.tee 0
+                local.get 8
+                i32.ge_u
+                br_if 3 (;@2;)
+                local.get 7
+                local.get 0
+                i32.const 48
+                i32.mul
+                i32.add
+                local.tee 0
+                i32.load
+                i32.const 1
+                i32.ne
+                br_if 3 (;@2;)
+                local.get 4
+                i32.const 16
+                i32.add
+                local.get 0
+                i32.const 8
+                i32.add
+                call $wasi_snapshot_preview1::descriptors::Streams::get_write_stream
                 block ;; label = @6
-                  call $get_allocation_state
-                  i32.const -2
-                  i32.add
-                  i32.const -3
-                  i32.and
+                  local.get 4
+                  i32.load16_u offset=16
                   br_if 0 (;@6;)
-                  block ;; label = @7
-                    block ;; label = @8
-                      local.get 2
-                      i32.eqz
-                      br_if 0 (;@8;)
-                      loop ;; label = @9
-                        local.get 1
-                        i32.const 4
-                        i32.add
-                        i32.load
-                        local.tee 5
-                        br_if 2 (;@7;)
-                        local.get 1
-                        i32.const 8
-                        i32.add
-                        local.set 1
-                        local.get 2
-                        i32.const -1
-                        i32.add
-                        local.tee 2
-                        br_if 0 (;@9;)
-                      end
-                    end
-                    i32.const 0
-                    local.set 1
-                    local.get 3
-                    i32.const 0
-                    i32.store
-                    br 6 (;@1;)
-                  end
-                  local.get 1
-                  i32.load
-                  local.set 6
-                  call $wasi_snapshot_preview1::State::ptr
-                  local.tee 1
-                  i32.load
-                  i32.const 560490357
-                  i32.ne
-                  br_if 1 (;@5;)
-                  local.get 1
-                  i32.load offset=65532
-                  i32.const 560490357
-                  i32.ne
-                  br_if 2 (;@4;)
                   local.get 4
-                  local.get 1
-                  call $wasi_snapshot_preview1::State::descriptors
-                  local.get 4
-                  i32.load
-                  local.tee 7
-                  i32.load16_u offset=6144
-                  local.set 8
-                  local.get 4
-                  i32.load offset=4
-                  local.set 2
-                  i32.const 8
+                  i32.load offset=20
                   local.set 1
-                  i32.const 0
-                  local.get 0
-                  call $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap
-                  local.tee 0
-                  local.get 8
-                  i32.ge_u
-                  br_if 4 (;@2;)
-                  local.get 7
-                  local.get 0
-                  i32.const 48
-                  i32.mul
-                  i32.add
-                  local.tee 0
-                  i32.load
-                  i32.eqz
-                  br_if 4 (;@2;)
-                  local.get 4
-                  i32.const 8
-                  i32.add
-                  local.get 0
-                  i32.const 8
-                  i32.add
-                  call $wasi_snapshot_preview1::descriptors::Streams::get_write_stream
                   block ;; label = @7
-                    local.get 4
-                    i32.load16_u offset=8
+                    local.get 0
+                    i32.const 41
+                    i32.add
+                    i32.load8_u
+                    local.tee 8
+                    i32.const 2
+                    i32.eq
                     br_if 0 (;@7;)
                     local.get 4
-                    i32.load offset=12
-                    local.set 1
-                    block ;; label = @8
-                      block ;; label = @9
-                        local.get 0
-                        i32.const 41
-                        i32.add
-                        i32.load8_u
-                        local.tee 7
-                        i32.const -2
-                        i32.add
-                        i32.const 255
-                        i32.and
-                        local.tee 8
-                        i32.const 2
-                        i32.gt_u
-                        br_if 0 (;@9;)
-                        local.get 8
-                        i32.const 1
-                        i32.ne
-                        br_if 1 (;@8;)
-                      end
-                      local.get 4
-                      i32.const 8
-                      i32.add
-                      local.get 7
-                      i32.const 255
-                      i32.and
-                      i32.const 0
-                      i32.ne
-                      local.get 1
-                      local.get 6
-                      local.get 5
-                      call $wasi_snapshot_preview1::BlockingMode::write
-                      local.get 4
-                      i32.load16_u offset=8
-                      br_if 1 (;@7;)
-                      br 5 (;@3;)
-                    end
-                    local.get 4
-                    i32.const 8
+                    i32.const 16
                     i32.add
-                    i32.const 1
+                    local.get 8
+                    i32.const 0
+                    i32.ne
                     local.get 1
                     local.get 6
                     local.get 5
                     call $wasi_snapshot_preview1::BlockingMode::write
                     local.get 4
-                    i32.load16_u offset=8
-                    i32.eqz
-                    br_if 4 (;@3;)
+                    i32.load16_u offset=16
+                    br_if 1 (;@6;)
+                    br 4 (;@3;)
                   end
                   local.get 4
-                  i32.load16_u offset=10
-                  local.set 1
-                  br 4 (;@2;)
+                  i32.const 16
+                  i32.add
+                  i32.const 1
+                  local.get 1
+                  local.get 6
+                  local.get 5
+                  call $wasi_snapshot_preview1::BlockingMode::write
+                  local.get 4
+                  i32.load16_u offset=16
+                  i32.eqz
+                  br_if 3 (;@3;)
                 end
-                local.get 3
-                i32.const 0
-                i32.store
-                i32.const 29
+                local.get 4
+                i32.load16_u offset=18
                 local.set 1
-                br 4 (;@1;)
+                br 3 (;@2;)
               end
               local.get 4
               i32.const 32
-              i32.store8 offset=44
+              i32.store8 offset=52
               local.get 4
               i32.const 1701734764
-              i32.store offset=40 align=1
+              i32.store offset=48 align=1
               local.get 4
               i64.const 2338042707334751329
-              i64.store offset=32 align=1
+              i64.store offset=40 align=1
               local.get 4
               i64.const 2338600898263348341
-              i64.store offset=24 align=1
+              i64.store offset=32 align=1
               local.get 4
               i64.const 7162263158133189730
-              i64.store offset=16 align=1
+              i64.store offset=24 align=1
               local.get 4
               i64.const 7018969289221893749
-              i64.store offset=8 align=1
+              i64.store offset=16 align=1
               local.get 4
-              i32.const 8
+              i32.const 16
               i32.add
               i32.const 37
               call $wasi_snapshot_preview1::macros::print
-              i32.const 2404
+              i32.const 2552
               call $wasi_snapshot_preview1::macros::eprint_u32
               local.get 4
               i32.const 8250
-              i32.store16 offset=8 align=1
+              i32.store16 offset=16 align=1
               local.get 4
-              i32.const 8
+              i32.const 16
               i32.add
               i32.const 2
               call $wasi_snapshot_preview1::macros::print
               local.get 4
               i32.const 10
-              i32.store8 offset=24
+              i32.store8 offset=32
               local.get 4
               i64.const 7234307576302018670
-              i64.store offset=16 align=1
+              i64.store offset=24 align=1
               local.get 4
               i64.const 8028075845441778529
-              i64.store offset=8 align=1
+              i64.store offset=16 align=1
               local.get 4
-              i32.const 8
+              i32.const 16
               i32.add
               i32.const 17
               call $wasi_snapshot_preview1::macros::print
               local.get 4
               i32.const 10
-              i32.store8 offset=8
+              i32.store8 offset=16
               local.get 4
-              i32.const 8
+              i32.const 16
               i32.add
               i32.const 1
               call $wasi_snapshot_preview1::macros::print
@@ -10603,56 +10552,56 @@
             end
             local.get 4
             i32.const 32
-            i32.store8 offset=44
+            i32.store8 offset=52
             local.get 4
             i32.const 1701734764
-            i32.store offset=40 align=1
+            i32.store offset=48 align=1
             local.get 4
             i64.const 2338042707334751329
-            i64.store offset=32 align=1
+            i64.store offset=40 align=1
             local.get 4
             i64.const 2338600898263348341
-            i64.store offset=24 align=1
+            i64.store offset=32 align=1
             local.get 4
             i64.const 7162263158133189730
-            i64.store offset=16 align=1
+            i64.store offset=24 align=1
             local.get 4
             i64.const 7018969289221893749
-            i64.store offset=8 align=1
+            i64.store offset=16 align=1
             local.get 4
-            i32.const 8
+            i32.const 16
             i32.add
             i32.const 37
             call $wasi_snapshot_preview1::macros::print
-            i32.const 2405
+            i32.const 2553
             call $wasi_snapshot_preview1::macros::eprint_u32
             local.get 4
             i32.const 8250
-            i32.store16 offset=8 align=1
+            i32.store16 offset=16 align=1
             local.get 4
-            i32.const 8
+            i32.const 16
             i32.add
             i32.const 2
             call $wasi_snapshot_preview1::macros::print
             local.get 4
             i32.const 10
-            i32.store8 offset=24
+            i32.store8 offset=32
             local.get 4
             i64.const 7234307576302018670
-            i64.store offset=16 align=1
+            i64.store offset=24 align=1
             local.get 4
             i64.const 8028075845441778529
-            i64.store offset=8 align=1
+            i64.store offset=16 align=1
             local.get 4
-            i32.const 8
+            i32.const 16
             i32.add
             i32.const 17
             call $wasi_snapshot_preview1::macros::print
             local.get 4
             i32.const 10
-            i32.store8 offset=8
+            i32.store8 offset=16
             local.get 4
-            i32.const 8
+            i32.const 16
             i32.add
             i32.const 1
             call $wasi_snapshot_preview1::macros::print
@@ -10660,45 +10609,62 @@
             unreachable
           end
           local.get 4
-          i32.load offset=12
+          i32.load offset=20
           local.set 1
           block ;; label = @3
             block ;; label = @4
               local.get 0
               i32.load8_u offset=41
-              i32.const -2
-              i32.add
-              i32.const 255
-              i32.and
-              local.tee 5
               i32.const 2
-              i32.gt_u
+              i32.eq
               br_if 0 (;@4;)
-              local.get 5
-              i32.const 1
-              i32.ne
+              block ;; label = @5
+                local.get 0
+                i32.const 40
+                i32.add
+                i32.load8_u
+                br_if 0 (;@5;)
+                local.get 0
+                i32.const 32
+                i32.add
+                local.tee 5
+                local.get 5
+                i64.load
+                local.get 1
+                i64.extend_i32_u
+                i64.add
+                i64.store
+                br 1 (;@4;)
+              end
+              local.get 4
+              i32.const 16
+              i32.add
+              local.get 0
+              i32.const 24
+              i32.add
+              call $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::stat
+              local.get 4
+              i64.load offset=88
+              i64.const 2
+              i64.eq
               br_if 1 (;@3;)
+              local.get 0
+              i32.const 32
+              i32.add
+              local.get 4
+              i64.load offset=32
+              i64.store
             end
-            local.get 0
-            i32.const 40
-            i32.add
-            i32.load8_u
-            br_if 0 (;@3;)
-            local.get 0
-            i32.const 32
-            i32.add
-            local.tee 5
-            local.get 5
-            i64.load
+            local.get 3
             local.get 1
-            i64.extend_i32_u
-            i64.add
-            i64.store
+            i32.store
+            i32.const 0
+            local.set 1
+            br 1 (;@2;)
           end
-          local.get 3
-          local.get 1
-          i32.store
-          i32.const 0
+          local.get 4
+          i32.load8_u offset=16
+          call $wasi_snapshot_preview1::<impl core::convert::From<wasi_snapshot_preview1::bindings::wasi::filesystem::types::ErrorCode> for wasi::lib_generated::Errno>::from
           local.set 1
         end
         local.get 2
@@ -10709,14 +10675,14 @@
         i32.store
       end
       local.get 4
-      i32.const 48
+      i32.const 112
       i32.add
       global.set $__stack_pointer
       local.get 1
       i32.const 65535
       i32.and
     )
-    (func $wasi_snapshot_preview1::BlockingMode::write (;31;) (type 7) (param i32 i32 i32 i32 i32)
+    (func $wasi_snapshot_preview1::BlockingMode::write (;26;) (type 7) (param i32 i32 i32 i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -10928,7 +10894,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::State::new (;32;) (type 8) (result i32)
+    (func $wasi_snapshot_preview1::State::new (;27;) (type 8) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -11030,7 +10996,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 2436
+      i32.const 2584
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 0
       i32.const 8250
@@ -11065,7 +11031,173 @@
       unreachable
       unreachable
     )
-    (func $wasi_snapshot_preview1::macros::print (;33;) (type 1) (param i32 i32)
+    (func $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::stat (;28;) (type 1) (param i32 i32)
+      (local i32 i32 i32 i64 i64 i32 i64 i32 i32 i64 i64 i64 i64 i64)
+      global.get $__stack_pointer
+      i32.const 112
+      i32.sub
+      local.tee 2
+      global.set $__stack_pointer
+      local.get 1
+      i32.load
+      local.get 2
+      i32.const 8
+      i32.add
+      call $wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor::stat::wit_import
+      local.get 2
+      i32.const 16
+      i32.add
+      i32.load8_u
+      local.set 1
+      block ;; label = @1
+        block ;; label = @2
+          block ;; label = @3
+            block ;; label = @4
+              local.get 2
+              i32.load8_u offset=8
+              br_if 0 (;@4;)
+              local.get 2
+              i32.const 88
+              i32.add
+              local.set 3
+              local.get 2
+              i32.const 64
+              i32.add
+              i32.load8_u
+              local.set 4
+              i64.const 0
+              local.set 5
+              local.get 2
+              i32.const 40
+              i32.add
+              i32.load8_u
+              br_if 1 (;@3;)
+              i64.const 0
+              local.set 6
+              br 2 (;@2;)
+            end
+            local.get 0
+            i64.const 2
+            i64.store offset=72
+            br 2 (;@1;)
+          end
+          local.get 2
+          i32.const 56
+          i32.add
+          i32.load
+          local.set 7
+          local.get 2
+          i32.const 48
+          i32.add
+          i64.load
+          local.set 8
+          i64.const 1
+          local.set 6
+        end
+        local.get 2
+        i32.const 32
+        i32.add
+        local.set 9
+        local.get 2
+        i32.const 24
+        i32.add
+        local.set 10
+        local.get 3
+        i32.load8_u
+        local.set 3
+        block ;; label = @2
+          block ;; label = @3
+            local.get 4
+            i32.const 255
+            i32.and
+            br_if 0 (;@3;)
+            br 1 (;@2;)
+          end
+          local.get 2
+          i32.const 80
+          i32.add
+          i32.load
+          local.set 4
+          local.get 2
+          i32.const 72
+          i32.add
+          i64.load
+          local.set 11
+          i64.const 1
+          local.set 5
+        end
+        local.get 9
+        i64.load
+        local.set 12
+        local.get 10
+        i64.load
+        local.set 13
+        block ;; label = @2
+          block ;; label = @3
+            local.get 3
+            i32.const 255
+            i32.and
+            br_if 0 (;@3;)
+            i64.const 0
+            local.set 14
+            br 1 (;@2;)
+          end
+          local.get 2
+          i32.const 104
+          i32.add
+          i32.load
+          local.set 3
+          local.get 2
+          i32.const 96
+          i32.add
+          i64.load
+          local.set 15
+          i64.const 1
+          local.set 14
+        end
+        local.get 0
+        local.get 3
+        i32.store offset=88
+        local.get 0
+        local.get 15
+        i64.store offset=80
+        local.get 0
+        local.get 14
+        i64.store offset=72
+        local.get 0
+        local.get 4
+        i32.store offset=64
+        local.get 0
+        local.get 11
+        i64.store offset=56
+        local.get 0
+        local.get 5
+        i64.store offset=48
+        local.get 0
+        local.get 7
+        i32.store offset=40
+        local.get 0
+        local.get 8
+        i64.store offset=32
+        local.get 0
+        local.get 6
+        i64.store offset=24
+        local.get 0
+        local.get 12
+        i64.store offset=16
+        local.get 0
+        local.get 13
+        i64.store offset=8
+      end
+      local.get 0
+      local.get 1
+      i32.store8
+      local.get 2
+      i32.const 112
+      i32.add
+      global.set $__stack_pointer
+    )
+    (func $wasi_snapshot_preview1::macros::print (;29;) (type 1) (param i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11098,7 +11230,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_write_and_flush (;34;) (type 3) (param i32 i32 i32 i32)
+    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_write_and_flush (;30;) (type 3) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11154,7 +11286,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::macros::eprint_u32 (;35;) (type 0) (param i32)
+    (func $wasi_snapshot_preview1::macros::eprint_u32 (;31;) (type 0) (param i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11183,7 +11315,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::macros::eprint_u32::eprint_u32_impl (;36;) (type 0) (param i32)
+    (func $wasi_snapshot_preview1::macros::eprint_u32::eprint_u32_impl (;32;) (type 0) (param i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11219,59 +11351,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<core::option::Option<T> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;37;) (type 10) (param i32 i32) (result i32)
-      (local i32)
-      global.get $__stack_pointer
-      i32.const 48
-      i32.sub
-      local.tee 2
-      global.set $__stack_pointer
-      block ;; label = @1
-        local.get 0
-        br_if 0 (;@1;)
-        local.get 2
-        i32.const 32
-        i32.store8 offset=47
-        local.get 2
-        i32.const 1701734764
-        i32.store offset=43 align=1
-        local.get 2
-        i64.const 2338042707334751329
-        i64.store offset=35 align=1
-        local.get 2
-        i64.const 2338600898263348341
-        i64.store offset=27 align=1
-        local.get 2
-        i64.const 7162263158133189730
-        i64.store offset=19 align=1
-        local.get 2
-        i64.const 7018969289221893749
-        i64.store offset=11 align=1
-        local.get 2
-        i32.const 11
-        i32.add
-        i32.const 37
-        call $wasi_snapshot_preview1::macros::print
-        i32.const 83
-        call $wasi_snapshot_preview1::macros::eprint_u32
-        local.get 2
-        i32.const 10
-        i32.store8 offset=11
-        local.get 2
-        i32.const 11
-        i32.add
-        i32.const 1
-        call $wasi_snapshot_preview1::macros::print
-        unreachable
-        unreachable
-      end
-      local.get 2
-      i32.const 48
-      i32.add
-      global.set $__stack_pointer
-      local.get 1
-    )
-    (func $<core::option::Option<T> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;38;) (type 4) (param i32) (result i32)
+    (func $<core::option::Option<T> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;33;) (type 4) (param i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -11304,7 +11384,7 @@
         i32.add
         i32.const 37
         call $wasi_snapshot_preview1::macros::print
-        i32.const 83
+        i32.const 134
         call $wasi_snapshot_preview1::macros::eprint_u32
         local.get 1
         i32.const 10
@@ -11323,7 +11403,59 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;39;) (type 10) (param i32 i32) (result i32)
+    (func $<core::option::Option<T> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;34;) (type 10) (param i32 i32) (result i32)
+      (local i32)
+      global.get $__stack_pointer
+      i32.const 48
+      i32.sub
+      local.tee 2
+      global.set $__stack_pointer
+      block ;; label = @1
+        local.get 0
+        br_if 0 (;@1;)
+        local.get 2
+        i32.const 32
+        i32.store8 offset=47
+        local.get 2
+        i32.const 1701734764
+        i32.store offset=43 align=1
+        local.get 2
+        i64.const 2338042707334751329
+        i64.store offset=35 align=1
+        local.get 2
+        i64.const 2338600898263348341
+        i64.store offset=27 align=1
+        local.get 2
+        i64.const 7162263158133189730
+        i64.store offset=19 align=1
+        local.get 2
+        i64.const 7018969289221893749
+        i64.store offset=11 align=1
+        local.get 2
+        i32.const 11
+        i32.add
+        i32.const 37
+        call $wasi_snapshot_preview1::macros::print
+        i32.const 134
+        call $wasi_snapshot_preview1::macros::eprint_u32
+        local.get 2
+        i32.const 10
+        i32.store8 offset=11
+        local.get 2
+        i32.const 11
+        i32.add
+        i32.const 1
+        call $wasi_snapshot_preview1::macros::print
+        unreachable
+        unreachable
+      end
+      local.get 2
+      i32.const 48
+      i32.add
+      global.set $__stack_pointer
+      local.get 1
+    )
+    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;35;) (type 10) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -11363,7 +11495,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 92
+      i32.const 143
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 2
       i32.const 10
@@ -11376,7 +11508,60 @@
       unreachable
       unreachable
     )
-    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;40;) (type 1) (param i32 i32)
+    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;36;) (type 10) (param i32 i32) (result i32)
+      (local i32)
+      global.get $__stack_pointer
+      i32.const 48
+      i32.sub
+      local.tee 2
+      global.set $__stack_pointer
+      block ;; label = @1
+        local.get 0
+        br_if 0 (;@1;)
+        local.get 2
+        i32.const 48
+        i32.add
+        global.set $__stack_pointer
+        local.get 1
+        return
+      end
+      local.get 2
+      i32.const 32
+      i32.store8 offset=47
+      local.get 2
+      i32.const 1701734764
+      i32.store offset=43 align=1
+      local.get 2
+      i64.const 2338042707334751329
+      i64.store offset=35 align=1
+      local.get 2
+      i64.const 2338600898263348341
+      i64.store offset=27 align=1
+      local.get 2
+      i64.const 7162263158133189730
+      i64.store offset=19 align=1
+      local.get 2
+      i64.const 7018969289221893749
+      i64.store offset=11 align=1
+      local.get 2
+      i32.const 11
+      i32.add
+      i32.const 37
+      call $wasi_snapshot_preview1::macros::print
+      i32.const 143
+      call $wasi_snapshot_preview1::macros::eprint_u32
+      local.get 2
+      i32.const 10
+      i32.store8 offset=11
+      local.get 2
+      i32.const 11
+      i32.add
+      i32.const 1
+      call $wasi_snapshot_preview1::macros::print
+      unreachable
+      unreachable
+    )
+    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;37;) (type 1) (param i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -11410,7 +11595,7 @@
         i32.add
         i32.const 37
         call $wasi_snapshot_preview1::macros::print
-        i32.const 92
+        i32.const 143
         call $wasi_snapshot_preview1::macros::eprint_u32
         local.get 2
         i32.const 10
@@ -11428,7 +11613,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;41;) (type 4) (param i32) (result i32)
+    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;38;) (type 4) (param i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 48
@@ -11472,7 +11657,7 @@
       i32.add
       i32.const 37
       call $wasi_snapshot_preview1::macros::print
-      i32.const 92
+      i32.const 143
       call $wasi_snapshot_preview1::macros::eprint_u32
       local.get 1
       i32.const 10
@@ -11485,60 +11670,7 @@
       unreachable
       unreachable
     )
-    (func $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap (;42;) (type 10) (param i32 i32) (result i32)
-      (local i32)
-      global.get $__stack_pointer
-      i32.const 48
-      i32.sub
-      local.tee 2
-      global.set $__stack_pointer
-      block ;; label = @1
-        local.get 0
-        br_if 0 (;@1;)
-        local.get 2
-        i32.const 48
-        i32.add
-        global.set $__stack_pointer
-        local.get 1
-        return
-      end
-      local.get 2
-      i32.const 32
-      i32.store8 offset=47
-      local.get 2
-      i32.const 1701734764
-      i32.store offset=43 align=1
-      local.get 2
-      i64.const 2338042707334751329
-      i64.store offset=35 align=1
-      local.get 2
-      i64.const 2338600898263348341
-      i64.store offset=27 align=1
-      local.get 2
-      i64.const 7162263158133189730
-      i64.store offset=19 align=1
-      local.get 2
-      i64.const 7018969289221893749
-      i64.store offset=11 align=1
-      local.get 2
-      i32.const 11
-      i32.add
-      i32.const 37
-      call $wasi_snapshot_preview1::macros::print
-      i32.const 92
-      call $wasi_snapshot_preview1::macros::eprint_u32
-      local.get 2
-      i32.const 10
-      i32.store8 offset=11
-      local.get 2
-      i32.const 11
-      i32.add
-      i32.const 1
-      call $wasi_snapshot_preview1::macros::print
-      unreachable
-      unreachable
-    )
-    (func $wasi_snapshot_preview1::<impl core::convert::From<wasi_snapshot_preview1::bindings::wasi::filesystem::types::ErrorCode> for wasi::lib_generated::Errno>::from (;43;) (type 4) (param i32) (result i32)
+    (func $wasi_snapshot_preview1::<impl core::convert::From<wasi_snapshot_preview1::bindings::wasi::filesystem::types::ErrorCode> for wasi::lib_generated::Errno>::from (;39;) (type 4) (param i32) (result i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11706,7 +11838,7 @@
       end
       local.get 2
     )
-    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::check_write (;44;) (type 1) (param i32 i32)
+    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::check_write (;40;) (type 1) (param i32 i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11767,7 +11899,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::write (;45;) (type 3) (param i32 i32 i32 i32)
+    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::write (;41;) (type 3) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11823,7 +11955,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_flush (;46;) (type 1) (param i32 i32)
+    (func $wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream::blocking_flush (;42;) (type 1) (param i32 i32)
       (local i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11877,12 +12009,12 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $core::ptr::drop_in_place<wasi_snapshot_preview1::descriptors::Descriptor> (;47;) (type 0) (param i32)
-      (local i32)
+    (func $core::ptr::drop_in_place<wasi_snapshot_preview1::descriptors::Descriptor> (;43;) (type 0) (param i32)
       block ;; label = @1
         local.get 0
         i32.load
-        i32.eqz
+        i32.const 1
+        i32.ne
         br_if 0 (;@1;)
         block ;; label = @2
           local.get 0
@@ -11908,37 +12040,21 @@
           i32.load
           call $<wasi_snapshot_preview1::bindings::wasi::io::streams::OutputStream as wit_bindgen::WasmResource>::drop::drop
         end
-        block ;; label = @2
-          block ;; label = @3
-            local.get 0
-            i32.const 41
-            i32.add
-            i32.load8_u
-            i32.const -2
-            i32.add
-            local.tee 1
-            i32.const 1
-            local.get 1
-            i32.const 255
-            i32.and
-            i32.const 3
-            i32.lt_u
-            select
-            i32.const 255
-            i32.and
-            br_table 2 (;@1;) 1 (;@2;) 0 (;@3;)
-          end
-          local.get 0
-          i32.load offset=24
-          call $<wasi_snapshot_preview1::bindings::wasi::sockets::tcp::TcpSocket as wit_bindgen::WasmResource>::drop::drop
-          return
-        end
         local.get 0
-        i32.load offset=24
+        i32.const 41
+        i32.add
+        i32.load8_u
+        i32.const 2
+        i32.eq
+        br_if 0 (;@1;)
+        local.get 0
+        i32.const 24
+        i32.add
+        i32.load
         call $<wasi_snapshot_preview1::bindings::wasi::filesystem::types::Descriptor as wit_bindgen::WasmResource>::drop::drop
       end
     )
-    (func $wasi_snapshot_preview1::descriptors::Streams::get_write_stream (;48;) (type 1) (param i32 i32)
+    (func $wasi_snapshot_preview1::descriptors::Streams::get_write_stream (;44;) (type 1) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -11959,26 +12075,13 @@
               block ;; label = @5
                 block ;; label = @6
                   block ;; label = @7
-                    block ;; label = @8
-                      local.get 1
-                      i32.const 33
-                      i32.add
-                      i32.load8_u
-                      i32.const -2
-                      i32.add
-                      i32.const 255
-                      i32.and
-                      local.tee 4
-                      i32.const 2
-                      i32.gt_u
-                      br_if 0 (;@8;)
-                      i32.const 1
-                      local.set 5
-                      local.get 4
-                      i32.const 1
-                      i32.ne
-                      br_if 1 (;@7;)
-                    end
+                    local.get 1
+                    i32.const 33
+                    i32.add
+                    i32.load8_u
+                    i32.const 2
+                    i32.eq
+                    br_if 0 (;@7;)
                     block ;; label = @8
                       local.get 1
                       i32.const 20
@@ -12040,7 +12143,7 @@
                   local.get 0
                   i32.const 8
                   i32.store16 offset=2
-                  br 5 (;@1;)
+                  br 1 (;@5;)
                 end
                 local.get 0
                 local.get 2
@@ -12051,7 +12154,7 @@
                 i32.store16 offset=2
               end
               i32.const 1
-              local.set 5
+              local.set 1
               br 3 (;@1;)
             end
             local.get 2
@@ -12090,17 +12193,17 @@
         local.get 3
         i32.store offset=4
         i32.const 0
-        local.set 5
+        local.set 1
       end
       local.get 0
-      local.get 5
+      local.get 1
       i32.store16
       local.get 2
       i32.const 16
       i32.add
       global.set $__stack_pointer
     )
-    (func $wasi_snapshot_preview1::descriptors::Descriptors::new (;49;) (type 5) (param i32 i32 i32)
+    (func $wasi_snapshot_preview1::descriptors::Descriptors::new (;45;) (type 5) (param i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 6240
@@ -12113,71 +12216,19 @@
       local.get 3
       i32.const 0
       i32.store offset=6156
-      local.get 3
-      i32.const 0
-      i32.store16 offset=6152
-      local.get 3
-      i32.const 6192
-      i32.add
-      call $wasi_snapshot_preview1::bindings::wasi::cli::terminal_stdin::get_terminal_stdin::wit_import
-      block ;; label = @1
-        local.get 3
-        i32.load8_u offset=6192
-        local.tee 4
-        i32.eqz
-        br_if 0 (;@1;)
-        local.get 3
-        i32.const 6196
-        i32.add
-        i32.load
-        call $<wasi_snapshot_preview1::bindings::wasi::cli::terminal_input::TerminalInput as wit_bindgen::WasmResource>::drop::drop
-      end
-      local.get 3
-      i32.const 6192
-      i32.add
-      call $wasi_snapshot_preview1::bindings::wasi::cli::terminal_stdout::get_terminal_stdout::wit_import
-      block ;; label = @1
-        local.get 3
-        i32.load8_u offset=6192
-        local.tee 5
-        i32.eqz
-        br_if 0 (;@1;)
-        local.get 3
-        i32.const 6196
-        i32.add
-        i32.load
-        call $<wasi_snapshot_preview1::bindings::wasi::cli::terminal_output::TerminalOutput as wit_bindgen::WasmResource>::drop::drop
-      end
-      local.get 3
-      i32.const 6192
-      i32.add
-      call $wasi_snapshot_preview1::bindings::wasi::cli::terminal_stderr::get_terminal_stderr::wit_import
-      block ;; label = @1
-        local.get 3
-        i32.load8_u offset=6192
-        local.tee 6
-        i32.eqz
-        br_if 0 (;@1;)
-        local.get 3
-        i32.const 6196
-        i32.add
-        i32.load
-        call $<wasi_snapshot_preview1::bindings::wasi::cli::terminal_output::TerminalOutput as wit_bindgen::WasmResource>::drop::drop
-      end
       call $wasi_snapshot_preview1::bindings::wasi::cli::stdin::get_stdin::wit_import
-      local.set 7
+      local.set 4
       local.get 3
       i32.const 2
       i32.store8 offset=49
       local.get 3
-      local.get 4
-      i32.eqz
+      i32.const 0
       i32.store8 offset=32
       local.get 3
       i32.const 0
       i32.store offset=24
       local.get 3
-      local.get 7
+      local.get 4
       i32.store offset=20
       local.get 3
       i32.const 1
@@ -12201,8 +12252,7 @@
       local.get 3
       i32.const 80
       i32.add
-      local.get 5
-      i32.eqz
+      i32.const 1
       i32.store8
       local.get 3
       i32.const 76
@@ -12263,17 +12313,16 @@
       call $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap
       drop
       call $wasi_snapshot_preview1::bindings::wasi::cli::stderr::get_stderr::wit_import
-      local.set 7
+      local.set 6
       local.get 3
       i32.const 128
       i32.add
-      local.get 6
-      i32.eqz
+      i32.const 2
       i32.store8
       local.get 3
       i32.const 124
       i32.add
-      local.get 7
+      local.get 6
       i32.store
       local.get 3
       i32.const 120
@@ -12338,14 +12387,14 @@
       call $wasi_snapshot_preview1::ImportAlloc::with_arena
       local.get 3
       i32.load offset=6176
-      local.set 8
+      local.set 7
       block ;; label = @1
         local.get 3
         i32.load offset=6180
-        local.tee 9
+        local.tee 8
         i32.eqz
         br_if 0 (;@1;)
-        local.get 9
+        local.get 8
         i32.const 12
         i32.mul
         local.set 1
@@ -12354,8 +12403,8 @@
         i32.add
         i32.const 1
         i32.or
-        local.set 7
-        local.get 8
+        local.set 9
+        local.get 7
         local.set 2
         loop ;; label = @2
           local.get 2
@@ -12369,7 +12418,7 @@
           i32.load8_u offset=6192
           i32.const 0
           i32.ne
-          local.get 7
+          local.get 9
           i32.load8_u
           call $<core::result::Result<T,E> as wasi_snapshot_preview1::TrappingUnwrap<T>>::trapping_unwrap
           local.set 6
@@ -12461,10 +12510,10 @@
       local.get 3
       i32.const 6168
       i32.add
-      local.get 9
+      local.get 8
       i32.store
       local.get 3
-      local.get 8
+      local.get 7
       i32.store offset=6164
       local.get 0
       local.get 3
@@ -12478,21 +12527,21 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $get_state_ptr (;50;) (type 8) (result i32)
+    (func $get_state_ptr (;46;) (type 8) (result i32)
       global.get $internal_state_ptr
     )
-    (func $set_state_ptr (;51;) (type 0) (param i32)
+    (func $set_state_ptr (;47;) (type 0) (param i32)
       local.get 0
       global.set $internal_state_ptr
     )
-    (func $get_allocation_state (;52;) (type 8) (result i32)
+    (func $get_allocation_state (;48;) (type 8) (result i32)
       global.get $allocation_state
     )
-    (func $set_allocation_state (;53;) (type 0) (param i32)
+    (func $set_allocation_state (;49;) (type 0) (param i32)
       local.get 0
       global.set $allocation_state
     )
-    (func $compiler_builtins::mem::memcpy (;54;) (type 9) (param i32 i32 i32) (result i32)
+    (func $compiler_builtins::mem::memcpy (;50;) (type 9) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -12673,13 +12722,13 @@
       end
       local.get 0
     )
-    (func $memcpy (;55;) (type 9) (param i32 i32 i32) (result i32)
+    (func $memcpy (;51;) (type 9) (param i32 i32 i32) (result i32)
       local.get 0
       local.get 1
       local.get 2
       call $compiler_builtins::mem::memcpy
     )
-    (func $allocate_stack (;56;) (type 11)
+    (func $allocate_stack (;52;) (type 11)
       global.get $allocation_state
       i32.const 0
       i32.eq
@@ -12701,9 +12750,9 @@
     (global $__stack_pointer (;0;) (mut i32) i32.const 0)
     (global $internal_state_ptr (;1;) (mut i32) i32.const 0)
     (global $allocation_state (;2;) (mut i32) i32.const 0)
-    (export "fd_write" (func $fd_write))
     (export "cabi_import_realloc" (func $cabi_import_realloc))
     (export "cabi_export_realloc" (func $cabi_export_realloc))
+    (export "fd_write" (func $fd_write))
   )
   (core module (;2;)
     (type (;0;) (func (param i32)))
@@ -12745,27 +12794,25 @@
       i32.const 5
       call_indirect (type 2)
     )
-    (func $indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-filesystem-error-code (;6;) (type 2) (param i32 i32)
+    (func $#func6<indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-_method_descriptor.stat> (@name "indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-[method]descriptor.stat") (;6;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       i32.const 6
       call_indirect (type 2)
     )
-    (func $#func7<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.check-write> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.check-write") (;7;) (type 2) (param i32 i32)
+    (func $indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-filesystem-error-code (;7;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
       i32.const 7
       call_indirect (type 2)
     )
-    (func $#func8<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.write> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.write") (;8;) (type 3) (param i32 i32 i32 i32)
+    (func $#func8<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.check-write> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.check-write") (;8;) (type 2) (param i32 i32)
       local.get 0
       local.get 1
-      local.get 2
-      local.get 3
       i32.const 8
-      call_indirect (type 3)
+      call_indirect (type 2)
     )
-    (func $#func9<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-write-and-flush> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.blocking-write-and-flush") (;9;) (type 3) (param i32 i32 i32 i32)
+    (func $#func9<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.write> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.write") (;9;) (type 3) (param i32 i32 i32 i32)
       local.get 0
       local.get 1
       local.get 2
@@ -12773,51 +12820,42 @@
       i32.const 9
       call_indirect (type 3)
     )
-    (func $#func10<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-flush> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.blocking-flush") (;10;) (type 2) (param i32 i32)
-      local.get 0
-      local.get 1
-      i32.const 10
-      call_indirect (type 2)
-    )
-    (func $indirect-wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10-get-terminal-stdin (;11;) (type 0) (param i32)
-      local.get 0
-      i32.const 11
-      call_indirect (type 0)
-    )
-    (func $indirect-wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10-get-terminal-stdout (;12;) (type 0) (param i32)
-      local.get 0
-      i32.const 12
-      call_indirect (type 0)
-    )
-    (func $indirect-wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10-get-terminal-stderr (;13;) (type 0) (param i32)
-      local.get 0
-      i32.const 13
-      call_indirect (type 0)
-    )
-    (func $adapt-wasi_snapshot_preview1-fd_write (;14;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $#func10<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-write-and-flush> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.blocking-write-and-flush") (;10;) (type 3) (param i32 i32 i32 i32)
       local.get 0
       local.get 1
       local.get 2
       local.get 3
-      i32.const 14
+      i32.const 10
+      call_indirect (type 3)
+    )
+    (func $#func11<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-flush> (@name "indirect-wasi:io/streams@0.2.0-rc-2023-11-10-[method]output-stream.blocking-flush") (;11;) (type 2) (param i32 i32)
+      local.get 0
+      local.get 1
+      i32.const 11
+      call_indirect (type 2)
+    )
+    (func $adapt-wasi_snapshot_preview1-fd_write (;12;) (type 4) (param i32 i32 i32 i32) (result i32)
+      local.get 0
+      local.get 1
+      local.get 2
+      local.get 3
+      i32.const 12
       call_indirect (type 4)
     )
-    (table (;0;) 15 15 funcref)
+    (table (;0;) 13 13 funcref)
     (export "0" (func $indirect-miden:base/tx-kernel@1.0.0-get-inputs))
     (export "1" (func $indirect-miden:base/tx-kernel@1.0.0-get-assets))
     (export "2" (func $indirect-wasi:filesystem/preopens@0.2.0-rc-2023-11-10-get-directories))
     (export "3" (func $#func3<indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-_method_descriptor.write-via-stream>))
     (export "4" (func $#func4<indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-_method_descriptor.append-via-stream>))
     (export "5" (func $#func5<indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-_method_descriptor.get-type>))
-    (export "6" (func $indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-filesystem-error-code))
-    (export "7" (func $#func7<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.check-write>))
-    (export "8" (func $#func8<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.write>))
-    (export "9" (func $#func9<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-write-and-flush>))
-    (export "10" (func $#func10<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-flush>))
-    (export "11" (func $indirect-wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10-get-terminal-stdin))
-    (export "12" (func $indirect-wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10-get-terminal-stdout))
-    (export "13" (func $indirect-wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10-get-terminal-stderr))
-    (export "14" (func $adapt-wasi_snapshot_preview1-fd_write))
+    (export "6" (func $#func6<indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-_method_descriptor.stat>))
+    (export "7" (func $indirect-wasi:filesystem/types@0.2.0-rc-2023-11-10-filesystem-error-code))
+    (export "8" (func $#func8<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.check-write>))
+    (export "9" (func $#func9<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.write>))
+    (export "10" (func $#func10<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-write-and-flush>))
+    (export "11" (func $#func11<indirect-wasi:io/streams@0.2.0-rc-2023-11-10-_method_output-stream.blocking-flush>))
+    (export "12" (func $adapt-wasi_snapshot_preview1-fd_write))
     (export "$imports" (table 0))
   )
   (core module (;3;)
@@ -12834,15 +12872,13 @@
     (import "" "5" (func (;5;) (type 2)))
     (import "" "6" (func (;6;) (type 2)))
     (import "" "7" (func (;7;) (type 2)))
-    (import "" "8" (func (;8;) (type 3)))
+    (import "" "8" (func (;8;) (type 2)))
     (import "" "9" (func (;9;) (type 3)))
-    (import "" "10" (func (;10;) (type 2)))
-    (import "" "11" (func (;11;) (type 0)))
-    (import "" "12" (func (;12;) (type 0)))
-    (import "" "13" (func (;13;) (type 0)))
-    (import "" "14" (func (;14;) (type 4)))
-    (import "" "$imports" (table (;0;) 15 15 funcref))
-    (elem (;0;) (i32.const 0) func 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14)
+    (import "" "10" (func (;10;) (type 3)))
+    (import "" "11" (func (;11;) (type 2)))
+    (import "" "12" (func (;12;) (type 4)))
+    (import "" "$imports" (table (;0;) 13 13 funcref))
+    (elem (;0;) (i32.const 0) func 0 1 2 3 4 5 6 7 8 9 10 11 12)
   )
   (core instance (;0;) (instantiate 2))
   (alias export 1 "get-id" (func (;0;)))
@@ -12864,7 +12900,7 @@
   (core instance (;3;)
     (export "receive-asset" (func 4))
   )
-  (alias core export 0 "14" (core func (;5;)))
+  (alias core export 0 "12" (core func (;5;)))
   (core instance (;4;)
     (export "fd_write" (func 5))
   )
@@ -12888,166 +12924,129 @@
   (core instance (;8;)
     (export "get-directories" (func 8))
   )
-  (alias export 6 "descriptor" (type (;32;)))
-  (core func (;9;) (canon resource.drop 32))
+  (alias export 10 "descriptor" (type (;25;)))
+  (core func (;9;) (canon resource.drop 25))
   (alias core export 0 "3" (core func (;10;)))
   (alias core export 0 "4" (core func (;11;)))
   (alias core export 0 "5" (core func (;12;)))
   (alias core export 0 "6" (core func (;13;)))
+  (alias core export 0 "7" (core func (;14;)))
   (core instance (;9;)
     (export "[resource-drop]descriptor" (func 9))
     (export "[method]descriptor.write-via-stream" (func 10))
     (export "[method]descriptor.append-via-stream" (func 11))
     (export "[method]descriptor.get-type" (func 12))
-    (export "filesystem-error-code" (func 13))
+    (export "[method]descriptor.stat" (func 13))
+    (export "filesystem-error-code" (func 14))
   )
-  (alias export 4 "error" (type (;33;)))
-  (core func (;14;) (canon resource.drop 33))
+  (alias export 4 "error" (type (;26;)))
+  (core func (;15;) (canon resource.drop 26))
   (core instance (;10;)
-    (export "[resource-drop]error" (func 14))
+    (export "[resource-drop]error" (func 15))
   )
-  (alias export 5 "input-stream" (type (;34;)))
-  (core func (;15;) (canon resource.drop 34))
-  (alias export 5 "output-stream" (type (;35;)))
-  (core func (;16;) (canon resource.drop 35))
-  (alias core export 0 "7" (core func (;17;)))
+  (alias export 5 "input-stream" (type (;27;)))
+  (core func (;16;) (canon resource.drop 27))
+  (alias export 5 "output-stream" (type (;28;)))
+  (core func (;17;) (canon resource.drop 28))
   (alias core export 0 "8" (core func (;18;)))
   (alias core export 0 "9" (core func (;19;)))
   (alias core export 0 "10" (core func (;20;)))
+  (alias core export 0 "11" (core func (;21;)))
   (core instance (;11;)
-    (export "[resource-drop]input-stream" (func 15))
-    (export "[resource-drop]output-stream" (func 16))
-    (export "[method]output-stream.check-write" (func 17))
-    (export "[method]output-stream.write" (func 18))
-    (export "[method]output-stream.blocking-write-and-flush" (func 19))
-    (export "[method]output-stream.blocking-flush" (func 20))
+    (export "[resource-drop]input-stream" (func 16))
+    (export "[resource-drop]output-stream" (func 17))
+    (export "[method]output-stream.check-write" (func 18))
+    (export "[method]output-stream.write" (func 19))
+    (export "[method]output-stream.blocking-write-and-flush" (func 20))
+    (export "[method]output-stream.blocking-flush" (func 21))
   )
-  (alias export 12 "terminal-input" (type (;36;)))
-  (core func (;21;) (canon resource.drop 36))
+  (alias export 8 "get-stderr" (func (;3;)))
+  (core func (;22;) (canon lower (func 3)))
   (core instance (;12;)
-    (export "[resource-drop]terminal-input" (func 21))
+    (export "get-stderr" (func 22))
   )
-  (alias export 8 "tcp-socket" (type (;37;)))
-  (core func (;22;) (canon resource.drop 37))
+  (alias export 6 "get-stdin" (func (;4;)))
+  (core func (;23;) (canon lower (func 4)))
   (core instance (;13;)
-    (export "[resource-drop]tcp-socket" (func 22))
+    (export "get-stdin" (func 23))
   )
-  (alias export 13 "terminal-output" (type (;38;)))
-  (core func (;23;) (canon resource.drop 38))
+  (alias export 7 "get-stdout" (func (;5;)))
+  (core func (;24;) (canon lower (func 5)))
   (core instance (;14;)
-    (export "[resource-drop]terminal-output" (func 23))
+    (export "get-stdout" (func 24))
   )
-  (alias export 11 "get-stderr" (func (;3;)))
-  (core func (;24;) (canon lower (func 3)))
-  (core instance (;15;)
-    (export "get-stderr" (func 24))
-  )
-  (alias export 9 "get-stdin" (func (;4;)))
-  (core func (;25;) (canon lower (func 4)))
-  (core instance (;16;)
-    (export "get-stdin" (func 25))
-  )
-  (alias export 10 "get-stdout" (func (;5;)))
-  (core func (;26;) (canon lower (func 5)))
-  (core instance (;17;)
-    (export "get-stdout" (func 26))
-  )
-  (alias core export 0 "11" (core func (;27;)))
-  (core instance (;18;)
-    (export "get-terminal-stdin" (func 27))
-  )
-  (alias core export 0 "12" (core func (;28;)))
-  (core instance (;19;)
-    (export "get-terminal-stdout" (func 28))
-  )
-  (alias core export 0 "13" (core func (;29;)))
-  (core instance (;20;)
-    (export "get-terminal-stderr" (func 29))
-  )
-  (core instance (;21;) (instantiate 1
+  (core instance (;15;) (instantiate 1
       (with "__main_module__" (instance 6))
       (with "env" (instance 7))
       (with "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance 8))
       (with "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance 9))
       (with "wasi:io/error@0.2.0-rc-2023-11-10" (instance 10))
       (with "wasi:io/streams@0.2.0-rc-2023-11-10" (instance 11))
-      (with "wasi:cli/terminal-input@0.2.0-rc-2023-11-10" (instance 12))
-      (with "wasi:sockets/tcp@0.2.0-rc-2023-11-10" (instance 13))
-      (with "wasi:cli/terminal-output@0.2.0-rc-2023-11-10" (instance 14))
-      (with "wasi:cli/stderr@0.2.0-rc-2023-11-10" (instance 15))
-      (with "wasi:cli/stdin@0.2.0-rc-2023-11-10" (instance 16))
-      (with "wasi:cli/stdout@0.2.0-rc-2023-11-10" (instance 17))
-      (with "wasi:cli/terminal-stdin@0.2.0-rc-2023-11-10" (instance 18))
-      (with "wasi:cli/terminal-stdout@0.2.0-rc-2023-11-10" (instance 19))
-      (with "wasi:cli/terminal-stderr@0.2.0-rc-2023-11-10" (instance 20))
+      (with "wasi:cli/stderr@0.2.0-rc-2023-12-05" (instance 12))
+      (with "wasi:cli/stdin@0.2.0-rc-2023-12-05" (instance 13))
+      (with "wasi:cli/stdout@0.2.0-rc-2023-12-05" (instance 14))
     )
   )
-  (alias core export 21 "cabi_export_realloc" (core func (;30;)))
-  (alias core export 21 "cabi_import_realloc" (core func (;31;)))
+  (alias core export 15 "cabi_export_realloc" (core func (;25;)))
+  (alias core export 15 "cabi_import_realloc" (core func (;26;)))
   (alias core export 0 "$imports" (core table (;0;)))
   (alias export 1 "get-inputs" (func (;6;)))
-  (core func (;32;) (canon lower (func 6) (memory 0)))
+  (core func (;27;) (canon lower (func 6) (memory 0)))
   (alias export 1 "get-assets" (func (;7;)))
-  (core func (;33;) (canon lower (func 7) (memory 0) (realloc 6)))
-  (alias export 7 "get-directories" (func (;8;)))
-  (core func (;34;) (canon lower (func 8) (memory 0) (realloc 31) string-encoding=utf8))
-  (alias export 6 "[method]descriptor.write-via-stream" (func (;9;)))
-  (core func (;35;) (canon lower (func 9) (memory 0)))
-  (alias export 6 "[method]descriptor.append-via-stream" (func (;10;)))
-  (core func (;36;) (canon lower (func 10) (memory 0)))
-  (alias export 6 "[method]descriptor.get-type" (func (;11;)))
-  (core func (;37;) (canon lower (func 11) (memory 0)))
-  (alias export 6 "filesystem-error-code" (func (;12;)))
-  (core func (;38;) (canon lower (func 12) (memory 0)))
-  (alias export 5 "[method]output-stream.check-write" (func (;13;)))
-  (core func (;39;) (canon lower (func 13) (memory 0)))
-  (alias export 5 "[method]output-stream.write" (func (;14;)))
-  (core func (;40;) (canon lower (func 14) (memory 0)))
-  (alias export 5 "[method]output-stream.blocking-write-and-flush" (func (;15;)))
-  (core func (;41;) (canon lower (func 15) (memory 0)))
-  (alias export 5 "[method]output-stream.blocking-flush" (func (;16;)))
-  (core func (;42;) (canon lower (func 16) (memory 0)))
-  (alias export 14 "get-terminal-stdin" (func (;17;)))
-  (core func (;43;) (canon lower (func 17) (memory 0)))
-  (alias export 15 "get-terminal-stdout" (func (;18;)))
-  (core func (;44;) (canon lower (func 18) (memory 0)))
-  (alias export 16 "get-terminal-stderr" (func (;19;)))
-  (core func (;45;) (canon lower (func 19) (memory 0)))
-  (alias core export 21 "fd_write" (core func (;46;)))
-  (core instance (;22;)
+  (core func (;28;) (canon lower (func 7) (memory 0) (realloc 6)))
+  (alias export 11 "get-directories" (func (;8;)))
+  (core func (;29;) (canon lower (func 8) (memory 0) (realloc 26) string-encoding=utf8))
+  (alias export 10 "[method]descriptor.write-via-stream" (func (;9;)))
+  (core func (;30;) (canon lower (func 9) (memory 0)))
+  (alias export 10 "[method]descriptor.append-via-stream" (func (;10;)))
+  (core func (;31;) (canon lower (func 10) (memory 0)))
+  (alias export 10 "[method]descriptor.get-type" (func (;11;)))
+  (core func (;32;) (canon lower (func 11) (memory 0)))
+  (alias export 10 "[method]descriptor.stat" (func (;12;)))
+  (core func (;33;) (canon lower (func 12) (memory 0)))
+  (alias export 10 "filesystem-error-code" (func (;13;)))
+  (core func (;34;) (canon lower (func 13) (memory 0)))
+  (alias export 5 "[method]output-stream.check-write" (func (;14;)))
+  (core func (;35;) (canon lower (func 14) (memory 0)))
+  (alias export 5 "[method]output-stream.write" (func (;15;)))
+  (core func (;36;) (canon lower (func 15) (memory 0)))
+  (alias export 5 "[method]output-stream.blocking-write-and-flush" (func (;16;)))
+  (core func (;37;) (canon lower (func 16) (memory 0)))
+  (alias export 5 "[method]output-stream.blocking-flush" (func (;17;)))
+  (core func (;38;) (canon lower (func 17) (memory 0)))
+  (alias core export 15 "fd_write" (core func (;39;)))
+  (core instance (;16;)
     (export "$imports" (table 0))
-    (export "0" (func 32))
-    (export "1" (func 33))
-    (export "2" (func 34))
-    (export "3" (func 35))
-    (export "4" (func 36))
-    (export "5" (func 37))
-    (export "6" (func 38))
-    (export "7" (func 39))
-    (export "8" (func 40))
-    (export "9" (func 41))
-    (export "10" (func 42))
-    (export "11" (func 43))
-    (export "12" (func 44))
-    (export "13" (func 45))
-    (export "14" (func 46))
+    (export "0" (func 27))
+    (export "1" (func 28))
+    (export "2" (func 29))
+    (export "3" (func 30))
+    (export "4" (func 31))
+    (export "5" (func 32))
+    (export "6" (func 33))
+    (export "7" (func 34))
+    (export "8" (func 35))
+    (export "9" (func 36))
+    (export "10" (func 37))
+    (export "11" (func 38))
+    (export "12" (func 39))
   )
-  (core instance (;23;) (instantiate 3
-      (with "" (instance 22))
+  (core instance (;17;) (instantiate 3
+      (with "" (instance 16))
     )
   )
-  (type (;39;) (func))
-  (alias core export 5 "miden:base/note@1.0.0#note-script" (core func (;47;)))
-  (func (;20;) (type 39) (canon lift (core func 47)))
+  (type (;29;) (func))
+  (alias core export 5 "miden:base/note@1.0.0#note-script" (core func (;40;)))
+  (func (;18;) (type 29) (canon lift (core func 40)))
   (component (;0;)
     (type (;0;) (func))
     (import "import-func-note-script" (func (;0;) (type 0)))
     (type (;1;) (func))
     (export (;1;) "note-script" (func 0) (func (type 1)))
   )
-  (instance (;17;) (instantiate 0
-      (with "import-func-note-script" (func 20))
+  (instance (;12;) (instantiate 0
+      (with "import-func-note-script" (func 18))
     )
   )
-  (export (;18;) (interface "miden:base/note@1.0.0") (instance 17))
+  (export (;13;) (interface "miden:base/note@1.0.0") (instance 12))
 )
