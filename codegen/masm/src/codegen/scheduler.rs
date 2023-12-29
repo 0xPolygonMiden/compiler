@@ -1030,11 +1030,11 @@ fn build_dependency_graph(
         let pp = ProgramPoint::Inst(inst);
         for (arg_idx, arg) in function.dfg.inst_args(inst).iter().copied().enumerate() {
             materialized_args.insert(arg);
-            let arg_node_id = graph.add_node(Node::Argument(ArgumentNode::Direct {
+            let arg_node = ArgumentNode::Direct {
                 inst,
                 index: arg_idx.try_into().expect("too many arguments"),
-            }));
-            add_data_dependency(node_id, arg_node_id, arg, pp, function, &mut graph);
+            };
+            graph.add_data_dependency(node_id, arg_node, arg, pp, function);
         }
 
         // Ensure all result nodes are added to the graph, otherwise unused results will not be
@@ -1052,12 +1052,12 @@ fn build_dependency_graph(
             BranchInfo::SingleDest(_, args) => {
                 // Add edges representing these data dependencies in later blocks
                 for (arg_idx, arg) in args.iter().copied().enumerate() {
-                    let arg_node_id = graph.add_node(Node::Argument(ArgumentNode::Indirect {
+                    let arg_node = ArgumentNode::Indirect {
                         inst,
                         index: arg_idx.try_into().expect("too many successor arguments"),
                         successor: 0,
-                    }));
-                    add_data_dependency(node_id, arg_node_id, arg, pp, function, &mut graph);
+                    };
+                    graph.add_data_dependency(node_id, arg_node, arg, pp, function);
                 }
             }
             BranchInfo::MultiDest(ref jts) => {
@@ -1097,8 +1097,7 @@ fn build_dependency_graph(
                                 successor,
                             }
                         };
-                        let arg_node_id = graph.add_node(Node::Argument(arg_node));
-                        add_data_dependency(node_id, arg_node_id, arg, pp, function, &mut graph);
+                        graph.add_data_dependency(node_id, arg_node, arg, pp, function);
                     }
                 }
             }
@@ -1179,53 +1178,6 @@ fn build_dependency_graph(
             continue;
         }
     }
-
-    dce(graph, block_id, function, liveness)
-}
-
-fn add_data_dependency(
-    dependent_id: NodeId,
-    dependency_id: NodeId,
-    value: hir::Value,
-    pp: ProgramPoint,
-    function: &hir::Function,
-    graph: &mut DependencyGraph,
-) {
-    match function.dfg.value_data(value) {
-        hir::ValueData::Inst {
-            inst: dep_inst,
-            num,
-            ..
-        } => {
-            let dep_inst = *dep_inst;
-            let block_id = function.dfg.pp_block(pp);
-            if function.dfg.insts[dep_inst].block == block_id {
-                let dep_inst_index = function
-                    .dfg
-                    .block_insts(block_id)
-                    .position(|id| id == dep_inst)
-                    .unwrap();
-                let result_inst_node_id = graph.add_node(Node::Inst {
-                    id: dep_inst,
-                    pos: dep_inst_index as u16 + 1,
-                });
-                let result_node_id = graph.add_node(Node::Result {
-                    value,
-                    index: *num as u8,
-                });
-                graph.add_dependency(result_node_id, result_inst_node_id);
-                graph.add_dependency(dependency_id, result_node_id);
-            } else {
-                let operand_node_id = graph.add_node(Node::Stack(value));
-                graph.add_dependency(dependency_id, operand_node_id);
-            };
-        }
-        hir::ValueData::Param { .. } => {
-            let operand_node_id = graph.add_node(Node::Stack(value));
-            graph.add_dependency(dependency_id, operand_node_id);
-        }
-    }
-    graph.add_dependency(dependent_id, dependency_id);
 }
 
 fn dce(

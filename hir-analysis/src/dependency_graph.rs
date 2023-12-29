@@ -979,6 +979,58 @@ impl DependencyGraph {
             Ok(output)
         }
     }
+
+    /// This function is used to represent the dependency of an instruction on values
+    /// it uses as arguments. We do so by adding the appropriate argument node to the
+    /// graph, and adding edges between the instruction and the argument node, and the
+    /// argument node and the stack value or instruction result which it references.
+    pub fn add_data_dependency(
+        &mut self,
+        dependent_id: NodeId,
+        argument: ArgumentNode,
+        value: hir::Value,
+        pp: hir::ProgramPoint,
+        function: &hir::Function,
+    ) {
+        debug_assert!(dependent_id.is_instruction());
+
+        let dependency_id = self.add_node(Node::Argument(argument));
+        match function.dfg.value_data(value) {
+            hir::ValueData::Inst {
+                inst: dep_inst,
+                num,
+                ..
+            } => {
+                let dep_inst = *dep_inst;
+                let block_id = function.dfg.pp_block(pp);
+                if function.dfg.insts[dep_inst].block == block_id {
+                    let dep_inst_index = function
+                        .dfg
+                        .block_insts(block_id)
+                        .position(|id| id == dep_inst)
+                        .unwrap();
+                    let result_inst_node_id = self.add_node(Node::Inst {
+                        id: dep_inst,
+                        pos: dep_inst_index as u16,
+                    });
+                    let result_node_id = self.add_node(Node::Result {
+                        value,
+                        index: *num as u8,
+                    });
+                    self.add_dependency(result_node_id, result_inst_node_id);
+                    self.add_dependency(dependency_id, result_node_id);
+                } else {
+                    let operand_node_id = self.add_node(Node::Stack(value));
+                    self.add_dependency(dependency_id, operand_node_id);
+                };
+            }
+            hir::ValueData::Param { .. } => {
+                let operand_node_id = self.add_node(Node::Stack(value));
+                self.add_dependency(dependency_id, operand_node_id);
+            }
+        }
+        self.add_dependency(dependent_id, dependency_id);
+    }
 }
 impl fmt::Debug for DependencyGraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
