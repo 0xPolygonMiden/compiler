@@ -1020,7 +1020,7 @@ fn build_dependency_graph(
 
         let node_id = graph.add_node(Node::Inst {
             id: inst,
-            pos: inst_index as u16 + 1,
+            pos: inst_index as u16,
         });
 
         let pp = ProgramPoint::Inst(inst);
@@ -1148,7 +1148,7 @@ fn assign_control_dependencies(
         let id = block.last().unwrap();
         Node::Inst {
             id,
-            pos: block.len() as u16,
+            pos: (block.len() - 1) as u16,
         }
     };
     let terminator_id = terminator.into();
@@ -1161,7 +1161,7 @@ fn assign_control_dependencies(
 
         let node = Node::Inst {
             id: inst,
-            pos: inst_index as u16 + 1,
+            pos: inst_index as u16,
         };
         let node_id = node.id();
 
@@ -1229,7 +1229,7 @@ fn dce(
                     inst,
                     Node::Inst {
                         id: inst,
-                        pos: i as u16 + 1,
+                        pos: i as u16,
                     }
                     .into(),
                 )
