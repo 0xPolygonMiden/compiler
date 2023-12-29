@@ -22,7 +22,7 @@ use crate::masm;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Successor {
     pub block: hir::Block,
-    pub argc: u16,
+    pub arg_count: u16,
 }
 
 #[derive(Debug)]
@@ -128,15 +128,15 @@ impl InstInfo {
 
     fn block_argv_range(&self, block: hir::Block) -> core::ops::Range<usize> {
         let mut start_idx = self.arity();
-        let mut argc = 0;
+        let mut arg_count = 0;
         for successor in self.successors.iter() {
             if successor.block == block {
-                argc = successor.argc as usize;
+                arg_count = successor.arg_count as usize;
                 break;
             }
-            start_idx += successor.argc as usize;
+            start_idx += successor.arg_count as usize;
         }
-        start_idx..(start_idx + argc)
+        start_idx..(start_idx + arg_count)
     }
 }
 
@@ -679,7 +679,7 @@ impl<'a> BlockScheduler<'a> {
             BranchInfo::SingleDest(block, block_args) => {
                 inst_info.successors.push(Successor {
                     block,
-                    argc: block_args.len() as u16,
+                    arg_count: block_args.len() as u16,
                 });
                 for (succ_idx, arg) in self
                     .block_info
@@ -734,7 +734,7 @@ impl<'a> BlockScheduler<'a> {
                 for jt in jts.iter() {
                     inst_info.successors.push(Successor {
                         block: jt.destination,
-                        argc: jt.args.len() as u16,
+                        arg_count: jt.args.len() as u16,
                     });
                 }
                 for (succ_idx, arg) in self
