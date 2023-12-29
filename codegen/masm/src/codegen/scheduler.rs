@@ -1308,7 +1308,7 @@ fn dce(
                             args[index]
                         }
                         BranchInfo::MultiDest(ref jts) => jts[successor].args[index],
-                        BranchInfo::NotABranch => unreachable!(),
+                        BranchInfo::NotABranch => unreachable!("indirect/conditional arguments are only valid as successors of a branch instruction"),
                     };
                     match function.dfg.value_data(value) {
                         hir::ValueData::Inst {
@@ -1339,7 +1339,9 @@ fn dce(
                 // This is a control dependency added intentionally, skip it
                 Node::Inst { .. } => continue,
                 // No other node types are possible
-                _ => unreachable!(),
+                Node::Result { .. } | Node::Stack(_) => {
+                    unreachable!("invalid successor for instruction node")
+                }
             }
             remove_nodes.push(dependency_node_id);
         }

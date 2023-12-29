@@ -115,7 +115,10 @@ impl OrderedTreeGraph {
 
         // Whichever tree appears first in the topological order will be
         // scheduled before the other.
-        assert!(!self.ordering.is_empty());
+        assert!(
+            !self.ordering.is_empty(),
+            "invalid treegraph: the topographical ordering is empty even though the underlying graph is not"
+        );
         for n in self.ordering.iter().copied() {
             if n == a_tree {
                 return Ordering::Less;
@@ -125,7 +128,7 @@ impl OrderedTreeGraph {
             }
         }
 
-        unreachable!()
+        unreachable!("invalid treegraph: there are roots in the dependency graph not represented in the topographical ordering")
     }
 }
 impl core::convert::AsRef<TreeGraph> for OrderedTreeGraph {

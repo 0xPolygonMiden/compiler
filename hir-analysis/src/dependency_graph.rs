@@ -705,7 +705,6 @@ impl DependencyGraph {
             node: to,
             direction: Direction::Dependent,
         };
-        assert!(edges.contains(&edge));
         assert!(self.nodes.contains(&from));
         assert!(self.nodes.contains(&to));
         if edges.contains(&edge) {
