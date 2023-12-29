@@ -391,11 +391,11 @@ pub struct InvalidNodeIdError;
 #[repr(transparent)]
 pub struct NodeId(u64);
 impl NodeId {
-    const TAG_DIRECT: u64 = 1 << 60;
-    const TAG_INDIRECT: u64 = 2 << 60;
+    const TAG_ARG_DIRECT: u64 = 1 << 60;
+    const TAG_ARG_INDIRECT: u64 = 2 << 60;
     const TAG_INST: u64 = 3 << 60;
     const TAG_RESULT: u64 = 4 << 60;
-    const IS_CONDITIONAL: u64 = 1;
+    const IS_CONDITIONAL_ARG: u64 = 1;
     const TAG_MASK: u64 = 0b111 << 60;
 
     /// Returns true if the [Node] corresponding to this identifier is of `Stack` type
@@ -421,7 +421,7 @@ impl NodeId {
     pub fn is_argument(&self) -> bool {
         matches!(
             self.0 & Self::TAG_MASK,
-            Self::TAG_DIRECT | Self::TAG_INDIRECT
+            Self::TAG_ARG_DIRECT | Self::TAG_ARG_INDIRECT
         )
     }
 
@@ -436,7 +436,7 @@ impl NodeId {
     pub fn unwrap_inst(self) -> hir::Inst {
         let tag = self.0 & Self::TAG_MASK;
         match tag {
-            Self::TAG_DIRECT | Self::TAG_INDIRECT => {
+            Self::TAG_ARG_DIRECT | Self::TAG_ARG_INDIRECT => {
                 hir::Inst::from_u32(((self.0 >> 28) & (u32::MAX as u64)) as u32)
             }
             Self::TAG_INST => hir::Inst::from_u32(((self.0 >> 16) & (u32::MAX as u64)) as u32),
@@ -460,7 +460,7 @@ impl NodeId {
                 let id = hir::Inst::from_u32(((self.0 >> 16) & (u32::MAX as u64)) as u32);
                 Ok(Node::Inst { id, pos })
             }
-            Self::TAG_DIRECT => {
+            Self::TAG_ARG_DIRECT => {
                 let mut shifted = self.0 >> 12;
                 let index = (shifted & (u8::MAX as u64)) as u8;
                 shifted >>= 16;
@@ -470,8 +470,8 @@ impl NodeId {
                     index,
                 }))
             }
-            Self::TAG_INDIRECT => {
-                let is_conditional = self.0 & Self::IS_CONDITIONAL == Self::IS_CONDITIONAL;
+            Self::TAG_ARG_INDIRECT => {
+                let is_conditional = self.0 & Self::IS_CONDITIONAL_ARG == Self::IS_CONDITIONAL_ARG;
                 let mut shifted = self.0 >> 12;
                 let index = (shifted & (u8::MAX as u64)) as u8;
                 shifted >>= 8;
@@ -534,7 +534,7 @@ impl From<Node> for NodeId {
                 ArgumentNode::Direct { inst, index } => {
                     let inst = (inst.index() as u64) << 28;
                     let index = (index as u64) << 12;
-                    Self(Self::TAG_DIRECT | inst | index)
+                    Self(Self::TAG_ARG_DIRECT | inst | index)
                 }
                 ArgumentNode::Indirect {
                     inst,
@@ -544,7 +544,7 @@ impl From<Node> for NodeId {
                     let inst = (inst.index() as u64) << 28;
                     let successor = (successor as u64) << 20;
                     let index = (index as u64) << 12;
-                    Self(Self::TAG_INDIRECT | inst | successor | index)
+                    Self(Self::TAG_ARG_INDIRECT | inst | successor | index)
                 }
                 ArgumentNode::Conditional {
                     inst,
@@ -554,7 +554,13 @@ impl From<Node> for NodeId {
                     let inst = (inst.index() as u64) << 28;
                     let successor = (successor as u64) << 20;
                     let index = (index as u64) << 12;
-                    Self(Self::TAG_INDIRECT | inst | successor | index | Self::IS_CONDITIONAL)
+                    Self(
+                        Self::TAG_ARG_INDIRECT
+                            | inst
+                            | successor
+                            | index
+                            | Self::IS_CONDITIONAL_ARG,
+                    )
                 }
             },
             // tttdddddddd000000000000000000000vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
