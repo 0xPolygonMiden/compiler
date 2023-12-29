@@ -182,14 +182,12 @@ impl SparseMapValue<hir::Block> for BlockInfo {
 /// and the schedule for instructions in each block.
 #[derive(Debug)]
 pub struct Schedule {
-    pub schedule: SmallVec<[hir::Block; 4]>,
     pub block_infos: SparseMap<hir::Block, Rc<BlockInfo>>,
     pub block_schedules: SecondaryMap<hir::Block, Vec<ScheduleOp>>,
 }
 impl Schedule {
     pub fn new() -> Self {
         Self {
-            schedule: Default::default(),
             block_infos: Default::default(),
             block_schedules: SecondaryMap::new(),
         }
