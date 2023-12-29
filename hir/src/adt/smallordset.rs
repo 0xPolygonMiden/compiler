@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 /// This data structure is designed with two goals in mind:
 ///
 /// * Support efficient set operations over a small set of items
-/// * Preserve the order of those items
+/// * Maintains the underlying set in order (according to the `Ord` impl of the element type)
 /// * Avoid allocating data on the heap for the typical case
 ///
 /// Internally, [SmallOrdSet] is implemented on top of [SmallVec], and uses binary search
@@ -17,6 +17,10 @@ use smallvec::SmallVec;
 /// when all of the data is stored inline, but may not be a good fit for all use cases.
 ///
 /// Due to its design constraints, it only supports elements which implement [Ord].
+///
+/// NOTE: This type differs from [SmallSet] in that [SmallOrdSet] uses the [Ord] implementation
+/// of the element type for ordering, while [SmallSet] preserves the insertion order of elements.
+/// Beyond that, the two types are meant to be essentially equivalent.
 pub struct SmallOrdSet<T, const N: usize> {
     items: SmallVec<[T; N]>,
 }
