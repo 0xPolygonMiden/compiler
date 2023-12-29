@@ -299,12 +299,11 @@ impl<'a> Scheduler<'a> {
             let block_scheduler = BlockScheduler {
                 f: self.f,
                 liveness: self.liveness,
-                schedule,
                 block_info,
                 inst_infos: Default::default(),
                 worklist: SmallVec::from_iter([Plan::Start(block_id)]),
             };
-            block_scheduler.schedule();
+            block_scheduler.schedule(schedule);
         }
 
         self.schedule
@@ -347,13 +346,12 @@ impl<'a> Scheduler<'a> {
 struct BlockScheduler<'a> {
     f: &'a hir::Function,
     liveness: &'a LivenessAnalysis,
-    schedule: &'a mut Vec<ScheduleOp>,
     block_info: Rc<BlockInfo>,
     inst_infos: SparseMap<hir::Inst, Rc<InstInfo>>,
     worklist: SmallVec<[Plan; 4]>,
 }
 impl<'a> BlockScheduler<'a> {
-    pub fn schedule(mut self) {
+    pub fn schedule(mut self, scheduled_ops: &mut Vec<ScheduleOp>) {
         // Planning tasks are added to the worklist in reverse, e.g. we push
         // Plan::Finish before Plan::Start. So by popping tasks off the stack
         // here, we will emit scheduling operations in "normal" order.
@@ -361,7 +359,7 @@ impl<'a> BlockScheduler<'a> {
             match plan {
                 Plan::Start(_) => self.visit_block(),
                 Plan::Finish => {
-                    self.schedule.push(ScheduleOp::Exit);
+                    scheduled_ops.push(ScheduleOp::Exit);
                 }
                 // We're emitting code required to execute an instruction, such as materialization of
                 // data dependencies used as direct arguments. This is only emitted when an instruction
@@ -370,13 +368,13 @@ impl<'a> BlockScheduler<'a> {
                 Plan::PreInst(inst_info) => self.schedule_pre_inst(inst_info),
                 // We're emitting code for an instruction whose pre-requisite dependencies are already
                 // materialized, so we need only worry about how a specific instruction is lowered.
-                Plan::Inst(inst_info) => self.schedule_inst(inst_info),
+                Plan::Inst(inst_info) => self.schedule_inst(inst_info, scheduled_ops),
                 // We're emitting code for an instruction that has started executing, and in some specific
                 // cases, may have dependencies which have been deferred until this point. This is only emitted
                 // currently for block arguments which are conditionally materialized
                 Plan::PostInst(inst_info) => self.schedule_post_inst(inst_info),
                 Plan::Drop(value) => {
-                    self.schedule.push(ScheduleOp::Drop(value));
+                    scheduled_ops.push(ScheduleOp::Drop(value));
                 }
             }
         }
@@ -541,8 +539,8 @@ impl<'a> BlockScheduler<'a> {
     }
 
     /// Schedule execution of a given instruction, see [Plan::Inst] docs for specific semantics.
-    fn schedule_inst(&mut self, inst_info: Rc<InstInfo>) {
-        self.schedule.push(ScheduleOp::Inst(inst_info));
+    fn schedule_inst(&mut self, inst_info: Rc<InstInfo>, scheduled_ops: &mut Vec<ScheduleOp>) {
+        scheduled_ops.push(ScheduleOp::Inst(inst_info));
     }
 
     /// Schedule instructions which were deferred until after an instruction executes.
