@@ -91,7 +91,7 @@ pub struct InstInfo {
     ///
     /// This set is populated in argument order
     pub pre: SmallSet<NodeId, 4>,
-    /// The set of dependencies which must be scheduled before
+    /// The set of dependencies which must be scheduled after
     /// the instruction finishes executing.
     ///
     /// This is largely relevant only for control flow instructions,
@@ -204,7 +204,7 @@ impl Schedule {
     }
 }
 
-/// [ScheduleOp] describes an action to be peformed by the code generator.
+/// [ScheduleOp] describes an action to be performed by the code generator.
 ///
 /// Code generation is driven by constructing a schedule consisting of these operations
 /// in a specific order that represents a valid execution of the original IR, and
@@ -927,6 +927,17 @@ impl<'a> BlockScheduler<'a> {
         infos
     }
 
+    /// Analyze `arg` and its usage at the current program point to determine what
+    /// type of operand constraint applies to it, i.e. whether the corresponding
+    /// operand can be moved/consumed, or must be copied first.
+    ///
+    /// An operand must be copied unless all of the following are true:
+    ///
+    /// * This is the last use (in the current block) of the value
+    /// * The value is not live in any successor, with the exception of
+    ///   successors which define the value (as seen along loopback edges)
+    ///
+    /// If both of those properties hold, then the operand can be consumed directly.
     fn constraint(
         &self,
         arg: hir::Value,

@@ -45,7 +45,7 @@ impl SolverContext {
             }
         }
 
-        // Rename multiple occurrances of the same value on the operand stack, if present
+        // Rename multiple occurrences of the same value on the operand stack, if present
         let mut renamed = BTreeMap::<Value, u8>::default();
         for operand in stack.iter_mut().rev() {
             match renamed.entry(operand.value) {
@@ -70,7 +70,7 @@ impl SolverContext {
             && expected_output
                 .iter()
                 .rev()
-                .all(|o| &stack[o.pos as usize] == o);
+                .all(|op| &stack[op.pos as usize] == op);
         if is_solved {
             return Err(SolverError::AlreadySolved);
         }

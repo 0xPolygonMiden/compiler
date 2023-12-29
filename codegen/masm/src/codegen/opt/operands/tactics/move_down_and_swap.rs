@@ -115,7 +115,7 @@ impl Tactic for MoveDownAndSwap {
                 }
             }
         } else {
-            // We marked this operand for evicition, so moving
+            // We marked this operand for eviction, so moving
             // it past the end of the expected operands is all
             // that is needed here
             let expected0 = builder.unwrap_expected(0);

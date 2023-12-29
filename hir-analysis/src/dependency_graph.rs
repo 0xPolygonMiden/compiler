@@ -376,11 +376,6 @@ pub struct InvalidNodeIdError;
 /// * `c`: conditional marker
 /// * `0`: unused/zero
 ///
-/// ```text,ignore
-/// tttiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiissssssssxxxxxxxx000000000000c
-/// |--tag--|--------payload------------|------------inst--------------|
-/// ```
-///
 /// This is the layout used for argument nodes
 ///
 /// ```text,ignore
