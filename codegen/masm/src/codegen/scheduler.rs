@@ -1116,6 +1116,37 @@ fn build_dependency_graph(
     // The actual scheduling decision for the instruction is deferred to `analyze_inst`, where we
     // treat the instruction similarly to argument materialization, and either make it a pre-requisite
     // of the instruction or execute it in the post-execution phase depending on the terminator type
+    assign_control_dependencies(&mut graph, block_id, function, liveness);
+
+    // Eliminate dead code as indicated by the state of the dependency graph
+    dce(&mut graph, block_id, function, liveness);
+
+    graph
+}
+
+/// Discover any instructions in the given block that have no predecessors, but that must be scheduled
+/// anyway, i.e. due to side effects - and make the block terminator dependent on them to ensure that
+/// they are scheduled.
+///
+/// We call these instruction->instruction dependencies "control dependencies", since control flow in the
+/// block depends on them being executed first. In a way these dependencies are control-flow sensitive, but
+/// because the instruction has no direct predecessors, we assume that we are free to schedule them anywhere
+/// in the block. For the time being, we choose to schedule them just prior to leaving the block, but in the
+/// future we may wish to do more intelligent scheduling of these items, either to reduce the live ranges of
+/// values which are used as instruction operands, or if we find that we must attempt to more faithfully
+/// preserve the original program ordering for some reason.
+///
+/// NOTE: This function only assigns control dependencies for instructions _with_ side effects. An
+/// instruction with no dependents, and no side effects, is treated as dead code, since by definition
+/// its effects cannot be visible. It should be noted however that we are quite conservative about
+/// determining if an instruction has side effects - e.g., all function calls are assumed to have
+/// side effects at this point in time.
+fn assign_control_dependencies(
+    graph: &mut DependencyGraph,
+    block_id: hir::Block,
+    function: &hir::Function,
+    liveness: &LivenessAnalysis,
+) {
     let terminator = {
         let block = function.dfg.block(block_id);
         let id = block.last().unwrap();
@@ -1181,11 +1212,11 @@ fn build_dependency_graph(
 }
 
 fn dce(
-    mut graph: DependencyGraph,
+    graph: &mut DependencyGraph,
     block_id: hir::Block,
     function: &hir::Function,
     liveness: &LivenessAnalysis,
-) -> DependencyGraph {
+) {
     // Perform dead-code elimination
     //
     // Find all instruction nodes in the graph, and if none of the instruction results
@@ -1211,7 +1242,7 @@ fn dce(
     let mut remove_nodes = Vec::<NodeId>::default();
     while let Some((inst, inst_node)) = worklist.pop_front() {
         // If the instruction is not dead at this point, leave it alone
-        if !is_dead_instruction(inst, block_id, function, liveness, &graph) {
+        if !is_dead_instruction(inst, block_id, function, liveness, graph) {
             continue;
         }
         let inst_block = function.dfg.insts[inst].block;
@@ -1319,8 +1350,6 @@ fn dce(
             graph.remove_node(remove_id);
         }
     }
-
-    graph
 }
 
 fn is_dead_instruction(
