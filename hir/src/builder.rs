@@ -97,7 +97,7 @@ pub struct DefaultInstBuilder<'f> {
 }
 impl<'f> DefaultInstBuilder<'f> {
     pub(crate) fn new(dfg: &'f mut DataFlowGraph, block: Block) -> Self {
-        assert!(dfg.is_block_inserted(block));
+        assert!(dfg.is_block_linked(block));
 
         Self {
             dfg,

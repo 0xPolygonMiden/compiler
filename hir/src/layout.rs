@@ -372,6 +372,10 @@ impl<K: EntityRef, V> OrderedArenaMap<K, V> {
     /// clone the map, and drop the original.
     pub fn remove(&mut self, key: K) {
         if let Some(value) = self.map.get(key) {
+            assert!(
+                value.link.is_linked(),
+                "cannot remove a value that is not linked"
+            );
             let mut cursor = unsafe { self.list.cursor_mut_from_ptr(value) };
             cursor.remove();
         }
