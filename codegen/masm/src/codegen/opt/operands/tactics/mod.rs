@@ -1,6 +1,6 @@
 use core::num::NonZeroU8;
 
-use super::{Action, Operand, SolverContext, Stack, Value};
+use super::{Action, Operand, SolverContext, Stack, ValueOrAlias};
 
 mod copy_all;
 mod linear;
@@ -143,13 +143,13 @@ impl<'a> SolutionBuilder<'a> {
     }
 
     /// Get the value expected at `index`
-    pub fn get_expected(&self, index: u8) -> Option<Value> {
+    pub fn get_expected(&self, index: u8) -> Option<ValueOrAlias> {
         self.context.expected().get(index as usize).map(|o| o.value)
     }
 
     /// Get the value expected at `index` or panic
     #[track_caller]
-    pub fn unwrap_expected(&self, index: u8) -> Value {
+    pub fn unwrap_expected(&self, index: u8) -> ValueOrAlias {
         match self.get_expected(index) {
             Some(value) => value,
             None => panic!(
@@ -161,13 +161,13 @@ impl<'a> SolutionBuilder<'a> {
 
     /// Get the value currently at `index` in this solution
     #[allow(unused)]
-    pub fn get_current(&self, index: u8) -> Option<Value> {
+    pub fn get_current(&self, index: u8) -> Option<ValueOrAlias> {
         self.pending.get(index as usize).map(|o| o.value)
     }
 
     /// Get the value currently at `index` in this solution
     #[track_caller]
-    pub fn unwrap_current(&self, index: u8) -> Value {
+    pub fn unwrap_current(&self, index: u8) -> ValueOrAlias {
         match self.pending.get(index as usize) {
             Some(operand) => operand.value,
             None => panic!(
@@ -178,7 +178,7 @@ impl<'a> SolutionBuilder<'a> {
     }
 
     /// Get the position at which `value` is expected
-    pub fn get_expected_position(&self, value: &Value) -> Option<u8> {
+    pub fn get_expected_position(&self, value: &ValueOrAlias) -> Option<u8> {
         self.context
             .expected()
             .position(value)
@@ -186,7 +186,7 @@ impl<'a> SolutionBuilder<'a> {
     }
 
     #[track_caller]
-    pub fn unwrap_expected_position(&self, value: &Value) -> u8 {
+    pub fn unwrap_expected_position(&self, value: &ValueOrAlias) -> u8 {
         match self.get_expected_position(value) {
             Some(pos) => pos,
             None => panic!("value {value:?} is not an expected operand"),
@@ -195,13 +195,13 @@ impl<'a> SolutionBuilder<'a> {
 
     /// Get the current position of `value` in this solution
     #[inline]
-    pub fn get_current_position(&self, value: &Value) -> Option<u8> {
+    pub fn get_current_position(&self, value: &ValueOrAlias) -> Option<u8> {
         self.pending.position(value).map(|index| index as u8)
     }
 
     /// Get the current position of `value` in this solution, or panic
     #[track_caller]
-    pub fn unwrap_current_position(&self, value: &Value) -> u8 {
+    pub fn unwrap_current_position(&self, value: &ValueOrAlias) -> u8 {
         match self.get_current_position(value) {
             Some(pos) => pos,
             None => panic!("value {value:?} not found on operand stack"),

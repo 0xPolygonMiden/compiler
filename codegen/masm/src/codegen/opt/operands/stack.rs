@@ -7,10 +7,10 @@ use super::*;
 pub struct Stack {
     stack: Vec<Operand>,
 }
-impl FromIterator<Value> for Stack {
+impl FromIterator<ValueOrAlias> for Stack {
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = Value>,
+        I: IntoIterator<Item = ValueOrAlias>,
     {
         let mut stack = VecDeque::new();
         for value in iter.into_iter() {
@@ -37,7 +37,7 @@ impl Stack {
         self.stack.len()
     }
 
-    pub fn push(&mut self, value: Value) {
+    pub fn push(&mut self, value: ValueOrAlias) {
         self.stack.push(Operand { pos: 0, value });
         if self.stack.len() > 1 {
             for (pos, operand) in self.iter_mut().rev().enumerate() {
@@ -46,7 +46,7 @@ impl Stack {
         }
     }
 
-    pub fn position(&self, value: &Value) -> Option<usize> {
+    pub fn position(&self, value: &ValueOrAlias) -> Option<usize> {
         self.stack.iter().rev().position(|o| value == &o.value)
     }
 

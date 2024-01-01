@@ -3,7 +3,7 @@ use std::num::NonZeroU8;
 
 use miden_hir as hir;
 
-use super::{SolverError, Stack, Value};
+use super::{SolverError, Stack, ValueOrAlias};
 use crate::codegen::Constraint;
 
 /// The context associated with an instance of [OperandMovementConstraintSolver].
@@ -29,7 +29,7 @@ impl SolverContext {
         let mut expected_output = Stack::default();
         let mut copies = CopyInfo::default();
         for (value, constraint) in expected.iter().rev().zip(constraints.iter().rev()) {
-            let value = Value::from(*value);
+            let value = ValueOrAlias::from(*value);
             match constraint {
                 // If we observe a value with move semantics, then it is
                 // always referencing the original value
@@ -46,7 +46,7 @@ impl SolverContext {
         }
 
         // Rename multiple occurrences of the same value on the operand stack, if present
-        let mut renamed = BTreeMap::<Value, u8>::default();
+        let mut renamed = BTreeMap::<ValueOrAlias, u8>::default();
         for operand in stack.iter_mut().rev() {
             match renamed.entry(operand.value) {
                 Entry::Vacant(entry) => {
@@ -118,7 +118,7 @@ impl SolverContext {
 
 #[derive(Debug, Default)]
 pub struct CopyInfo {
-    copies: BTreeMap<Value, u8>,
+    copies: BTreeMap<ValueOrAlias, u8>,
     num_copies: u8,
 }
 impl CopyInfo {
@@ -135,7 +135,7 @@ impl CopyInfo {
     }
 
     /// Push a new copy of `value`, returning an alias of that value
-    pub fn push(&mut self, value: Value) -> Value {
+    pub fn push(&mut self, value: ValueOrAlias) -> ValueOrAlias {
         use std::collections::btree_map::Entry;
 
         self.num_copies += 1;
@@ -152,7 +152,7 @@ impl CopyInfo {
         }
     }
 
-    pub fn has_copies(&self, value: &Value) -> bool {
+    pub fn has_copies(&self, value: &ValueOrAlias) -> bool {
         self.copies.contains_key(value)
     }
 }

@@ -24,7 +24,7 @@ impl Tactic for Linear {
         let mut graph = DiGraphMap::<Operand, ()>::new();
 
         // Materialize copies
-        let mut materialized = SmallSet::<Value, 4>::default();
+        let mut materialized = SmallSet::<ValueOrAlias, 4>::default();
         for b in builder.context().expected().iter().rev() {
             // Where is B
             if let Some(_b_at) = builder.get_current_position(&b.value) {

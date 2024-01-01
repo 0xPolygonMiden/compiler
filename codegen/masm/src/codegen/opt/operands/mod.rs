@@ -39,8 +39,8 @@ pub enum Action {
 /// stack management, but are associated with multiple copies of a value
 /// on the stack.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Value(u32);
-impl Value {
+pub struct ValueOrAlias(u32);
+impl ValueOrAlias {
     const ALIAS_MASK: u32 = (u8::MAX as u32) << 23;
 
     /// Create a new [Value] with the given numeric identifier.
@@ -95,7 +95,7 @@ impl Value {
         self.0 & Self::ALIAS_MASK != 0
     }
 }
-impl Ord for Value {
+impl Ord for ValueOrAlias {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.id().cmp(&other.id()).then_with(|| {
             let self_alias = self.alias().map(|nz| nz.get()).unwrap_or(0);
@@ -104,30 +104,30 @@ impl Ord for Value {
         })
     }
 }
-impl PartialEq<hir::Value> for Value {
+impl PartialEq<hir::Value> for ValueOrAlias {
     fn eq(&self, other: &hir::Value) -> bool {
         self.id() == other.as_u32()
     }
 }
-impl PartialOrd for Value {
+impl PartialOrd for ValueOrAlias {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
-impl From<hir::Value> for Value {
+impl From<hir::Value> for ValueOrAlias {
     #[inline]
     fn from(value: hir::Value) -> Self {
         Self::new(value.as_u32())
     }
 }
-impl From<Value> for hir::Value {
+impl From<ValueOrAlias> for hir::Value {
     #[inline]
-    fn from(value: Value) -> Self {
+    fn from(value: ValueOrAlias) -> Self {
         Self::from_u32(value.id())
     }
 }
-impl fmt::Debug for Value {
+impl fmt::Debug for ValueOrAlias {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.alias() {
             None => write!(f, "v{}", self.id()),
@@ -136,13 +136,13 @@ impl fmt::Debug for Value {
     }
 }
 #[cfg(test)]
-impl proptest::arbitrary::Arbitrary for Value {
+impl proptest::arbitrary::Arbitrary for ValueOrAlias {
     type Parameters = ();
     type Strategy = proptest::strategy::Map<proptest::arbitrary::StrategyFor<u8>, fn(u8) -> Self>;
 
     fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
         use proptest::strategy::Strategy;
-        proptest::arbitrary::any::<u8>().prop_map(|id| Value(id as u32))
+        proptest::arbitrary::any::<u8>().prop_map(|id| ValueOrAlias(id as u32))
     }
 }
 
@@ -152,20 +152,20 @@ pub struct Operand {
     /// The position of this operand on the corresponding stack
     pub pos: u8,
     /// The value this operand corresponds to
-    pub value: Value,
+    pub value: ValueOrAlias,
 }
-impl From<(usize, Value)> for Operand {
+impl From<(usize, ValueOrAlias)> for Operand {
     #[inline(always)]
-    fn from(pair: (usize, Value)) -> Self {
+    fn from(pair: (usize, ValueOrAlias)) -> Self {
         Self {
             pos: pair.0 as u8,
             value: pair.1,
         }
     }
 }
-impl PartialEq<Value> for Operand {
+impl PartialEq<ValueOrAlias> for Operand {
     #[inline(always)]
-    fn eq(&self, other: &Value) -> bool {
+    fn eq(&self, other: &ValueOrAlias) -> bool {
         self.value.eq(other)
     }
 }
