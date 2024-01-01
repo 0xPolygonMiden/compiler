@@ -567,7 +567,7 @@ impl DataFlowGraph {
         self.blocks[block].last()
     }
 
-    pub fn is_block_inserted(&self, block: Block) -> bool {
+    pub fn is_block_linked(&self, block: Block) -> bool {
         self.blocks.contains(block)
     }
 

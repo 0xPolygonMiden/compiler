@@ -65,9 +65,15 @@ impl RewritePass for InlineBlocks {
                 continue;
             }
 
+            // If the block is detached, then it has already been inlined,
+            // so we do not need to run inlining on it, however we should
+            // visit its successors anyway, as there may be inlining
+            // opportunities later in the CFG.
+            let is_detached = !function.dfg.is_block_linked(p);
+
             // If this block has multiple successors, or multiple predecessors, add all of it's
             // successors to the work queue and move on.
-            if cfg.num_successors(p) > 1 || cfg.num_predecessors(p) > 1 {
+            if is_detached || cfg.num_successors(p) > 1 || cfg.num_predecessors(p) > 1 {
                 for b in cfg.succ_iter(p) {
                     worklist.push_back(b);
                 }

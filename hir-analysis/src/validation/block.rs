@@ -137,7 +137,7 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
         diagnostics: &DiagnosticsHandler,
     ) -> Result<(), ValidationError> {
         // Ignore blocks which are not attached to the function body
-        if !block_data.link.is_linked() {
+        if !self.dfg.is_block_linked(block_data.id) {
             return Ok(());
         }
 
@@ -168,8 +168,7 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
         }
         match terminator.analyze_branch(&self.dfg.value_lists) {
             BranchInfo::SingleDest(destination, _) => {
-                let dest = self.dfg.block(destination);
-                if !dest.link.is_linked() {
+                if !self.dfg.is_block_linked(destination) {
                     invalid_instruction!(
                         diagnostics,
                         terminator.key,
@@ -193,9 +192,8 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
 
                 let mut seen = SmallVec::<[Block; 4]>::default();
                 for jt in jts.iter() {
-                    let dest = self.dfg.block(jt.destination);
                     let destination = jt.destination;
-                    if !dest.link.is_linked() {
+                    if !self.dfg.is_block_linked(destination) {
                         invalid_instruction!(
                             diagnostics,
                             terminator.key,
@@ -206,7 +204,7 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                         );
                     }
 
-                    if seen.contains(&jt.destination) {
+                    if seen.contains(&destination) {
                         invalid_instruction!(
                             diagnostics,
                             terminator.key,
@@ -217,7 +215,7 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                         );
                     }
 
-                    seen.push(jt.destination);
+                    seen.push(destination);
                 }
             }
             BranchInfo::NotABranch => (),

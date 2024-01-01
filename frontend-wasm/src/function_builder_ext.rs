@@ -436,7 +436,7 @@ pub struct FuncInstBuilderExt<'a, 'b: 'a, 'c, 'd: 'c> {
 }
 impl<'a, 'b, 'c, 'd> FuncInstBuilderExt<'a, 'b, 'c, 'd> {
     fn new(builder: &'a mut FunctionBuilderExt<'b, 'c, 'd>, block: Block) -> Self {
-        assert!(builder.data_flow_graph().is_block_inserted(block));
+        assert!(builder.data_flow_graph().is_block_linked(block));
         Self {
             builder,
             ip: InsertionPoint::after(ProgramPoint::Block(block)),
