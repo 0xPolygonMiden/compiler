@@ -222,7 +222,13 @@ impl<'a> fmt::Display for DisplayMasmFunction<'a> {
             }
         }
 
-        writeln!(f, "{}", self.function.body.display(self.imports, 1))?;
+        writeln!(
+            f,
+            "{}",
+            self.function
+                .body
+                .display(Some(self.function.name), self.imports, 1)
+        )?;
 
         f.write_str("end")
     }

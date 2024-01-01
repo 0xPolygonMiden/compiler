@@ -245,7 +245,7 @@ macro_rules! test_int_op {
 // add tests for div, rem,
 
 // enable when https://github.com/0xPolygonMiden/compiler/issues/56 is fixed
-// test_func_two_arg!(min, core::cmp::min, i32, i32, i32);
+//test_func_two_arg!(min, core::cmp::min, i32, i32, i32);
 // test_func_two_arg!(min, core::cmp::min, u32, u32, u32);
 // test_func_two_arg!(min, core::cmp::min, u8, u8, u8);
 // test_func_two_arg!(max, core::cmp::max, u8, u8, u8);

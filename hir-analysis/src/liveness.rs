@@ -6,7 +6,7 @@ use std::{
 use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
 use miden_hir::{self as hir, Block as BlockId, Inst as InstId, Value as ValueId, *};
 use midenc_session::Session;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use super::{ControlFlowGraph, DominatorTree, LoopAnalysis};
 
@@ -149,7 +149,7 @@ impl LivenessAnalysis {
 
     /// Returns an iterator over values which are live at the given program point
     pub fn live_at(&self, pp: ProgramPoint) -> impl Iterator<Item = ValueId> + '_ {
-        self.live_out[&pp]
+        self.live_in[&pp]
             .iter()
             .filter_map(|(v, dist)| if dist < &u32::MAX { Some(*v) } else { None })
     }
@@ -430,35 +430,16 @@ fn compute_liveness(
     // * Values used by the current instruction are given a next-use distance of `0`
     // * All other values known at the current program point have their next-use distances
     // incremented by 1
-    let mut inst_uses = FxHashSet::<Value>::default();
     while let Some(block_id) = worklist.pop_front() {
         let block = &function.dfg.blocks[block_id];
         let block_loop = loops.innermost_loop(block_id);
         let mut max_register_pressure = 0;
         let mut inst_cursor = block.insts.back();
         while let Some(inst_data) = inst_cursor.get() {
-            inst_uses.clear();
             let inst = inst_data.key;
             let pp = ProgramPoint::Inst(inst);
             let branch_info = inst_data.analyze_branch(&function.dfg.value_lists);
-            // Values used by `inst`
-            inst_uses.extend(
-                inst_data
-                    .arguments(&function.dfg.value_lists)
-                    .iter()
-                    .copied(),
-            );
-            match branch_info {
-                BranchInfo::SingleDest(_, args) => {
-                    inst_uses.extend(args.iter().copied());
-                }
-                BranchInfo::MultiDest(ref jts) => {
-                    for jt in jts.iter() {
-                        inst_uses.extend(jt.args.iter().copied());
-                    }
-                }
-                BranchInfo::NotABranch => (),
-            }
+
             // Compute the initial next-use set of this program point
             //
             // * For terminators which are branches, next-use distances are given by the next-use
@@ -470,7 +451,7 @@ fn compute_liveness(
             // the succeeding instruction, with all distances incremented by 1, but with all values
             // defined by the successor removed from the set.
             //
-            let (mut inst_next_uses, mut inst_next_uses_after) = match branch_info {
+            let (inst_next_uses, inst_next_uses_after) = match branch_info {
                 // This is either a non-branching terminator, or a regular instruction
                 BranchInfo::NotABranch => {
                     let succ_cursor = inst_cursor.peek_next();
@@ -481,50 +462,91 @@ fn compute_liveness(
                             .entry(ProgramPoint::Inst(succ.key))
                             .or_default()
                             .clone();
+
+                        // Increment the next-use distance for all inherited next uses
                         for (_value, dist) in inst_next_uses.iter_mut() {
                             *dist = dist.saturating_add(1);
                         }
-                        let inst_next_uses_after = inst_next_uses.clone();
-                        for value in function.dfg.inst_results(succ.key).iter() {
-                            inst_next_uses.remove(value);
+
+                        // The next uses up to this point forms the next-use set after `inst`
+                        let mut inst_next_uses_after = inst_next_uses.clone();
+
+                        // Add uses by this instruction to the live-in set, with a distance of 0
+                        for arg in inst_data
+                            .arguments(&function.dfg.value_lists)
+                            .iter()
+                            .copied()
+                        {
+                            inst_next_uses.insert(arg, 0);
                         }
+
+                        // Remove all instruction results from the live-in set, and ensure they have
+                        // a default distance set in the live-out set
+                        for result in function.dfg.inst_results(inst) {
+                            inst_next_uses.remove(result);
+                            inst_next_uses_after.entry(*result).or_insert(u32::MAX);
+                        }
+
                         (inst_next_uses, inst_next_uses_after)
                     } else {
                         // This must be a non-branching terminator, i.e. the `ret` instruction
-                        // Thus, the next-use set is empty initially
-                        (NextUseSet::default(), NextUseSet::default())
+                        // Thus, the next-use set after `inst` is empty initially
+                        assert!(inst_data.opcode().is_terminator());
+
+                        // Add uses by this instruction to the live-in set, with a distance of 0
+                        let mut inst_next_uses = NextUseSet::default();
+                        for arg in inst_data
+                            .arguments(&function.dfg.value_lists)
+                            .iter()
+                            .copied()
+                        {
+                            inst_next_uses.insert(arg, 0);
+                        }
+
+                        // Add results to the live-out set
+
+                        (inst_next_uses, NextUseSet::default())
                     }
                 }
                 // This is a branch instruction, so get the next-use set at the entry of each successor,
                 // increment the distances in those sets based on the distance of the edge, and then take
                 // the join of those sets as the initial next-use set for `inst`
-                BranchInfo::SingleDest(succ, inst_uses) => {
+                BranchInfo::SingleDest(succ, extra_uses) => {
                     let mut inst_next_uses = liveness
                         .live_in
                         .entry(ProgramPoint::Block(succ))
                         .or_default()
                         .clone();
-                    let mut inst_next_uses_after = inst_next_uses.clone();
 
-                    // For every argument passed to the successor block, mark those values used
-                    // by this instruction IF the next-use distance of the corresponding block
-                    // argument is < u32::MAX
-                    for (in_arg, out_arg) in inst_uses
-                        .iter()
-                        .copied()
-                        .zip(function.dfg.block_args(succ).iter())
-                    {
-                        if inst_next_uses.is_live(out_arg) {
-                            inst_next_uses.insert(in_arg, 0);
-                        }
+                    // Increment the next-use distance for all inherited next uses
+                    for (_value, dist) in inst_next_uses.iter_mut() {
+                        *dist = dist.saturating_add(1);
                     }
 
-                    // Remove the successor block arguments, as those values cannot be live before
-                    // they are defined, and even if the destination block dominates the current
-                    // block (via loop), those values must be dead at this instruction as we're
-                    // providing new definitions for them.
+                    // The next uses up to this point forms the initial next-use set after `inst`
+                    let mut inst_next_uses_after = inst_next_uses.clone();
+
+                    // Add uses by this instruction to the live-in set, with a distance of 0
+                    for arg in inst_data
+                        .arguments(&function.dfg.value_lists)
+                        .iter()
+                        .copied()
+                        .chain(extra_uses.iter().copied())
+                    {
+                        inst_next_uses.insert(arg, 0);
+                    }
+
+                    // Remove the successor block arguments from live-in/live-out, as those values
+                    // cannot be live before they are defined, and even if the destination block
+                    // dominates the current block (via loop), those values must be dead at this
+                    // instruction as we're providing new definitions for them.
                     for value in function.dfg.block_args(succ) {
-                        inst_next_uses.remove(value);
+                        // Only remove them from live-in if they are not actually used though,
+                        // since, for example, a loopback branch to a loop header could pass
+                        // a value that was defined via that header's block parameters.
+                        if !extra_uses.contains(value) {
+                            inst_next_uses.remove(value);
+                        }
                         inst_next_uses_after.remove(value);
                     }
 
@@ -555,7 +577,7 @@ fn compute_liveness(
                     let mut inst_next_uses_after = NextUseSet::default();
                     for JumpTable {
                         destination,
-                        args: inst_uses,
+                        args: extra_uses,
                     } in jts.iter()
                     {
                         let destination = *destination;
@@ -572,23 +594,39 @@ fn compute_liveness(
                             .entry(ProgramPoint::Block(destination))
                             .or_default()
                             .clone();
+
+                        // Increment the next-use distance for all inherited next uses
+                        for (_value, dist) in jt_next_uses.iter_mut() {
+                            *dist = dist.saturating_add(1);
+                        }
+
+                        // The next uses up to this point forms the initial next-use set after `inst`
                         let mut jt_next_uses_after = jt_next_uses.clone();
-                        // As is done for unconditional branches, propagate next-use distance for
-                        // the successor arguments.
-                        for (in_arg, out_arg) in inst_uses
+
+                        // Add uses by this instruction to the live-in set, with a distance of 0
+                        for arg in inst_data
+                            .arguments(&function.dfg.value_lists)
                             .iter()
                             .copied()
-                            .zip(function.dfg.block_args(destination).iter())
+                            .chain(extra_uses.iter().copied())
                         {
-                            if jt_next_uses.is_live(out_arg) {
-                                jt_next_uses.insert(in_arg, 0);
-                            }
+                            jt_next_uses.insert(arg, 0);
                         }
-                        // Likewise, remove block arguments of the successor from the set
+
+                        // Remove the successor block arguments from live-in/live-out, as those values
+                        // cannot be live before they are defined, and even if the destination block
+                        // dominates the current block (via loop), those values must be dead at this
+                        // instruction as we're providing new definitions for them.
                         for value in function.dfg.block_args(destination) {
-                            jt_next_uses.remove(value);
+                            // Only remove them from live-in if they are not actually used though,
+                            // since, for example, a loopback branch to a loop header could pass
+                            // a value that was defined via that header's block parameters.
+                            if !extra_uses.contains(value) {
+                                jt_next_uses.remove(value);
+                            }
                             jt_next_uses_after.remove(value);
                         }
+
                         // If this block is in a loop, make sure we add the loop exit distance for edges leaving the loop
                         if let Some(block_loop) = block_loop {
                             let succ_loop = loops.innermost_loop(destination);
@@ -611,20 +649,6 @@ fn compute_liveness(
                 }
             };
 
-            // If a value is defined by `inst`, it's next-use distance is whatever the distance at the next instruction is + 1
-            //
-            // We've already incremented the next-use distance if it was previously known, so here we are simply making
-            // sure that we have the default distance set if it has no known distance
-            for v in function.dfg.inst_results(inst).iter().copied() {
-                inst_next_uses.entry(v).or_insert(u32::MAX);
-                inst_next_uses_after.entry(v).or_insert(u32::MAX);
-            }
-
-            // If a value is used by `inst`, it's next-use distance is `0`
-            for v in inst_uses.iter().copied() {
-                inst_next_uses.insert(v, 0);
-            }
-
             // The maximum register pressure for this block is the greatest number of
             // live-in values at any point within the block.
             max_register_pressure = cmp::max(
@@ -645,13 +669,11 @@ fn compute_liveness(
 
         // Handle the block header
         let pp = ProgramPoint::Block(block_id);
-        // The block header derives it's next-use distances from it's first instruction, sans defs
+        // The block header derives it's next-use distances from the live-in set of it's first instruction
         let first_inst = block.insts.front().get().unwrap().key;
         let mut block_next_uses = liveness.live_in[&ProgramPoint::Inst(first_inst)].clone();
-        for value in function.dfg.inst_results(first_inst).iter() {
-            block_next_uses.remove(value);
-        }
-        // For each block argument, set the next-use distance to u32::MAX unless present
+        // For each block argument, make sure a default next-use distance (u32::MAX) is set
+        // if a distance is not found in the live-in set of the first instruction
         for arg in block
             .params
             .as_slice(&function.dfg.value_lists)
@@ -660,7 +682,7 @@ fn compute_liveness(
         {
             block_next_uses.entry(arg).or_insert(u32::MAX);
         }
-        // For block's, the "after" set corresponds to the next-use set "after" the block
+        // For blocks, the "after" set corresponds to the next-use set "after" the block
         // terminator. This makes it easy to query liveness at entry and exit to a block.
         let last_inst = block.insts.back().get().unwrap().key;
         let block_next_uses_after = liveness.live_out[&ProgramPoint::Inst(last_inst)].clone();

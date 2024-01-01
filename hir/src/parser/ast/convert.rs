@@ -229,36 +229,36 @@ fn try_insert_inst(
         } => Some(Instruction::BinaryOp(BinaryOp {
             op,
             overflow,
-            args: [lhs.item, rhs.item],
+            args: [rhs.item, lhs.item],
         })),
         InstType::BinaryOp {
             opcode: op,
             overflow,
-            operands: [Operand::Value(lhs), imm],
+            operands: [imm, Operand::Value(rhs)],
         } => {
             let imm_ty = values_by_id
-                .get(&lhs)
+                .get(&rhs)
                 .map(|v| v.ty().clone())
                 .unwrap_or(Type::Unknown);
             operand_to_immediate(imm, &imm_ty, diagnostics).map(|imm| {
                 Instruction::BinaryOpImm(BinaryOpImm {
                     op,
                     overflow,
-                    arg: lhs.item,
+                    arg: rhs.item,
                     imm,
                 })
             })
         }
         InstType::BinaryOp {
-            operands: [lhs, _], ..
+            operands: [_, rhs], ..
         } => {
             diagnostics
                 .diagnostic(Severity::Error)
                 .with_message("invalid instruction")
-                .with_primary_label(lhs.span(), "unexpected immediate operand")
+                .with_primary_label(rhs.span(), "unexpected immediate operand")
                 .with_secondary_label(
                     span,
-                    "only the right-hand operand of a binary operator may be immediate",
+                    "only the left-hand operand of a binary operator may be immediate",
                 )
                 .emit();
             None

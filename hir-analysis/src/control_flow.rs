@@ -357,26 +357,14 @@ mod tests {
             assert_eq!(block1_predecessors.len(), 2);
             assert_eq!(block2_predecessors.len(), 2);
 
-            assert_eq!(
-                block1_predecessors
-                    .contains(&BlockPredecessor::new(block0, br_block0_block2_block1)),
-                true
-            );
-            assert_eq!(
-                block1_predecessors
-                    .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)),
-                true
-            );
-            assert_eq!(
-                block2_predecessors
-                    .contains(&BlockPredecessor::new(block0, br_block0_block2_block1)),
-                true
-            );
-            assert_eq!(
-                block2_predecessors
-                    .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)),
-                true
-            );
+            assert!(block1_predecessors
+                .contains(&BlockPredecessor::new(block0, br_block0_block2_block1)));
+            assert!(block1_predecessors
+                .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)));
+            assert!(block2_predecessors
+                .contains(&BlockPredecessor::new(block0, br_block0_block2_block1)));
+            assert!(block2_predecessors
+                .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)));
 
             assert_eq!(block0_successors, [block1, block2]);
             assert_eq!(block1_successors, [block1, block2]);
@@ -401,8 +389,8 @@ mod tests {
             &[],
             SourceSpan::default(),
         );
-        cfg.recompute_block(&mut function.dfg, block0);
-        cfg.recompute_block(&mut function.dfg, ret_block);
+        cfg.recompute_block(&function.dfg, block0);
+        cfg.recompute_block(&function.dfg, ret_block);
         let br_block0_block1_ret_block = br_block0_block2_block1;
 
         {
@@ -418,26 +406,14 @@ mod tests {
             assert_eq!(block1_predecessors.len(), 2);
             assert_eq!(block2_predecessors.len(), 1);
 
-            assert_eq!(
-                block1_predecessors
-                    .contains(&BlockPredecessor::new(block0, br_block0_block1_ret_block)),
-                true
-            );
-            assert_eq!(
-                block1_predecessors
-                    .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)),
-                true
-            );
-            assert_eq!(
-                block2_predecessors
-                    .contains(&BlockPredecessor::new(block0, br_block0_block1_ret_block)),
-                false
-            );
-            assert_eq!(
-                block2_predecessors
-                    .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)),
-                true
-            );
+            assert!(block1_predecessors
+                .contains(&BlockPredecessor::new(block0, br_block0_block1_ret_block)),);
+            assert!(block1_predecessors
+                .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)),);
+            assert!(!block2_predecessors
+                .contains(&BlockPredecessor::new(block0, br_block0_block1_ret_block)),);
+            assert!(block2_predecessors
+                .contains(&BlockPredecessor::new(block1, br_block1_block1_block2)),);
 
             assert_eq!(block0_successors.collect::<Vec<_>>(), [block1, ret_block]);
             assert_eq!(block1_successors.collect::<Vec<_>>(), [block1, block2]);

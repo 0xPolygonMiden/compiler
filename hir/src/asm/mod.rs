@@ -83,9 +83,10 @@ impl InlineAsm {
 
     pub fn display<'a, 'b: 'a>(
         &'b self,
+        function: Option<crate::FunctionIdent>,
         dfg: &'b DataFlowGraph,
         indent: usize,
     ) -> DisplayInlineAsm<'a> {
-        DisplayInlineAsm::new(self, dfg, indent)
+        DisplayInlineAsm::new(function, self, dfg, indent)
     }
 }

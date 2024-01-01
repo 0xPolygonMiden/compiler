@@ -6,22 +6,33 @@ use super::*;
 use crate::{write::DisplayIndent, DataFlowGraph, FunctionIdent, Ident, Symbol};
 
 pub struct DisplayInlineAsm<'a> {
+    function: Option<FunctionIdent>,
     asm: &'a InlineAsm,
     dfg: &'a DataFlowGraph,
     indent: usize,
 }
 impl<'a> DisplayInlineAsm<'a> {
-    pub fn new(asm: &'a InlineAsm, dfg: &'a DataFlowGraph, indent: usize) -> Self {
-        Self { asm, dfg, indent }
+    pub fn new(
+        function: Option<FunctionIdent>,
+        asm: &'a InlineAsm,
+        dfg: &'a DataFlowGraph,
+        indent: usize,
+    ) -> Self {
+        Self {
+            function,
+            asm,
+            dfg,
+            indent,
+        }
     }
 }
 impl<'a> fmt::Display for DisplayInlineAsm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use crate::write::DisplayValues;
+        use crate::display::DisplayValues;
 
         {
             let args = self.asm.args.as_slice(&self.dfg.value_lists);
-            writeln!(f, "({}) {{", DisplayValues(args))?;
+            writeln!(f, "({}) {{", DisplayValues::new(args.iter()))?;
         }
 
         let indent = self.indent;
@@ -30,6 +41,7 @@ impl<'a> fmt::Display for DisplayInlineAsm<'a> {
             f,
             "{}",
             DisplayMasmBlock {
+                function: self.function,
                 imports: None,
                 blocks: &self.asm.blocks,
                 block,
@@ -42,6 +54,7 @@ impl<'a> fmt::Display for DisplayInlineAsm<'a> {
 }
 
 pub struct DisplayMasmBlock<'a> {
+    function: Option<FunctionIdent>,
     imports: Option<&'a ModuleImportInfo>,
     blocks: &'a PrimaryMap<MasmBlockId, MasmBlock>,
     block: MasmBlockId,
@@ -49,12 +62,14 @@ pub struct DisplayMasmBlock<'a> {
 }
 impl<'a> DisplayMasmBlock<'a> {
     pub fn new(
+        function: Option<FunctionIdent>,
         imports: Option<&'a ModuleImportInfo>,
         blocks: &'a PrimaryMap<MasmBlockId, MasmBlock>,
         block: MasmBlockId,
         indent: usize,
     ) -> Self {
         Self {
+            function,
             imports,
             blocks,
             block,
@@ -74,6 +89,7 @@ impl<'a> fmt::Display for DisplayMasmBlock<'a> {
                 f,
                 "{}",
                 DisplayOp {
+                    function: self.function,
                     imports: self.imports,
                     blocks: self.blocks,
                     op,
@@ -86,6 +102,7 @@ impl<'a> fmt::Display for DisplayMasmBlock<'a> {
 }
 
 struct DisplayOp<'a> {
+    function: Option<FunctionIdent>,
     imports: Option<&'a ModuleImportInfo>,
     blocks: &'a PrimaryMap<MasmBlockId, MasmBlock>,
     op: &'a MasmOp,
@@ -94,9 +111,13 @@ struct DisplayOp<'a> {
 impl<'a> DisplayOp<'a> {
     #[inline(always)]
     pub fn is_local_module(&self, id: &Ident) -> bool {
-        self.imports
-            .map(|imports| !imports.is_import(id))
-            .unwrap_or(true)
+        match self.function {
+            Some(function) => &function.module == id,
+            None => self
+                .imports
+                .map(|imports| !imports.is_import(id))
+                .unwrap_or(false),
+        }
     }
 
     pub fn get_module_alias(&self, module: Ident) -> Symbol {
@@ -147,6 +168,7 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                     f,
                     "if.true\n{}\n{}else\n{}\n{}end",
                     DisplayMasmBlock {
+                        function: self.function,
                         imports: self.imports,
                         blocks: self.blocks,
                         block: *then_blk,
@@ -154,6 +176,7 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                     },
                     DisplayIndent(self.indent),
                     DisplayMasmBlock {
+                        function: self.function,
                         imports: self.imports,
                         blocks: self.blocks,
                         block: *else_blk,
@@ -167,6 +190,7 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                     f,
                     "while.true\n{}\n{}end",
                     DisplayMasmBlock {
+                        function: self.function,
                         imports: self.imports,
                         blocks: self.blocks,
                         block: *blk,
@@ -180,6 +204,7 @@ impl<'a> fmt::Display for DisplayOp<'a> {
                     f,
                     "repeat.{n}\n{}\n{}end",
                     DisplayMasmBlock {
+                        function: self.function,
                         imports: self.imports,
                         blocks: self.blocks,
                         block: *blk,

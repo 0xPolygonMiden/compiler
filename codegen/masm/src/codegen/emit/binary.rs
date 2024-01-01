@@ -6,8 +6,8 @@ use super::OpEmitter;
 
 impl<'a> OpEmitter<'a> {
     pub fn eq(&mut self) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected eq operands to be the same type");
         match &ty {
@@ -82,8 +82,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn neq(&mut self) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected neq operands to be the same type");
         match &ty {
@@ -156,8 +156,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn gt(&mut self) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected gt operands to be the same type");
         match &ty {
@@ -196,8 +196,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn gte(&mut self) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected gte operands to be the same type");
         match &ty {
@@ -236,8 +236,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn lt(&mut self) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected lt operands to be the same type");
         match &ty {
@@ -276,8 +276,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn lte(&mut self) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected lte operands to be the same type");
         match &ty {
@@ -316,8 +316,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn add(&mut self, overflow: Overflow) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected add operands to be the same type");
         match &ty {
@@ -375,8 +375,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     pub fn sub(&mut self, overflow: Overflow) {
-        let lhs = self.pop().expect("operand stack is empty");
         let rhs = self.pop().expect("operand stack is empty");
+        let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected sub operands to be the same type");
         match &ty {

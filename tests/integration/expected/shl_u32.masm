@@ -180,7 +180,7 @@ export.checked_div
   dup.0
   movdn.5
   cdrop
-  u32d_div
+  u32div
   movdn.2
   neq
   dup.1
@@ -293,7 +293,7 @@ export.ipow
       eq.1
       cdrop
       swap.1
-      u32d_div.2
+      u32div.2
       movup.2
       dup.0
       u32wrapping_mul
@@ -656,7 +656,6 @@ end
 mod noname
 
 export.entrypoint
-  swap.1
   swap.1
   u32shl
 end

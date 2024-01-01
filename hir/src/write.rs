@@ -1,6 +1,6 @@
 use std::fmt::{self, Write};
 
-use super::*;
+use super::{display::DisplayValues, *};
 
 pub fn write_function(w: &mut dyn Write, func: &Function) -> fmt::Result {
     for attr in func.dfg.attrs.iter() {
@@ -140,7 +140,7 @@ pub fn write_instruction(
 
     let opcode = func.dfg[inst].opcode();
     write!(w, "{}", opcode)?;
-    write_operands(w, &func.dfg, inst, indent)?;
+    write_operands(w, &func.id, &func.dfg, inst, indent)?;
 
     if has_results {
         write!(w, " : ")?;
@@ -161,6 +161,7 @@ pub fn write_instruction(
 
 fn write_operands(
     w: &mut dyn Write,
+    function: &FunctionIdent,
     dfg: &DataFlowGraph,
     inst: Inst,
     indent: usize,
@@ -172,14 +173,14 @@ fn write_operands(
             args,
             ..
         }) => {
-            write!(w, " {}, {}", args[0], args[1])
+            write!(w, " {}, {}", args[1], args[0])
         }
         Instruction::BinaryOp(BinaryOp {
             overflow: Some(overflow),
             args,
             ..
         }) => {
-            write!(w, ".{} {}, {}", overflow, args[0], args[1])
+            write!(w, ".{} {}, {}", overflow, args[1], args[0])
         }
         Instruction::BinaryOpImm(BinaryOpImm {
             overflow: None,
@@ -219,14 +220,19 @@ fn write_operands(
         }
         Instruction::Ret(Ret { args, .. }) => {
             if args.len(pool) > 0 {
-                write!(w, " {}", DisplayValues(args.as_slice(pool)))
+                write!(w, " {}", DisplayValues::new(args.as_slice(pool).iter()))
             } else {
                 Ok(())
             }
         }
         Instruction::RetImm(RetImm { arg, .. }) => write!(w, " {arg}"),
         Instruction::Call(Call { callee, args, .. }) => {
-            write!(w, " {}({})", callee, DisplayValues(args.as_slice(pool)))
+            write!(
+                w,
+                " {}({})",
+                callee,
+                DisplayValues::new(args.as_slice(pool).iter())
+            )
         }
         Instruction::CondBr(CondBr {
             cond,
@@ -263,16 +269,21 @@ fn write_operands(
             write!(w, ".{} {}", ty, arg)
         }
         Instruction::PrimOp(PrimOp { args, .. }) => {
-            write!(w, " {}", DisplayValues(args.as_slice(pool)))
+            write!(w, " {}", DisplayValues::new(args.as_slice(pool).iter()))
         }
         Instruction::PrimOpImm(PrimOpImm { imm, args, .. }) => {
-            write!(w, " {}, {}", imm, DisplayValues(args.as_slice(pool)))
+            write!(
+                w,
+                " {}, {}",
+                imm,
+                DisplayValues::new(args.as_slice(pool).iter())
+            )
         }
         Instruction::Load(LoadOp { addr, .. }) => {
             write!(w, " {}", addr)
         }
         Instruction::InlineAsm(ref asm) => {
-            write!(w, " {}", asm.display(dfg, indent))
+            write!(w, " {}", asm.display(Some(*function), dfg, indent))
         }
         Instruction::GlobalValue(GlobalValueOp { global, .. }) => {
             write_global_value(w, dfg, *global, false)
@@ -345,7 +356,7 @@ fn write_block_args(w: &mut dyn Write, args: &[Value]) -> fmt::Result {
     if args.is_empty() {
         Ok(())
     } else {
-        write!(w, "({})", DisplayValues(args))
+        write!(w, "({})", DisplayValues::new(args.iter()))
     }
 }
 
@@ -390,20 +401,6 @@ impl fmt::Display for DisplayIndent {
         const INDENT: &str = "  ";
         for _ in 0..self.0 {
             f.write_str(INDENT)?;
-        }
-        Ok(())
-    }
-}
-
-pub struct DisplayValues<'a>(pub &'a [Value]);
-impl<'a> fmt::Display for DisplayValues<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, val) in self.0.iter().enumerate() {
-            if i == 0 {
-                write!(f, "{}", val)?;
-            } else {
-                write!(f, ", {}", val)?;
-            }
         }
         Ok(())
     }

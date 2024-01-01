@@ -184,6 +184,7 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
+    #[cfg(test)]
     #[inline(always)]
     pub fn stack_len(&self) -> usize {
         self.stack.len()
@@ -275,6 +276,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Duplicate an item on the stack to the top
     #[inline]
+    #[track_caller]
     pub fn dup(&mut self, i: u8) {
         assert_valid_stack_index!(i);
         let index = i as usize;
@@ -291,6 +293,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Move an item on the stack to the top
     #[inline]
+    #[track_caller]
     pub fn movup(&mut self, i: u8) {
         assert_valid_stack_index!(i);
         let index = i as usize;
@@ -307,6 +310,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Move an item from the top of the stack to the `n`th position
     #[inline]
+    #[track_caller]
     pub fn movdn(&mut self, i: u8) {
         assert_valid_stack_index!(i);
         let index = i as usize;
@@ -322,6 +326,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Swap an item with the top of the stack
     #[inline]
+    #[track_caller]
     pub fn swap(&mut self, i: u8) {
         assert!(i > 0, "swap requires a non-zero index");
         assert_valid_stack_index!(i);
@@ -372,6 +377,7 @@ impl<'a> OpEmitter<'a> {
 
     /// Drop the top operand on the stack
     #[inline]
+    #[track_caller]
     pub fn drop(&mut self) {
         let elem = self.stack.pop().expect("operand stack is empty");
         match elem.size() {
@@ -390,8 +396,8 @@ impl<'a> OpEmitter<'a> {
     }
 
     /// Drop the top `n` operands on the stack
-    #[allow(unused)]
     #[inline]
+    #[track_caller]
     pub fn dropn(&mut self, n: usize) {
         assert!(self.stack.len() >= n);
         assert_ne!(n, 0);
@@ -416,6 +422,10 @@ impl<'a> OpEmitter<'a> {
         let stack_size = self.stack.len();
         let num_to_drop = stack_size - n;
 
+        if num_to_drop == 0 {
+            return;
+        }
+
         if stack_size == num_to_drop {
             let raw_size = self.stack.raw_len();
             self.stack.dropn(num_to_drop);
@@ -424,6 +434,26 @@ impl<'a> OpEmitter<'a> {
             return;
         }
 
+        // This is the common case, and can be handled simply
+        // by moving the value to the bottom of the stack and
+        // dropping everything in-between
+        if n == 1 {
+            match stack_size {
+                2 => {
+                    self.swap(1);
+                    self.drop();
+                }
+                n => {
+                    self.movdn(n as u8 - 1);
+                    self.dropn(n - 1);
+                }
+            }
+            return;
+        }
+
+        // TODO: This is a very neive algorithm for clearing
+        // the stack of all but the top `n` values, we should
+        // come up with a smarter/more efficient method
         for offset in 0..num_to_drop {
             let index = stack_size - 1 - offset;
             self.drop_operand_at_position(index);
@@ -548,8 +578,8 @@ mod tests {
 
     use super::*;
     use crate::{
+        codegen::{OperandStack, TypedValue},
         masm::Function,
-        stackify::{OperandStack, TypedValue},
     };
 
     #[test]

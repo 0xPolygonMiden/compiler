@@ -845,6 +845,7 @@ pub struct GlobalValueOp {
 pub struct BinaryOp {
     pub op: Opcode,
     pub overflow: Option<Overflow>,
+    /// NOTE: These arguments are in stack order, i.e. `a + b` will appear here as `[b, a]`
     pub args: [Value; 2],
 }
 
@@ -874,6 +875,8 @@ pub struct UnaryOpImm {
 pub struct Call {
     pub op: Opcode,
     pub callee: FunctionIdent,
+    /// NOTE: Call arguments are always in stack order, i.e. the top operand on
+    /// the stack is the first function argument
     pub args: ValueList,
 }
 
@@ -882,6 +885,8 @@ pub struct Call {
 pub struct Br {
     pub op: Opcode,
     pub destination: Block,
+    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
+    /// the stack is the first block argument
     pub args: ValueList,
 }
 
@@ -890,7 +895,11 @@ pub struct Br {
 pub struct CondBr {
     pub op: Opcode,
     pub cond: Value,
+    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
+    /// the stack is the first block argument
     pub then_dest: (Block, ValueList),
+    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
+    /// the stack is the first block argument
     pub else_dest: (Block, ValueList),
 }
 
@@ -907,6 +916,8 @@ pub struct Switch {
 #[derive(Debug, Clone)]
 pub struct Ret {
     pub op: Opcode,
+    /// NOTE: Return arguments are always in stack order, i.e. `ret a, b`
+    /// will appear on the stack as `[a, b]`
     pub args: ValueList,
 }
 
@@ -937,6 +948,8 @@ pub struct LoadOp {
 #[derive(Debug, Clone)]
 pub struct PrimOp {
     pub op: Opcode,
+    /// NOTE: Primops should be defined such that their arguments are in stack order
+    /// when they correspond to a MASM instruction, i.e. `assert_eq a, b` should appear `[b, a]`
     pub args: ValueList,
 }
 
@@ -946,6 +959,9 @@ pub struct PrimOp {
 pub struct PrimOpImm {
     pub op: Opcode,
     pub imm: Immediate,
+    /// NOTE: Primops should be defined such that their arguments are in stack order
+    /// when they correspond to a MASM instruction, i.e. `assert_eq a, b` should appear `[b, a]`,
+    /// not counting the immediate argument
     pub args: ValueList,
 }
 

@@ -21,7 +21,6 @@ smallvec.workspace = true
 log.workspace = true
 anyhow.workspace = true
 wasmparser = "0.107"
-itertools = "0.11"
 derive_more = "0.99"
 
 [dev-dependencies]

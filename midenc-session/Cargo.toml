@@ -14,8 +14,6 @@ edition.workspace = true
 
 [dependencies]
 atty = "0.2"
-anyhow.workspace = true
-bitflags.workspace = true
 clap.workspace = true
 inventory.workspace = true
 miden-diagnostics.workspace = true

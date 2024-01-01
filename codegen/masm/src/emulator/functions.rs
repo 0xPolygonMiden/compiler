@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 
 use miden_hir::Felt;
 use smallvec::{smallvec, SmallVec};
@@ -374,6 +374,15 @@ pub struct Activation {
     function: Arc<Function>,
     fp: Addr,
     control_stack: ControlStack,
+}
+impl fmt::Debug for Activation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Activation")
+            .field("function", &self.function.name)
+            .field("fp", &self.fp)
+            .field("control_stack", &self.control_stack)
+            .finish()
+    }
 }
 impl Activation {
     /// Create a new activation record for `function`, using `fp` as the frame pointer for this activation

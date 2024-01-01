@@ -9,6 +9,20 @@ use smallvec::{smallvec, SmallVec};
 
 use miden_hir::{Felt, FieldElement, Immediate, Type, Value};
 
+/// This represents a constraint an operand's usage at
+/// a given program point, namely when used as an instruction
+/// or block argument.
+#[derive(Debug, Copy, Clone)]
+pub enum Constraint {
+    /// The operand should be moved, consuming it
+    /// from the stack and making it unavailable for
+    /// further use.
+    Move,
+    /// The operand should be copied, preserving the
+    /// original value for later use.
+    Copy,
+}
+
 /// A [TypedValue] is a pair of an SSA value with its known type
 #[derive(Debug, Clone)]
 pub struct TypedValue {
@@ -304,34 +318,44 @@ impl From<u32> for Operand {
         Self::new(Immediate::U32(imm).into())
     }
 }
-#[cfg(test)]
-impl TryInto<Value> for Operand {
+impl TryFrom<&Operand> for Value {
     type Error = ();
 
-    fn try_into(self) -> Result<Value, Self::Error> {
-        match self.operand {
+    fn try_from(operand: &Operand) -> Result<Self, Self::Error> {
+        match operand.operand {
             OperandType::Value(TypedValue { value, .. }) => Ok(value),
             _ => Err(()),
         }
     }
 }
 #[cfg(test)]
-impl TryInto<Immediate> for &Operand {
+impl TryFrom<&Operand> for Immediate {
     type Error = ();
 
-    fn try_into(self) -> Result<Immediate, Self::Error> {
-        match self.operand {
+    fn try_from(operand: &Operand) -> Result<Self, Self::Error> {
+        match operand.operand {
             OperandType::Const(ConstantValue::Imm(ref imm)) => Ok(*imm),
             _ => Err(()),
         }
     }
 }
 #[cfg(test)]
-impl TryInto<Type> for Operand {
+impl TryFrom<&Operand> for Type {
     type Error = ();
 
-    fn try_into(self) -> Result<Type, Self::Error> {
-        match self.operand {
+    fn try_from(operand: &Operand) -> Result<Self, Self::Error> {
+        match operand.operand {
+            OperandType::Type(ref ty) => Ok(ty.clone()),
+            _ => Err(()),
+        }
+    }
+}
+#[cfg(test)]
+impl TryFrom<Operand> for Type {
+    type Error = ();
+
+    fn try_from(operand: Operand) -> Result<Self, Self::Error> {
+        match operand.operand {
             OperandType::Type(ty) => Ok(ty),
             _ => Err(()),
         }
@@ -373,6 +397,12 @@ impl Operand {
     #[inline(always)]
     pub fn value(&self) -> &OperandType {
         &self.operand
+    }
+
+    /// Get this operand as a [Value]
+    #[inline]
+    pub fn as_value(&self) -> Option<Value> {
+        self.try_into().ok()
     }
 
     /// Get the [Type] of this operand
@@ -544,14 +574,21 @@ impl OperandStack {
 
     /// Returns the index in the actual runtime stack which corresponds to
     /// the first element of the operand at `index`.
+    #[track_caller]
     pub fn effective_index(&self, index: usize) -> usize {
-        assert!(index < self.stack.len());
+        assert!(
+            index < self.stack.len(),
+            "expected {} to be less than {}",
+            index,
+            self.stack.len()
+        );
 
         self.stack.iter().rev().take(index).map(|o| o.size()).sum()
     }
 
     /// Returns the index in the actual runtime stack which corresponds to
     /// the last element of the operand at `index`.
+    #[track_caller]
     pub fn effective_index_inclusive(&self, index: usize) -> usize {
         assert!(index < self.stack.len());
 

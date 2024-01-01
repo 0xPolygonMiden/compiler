@@ -22,7 +22,7 @@ impl fmt::Display for Begin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("begin\n")?;
 
-        writeln!(f, "{}", self.body.display(&self.imports, 1))?;
+        writeln!(f, "{}", self.body.display(None, &self.imports, 1))?;
 
         f.write_str("end")
     }
@@ -90,11 +90,13 @@ impl Region {
     /// Render the code in this region as Miden Assembly, at the specified indentation level (in units of 4 spaces)
     pub fn display<'a, 'b: 'a>(
         &'b self,
+        function: Option<FunctionIdent>,
         imports: &'b ModuleImportInfo,
         indent: usize,
     ) -> impl fmt::Display + 'a {
         DisplayRegion {
             region: self,
+            function,
             imports,
             indent,
         }
@@ -147,6 +149,7 @@ impl core::ops::Index<InstructionPointer> for Region {
 #[doc(hidden)]
 pub struct DisplayRegion<'a> {
     region: &'a Region,
+    function: Option<FunctionIdent>,
     imports: &'a ModuleImportInfo,
     indent: usize,
 }
@@ -158,6 +161,7 @@ impl<'a> fmt::Display for DisplayRegion<'a> {
             f,
             "{}",
             DisplayMasmBlock::new(
+                self.function,
                 Some(self.imports),
                 &self.region.blocks,
                 self.region.body,

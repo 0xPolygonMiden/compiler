@@ -1,15 +1,19 @@
+#![feature(array_windows)]
+#![feature(is_sorted)]
+
+mod codegen;
+mod convert;
 mod emulator;
 mod masm;
-pub mod stackify;
 #[cfg(test)]
 mod tests;
 
+pub use self::convert::ConvertHirToMasm;
 pub use self::emulator::{
     Breakpoint, BreakpointEvent, CallFrame, DebugInfo, DebugInfoWithStack, EmulationError,
     Emulator, EmulatorEvent, InstructionPointer, WatchMode, Watchpoint, WatchpointId,
 };
 pub use self::masm::*;
-pub use self::stackify::ConvertHirToMasm;
 
 use miden_hir as hir;
 use midenc_session::Session;
