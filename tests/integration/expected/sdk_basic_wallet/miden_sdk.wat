@@ -6094,5 +6094,5 @@
     (export (;13;) "note-inputs" (type 12))
   )
   (instance (;0;) (instantiate 0))
-  (export (;1;) (interface "miden:base/types@1.0.0") (instance 0))
+  (export (;1;) "miden:base/types@1.0.0" (instance 0))
 )
