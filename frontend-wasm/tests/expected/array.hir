@@ -17,10 +17,7 @@ block0:
     v5 = const.i32 5 : i32;
     v6 = call noname::sum_arr(v4, v5) : i32;
     v7 = add.wrapping v3, v6 : i32;
-    br block1(v7);
-
-block1(v0: i32):
-    ret v0;
+    ret v7;
 }
 
 pub fn sum_arr(i32, i32) -> i32 {
@@ -30,13 +27,10 @@ block0(v0: i32, v1: i32):
     v5 = eq v1, 0 : i1;
     v6 = cast v5 : i32;
     v7 = neq v6, 0 : i1;
-    condbr v7, block2(v4), block3;
+    condbr v7, block7, block3;
 
-block1(v2: i32):
-    ret v2;
-
-block2(v20: i32):
-    br block1(v20);
+block7:
+    ret v4;
 
 block3:
     br block4(v0, v4, v1);
@@ -51,11 +45,11 @@ block4(v8: i32, v12: i32, v16: i32):
     v17 = const.i32 -1 : i32;
     v18 = add.wrapping v16, v17 : i32;
     v19 = neq v18, 0 : i1;
-    condbr v19, block4(v15, v13, v18), block6;
+    condbr v19, block8, block6;
 
-block5:
-    br block2(v13);
+block8:
+    br block4(v15, v13, v18);
 
 block6:
-    br block5;
+    ret v13;
 }
