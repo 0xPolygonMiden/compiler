@@ -14,25 +14,18 @@ use miden_diagnostics::DiagnosticsHandler;
 use wasmparser::{
     Data, DataKind, DataSectionReader, ElementSectionReader, FunctionSectionReader,
     GlobalSectionReader, ImportSectionReader, MemorySectionReader, NameSectionReader, Naming,
-    Operator, Type, TypeRef, TypeSectionReader,
+    Operator, TypeRef, TypeSectionReader,
 };
 
 /// Parses the Type section of the wasm module.
 pub fn parse_type_section<'a>(
     types: TypeSectionReader<'a>,
     environ: &mut ModuleEnvironment<'a>,
-    diagnostics: &DiagnosticsHandler,
+    _diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    for entry in types {
-        match entry? {
-            Type::Func(wasm_func_ty) => {
-                let ty = convert_func_type(&wasm_func_ty)?;
-                environ.declare_type_func(ty);
-            }
-            Type::Array(_) => {
-                unsupported_diag!(diagnostics, "Array types are not supported");
-            }
-        }
+    for wasm_func_ty in types.into_iter_err_on_gc_types() {
+        let ty = convert_func_type(&wasm_func_ty?)?;
+        environ.declare_type_func(ty);
     }
     Ok(())
 }
