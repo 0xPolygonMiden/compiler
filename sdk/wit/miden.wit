@@ -1,0 +1,80 @@
+package miden:base@1.0.0;
+
+interface types {
+    type felt = u64;
+    type word = tuple<felt, felt, felt, felt>;
+    
+    type account-id = felt;
+    type recipient = word;
+    type tag = felt;
+
+    record fungible-asset {
+        asset: account-id,
+        amount: u64
+    }
+
+    type non-fungible-asset = word;
+
+    variant asset {
+        fungible(fungible-asset),
+        non-fungible(non-fungible-asset),
+    }
+
+    /// Get the inputs of the currently executed note (4 words = 16 felts)
+    // TODO: use list<felt> or tuple<...16 felts>?
+//    record note-inputs {
+        //i0: felt,
+        //i1: felt,
+        //i2: felt,
+        //i3: felt,
+        //i4: felt,
+        //i5: felt,
+        //i6: felt,
+        //i7: felt,
+        //i8: felt,
+        //i9: felt,
+        //i10: felt,
+        //i11: felt,
+        //i12: felt,
+        //i13: felt,
+        //i14: felt,
+        //i15: felt,
+    //}
+
+    type note-inputs = tuple<felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt>;
+}
+
+interface tx-kernel {
+    use types.{asset, tag, recipient, note-inputs, account-id};
+
+    // Account-related functions 
+
+    /// Get the id of the currently executing account
+    get-id: func() -> account-id;
+    /// Add the specified asset to the vault
+    add-asset: func(asset: asset) -> asset;
+    /// Remove the specified asset from the vault
+    remove-asset: func(asset: asset) -> asset;
+
+
+    // Note-related functions 
+    
+    /// Creates a new note and returns a pointer to the memory address at which the note is stored.
+    /// asset is the asset to be included in the note.
+    /// tag is the tag to be included in the note.
+    /// recipient is the recipient of the note.
+    create-note: func(asset: asset, tag: tag, recipient: recipient);
+    /// Get the inputs of the currently executed note 
+    get-inputs: func() -> note-inputs;
+    /// Get the assets of the currently executing note 
+    get-assets: func() -> list<asset>;
+}
+
+/// Marker interface. Expected to be implemented by the account/wallet
+interface account {}
+
+world base-world {
+    export types;
+//    export account;
+    //export tx;
+}
