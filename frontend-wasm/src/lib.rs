@@ -4,6 +4,9 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
+// TODO: remove this once everything is implemented
+#![allow(unused_variables)]
+#![allow(dead_code)]
 
 mod component;
 mod module;
@@ -13,11 +16,14 @@ mod config;
 mod error;
 mod ssa;
 mod translation_utils;
-mod wasm_types;
 
 #[cfg(test)]
 mod test_utils;
 
+pub use self::component::translate::translate_component;
 pub use self::config::WasmTranslationConfig;
 pub use self::error::WasmError;
-pub use self::module::translate_module;
+pub use self::module::translate::translate_module;
+
+// TODO: implement the needed todo!()s
+// TODO: remove commented out code

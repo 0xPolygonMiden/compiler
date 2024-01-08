@@ -17,13 +17,12 @@ use std::collections::{hash_map, HashMap};
 use std::u64;
 
 use crate::error::{WasmError, WasmResult};
-use crate::module::environ::ModuleInfo;
-use crate::module::func_translation_state::ControlStackFrame;
-use crate::module::func_translation_state::{ElseData, FuncTranslationState};
+use crate::module::func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState};
 use crate::module::function_builder_ext::FunctionBuilderExt;
+use crate::module::types::{ir_type, BlockType, GlobalIndex, ModuleTypes};
+use crate::module::Module;
 use crate::ssa::Variable;
 use crate::unsupported_diag;
-use crate::wasm_types::{BlockType, GlobalIndex};
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::Type::*;
@@ -42,12 +41,13 @@ pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    mod_info: &ModuleInfo,
+    mod_info: &Module,
+    mod_types: &ModuleTypes,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
     if !state.reachable {
-        translate_unreachable_operator(&op, builder, state, mod_info, span)?;
+        translate_unreachable_operator(&op, builder, state, mod_types, span)?;
         return Ok(());
     }
 
@@ -74,14 +74,14 @@ pub fn translate_operator(
         /********************************** Globals ****************************************/
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.global_name(global_index);
-            let ty = mod_info.globals[global_index].ty.clone();
+            let name = mod_info.name_section.globals_names[&global_index].clone();
+            let ty = ir_type(mod_info.globals[global_index].ty)?;
             state.push1(builder.ins().load_symbol(name, ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.global_name(global_index);
-            let ty = (&mod_info.globals[global_index]).ty.clone();
+            let name = mod_info.name_section.globals_names[&global_index].clone();
+            let ty = ir_type(mod_info.globals[global_index].ty)?;
             let ptr = builder
                 .ins()
                 .symbol_addr(name, Ptr(ty.clone().into()), span);
@@ -103,9 +103,9 @@ pub fn translate_operator(
         }
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
-        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_info, span)?,
-        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_info, span)?,
-        Operator::If { blockty } => translate_if(blockty, state, builder, mod_info, span)?,
+        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_types, span)?,
+        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_types, span)?,
+        Operator::If { blockty } => translate_if(blockty, state, builder, mod_types, span)?,
         Operator::Else => translate_else(state, builder, span)?,
         Operator::End => translate_end(state, builder, span),
 
@@ -116,7 +116,15 @@ pub fn translate_operator(
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /************************************ Calls ****************************************/
         Operator::Call { function_index } => {
-            translate_call(state, builder, function_index, mod_info, span, diagnostics)?;
+            translate_call(
+                state,
+                builder,
+                function_index,
+                mod_info,
+                mod_types,
+                span,
+                diagnostics,
+            )?;
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
@@ -608,7 +616,8 @@ fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: &u32,
-    mod_info: &ModuleInfo,
+    mod_info: &Module,
+    mod_types: &ModuleTypes,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
@@ -616,6 +625,7 @@ fn translate_call(
         builder.data_flow_graph_mut(),
         *function_index,
         mod_info,
+        mod_types,
         diagnostics,
     )?;
     let args = state.peekn_mut(num_args);
@@ -722,10 +732,10 @@ fn translate_block(
     blockty: &wasmparser::BlockType,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    module_info: &ModuleInfo,
+    mod_types: &ModuleTypes,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, module_info)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let next = builder.create_block_with_params(blockty.results.clone(), span);
     state.push_block(next, blockty.params.len(), blockty.results.len());
     Ok(())
@@ -844,10 +854,10 @@ fn translate_if(
     blockty: &wasmparser::BlockType,
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
-    module_info: &ModuleInfo,
+    mod_types: &ModuleTypes,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, module_info)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let cond = state.pop1();
     let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     let next_block = builder.create_block();
@@ -906,10 +916,10 @@ fn translate_loop(
     blockty: &wasmparser::BlockType,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    module_info: &ModuleInfo,
+    mod_types: &ModuleTypes,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, module_info)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let loop_body = builder.create_block_with_params(blockty.params.clone(), span);
     let next = builder.create_block_with_params(blockty.results.clone(), span);
     builder
@@ -931,7 +941,7 @@ fn translate_unreachable_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    module_info: &ModuleInfo,
+    mod_types: &ModuleTypes,
     span: SourceSpan,
 ) -> WasmResult<()> {
     debug_assert!(!state.reachable);
@@ -939,7 +949,7 @@ fn translate_unreachable_operator(
         Operator::If { blockty } => {
             // Push a placeholder control stack entry. The if isn't reachable,
             // so we don't have any branches anywhere.
-            let blockty = BlockType::from_wasm(&blockty, module_info)?;
+            let blockty = BlockType::from_wasm(&blockty, mod_types)?;
             state.push_if(
                 Block::reserved_value(),
                 ElseData::NoElse {

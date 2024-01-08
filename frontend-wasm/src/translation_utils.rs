@@ -6,6 +6,95 @@ use miden_hir_type::{FunctionType, Type};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
 
+/// Represents the possible sizes in bytes of the discriminant of a variant type in the component model
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum DiscriminantSize {
+    /// 8-bit discriminant
+    Size1,
+    /// 16-bit discriminant
+    Size2,
+    /// 32-bit discriminant
+    Size4,
+}
+
+impl DiscriminantSize {
+    /// Calculate the size of discriminant needed to represent a variant with the specified number of cases.
+    pub const fn from_count(count: usize) -> Option<Self> {
+        if count <= 0xFF {
+            Some(Self::Size1)
+        } else if count <= 0xFFFF {
+            Some(Self::Size2)
+        } else if count <= 0xFFFF_FFFF {
+            Some(Self::Size4)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the size, in bytes, of this discriminant
+    pub const fn byte_size(&self) -> u32 {
+        match self {
+            DiscriminantSize::Size1 => 1,
+            DiscriminantSize::Size2 => 2,
+            DiscriminantSize::Size4 => 4,
+        }
+    }
+}
+
+impl From<DiscriminantSize> for u32 {
+    /// Size of the discriminant as a `u32`
+    fn from(size: DiscriminantSize) -> u32 {
+        size.byte_size()
+    }
+}
+
+impl From<DiscriminantSize> for usize {
+    /// Size of the discriminant as a `usize`
+    fn from(size: DiscriminantSize) -> usize {
+        match size {
+            DiscriminantSize::Size1 => 1,
+            DiscriminantSize::Size2 => 2,
+            DiscriminantSize::Size4 => 4,
+        }
+    }
+}
+
+/// Represents the number of bytes required to store a flags value in the component model
+pub enum FlagsSize {
+    /// There are no flags
+    Size0,
+    /// Flags can fit in a u8
+    Size1,
+    /// Flags can fit in a u16
+    Size2,
+    /// Flags can fit in a specified number of u32 fields
+    Size4Plus(u8),
+}
+
+impl FlagsSize {
+    /// Calculate the size needed to represent a value with the specified number of flags.
+    pub const fn from_count(count: usize) -> FlagsSize {
+        if count == 0 {
+            FlagsSize::Size0
+        } else if count <= 8 {
+            FlagsSize::Size1
+        } else if count <= 16 {
+            FlagsSize::Size2
+        } else {
+            let amt = ceiling_divide(count, 32);
+            if amt > (u8::MAX as usize) {
+                panic!("too many flags");
+            }
+            FlagsSize::Size4Plus(amt as u8)
+        }
+    }
+}
+
+/// Divide `n` by `d`, rounding up in the case of a non-zero remainder.
+const fn ceiling_divide(n: usize, d: usize) -> usize {
+    (n + d - 1) / d
+}
+
 /// Emit instructions to produce a zero value in the given type.
 pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> Value {
     match ty {

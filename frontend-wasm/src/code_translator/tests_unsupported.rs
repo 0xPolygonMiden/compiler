@@ -8,19 +8,20 @@ use wasmparser::MemArg;
 use wasmparser::Operator;
 use wasmparser::Operator::*;
 
-use crate::module::environ::ModuleInfo;
 use crate::module::func_translation_state::FuncTranslationState;
 use crate::module::function_builder_ext::FunctionBuilderContext;
 use crate::module::function_builder_ext::FunctionBuilderExt;
+use crate::module::Module;
 use crate::test_utils::test_diagnostics;
 
 use super::translate_operator;
 
 fn check_unsupported(op: &Operator) {
     let diagnostics = test_diagnostics();
-    let mod_builder = ModuleBuilder::new("noname");
-    let module_info = ModuleInfo::new(mod_builder.name());
-    let mut module_builder = ModuleBuilder::new(module_info.name.as_str());
+    let mod_name = "noname";
+    let mod_builder = ModuleBuilder::new(mod_name);
+    let module_info = Module::new();
+    let mut module_builder = ModuleBuilder::new(mod_name);
     let sig = Signature {
         params: vec![],
         results: vec![],
@@ -31,11 +32,13 @@ fn check_unsupported(op: &Operator) {
     let mut fb_ctx = FunctionBuilderContext::new();
     let mut state = FuncTranslationState::new();
     let mut builder_ext = FunctionBuilderExt::new(&mut module_func_builder, &mut fb_ctx);
+    let mod_types = Default::default();
     let result = translate_operator(
         op,
         &mut builder_ext,
         &mut state,
         &module_info,
+        &mod_types,
         &diagnostics,
         SourceSpan::default(),
     );
