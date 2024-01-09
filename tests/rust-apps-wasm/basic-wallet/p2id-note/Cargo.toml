@@ -15,7 +15,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-cargo-component-bindings = "0.5.0"
+cargo-component-bindings = "0.6.0"
 
 [package.metadata.component]
 package = "miden:basic-wallet-p2id-note"
