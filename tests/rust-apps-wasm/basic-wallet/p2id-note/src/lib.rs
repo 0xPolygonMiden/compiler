@@ -12,7 +12,7 @@ pub struct Component;
 impl Guest for Component {
     fn note_script() {
         let inputs = get_inputs();
-        let target_account_id = inputs.0;
+        let target_account_id = inputs[0];
         let account_id = get_id();
         assert_eq!(account_id, target_account_id);
         let assets = get_assets();

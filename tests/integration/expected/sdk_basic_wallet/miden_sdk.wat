@@ -6090,7 +6090,7 @@
     (export (;9;) "non-fungible-asset" (type 3))
     (type (;10;) (variant (case "fungible" 8) (case "non-fungible" 9)))
     (export (;11;) "asset" (type 10))
-    (type (;12;) (tuple 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+    (type (;12;) (list 1))
     (export (;13;) "note-inputs" (type 12))
   )
   (instance (;0;) (instantiate 0))

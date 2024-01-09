@@ -90,8 +90,8 @@ interface types {
         non-fungible(non-fungible-asset),
     }
 
-    /// Inputs of the currently executed note (4 words = 16 felts)
-    type note-inputs = tuple<felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt, felt>;
+    /// Inputs of the currently executed note, never exceeds 16 felts
+    type note-inputs = list<felt>;
 }
 
 interface tx-kernel {

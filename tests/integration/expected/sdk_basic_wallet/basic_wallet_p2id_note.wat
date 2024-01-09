@@ -4,7 +4,7 @@
       (type (;0;) u64)
       (export (;1;) "felt" (type (eq 0)))
       (export (;2;) "account-id" (type (eq 1)))
-      (type (;3;) (tuple 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+      (type (;3;) (list 1))
       (export (;4;) "note-inputs" (type (eq 3)))
       (type (;5;) (record (field "asset" 2) (field "amount" u64)))
       (export (;6;) "fungible-asset" (type (eq 5)))
@@ -415,15 +415,15 @@
       global.set $__stack_pointer
     )
     (func $miden:base/note@1.0.0#note-script (;8;) (type 7)
-      (local i32 i32 i32 i32 i32 i32 i32 i64 i64 i64 i64 i64 i32)
+      (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i64 i64 i64 i64 i64 i32)
       global.get $__stack_pointer
-      i32.const 144
+      i32.const 32
       i32.sub
       local.tee 0
       global.set $__stack_pointer
       call $wit_bindgen::rt::run_ctors_once
       local.get 0
-      i32.const 8
+      i32.const 20
       i32.add
       call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_inputs::wit_import
       block ;; label = @1
@@ -431,211 +431,220 @@
           block ;; label = @3
             block ;; label = @4
               local.get 0
-              i64.load offset=8
+              i32.const 24
+              i32.add
+              i32.load
+              local.tee 1
+              i32.eqz
+              br_if 0 (;@4;)
+              local.get 0
+              i32.load offset=20
+              local.tee 2
+              i64.load
               call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import
               i64.ne
               br_if 0 (;@4;)
               local.get 0
-              i32.const 136
+              i32.const 12
               i32.add
               call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import
               local.get 0
-              i32.load offset=136
-              local.set 1
+              i32.load offset=12
+              local.set 3
               block ;; label = @5
                 block ;; label = @6
                   local.get 0
-                  i32.const 140
+                  i32.const 16
                   i32.add
                   i32.load
-                  local.tee 2
+                  local.tee 4
                   i32.eqz
                   br_if 0 (;@6;)
-                  local.get 2
+                  local.get 4
                   i32.const 53687091
                   i32.gt_u
                   br_if 1 (;@5;)
-                  local.get 2
+                  local.get 4
                   i32.const 40
                   i32.mul
-                  local.tee 3
+                  local.tee 5
                   i32.const -1
                   i32.le_s
                   br_if 1 (;@5;)
                   i32.const 8
-                  local.set 4
+                  local.set 6
                   block ;; label = @7
-                    local.get 3
+                    local.get 5
                     i32.eqz
                     br_if 0 (;@7;)
                     i32.const 0
                     i32.load8_u offset=1048953
                     drop
-                    local.get 3
+                    local.get 5
                     i32.const 8
                     call $__rust_alloc
-                    local.tee 4
+                    local.tee 6
                     i32.eqz
                     br_if 4 (;@3;)
                   end
                   i32.const 0
-                  local.set 5
+                  local.set 7
                   local.get 0
                   i32.const 0
-                  i32.store offset=16
-                  local.get 0
-                  local.get 2
-                  i32.store offset=12
+                  i32.store offset=28
                   local.get 0
                   local.get 4
-                  i32.store offset=8
-                  local.get 1
-                  local.set 6
+                  i32.store offset=24
+                  local.get 0
+                  local.get 6
+                  i32.store offset=20
+                  local.get 3
+                  local.set 8
                   loop ;; label = @7
                     block ;; label = @8
                       block ;; label = @9
-                        local.get 6
+                        local.get 8
                         i32.load8_u
                         br_if 0 (;@9;)
                         i64.const 0
-                        local.set 7
+                        local.set 9
                         br 1 (;@8;)
                       end
-                      local.get 6
+                      local.get 8
                       i32.const 32
                       i32.add
                       i64.load
-                      local.set 8
-                      local.get 6
+                      local.set 10
+                      local.get 8
                       i32.const 24
                       i32.add
                       i64.load
-                      local.set 9
+                      local.set 11
                       i64.const 1
-                      local.set 7
+                      local.set 9
                     end
-                    local.get 6
+                    local.get 8
                     i32.const 8
                     i32.add
                     i64.load
-                    local.set 10
-                    local.get 6
+                    local.set 12
+                    local.get 8
                     i32.const 16
                     i32.add
                     i64.load
-                    local.set 11
+                    local.set 13
                     block ;; label = @8
-                      local.get 5
+                      local.get 7
                       local.get 0
-                      i32.load offset=12
+                      i32.load offset=24
                       i32.ne
                       br_if 0 (;@8;)
                       local.get 0
-                      i32.const 8
+                      i32.const 20
                       i32.add
-                      local.get 5
+                      local.get 7
                       call $alloc::raw_vec::RawVec<T,A>::reserve_for_push
                       local.get 0
-                      i32.load offset=8
-                      local.set 4
+                      i32.load offset=20
+                      local.set 6
                       local.get 0
-                      i32.load offset=16
-                      local.set 5
+                      i32.load offset=28
+                      local.set 7
                     end
-                    local.get 4
-                    local.get 5
+                    local.get 6
+                    local.get 7
                     i32.const 40
                     i32.mul
                     i32.add
-                    local.tee 12
-                    local.get 8
-                    i64.store offset=32
-                    local.get 12
-                    local.get 9
-                    i64.store offset=24
-                    local.get 12
-                    local.get 11
-                    i64.store offset=16
-                    local.get 12
+                    local.tee 14
                     local.get 10
-                    i64.store offset=8
+                    i64.store offset=32
+                    local.get 14
+                    local.get 11
+                    i64.store offset=24
+                    local.get 14
+                    local.get 13
+                    i64.store offset=16
+                    local.get 14
                     local.get 12
-                    local.get 7
+                    i64.store offset=8
+                    local.get 14
+                    local.get 9
                     i64.store
                     local.get 0
-                    local.get 5
+                    local.get 7
                     i32.const 1
                     i32.add
-                    local.tee 5
-                    i32.store offset=16
-                    local.get 6
+                    local.tee 7
+                    i32.store offset=28
+                    local.get 8
                     i32.const 40
                     i32.add
-                    local.set 6
-                    local.get 2
+                    local.set 8
+                    local.get 4
                     i32.const -1
                     i32.add
-                    local.tee 2
+                    local.tee 4
                     br_if 0 (;@7;)
                   end
                   local.get 0
-                  i32.load offset=12
-                  local.set 4
+                  i32.load offset=24
+                  local.set 6
                   local.get 0
-                  i32.load offset=8
-                  local.set 2
-                  local.get 1
+                  i32.load offset=20
+                  local.set 4
                   local.get 3
+                  local.get 5
                   i32.const 8
                   call $wit_bindgen::rt::dealloc
-                  local.get 5
+                  local.get 7
                   i32.eqz
                   br_if 4 (;@2;)
-                  local.get 2
-                  local.get 5
+                  local.get 4
+                  local.get 7
                   i32.const 40
                   i32.mul
                   i32.add
-                  local.set 12
-                  local.get 2
-                  local.set 6
+                  local.set 14
+                  local.get 4
+                  local.set 8
                   loop ;; label = @7
-                    local.get 6
+                    local.get 8
                     i64.load
-                    local.tee 7
+                    local.tee 9
                     i64.const 2
                     i64.eq
                     br_if 5 (;@2;)
-                    local.get 7
+                    local.get 9
                     i64.const 0
                     i64.ne
-                    local.tee 5
-                    local.get 6
+                    local.tee 7
+                    local.get 8
                     i64.load offset=8
-                    local.get 6
+                    local.get 8
                     i64.load offset=16
-                    local.get 6
+                    local.get 8
                     i64.load offset=24
                     i64.const 0
-                    local.get 5
+                    local.get 7
                     select
-                    local.get 6
+                    local.get 8
                     i64.load offset=32
                     i64.const 0
-                    local.get 5
+                    local.get 7
                     select
                     call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
-                    local.get 6
+                    local.get 8
                     i32.const 40
                     i32.add
-                    local.tee 6
-                    local.get 12
+                    local.tee 8
+                    local.get 14
                     i32.ne
                     br_if 0 (;@7;)
                     br 5 (;@2;)
                   end
                 end
-                local.get 1
+                local.get 3
                 i32.const 0
                 i32.const 8
                 call $wit_bindgen::rt::dealloc
@@ -648,22 +657,28 @@
             unreachable
           end
           i32.const 8
-          local.get 3
+          local.get 5
           call $alloc::alloc::handle_alloc_error
           unreachable
         end
-        local.get 4
+        local.get 6
         i32.eqz
         br_if 0 (;@1;)
-        local.get 2
         local.get 4
+        local.get 6
         i32.const 40
         i32.mul
         i32.const 8
         call $__rust_dealloc
       end
+      local.get 2
+      local.get 1
+      i32.const 3
+      i32.shl
+      i32.const 8
+      call $__rust_dealloc
       local.get 0
-      i32.const 144
+      i32.const 32
       i32.add
       global.set $__stack_pointer
     )
@@ -12951,7 +12966,7 @@
   (alias core export 14 "cabi_import_realloc" (core func (;25;)))
   (alias core export 0 "$imports" (core table (;0;)))
   (alias export 1 "get-inputs" (func (;5;)))
-  (core func (;26;) (canon lower (func 5) (memory 0)))
+  (core func (;26;) (canon lower (func 5) (memory 0) (realloc 5)))
   (alias export 1 "get-assets" (func (;6;)))
   (core func (;27;) (canon lower (func 6) (memory 0) (realloc 5)))
   (alias export 10 "get-directories" (func (;7;)))
