@@ -23,18 +23,6 @@ fn sdk_basic_wallet() {
 }
 
 #[test]
-fn sdk_basic_wallet_helpers() {
-    let test = CompilerTest::rust_source_cargo_component("basic-wallet/basic-wallet-helpers");
-    let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!(
-        "../../expected/sdk_basic_wallet/{artifact_name}.wat"
-    )]);
-    test.expect_wit_bind(expect_file![format!(
-        "../../expected/sdk_basic_wallet/bindings/{artifact_name}_bindings.rs"
-    )]);
-}
-
-#[test]
 fn sdk_basic_wallet_p2id_note() {
     let test = CompilerTest::rust_source_cargo_component("basic-wallet/p2id-note");
     let artifact_name = test.source.artifact_name();

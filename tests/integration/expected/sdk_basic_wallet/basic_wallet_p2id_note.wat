@@ -47,27 +47,17 @@
     )
   )
   (import "miden:basic-wallet/basic-wallet@1.0.0" (instance (;2;) (type 6)))
-  (alias export 0 "asset" (type (;7;)))
-  (type (;8;)
-    (instance
-      (alias outer 1 7 (type (;0;)))
-      (export (;1;) "asset" (type (eq 0)))
-      (type (;2;) (func (param "asset" 1) (result bool)))
-      (export (;0;) "some-asset-check" (func (type 2)))
-    )
-  )
-  (import "miden:basic-wallet-helpers/check-helpers@1.0.0" (instance (;3;) (type 8)))
-  (type (;9;)
+  (type (;7;)
     (instance
       (export (;0;) "error" (type (sub resource)))
     )
   )
-  (import "wasi:io/error@0.2.0-rc-2023-11-10" (instance (;4;) (type 9)))
-  (alias export 4 "error" (type (;10;)))
-  (type (;11;)
+  (import "wasi:io/error@0.2.0-rc-2023-11-10" (instance (;3;) (type 7)))
+  (alias export 3 "error" (type (;8;)))
+  (type (;9;)
     (instance
       (export (;0;) "output-stream" (type (sub resource)))
-      (alias outer 1 10 (type (;1;)))
+      (alias outer 1 8 (type (;1;)))
       (export (;2;) "error" (type (eq 1)))
       (type (;3;) (own 2))
       (type (;4;) (variant (case "last-operation-failed" 3) (case "closed")))
@@ -86,56 +76,56 @@
       (export (;3;) "[method]output-stream.blocking-flush" (func (type 13)))
     )
   )
-  (import "wasi:io/streams@0.2.0-rc-2023-11-10" (instance (;5;) (type 11)))
-  (alias export 5 "input-stream" (type (;12;)))
-  (type (;13;)
+  (import "wasi:io/streams@0.2.0-rc-2023-11-10" (instance (;4;) (type 9)))
+  (alias export 4 "input-stream" (type (;10;)))
+  (type (;11;)
     (instance
-      (alias outer 1 12 (type (;0;)))
+      (alias outer 1 10 (type (;0;)))
       (export (;1;) "input-stream" (type (eq 0)))
       (type (;2;) (own 1))
       (type (;3;) (func (result 2)))
       (export (;0;) "get-stdin" (func (type 3)))
     )
   )
-  (import "wasi:cli/stdin@0.2.0-rc-2023-12-05" (instance (;6;) (type 13)))
-  (alias export 5 "output-stream" (type (;14;)))
-  (type (;15;)
+  (import "wasi:cli/stdin@0.2.0-rc-2023-12-05" (instance (;5;) (type 11)))
+  (alias export 4 "output-stream" (type (;12;)))
+  (type (;13;)
     (instance
-      (alias outer 1 14 (type (;0;)))
+      (alias outer 1 12 (type (;0;)))
       (export (;1;) "output-stream" (type (eq 0)))
       (type (;2;) (own 1))
       (type (;3;) (func (result 2)))
       (export (;0;) "get-stdout" (func (type 3)))
     )
   )
-  (import "wasi:cli/stdout@0.2.0-rc-2023-12-05" (instance (;7;) (type 15)))
-  (alias export 5 "output-stream" (type (;16;)))
-  (type (;17;)
+  (import "wasi:cli/stdout@0.2.0-rc-2023-12-05" (instance (;6;) (type 13)))
+  (alias export 4 "output-stream" (type (;14;)))
+  (type (;15;)
     (instance
-      (alias outer 1 16 (type (;0;)))
+      (alias outer 1 14 (type (;0;)))
       (export (;1;) "output-stream" (type (eq 0)))
       (type (;2;) (own 1))
       (type (;3;) (func (result 2)))
       (export (;0;) "get-stderr" (func (type 3)))
     )
   )
-  (import "wasi:cli/stderr@0.2.0-rc-2023-12-05" (instance (;8;) (type 17)))
-  (type (;18;)
+  (import "wasi:cli/stderr@0.2.0-rc-2023-12-05" (instance (;7;) (type 15)))
+  (type (;16;)
     (instance
       (type (;0;) (record (field "seconds" u64) (field "nanoseconds" u32)))
       (export (;1;) "datetime" (type (eq 0)))
     )
   )
-  (import "wasi:clocks/wall-clock@0.2.0-rc-2023-11-10" (instance (;9;) (type 18)))
-  (alias export 5 "output-stream" (type (;19;)))
-  (alias export 9 "datetime" (type (;20;)))
-  (alias export 5 "error" (type (;21;)))
-  (type (;22;)
+  (import "wasi:clocks/wall-clock@0.2.0-rc-2023-11-10" (instance (;8;) (type 16)))
+  (alias export 4 "output-stream" (type (;17;)))
+  (alias export 8 "datetime" (type (;18;)))
+  (alias export 4 "error" (type (;19;)))
+  (type (;20;)
     (instance
       (export (;0;) "descriptor" (type (sub resource)))
       (type (;1;) u64)
       (export (;2;) "filesize" (type (eq 1)))
-      (alias outer 1 19 (type (;3;)))
+      (alias outer 1 17 (type (;3;)))
       (export (;4;) "output-stream" (type (eq 3)))
       (type (;5;) (enum "access" "would-block" "already" "bad-descriptor" "busy" "deadlock" "quota" "exist" "file-too-large" "illegal-byte-sequence" "in-progress" "interrupted" "invalid" "io" "is-directory" "loop" "too-many-links" "message-size" "name-too-long" "no-device" "no-entry" "no-lock" "insufficient-memory" "insufficient-space" "not-directory" "not-empty" "not-recoverable" "unsupported" "no-tty" "no-such-device" "overflow" "not-permitted" "pipe" "read-only" "invalid-seek" "text-file-busy" "cross-device"))
       (export (;6;) "error-code" (type (eq 5)))
@@ -143,12 +133,12 @@
       (export (;8;) "descriptor-type" (type (eq 7)))
       (type (;9;) u64)
       (export (;10;) "link-count" (type (eq 9)))
-      (alias outer 1 20 (type (;11;)))
+      (alias outer 1 18 (type (;11;)))
       (export (;12;) "datetime" (type (eq 11)))
       (type (;13;) (option 12))
       (type (;14;) (record (field "type" 8) (field "link-count" 10) (field "size" 2) (field "data-access-timestamp" 13) (field "data-modification-timestamp" 13) (field "status-change-timestamp" 13)))
       (export (;15;) "descriptor-stat" (type (eq 14)))
-      (alias outer 1 21 (type (;16;)))
+      (alias outer 1 19 (type (;16;)))
       (export (;17;) "error" (type (eq 16)))
       (type (;18;) (borrow 0))
       (type (;19;) (own 4))
@@ -169,11 +159,11 @@
       (export (;4;) "filesystem-error-code" (func (type 29)))
     )
   )
-  (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance (;10;) (type 22)))
-  (alias export 10 "descriptor" (type (;23;)))
-  (type (;24;)
+  (import "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance (;9;) (type 20)))
+  (alias export 9 "descriptor" (type (;21;)))
+  (type (;22;)
     (instance
-      (alias outer 1 23 (type (;0;)))
+      (alias outer 1 21 (type (;0;)))
       (export (;1;) "descriptor" (type (eq 0)))
       (type (;2;) (own 1))
       (type (;3;) (tuple 2 string))
@@ -182,31 +172,29 @@
       (export (;0;) "get-directories" (func (type 5)))
     )
   )
-  (import "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance (;11;) (type 24)))
+  (import "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance (;10;) (type 22)))
   (core module (;0;)
     (type $.rodata (;0;) (func (param i32)))
     (type (;1;) (func (param i32 i32)))
     (type (;2;) (func (param i32 i32 i32) (result i32)))
     (type (;3;) (func (param i32 i32) (result i32)))
     (type (;4;) (func (result i64)))
-    (type (;5;) (func (param i32 i64 i64 i64 i64) (result i32)))
-    (type (;6;) (func (param i32 i64 i64 i64 i64)))
-    (type (;7;) (func (param i32 i32 i32 i32) (result i32)))
-    (type (;8;) (func))
-    (type (;9;) (func (param i32 i32 i32 i32)))
-    (type (;10;) (func (param i32 i32 i32)))
-    (type (;11;) (func (param i32) (result i32)))
-    (type (;12;) (func (param i32 i32 i32 i32 i32 i32) (result i32)))
-    (type (;13;) (func (param i32 i32 i32 i32 i32) (result i32)))
-    (type (;14;) (func (param i64 i32 i32) (result i32)))
+    (type (;5;) (func (param i32 i64 i64 i64 i64)))
+    (type (;6;) (func (param i32 i32 i32 i32) (result i32)))
+    (type (;7;) (func))
+    (type (;8;) (func (param i32 i32 i32 i32)))
+    (type (;9;) (func (param i32 i32 i32)))
+    (type (;10;) (func (param i32) (result i32)))
+    (type (;11;) (func (param i32 i32 i32 i32 i32 i32) (result i32)))
+    (type (;12;) (func (param i32 i32 i32 i32 i32) (result i32)))
+    (type (;13;) (func (param i64 i32 i32) (result i32)))
     (import "miden:base/tx-kernel@1.0.0" "get-inputs" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_inputs::wit_import (;0;) (type $.rodata)))
     (import "miden:base/tx-kernel@1.0.0" "get-id" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import (;1;) (type 4)))
     (import "miden:base/tx-kernel@1.0.0" "get-assets" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import (;2;) (type $.rodata)))
-    (import "miden:basic-wallet-helpers/check-helpers@1.0.0" "some-asset-check" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet_helpers::check_helpers::some_asset_check::wit_import (;3;) (type 5)))
-    (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;4;) (type 6)))
-    (import "wasi_snapshot_preview1" "fd_write" (func $wasi::lib_generated::wasi_snapshot_preview1::fd_write (;5;) (type 7)))
-    (func $__wasm_call_ctors (;6;) (type 8))
-    (func $alloc::raw_vec::finish_grow (;7;) (type 9) (param i32 i32 i32 i32)
+    (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;3;) (type 5)))
+    (import "wasi_snapshot_preview1" "fd_write" (func $wasi::lib_generated::wasi_snapshot_preview1::fd_write (;4;) (type 6)))
+    (func $__wasm_call_ctors (;5;) (type 7))
+    (func $alloc::raw_vec::finish_grow (;6;) (type 8) (param i32 i32 i32 i32)
       (local i32)
       block ;; label = @1
         block ;; label = @2
@@ -314,7 +302,7 @@
       i32.const 1
       i32.store
     )
-    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;8;) (type 1) (param i32 i32)
+    (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;7;) (type 1) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -426,7 +414,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $miden:base/note@1.0.0#note-script (;9;) (type 8)
+    (func $miden:base/note@1.0.0#note-script (;8;) (type 7)
       (local i32 i32 i32 i32 i32 i32 i32 i64 i64 i64 i64 i64 i32)
       global.get $__stack_pointer
       i32.const 144
@@ -442,40 +430,40 @@
         block ;; label = @2
           block ;; label = @3
             block ;; label = @4
+              local.get 0
+              i64.load offset=8
+              call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import
+              i64.ne
+              br_if 0 (;@4;)
+              local.get 0
+              i32.const 136
+              i32.add
+              call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import
+              local.get 0
+              i32.load offset=136
+              local.set 1
               block ;; label = @5
-                local.get 0
-                i64.load offset=8
-                call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import
-                i64.ne
-                br_if 0 (;@5;)
-                local.get 0
-                i32.const 136
-                i32.add
-                call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import
-                local.get 0
-                i32.load offset=136
-                local.set 1
-                local.get 0
-                i32.const 140
-                i32.add
-                i32.load
-                local.tee 2
-                i32.eqz
-                br_if 2 (;@3;)
-                local.get 2
-                i32.const 53687091
-                i32.gt_u
-                br_if 1 (;@4;)
-                local.get 2
-                i32.const 40
-                i32.mul
-                local.tee 3
-                i32.const -1
-                i32.le_s
-                br_if 1 (;@4;)
-                i32.const 8
-                local.set 4
                 block ;; label = @6
+                  local.get 0
+                  i32.const 140
+                  i32.add
+                  i32.load
+                  local.tee 2
+                  i32.eqz
+                  br_if 0 (;@6;)
+                  local.get 2
+                  i32.const 53687091
+                  i32.gt_u
+                  br_if 1 (;@5;)
+                  local.get 2
+                  i32.const 40
+                  i32.mul
+                  local.tee 3
+                  i32.const -1
+                  i32.le_s
+                  br_if 1 (;@5;)
+                  i32.const 8
+                  local.set 4
                   block ;; label = @7
                     local.get 3
                     i32.eqz
@@ -488,7 +476,7 @@
                     call $__rust_alloc
                     local.tee 4
                     i32.eqz
-                    br_if 1 (;@6;)
+                    br_if 4 (;@3;)
                   end
                   i32.const 0
                   local.set 5
@@ -618,40 +606,25 @@
                     i64.const 2
                     i64.eq
                     br_if 5 (;@2;)
-                    block ;; label = @8
-                      local.get 7
-                      i64.const 0
-                      i64.ne
-                      local.tee 5
-                      local.get 6
-                      i64.load offset=8
-                      local.tee 7
-                      local.get 6
-                      i64.load offset=16
-                      local.tee 10
-                      local.get 6
-                      i64.load offset=24
-                      i64.const 0
-                      local.get 5
-                      select
-                      local.tee 11
-                      local.get 6
-                      i64.load offset=32
-                      i64.const 0
-                      local.get 5
-                      select
-                      local.tee 8
-                      call $basic_wallet_p2id_note::bindings::miden::basic_wallet_helpers::check_helpers::some_asset_check::wit_import
-                      call $wit_bindgen::rt::bool_lift
-                      i32.eqz
-                      br_if 0 (;@8;)
-                      local.get 5
-                      local.get 7
-                      local.get 10
-                      local.get 11
-                      local.get 8
-                      call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
-                    end
+                    local.get 7
+                    i64.const 0
+                    i64.ne
+                    local.tee 5
+                    local.get 6
+                    i64.load offset=8
+                    local.get 6
+                    i64.load offset=16
+                    local.get 6
+                    i64.load offset=24
+                    i64.const 0
+                    local.get 5
+                    select
+                    local.get 6
+                    i64.load offset=32
+                    i64.const 0
+                    local.get 5
+                    select
+                    call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
                     local.get 6
                     i32.const 40
                     i32.add
@@ -662,22 +635,22 @@
                     br 5 (;@2;)
                   end
                 end
+                local.get 1
+                i32.const 0
                 i32.const 8
-                local.get 3
-                call $alloc::alloc::handle_alloc_error
-                unreachable
+                call $wit_bindgen::rt::dealloc
+                br 4 (;@1;)
               end
-              unreachable
+              call $alloc::raw_vec::capacity_overflow
               unreachable
             end
-            call $alloc::raw_vec::capacity_overflow
+            unreachable
             unreachable
           end
-          local.get 1
-          i32.const 0
           i32.const 8
-          call $wit_bindgen::rt::dealloc
-          br 1 (;@1;)
+          local.get 3
+          call $alloc::alloc::handle_alloc_error
+          unreachable
         end
         local.get 4
         i32.eqz
@@ -694,7 +667,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $__rust_alloc (;10;) (type 3) (param i32 i32) (result i32)
+    (func $__rust_alloc (;9;) (type 3) (param i32 i32) (result i32)
       (local i32)
       local.get 0
       local.get 1
@@ -703,14 +676,14 @@
       local.get 2
       return
     )
-    (func $__rust_dealloc (;11;) (type 10) (param i32 i32 i32)
+    (func $__rust_dealloc (;10;) (type 9) (param i32 i32 i32)
       local.get 0
       local.get 1
       local.get 2
       call $__rdl_dealloc
       return
     )
-    (func $__rust_realloc (;12;) (type 7) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;11;) (type 6) (param i32 i32 i32 i32) (result i32)
       (local i32)
       local.get 0
       local.get 1
@@ -721,13 +694,13 @@
       local.get 4
       return
     )
-    (func $__rust_alloc_error_handler (;13;) (type 1) (param i32 i32)
+    (func $__rust_alloc_error_handler (;12;) (type 1) (param i32 i32)
       local.get 0
       local.get 1
       call $__rg_oom
       return
     )
-    (func $wit_bindgen::rt::run_ctors_once (;14;) (type 8)
+    (func $wit_bindgen::rt::run_ctors_once (;13;) (type 7)
       block ;; label = @1
         i32.const 0
         i32.load8_u offset=1048954
@@ -738,7 +711,7 @@
         i32.store8 offset=1048954
       end
     )
-    (func $cabi_realloc (;15;) (type 7) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_realloc (;14;) (type 6) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
@@ -770,7 +743,7 @@
       end
       local.get 2
     )
-    (func $wit_bindgen::rt::dealloc (;16;) (type 10) (param i32 i32 i32)
+    (func $wit_bindgen::rt::dealloc (;15;) (type 9) (param i32 i32 i32)
       block ;; label = @1
         local.get 1
         i32.eqz
@@ -781,14 +754,7 @@
         call $__rust_dealloc
       end
     )
-    (func $wit_bindgen::rt::bool_lift (;17;) (type 11) (param i32) (result i32)
-      local.get 0
-      i32.const 255
-      i32.and
-      i32.const 0
-      i32.ne
-    )
-    (func $core::ptr::drop_in_place<std::io::Write::write_fmt::Adapter<std::sys::wasi::stdio::Stderr>> (;18;) (type $.rodata) (param i32)
+    (func $core::ptr::drop_in_place<std::io::Write::write_fmt::Adapter<std::sys::wasi::stdio::Stderr>> (;16;) (type $.rodata) (param i32)
       (local i32 i32 i32)
       local.get 0
       i32.load offset=4
@@ -834,7 +800,7 @@
         call $__rust_dealloc
       end
     )
-    (func $core::fmt::Write::write_char (;19;) (type 3) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_char (;17;) (type 3) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -1090,7 +1056,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $core::fmt::Write::write_fmt (;20;) (type 3) (param i32 i32) (result i32)
+    (func $core::fmt::Write::write_fmt (;18;) (type 3) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1113,14 +1079,14 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $core::ptr::drop_in_place<&mut std::io::Write::write_fmt::Adapter<alloc::vec::Vec<u8>>> (;21;) (type $.rodata) (param i32))
-    (func $<&mut W as core::fmt::Write>::write_char (;22;) (type 3) (param i32 i32) (result i32)
+    (func $core::ptr::drop_in_place<&mut std::io::Write::write_fmt::Adapter<alloc::vec::Vec<u8>>> (;19;) (type $.rodata) (param i32))
+    (func $<&mut W as core::fmt::Write>::write_char (;20;) (type 3) (param i32 i32) (result i32)
       local.get 0
       i32.load
       local.get 1
       call $core::fmt::Write::write_char
     )
-    (func $<&mut W as core::fmt::Write>::write_fmt (;23;) (type 3) (param i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_fmt (;21;) (type 3) (param i32 i32) (result i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1144,7 +1110,7 @@
       global.set $__stack_pointer
       local.get 0
     )
-    (func $<&mut W as core::fmt::Write>::write_str (;24;) (type 2) (param i32 i32 i32) (result i32)
+    (func $<&mut W as core::fmt::Write>::write_str (;22;) (type 2) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -1294,7 +1260,7 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;25;) (type 2) (param i32 i32 i32) (result i32)
+    (func $<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str (;23;) (type 2) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 32
@@ -1441,7 +1407,7 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $__rdl_alloc (;26;) (type 3) (param i32 i32) (result i32)
+    (func $__rdl_alloc (;24;) (type 3) (param i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           local.get 1
@@ -1461,11 +1427,11 @@
       local.get 0
       call $malloc
     )
-    (func $__rdl_dealloc (;27;) (type 10) (param i32 i32 i32)
+    (func $__rdl_dealloc (;25;) (type 9) (param i32 i32 i32)
       local.get 0
       call $free
     )
-    (func $__rdl_realloc (;28;) (type 7) (param i32 i32 i32 i32) (result i32)
+    (func $__rdl_realloc (;26;) (type 6) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           local.get 2
@@ -1505,7 +1471,7 @@
       local.get 3
       call $realloc
     )
-    (func $std::alloc::default_alloc_error_hook (;29;) (type 1) (param i32 i32)
+    (func $std::alloc::default_alloc_error_hook (;27;) (type 1) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 64
@@ -1664,7 +1630,7 @@
       unreachable
       unreachable
     )
-    (func $std::alloc::rust_oom (;30;) (type 1) (param i32 i32)
+    (func $std::alloc::rust_oom (;28;) (type 1) (param i32 i32)
       (local i32)
       local.get 0
       local.get 1
@@ -1678,13 +1644,13 @@
       call $std::process::abort
       unreachable
     )
-    (func $__rg_oom (;31;) (type 1) (param i32 i32)
+    (func $__rg_oom (;29;) (type 1) (param i32 i32)
       local.get 1
       local.get 0
       call $std::alloc::rust_oom
       unreachable
     )
-    (func $std::sys::wasi::decode_error_kind (;32;) (type 11) (param i32) (result i32)
+    (func $std::sys::wasi::decode_error_kind (;30;) (type 10) (param i32) (result i32)
       (local i32)
       i32.const 40
       local.set 1
@@ -1848,19 +1814,19 @@
       end
       local.get 1
     )
-    (func $std::sys::wasi::abort_internal (;33;) (type 8)
+    (func $std::sys::wasi::abort_internal (;31;) (type 7)
       call $abort
       unreachable
     )
-    (func $std::process::abort (;34;) (type 8)
+    (func $std::process::abort (;32;) (type 7)
       call $std::sys::wasi::abort_internal
       unreachable
     )
-    (func $wasi::lib_generated::Errno::raw (;35;) (type 11) (param i32) (result i32)
+    (func $wasi::lib_generated::Errno::raw (;33;) (type 10) (param i32) (result i32)
       local.get 0
       i32.load16_u
     )
-    (func $wasi::lib_generated::fd_write (;36;) (type 9) (param i32 i32 i32 i32)
+    (func $wasi::lib_generated::fd_write (;34;) (type 8) (param i32 i32 i32 i32)
       (local i32)
       global.get $__stack_pointer
       i32.const 16
@@ -1900,11 +1866,11 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $malloc (;37;) (type 11) (param i32) (result i32)
+    (func $malloc (;35;) (type 10) (param i32) (result i32)
       local.get 0
       call $dlmalloc
     )
-    (func $dlmalloc (;38;) (type 11) (param i32) (result i32)
+    (func $dlmalloc (;36;) (type 10) (param i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -4927,11 +4893,11 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $free (;39;) (type $.rodata) (param i32)
+    (func $free (;37;) (type $.rodata) (param i32)
       local.get 0
       call $dlfree
     )
-    (func $dlfree (;40;) (type $.rodata) (param i32)
+    (func $dlfree (;38;) (type $.rodata) (param i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -5729,7 +5695,7 @@
         i32.store offset=1048992
       end
     )
-    (func $realloc (;41;) (type 3) (param i32 i32) (result i32)
+    (func $realloc (;39;) (type 3) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 0
@@ -6283,7 +6249,7 @@
       end
       local.get 0
     )
-    (func $dispose_chunk (;42;) (type 1) (param i32 i32)
+    (func $dispose_chunk (;40;) (type 1) (param i32 i32)
       (local i32 i32 i32 i32 i32 i32)
       local.get 0
       local.get 1
@@ -7041,7 +7007,7 @@
         i32.store offset=8
       end
     )
-    (func $internal_memalign (;43;) (type 3) (param i32 i32) (result i32)
+    (func $internal_memalign (;41;) (type 3) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -7273,7 +7239,7 @@
       i32.const 8
       i32.add
     )
-    (func $aligned_alloc (;44;) (type 3) (param i32 i32) (result i32)
+    (func $aligned_alloc (;42;) (type 3) (param i32 i32) (result i32)
       block ;; label = @1
         local.get 0
         i32.const 16
@@ -7287,11 +7253,11 @@
       local.get 1
       call $internal_memalign
     )
-    (func $abort (;45;) (type 8)
+    (func $abort (;43;) (type 7)
       unreachable
       unreachable
     )
-    (func $sbrk (;46;) (type 11) (param i32) (result i32)
+    (func $sbrk (;44;) (type 10) (param i32) (result i32)
       block ;; label = @1
         local.get 0
         br_if 0 (;@1;)
@@ -7332,7 +7298,7 @@
       call $abort
       unreachable
     )
-    (func $memcpy (;47;) (type 2) (param i32 i32 i32) (result i32)
+    (func $memcpy (;45;) (type 2) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -7849,23 +7815,23 @@
       end
       local.get 0
     )
-    (func $alloc::raw_vec::capacity_overflow (;48;) (type 8)
+    (func $alloc::raw_vec::capacity_overflow (;46;) (type 7)
       unreachable
       unreachable
     )
-    (func $alloc::alloc::handle_alloc_error (;49;) (type 1) (param i32 i32)
+    (func $alloc::alloc::handle_alloc_error (;47;) (type 1) (param i32 i32)
       local.get 0
       local.get 1
       call $alloc::alloc::handle_alloc_error::rt_error
       unreachable
     )
-    (func $alloc::alloc::handle_alloc_error::rt_error (;50;) (type 1) (param i32 i32)
+    (func $alloc::alloc::handle_alloc_error::rt_error (;48;) (type 1) (param i32 i32)
       local.get 1
       local.get 0
       call $__rust_alloc_error_handler
       unreachable
     )
-    (func $core::fmt::write (;51;) (type 2) (param i32 i32 i32) (result i32)
+    (func $core::fmt::write (;49;) (type 2) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -8196,7 +8162,7 @@
       global.set $__stack_pointer
       local.get 1
     )
-    (func $core::fmt::Formatter::pad_integral (;52;) (type 12) (param i32 i32 i32 i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::pad_integral (;50;) (type 11) (param i32 i32 i32 i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -8596,7 +8562,7 @@
       end
       local.get 1
     )
-    (func $core::fmt::Formatter::pad_integral::write_prefix (;53;) (type 13) (param i32 i32 i32 i32 i32) (result i32)
+    (func $core::fmt::Formatter::pad_integral::write_prefix (;51;) (type 12) (param i32 i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         block ;; label = @2
@@ -8629,7 +8595,7 @@
       i32.load offset=12
       call_indirect (type 2)
     )
-    (func $core::fmt::num::imp::fmt_u64 (;54;) (type 14) (param i64 i32 i32) (result i32)
+    (func $core::fmt::num::imp::fmt_u64 (;52;) (type 13) (param i64 i32 i32) (result i32)
       (local i32 i32 i64 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 48
@@ -8802,14 +8768,14 @@
       global.set $__stack_pointer
       local.get 4
     )
-    (func $core::fmt::num::imp::<impl core::fmt::Display for u32>::fmt (;55;) (type 3) (param i32 i32) (result i32)
+    (func $core::fmt::num::imp::<impl core::fmt::Display for u32>::fmt (;53;) (type 3) (param i32 i32) (result i32)
       local.get 0
       i64.load32_u
       i32.const 1
       local.get 1
       call $core::fmt::num::imp::fmt_u64
     )
-    (func $core::str::count::do_count_chars (;56;) (type 3) (param i32 i32) (result i32)
+    (func $core::str::count::do_count_chars (;54;) (type 3) (param i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         block ;; label = @2
@@ -9302,7 +9268,7 @@
       end
       local.get 2
     )
-    (func $core::ops::function::FnOnce::call_once (;57;) (type 3) (param i32 i32) (result i32)
+    (func $core::ops::function::FnOnce::call_once (;55;) (type 3) (param i32 i32) (result i32)
       local.get 0
       i32.load
       drop
@@ -12890,163 +12856,157 @@
     (export "get-inputs" (func 1))
     (export "get-assets" (func 2))
   )
-  (alias export 3 "some-asset-check" (func (;1;)))
+  (alias export 2 "receive-asset" (func (;1;)))
   (core func (;3;) (canon lower (func 1)))
   (core instance (;2;)
-    (export "some-asset-check" (func 3))
+    (export "receive-asset" (func 3))
   )
-  (alias export 2 "receive-asset" (func (;2;)))
-  (core func (;4;) (canon lower (func 2)))
+  (alias core export 0 "12" (core func (;4;)))
   (core instance (;3;)
-    (export "receive-asset" (func 4))
+    (export "fd_write" (func 4))
   )
-  (alias core export 0 "12" (core func (;5;)))
-  (core instance (;4;)
-    (export "fd_write" (func 5))
-  )
-  (core instance (;5;) (instantiate 0
+  (core instance (;4;) (instantiate 0
       (with "miden:base/tx-kernel@1.0.0" (instance 1))
-      (with "miden:basic-wallet-helpers/check-helpers@1.0.0" (instance 2))
-      (with "miden:basic-wallet/basic-wallet@1.0.0" (instance 3))
-      (with "wasi_snapshot_preview1" (instance 4))
+      (with "miden:basic-wallet/basic-wallet@1.0.0" (instance 2))
+      (with "wasi_snapshot_preview1" (instance 3))
     )
   )
-  (alias core export 5 "memory" (core memory (;0;)))
-  (alias core export 5 "cabi_realloc" (core func (;6;)))
-  (alias core export 5 "cabi_realloc" (core func (;7;)))
-  (core instance (;6;)
-    (export "cabi_realloc" (func 7))
+  (alias core export 4 "memory" (core memory (;0;)))
+  (alias core export 4 "cabi_realloc" (core func (;5;)))
+  (alias core export 4 "cabi_realloc" (core func (;6;)))
+  (core instance (;5;)
+    (export "cabi_realloc" (func 6))
   )
-  (core instance (;7;)
+  (core instance (;6;)
     (export "memory" (memory 0))
   )
-  (alias core export 0 "2" (core func (;8;)))
+  (alias core export 0 "2" (core func (;7;)))
+  (core instance (;7;)
+    (export "get-directories" (func 7))
+  )
+  (alias export 9 "descriptor" (type (;23;)))
+  (core func (;8;) (canon resource.drop 23))
+  (alias core export 0 "3" (core func (;9;)))
+  (alias core export 0 "4" (core func (;10;)))
+  (alias core export 0 "5" (core func (;11;)))
+  (alias core export 0 "6" (core func (;12;)))
+  (alias core export 0 "7" (core func (;13;)))
   (core instance (;8;)
-    (export "get-directories" (func 8))
+    (export "[resource-drop]descriptor" (func 8))
+    (export "[method]descriptor.write-via-stream" (func 9))
+    (export "[method]descriptor.append-via-stream" (func 10))
+    (export "[method]descriptor.get-type" (func 11))
+    (export "[method]descriptor.stat" (func 12))
+    (export "filesystem-error-code" (func 13))
   )
-  (alias export 10 "descriptor" (type (;25;)))
-  (core func (;9;) (canon resource.drop 25))
-  (alias core export 0 "3" (core func (;10;)))
-  (alias core export 0 "4" (core func (;11;)))
-  (alias core export 0 "5" (core func (;12;)))
-  (alias core export 0 "6" (core func (;13;)))
-  (alias core export 0 "7" (core func (;14;)))
+  (alias export 3 "error" (type (;24;)))
+  (core func (;14;) (canon resource.drop 24))
   (core instance (;9;)
-    (export "[resource-drop]descriptor" (func 9))
-    (export "[method]descriptor.write-via-stream" (func 10))
-    (export "[method]descriptor.append-via-stream" (func 11))
-    (export "[method]descriptor.get-type" (func 12))
-    (export "[method]descriptor.stat" (func 13))
-    (export "filesystem-error-code" (func 14))
+    (export "[resource-drop]error" (func 14))
   )
-  (alias export 4 "error" (type (;26;)))
-  (core func (;15;) (canon resource.drop 26))
+  (alias export 4 "input-stream" (type (;25;)))
+  (core func (;15;) (canon resource.drop 25))
+  (alias export 4 "output-stream" (type (;26;)))
+  (core func (;16;) (canon resource.drop 26))
+  (alias core export 0 "8" (core func (;17;)))
+  (alias core export 0 "9" (core func (;18;)))
+  (alias core export 0 "10" (core func (;19;)))
+  (alias core export 0 "11" (core func (;20;)))
   (core instance (;10;)
-    (export "[resource-drop]error" (func 15))
+    (export "[resource-drop]input-stream" (func 15))
+    (export "[resource-drop]output-stream" (func 16))
+    (export "[method]output-stream.check-write" (func 17))
+    (export "[method]output-stream.write" (func 18))
+    (export "[method]output-stream.blocking-write-and-flush" (func 19))
+    (export "[method]output-stream.blocking-flush" (func 20))
   )
-  (alias export 5 "input-stream" (type (;27;)))
-  (core func (;16;) (canon resource.drop 27))
-  (alias export 5 "output-stream" (type (;28;)))
-  (core func (;17;) (canon resource.drop 28))
-  (alias core export 0 "8" (core func (;18;)))
-  (alias core export 0 "9" (core func (;19;)))
-  (alias core export 0 "10" (core func (;20;)))
-  (alias core export 0 "11" (core func (;21;)))
+  (alias export 7 "get-stderr" (func (;2;)))
+  (core func (;21;) (canon lower (func 2)))
   (core instance (;11;)
-    (export "[resource-drop]input-stream" (func 16))
-    (export "[resource-drop]output-stream" (func 17))
-    (export "[method]output-stream.check-write" (func 18))
-    (export "[method]output-stream.write" (func 19))
-    (export "[method]output-stream.blocking-write-and-flush" (func 20))
-    (export "[method]output-stream.blocking-flush" (func 21))
+    (export "get-stderr" (func 21))
   )
-  (alias export 8 "get-stderr" (func (;3;)))
+  (alias export 5 "get-stdin" (func (;3;)))
   (core func (;22;) (canon lower (func 3)))
   (core instance (;12;)
-    (export "get-stderr" (func 22))
+    (export "get-stdin" (func 22))
   )
-  (alias export 6 "get-stdin" (func (;4;)))
+  (alias export 6 "get-stdout" (func (;4;)))
   (core func (;23;) (canon lower (func 4)))
   (core instance (;13;)
-    (export "get-stdin" (func 23))
+    (export "get-stdout" (func 23))
   )
-  (alias export 7 "get-stdout" (func (;5;)))
-  (core func (;24;) (canon lower (func 5)))
-  (core instance (;14;)
-    (export "get-stdout" (func 24))
-  )
-  (core instance (;15;) (instantiate 1
-      (with "__main_module__" (instance 6))
-      (with "env" (instance 7))
-      (with "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance 8))
-      (with "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance 9))
-      (with "wasi:io/error@0.2.0-rc-2023-11-10" (instance 10))
-      (with "wasi:io/streams@0.2.0-rc-2023-11-10" (instance 11))
-      (with "wasi:cli/stderr@0.2.0-rc-2023-12-05" (instance 12))
-      (with "wasi:cli/stdin@0.2.0-rc-2023-12-05" (instance 13))
-      (with "wasi:cli/stdout@0.2.0-rc-2023-12-05" (instance 14))
+  (core instance (;14;) (instantiate 1
+      (with "__main_module__" (instance 5))
+      (with "env" (instance 6))
+      (with "wasi:filesystem/preopens@0.2.0-rc-2023-11-10" (instance 7))
+      (with "wasi:filesystem/types@0.2.0-rc-2023-11-10" (instance 8))
+      (with "wasi:io/error@0.2.0-rc-2023-11-10" (instance 9))
+      (with "wasi:io/streams@0.2.0-rc-2023-11-10" (instance 10))
+      (with "wasi:cli/stderr@0.2.0-rc-2023-12-05" (instance 11))
+      (with "wasi:cli/stdin@0.2.0-rc-2023-12-05" (instance 12))
+      (with "wasi:cli/stdout@0.2.0-rc-2023-12-05" (instance 13))
     )
   )
-  (alias core export 15 "cabi_export_realloc" (core func (;25;)))
-  (alias core export 15 "cabi_import_realloc" (core func (;26;)))
+  (alias core export 14 "cabi_export_realloc" (core func (;24;)))
+  (alias core export 14 "cabi_import_realloc" (core func (;25;)))
   (alias core export 0 "$imports" (core table (;0;)))
-  (alias export 1 "get-inputs" (func (;6;)))
-  (core func (;27;) (canon lower (func 6) (memory 0)))
-  (alias export 1 "get-assets" (func (;7;)))
-  (core func (;28;) (canon lower (func 7) (memory 0) (realloc 6)))
-  (alias export 11 "get-directories" (func (;8;)))
-  (core func (;29;) (canon lower (func 8) (memory 0) (realloc 26) string-encoding=utf8))
-  (alias export 10 "[method]descriptor.write-via-stream" (func (;9;)))
+  (alias export 1 "get-inputs" (func (;5;)))
+  (core func (;26;) (canon lower (func 5) (memory 0)))
+  (alias export 1 "get-assets" (func (;6;)))
+  (core func (;27;) (canon lower (func 6) (memory 0) (realloc 5)))
+  (alias export 10 "get-directories" (func (;7;)))
+  (core func (;28;) (canon lower (func 7) (memory 0) (realloc 25) string-encoding=utf8))
+  (alias export 9 "[method]descriptor.write-via-stream" (func (;8;)))
+  (core func (;29;) (canon lower (func 8) (memory 0)))
+  (alias export 9 "[method]descriptor.append-via-stream" (func (;9;)))
   (core func (;30;) (canon lower (func 9) (memory 0)))
-  (alias export 10 "[method]descriptor.append-via-stream" (func (;10;)))
+  (alias export 9 "[method]descriptor.get-type" (func (;10;)))
   (core func (;31;) (canon lower (func 10) (memory 0)))
-  (alias export 10 "[method]descriptor.get-type" (func (;11;)))
+  (alias export 9 "[method]descriptor.stat" (func (;11;)))
   (core func (;32;) (canon lower (func 11) (memory 0)))
-  (alias export 10 "[method]descriptor.stat" (func (;12;)))
+  (alias export 9 "filesystem-error-code" (func (;12;)))
   (core func (;33;) (canon lower (func 12) (memory 0)))
-  (alias export 10 "filesystem-error-code" (func (;13;)))
+  (alias export 4 "[method]output-stream.check-write" (func (;13;)))
   (core func (;34;) (canon lower (func 13) (memory 0)))
-  (alias export 5 "[method]output-stream.check-write" (func (;14;)))
+  (alias export 4 "[method]output-stream.write" (func (;14;)))
   (core func (;35;) (canon lower (func 14) (memory 0)))
-  (alias export 5 "[method]output-stream.write" (func (;15;)))
+  (alias export 4 "[method]output-stream.blocking-write-and-flush" (func (;15;)))
   (core func (;36;) (canon lower (func 15) (memory 0)))
-  (alias export 5 "[method]output-stream.blocking-write-and-flush" (func (;16;)))
+  (alias export 4 "[method]output-stream.blocking-flush" (func (;16;)))
   (core func (;37;) (canon lower (func 16) (memory 0)))
-  (alias export 5 "[method]output-stream.blocking-flush" (func (;17;)))
-  (core func (;38;) (canon lower (func 17) (memory 0)))
-  (alias core export 15 "fd_write" (core func (;39;)))
-  (core instance (;16;)
+  (alias core export 14 "fd_write" (core func (;38;)))
+  (core instance (;15;)
     (export "$imports" (table 0))
-    (export "0" (func 27))
-    (export "1" (func 28))
-    (export "2" (func 29))
-    (export "3" (func 30))
-    (export "4" (func 31))
-    (export "5" (func 32))
-    (export "6" (func 33))
-    (export "7" (func 34))
-    (export "8" (func 35))
-    (export "9" (func 36))
-    (export "10" (func 37))
-    (export "11" (func 38))
-    (export "12" (func 39))
+    (export "0" (func 26))
+    (export "1" (func 27))
+    (export "2" (func 28))
+    (export "3" (func 29))
+    (export "4" (func 30))
+    (export "5" (func 31))
+    (export "6" (func 32))
+    (export "7" (func 33))
+    (export "8" (func 34))
+    (export "9" (func 35))
+    (export "10" (func 36))
+    (export "11" (func 37))
+    (export "12" (func 38))
   )
-  (core instance (;17;) (instantiate 3
-      (with "" (instance 16))
+  (core instance (;16;) (instantiate 3
+      (with "" (instance 15))
     )
   )
-  (type (;29;) (func))
-  (alias core export 5 "miden:base/note@1.0.0#note-script" (core func (;40;)))
-  (func (;18;) (type 29) (canon lift (core func 40)))
+  (type (;27;) (func))
+  (alias core export 4 "miden:base/note@1.0.0#note-script" (core func (;39;)))
+  (func (;17;) (type 27) (canon lift (core func 39)))
   (component (;0;)
     (type (;0;) (func))
     (import "import-func-note-script" (func (;0;) (type 0)))
     (type (;1;) (func))
     (export (;1;) "note-script" (func 0) (func (type 1)))
   )
-  (instance (;12;) (instantiate 0
-      (with "import-func-note-script" (func 18))
+  (instance (;11;) (instantiate 0
+      (with "import-func-note-script" (func 17))
     )
   )
-  (export (;13;) "miden:base/note@1.0.0" (instance 12))
+  (export (;12;) "miden:base/note@1.0.0" (instance 11))
 )
