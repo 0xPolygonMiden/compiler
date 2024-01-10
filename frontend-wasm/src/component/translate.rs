@@ -12,7 +12,7 @@ use crate::module::types::{
     convert_func_type, convert_valtype, EntityIndex, FuncIndex, GlobalIndex, MemoryIndex,
     ModuleTypesBuilder, SignatureIndex, TableIndex, WasmType,
 };
-use crate::{component::*, WasmTranslationConfig};
+use crate::{component::*, unsupported_diag, WasmTranslationConfig};
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::PrimaryMap;
@@ -633,20 +633,18 @@ impl<'a, 'data> Translator<'a, 'data> {
                 }
             }
 
-            // All custom sections are ignored by Wasmtime at this time.
-            //
-            // FIXME(WebAssembly/component-model#14): probably want to specify
+            // All custom sections are ignored at this time.
             // and parse a `name` section here.
             Payload::CustomSection { .. } => {}
 
             // Anything else is either not reachable since we never enable the
-            // feature in Wasmtime or we do enable it and it's a bug we don't
+            // feature or we do enable it and it's a bug we don't
             // implement it, so let validation take care of most errors here and
             // if it gets past validation provide a helpful error message to
             // debug.
             other => {
                 self.validator.payload(&other)?;
-                panic!("unimplemented section {other:?}");
+                unsupported_diag!(diagnostics, "unsupported section {other:?}");
             }
         }
 

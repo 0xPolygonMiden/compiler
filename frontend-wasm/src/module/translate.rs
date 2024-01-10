@@ -84,16 +84,13 @@ fn build_globals(
     diagnostics: &DiagnosticsHandler,
 ) -> Result<(), WasmError> {
     Ok(for (global_idx, global) in &wasm_module.globals {
-        let defined_global_idx = wasm_module
-            .defined_global_index(global_idx)
-            .expect("No initializer for imported global variable");
         let global_name = wasm_module
             .name_section
             .globals_names
             .get(&global_idx)
             .cloned()
             .unwrap_or(format!("gv{}", global_idx.as_u32()));
-        let global_init = wasm_module.global_initializers[defined_global_idx];
+        let global_init = wasm_module.try_global_initializer(global_idx, diagnostics)?;
         let init = ConstantData::from(global_init.to_le_bytes(&wasm_module, diagnostics)?);
         if let Err(e) = module_builder.declare_global_variable(
             &global_name,

@@ -332,10 +332,6 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         Operator::V128Const { value } => {
                             GlobalInit::V128Const(u128::from_le_bytes(*value.bytes()))
                         }
-                        Operator::RefNull { hty: _ } => panic!("unsupported"),
-                        Operator::RefFunc { function_index: _ } => {
-                            panic!("unsupported");
-                        }
                         Operator::GlobalGet { global_index } => {
                             GlobalInit::GetGlobal(GlobalIndex::from_u32(global_index))
                         }
@@ -552,7 +548,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             // component model.
             other => {
                 self.validator.payload(&other)?;
-                panic!("unimplemented section in wasm file {:?}", other);
+                unsupported_diag!(diagnostics, "unsupported section in wasm file {:?}", other);
             }
         }
         Ok(())
