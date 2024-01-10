@@ -333,7 +333,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                             GlobalInit::V128Const(u128::from_le_bytes(*value.bytes()))
                         }
                         Operator::RefNull { hty: _ } => panic!("unsupported"),
-                        Operator::RefFunc { function_index } => {
+                        Operator::RefFunc { function_index: _ } => {
                             panic!("unsupported");
                         }
                         Operator::GlobalGet { global_index } => {
@@ -753,7 +753,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     ) -> WasmResult<()> {
         let cnt = usize::try_from(data_section.count()).unwrap();
         self.result.data_segments.reserve_exact(cnt);
-        for (index, entry) in data_section.into_iter().enumerate() {
+        for entry in data_section.into_iter() {
             let wasmparser::Data {
                 kind,
                 data,
@@ -768,8 +768,6 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         memory_index, 0,
                         "data section memory index must be 0 (only one memory per module is supported)"
                     );
-                    let memory_index = MemoryIndex::from_u32(memory_index);
-
                     let mut offset_expr_reader = offset_expr.get_binary_reader();
                     let offset = match offset_expr_reader.read_operator()? {
                         Operator::I32Const { value } => DataSegmentOffset::I32Const(value),

@@ -46,7 +46,6 @@ fn build_ir_module(
     let mut module_builder = ModuleBuilder::new(name.as_str());
     build_globals(&wasm_module, &mut module_builder, diagnostics)?;
     build_data_segments(&translation, &mut module_builder, diagnostics)?;
-    let get_num_func_imports = wasm_module.num_imported_funcs;
     let mut func_translator = FuncTranslator::new();
     for (defined_func_idx, body_data) in translation.function_body_inputs {
         let func_index = wasm_module.func_index(defined_func_idx);

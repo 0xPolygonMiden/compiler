@@ -5,7 +5,6 @@
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 // TODO: remove this once everything is implemented
-#![allow(unused_variables)]
 #![allow(dead_code)]
 
 mod component;

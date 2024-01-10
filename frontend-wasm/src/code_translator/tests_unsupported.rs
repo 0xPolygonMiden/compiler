@@ -19,7 +19,6 @@ use super::translate_operator;
 fn check_unsupported(op: &Operator) {
     let diagnostics = test_diagnostics();
     let mod_name = "noname";
-    let mod_builder = ModuleBuilder::new(mod_name);
     let module_info = Module::new();
     let mut module_builder = ModuleBuilder::new(mod_name);
     let sig = Signature {
