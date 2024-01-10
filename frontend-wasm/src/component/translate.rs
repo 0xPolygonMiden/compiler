@@ -33,7 +33,7 @@ pub fn translate_component(
     let mut validator = wasmparser::Validator::new_with_features(wasm_features);
     let mut types = Default::default();
     let translator = Translator::new(config, &mut validator, &mut types);
-    translator.translate(wasm)
+    translator.translate(wasm, diagnostics)
 }
 
 /// Structure used to parse a Wasm component and translate it into an IR `Module`
@@ -297,14 +297,22 @@ impl<'a, 'data> Translator<'a, 'data> {
     /// This is the workhorse of compilation which will parse all of `component`
     /// and create type information. The `component` does not have to be valid
     /// and it will be validated during compilation.
-    pub fn translate(mut self, component: &'data [u8]) -> WasmResult<miden_hir::Module> {
-        self.parse(component)?;
+    pub fn translate(
+        mut self,
+        component: &'data [u8],
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<miden_hir::Module> {
+        self.parse(component, diagnostics)?;
 
         todo!("translate the parsed Wasm component to IR Module");
     }
 
     /// Parses the given the Wasm component into an intermediate `Translation` in self.result.
-    fn parse(&mut self, component: &'data [u8]) -> Result<(), crate::WasmError> {
+    fn parse(
+        &mut self,
+        component: &'data [u8],
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), crate::WasmError> {
         let mut remaining = component;
         loop {
             let payload = match self.parser.parse(remaining, true)? {
@@ -315,7 +323,7 @@ impl<'a, 'data> Translator<'a, 'data> {
                 Chunk::NeedMoreData(_) => unreachable!(),
             };
 
-            match self.parse_payload(payload, component)? {
+            match self.parse_payload(payload, component, diagnostics)? {
                 Action::KeepGoing => {}
                 Action::Skip(n) => remaining = &remaining[n..],
                 Action::Done => break,
@@ -331,6 +339,7 @@ impl<'a, 'data> Translator<'a, 'data> {
         &mut self,
         payload: Payload<'data>,
         component: &'data [u8],
+        diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<Action> {
         match payload {
             Payload::Version {
@@ -502,7 +511,7 @@ impl<'a, 'data> Translator<'a, 'data> {
             Payload::ModuleSection { parser, range } => {
                 self.validator.module_section(&range)?;
                 let translation = ModuleEnvironment::new(&self.config, self.validator, self.types)
-                    .translate(parser, &component[range.start..range.end])?;
+                    .translate(parser, &component[range.start..range.end], diagnostics)?;
                 let static_idx = self.static_modules.push(translation);
                 self.result
                     .initializers
@@ -882,6 +891,8 @@ impl Translation<'_> {
 #[cfg(test)]
 mod tests {
 
+    use crate::test_utils::test_diagnostics;
+
     use super::*;
 
     #[test]
@@ -913,11 +924,12 @@ mod tests {
         );
         let wasm = wat::parse_str(wat).unwrap();
         let wasm_features = WasmFeatures::all();
+        let diagnostics = test_diagnostics();
         let mut validator = wasmparser::Validator::new_with_features(wasm_features);
         let mut types = Default::default();
         let mut translator =
             Translator::new(WasmTranslationConfig::default(), &mut validator, &mut types);
-        translator.parse(&wasm).unwrap();
+        translator.parse(&wasm, &diagnostics).unwrap();
         let translation = translator.result;
         assert_eq!(translation.exports.len(), 1);
         assert_eq!(translation.initializers.len(), 6);

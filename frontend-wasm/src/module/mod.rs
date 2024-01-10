@@ -1,8 +1,12 @@
 //! Data structures for representing parsed Wasm modules.
 
+use crate::error::WasmResult;
+use crate::unsupported_diag;
+
 use self::types::*;
 
 use indexmap::IndexMap;
+use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use std::collections::{BTreeMap, HashMap};
@@ -309,6 +313,19 @@ impl Module {
             func_ref,
         })
     }
+
+    /// Returns the global initializer for the given index, or `Unsupported` error if the global is imported.
+    pub fn try_global_initializer(
+        &self,
+        index: GlobalIndex,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<&GlobalInit> {
+        if let Some(defined_index) = self.defined_global_index(index) {
+            Ok(&self.global_initializers[defined_index])
+        } else {
+            unsupported_diag!(diagnostics, "Imported globals are not supported yet");
+        }
+    }
 }
 
 /// Type information about functions in a wasm module.
@@ -342,4 +359,5 @@ pub struct NameSection {
     pub func_names: HashMap<FuncIndex, String>,
     pub locals_names: HashMap<FuncIndex, HashMap<u32, String>>,
     pub globals_names: HashMap<GlobalIndex, String>,
+    pub data_segment_names: HashMap<DataSegmentIndex, String>,
 }

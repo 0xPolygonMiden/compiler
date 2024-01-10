@@ -7,6 +7,7 @@ use thiserror::Error;
 ///
 /// When a WebAssembly function can't be translated, one of these error codes will be returned
 /// to describe the failure.
+#[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum WasmError {
     /// The input WebAssembly code is invalid.

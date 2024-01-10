@@ -128,6 +128,7 @@ pub mod miden {
       pub type NoteInputs = super::super::super::miden::base::types::NoteInputs;
       pub type AccountId = super::super::super::miden::base::types::AccountId;
       #[allow(unused_unsafe, clippy::all)]
+      /// Account-related functions
       /// Get the id of the currently executing account
       pub fn get_id() -> AccountId{
         
@@ -281,6 +282,7 @@ pub mod miden {
         }
       }
       #[allow(unused_unsafe, clippy::all)]
+      /// Note-related functions
       /// Creates a new note.
       /// asset is the asset to be included in the note.
       /// tag is the tag to be included in the note.

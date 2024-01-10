@@ -12,7 +12,7 @@ use miden_hir_type as hir;
 
 use crate::error::WasmResult;
 use crate::module::Module;
-use crate::WasmError;
+use crate::{unsupported_diag, WasmError};
 
 /// WebAssembly page sizes are defined to be 64KiB.
 pub const WASM_PAGE_SIZE: u32 = 0x10000;
@@ -333,40 +333,36 @@ pub enum GlobalInit {
 
 impl GlobalInit {
     /// Serialize the initializer constant expression into bytes (little-endian order).
-    pub fn to_le_bytes(self, module: &Module) -> Vec<u8> {
-        match self {
+    pub fn to_le_bytes(
+        self,
+        module: &Module,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<Vec<u8>> {
+        Ok(match self {
             GlobalInit::I32Const(x) => x.to_le_bytes().to_vec(),
             GlobalInit::I64Const(x) => x.to_le_bytes().to_vec(),
             GlobalInit::F32Const(x) => x.to_le_bytes().to_vec(),
             GlobalInit::F64Const(x) => x.to_le_bytes().to_vec(),
             GlobalInit::V128Const(x) => x.to_le_bytes().to_vec(),
             GlobalInit::GetGlobal(global_idx) => {
-                // TODO: emit error and diagnostics
-                let defined_global_idx = module
-                    .defined_global_index(global_idx)
-                    .expect("No initializer for imported global variable");
-                let global_init = &module.global_initializers[defined_global_idx];
-                global_init.to_le_bytes(module)
+                let global_init = module.try_global_initializer(global_idx, diagnostics)?;
+                global_init.to_le_bytes(module, diagnostics)?
             }
-        }
+        })
     }
 
-    // pub fn as_i32(
-    //     &self,
-    //     globals: &PrimaryMap<GlobalIndex, Global>,
-    //     diagnostics: &DiagnosticsHandler,
-    // ) -> WasmResult<i32> {
-    //     Ok(match self {
-    //         GlobalInit::I32Const(x) => *x,
-    //         GlobalInit::GetGlobal(global_idx) => {
-    //             let global = &globals[*global_idx];
-    //             global.init.as_i32(globals, diagnostics)?
-    //         }
-    //         g => {
-    //             unsupported_diag!(diagnostics, "Expected global init to be i32, got: {:?}", g);
-    //         }
-    //     })
-    // }
+    pub fn as_i32(&self, module: &Module, diagnostics: &DiagnosticsHandler) -> WasmResult<i32> {
+        Ok(match self {
+            GlobalInit::I32Const(x) => *x,
+            GlobalInit::GetGlobal(global_idx) => {
+                let global_init = module.try_global_initializer(*global_idx, diagnostics)?;
+                global_init.as_i32(module, diagnostics)?
+            }
+            g => {
+                unsupported_diag!(diagnostics, "Expected global init to be i32, got: {:?}", g);
+            }
+        })
+    }
 }
 
 /// WebAssembly table.
@@ -428,31 +424,26 @@ pub enum DataSegmentOffset {
 
 impl DataSegmentOffset {
     /// Returns the offset as a i32, resolving the global if necessary.
-    pub fn as_i32(
-        &self,
-        globals: &PrimaryMap<GlobalIndex, Global>,
-        diagnostics: &DiagnosticsHandler,
-    ) -> WasmResult<i32> {
-        todo!()
-        // Ok(match self {
-        //     DataSegmentOffset::I32Const(x) => *x,
-        //     DataSegmentOffset::GetGlobal(global_idx) => {
-        //         let global = &globals[*global_idx];
-        //         match global.init.as_i32(globals, diagnostics) {
-        //             Err(e) => {
-        //                 diagnostics
-        //                     .diagnostic(miden_diagnostics::Severity::Error)
-        //                     .with_message(format!(
-        //                         "Failed to get data segment offset from global init {:?} with global index {global_idx:?}",
-        //                         global.init,
-        //                     ))
-        //                     .emit();
-        //                 return Err(e);
-        //             }
-        //             Ok(v) => v,
-        //         }
-        //     }
-        // })
+    pub fn as_i32(&self, module: &Module, diagnostics: &DiagnosticsHandler) -> WasmResult<i32> {
+        Ok(match self {
+            DataSegmentOffset::I32Const(x) => *x,
+            DataSegmentOffset::GetGlobal(global_idx) => {
+                let global_init = &module.try_global_initializer(*global_idx, diagnostics)?;
+                match global_init.as_i32(module, diagnostics) {
+                    Err(e) => {
+                        diagnostics
+                            .diagnostic(miden_diagnostics::Severity::Error)
+                            .with_message(format!(
+                                "Failed to get data segment offset from global init {:?} with global index {global_idx:?}",
+                                global_init,
+                            ))
+                            .emit();
+                        return Err(e);
+                    }
+                    Ok(v) => v,
+                }
+            }
+        })
     }
 }
 
@@ -580,14 +571,6 @@ where
     }
 }
 
-// pub fn convert_global_type(ty: &wasmparser::GlobalType, init: GlobalInit) -> WasmResult<Global> {
-//     Ok(Global {
-//         ty: valtype_to_type(&ty.content_type)?,
-//         mutability: ty.mutable,
-//         init,
-//     })
-// }
-
 /// Converts a Wasm function type into a Miden IR function type
 pub fn ir_func_type(ty: &WasmFuncType) -> WasmResult<hir::FunctionType> {
     let params = ty
@@ -609,7 +592,9 @@ pub fn ir_type(ty: WasmType) -> WasmResult<hir::Type> {
         WasmType::I32 => hir::Type::I32,
         WasmType::I64 => hir::Type::I64,
         WasmType::F32 => {
-            todo!("no f32 type in Miden IR")
+            return Err(WasmError::Unsupported(
+                "no f32 type in Miden IR".to_string(),
+            ))
         }
         WasmType::F64 => hir::Type::F64,
         WasmType::V128 => {

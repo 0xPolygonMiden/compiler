@@ -1,26 +1,27 @@
 use crate::error::WasmResult;
 use crate::module::types::{
-    convert_func_type, convert_global_type, convert_table_type, convert_valtype, DefinedFuncIndex,
-    ElemIndex, EntityIndex, EntityType, FuncIndex, GlobalIndex, GlobalInit, MemoryIndex,
-    ModuleTypesBuilder, SignatureIndex, TableIndex, TypeIndex, WasmType,
+    convert_func_type, convert_global_type, convert_table_type, convert_valtype, DataSegmentOffset,
+    DefinedFuncIndex, ElemIndex, EntityIndex, EntityType, FuncIndex, GlobalIndex, GlobalInit,
+    MemoryIndex, ModuleTypesBuilder, SignatureIndex, TableIndex, TypeIndex, WasmType,
 };
 use crate::module::{FuncRefIndex, Initializer, Module, ModuleType, TableSegment};
-use crate::{WasmError, WasmTranslationConfig};
+use crate::{unsupported_diag, WasmError, WasmTranslationConfig};
 
+use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::PrimaryMap;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::sync::Arc;
 use wasmparser::types::{CoreTypeId, Types};
 use wasmparser::{
-    CompositeType, CustomSectionReader, ElementItems, ElementKind, Encoding, ExternalKind,
-    FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator, Parser, Payload, TypeRef,
-    Validator, ValidatorResources,
+    CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind, Encoding,
+    ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator, Parser,
+    Payload, TypeRef, Validator, ValidatorResources,
 };
 
+use super::types::{DataSegment, DataSegmentIndex};
 use super::TableInitialValue;
 
 /// Object containing the standalone environment information.
@@ -60,12 +61,8 @@ pub struct ModuleTranslation<'data> {
     /// configuration.
     pub has_unparsed_debuginfo: bool,
 
-    /// List of data segments found in this module which should be concatenated
-    /// together for the final compiled artifact.
-    ///
-    /// These data segments, when concatenated, are indexed by the
-    /// `MemoryInitializer` type.
-    pub data: Vec<Cow<'data, [u8]>>,
+    /// List of data segments found in this module
+    pub data_segments: PrimaryMap<DataSegmentIndex, DataSegment<'data>>,
 
     /// When we're parsing the code section this will be incremented so we know
     /// which function is currently being defined.
@@ -147,16 +144,21 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         mut self,
         parser: Parser,
         data: &'data [u8],
+        diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<ModuleTranslation<'data>> {
         for payload in parser.parse_all(data) {
-            self.translate_payload(payload?)?;
+            self.translate_payload(payload?, diagnostics)?;
         }
 
         Ok(self.result)
     }
 
     // TODO: extract each section into its own function
-    fn translate_payload(&mut self, payload: Payload<'data>) -> WasmResult<()> {
+    fn translate_payload(
+        &mut self,
+        payload: Payload<'data>,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<()> {
         match payload {
             Payload::Version {
                 num,
@@ -301,13 +303,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
 
             Payload::MemorySection(memories) => {
                 self.validator.memory_section(&memories)?;
-
                 let cnt = usize::try_from(memories.count()).unwrap();
-
-                for entry in memories {
-                    let memory = entry?;
-                    // TODO: implement memory
-                }
+                assert_eq!(cnt, 1, "only one memory per module is supported");
             }
 
             Payload::TagSection(tags) => {
@@ -526,7 +523,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
 
             Payload::DataSection(data) => {
                 self.validator.data_section(&data)?;
-                todo!("data section")
+                self.data_section(data, diagnostics)?;
             }
 
             Payload::DataCountSection { count, range } => {
@@ -728,13 +725,75 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         }
                     }
                 }
+                wasmparser::Name::Data(names) => {
+                    for name in names {
+                        let Naming { index, name } = name?;
+                        if index != u32::max_value() {
+                            self.result
+                                .module
+                                .name_section
+                                .data_segment_names
+                                .insert(DataSegmentIndex::from_u32(index), name.to_string());
+                        }
+                    }
+                }
                 wasmparser::Name::Label(_)
                 | wasmparser::Name::Type(_)
                 | wasmparser::Name::Table(_)
                 | wasmparser::Name::Memory(_)
                 | wasmparser::Name::Element(_)
-                | wasmparser::Name::Data(_)
                 | wasmparser::Name::Unknown { .. } => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn data_section(
+        &mut self,
+        data_section: wasmparser::DataSectionReader<'data>,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<()> {
+        let cnt = usize::try_from(data_section.count()).unwrap();
+        self.result.data_segments.reserve_exact(cnt);
+        for (index, entry) in data_section.into_iter().enumerate() {
+            let wasmparser::Data {
+                kind,
+                data,
+                range: _,
+            } = entry?;
+            match kind {
+                DataKind::Active {
+                    memory_index,
+                    offset_expr,
+                } => {
+                    assert_eq!(
+                        memory_index, 0,
+                        "data section memory index must be 0 (only one memory per module is supported)"
+                    );
+                    let memory_index = MemoryIndex::from_u32(memory_index);
+
+                    let mut offset_expr_reader = offset_expr.get_binary_reader();
+                    let offset = match offset_expr_reader.read_operator()? {
+                        Operator::I32Const { value } => DataSegmentOffset::I32Const(value),
+                        Operator::GlobalGet { global_index } => {
+                            DataSegmentOffset::GetGlobal(GlobalIndex::from_u32(global_index))
+                        }
+                        ref s => {
+                            unsupported_diag!(
+                                diagnostics,
+                                "unsupported init expr in data section offset: {:?}",
+                                s
+                            );
+                        }
+                    };
+                    let segment = DataSegment { offset, data };
+                    self.result.data_segments.push(segment);
+                }
+                DataKind::Passive => {
+                    return Err(WasmError::Unsupported(
+                        "unsupported passive data segment in data section".to_string(),
+                    ));
+                }
             }
         }
         Ok(())

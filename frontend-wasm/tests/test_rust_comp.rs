@@ -22,18 +22,24 @@ fn rust_enum() {
     test.expect_ir(expect_file!["./expected/enum.hir"]);
 }
 
-#[ignore = "enable when data segments are supported"]
 #[test]
 fn rust_array() {
     let mut test = CompilerTest::rust_source_program(include_str!("rust_source/array.rs"));
     test.expect_wasm(expect_file!["./expected/array.wat"]);
     test.expect_ir(expect_file!["./expected/array.hir"]);
+    assert!(
+        test.hir.unwrap().segments().last().unwrap().is_readonly(),
+        "data segment should be readonly"
+    );
 }
 
-#[ignore = "enable when data segments are supported"]
 #[test]
 fn rust_static_mut() {
     let mut test = CompilerTest::rust_source_program(include_str!("rust_source/static_mut.rs"));
     test.expect_wasm(expect_file!["./expected/static_mut.wat"]);
     test.expect_ir(expect_file!["./expected/static_mut.hir"]);
+    assert!(
+        !test.hir.unwrap().segments().last().unwrap().is_readonly(),
+        "data segment should be mutable"
+    );
 }

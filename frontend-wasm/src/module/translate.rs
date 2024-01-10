@@ -12,7 +12,6 @@ use crate::{
 
 use super::Module;
 
-// TODO: rename to `translate_core_module`?
 /// Translate a valid Wasm core module binary into Miden IR module
 pub fn translate_module(
     wasm: &[u8],
@@ -24,7 +23,7 @@ pub fn translate_module(
     let parser = wasmparser::Parser::new(0);
     let mut module_types_builder = Default::default();
     let translation = ModuleEnvironment::new(config, &mut validator, &mut module_types_builder)
-        .translate(parser, wasm)?;
+        .translate(parser, wasm, diagnostics)?;
     let module_types = module_types_builder.finish();
     build_ir_module(translation, module_types, config, diagnostics)
 }
@@ -38,7 +37,7 @@ fn build_ir_module(
     if translation.module.name_section.module_name.is_none() {
         translation.module.name_section.module_name = Some(config.module_name_fallback.clone());
     }
-    let wasm_module = translation.module;
+    let wasm_module = &translation.module;
     let name = wasm_module
         .name_section
         .module_name
@@ -46,8 +45,7 @@ fn build_ir_module(
         .expect("Module name should be set by this point");
     let mut module_builder = ModuleBuilder::new(name.as_str());
     build_globals(&wasm_module, &mut module_builder, diagnostics)?;
-    // TODO: add support for data segments
-    // build_data_segments(&wasm_module, &mut module_builder, diagnostics)?;
+    build_data_segments(&translation, &mut module_builder, diagnostics)?;
     let get_num_func_imports = wasm_module.num_imported_funcs;
     let mut func_translator = FuncTranslator::new();
     for (defined_func_idx, body_data) in translation.function_body_inputs {
@@ -97,7 +95,7 @@ fn build_globals(
             .cloned()
             .unwrap_or(format!("gv{}", global_idx.as_u32()));
         let global_init = wasm_module.global_initializers[defined_global_idx];
-        let init = ConstantData::from(global_init.to_le_bytes(&wasm_module));
+        let init = ConstantData::from(global_init.to_le_bytes(&wasm_module, diagnostics)?);
         if let Err(e) = module_builder.declare_global_variable(
             &global_name,
             ir_type(global.ty.clone())?,
@@ -116,28 +114,27 @@ fn build_globals(
 }
 
 fn build_data_segments(
-    wasm_module: &Module,
+    translation: &ModuleTranslation,
     module_builder: &mut ModuleBuilder,
     diagnostics: &DiagnosticsHandler,
 ) -> Result<(), WasmError> {
-    todo!("data segments are not supported yet");
-    // TODO: enable frontend tests for data segments (rust_array, rust_static_mut)
-    // for (data_segment_idx, data_segment) in &self.data_segments {
-    //     let data_segment_name = self.data_segment_names[data_segment_idx].clone();
-    //     let readonly = data_segment_name.contains(".rodata");
-    //     let init = ConstantData::from(data_segment.data);
-    //     let offset = data_segment
-    //         .offset
-    //         .as_i32(&self.info.globals, diagnostics)? as u32;
-    //     let size = init.len() as u32;
-    //     if let Err(e) = module_builder.declare_data_segment(offset, size, init, readonly) {
-    //         let message = format!("Failed to declare data segment '{data_segment_name}' with size '{size}' at '{offset}' with error: {:?}", e);
-    //         diagnostics
-    //             .diagnostic(miden_diagnostics::Severity::Error)
-    //             .with_message(message.clone())
-    //             .emit();
-    //         return Err(WasmError::Unexpected(message));
-    //     }
-    // }
-    // Ok(())
+    for (data_segment_idx, data_segment) in &translation.data_segments {
+        let data_segment_name =
+            translation.module.name_section.data_segment_names[&data_segment_idx].clone();
+        let readonly = data_segment_name.contains(".rodata");
+        let init = ConstantData::from(data_segment.data);
+        let offset = data_segment
+            .offset
+            .as_i32(&translation.module, diagnostics)? as u32;
+        let size = init.len() as u32;
+        if let Err(e) = module_builder.declare_data_segment(offset, size, init, readonly) {
+            let message = format!("Failed to declare data segment '{data_segment_name}' with size '{size}' at '{offset}' with error: {:?}", e);
+            diagnostics
+                .diagnostic(miden_diagnostics::Severity::Error)
+                .with_message(message.clone())
+                .emit();
+            return Err(WasmError::Unexpected(message));
+        }
+    }
+    Ok(())
 }
