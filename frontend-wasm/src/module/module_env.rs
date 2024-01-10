@@ -623,9 +623,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         match ty {
             EntityType::Function(ty) => EntityIndex::Function(self.result.module.push_function(ty)),
             EntityType::Table(ty) => EntityIndex::Table(self.result.module.tables.push(ty)),
-            EntityType::Memory(ty) => {
-                todo!("memory imports")
-            }
+            EntityType::Memory(ty) => EntityIndex::Memory(self.result.module.memories.push(ty)),
             EntityType::Global(ty) => EntityIndex::Global(self.result.module.globals.push(ty)),
             EntityType::Tag(_) => unimplemented!(),
         }

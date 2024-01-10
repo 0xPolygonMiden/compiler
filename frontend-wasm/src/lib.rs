@@ -24,6 +24,3 @@ pub use self::component::translate::translate_component;
 pub use self::config::WasmTranslationConfig;
 pub use self::error::WasmError;
 pub use self::module::translate::translate_module;
-
-// TODO: implement the needed todo!()s
-// TODO: remove commented out code

@@ -146,6 +146,9 @@ pub struct Module {
     /// WebAssembly global initializers for locally-defined globals.
     pub global_initializers: PrimaryMap<DefinedGlobalIndex, GlobalInit>,
 
+    /// WebAssembly module memories.
+    pub memories: PrimaryMap<MemoryIndex, Memory>,
+
     /// Parsed names section.
     pub name_section: NameSection,
 }
@@ -287,7 +290,7 @@ impl Module {
         match index {
             EntityIndex::Global(i) => EntityType::Global(self.globals[i].clone()),
             EntityIndex::Table(i) => EntityType::Table(self.tables[i]),
-            EntityIndex::Memory(i) => todo!("Imported memory types not yet implemented"),
+            EntityIndex::Memory(i) => EntityType::Memory(self.memories[i]),
             EntityIndex::Function(i) => EntityType::Function(self.functions[i].signature),
         }
     }

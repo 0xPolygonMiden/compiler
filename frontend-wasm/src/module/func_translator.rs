@@ -131,7 +131,7 @@ fn declare_locals(
 ) -> WasmResult<()> {
     let ty = ir_type(convert_valtype(wasm_type))?;
     // All locals are initialized to 0.
-    let init = emit_zero(&ty, builder);
+    let init = emit_zero(&ty, builder)?;
     for _ in 0..count {
         let local = Variable::new(*next_local);
         builder.declare_var(local, ty.clone());
