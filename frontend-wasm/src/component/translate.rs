@@ -457,7 +457,7 @@ impl<'a, 'data> Translator<'a, 'data> {
                         } => {
                             let ty = types.component_any_type_at(type_index).unwrap_func();
                             let func = FuncIndex::from_u32(core_func_index);
-                            let options = self.canonical_options(&options);
+                            let options = canonical_options(&options);
                             LocalInitializer::Lift(ty, func, options)
                         }
                         wasmparser::CanonicalFunction::Lower {
@@ -466,7 +466,7 @@ impl<'a, 'data> Translator<'a, 'data> {
                         } => {
                             let lower_ty = types.component_function_at(func_index);
                             let func = ComponentFuncIndex::from_u32(func_index);
-                            let options = self.canonical_options(&options);
+                            let options = canonical_options(&options);
                             let canonical_abi = self.core_func_signature(core_func_index);
 
                             core_func_index += 1;
@@ -546,10 +546,10 @@ impl<'a, 'data> Translator<'a, 'data> {
                     let init = match instance? {
                         wasmparser::Instance::Instantiate { module_index, args } => {
                             let index = ModuleIndex::from_u32(module_index);
-                            self.instantiate_module(index, &args)
+                            instantiate_module(index, &args)
                         }
                         wasmparser::Instance::FromExports(exports) => {
-                            self.instantiate_module_from_exports(&exports)
+                            instantiate_module_from_exports(&exports)
                         }
                     };
                     self.result.initializers.push(init);
@@ -649,58 +649,6 @@ impl<'a, 'data> Translator<'a, 'data> {
         }
 
         Ok(Action::KeepGoing)
-    }
-
-    /// Parses core module instance
-    fn instantiate_module(
-        &mut self,
-        module: ModuleIndex,
-        raw_args: &[wasmparser::InstantiationArg<'data>],
-    ) -> LocalInitializer<'data> {
-        let mut args = HashMap::with_capacity(raw_args.len());
-        for arg in raw_args {
-            match arg.kind {
-                wasmparser::InstantiationArgKind::Instance => {
-                    let idx = ModuleInstanceIndex::from_u32(arg.index);
-                    args.insert(arg.name, idx);
-                }
-            }
-        }
-        LocalInitializer::ModuleInstantiate(module, args)
-    }
-
-    /// Creates a synthetic module from the list of items currently in the
-    /// module and their given names.
-    fn instantiate_module_from_exports(
-        &mut self,
-        exports: &[wasmparser::Export<'data>],
-    ) -> LocalInitializer<'data> {
-        let mut map = HashMap::with_capacity(exports.len());
-        for export in exports {
-            let idx = match export.kind {
-                wasmparser::ExternalKind::Func => {
-                    let index = FuncIndex::from_u32(export.index);
-                    EntityIndex::Function(index)
-                }
-                wasmparser::ExternalKind::Table => {
-                    let index = TableIndex::from_u32(export.index);
-                    EntityIndex::Table(index)
-                }
-                wasmparser::ExternalKind::Memory => {
-                    let index = MemoryIndex::from_u32(export.index);
-                    EntityIndex::Memory(index)
-                }
-                wasmparser::ExternalKind::Global => {
-                    let index = GlobalIndex::from_u32(export.index);
-                    EntityIndex::Global(index)
-                }
-
-                // doesn't get past validation
-                wasmparser::ExternalKind::Tag => unimplemented!("wasm exceptions"),
-            };
-            map.insert(export.name, idx);
-        }
-        LocalInitializer::ModuleSynthetic(map)
     }
 
     /// Parses a component instance
@@ -817,42 +765,6 @@ impl<'a, 'data> Translator<'a, 'data> {
         }
     }
 
-    /// Converts wasmparser's `CanonicalOption` into our `LocalCanonicalOptions`.
-    fn canonical_options(&self, opts: &[wasmparser::CanonicalOption]) -> LocalCanonicalOptions {
-        let mut ret = LocalCanonicalOptions {
-            string_encoding: StringEncoding::Utf8,
-            memory: None,
-            realloc: None,
-            post_return: None,
-        };
-        for opt in opts {
-            match opt {
-                wasmparser::CanonicalOption::UTF8 => {
-                    ret.string_encoding = StringEncoding::Utf8;
-                }
-                wasmparser::CanonicalOption::UTF16 => {
-                    ret.string_encoding = StringEncoding::Utf16;
-                }
-                wasmparser::CanonicalOption::CompactUTF16 => {
-                    ret.string_encoding = StringEncoding::CompactUtf16;
-                }
-                wasmparser::CanonicalOption::Memory(idx) => {
-                    let idx = MemoryIndex::from_u32(*idx);
-                    ret.memory = Some(idx);
-                }
-                wasmparser::CanonicalOption::Realloc(idx) => {
-                    let idx = FuncIndex::from_u32(*idx);
-                    ret.realloc = Some(idx);
-                }
-                wasmparser::CanonicalOption::PostReturn(idx) => {
-                    let idx = FuncIndex::from_u32(*idx);
-                    ret.post_return = Some(idx);
-                }
-            }
-        }
-        return ret;
-    }
-
     /// Converts a core wasm function type into our `SignatureIndex`.
     fn core_func_signature(&mut self, idx: u32) -> SignatureIndex {
         let types = self.validator.types(0).unwrap();
@@ -861,6 +773,92 @@ impl<'a, 'data> Translator<'a, 'data> {
         let ty = convert_func_type(ty);
         self.types.wasm_func_type(id, ty)
     }
+}
+
+/// Parses core module instance
+fn instantiate_module<'data>(
+    module: ModuleIndex,
+    raw_args: &[wasmparser::InstantiationArg<'data>],
+) -> LocalInitializer<'data> {
+    let mut args = HashMap::with_capacity(raw_args.len());
+    for arg in raw_args {
+        match arg.kind {
+            wasmparser::InstantiationArgKind::Instance => {
+                let idx = ModuleInstanceIndex::from_u32(arg.index);
+                args.insert(arg.name, idx);
+            }
+        }
+    }
+    LocalInitializer::ModuleInstantiate(module, args)
+}
+
+/// Creates a synthetic module from the list of items currently in the
+/// module and their given names.
+fn instantiate_module_from_exports<'data>(
+    exports: &[wasmparser::Export<'data>],
+) -> LocalInitializer<'data> {
+    let mut map = HashMap::with_capacity(exports.len());
+    for export in exports {
+        let idx = match export.kind {
+            wasmparser::ExternalKind::Func => {
+                let index = FuncIndex::from_u32(export.index);
+                EntityIndex::Function(index)
+            }
+            wasmparser::ExternalKind::Table => {
+                let index = TableIndex::from_u32(export.index);
+                EntityIndex::Table(index)
+            }
+            wasmparser::ExternalKind::Memory => {
+                let index = MemoryIndex::from_u32(export.index);
+                EntityIndex::Memory(index)
+            }
+            wasmparser::ExternalKind::Global => {
+                let index = GlobalIndex::from_u32(export.index);
+                EntityIndex::Global(index)
+            }
+
+            // doesn't get past validation
+            wasmparser::ExternalKind::Tag => unimplemented!("wasm exceptions"),
+        };
+        map.insert(export.name, idx);
+    }
+    LocalInitializer::ModuleSynthetic(map)
+}
+
+/// Converts wasmparser's `CanonicalOption` into our `LocalCanonicalOptions`.
+fn canonical_options(opts: &[wasmparser::CanonicalOption]) -> LocalCanonicalOptions {
+    let mut ret = LocalCanonicalOptions {
+        string_encoding: StringEncoding::Utf8,
+        memory: None,
+        realloc: None,
+        post_return: None,
+    };
+    for opt in opts {
+        match opt {
+            wasmparser::CanonicalOption::UTF8 => {
+                ret.string_encoding = StringEncoding::Utf8;
+            }
+            wasmparser::CanonicalOption::UTF16 => {
+                ret.string_encoding = StringEncoding::Utf16;
+            }
+            wasmparser::CanonicalOption::CompactUTF16 => {
+                ret.string_encoding = StringEncoding::CompactUtf16;
+            }
+            wasmparser::CanonicalOption::Memory(idx) => {
+                let idx = MemoryIndex::from_u32(*idx);
+                ret.memory = Some(idx);
+            }
+            wasmparser::CanonicalOption::Realloc(idx) => {
+                let idx = FuncIndex::from_u32(*idx);
+                ret.realloc = Some(idx);
+            }
+            wasmparser::CanonicalOption::PostReturn(idx) => {
+                let idx = FuncIndex::from_u32(*idx);
+                ret.post_return = Some(idx);
+            }
+        }
+    }
+    return ret;
 }
 
 /// Converts wasmparser module instance alias information into `LocalInitializer`.
