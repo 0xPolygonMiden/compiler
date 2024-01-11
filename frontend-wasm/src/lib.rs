@@ -7,12 +7,11 @@
 // TODO: remove this once everything is implemented
 #![allow(dead_code)]
 
-mod component;
-mod module;
-
 mod code_translator;
+mod component;
 mod config;
 mod error;
+mod module;
 mod ssa;
 mod translation_utils;
 

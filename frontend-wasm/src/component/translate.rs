@@ -3,9 +3,6 @@
 
 // Based on wasmtime v16.0 Wasm component translation
 
-// TODO: most of the Translator methods can be converted to functions
-// TODO: extract payload types handling from translate_payload to separate methods
-
 use crate::error::WasmResult;
 use crate::module::module_env::{ModuleEnvironment, ModuleTranslation};
 use crate::module::types::{
@@ -294,7 +291,7 @@ impl<'a, 'data> Translator<'a, 'data> {
 
     /// Translates the binary `component`.
     ///
-    /// This is the workhorse of compilation which will parse all of `component`
+    /// This is the workhorse of the translation which will parse all of `component`
     /// and create type information. The `component` does not have to be valid
     /// and it will be validated during compilation.
     pub fn translate(
@@ -356,11 +353,9 @@ impl<'a, 'data> Translator<'a, 'data> {
                     }
                 }
             }
-
             Payload::End(offset) => {
                 assert!(self.result.types.is_none());
                 self.result.types = Some(self.validator.end(offset)?);
-
                 // Exit the current lexical scope. If there is no parent (no
                 // frame currently on the stack) then translation is finished.
                 // Otherwise that means that a nested component has been
@@ -380,263 +375,26 @@ impl<'a, 'data> Translator<'a, 'data> {
                     .initializers
                     .push(LocalInitializer::ComponentStatic(static_idx, closure_args));
             }
-
-            // When we see a type section the types are validated and then
-            // translated into Wasmtime's representation. Each active type
-            // definition is recorded in the `ComponentTypesBuilder` tables, or
-            // this component's active scope.
-            //
-            // Note that the push/pop of the component types scope happens above
-            // in `Version` and `End` since multiple type sections can appear
-            // within a component.
-            Payload::ComponentTypeSection(s) => {
-                let mut component_type_index =
-                    self.validator.types(0).unwrap().component_type_count();
-                self.validator.component_type_section(&s)?;
-
-                // Look for resource types and if a local resource is defined
-                // then an initializer is added to define that resource type and
-                // reference its destructor.
-                let types = self.validator.types(0).unwrap();
-                for ty in s {
-                    match ty? {
-                        wasmparser::ComponentType::Resource { rep, dtor } => {
-                            let rep = convert_valtype(rep);
-                            let id = types
-                                .component_any_type_at(component_type_index)
-                                .unwrap_resource();
-                            let dtor = dtor.map(FuncIndex::from_u32);
-                            self.result
-                                .initializers
-                                .push(LocalInitializer::Resource(id, rep, dtor));
-                        }
-
-                        // no extra processing needed
-                        wasmparser::ComponentType::Defined(_)
-                        | wasmparser::ComponentType::Func(_)
-                        | wasmparser::ComponentType::Instance(_)
-                        | wasmparser::ComponentType::Component(_) => {}
-                    }
-
-                    component_type_index += 1;
-                }
-            }
-            Payload::CoreTypeSection(s) => {
-                self.validator.core_type_section(&s)?;
-            }
-
-            // Processing the import section at this point is relatively simple
-            // which is to simply record the name of the import and the type
-            // information associated with it.
-            Payload::ComponentImportSection(s) => {
-                self.validator.component_import_section(&s)?;
-                for import in s {
-                    let import = import?;
-                    let types = self.validator.types(0).unwrap();
-                    let ty = types
-                        .component_entity_type_of_import(import.name.0)
-                        .unwrap();
-                    self.result
-                        .initializers
-                        .push(LocalInitializer::Import(import.name, ty));
-                }
-            }
-
-            // Entries in the canonical section will get initializers recorded
-            // with the listed options for lifting/lowering.
-            Payload::ComponentCanonicalSection(s) => {
-                let mut core_func_index = self.validator.types(0).unwrap().function_count();
-                self.validator.component_canonical_section(&s)?;
-                for func in s {
-                    let types = self.validator.types(0).unwrap();
-                    let init = match func? {
-                        wasmparser::CanonicalFunction::Lift {
-                            type_index,
-                            core_func_index,
-                            options,
-                        } => {
-                            let ty = types.component_any_type_at(type_index).unwrap_func();
-                            let func = FuncIndex::from_u32(core_func_index);
-                            let options = canonical_options(&options);
-                            LocalInitializer::Lift(ty, func, options)
-                        }
-                        wasmparser::CanonicalFunction::Lower {
-                            func_index,
-                            options,
-                        } => {
-                            let lower_ty = types.component_function_at(func_index);
-                            let func = ComponentFuncIndex::from_u32(func_index);
-                            let options = canonical_options(&options);
-                            let canonical_abi = self.core_func_signature(core_func_index);
-
-                            core_func_index += 1;
-                            LocalInitializer::Lower {
-                                func,
-                                options,
-                                canonical_abi,
-                                lower_ty,
-                            }
-                        }
-                        wasmparser::CanonicalFunction::ResourceNew { resource } => {
-                            let resource = types.component_any_type_at(resource).unwrap_resource();
-                            let ty = self.core_func_signature(core_func_index);
-                            core_func_index += 1;
-                            LocalInitializer::ResourceNew(resource, ty)
-                        }
-                        wasmparser::CanonicalFunction::ResourceDrop { resource } => {
-                            let resource = types.component_any_type_at(resource).unwrap_resource();
-                            let ty = self.core_func_signature(core_func_index);
-                            core_func_index += 1;
-                            LocalInitializer::ResourceDrop(resource, ty)
-                        }
-                        wasmparser::CanonicalFunction::ResourceRep { resource } => {
-                            let resource = types.component_any_type_at(resource).unwrap_resource();
-                            let ty = self.core_func_signature(core_func_index);
-                            core_func_index += 1;
-                            LocalInitializer::ResourceRep(resource, ty)
-                        }
-                    };
-                    self.result.initializers.push(init);
-                }
-            }
-
-            // Core wasm modules are translated inline directly here with the
-            // `ModuleEnvironment` from core wasm compilation. This will return
-            // to the caller the size of the module so it knows how many bytes
-            // of the input are skipped.
-            //
-            // Note that this is just initial type translation of the core wasm
-            // module and actual function translation is deferred until this
-            // entire process has completed.
+            Payload::ComponentTypeSection(s) => self.component_type_section(s)?,
+            Payload::CoreTypeSection(s) => self.validator.core_type_section(&s)?,
+            Payload::ComponentImportSection(s) => self.component_import_section(s)?,
+            Payload::ComponentCanonicalSection(s) => self.component_canonical_section(s)?,
             Payload::ModuleSection { parser, range } => {
-                self.validator.module_section(&range)?;
-                let translation = ModuleEnvironment::new(&self.config, self.validator, self.types)
-                    .parse(parser, &component[range.start..range.end], diagnostics)?;
-                let static_idx = self.static_modules.push(translation);
-                self.result
-                    .initializers
-                    .push(LocalInitializer::ModuleStatic(static_idx));
+                self.module_section(range.clone(), parser, component, diagnostics)?;
                 return Ok(Action::Skip(range.end - range.start));
             }
-
-            // When a sub-component is found then the current translation state
-            // is pushed onto the `lexical_scopes` stack. This will subsequently
-            // get popped as part of `Payload::End` processing above.
-            //
-            // Note that the set of closure args for this new lexical scope
-            // starts empty since it will only get populated if translation of
-            // the nested component ends up aliasing some outer module or
-            // component.
-            Payload::ComponentSection { parser, range } => {
-                self.validator.component_section(&range)?;
-                self.lexical_scopes.push(LexicalScope {
-                    parser: mem::replace(&mut self.parser, parser),
-                    translation: mem::take(&mut self.result),
-                    closure_args: ClosedOverVars::default(),
-                });
-            }
-
-            // Both core wasm instances and component instances record
-            // initializers of what form of instantiation is performed which
-            // largely just records the arguments given from wasmparser into a
-            // `HashMap` for processing later during inlining.
-            Payload::InstanceSection(s) => {
-                self.validator.instance_section(&s)?;
-                for instance in s {
-                    let init = match instance? {
-                        wasmparser::Instance::Instantiate { module_index, args } => {
-                            let index = ModuleIndex::from_u32(module_index);
-                            instantiate_module(index, &args)
-                        }
-                        wasmparser::Instance::FromExports(exports) => {
-                            instantiate_module_from_exports(&exports)
-                        }
-                    };
-                    self.result.initializers.push(init);
-                }
-            }
-            Payload::ComponentInstanceSection(s) => {
-                let mut index = self.validator.types(0).unwrap().component_instance_count();
-                self.validator.component_instance_section(&s)?;
-                for instance in s {
-                    let init = match instance? {
-                        wasmparser::ComponentInstance::Instantiate {
-                            component_index,
-                            args,
-                        } => {
-                            let types = self.validator.types(0).unwrap();
-                            let ty = types.component_instance_at(index);
-                            let index = ComponentIndex::from_u32(component_index);
-                            self.instantiate_component(index, &args, ty)?
-                        }
-                        wasmparser::ComponentInstance::FromExports(exports) => {
-                            self.instantiate_component_from_exports(&exports)?
-                        }
-                    };
-                    self.result.initializers.push(init);
-                    index += 1;
-                }
-            }
-
-            // Exports don't actually fill out the `initializers` array but
-            // instead fill out the one other field in a `Translation`, the
-            // `exports` field (as one might imagine). This for now simply
-            // records the index of what's exported and that's tracked further
-            // later during inlining.
-            Payload::ComponentExportSection(s) => {
-                self.validator.component_export_section(&s)?;
-                for export in s {
-                    let export = export?;
-                    let item = self.kind_to_item(export.kind, export.index)?;
-                    let prev = self.result.exports.insert(export.name.0, item);
-                    assert!(prev.is_none());
-                    self.result
-                        .initializers
-                        .push(LocalInitializer::Export(item));
-                }
-            }
-
+            Payload::ComponentSection { parser, range } => self.component_section(range, parser)?,
+            Payload::InstanceSection(s) => self.core_instance_section(s)?,
+            Payload::ComponentInstanceSection(s) => self.component_instance_section(s)?,
+            Payload::ComponentExportSection(s) => self.component_export_section(s)?,
             Payload::ComponentStartSection { start, range } => {
                 self.validator.component_start_section(&start, &range)?;
                 unimplemented!("component start section");
             }
-
-            // Aliases of instance exports (either core or component) will be
-            // recorded as an initializer of the appropriate type with outer
-            // aliases handled specially via upvars and type processing.
-            Payload::ComponentAliasSection(s) => {
-                self.validator.component_alias_section(&s)?;
-                for alias in s {
-                    let init = match alias? {
-                        wasmparser::ComponentAlias::InstanceExport {
-                            kind: _,
-                            instance_index,
-                            name,
-                        } => {
-                            let instance = ComponentInstanceIndex::from_u32(instance_index);
-                            LocalInitializer::AliasComponentExport(instance, name)
-                        }
-                        wasmparser::ComponentAlias::Outer { kind, count, index } => {
-                            self.alias_component_outer(kind, count, index);
-                            continue;
-                        }
-                        wasmparser::ComponentAlias::CoreInstanceExport {
-                            kind,
-                            instance_index,
-                            name,
-                        } => {
-                            let instance = ModuleInstanceIndex::from_u32(instance_index);
-                            alias_module_instance_export(kind, instance, name)
-                        }
-                    };
-                    self.result.initializers.push(init);
-                }
-            }
-
+            Payload::ComponentAliasSection(s) => self.component_alias_section(s)?,
             // All custom sections are ignored at this time.
             // and parse a `name` section here.
             Payload::CustomSection { .. } => {}
-
             // Anything else is either not reachable since we never enable the
             // feature or we do enable it and it's a bug we don't
             // implement it, so let validation take care of most errors here and
@@ -649,6 +407,280 @@ impl<'a, 'data> Translator<'a, 'data> {
         }
 
         Ok(Action::KeepGoing)
+    }
+
+    fn component_type_section(
+        &mut self,
+        s: wasmparser::ComponentTypeSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        // When we see a type section the types are validated and then parsed.
+        // Each active type definition is recorded in the
+        // `ComponentTypesBuilder` tables, or this component's active scope.
+        //
+        // Note that the push/pop of the component types scope happens above in
+        // `Version` and `End` since multiple type sections can appear within a
+        // component.
+        let mut component_type_index = self.validator.types(0).unwrap().component_type_count();
+        self.validator.component_type_section(&s)?;
+        let types = self.validator.types(0).unwrap();
+        Ok(for ty in s {
+            match ty? {
+                wasmparser::ComponentType::Resource { rep, dtor } => {
+                    let rep = convert_valtype(rep);
+                    let id = types
+                        .component_any_type_at(component_type_index)
+                        .unwrap_resource();
+                    let dtor = dtor.map(FuncIndex::from_u32);
+                    self.result
+                        .initializers
+                        .push(LocalInitializer::Resource(id, rep, dtor));
+                }
+
+                // no extra processing needed
+                wasmparser::ComponentType::Defined(_)
+                | wasmparser::ComponentType::Func(_)
+                | wasmparser::ComponentType::Instance(_)
+                | wasmparser::ComponentType::Component(_) => {}
+            }
+
+            component_type_index += 1;
+        })
+    }
+
+    fn component_import_section(
+        &mut self,
+        s: wasmparser::ComponentImportSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        // Processing the import section at this point is relatively simple
+        // which is to simply record the name of the import and the type
+        // information associated with it.
+        self.validator.component_import_section(&s)?;
+        Ok(for import in s {
+            let import = import?;
+            let types = self.validator.types(0).unwrap();
+            let ty = types
+                .component_entity_type_of_import(import.name.0)
+                .unwrap();
+            self.result
+                .initializers
+                .push(LocalInitializer::Import(import.name, ty));
+        })
+    }
+
+    fn component_canonical_section(
+        &mut self,
+        s: wasmparser::ComponentCanonicalSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        // Entries in the canonical section will get initializers recorded
+        // with the listed options for lifting/lowering.
+        let mut core_func_index = self.validator.types(0).unwrap().function_count();
+        self.validator.component_canonical_section(&s)?;
+        Ok(for func in s {
+            let types = self.validator.types(0).unwrap();
+            let init = match func? {
+                wasmparser::CanonicalFunction::Lift {
+                    type_index,
+                    core_func_index,
+                    options,
+                } => {
+                    let ty = types.component_any_type_at(type_index).unwrap_func();
+                    let func = FuncIndex::from_u32(core_func_index);
+                    let options = canonical_options(&options);
+                    LocalInitializer::Lift(ty, func, options)
+                }
+                wasmparser::CanonicalFunction::Lower {
+                    func_index,
+                    options,
+                } => {
+                    let lower_ty = types.component_function_at(func_index);
+                    let func = ComponentFuncIndex::from_u32(func_index);
+                    let options = canonical_options(&options);
+                    let canonical_abi = self.core_func_signature(core_func_index);
+
+                    core_func_index += 1;
+                    LocalInitializer::Lower {
+                        func,
+                        options,
+                        canonical_abi,
+                        lower_ty,
+                    }
+                }
+                wasmparser::CanonicalFunction::ResourceNew { resource } => {
+                    let resource = types.component_any_type_at(resource).unwrap_resource();
+                    let ty = self.core_func_signature(core_func_index);
+                    core_func_index += 1;
+                    LocalInitializer::ResourceNew(resource, ty)
+                }
+                wasmparser::CanonicalFunction::ResourceDrop { resource } => {
+                    let resource = types.component_any_type_at(resource).unwrap_resource();
+                    let ty = self.core_func_signature(core_func_index);
+                    core_func_index += 1;
+                    LocalInitializer::ResourceDrop(resource, ty)
+                }
+                wasmparser::CanonicalFunction::ResourceRep { resource } => {
+                    let resource = types.component_any_type_at(resource).unwrap_resource();
+                    let ty = self.core_func_signature(core_func_index);
+                    core_func_index += 1;
+                    LocalInitializer::ResourceRep(resource, ty)
+                }
+            };
+            self.result.initializers.push(init);
+        })
+    }
+
+    fn module_section(
+        &mut self,
+        range: std::ops::Range<usize>,
+        parser: Parser,
+        component: &'data [u8],
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), crate::WasmError> {
+        // Core wasm modules are translated inline directly here with the
+        // `ModuleEnvironment` from core wasm compilation. This will return
+        // to the caller the size of the module so it knows how many bytes
+        // of the input are skipped.
+        //
+        // Note that this is just initial type parsing of the core wasm
+        // module and actual function translation is deferred until this
+        // entire process has completed.
+        self.validator.module_section(&range)?;
+        let translation = ModuleEnvironment::new(&self.config, self.validator, self.types).parse(
+            parser,
+            &component[range.start..range.end],
+            diagnostics,
+        )?;
+        let static_idx = self.static_modules.push(translation);
+        self.result
+            .initializers
+            .push(LocalInitializer::ModuleStatic(static_idx));
+        Ok(())
+    }
+
+    fn component_section(
+        &mut self,
+        range: std::ops::Range<usize>,
+        parser: Parser,
+    ) -> Result<(), crate::WasmError> {
+        // When a sub-component is found then the current translation state
+        // is pushed onto the `lexical_scopes` stack. This will subsequently
+        // get popped as part of `Payload::End` processing above.
+        //
+        // Note that the set of closure args for this new lexical scope
+        // starts empty since it will only get populated if translation of
+        // the nested component ends up aliasing some outer module or
+        // component.
+        self.validator.component_section(&range)?;
+        self.lexical_scopes.push(LexicalScope {
+            parser: mem::replace(&mut self.parser, parser),
+            translation: mem::take(&mut self.result),
+            closure_args: ClosedOverVars::default(),
+        });
+        Ok(())
+    }
+
+    fn core_instance_section(
+        &mut self,
+        s: wasmparser::InstanceSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        // Both core wasm instances and component instances record
+        // initializers of what form of instantiation is performed which
+        // largely just records the arguments given from wasmparser into a
+        // `HashMap` for processing later during inlining.
+        self.validator.instance_section(&s)?;
+        Ok(for instance in s {
+            let init = match instance? {
+                wasmparser::Instance::Instantiate { module_index, args } => {
+                    let index = ModuleIndex::from_u32(module_index);
+                    instantiate_module(index, &args)
+                }
+                wasmparser::Instance::FromExports(exports) => {
+                    instantiate_module_from_exports(&exports)
+                }
+            };
+            self.result.initializers.push(init);
+        })
+    }
+
+    fn component_instance_section(
+        &mut self,
+        s: wasmparser::ComponentInstanceSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        let mut index = self.validator.types(0).unwrap().component_instance_count();
+        self.validator.component_instance_section(&s)?;
+        Ok(for instance in s {
+            let init = match instance? {
+                wasmparser::ComponentInstance::Instantiate {
+                    component_index,
+                    args,
+                } => {
+                    let types = self.validator.types(0).unwrap();
+                    let ty = types.component_instance_at(index);
+                    let index = ComponentIndex::from_u32(component_index);
+                    self.instantiate_component(index, &args, ty)?
+                }
+                wasmparser::ComponentInstance::FromExports(exports) => {
+                    self.instantiate_component_from_exports(&exports)?
+                }
+            };
+            self.result.initializers.push(init);
+            index += 1;
+        })
+    }
+
+    fn component_export_section(
+        &mut self,
+        s: wasmparser::ComponentExportSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        // Exports don't actually fill out the `initializers` array but
+        // instead fill out the one other field in a `Translation`, the
+        // `exports` field (as one might imagine). This for now simply
+        // records the index of what's exported and that's tracked further
+        // later during inlining.
+        self.validator.component_export_section(&s)?;
+        Ok(for export in s {
+            let export = export?;
+            let item = self.kind_to_item(export.kind, export.index)?;
+            let prev = self.result.exports.insert(export.name.0, item);
+            assert!(prev.is_none());
+            self.result
+                .initializers
+                .push(LocalInitializer::Export(item));
+        })
+    }
+
+    fn component_alias_section(
+        &mut self,
+        s: wasmparser::ComponentAliasSectionReader<'data>,
+    ) -> Result<(), crate::WasmError> {
+        // Aliases of instance exports (either core or component) will be
+        // recorded as an initializer of the appropriate type with outer
+        // aliases handled specially via upvars and type processing.
+        self.validator.component_alias_section(&s)?;
+        Ok(for alias in s {
+            let init = match alias? {
+                wasmparser::ComponentAlias::InstanceExport {
+                    kind: _,
+                    instance_index,
+                    name,
+                } => {
+                    let instance = ComponentInstanceIndex::from_u32(instance_index);
+                    LocalInitializer::AliasComponentExport(instance, name)
+                }
+                wasmparser::ComponentAlias::Outer { kind, count, index } => {
+                    self.alias_component_outer(kind, count, index);
+                    continue;
+                }
+                wasmparser::ComponentAlias::CoreInstanceExport {
+                    kind,
+                    instance_index,
+                    name,
+                } => {
+                    let instance = ModuleInstanceIndex::from_u32(instance_index);
+                    alias_module_instance_export(kind, instance, name)
+                }
+            };
+            self.result.initializers.push(init);
+        })
     }
 
     /// Parses a component instance
