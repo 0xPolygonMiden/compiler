@@ -12,6 +12,7 @@ use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::PrimaryMap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
 use wasmparser::types::{CoreTypeId, Types};
@@ -140,21 +141,20 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     ///
     /// The result of parsing, [`ModuleTranslation`], contains everything
     /// necessary to translate functions afterwards
-    pub fn translate(
+    pub fn parse(
         mut self,
         parser: Parser,
         data: &'data [u8],
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<ModuleTranslation<'data>> {
         for payload in parser.parse_all(data) {
-            self.translate_payload(payload?, diagnostics)?;
+            self.parse_payload(payload?, diagnostics)?;
         }
-
         Ok(self.result)
     }
 
-    // TODO: extract each section into its own function
-    fn translate_payload(
+    /// Parses a single payload from the wasm module.
+    fn parse_payload(
         &mut self,
         payload: Payload<'data>,
         diagnostics: &DiagnosticsHandler,
@@ -173,376 +173,42 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     }
                 }
             }
-
-            Payload::End(offset) => {
-                self.result.types = Some(self.validator.end(offset)?);
-
-                // With the `escaped_funcs` set of functions finished
-                // we can calculate the set of signatures that are exported as
-                // the set of exported functions' signatures.
-                self.result.exported_signatures = self
-                    .result
-                    .module
-                    .functions
-                    .iter()
-                    .filter_map(|(_, func)| {
-                        if func.is_escaping() {
-                            Some(func.signature)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                self.result.exported_signatures.sort_unstable();
-                self.result.exported_signatures.dedup();
-            }
-
-            Payload::TypeSection(types) => {
-                self.validator.type_section(&types)?;
-                let num = usize::try_from(types.count()).unwrap();
-                self.result.module.types.reserve(num);
-                self.types.reserve_wasm_signatures(num);
-
-                for i in 0..types.count() {
-                    let types = self.validator.types(0).unwrap();
-                    let ty = types.core_type_at(i);
-                    self.declare_type(ty.unwrap_sub())?;
-                }
-            }
-
-            Payload::ImportSection(imports) => {
-                self.validator.import_section(&imports)?;
-
-                let cnt = usize::try_from(imports.count()).unwrap();
-                self.result.module.initializers.reserve(cnt);
-
-                for entry in imports {
-                    let import = entry?;
-                    let ty = match import.ty {
-                        TypeRef::Func(index) => {
-                            let index = TypeIndex::from_u32(index);
-                            let sig_index = self.result.module.types[index].unwrap_function();
-                            self.result.module.num_imported_funcs += 1;
-                            self.result.debuginfo.wasm_file.imported_func_count += 1;
-                            EntityType::Function(sig_index)
-                        }
-                        TypeRef::Memory(ty) => {
-                            self.result.module.num_imported_memories += 1;
-                            EntityType::Memory(ty.into())
-                        }
-                        TypeRef::Global(ty) => {
-                            self.result.module.num_imported_globals += 1;
-                            EntityType::Global(convert_global_type(&ty))
-                        }
-                        TypeRef::Table(ty) => {
-                            self.result.module.num_imported_tables += 1;
-                            EntityType::Table(convert_table_type(&ty))
-                        }
-
-                        // doesn't get past validation
-                        TypeRef::Tag(_) => unreachable!(),
-                    };
-                    self.declare_import(import.module, import.name, ty);
-                }
-            }
-
-            Payload::FunctionSection(functions) => {
-                self.validator.function_section(&functions)?;
-
-                let cnt = usize::try_from(functions.count()).unwrap();
-                self.result.module.functions.reserve_exact(cnt);
-
-                for entry in functions {
-                    let sigindex = entry?;
-                    let ty = TypeIndex::from_u32(sigindex);
-                    let sig_index = self.result.module.types[ty].unwrap_function();
-                    self.result.module.push_function(sig_index);
-                }
-            }
-
-            Payload::TableSection(tables) => {
-                self.validator.table_section(&tables)?;
-                let cnt = usize::try_from(tables.count()).unwrap();
-                self.result.module.tables.reserve_exact(cnt);
-
-                for entry in tables {
-                    let wasmparser::Table { ty, init } = entry?;
-                    let table = convert_table_type(&ty);
-                    self.result.module.tables.push(table);
-                    let init = match init {
-                        wasmparser::TableInit::RefNull => TableInitialValue::Null {
-                            precomputed: Vec::new(),
-                        },
-                        wasmparser::TableInit::Expr(cexpr) => {
-                            let mut init_expr_reader = cexpr.get_binary_reader();
-                            match init_expr_reader.read_operator()? {
-                                Operator::RefNull { hty: _ } => TableInitialValue::Null {
-                                    precomputed: Vec::new(),
-                                },
-                                Operator::RefFunc { function_index } => {
-                                    let index = FuncIndex::from_u32(function_index);
-                                    self.flag_func_escaped(index);
-                                    TableInitialValue::FuncRef(index)
-                                }
-                                s => {
-                                    return Err(WasmError::Unsupported(format!(
-                                        "unsupported init expr in table section: {:?}",
-                                        s
-                                    )));
-                                }
-                            }
-                        }
-                    };
-                    self.result
-                        .module
-                        .table_initialization
-                        .initial_values
-                        .push(init);
-                }
-            }
-
-            Payload::MemorySection(memories) => {
-                self.validator.memory_section(&memories)?;
-                let cnt = usize::try_from(memories.count()).unwrap();
-                assert_eq!(cnt, 1, "only one memory per module is supported");
-            }
-
+            Payload::End(offset) => self.payload_end(offset)?,
+            Payload::TypeSection(types) => self.type_section(types)?,
+            Payload::ImportSection(imports) => self.import_section(imports)?,
+            Payload::FunctionSection(functions) => self.function_section(functions)?,
+            Payload::TableSection(tables) => self.table_section(tables)?,
+            Payload::MemorySection(memories) => self.memory_section(memories)?,
             Payload::TagSection(tags) => {
                 self.validator.tag_section(&tags)?;
-
                 // This feature isn't enabled at this time, so we should
                 // never get here.
                 unreachable!();
             }
-
-            Payload::GlobalSection(globals) => {
-                self.validator.global_section(&globals)?;
-
-                let cnt = usize::try_from(globals.count()).unwrap();
-                self.result.module.globals.reserve_exact(cnt);
-
-                for entry in globals {
-                    let wasmparser::Global { ty, init_expr } = entry?;
-                    let mut init_expr_reader = init_expr.get_binary_reader();
-                    let initializer = match init_expr_reader.read_operator()? {
-                        Operator::I32Const { value } => GlobalInit::I32Const(value),
-                        Operator::I64Const { value } => GlobalInit::I64Const(value),
-                        Operator::F32Const { value } => GlobalInit::F32Const(value.bits()),
-                        Operator::F64Const { value } => GlobalInit::F64Const(value.bits()),
-                        Operator::V128Const { value } => {
-                            GlobalInit::V128Const(u128::from_le_bytes(*value.bytes()))
-                        }
-                        Operator::GlobalGet { global_index } => {
-                            GlobalInit::GetGlobal(GlobalIndex::from_u32(global_index))
-                        }
-                        s => {
-                            return Err(WasmError::Unsupported(format!(
-                                "unsupported init expr in global section: {:?}",
-                                s
-                            )));
-                        }
-                    };
-                    let ty = convert_global_type(&ty);
-                    self.result.module.globals.push(ty);
-                    self.result.module.global_initializers.push(initializer);
-                }
-            }
-
-            Payload::ExportSection(exports) => {
-                self.validator.export_section(&exports)?;
-
-                let cnt = usize::try_from(exports.count()).unwrap();
-                self.result.module.exports.reserve(cnt);
-
-                for entry in exports {
-                    let wasmparser::Export { name, kind, index } = entry?;
-                    let entity = match kind {
-                        ExternalKind::Func => {
-                            let index = FuncIndex::from_u32(index);
-                            self.flag_func_escaped(index);
-                            EntityIndex::Function(index)
-                        }
-                        ExternalKind::Table => EntityIndex::Table(TableIndex::from_u32(index)),
-                        ExternalKind::Memory => EntityIndex::Memory(MemoryIndex::from_u32(index)),
-                        ExternalKind::Global => EntityIndex::Global(GlobalIndex::from_u32(index)),
-
-                        // this never gets past validation
-                        ExternalKind::Tag => unreachable!(),
-                    };
-                    self.result
-                        .module
-                        .exports
-                        .insert(String::from(name), entity);
-                }
-            }
-
-            Payload::StartSection { func, range } => {
-                self.validator.start_section(func, &range)?;
-
-                let func_index = FuncIndex::from_u32(func);
-                self.flag_func_escaped(func_index);
-                debug_assert!(self.result.module.start_func.is_none());
-                self.result.module.start_func = Some(func_index);
-            }
-
-            Payload::ElementSection(elements) => {
-                self.validator.element_section(&elements)?;
-
-                for (index, entry) in elements.into_iter().enumerate() {
-                    let wasmparser::Element {
-                        kind,
-                        items,
-                        range: _,
-                    } = entry?;
-
-                    // Build up a list of `FuncIndex` corresponding to all the
-                    // entries listed in this segment. Note that it's not
-                    // possible to create anything other than a `ref.null
-                    // extern` for externref segments, so those just get
-                    // translated to the reserved value of `FuncIndex`.
-                    let mut elements = Vec::new();
-                    match items {
-                        ElementItems::Functions(funcs) => {
-                            elements.reserve(usize::try_from(funcs.count()).unwrap());
-                            for func in funcs {
-                                let func = FuncIndex::from_u32(func?);
-                                self.flag_func_escaped(func);
-                                elements.push(func);
-                            }
-                        }
-                        ElementItems::Expressions(_ty, funcs) => {
-                            elements.reserve(usize::try_from(funcs.count()).unwrap());
-                            for func in funcs {
-                                let func = match func?.get_binary_reader().read_operator()? {
-                                    Operator::RefNull { .. } => FuncIndex::reserved_value(),
-                                    Operator::RefFunc { function_index } => {
-                                        let func = FuncIndex::from_u32(function_index);
-                                        self.flag_func_escaped(func);
-                                        func
-                                    }
-                                    s => {
-                                        return Err(WasmError::Unsupported(format!(
-                                            "unsupported init expr in element section: {:?}",
-                                            s
-                                        )));
-                                    }
-                                };
-                                elements.push(func);
-                            }
-                        }
-                    }
-
-                    match kind {
-                        ElementKind::Active {
-                            table_index,
-                            offset_expr,
-                        } => {
-                            let table_index = TableIndex::from_u32(table_index.unwrap_or(0));
-                            let mut offset_expr_reader = offset_expr.get_binary_reader();
-                            let (base, offset) = match offset_expr_reader.read_operator()? {
-                                Operator::I32Const { value } => (None, value as u32),
-                                Operator::GlobalGet { global_index } => {
-                                    (Some(GlobalIndex::from_u32(global_index)), 0)
-                                }
-                                ref s => {
-                                    return Err(WasmError::Unsupported(format!(
-                                        "unsupported init expr in element section: {:?}",
-                                        s
-                                    )));
-                                }
-                            };
-
-                            self.result
-                                .module
-                                .table_initialization
-                                .segments
-                                .push(TableSegment {
-                                    table_index,
-                                    base,
-                                    offset,
-                                    elements: elements.into(),
-                                });
-                        }
-
-                        ElementKind::Passive => {
-                            let elem_index = ElemIndex::from_u32(index as u32);
-                            let index = self.result.module.passive_elements.len();
-                            self.result.module.passive_elements.push(elements.into());
-                            self.result
-                                .module
-                                .passive_elements_map
-                                .insert(elem_index, index);
-                        }
-
-                        ElementKind::Declared => {}
-                    }
-                }
-            }
-
+            Payload::GlobalSection(globals) => self.global_section(globals)?,
+            Payload::ExportSection(exports) => self.export_section(exports)?,
+            Payload::StartSection { func, range } => self.start_section(func, range)?,
+            Payload::ElementSection(elements) => self.element_section(elements)?,
             Payload::CodeSectionStart { count, range, .. } => {
-                self.validator.code_section_start(count, &range)?;
-                let cnt = usize::try_from(count).unwrap();
-                self.result.function_body_inputs.reserve_exact(cnt);
-                self.result.debuginfo.wasm_file.code_section_offset = range.start as u64;
+                self.code_section_start(count, range)?
             }
-
-            Payload::CodeSectionEntry(mut body) => {
-                let validator = self.validator.code_section_entry(&body)?;
-                let func_index =
-                    self.result.code_index + self.result.module.num_imported_funcs as u32;
-                let func_index = FuncIndex::from_u32(func_index);
-
-                if self.config.generate_native_debuginfo {
-                    let sig_index = self.result.module.functions[func_index].signature;
-                    let sig = &self.types[sig_index];
-                    let mut locals = Vec::new();
-                    for pair in body.get_locals_reader()? {
-                        let (cnt, ty) = pair?;
-                        let ty = convert_valtype(ty);
-                        locals.push((cnt, ty));
-                    }
-                    self.result
-                        .debuginfo
-                        .wasm_file
-                        .funcs
-                        .push(FunctionMetadata {
-                            locals: locals.into_boxed_slice(),
-                            params: sig.params().into(),
-                        });
-                }
-                body.allow_memarg64(self.validator.features().memory64);
-                self.result
-                    .function_body_inputs
-                    .push(FunctionBodyData { validator, body });
-                self.result.code_index += 1;
-            }
-
-            Payload::DataSection(data) => {
-                self.validator.data_section(&data)?;
-                self.data_section(data, diagnostics)?;
-            }
-
+            Payload::CodeSectionEntry(body) => self.code_section_entry(body)?,
+            Payload::DataSection(data) => self.data_section(data, diagnostics)?,
             Payload::DataCountSection { count, range } => {
                 self.validator.data_count_section(count, &range)?;
-
                 // Note: the count passed in here is the *total* segment count
                 // There is no way to reserve for just the passive segments as
                 // they are discovered when iterating the data section entries
                 // Given that the total segment count might be much larger than
                 // the passive count, do not reserve anything here.
             }
-
             Payload::CustomSection(s) if s.name() == "name" => {
                 let result = self.name_section(NameSectionReader::new(s.data(), s.data_offset()));
                 if let Err(e) = result {
                     log::warn!("failed to parse name section {:?}", e);
                 }
             }
-
-            Payload::CustomSection(s) => {
-                self.register_dwarf_section(&s);
-            }
-
+            Payload::CustomSection(s) => self.dwarf_section(&s),
             // It's expected that validation will probably reject other
             // payloads such as `UnknownSection` or those related to the
             // component model.
@@ -554,7 +220,490 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         Ok(())
     }
 
-    fn register_dwarf_section(&mut self, section: &CustomSectionReader<'data>) {
+    fn payload_end(&mut self, offset: usize) -> Result<(), WasmError> {
+        self.result.types = Some(self.validator.end(offset)?);
+        self.result.exported_signatures = self
+            .result
+            .module
+            .functions
+            .iter()
+            .filter_map(|(_, func)| {
+                if func.is_escaping() {
+                    Some(func.signature)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.result.exported_signatures.sort_unstable();
+        self.result.exported_signatures.dedup();
+        Ok(())
+    }
+
+    fn type_section(
+        &mut self,
+        types: wasmparser::TypeSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.type_section(&types)?;
+        let num = usize::try_from(types.count()).unwrap();
+        self.result.module.types.reserve(num);
+        self.types.reserve_wasm_signatures(num);
+        Ok(for i in 0..types.count() {
+            let types = self.validator.types(0).unwrap();
+            let ty = types.core_type_at(i);
+            self.declare_type(ty.unwrap_sub())?;
+        })
+    }
+
+    fn import_section(
+        &mut self,
+        imports: wasmparser::ImportSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.import_section(&imports)?;
+        let cnt = usize::try_from(imports.count()).unwrap();
+        self.result.module.initializers.reserve(cnt);
+        Ok(for entry in imports {
+            let import = entry?;
+            let ty = match import.ty {
+                TypeRef::Func(index) => {
+                    let index = TypeIndex::from_u32(index);
+                    let sig_index = self.result.module.types[index].unwrap_function();
+                    self.result.module.num_imported_funcs += 1;
+                    self.result.debuginfo.wasm_file.imported_func_count += 1;
+                    EntityType::Function(sig_index)
+                }
+                TypeRef::Memory(ty) => {
+                    self.result.module.num_imported_memories += 1;
+                    EntityType::Memory(ty.into())
+                }
+                TypeRef::Global(ty) => {
+                    self.result.module.num_imported_globals += 1;
+                    EntityType::Global(convert_global_type(&ty))
+                }
+                TypeRef::Table(ty) => {
+                    self.result.module.num_imported_tables += 1;
+                    EntityType::Table(convert_table_type(&ty))
+                }
+
+                // doesn't get past validation
+                TypeRef::Tag(_) => unreachable!(),
+            };
+            self.declare_import(import.module, import.name, ty);
+        })
+    }
+
+    fn function_section(
+        &mut self,
+        functions: wasmparser::FunctionSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.function_section(&functions)?;
+        let cnt = usize::try_from(functions.count()).unwrap();
+        self.result.module.functions.reserve_exact(cnt);
+        Ok(for entry in functions {
+            let sigindex = entry?;
+            let ty = TypeIndex::from_u32(sigindex);
+            let sig_index = self.result.module.types[ty].unwrap_function();
+            self.result.module.push_function(sig_index);
+        })
+    }
+
+    fn table_section(
+        &mut self,
+        tables: wasmparser::TableSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.table_section(&tables)?;
+        let cnt = usize::try_from(tables.count()).unwrap();
+        self.result.module.tables.reserve_exact(cnt);
+        Ok(for entry in tables {
+            let wasmparser::Table { ty, init } = entry?;
+            let table = convert_table_type(&ty);
+            self.result.module.tables.push(table);
+            let init = match init {
+                wasmparser::TableInit::RefNull => TableInitialValue::Null {
+                    precomputed: Vec::new(),
+                },
+                wasmparser::TableInit::Expr(cexpr) => {
+                    let mut init_expr_reader = cexpr.get_binary_reader();
+                    match init_expr_reader.read_operator()? {
+                        Operator::RefNull { hty: _ } => TableInitialValue::Null {
+                            precomputed: Vec::new(),
+                        },
+                        Operator::RefFunc { function_index } => {
+                            let index = FuncIndex::from_u32(function_index);
+                            self.flag_func_escaped(index);
+                            TableInitialValue::FuncRef(index)
+                        }
+                        s => {
+                            return Err(WasmError::Unsupported(format!(
+                                "unsupported init expr in table section: {:?}",
+                                s
+                            )));
+                        }
+                    }
+                }
+            };
+            self.result
+                .module
+                .table_initialization
+                .initial_values
+                .push(init);
+        })
+    }
+
+    fn memory_section(
+        &mut self,
+        memories: wasmparser::MemorySectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.memory_section(&memories)?;
+        let cnt = usize::try_from(memories.count()).unwrap();
+        assert_eq!(cnt, 1, "only one memory per module is supported");
+        Ok(())
+    }
+
+    fn global_section(
+        &mut self,
+        globals: wasmparser::GlobalSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.global_section(&globals)?;
+        let cnt = usize::try_from(globals.count()).unwrap();
+        self.result.module.globals.reserve_exact(cnt);
+        Ok(for entry in globals {
+            let wasmparser::Global { ty, init_expr } = entry?;
+            let mut init_expr_reader = init_expr.get_binary_reader();
+            let initializer = match init_expr_reader.read_operator()? {
+                Operator::I32Const { value } => GlobalInit::I32Const(value),
+                Operator::I64Const { value } => GlobalInit::I64Const(value),
+                Operator::F32Const { value } => GlobalInit::F32Const(value.bits()),
+                Operator::F64Const { value } => GlobalInit::F64Const(value.bits()),
+                Operator::V128Const { value } => {
+                    GlobalInit::V128Const(u128::from_le_bytes(*value.bytes()))
+                }
+                Operator::GlobalGet { global_index } => {
+                    GlobalInit::GetGlobal(GlobalIndex::from_u32(global_index))
+                }
+                s => {
+                    return Err(WasmError::Unsupported(format!(
+                        "unsupported init expr in global section: {:?}",
+                        s
+                    )));
+                }
+            };
+            let ty = convert_global_type(&ty);
+            self.result.module.globals.push(ty);
+            self.result.module.global_initializers.push(initializer);
+        })
+    }
+
+    fn export_section(
+        &mut self,
+        exports: wasmparser::ExportSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.export_section(&exports)?;
+        let cnt = usize::try_from(exports.count()).unwrap();
+        self.result.module.exports.reserve(cnt);
+        Ok(for entry in exports {
+            let wasmparser::Export { name, kind, index } = entry?;
+            let entity = match kind {
+                ExternalKind::Func => {
+                    let index = FuncIndex::from_u32(index);
+                    self.flag_func_escaped(index);
+                    EntityIndex::Function(index)
+                }
+                ExternalKind::Table => EntityIndex::Table(TableIndex::from_u32(index)),
+                ExternalKind::Memory => EntityIndex::Memory(MemoryIndex::from_u32(index)),
+                ExternalKind::Global => EntityIndex::Global(GlobalIndex::from_u32(index)),
+
+                // this never gets past validation
+                ExternalKind::Tag => unreachable!(),
+            };
+            self.result
+                .module
+                .exports
+                .insert(String::from(name), entity);
+        })
+    }
+
+    fn start_section(&mut self, func: u32, range: Range<usize>) -> Result<(), WasmError> {
+        self.validator.start_section(func, &range)?;
+        let func_index = FuncIndex::from_u32(func);
+        self.flag_func_escaped(func_index);
+        debug_assert!(self.result.module.start_func.is_none());
+        self.result.module.start_func = Some(func_index);
+        Ok(())
+    }
+
+    fn element_section(
+        &mut self,
+        elements: wasmparser::ElementSectionReader<'data>,
+    ) -> Result<(), WasmError> {
+        self.validator.element_section(&elements)?;
+        Ok(for (index, entry) in elements.into_iter().enumerate() {
+            let wasmparser::Element {
+                kind,
+                items,
+                range: _,
+            } = entry?;
+
+            // Build up a list of `FuncIndex` corresponding to all the
+            // entries listed in this segment. Note that it's not
+            // possible to create anything other than a `ref.null
+            // extern` for externref segments, so those just get
+            // translated to the reserved value of `FuncIndex`.
+            let mut elements = Vec::new();
+            match items {
+                ElementItems::Functions(funcs) => {
+                    elements.reserve(usize::try_from(funcs.count()).unwrap());
+                    for func in funcs {
+                        let func = FuncIndex::from_u32(func?);
+                        self.flag_func_escaped(func);
+                        elements.push(func);
+                    }
+                }
+                ElementItems::Expressions(_ty, funcs) => {
+                    elements.reserve(usize::try_from(funcs.count()).unwrap());
+                    for func in funcs {
+                        let func = match func?.get_binary_reader().read_operator()? {
+                            Operator::RefNull { .. } => FuncIndex::reserved_value(),
+                            Operator::RefFunc { function_index } => {
+                                let func = FuncIndex::from_u32(function_index);
+                                self.flag_func_escaped(func);
+                                func
+                            }
+                            s => {
+                                return Err(WasmError::Unsupported(format!(
+                                    "unsupported init expr in element section: {:?}",
+                                    s
+                                )));
+                            }
+                        };
+                        elements.push(func);
+                    }
+                }
+            }
+
+            match kind {
+                ElementKind::Active {
+                    table_index,
+                    offset_expr,
+                } => {
+                    let table_index = TableIndex::from_u32(table_index.unwrap_or(0));
+                    let mut offset_expr_reader = offset_expr.get_binary_reader();
+                    let (base, offset) = match offset_expr_reader.read_operator()? {
+                        Operator::I32Const { value } => (None, value as u32),
+                        Operator::GlobalGet { global_index } => {
+                            (Some(GlobalIndex::from_u32(global_index)), 0)
+                        }
+                        ref s => {
+                            return Err(WasmError::Unsupported(format!(
+                                "unsupported init expr in element section: {:?}",
+                                s
+                            )));
+                        }
+                    };
+
+                    self.result
+                        .module
+                        .table_initialization
+                        .segments
+                        .push(TableSegment {
+                            table_index,
+                            base,
+                            offset,
+                            elements: elements.into(),
+                        });
+                }
+
+                ElementKind::Passive => {
+                    let elem_index = ElemIndex::from_u32(index as u32);
+                    let index = self.result.module.passive_elements.len();
+                    self.result.module.passive_elements.push(elements.into());
+                    self.result
+                        .module
+                        .passive_elements_map
+                        .insert(elem_index, index);
+                }
+
+                ElementKind::Declared => {}
+            }
+        })
+    }
+
+    fn code_section_start(&mut self, count: u32, range: Range<usize>) -> Result<(), WasmError> {
+        self.validator.code_section_start(count, &range)?;
+        let cnt = usize::try_from(count).unwrap();
+        self.result.function_body_inputs.reserve_exact(cnt);
+        self.result.debuginfo.wasm_file.code_section_offset = range.start as u64;
+        Ok(())
+    }
+
+    fn code_section_entry(&mut self, mut body: FunctionBody<'data>) -> Result<(), WasmError> {
+        let validator = self.validator.code_section_entry(&body)?;
+        let func_index = self.result.code_index + self.result.module.num_imported_funcs as u32;
+        let func_index = FuncIndex::from_u32(func_index);
+        if self.config.generate_native_debuginfo {
+            let sig_index = self.result.module.functions[func_index].signature;
+            let sig = &self.types[sig_index];
+            let mut locals = Vec::new();
+            for pair in body.get_locals_reader()? {
+                let (cnt, ty) = pair?;
+                let ty = convert_valtype(ty);
+                locals.push((cnt, ty));
+            }
+            self.result
+                .debuginfo
+                .wasm_file
+                .funcs
+                .push(FunctionMetadata {
+                    locals: locals.into_boxed_slice(),
+                    params: sig.params().into(),
+                });
+        }
+        body.allow_memarg64(self.validator.features().memory64);
+        self.result
+            .function_body_inputs
+            .push(FunctionBodyData { validator, body });
+        self.result.code_index += 1;
+        Ok(())
+    }
+
+    fn data_section(
+        &mut self,
+        data_section: wasmparser::DataSectionReader<'data>,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<()> {
+        self.validator.data_section(&data_section)?;
+        let cnt = usize::try_from(data_section.count()).unwrap();
+        self.result.data_segments.reserve_exact(cnt);
+        for entry in data_section.into_iter() {
+            let wasmparser::Data {
+                kind,
+                data,
+                range: _,
+            } = entry?;
+            match kind {
+                DataKind::Active {
+                    memory_index,
+                    offset_expr,
+                } => {
+                    assert_eq!(
+                        memory_index, 0,
+                        "data section memory index must be 0 (only one memory per module is supported)"
+                    );
+                    let mut offset_expr_reader = offset_expr.get_binary_reader();
+                    let offset = match offset_expr_reader.read_operator()? {
+                        Operator::I32Const { value } => DataSegmentOffset::I32Const(value),
+                        Operator::GlobalGet { global_index } => {
+                            DataSegmentOffset::GetGlobal(GlobalIndex::from_u32(global_index))
+                        }
+                        ref s => {
+                            unsupported_diag!(
+                                diagnostics,
+                                "unsupported init expr in data section offset: {:?}",
+                                s
+                            );
+                        }
+                    };
+                    let segment = DataSegment { offset, data };
+                    self.result.data_segments.push(segment);
+                }
+                DataKind::Passive => {
+                    return Err(WasmError::Unsupported(
+                        "unsupported passive data segment in data section".to_string(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Parses the Name section of the wasm module.
+    fn name_section(&mut self, names: NameSectionReader<'data>) -> WasmResult<()> {
+        for subsection in names {
+            match subsection? {
+                wasmparser::Name::Function(names) => {
+                    for name in names {
+                        let Naming { index, name } = name?;
+                        // Skip this naming if it's naming a function that
+                        // doesn't actually exist.
+                        if (index as usize) >= self.result.module.functions.len() {
+                            continue;
+                        }
+
+                        // Store the name unconditionally, regardless of
+                        // whether we're parsing debuginfo, since function
+                        // names are almost always present in the
+                        // final compilation artifact.
+                        let index = FuncIndex::from_u32(index);
+                        self.result
+                            .module
+                            .name_section
+                            .func_names
+                            .insert(index, name.to_string());
+                    }
+                }
+                wasmparser::Name::Module { name, .. } => {
+                    self.result.module.name_section.module_name = Some(name.to_string());
+                }
+                wasmparser::Name::Local(reader) => {
+                    if !self.config.generate_native_debuginfo {
+                        continue;
+                    }
+                    for f in reader {
+                        let f = f?;
+                        // Skip this naming if it's naming a function that
+                        // doesn't actually exist.
+                        if (f.index as usize) >= self.result.module.functions.len() {
+                            continue;
+                        }
+                        for name in f.names {
+                            let Naming { index, name } = name?;
+
+                            self.result
+                                .module
+                                .name_section
+                                .locals_names
+                                .entry(FuncIndex::from_u32(f.index))
+                                .or_insert(HashMap::new())
+                                .insert(index, name.to_string());
+                        }
+                    }
+                }
+                wasmparser::Name::Global(names) => {
+                    for name in names {
+                        let Naming { index, name } = name?;
+                        if index != u32::max_value() {
+                            self.result
+                                .module
+                                .name_section
+                                .globals_names
+                                .insert(GlobalIndex::from_u32(index), name.to_string());
+                        }
+                    }
+                }
+                wasmparser::Name::Data(names) => {
+                    for name in names {
+                        let Naming { index, name } = name?;
+                        if index != u32::max_value() {
+                            self.result
+                                .module
+                                .name_section
+                                .data_segment_names
+                                .insert(DataSegmentIndex::from_u32(index), name.to_string());
+                        }
+                    }
+                }
+                wasmparser::Name::Label(_)
+                | wasmparser::Name::Type(_)
+                | wasmparser::Name::Table(_)
+                | wasmparser::Name::Memory(_)
+                | wasmparser::Name::Element(_)
+                | wasmparser::Name::Unknown { .. } => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn dwarf_section(&mut self, section: &CustomSectionReader<'data>) {
         let name = section.name();
         if !name.starts_with(".debug_") {
             return;
@@ -651,142 +800,6 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     .push(ModuleType::Function(sig_index));
             }
             CompositeType::Array(_) | CompositeType::Struct(_) => unimplemented!(),
-        }
-        Ok(())
-    }
-
-    /// Parses the Name section of the wasm module.
-    fn name_section(&mut self, names: NameSectionReader<'data>) -> WasmResult<()> {
-        for subsection in names {
-            match subsection? {
-                wasmparser::Name::Function(names) => {
-                    for name in names {
-                        let Naming { index, name } = name?;
-                        // Skip this naming if it's naming a function that
-                        // doesn't actually exist.
-                        if (index as usize) >= self.result.module.functions.len() {
-                            continue;
-                        }
-
-                        // Store the name unconditionally, regardless of
-                        // whether we're parsing debuginfo, since function
-                        // names are almost always present in the
-                        // final compilation artifact.
-                        let index = FuncIndex::from_u32(index);
-                        self.result
-                            .module
-                            .name_section
-                            .func_names
-                            .insert(index, name.to_string());
-                    }
-                }
-                wasmparser::Name::Module { name, .. } => {
-                    self.result.module.name_section.module_name = Some(name.to_string());
-                }
-                wasmparser::Name::Local(reader) => {
-                    if !self.config.generate_native_debuginfo {
-                        continue;
-                    }
-                    for f in reader {
-                        let f = f?;
-                        // Skip this naming if it's naming a function that
-                        // doesn't actually exist.
-                        if (f.index as usize) >= self.result.module.functions.len() {
-                            continue;
-                        }
-                        for name in f.names {
-                            let Naming { index, name } = name?;
-
-                            self.result
-                                .module
-                                .name_section
-                                .locals_names
-                                .entry(FuncIndex::from_u32(f.index))
-                                .or_insert(HashMap::new())
-                                .insert(index, name.to_string());
-                        }
-                    }
-                }
-                wasmparser::Name::Global(names) => {
-                    for name in names {
-                        let Naming { index, name } = name?;
-                        if index != u32::max_value() {
-                            self.result
-                                .module
-                                .name_section
-                                .globals_names
-                                .insert(GlobalIndex::from_u32(index), name.to_string());
-                        }
-                    }
-                }
-                wasmparser::Name::Data(names) => {
-                    for name in names {
-                        let Naming { index, name } = name?;
-                        if index != u32::max_value() {
-                            self.result
-                                .module
-                                .name_section
-                                .data_segment_names
-                                .insert(DataSegmentIndex::from_u32(index), name.to_string());
-                        }
-                    }
-                }
-                wasmparser::Name::Label(_)
-                | wasmparser::Name::Type(_)
-                | wasmparser::Name::Table(_)
-                | wasmparser::Name::Memory(_)
-                | wasmparser::Name::Element(_)
-                | wasmparser::Name::Unknown { .. } => {}
-            }
-        }
-        Ok(())
-    }
-
-    fn data_section(
-        &mut self,
-        data_section: wasmparser::DataSectionReader<'data>,
-        diagnostics: &DiagnosticsHandler,
-    ) -> WasmResult<()> {
-        let cnt = usize::try_from(data_section.count()).unwrap();
-        self.result.data_segments.reserve_exact(cnt);
-        for entry in data_section.into_iter() {
-            let wasmparser::Data {
-                kind,
-                data,
-                range: _,
-            } = entry?;
-            match kind {
-                DataKind::Active {
-                    memory_index,
-                    offset_expr,
-                } => {
-                    assert_eq!(
-                        memory_index, 0,
-                        "data section memory index must be 0 (only one memory per module is supported)"
-                    );
-                    let mut offset_expr_reader = offset_expr.get_binary_reader();
-                    let offset = match offset_expr_reader.read_operator()? {
-                        Operator::I32Const { value } => DataSegmentOffset::I32Const(value),
-                        Operator::GlobalGet { global_index } => {
-                            DataSegmentOffset::GetGlobal(GlobalIndex::from_u32(global_index))
-                        }
-                        ref s => {
-                            unsupported_diag!(
-                                diagnostics,
-                                "unsupported init expr in data section offset: {:?}",
-                                s
-                            );
-                        }
-                    };
-                    let segment = DataSegment { offset, data };
-                    self.result.data_segments.push(segment);
-                }
-                DataKind::Passive => {
-                    return Err(WasmError::Unsupported(
-                        "unsupported passive data segment in data section".to_string(),
-                    ));
-                }
-            }
         }
         Ok(())
     }

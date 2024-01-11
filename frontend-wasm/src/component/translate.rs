@@ -511,7 +511,7 @@ impl<'a, 'data> Translator<'a, 'data> {
             Payload::ModuleSection { parser, range } => {
                 self.validator.module_section(&range)?;
                 let translation = ModuleEnvironment::new(&self.config, self.validator, self.types)
-                    .translate(parser, &component[range.start..range.end], diagnostics)?;
+                    .parse(parser, &component[range.start..range.end], diagnostics)?;
                 let static_idx = self.static_modules.push(translation);
                 self.result
                     .initializers

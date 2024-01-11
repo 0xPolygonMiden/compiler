@@ -23,7 +23,7 @@ pub fn translate_module(
     let parser = wasmparser::Parser::new(0);
     let mut module_types_builder = Default::default();
     let translation = ModuleEnvironment::new(config, &mut validator, &mut module_types_builder)
-        .translate(parser, wasm, diagnostics)?;
+        .parse(parser, wasm, diagnostics)?;
     let module_types = module_types_builder.finish();
     build_ir_module(translation, module_types, config, diagnostics)
 }
