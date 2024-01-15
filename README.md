@@ -34,38 +34,6 @@ To build just the compiler:
 
     $ cargo make midenc
 
-This will build the compiler frontend and place it under the `bin` folder in the project root.
-
-    $ bin/midenc help compile
-    Usage: midenc compile [OPTIONS] [-- <INPUTS>...]
-
-    Arguments:
-      [INPUTS]...
-              Path(s) to the source file(s) to compile.
-
-              You may also use `-` as a file name to read a file from stdin.
-
-    Options:
-          --output-dir <DIR>
-              Write all compiler artifacts to DIR
-
-      -W <LEVEL>
-              Modify how warnings are treated by the compiler
-
-              [default: auto]
-
-              Possible values:
-              - none:  Disable all warnings
-              - auto:  Enable all warnings
-              - error: Promotes warnings to errors
-
-      -v, --verbose
-              When set, produces more verbose output during compilation
-
-      -h, --help
-              Print help (see a summary with '-h')
-
-
 ## Testing
 
 To run the compiler test suite:
