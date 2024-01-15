@@ -89,7 +89,7 @@ impl ParseStage {
         let mut file = std::fs::File::open(path)?;
         let mut bytes = Vec::with_capacity(1024);
         file.read_to_end(&mut bytes)?;
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
+        let file_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
         let config = wasm::WasmTranslationConfig {
             module_name_fallback: file_name,
             generate_native_debuginfo: false,
