@@ -12,8 +12,6 @@ CARGO_MAKE_RUST_SCRIPT_PROVIDER = "rust-script"
 CARGO_MAKE_USE_WORKSPACE_PROFILE = true
 CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--no-fail-fast"
 CARGO_TARGET_DIR = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target", condition = { env_not_set = ["CARGO_TARGET_DIR"] } }
-CARGO_MAKE_TOOLCHAIN_DEFAULT = { source = "${CARGO_MAKE_CI}", default_value = "nightly", mapping = { "true" = "nightly-2023-02-24", "false" = "nightly" } }
-CARGO_MAKE_TOOLCHAIN = { value = "${CARGO_MAKE_TOOLCHAIN_DEFAULT}", condition = { env_not_set = ["CARGO_MAKE_TOOLCHAIN"] } }
 BACKTRACE_DEFAULT = { source = "${CARGO_MAKE_CI}", mapping = { "true" = "1", "false" = "0" } }
 RUST_BACKTRACE = { value = "${BACKTRACE_DEFAULT}", condition = { env_not_set = ["RUST_BACKTRACE"] } }
 MIDEN_BIN_DIR = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"
@@ -78,7 +76,6 @@ echo "*************************************"
 echo "Rust:"
 echo "    Version: ${CARGO_MAKE_RUST_VERSION}"
 echo "    Channel: ${CARGO_MAKE_RUST_CHANNEL}"
-echo "    Toolchain: ${CARGO_MAKE_TOOLCHAIN}"
 echo "    Target Arch: ${CARGO_MAKE_RUST_TARGET_ARCH}"
 echo "    Target Env: ${CARGO_MAKE_RUST_TARGET_ENV}"
 echo "    Target OS: ${CARGO_MAKE_RUST_TARGET_OS}"
@@ -136,8 +133,8 @@ args = ["bloat", "${@}"]
 [tasks.midenc]
 category = "Build"
 description = "Builds midenc and installs it to the bin folder"
-command = "rustup"
-args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "-Z", "unstable-options", "build", "-p", "midenc", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
+command = "cargo"
+args = ["-Z", "unstable-options", "build", "-p", "midenc", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
 
 [tasks.build]
 category = "Build"
@@ -146,40 +143,53 @@ run_task = [
   { name = ["midenc", "build-filecheck"] },
 ]
 
+[tasks.install]
+category = "Install"
+description = "Installs the compiler suite via cargo"
+run_task = [
+  { name = ["install-midenc"] },
+]
+
 [tasks.check]
 category = "Build"
 description = "Runs cargo check on the workspace"
-command = "rustup"
-args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "check", "${@}"]
+command = "cargo"
+args = ["check", "${@}"]
 
 [tasks.clean]
 category = "Build"
 description = "Clean build artifacts"
-command = "rustup"
-args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "clean", "${@}"]
+command = "cargo"
+args = ["clean", "${@}"]
 
 [tasks.test]
 category = "Test"
 description = "Runs all tests"
 dependencies = ["test-rust", "test-filecheck"]
 
+[tasks.install-midenc]
+category = "Install"
+description = "Builds midenc and installs it globally via the cargo bin directory"
+command = "cargo"
+args = ["cargo", "install", "--path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/midenc", "midenc"]
+
 [tasks.install-wasm-target]
 category = "Test"
 description = "Install wasm32-unknown-unknown target"
 command = "rustup"
-args = ["target", "add", "wasm32-unknown-unknown", "--toolchain", "${CARGO_MAKE_TOOLCHAIN}"]
+args = ["target", "add", "wasm32-unknown-unknown"]
 
 [tasks.install-wasm-wasi-target]
 category = "Test"
 description = "Install wasm32-wasi target"
 command = "rustup"
-args = ["target", "add", "wasm32-wasi", "--toolchain", "${CARGO_MAKE_TOOLCHAIN}"]
+args = ["target", "add", "wasm32-wasi"]
 
 [tasks.install-rust-src]
 category = "Test"
 description = "Install rust-src component"
 command = "rustup"
-args = ["component", "add", "rust-src", "--toolchain", "${CARGO_MAKE_TOOLCHAIN}"]
+args = ["component", "add", "rust-src"]
 
 [tasks.install-cargo-component]
 category = "Test"
@@ -190,8 +200,8 @@ args = ["install", "cargo-component"]
 [tasks.test-rust]
 category = "Test"
 description = "Runs tests written in Rust"
-command = "rustup"
-args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "test", "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)", "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )", "${@}"]
+command = "cargo"
+args = ["test", "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)", "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )", "${@}"]
 dependencies = ["install-wasm-target", "install-wasm-wasi-target", "install-rust-src", "install-cargo-component"]
 
 [tasks.test-filecheck]
@@ -215,8 +225,8 @@ dependencies = [
 [tasks.build-filecheck]
 category = "Build"
 description = "Builds the filecheck helper"
-command = "rustup"
-args = ["run", "${CARGO_MAKE_TOOLCHAIN}", "cargo", "-Z", "unstable-options", "build", "-p", "filecheck", "--release", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
+command = "cargo"
+args = ["-Z", "unstable-options", "build", "-p", "filecheck", "--release", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
 
 [tasks.book]
 category = "Build"
