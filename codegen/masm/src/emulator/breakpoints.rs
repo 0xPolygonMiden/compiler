@@ -304,6 +304,7 @@ impl BreakpointManager {
     }
 
     #[inline]
+    #[allow(unused)]
     pub fn should_break_on_write(&self, addr: Addr, size: u32) -> bool {
         self.matches_watchpoint(addr, size).is_some()
     }

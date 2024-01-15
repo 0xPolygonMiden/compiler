@@ -92,6 +92,7 @@ impl ParseTest {
         parser.parse_str::<Module>(source)
     }
 
+    #[allow(unused)]
     pub fn parse_module_from_file<P: AsRef<Path>>(
         &self,
         path: P,
