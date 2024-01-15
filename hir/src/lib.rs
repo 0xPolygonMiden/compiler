@@ -1,4 +1,7 @@
 #![deny(warnings)]
+// Temporary until 1.76 is released
+#![allow(stable_features)]
+// TODO: Stabilized in 1.76, not yet released
 // Required for pass infrastructure, can be removed when it gets stabilized
 // in an upcoming release, see https://github.com/rust-lang/rust/issues/65991
 #![feature(trait_upcasting)]
