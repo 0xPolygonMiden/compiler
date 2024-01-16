@@ -11,17 +11,11 @@ block0:
     v1 = const.i32 1 : i32;
     v2 = const.i32 2 : i32;
     v3 = call noname::add(v1, v2) : i32;
-    br block1(v3);
-
-block1(v0: i32):
-    ret v0;
+    ret v3;
 }
 
 pub fn add(i32, i32) -> i32 {
 block0(v0: i32, v1: i32):
     v3 = add.wrapping v1, v0 : i32;
-    br block1(v3);
-
-block1(v2: i32):
-    ret v2;
+    ret v3;
 }
