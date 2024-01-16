@@ -1,147 +1,366 @@
-pub(crate) mod environ;
-pub(crate) mod func_translation_state;
-mod func_translator;
-pub(crate) mod function_builder_ext;
-mod sections_translator;
+//! Data structures for representing parsed Wasm modules.
 
 use crate::error::WasmResult;
-use crate::module::environ::ModuleEnvironment;
-use crate::module::sections_translator::{
-    parse_data_section, parse_element_section, parse_function_section, parse_global_section,
-    parse_import_section, parse_memory_section, parse_name_section, parse_type_section,
-};
-use crate::wasm_types::FuncIndex;
-use crate::{unsupported_diag, WasmTranslationConfig};
+use crate::unsupported_diag;
+
+use self::types::*;
+
+use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{FunctionIdent, Module};
-use std::prelude::v1::*;
-use wasmparser::{NameSectionReader, Parser, Payload, Validator, WasmFeatures};
+use miden_hir::cranelift_entity::packed_option::ReservedValue;
+use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
+use std::collections::{BTreeMap, HashMap};
 
-/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR module
-pub fn translate_module(
-    wasm: &[u8],
-    config: &WasmTranslationConfig,
-    diagnostics: &DiagnosticsHandler,
-) -> WasmResult<Module> {
-    translate_module_inner(wasm, config, diagnostics).map(|res| res.module)
+use std::ops::Range;
+
+pub mod func_translation_state;
+pub mod func_translator;
+pub mod function_builder_ext;
+pub mod module_env;
+pub mod translate;
+pub mod types;
+
+/// Table initialization data for all tables in the module.
+#[derive(Debug, Default)]
+pub struct TableInitialization {
+    /// Initial values for tables defined within the module itself.
+    ///
+    /// This contains the initial values and initializers for tables defined
+    /// within a wasm, so excluding imported tables. This initializer can
+    /// represent null-initialized tables, element-initialized tables (e.g. with
+    /// the function-references proposal), or precomputed images of table
+    /// initialization. For example table initializers to a table that are all
+    /// in-bounds will get removed from `segment` and moved into
+    /// `initial_values` here.
+    pub initial_values: PrimaryMap<DefinedTableIndex, TableInitialValue>,
+
+    /// Element segments present in the initial wasm module which are executed
+    /// at instantiation time.
+    ///
+    /// These element segments are iterated over during instantiation to apply
+    /// any segments that weren't already moved into `initial_values` above.
+    pub segments: Vec<TableSegment>,
 }
 
-#[allow(dead_code)]
-struct WasmTranslationResult {
-    module: Module,
-    entrypoint: Option<FunctionIdent>,
+/// Initial value for all elements in a table.
+#[derive(Clone, Debug)]
+pub enum TableInitialValue {
+    /// Initialize each table element to null, optionally setting some elements
+    /// to non-null given the precomputed image.
+    Null {
+        /// A precomputed image of table initializers for this table.
+        precomputed: Vec<FuncIndex>,
+    },
+
+    /// Initialize each table element to the function reference given
+    /// by the `FuncIndex`.
+    FuncRef(FuncIndex),
 }
 
-/// Translate a sequence of bytes forming a valid Wasm binary into Miden IR
-fn translate_module_inner(
-    wasm: &[u8],
-    config: &WasmTranslationConfig,
-    diagnostics: &DiagnosticsHandler,
-) -> WasmResult<WasmTranslationResult> {
-    let mut module_env = ModuleEnvironment::new(config.module_name_fallback.clone());
-    let env = &mut module_env;
-    let wasm_features = WasmFeatures::default();
-    let mut validator = Validator::new_with_features(wasm_features);
-    for payload in Parser::new(0).parse_all(wasm) {
-        match payload? {
-            Payload::Version {
-                num,
-                encoding,
-                range,
-            } => {
-                validator.version(num, encoding, &range)?;
-            }
-            Payload::End(offset) => {
-                let entrypoint = module_env.info.start_func();
-                let module = module_env.build(diagnostics, &mut validator)?;
-                validator.end(offset)?;
-                let res = WasmTranslationResult { module, entrypoint };
-                return Ok(res);
-            }
+/// A WebAssembly table initializer segment.
+#[derive(Clone, Debug)]
+pub struct TableSegment {
+    /// The index of a table to initialize.
+    pub table_index: TableIndex,
+    /// Optionally, a global variable giving a base index.
+    pub base: Option<GlobalIndex>,
+    /// The offset to add to the base.
+    pub offset: u32,
+    /// The values to write into the table elements.
+    pub elements: Box<[FuncIndex]>,
+}
 
-            Payload::TypeSection(types) => {
-                validator.type_section(&types)?;
-                parse_type_section(types, env, diagnostics)?;
-            }
+/// Different types that can appear in a module.
+///
+/// Note that each of these variants are intended to index further into a
+/// separate table.
+#[derive(Debug, Copy, Clone)]
+pub enum ModuleType {
+    Function(SignatureIndex),
+}
 
-            Payload::ImportSection(imports) => {
-                validator.import_section(&imports)?;
-                parse_import_section(imports, env, diagnostics)?;
-            }
-
-            Payload::FunctionSection(functions) => {
-                validator.function_section(&functions)?;
-                parse_function_section(functions, env)?;
-            }
-
-            Payload::TableSection(tables) => {
-                validator.table_section(&tables)?;
-                // skip the table section
-            }
-
-            Payload::MemorySection(memories) => {
-                validator.memory_section(&memories)?;
-                parse_memory_section(memories, env)?;
-            }
-
-            Payload::TagSection(tags) => {
-                validator.tag_section(&tags)?;
-                unsupported_diag!(diagnostics, "Tag sections are not supported");
-            }
-
-            Payload::GlobalSection(globals) => {
-                validator.global_section(&globals)?;
-                parse_global_section(globals, env, diagnostics)?;
-            }
-
-            Payload::ExportSection(exports) => {
-                validator.export_section(&exports)?;
-                // skip the export section
-            }
-
-            Payload::StartSection { func, range } => {
-                validator.start_section(func, &range)?;
-                env.declare_start_func(FuncIndex::from_u32(func));
-            }
-
-            Payload::ElementSection(elements) => {
-                validator.element_section(&elements)?;
-                parse_element_section(elements, env, diagnostics)?;
-            }
-
-            Payload::CodeSectionStart { count, range, .. } => {
-                validator.code_section_start(count, &range)?;
-            }
-
-            Payload::CodeSectionEntry(body) => {
-                env.define_function_body(body);
-            }
-
-            Payload::DataSection(data) => {
-                validator.data_section(&data)?;
-                parse_data_section(data, env, diagnostics)?;
-            }
-
-            Payload::DataCountSection { count, range } => {
-                validator.data_count_section(count, &range)?;
-            }
-
-            Payload::CustomSection(s) if s.name() == "name" => {
-                let result =
-                    parse_name_section(NameSectionReader::new(s.data(), s.data_offset()), env);
-                if let Err(e) = result {
-                    log::warn!("failed to parse name section {:?}", e);
-                }
-            }
-
-            Payload::CustomSection(s) => env.custom_section(s.name(), s.data()),
-
-            other => {
-                validator.payload(&other)?;
-                panic!("unimplemented section {:?}", other);
-            }
+impl ModuleType {
+    /// Asserts this is a `ModuleType::Function`, returning the underlying
+    /// `SignatureIndex`.
+    pub fn unwrap_function(&self) -> SignatureIndex {
+        match self {
+            ModuleType::Function(f) => *f,
         }
     }
-    // The parsing should've ended with a Payload::End where we build the Miden IR module
-    panic!("unexpected end of Webassembly parsing, missing Payload::End");
+}
+
+/// A translated WebAssembly module, excluding the function bodies
+#[derive(Default, Debug)]
+pub struct Module {
+    /// All import records, in the order they are declared in the module.
+    pub initializers: Vec<Initializer>,
+
+    /// Exported entities.
+    pub exports: IndexMap<String, EntityIndex>,
+
+    /// The module "start" function, if present.
+    pub start_func: Option<FuncIndex>,
+
+    /// WebAssembly table initialization data, per table.
+    pub table_initialization: TableInitialization,
+
+    /// WebAssembly passive elements.
+    pub passive_elements: Vec<Box<[FuncIndex]>>,
+
+    /// The map from passive element index (element segment index space) to index in `passive_elements`.
+    pub passive_elements_map: BTreeMap<ElemIndex, usize>,
+
+    /// The map from passive data index (data segment index space) to index in `passive_data`.
+    pub passive_data_map: BTreeMap<DataIndex, Range<u32>>,
+
+    /// Types declared in the wasm module.
+    pub types: PrimaryMap<TypeIndex, ModuleType>,
+
+    /// Number of imported or aliased functions in the module.
+    pub num_imported_funcs: usize,
+
+    /// Number of imported or aliased tables in the module.
+    pub num_imported_tables: usize,
+
+    /// Number of imported or aliased memories in the module.
+    pub num_imported_memories: usize,
+
+    /// Number of imported or aliased globals in the module.
+    pub num_imported_globals: usize,
+
+    /// Number of functions that "escape" from this module
+    ///
+    /// This is also the number of functions in the `functions` array below with
+    /// an `func_ref` index (and is the maximum func_ref index).
+    pub num_escaped_funcs: usize,
+
+    /// Types of functions, imported and local.
+    pub functions: PrimaryMap<FuncIndex, FunctionTypeInfo>,
+
+    /// WebAssembly tables.
+    pub tables: PrimaryMap<TableIndex, Table>,
+
+    /// WebAssembly global variables.
+    pub globals: PrimaryMap<GlobalIndex, Global>,
+
+    /// WebAssembly global initializers for locally-defined globals.
+    pub global_initializers: PrimaryMap<DefinedGlobalIndex, GlobalInit>,
+
+    /// WebAssembly module memories.
+    pub memories: PrimaryMap<MemoryIndex, Memory>,
+
+    /// Parsed names section.
+    pub name_section: NameSection,
+}
+
+/// Initialization routines for creating an instance, encompassing imports,
+/// modules, instances, aliases, etc.
+#[derive(Debug)]
+pub enum Initializer {
+    /// An imported item is required to be provided.
+    Import {
+        /// Name of this import
+        name: String,
+        /// The field name projection of this import
+        field: String,
+        /// Where this import will be placed, which also has type information
+        /// about the import.
+        index: EntityIndex,
+    },
+}
+
+impl Module {
+    /// Allocates the module data structures.
+    pub fn new() -> Self {
+        Module::default()
+    }
+
+    /// Convert a `DefinedFuncIndex` into a `FuncIndex`.
+    #[inline]
+    pub fn func_index(&self, defined_func: DefinedFuncIndex) -> FuncIndex {
+        FuncIndex::new(self.num_imported_funcs + defined_func.index())
+    }
+
+    /// Convert a `FuncIndex` into a `DefinedFuncIndex`. Returns None if the
+    /// index is an imported function.
+    #[inline]
+    pub fn defined_func_index(&self, func: FuncIndex) -> Option<DefinedFuncIndex> {
+        if func.index() < self.num_imported_funcs {
+            None
+        } else {
+            Some(DefinedFuncIndex::new(
+                func.index() - self.num_imported_funcs,
+            ))
+        }
+    }
+
+    /// Test whether the given function index is for an imported function.
+    #[inline]
+    pub fn is_imported_function(&self, index: FuncIndex) -> bool {
+        index.index() < self.num_imported_funcs
+    }
+
+    /// Convert a `DefinedTableIndex` into a `TableIndex`.
+    #[inline]
+    pub fn table_index(&self, defined_table: DefinedTableIndex) -> TableIndex {
+        TableIndex::new(self.num_imported_tables + defined_table.index())
+    }
+
+    /// Convert a `TableIndex` into a `DefinedTableIndex`. Returns None if the
+    /// index is an imported table.
+    #[inline]
+    pub fn defined_table_index(&self, table: TableIndex) -> Option<DefinedTableIndex> {
+        if table.index() < self.num_imported_tables {
+            None
+        } else {
+            Some(DefinedTableIndex::new(
+                table.index() - self.num_imported_tables,
+            ))
+        }
+    }
+
+    /// Test whether the given table index is for an imported table.
+    #[inline]
+    pub fn is_imported_table(&self, index: TableIndex) -> bool {
+        index.index() < self.num_imported_tables
+    }
+
+    /// Convert a `DefinedMemoryIndex` into a `MemoryIndex`.
+    #[inline]
+    pub fn memory_index(&self, defined_memory: DefinedMemoryIndex) -> MemoryIndex {
+        MemoryIndex::new(self.num_imported_memories + defined_memory.index())
+    }
+
+    /// Convert a `MemoryIndex` into a `DefinedMemoryIndex`. Returns None if the
+    /// index is an imported memory.
+    #[inline]
+    pub fn defined_memory_index(&self, memory: MemoryIndex) -> Option<DefinedMemoryIndex> {
+        if memory.index() < self.num_imported_memories {
+            None
+        } else {
+            Some(DefinedMemoryIndex::new(
+                memory.index() - self.num_imported_memories,
+            ))
+        }
+    }
+
+    /// Test whether the given memory index is for an imported memory.
+    #[inline]
+    pub fn is_imported_memory(&self, index: MemoryIndex) -> bool {
+        index.index() < self.num_imported_memories
+    }
+
+    /// Convert a `DefinedGlobalIndex` into a `GlobalIndex`.
+    #[inline]
+    pub fn global_index(&self, defined_global: DefinedGlobalIndex) -> GlobalIndex {
+        GlobalIndex::new(self.num_imported_globals + defined_global.index())
+    }
+
+    /// Convert a `GlobalIndex` into a `DefinedGlobalIndex`. Returns None if the
+    /// index is an imported global.
+    #[inline]
+    pub fn defined_global_index(&self, global: GlobalIndex) -> Option<DefinedGlobalIndex> {
+        if global.index() < self.num_imported_globals {
+            None
+        } else {
+            Some(DefinedGlobalIndex::new(
+                global.index() - self.num_imported_globals,
+            ))
+        }
+    }
+
+    /// Test whether the given global index is for an imported global.
+    #[inline]
+    pub fn is_imported_global(&self, index: GlobalIndex) -> bool {
+        index.index() < self.num_imported_globals
+    }
+
+    /// Returns an iterator of all the imports in this module, along with their
+    /// module name, field name, and type that's being imported.
+    pub fn imports(&self) -> impl ExactSizeIterator<Item = (&str, &str, EntityType)> {
+        self.initializers.iter().map(move |i| match i {
+            Initializer::Import { name, field, index } => {
+                (name.as_str(), field.as_str(), self.type_of(*index))
+            }
+        })
+    }
+
+    /// Returns the type of an item based on its index
+    pub fn type_of(&self, index: EntityIndex) -> EntityType {
+        match index {
+            EntityIndex::Global(i) => EntityType::Global(self.globals[i].clone()),
+            EntityIndex::Table(i) => EntityType::Table(self.tables[i]),
+            EntityIndex::Memory(i) => EntityType::Memory(self.memories[i]),
+            EntityIndex::Function(i) => EntityType::Function(self.functions[i].signature),
+        }
+    }
+
+    /// Appends a new function to this module with the given type information,
+    /// used for functions that either don't escape or aren't certain whether
+    /// they escape yet.
+    pub fn push_function(&mut self, signature: SignatureIndex) -> FuncIndex {
+        self.functions.push(FunctionTypeInfo {
+            signature,
+            func_ref: FuncRefIndex::reserved_value(),
+        })
+    }
+
+    /// Appends a new function to this module with the given type information.
+    pub fn push_escaped_function(
+        &mut self,
+        signature: SignatureIndex,
+        func_ref: FuncRefIndex,
+    ) -> FuncIndex {
+        self.functions.push(FunctionTypeInfo {
+            signature,
+            func_ref,
+        })
+    }
+
+    /// Returns the global initializer for the given index, or `Unsupported` error if the global is imported.
+    pub fn try_global_initializer(
+        &self,
+        index: GlobalIndex,
+        diagnostics: &DiagnosticsHandler,
+    ) -> WasmResult<&GlobalInit> {
+        if let Some(defined_index) = self.defined_global_index(index) {
+            Ok(&self.global_initializers[defined_index])
+        } else {
+            unsupported_diag!(diagnostics, "Imported globals are not supported yet");
+        }
+    }
+}
+
+/// Type information about functions in a wasm module.
+#[derive(Debug, Clone, Copy)]
+pub struct FunctionTypeInfo {
+    /// The type of this function, indexed into the module-wide type tables for
+    /// a module compilation.
+    pub signature: SignatureIndex,
+    /// The index into the funcref table, if present. Note that this is
+    /// `reserved_value()` if the function does not escape from a module.
+    pub func_ref: FuncRefIndex,
+}
+
+impl FunctionTypeInfo {
+    /// Returns whether this function's type is one that "escapes" the current
+    /// module, meaning that the function is exported, used in `ref.func`, used
+    /// in a table, etc.
+    pub fn is_escaping(&self) -> bool {
+        !self.func_ref.is_reserved_value()
+    }
+}
+
+/// Index into the funcref table within a VMContext for a function.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+pub struct FuncRefIndex(u32);
+miden_hir::cranelift_entity::entity_impl!(FuncRefIndex);
+
+#[derive(Debug, Default)]
+pub struct NameSection {
+    pub module_name: Option<String>,
+    pub func_names: HashMap<FuncIndex, String>,
+    pub locals_names: HashMap<FuncIndex, HashMap<u32, String>>,
+    pub globals_names: HashMap<GlobalIndex, String>,
+    pub data_segment_names: HashMap<DataSegmentIndex, String>,
 }

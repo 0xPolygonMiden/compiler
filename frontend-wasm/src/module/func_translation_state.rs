@@ -7,21 +7,21 @@
 
 use crate::{
     error::{WasmError, WasmResult},
-    module::environ::ModuleInfo,
-    module::function_builder_ext::FunctionBuilderExt,
+    module::types::{ir_func_type, BlockType, FuncIndex, ModuleTypes},
     translation_utils::sig_from_funct_type,
-    wasm_types::{BlockType, FuncIndex},
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{
-    cranelift_entity::EntityRef, Block, CallConv, DataFlowGraph, FunctionIdent, Ident, Inst,
-    InstBuilder, Linkage, Signature, Symbol, Value,
+    cranelift_entity::EntityRef, Block, CallConv, DataFlowGraph, FunctionIdent, Inst, InstBuilder,
+    Linkage, Signature, Value,
 };
 use miden_hir_type::Type;
 use std::{
     collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant, HashMap},
     vec::Vec,
 };
+
+use super::{function_builder_ext::FunctionBuilderExt, Module};
 
 /// Information about the presence of an associated `else` for an `if`, or the
 /// lack thereof.
@@ -453,25 +453,33 @@ impl FuncTranslationState {
         &mut self,
         dfg: &mut DataFlowGraph,
         index: u32,
-        mod_info: &ModuleInfo,
+        mod_info: &Module,
+        mod_types: &ModuleTypes,
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<(FunctionIdent, usize)> {
         let index = FuncIndex::from_u32(index);
         Ok(match self.functions.entry(index) {
             Occupied(entry) => *entry.get(),
             Vacant(entry) => {
-                let sigidx = mod_info.functions[index];
-                let func_type = mod_info.func_types[sigidx].clone();
+                let func_type_idx = mod_info.functions[index].clone();
+                let func_type = mod_types[func_type_idx.signature].clone();
                 let func_name = mod_info
-                    .function_names
-                    .get(index)
+                    .name_section
+                    .func_names
+                    .get(&index)
                     .cloned()
                     .unwrap_or_else(|| format!("func{}", index.index()));
-                let func_name_id = Ident::with_empty_span(Symbol::intern(&func_name));
-                let sig = sig_from_funct_type(&func_type, CallConv::SystemV, Linkage::External);
-                let Ok(func_id) = dfg.import_function(mod_info.name, func_name_id, sig.clone())
-                else {
-                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature", func_name_id, mod_info.name);
+                let mod_name = mod_info
+                    .name_section
+                    .module_name
+                    .clone()
+                    .expect("Module name should be set by this point");
+                let mod_ident = mod_name.as_str().into();
+                let func_name_id = func_name.as_str().into();
+                let ir_func_type = ir_func_type(&func_type)?;
+                let sig = sig_from_funct_type(&ir_func_type, CallConv::SystemV, Linkage::External);
+                let Ok(func_id) = dfg.import_function(mod_ident, func_name_id, sig.clone()) else {
+                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature", func_name_id, mod_ident);
                     diagnostics
                         .diagnostic(miden_diagnostics::Severity::Error)
                         .with_message(message.clone())

@@ -8,16 +8,17 @@
 
 use crate::code_translator::translate_operator;
 use crate::error::WasmResult;
-use crate::module::environ::ModuleInfo;
 use crate::module::func_translation_state::FuncTranslationState;
 use crate::module::function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt};
+use crate::module::types::{convert_valtype, ir_type, ModuleTypes};
 use crate::ssa::Variable;
 use crate::translation_utils::emit_zero;
-use crate::wasm_types::valtype_to_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::cranelift_entity::EntityRef;
 use miden_hir::{Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
+
+use super::Module;
 
 /// WebAssembly to Miden IR function translator.
 ///
@@ -43,7 +44,8 @@ impl FuncTranslator {
         &mut self,
         body: &FunctionBody<'_>,
         mod_func_builder: &mut ModuleFunctionBuilder,
-        mod_info: &ModuleInfo,
+        mod_info: &Module,
+        mod_types: &ModuleTypes,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
@@ -67,6 +69,7 @@ impl FuncTranslator {
             &mut builder,
             &mut self.state,
             mod_info,
+            mod_types,
             diagnostics,
             func_validator,
         )?;
@@ -126,9 +129,9 @@ fn declare_locals(
     wasm_type: wasmparser::ValType,
     next_local: &mut usize,
 ) -> WasmResult<()> {
-    let ty = valtype_to_type(&wasm_type)?;
+    let ty = ir_type(convert_valtype(wasm_type))?;
     // All locals are initialized to 0.
-    let init = emit_zero(&ty, builder);
+    let init = emit_zero(&ty, builder)?;
     for _ in 0..count {
         let local = Variable::new(*next_local);
         builder.declare_var(local, ty.clone());
@@ -146,7 +149,8 @@ fn parse_function_body(
     mut reader: BinaryReader,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    mod_info: &ModuleInfo,
+    mod_info: &Module,
+    mod_types: &ModuleTypes,
     diagnostics: &DiagnosticsHandler,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
@@ -162,6 +166,7 @@ fn parse_function_body(
             builder,
             state,
             mod_info,
+            mod_types,
             diagnostics,
             SourceSpan::default(),
         )?;

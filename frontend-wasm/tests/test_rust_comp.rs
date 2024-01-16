@@ -27,6 +27,10 @@ fn rust_array() {
     let mut test = CompilerTest::rust_source_program(include_str!("rust_source/array.rs"));
     test.expect_wasm(expect_file!["./expected/array.wat"]);
     test.expect_ir(expect_file!["./expected/array.hir"]);
+    assert!(
+        test.hir.unwrap().segments().last().unwrap().is_readonly(),
+        "data segment should be readonly"
+    );
 }
 
 #[test]
@@ -34,24 +38,8 @@ fn rust_static_mut() {
     let mut test = CompilerTest::rust_source_program(include_str!("rust_source/static_mut.rs"));
     test.expect_wasm(expect_file!["./expected/static_mut.wat"]);
     test.expect_ir(expect_file!["./expected/static_mut.hir"]);
+    assert!(
+        !test.hir.unwrap().segments().last().unwrap().is_readonly(),
+        "data segment should be mutable"
+    );
 }
-
-// #[ignore]
-// #[test]
-// fn dlmalloc() {
-//     check_ir_files_cargo(
-//         "dlmalloc_app",
-//         expect_file!["./expected/dlmalloc.wat"],
-//         expect_file!["./expected/dlmalloc.hir"],
-//     )
-// }
-
-// #[test]
-// #[ignore = "Being reworked"]
-// fn signed_arith() {
-//     check_ir_files(
-//         include_str!("rust_source/signed_arith.rs"),
-//         expect_file!["./expected/signed_arith.wat"],
-//         expect_file!["./expected/signed_arith.hir"],
-//     );
-// }
