@@ -3,7 +3,7 @@
 
 use crate::{
     error::{WasmError, WasmResult},
-    module_env::ModuleEnvironment,
+    module::environ::ModuleEnvironment,
     unsupported_diag,
     wasm_types::{
         convert_func_type, convert_global_type, DataSegment, DataSegmentIndex, DataSegmentOffset,

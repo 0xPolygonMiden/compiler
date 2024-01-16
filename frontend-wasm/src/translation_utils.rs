@@ -4,7 +4,7 @@ use miden_diagnostics::SourceSpan;
 use miden_hir::{AbiParam, CallConv, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
 
-use crate::function_builder_ext::FunctionBuilderExt;
+use crate::module::function_builder_ext::FunctionBuilderExt;
 
 /// Emit instructions to produce a zero value in the given type.
 pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> Value {

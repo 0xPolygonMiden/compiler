@@ -7,8 +7,8 @@
 
 use crate::{
     error::{WasmError, WasmResult},
-    function_builder_ext::FunctionBuilderExt,
-    module_env::ModuleInfo,
+    module::environ::ModuleInfo,
+    module::function_builder_ext::FunctionBuilderExt,
     translation_utils::sig_from_funct_type,
     wasm_types::{BlockType, FuncIndex},
 };

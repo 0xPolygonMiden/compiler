@@ -17,10 +17,10 @@ use std::collections::{hash_map, HashMap};
 use std::u64;
 
 use crate::error::{WasmError, WasmResult};
-use crate::func_translation_state::ControlStackFrame;
-use crate::func_translation_state::{ElseData, FuncTranslationState};
-use crate::function_builder_ext::FunctionBuilderExt;
-use crate::module_env::ModuleInfo;
+use crate::module::environ::ModuleInfo;
+use crate::module::func_translation_state::ControlStackFrame;
+use crate::module::func_translation_state::{ElseData, FuncTranslationState};
+use crate::module::function_builder_ext::FunctionBuilderExt;
 use crate::ssa::Variable;
 use crate::unsupported_diag;
 use crate::wasm_types::{BlockType, GlobalIndex};

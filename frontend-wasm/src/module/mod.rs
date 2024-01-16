@@ -1,9 +1,12 @@
-//! Translation skeleton that traverses the whole WebAssembly module and call helper functions
-//! to deal with each part of it.
+pub(crate) mod environ;
+pub(crate) mod func_translation_state;
+mod func_translator;
+pub(crate) mod function_builder_ext;
+mod sections_translator;
 
 use crate::error::WasmResult;
-use crate::module_env::ModuleEnvironment;
-use crate::sections_translator::{
+use crate::module::environ::ModuleEnvironment;
+use crate::module::sections_translator::{
     parse_data_section, parse_element_section, parse_function_section, parse_global_section,
     parse_import_section, parse_memory_section, parse_name_section, parse_type_section,
 };
