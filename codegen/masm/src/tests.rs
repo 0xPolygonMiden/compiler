@@ -34,8 +34,8 @@ struct TestByEmulationHarness {
     context: TestContext,
     emulator: Emulator,
 }
+#[allow(unused)]
 impl TestByEmulationHarness {
-    #[allow(unused)]
     pub fn with_emulator_config(memory_size: usize, hp: usize, lp: usize) -> Self {
         let mut harness = Self {
             context: TestContext::default(),
