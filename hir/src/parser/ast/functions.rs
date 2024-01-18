@@ -63,7 +63,7 @@ impl FunctionDeclaration {
                     diagnostics.diagnostic(Severity::Error)
                         .with_message("invalid function")
                         .with_primary_label(entry_block.span, "the parameter list of the entry block does not match the function signature")
-                        .with_secondary_label(declared.span, format!("expected a paramter of type {expected_ty}, but got {declared_ty}"))
+                        .with_secondary_label(declared.span, format!("expected a parameter of type {expected_ty}, but got {declared_ty}"))
                         .emit();
                     is_valid = false;
                 }
