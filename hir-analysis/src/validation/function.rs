@@ -135,7 +135,7 @@ impl Rule<Function> for CoherentSignature {
         // * total size of all parameters when laid out on the operand stack may not exceed 64 bytes (16 field elements)
         //
         // 4
-        // * paramter count and types must be consistent between the signature and the entry block
+        // * parameter count and types must be consistent between the signature and the entry block
         // * only sret parameter is permitted, and it must be the first parameter when present
         // * the sret attribute may not be applied to results
         // * sret parameters imply no results

@@ -389,7 +389,7 @@ pub enum InstPattern {
     ///
     /// This is used to model instructions like `select`
     TernaryMatching(TypePattern, TypePattern),
-    /// The instruciton matches if it has the exact number of arguments and results given, each corresponding to the given type
+    /// The instruction matches if it has the exact number of arguments and results given, each corresponding to the given type
     Exact(Vec<TypePattern>, Vec<TypePattern>),
     /// The instruction matches any number of arguments and results, of any type
     Any,
