@@ -14,7 +14,7 @@ pub enum DriverError {
     /// Compilation failed
     #[error(transparent)]
     Compile(#[from] midenc_compile::CompilerError),
-    /// An error ocurred when reading a file
+    /// An error occurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
     /// An unexpected error occurred

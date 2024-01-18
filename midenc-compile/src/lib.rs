@@ -48,10 +48,10 @@ pub enum CompilerError {
     /// An error occurred while emitting a MASL library
     #[error(transparent)]
     Masl(#[from] miden_assembly::LibraryError),
-    /// An error ocurred when reading a file
+    /// An error occurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    /// An error occured while compiling a program
+    /// An error occurred while compiling a program
     #[error(transparent)]
     Failed(#[from] anyhow::Error),
     /// An error was emitted as a diagnostic, so we don't need to emit info to stdout
