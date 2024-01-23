@@ -847,7 +847,8 @@ impl MasmOp {
             | Instruction::FriExt2Fold4
             | Instruction::Breakpoint
             | Instruction::Emit(_)
-            | Instruction::Debug(_) => unimplemented!("miscellaneous instructions"),
+            | Instruction::Debug(_)
+            | Instruction::Trace(_) => unimplemented!("miscellaneous instructions"),
         };
         smallvec![op]
     }
