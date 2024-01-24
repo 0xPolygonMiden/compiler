@@ -1,3 +1,5 @@
 target/
 bin/midenc
-bin/filecheck
+bin/litcheck
+.crates.toml
+.crates2.json

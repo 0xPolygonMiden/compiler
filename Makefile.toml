@@ -140,7 +140,7 @@ args = ["-Z", "unstable-options", "build", "-p", "midenc", "--out-dir", "${CARGO
 category = "Build"
 description = "Runs cargo build on the workspace"
 run_task = [
-  { name = ["midenc", "build-filecheck"] },
+  { name = ["midenc"] },
 ]
 
 [tasks.install]
@@ -165,7 +165,7 @@ args = ["clean", "${@}"]
 [tasks.test]
 category = "Test"
 description = "Runs all tests"
-dependencies = ["test-rust", "test-filecheck"]
+dependencies = ["test-rust"]
 
 [tasks.install-midenc]
 category = "Install"
@@ -204,29 +204,17 @@ command = "cargo"
 args = ["test", "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)", "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )", "${@}"]
 dependencies = ["install-wasm-target", "install-wasm-wasi-target", "install-rust-src", "install-cargo-component"]
 
-[tasks.test-filecheck]
+[tasks.test-lit]
 category = "Test"
-description = "Runs file-based checks using filecheck"
-command = "bin/filecheck"
-args = ["-t", "hir", "-t", "sw", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit"]
-dependencies = [
-  "build-filecheck",
-]
-
-[tasks.filecheck]
-category = "Test"
-description = "Invokes filecheck with the given arguments"
-command = "bin/filecheck"
-args = ["${@}"]
-dependencies = [
-  "build",
-]
-
-[tasks.build-filecheck]
-category = "Build"
-description = "Builds the filecheck helper"
-command = "cargo"
-args = ["-Z", "unstable-options", "build", "-p", "filecheck", "--release", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
+description = "Runs the lit/filecheck test suite"
+command = "bin/lit"
+install_script = '''
+if [ ! -f "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin/litcheck" ]; then
+    cargo install --git 'https://github.com/bitwalker/litcheck' --root "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+    bin/litcheck help
+fi
+'''
+args = ["run", "--path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/parse"]
 
 [tasks.book]
 category = "Build"
