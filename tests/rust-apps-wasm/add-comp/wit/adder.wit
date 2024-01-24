@@ -1,5 +1,0 @@
-package miden:adder@1.0.0;
-
-world adder {
-    export add: func(a: s32, b: s32) -> s32;
-}
