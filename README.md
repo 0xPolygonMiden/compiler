@@ -1,5 +1,6 @@
 # Miden Compiler
 
+
 This repository contains the Miden compiler, which can be used both as a compiler backend
 for existing languages that wish to target Miden Assembly using a standard SSA-based IR;
 or as means of compiling WebAssembly (Wasm) produced by another compiler to Miden Assembly.
@@ -13,8 +14,10 @@ emit Miden Assembly for.
 * The `midenc` executable, which provides a command-line tool that provides a convenient way
 to compile Wasm or HIR modules/programs to Miden Assembly and test them.
 
-See the `docs` directory for detailed documentation covering the design and implementation
-of HIR and the various passes comprising the compilation pipeline.
+We've published initial [documentation](https://0xpolygonmiden.github.io/compiler) in mdBook format
+for easier reading, but you can also read it directly in the `docs` directory. This documentation 
+covers how to get started with the compiler, as well as various odds and ends about the design and 
+implementation of HIR and the various passes comprising the compilation pipeline.
 
 This project is a work-in-progress, stay tuned for updates as things develop.
 
@@ -40,8 +43,7 @@ To run the compiler test suite:
 
     $ cargo make test
 
-This will run all of the unit tests in the workspace, as well as all of our literate tests,
-which are executed by the `filecheck` helper found in the `tools` folder.
+This will run all of the unit tests in the workspace, as well as all of our `lit` tests.
 
 ## Packaging
 
