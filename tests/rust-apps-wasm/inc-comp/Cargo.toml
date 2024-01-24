@@ -1,5 +1,5 @@
 [package]
-name = "add-wasm-component"
+name = "inc-wasm-component"
 version = "0.1.0"
 rust-version = "1.71"
 authors = ["Miden Team"]
@@ -8,13 +8,16 @@ edition = "2021"
 publish = false
 
 [dependencies]
-cargo-component-bindings = "0.6"
+cargo-component-bindings = "0.6.0"
 
 [lib]
 crate-type = ["cdylib"]
 
 [package.metadata.component]
-package = "miden:add"
+package = "miden:inc"
+
+[package.metadata.component.target.dependencies]
+"miden:add" = { path = "../add-comp/wit" }
 
 [profile.release]
 panic = "abort"

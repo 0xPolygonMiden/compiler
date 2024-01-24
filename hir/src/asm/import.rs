@@ -10,7 +10,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{FunctionIdent, Ident, Symbol};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ModuleImportInfo {
     /// This maps original, fully-qualified module names to their corresponding import
     modules: FxHashMap<Ident, MasmImport>,

@@ -45,6 +45,8 @@ impl Stage for ParseStage {
                         module_name_fallback: name.to_string().clone(),
                         generate_native_debuginfo: false,
                         parse_wasm_debuginfo: false,
+                        import_metadata: Default::default(),
+                        export_metadata: Default::default(),
                     },
                 ),
                 unsupported => unreachable!("unsupported file type: {unsupported}"),
@@ -94,6 +96,8 @@ impl ParseStage {
             module_name_fallback: file_name,
             generate_native_debuginfo: false,
             parse_wasm_debuginfo: false,
+            import_metadata: Default::default(),
+            export_metadata: Default::default(),
         };
         self.parse_hir_from_wasm_bytes(&bytes, session, &config)
     }

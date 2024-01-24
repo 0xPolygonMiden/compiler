@@ -7,6 +7,8 @@ use miden_diagnostics::DiagnosticsHandler;
 use miden_diagnostics::Emitter;
 use miden_diagnostics::NullEmitter;
 use miden_diagnostics::Verbosity;
+use miden_hir::MastRootHash;
+use miden_hir::MAST_ROOT_HASH_SIZE_BYTES;
 
 pub fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
     match verbosity {
@@ -27,4 +29,9 @@ pub fn test_diagnostics() -> DiagnosticsHandler {
         default_emitter(Verbosity::Debug, ColorChoice::Auto),
     );
     diagnostics
+}
+
+/// Intentionally invalid MAST root hash to be used only in tests.
+pub fn invalid_mast_root_hash() -> MastRootHash {
+    MastRootHash::new([0u8; MAST_ROOT_HASH_SIZE_BYTES])
 }

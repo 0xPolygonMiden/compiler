@@ -146,6 +146,7 @@ mod asm;
 mod attribute;
 mod block;
 mod builder;
+mod component;
 mod constants;
 mod dataflow;
 mod display;
@@ -173,6 +174,7 @@ pub use self::block::{Block, BlockData};
 pub use self::builder::{
     DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder,
 };
+pub use self::component::*;
 pub use self::constants::{Constant, ConstantData, ConstantPool, IntoBytes};
 pub use self::dataflow::DataFlowGraph;
 pub use self::display::{Decorator, DisplayValues};

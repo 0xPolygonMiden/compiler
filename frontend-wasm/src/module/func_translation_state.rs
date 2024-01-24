@@ -12,8 +12,7 @@ use crate::{
 };
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{
-    cranelift_entity::EntityRef, Block, CallConv, DataFlowGraph, FunctionIdent, Inst, InstBuilder,
-    Linkage, Signature, Value,
+    Block, CallConv, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Linkage, Signature, Value,
 };
 use miden_hir_type::Type;
 use std::{
@@ -452,34 +451,38 @@ impl FuncTranslationState {
     pub(crate) fn get_direct_func(
         &mut self,
         dfg: &mut DataFlowGraph,
-        index: u32,
+        index: FuncIndex,
         mod_info: &Module,
         mod_types: &ModuleTypes,
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<(FunctionIdent, usize)> {
-        let index = FuncIndex::from_u32(index);
         Ok(match self.functions.entry(index) {
             Occupied(entry) => *entry.get(),
             Vacant(entry) => {
-                let func_type_idx = mod_info.functions[index].clone();
-                let func_type = mod_types[func_type_idx.signature].clone();
-                let func_name = mod_info
-                    .name_section
-                    .func_names
-                    .get(&index)
-                    .cloned()
-                    .unwrap_or_else(|| format!("func{}", index.index()));
-                let mod_name = mod_info
-                    .name_section
-                    .module_name
-                    .clone()
-                    .expect("Module name should be set by this point");
-                let mod_ident = mod_name.as_str().into();
-                let func_name_id = func_name.as_str().into();
-                let ir_func_type = ir_func_type(&func_type)?;
-                let sig = sig_from_funct_type(&ir_func_type, CallConv::SystemV, Linkage::External);
-                let Ok(func_id) = dfg.import_function(mod_ident, func_name_id, sig.clone()) else {
-                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature", func_name_id, mod_ident);
+                let (module_id, func_name_id, sig) = if let Some((func_id, sig)) =
+                    mod_info.translated_function_imports.get(&index)
+                {
+                    // This is an imported function
+                    (
+                        func_id.module.clone(),
+                        func_id.function.clone(),
+                        sig.clone(),
+                    )
+                } else {
+                    // This is a local function so use the current module name
+                    let func_type_idx = mod_info.functions[index].clone();
+                    let func_type = mod_types[func_type_idx.signature].clone();
+                    let func_name = mod_info.func_name(index);
+                    let mod_name = mod_info.name();
+                    let mod_ident = mod_name.as_str().into();
+                    let func_name_id = func_name.as_str().into();
+                    let ir_func_type = ir_func_type(&func_type)?;
+                    let sig =
+                        sig_from_funct_type(&ir_func_type, CallConv::SystemV, Linkage::External);
+                    (mod_ident, func_name_id, sig.clone())
+                };
+                let Ok(func_id) = dfg.import_function(module_id, func_name_id, sig.clone()) else {
+                    let message = format!("Function with name {} in module {} with signature {sig:?} is already imported (function call) with a different signature", func_name_id, module_id);
                     diagnostics
                         .diagnostic(miden_diagnostics::Severity::Error)
                         .with_message(message.clone())

@@ -19,7 +19,7 @@ use std::u64;
 use crate::error::{WasmError, WasmResult};
 use crate::module::func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState};
 use crate::module::function_builder_ext::FunctionBuilderExt;
-use crate::module::types::{ir_type, BlockType, GlobalIndex, ModuleTypes};
+use crate::module::types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes};
 use crate::module::Module;
 use crate::ssa::Variable;
 use crate::unsupported_diag;
@@ -119,7 +119,7 @@ pub fn translate_operator(
             translate_call(
                 state,
                 builder,
-                function_index,
+                FuncIndex::from_u32(*function_index),
                 mod_info,
                 mod_types,
                 span,
@@ -631,7 +631,7 @@ fn prepare_addr(
 fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
-    function_index: &u32,
+    function_index: FuncIndex,
     mod_info: &Module,
     mod_types: &ModuleTypes,
     span: SourceSpan,
@@ -639,7 +639,7 @@ fn translate_call(
 ) -> WasmResult<()> {
     let (fident, num_args) = state.get_direct_func(
         builder.data_flow_graph_mut(),
-        *function_index,
+        function_index,
         mod_info,
         mod_types,
         diagnostics,

@@ -4,8 +4,6 @@
 #![deny(warnings)]
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
-// TODO: remove this once everything is implemented
-#![allow(dead_code)]
 
 mod code_translator;
 mod component;
@@ -18,7 +16,7 @@ mod translation_utils;
 #[cfg(test)]
 mod test_utils;
 
-pub use self::component::translate::translate_component;
-pub use self::config::WasmTranslationConfig;
+pub use self::component::build_ir::translate_component;
+pub use self::config::*;
 pub use self::error::WasmError;
-pub use self::module::translate::translate_module;
+pub use self::module::build_ir::translate_module;

@@ -2714,6 +2714,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cranelift-entity",
+ "derive_more",
  "intrusive-collections",
  "inventory",
  "lalrpop",
