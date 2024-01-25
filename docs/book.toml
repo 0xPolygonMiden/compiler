@@ -7,3 +7,9 @@ title = "Miden Compiler Documentation"
 
 [output.html]
 git-repository-url = "https://github.com/0xPolygonMiden/compiler/"
+
+[preprocessor.katex]
+after = ["links"]
+
+[output.linkcheck]
+warning-policy = "ignore"
