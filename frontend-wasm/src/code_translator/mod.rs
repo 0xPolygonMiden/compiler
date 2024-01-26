@@ -135,6 +135,20 @@ pub fn translate_operator(
             // Return total Miden memory size
             state.push1(builder.ins().i32(mem_total_pages(), span));
         }
+        /******************************* Bulk memory operations *********************************/
+        Operator::MemoryCopy { dst_mem, src_mem } => {
+            // See semantics at https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#memorycopy-instruction
+            if *src_mem == 0 && src_mem == dst_mem {
+                let len = state.pop1();
+                let src_i32 = state.pop1();
+                let dst_i32 = state.pop1();
+                let dst = prepare_addr(dst_i32, &U8, None, builder, span);
+                let src = prepare_addr(src_i32, &U8, None, builder, span);
+                builder.ins().memcpy(src, dst, len, span);
+            } else {
+                unsupported_diag!(diagnostics, "MemoryCopy: only single memory is supported");
+            }
+        }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
             translate_load_zext(U8, I32, memarg, state, builder, span)
@@ -534,7 +548,7 @@ fn translate_load(
     span: SourceSpan,
 ) {
     let addr_int = state.pop1();
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    let addr = prepare_addr(addr_int, &ptr_ty, Some(memarg), builder, span);
     state.push1(builder.ins().load(addr, span));
 }
 
@@ -547,7 +561,7 @@ fn translate_load_sext(
     span: SourceSpan,
 ) {
     let addr_int = state.pop1();
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    let addr = prepare_addr(addr_int, &ptr_ty, Some(memarg), builder, span);
     let val = builder.ins().load(addr, span);
     let sext_val = builder.ins().sext(val, sext_ty, span);
     state.push1(sext_val);
@@ -563,7 +577,7 @@ fn translate_load_zext(
 ) {
     assert!(ptr_ty.is_unsigned_integer());
     let addr_int = state.pop1();
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    let addr = prepare_addr(addr_int, &ptr_ty, Some(memarg), builder, span);
     let val = builder.ins().load(addr, span);
     let sext_val = builder.ins().zext(val, zext_ty, span);
     state.push1(sext_val);
@@ -583,14 +597,14 @@ fn translate_store(
     } else {
         val
     };
-    let addr = prepare_addr(addr_int, &ptr_ty, memarg, builder, span);
+    let addr = prepare_addr(addr_int, &ptr_ty, Some(memarg), builder, span);
     builder.ins().store(addr, arg, span);
 }
 
 fn prepare_addr(
     addr_int: Value,
     ptr_ty: &Type,
-    memarg: &MemArg,
+    memarg: Option<&MemArg>,
     builder: &mut FunctionBuilderExt,
     span: SourceSpan,
 ) -> Value {
@@ -600,12 +614,14 @@ fn prepare_addr(
     } else {
         builder.ins().cast(addr_int, U32, span)
     };
-    let full_addr_int = if memarg.offset != 0 {
-        builder
-            .ins()
-            .add_imm_checked(addr_u32, Immediate::U32(memarg.offset as u32), span)
-    } else {
-        addr_u32
+    let mut full_addr_int = addr_u32;
+    if let Some(memarg) = memarg {
+        if memarg.offset != 0 {
+            full_addr_int =
+                builder
+                    .ins()
+                    .add_imm_checked(addr_u32, Immediate::U32(memarg.offset as u32), span);
+        }
     };
     builder
         .ins()

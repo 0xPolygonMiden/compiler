@@ -388,6 +388,28 @@ fn memory_size() {
 }
 
 #[test]
+fn memory_copy() {
+    check_op(
+        r#"
+            i32.const 20 ;; dst
+            i32.const 10 ;; src
+            i32.const 1  ;; len
+            memory.copy
+        "#,
+        expect![[r#"
+            v0 = const.i32 20 : i32;
+            v1 = const.i32 10 : i32;
+            v2 = const.i32 1 : i32;
+            v3 = cast v0 : u32;
+            v4 = inttoptr v3 : *mut u8;
+            v5 = cast v1 : u32;
+            v6 = inttoptr v5 : *mut u8;
+            memcpy v6, v4, v2;
+        "#]],
+    )
+}
+
+#[test]
 fn i32_load8_u() {
     check_op(
         r#"
