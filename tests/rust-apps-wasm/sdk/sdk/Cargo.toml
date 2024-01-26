@@ -12,7 +12,7 @@ publish = false
 [workspace]
 
 [dependencies]
-cargo-component-bindings = "0.6.0"
+cargo-component-bindings = "0.6"
 
 [lib]
 crate-type = ["cdylib"]
