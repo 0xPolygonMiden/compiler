@@ -1,7 +1,7 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{
-    cranelift_entity::PrimaryMap, ComponentImport, FunctionIdent, Ident, InterfaceFunctionIdent,
-    InterfaceIdent, LiftedFunctionType, Symbol,
+    cranelift_entity::PrimaryMap, FunctionIdent, Ident, InterfaceFunctionIdent, InterfaceIdent,
+    LiftedFunctionType, Symbol,
 };
 use wasmparser::WasmFeatures;
 
@@ -14,9 +14,10 @@ use crate::{
 
 use super::{
     inline,
-    instance::{ComponentInstance, ComponentInstanceBuilder},
+    instance::{ComponentImport, ComponentInstance, ComponentInstanceBuilder},
     interface_type_to_ir, CanonicalOptions, ComponentTypes, ComponentTypesBuilder, CoreDef, Export,
-    ExportItem, LinearComponentTranslation, ParsedRootComponent, StaticModuleIndex, TypeFuncIndex,
+    ExportItem, LinearComponent, LinearComponentTranslation, ParsedRootComponent,
+    StaticModuleIndex, TypeFuncIndex,
 };
 
 /// Translate a Wasm component binary into Miden IR module
@@ -93,43 +94,21 @@ fn build_ir(
 
     component_instance.ensure_module_names();
 
-    build_ir_exports(&component_instance, config, &mut cb);
+    // build exports
+    for (name, export) in &component_instance.component.exports {
+        build_export(export, &component_instance, name, &mut cb, config);
+    }
 
     for (static_module_idx, parsed_module) in component_instance.modules {
         let component = &component_instance.component;
-        for import in &component_instance.imports[&static_module_idx] {
-            let (import_idx, import_names) = &component.imports[import.runtime_import_index];
-            assert_eq!(
-                import_names.len(),
-                1,
-                "multi-name imports not yet supported"
-            );
-            let import_func_name = import_names.first().unwrap();
-            let (full_interface_name, _) = component.import_types[*import_idx].clone();
-            let interface_function = InterfaceFunctionIdent {
-                interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
-                function: Symbol::intern(import_func_name),
-            };
-            let codegen_metadata = config.import_metadata.get(&interface_function).expect(
-                format!(
-                    "Codegen metadata for interface function {:?} not found",
-                    &interface_function,
-                )
-                .as_str(),
-            );
-            let lifted_func_ty =
-                convert_lifted_func_ty(&import.signature, &component_instance.component_types);
-
-            let component_import = ComponentImport {
-                function_ty: lifted_func_ty,
-                interface_function,
-                invoke_method: codegen_metadata.invoke_method,
-                function_mast_root_hash: codegen_metadata.function_mast_root_hash.clone(),
-            };
-            let function_id =
-                find_module_import_function(&parsed_module, full_interface_name, import_func_name);
-            cb.add_import(function_id, component_import);
-        }
+        build_import(
+            &component_instance.imports[&static_module_idx],
+            &component_instance.component_types,
+            component,
+            &parsed_module,
+            &mut cb,
+            config,
+        );
 
         let module = build_ir_module(
             parsed_module,
@@ -142,6 +121,48 @@ fn build_ir(
     }
 
     Ok(cb.build())
+}
+
+fn build_import(
+    component_imports: &[ComponentImport],
+    component_types: &ComponentTypes,
+    component: &LinearComponent,
+    parsed_module: &ParsedModule<'_>,
+    cb: &mut miden_hir::ComponentBuilder<'_>,
+    config: &WasmTranslationConfig,
+) {
+    for import in component_imports {
+        let (import_idx, import_names) = &component.imports[import.runtime_import_index];
+        assert_eq!(
+            import_names.len(),
+            1,
+            "multi-name imports not yet supported"
+        );
+        let import_func_name = import_names.first().unwrap();
+        let (full_interface_name, _) = component.import_types[*import_idx].clone();
+        let interface_function = InterfaceFunctionIdent {
+            interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
+            function: Symbol::intern(import_func_name),
+        };
+        let codegen_metadata = config.import_metadata.get(&interface_function).expect(
+            format!(
+                "Codegen metadata for interface function {:?} not found",
+                &interface_function,
+            )
+            .as_str(),
+        );
+        let lifted_func_ty = convert_lifted_func_ty(&import.signature, component_types);
+
+        let component_import = miden_hir::ComponentImport {
+            function_ty: lifted_func_ty,
+            interface_function,
+            invoke_method: codegen_metadata.invoke_method,
+            function_mast_root_hash: codegen_metadata.function_mast_root_hash.clone(),
+        };
+        let function_id =
+            find_module_import_function(parsed_module, full_interface_name, import_func_name);
+        cb.add_import(function_id, component_import);
+    }
 }
 
 fn find_module_import_function(
@@ -166,64 +187,78 @@ fn find_module_import_function(
     );
 }
 
-fn build_ir_exports(
+fn build_export(
+    export: &Export,
     component_instance: &ComponentInstance<'_>,
-    config: &WasmTranslationConfig,
+    name: &String,
     cb: &mut miden_hir::ComponentBuilder<'_>,
+    config: &WasmTranslationConfig,
 ) {
-    for (name, export) in &component_instance.component.exports {
-        match export {
-            Export::LiftedFunction { ty, func, options } => {
-                assert_empty_canonical_options(options);
-                let func_ident = match func {
-                    CoreDef::Export(core_export) => {
-                        let parsed_module = component_instance.module(core_export.instance);
-                        let module_name = parsed_module.module.name();
-                        let module_ident =
-                            miden_hir::Ident::with_empty_span(Symbol::intern(module_name));
-                        let func_name = match core_export.item {
-                            ExportItem::Index(idx) => match idx {
-                                EntityIndex::Function(func_idx) => {
-                                    parsed_module.module.func_name(func_idx)
-                                }
-                                EntityIndex::Table(_) => todo!(),
-                                EntityIndex::Memory(_) => todo!(),
-                                EntityIndex::Global(_) => todo!(),
-                            },
-                            ExportItem::Name(_) => todo!(),
-                        };
-                        let func_ident = miden_hir::FunctionIdent {
-                            module: module_ident,
-                            function: miden_hir::Ident::with_empty_span(Symbol::intern(func_name)),
-                        };
-                        func_ident
-                    }
-                    CoreDef::InstanceFlags(_) => todo!(),
-                    CoreDef::Trampoline(_) => todo!(),
-                };
-                let lifted_func_ty =
-                    convert_lifted_func_ty(ty, &component_instance.component_types);
-                let export_name = Symbol::intern(name).into();
-                let codegen_metadata = config.export_metadata.get(&export_name).expect(
-                    format!(
-                        "Export metadata for interface function {:?} not found",
-                        &export_name,
-                    )
-                    .as_str(),
-                );
-                let export = miden_hir::ComponentExport {
-                    function: func_ident,
-                    function_ty: lifted_func_ty,
-                    invoke_method: codegen_metadata.invoke_method,
-                };
-                cb.add_export(export_name, export);
-            }
-            Export::ModuleStatic(_) => todo!(),
-            Export::ModuleImport(_) => todo!(),
-            Export::Instance(exports) => todo!("instance exports not yet supported: {:?}", exports),
-            Export::Type(_) => todo!(),
+    match export {
+        Export::LiftedFunction { ty, func, options } => {
+            build_export_function(component_instance, name, func, ty, options, cb, config);
         }
+        Export::Instance(exports) => {
+            // We don't support exporting an interface instance, add the interface items to the
+            // IR `Component` exports instead
+            for (name, export) in exports {
+                build_export(export, component_instance, name, cb, config);
+            }
+        }
+        Export::ModuleStatic(_) => todo!(),
+        Export::ModuleImport(_) => todo!(),
+        Export::Type(_) => todo!(),
     }
+}
+
+fn build_export_function(
+    component_instance: &ComponentInstance<'_>,
+    name: &String,
+    func: &CoreDef,
+    ty: &TypeFuncIndex,
+    options: &CanonicalOptions,
+    cb: &mut miden_hir::ComponentBuilder<'_>,
+    config: &WasmTranslationConfig,
+) {
+    assert_empty_canonical_options(options);
+    let func_ident = match func {
+        CoreDef::Export(core_export) => {
+            let parsed_module = component_instance.module(core_export.instance);
+            let module_name = parsed_module.module.name();
+            let module_ident = miden_hir::Ident::with_empty_span(Symbol::intern(module_name));
+            let func_name = match core_export.item {
+                ExportItem::Index(idx) => match idx {
+                    EntityIndex::Function(func_idx) => parsed_module.module.func_name(func_idx),
+                    EntityIndex::Table(_) => todo!(),
+                    EntityIndex::Memory(_) => todo!(),
+                    EntityIndex::Global(_) => todo!(),
+                },
+                ExportItem::Name(_) => todo!(),
+            };
+            let func_ident = miden_hir::FunctionIdent {
+                module: module_ident,
+                function: miden_hir::Ident::with_empty_span(Symbol::intern(func_name)),
+            };
+            func_ident
+        }
+        CoreDef::InstanceFlags(_) => todo!(),
+        CoreDef::Trampoline(_) => todo!(),
+    };
+    let lifted_func_ty = convert_lifted_func_ty(ty, &component_instance.component_types);
+    let export_name = Symbol::intern(name).into();
+    let codegen_metadata = config.export_metadata.get(&export_name).expect(
+        format!(
+            "Export metadata for interface function {:?} not found",
+            &export_name,
+        )
+        .as_str(),
+    );
+    let export = miden_hir::ComponentExport {
+        function: func_ident,
+        function_ty: lifted_func_ty,
+        invoke_method: codegen_metadata.invoke_method,
+    };
+    cb.add_export(export_name, export);
 }
 
 fn convert_lifted_func_ty(
