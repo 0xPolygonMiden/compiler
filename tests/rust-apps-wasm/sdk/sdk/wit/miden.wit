@@ -12,7 +12,6 @@ interface core-types {
         inner: f64 
     }
 
-    // TODO: use record instead of type aliases
 
     /// A group of four field elements in the Miden base field.
     type word = tuple<felt, felt, felt, felt>;
@@ -30,7 +29,6 @@ interface core-types {
     ///  - 0 - full account data is stored on-chain.
     ///  - 1 - only the account hash is stored on-chain which serves as a commitment to the account state.
     /// As such the three most significant bits fully describes the type of the account.
-    // type account-id = felt;
     record account-id {
         inner: felt
     }
@@ -39,9 +37,13 @@ interface core-types {
     account-id-from-felt: func(felt: felt) -> account-id;
 
     /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash), input_hash)
-    type recipient = word;
+    record recipient {
+        inner: word
+    }
 
-    type tag = felt;
+    record tag {
+        inner: felt
+    }
 
     /// A fungible or a non-fungible asset.
     ///
@@ -269,7 +271,9 @@ interface types {
     /// (which can be of arbitrary length) to produce: [d0, d1, d2, d3].  We then replace d1 with the
     /// faucet_id that issued the asset: [d0, faucet_id, d2, d3]. We then set the most significant bit
     /// of the most significant element to ZERO.
-    type non-fungible-asset = word;
+    record non-fungible-asset {
+        inner: word,
+    }
 
     /// A fungible or a non-fungible asset.
     variant asset {
