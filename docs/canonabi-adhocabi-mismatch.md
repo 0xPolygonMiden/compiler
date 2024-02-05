@@ -1,4 +1,4 @@
-TL;DR: The compiler will recognize the functions with a mismatch between the canonical ABI and the tx kernel ad-hoc ABI and make the compiler generate an adapter function that will call the tx kernel function and convert function arguments and result. For most TX kernel functions, the adapter function can be generated automatically. See below for the functions that require manual adapter functions.
+TL;DR: The compiler will recognize the functions with a mismatch between the canonical ABI and the tx kernel ad-hoc ABI and generate an adapter function that will call the tx kernel function and convert function arguments and result. For most TX kernel functions, the adapter function can be generated automatically. See below for the functions that require manual adapter functions.
 
 # Canonical ABI vs Miden (tx kernel) ABI mismatch and how to resolve it.
 
