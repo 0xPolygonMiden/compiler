@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use miden_hir::cranelift_entity::PrimaryMap;
 
-use crate::{component::Trampoline, module::module_env::ParsedModule};
+use crate::{
+    component::Trampoline, error::WasmResult, module::module_env::ParsedModule, WasmError,
+};
 
 use super::{
     build_ir::BuildIrComponentInput, ComponentTypes, CoreDef, GlobalInitializer, InstantiateModule,
@@ -48,7 +50,7 @@ impl<'data> ComponentInstanceBuilder<'data> {
         Self { input }
     }
 
-    pub fn build(self) -> ComponentInstance<'data> {
+    pub fn build(self) -> WasmResult<ComponentInstance<'data>> {
         let mut module_instances: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex> =
             PrimaryMap::new();
         let mut lower_imports: HashMap<LoweredIndex, RuntimeImportIndex> = HashMap::new();
@@ -64,10 +66,10 @@ impl<'data> ComponentInstanceBuilder<'data> {
                                 .find(|idx| **idx == *static_module_idx)
                                 .is_some()
                             {
-                                panic!(
+                                return Err(WasmError::Unsupported(format!(
                                     "A module with a static index {} is already instantiated. We don't support multiple instantiations of the same module.",
                                     static_module_idx.as_u32()
-                                )
+                                )));
                             }
 
                             module_instances.push(*static_module_idx);
@@ -115,12 +117,12 @@ impl<'data> ComponentInstanceBuilder<'data> {
                 GlobalInitializer::Resource(_) => todo!(),
             }
         }
-        ComponentInstance {
+        Ok(ComponentInstance {
             modules: self.input.modules,
             module_instances,
             component: self.input.linear_component_translation.component,
             component_types: self.input.component_types,
             imports,
-        }
+        })
     }
 }

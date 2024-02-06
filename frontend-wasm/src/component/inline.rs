@@ -577,7 +577,7 @@ impl<'a> Inliner<'a> {
                     // Lowering a lifted function where the destination
                     // component is different than the source component
                     ComponentFuncDef::Lifted { .. } => {
-                        panic!( "Lowering a lifted function where the destination component is different than the source component is not supported");
+                        bail!( "Lowering a lifted function where the destination component is different than the source component is not supported");
                     }
                 };
                 frame.funcs.push(func);

@@ -9,7 +9,7 @@ use crate::module::types::{
     convert_func_type, convert_valtype, EntityIndex, FuncIndex, GlobalIndex, MemoryIndex,
     TableIndex, WasmType,
 };
-use crate::{component::*, unsupported_diag, WasmTranslationConfig};
+use crate::{component::*, unsupported_diag, WasmError, WasmTranslationConfig};
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::PrimaryMap;
@@ -379,7 +379,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             Payload::ComponentExportSection(s) => self.component_export_section(s)?,
             Payload::ComponentStartSection { start, range } => {
                 self.validator.component_start_section(&start, &range)?;
-                unimplemented!("component start section");
+                unsupported_diag!(diagnostics, "component start section is not supported");
             }
             Payload::ComponentAliasSection(s) => self.component_alias_section(s)?,
             // All custom sections are ignored at this time.
@@ -729,7 +729,9 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 ComponentItem::Component(index)
             }
             wasmparser::ComponentExternalKind::Value => {
-                unimplemented!("component values");
+                return Err(WasmError::Unsupported(
+                    "component values are not supported".to_string(),
+                ));
             }
             wasmparser::ComponentExternalKind::Type => {
                 let types = self.validator.types(0).unwrap();

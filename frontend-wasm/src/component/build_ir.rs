@@ -9,7 +9,7 @@ use crate::{
     component::{ComponentParser, StringEncoding},
     error::WasmResult,
     module::{build_ir::build_ir_module, module_env::ParsedModule, types::EntityIndex},
-    WasmTranslationConfig,
+    WasmError, WasmTranslationConfig,
 };
 
 use super::{
@@ -27,8 +27,9 @@ pub fn translate_component(
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Component> {
     let (mut component_types_builder, parsed_component) = parse(config, wasm, diagnostics)?;
-    let linearized_component_translation = inline(&mut component_types_builder, &parsed_component);
+    let linearized_component_translation = inline(&mut component_types_builder, &parsed_component)?;
     let component_types = component_types_builder.finish();
+    // TODO: remove and pass as three separate arguments?
     let input = BuildIrComponentInput {
         component_types,
         modules: parsed_component.static_modules,
@@ -54,7 +55,7 @@ fn parse<'data>(
 fn inline(
     component_types_builder: &mut ComponentTypesBuilder,
     parsed_component: &ParsedRootComponent<'_>,
-) -> LinearComponentTranslation {
+) -> WasmResult<LinearComponentTranslation> {
     // ... after translation initially finishes the next pass is performed
     // which we're calling "inlining". This will "instantiate" the root
     // component, following nested component instantiations, creating a
@@ -65,15 +66,14 @@ fn inline(
     // much simpler than the original component and more efficient for
     // us to process (e.g. no string lookups as
     // most everything is done through indices instead).
-    // TODO: handle error
     let component_dfg = inline::run(
         component_types_builder,
         &parsed_component.root_component,
         &parsed_component.static_modules,
         &parsed_component.static_components,
     )
-    .unwrap();
-    component_dfg.finish()
+    .map_err(|e| crate::WasmError::Unsupported(e.to_string()))?;
+    Ok(component_dfg.finish())
 }
 
 pub struct BuildIrComponentInput<'data> {
@@ -90,13 +90,13 @@ fn build_ir(
     let mut cb = miden_hir::ComponentBuilder::new(diagnostics);
 
     let component_instance_builder = ComponentInstanceBuilder::new(input);
-    let mut component_instance = component_instance_builder.build();
+    let mut component_instance = component_instance_builder.build()?;
 
     component_instance.ensure_module_names();
 
     // build exports
     for (name, export) in &component_instance.component.exports {
-        build_export(export, &component_instance, name, &mut cb, config);
+        build_export(export, &component_instance, name, &mut cb, config)?;
     }
 
     for (static_module_idx, parsed_module) in component_instance.modules {
@@ -108,7 +108,7 @@ fn build_ir(
             &parsed_module,
             &mut cb,
             config,
-        );
+        )?;
 
         let module = build_ir_module(
             parsed_module,
@@ -116,8 +116,8 @@ fn build_ir(
             config,
             diagnostics,
         )?;
-        // TODO: handle error
-        cb.add_module(module.into()).unwrap();
+        cb.add_module(module.into())
+            .expect("module is already added");
     }
 
     Ok(cb.build())
@@ -130,27 +130,26 @@ fn build_import(
     parsed_module: &ParsedModule<'_>,
     cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
-) {
+) -> WasmResult<()> {
     for import in component_imports {
         let (import_idx, import_names) = &component.imports[import.runtime_import_index];
-        assert_eq!(
-            import_names.len(),
-            1,
-            "multi-name imports not yet supported"
-        );
+        if import_names.len() != 1 {
+            return Err(crate::WasmError::Unsupported(
+                "multi-name imports not supported".to_string(),
+            ));
+        }
         let import_func_name = import_names.first().unwrap();
         let (full_interface_name, _) = component.import_types[*import_idx].clone();
         let interface_function = InterfaceFunctionIdent {
             interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
             function: Symbol::intern(import_func_name),
         };
-        let codegen_metadata = config.import_metadata.get(&interface_function).expect(
-            format!(
-                "Codegen metadata for interface function {:?} not found",
+        let Some(codegen_metadata) = config.import_metadata.get(&interface_function) else {
+            return Err(crate::WasmError::MissingImportMetadata(format!(
+                "Import metadata for interface function {:?} not found",
                 &interface_function,
-            )
-            .as_str(),
-        );
+            )));
+        };
         let lifted_func_ty = convert_lifted_func_ty(&import.signature, component_types);
 
         let component_import = miden_hir::ComponentImport {
@@ -160,31 +159,32 @@ fn build_import(
             function_mast_root_hash: codegen_metadata.function_mast_root_hash.clone(),
         };
         let function_id =
-            find_module_import_function(parsed_module, full_interface_name, import_func_name);
+            find_module_import_function(parsed_module, full_interface_name, import_func_name)?;
         cb.add_import(function_id, component_import);
     }
+    Ok(())
 }
 
 fn find_module_import_function(
     parsed_module: &ParsedModule,
     full_interface_name: String,
     import_func_name: &String,
-) -> FunctionIdent {
+) -> WasmResult<FunctionIdent> {
     for import in &parsed_module.module.imports {
         if import.module == full_interface_name && &import.field == import_func_name {
             let func_idx = import.index.unwrap_func();
             let func_name = parsed_module.module.func_name(func_idx);
             let module_instance_name = parsed_module.module.name();
-            return FunctionIdent {
+            return Ok(FunctionIdent {
                 module: Ident::with_empty_span(Symbol::intern(module_instance_name)),
                 function: Ident::with_empty_span(Symbol::intern(func_name)),
-            };
+            });
         }
     }
-    unreachable!(
+    Err(WasmError::Unexpected(format!(
         "failed to find module import for interface {} and function {}",
         full_interface_name, import_func_name
-    );
+    )))
 }
 
 fn build_export(
@@ -193,17 +193,18 @@ fn build_export(
     name: &String,
     cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
-) {
+) -> WasmResult<()> {
     match export {
         Export::LiftedFunction { ty, func, options } => {
-            build_export_function(component_instance, name, func, ty, options, cb, config);
+            build_export_function(component_instance, name, func, ty, options, cb, config)
         }
         Export::Instance(exports) => {
             // We don't support exporting an interface instance, add the interface items to the
             // IR `Component` exports instead
             for (name, export) in exports {
-                build_export(export, component_instance, name, cb, config);
+                build_export(export, component_instance, name, cb, config)?;
             }
+            Ok(())
         }
         Export::ModuleStatic(_) => todo!(),
         Export::ModuleImport(_) => todo!(),
@@ -219,7 +220,7 @@ fn build_export_function(
     options: &CanonicalOptions,
     cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
-) {
+) -> WasmResult<()> {
     assert_empty_canonical_options(options);
     let func_ident = match func {
         CoreDef::Export(core_export) => {
@@ -246,19 +247,19 @@ fn build_export_function(
     };
     let lifted_func_ty = convert_lifted_func_ty(ty, &component_instance.component_types);
     let export_name = Symbol::intern(name).into();
-    let codegen_metadata = config.export_metadata.get(&export_name).expect(
-        format!(
+    let Some(codegen_metadata) = config.export_metadata.get(&export_name) else {
+        return Err(WasmError::MissingExportMetadata(format!(
             "Export metadata for interface function {:?} not found",
             &export_name,
-        )
-        .as_str(),
-    );
+        )));
+    };
     let export = miden_hir::ComponentExport {
         function: func_ident,
         function_ty: lifted_func_ty,
         invoke_method: codegen_metadata.invoke_method,
     };
     cb.add_export(export_name, export);
+    Ok(())
 }
 
 fn convert_lifted_func_ty(
@@ -355,7 +356,8 @@ mod tests {
         };
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &diagnostics).unwrap();
-        let component_translation = inline(&mut component_types_builder, &parsed_component);
+        let component_translation =
+            inline(&mut component_types_builder, &parsed_component).unwrap();
 
         assert_eq!(parsed_component.static_modules.len(), 1);
         dbg!(&component_translation.component);
@@ -461,7 +463,8 @@ mod tests {
         };
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &diagnostics).unwrap();
-        let component_translation = inline(&mut component_types_builder, &parsed_component);
+        let component_translation =
+            inline(&mut component_types_builder, &parsed_component).unwrap();
         assert_eq!(parsed_component.static_modules.len(), 1);
         let module = &parsed_component.static_modules[StaticModuleIndex::from_u32(0)].module;
 

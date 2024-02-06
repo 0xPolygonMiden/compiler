@@ -45,6 +45,12 @@ pub enum WasmError {
     /// An error occurred during IR program linking
     #[error("Failed to link module. See diagnostics for details")]
     LinkerError(#[from] miden_hir::LinkerError),
+
+    #[error("Import metadata is missing: {0}")]
+    MissingImportMetadata(String),
+
+    #[error("Export metadata is missing: {0}")]
+    MissingExportMetadata(String),
 }
 
 impl From<wasmparser::BinaryReaderError> for WasmError {
