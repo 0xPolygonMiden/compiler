@@ -20,7 +20,7 @@ use super::{
     StaticModuleIndex, TypeFuncIndex,
 };
 
-/// Translate a Wasm component binary into Miden IR module
+/// Translate a Wasm component binary into Miden IR component
 pub fn translate_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,

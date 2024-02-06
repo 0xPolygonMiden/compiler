@@ -42,7 +42,6 @@ use std::hash::Hash;
 use std::ops::Index;
 
 #[derive(Default)]
-#[allow(missing_docs)]
 pub struct ComponentDfg {
     /// Same as `Component::import_types`
     pub import_types: PrimaryMap<ImportIndex, (String, TypeDef)>,

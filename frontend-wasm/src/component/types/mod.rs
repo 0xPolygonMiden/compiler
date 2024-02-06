@@ -1540,7 +1540,6 @@ pub struct FlatTypes<'a> {
     pub memory64: &'a [FlatType],
 }
 
-#[allow(missing_docs)]
 impl FlatTypes<'_> {
     /// Returns the number of flat types used to represent this type.
     ///

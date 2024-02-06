@@ -241,7 +241,6 @@ impl EntityIndex {
 
 /// A type of an item in a wasm module where an item is typically something that
 /// can be exported.
-#[allow(missing_docs)]
 #[derive(Clone, Debug)]
 pub enum EntityType {
     /// A global variable with the specified content type
