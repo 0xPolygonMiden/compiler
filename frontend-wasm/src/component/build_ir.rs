@@ -29,13 +29,13 @@ pub fn translate_component(
     let (mut component_types_builder, parsed_component) = parse(config, wasm, diagnostics)?;
     let linearized_component_translation = inline(&mut component_types_builder, &parsed_component)?;
     let component_types = component_types_builder.finish();
-    // TODO: remove and pass as three separate arguments?
-    let input = BuildIrComponentInput {
+    build_ir(
+        linearized_component_translation,
         component_types,
-        modules: parsed_component.static_modules,
-        linear_component_translation: linearized_component_translation,
-    };
-    build_ir(input, config, diagnostics)
+        parsed_component.static_modules,
+        config,
+        diagnostics,
+    )
 }
 
 fn parse<'data>(
@@ -76,20 +76,17 @@ fn inline(
     Ok(component_dfg.finish())
 }
 
-pub struct BuildIrComponentInput<'data> {
-    pub linear_component_translation: LinearComponentTranslation,
-    pub component_types: ComponentTypes,
-    pub modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
-}
-
-fn build_ir(
-    input: BuildIrComponentInput<'_>,
+fn build_ir<'data>(
+    linear_component_translation: LinearComponentTranslation,
+    component_types: ComponentTypes,
+    modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
     config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Component> {
     let mut cb = miden_hir::ComponentBuilder::new(diagnostics);
 
-    let component_instance_builder = ComponentInstanceBuilder::new(input);
+    let component_instance_builder =
+        ComponentInstanceBuilder::new(linear_component_translation, component_types, modules);
     let mut component_instance = component_instance_builder.build()?;
 
     component_instance.ensure_module_names();
@@ -370,12 +367,14 @@ mod tests {
         dbg!(&component_translation.component.exports);
         assert_eq!(component_translation.component.exports.len(), 1);
         let component_types = component_types_builder.finish();
-        let input = BuildIrComponentInput {
+        let ir = build_ir(
+            component_translation,
             component_types,
-            modules: parsed_component.static_modules,
-            linear_component_translation: component_translation,
-        };
-        let ir = build_ir(input, &config, &diagnostics).unwrap();
+            parsed_component.static_modules,
+            &config,
+            &diagnostics,
+        )
+        .unwrap();
         dbg!(&ir.exports());
         assert!(!ir.modules().is_empty());
         assert!(!ir.exports().is_empty());
@@ -486,12 +485,15 @@ mod tests {
         assert_eq!(component_translation.component.exports.len(), 1);
 
         let component_types = component_types_builder.finish();
-        let input = BuildIrComponentInput {
+
+        let ir = build_ir(
+            component_translation,
             component_types,
-            modules: parsed_component.static_modules,
-            linear_component_translation: component_translation,
-        };
-        let ir = build_ir(input, &config, &diagnostics).unwrap();
+            parsed_component.static_modules,
+            &config,
+            &diagnostics,
+        )
+        .unwrap();
         dbg!(&ir.exports());
         assert!(!ir.modules().is_empty());
         assert!(!ir.exports().is_empty());

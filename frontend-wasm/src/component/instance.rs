@@ -7,9 +7,9 @@ use crate::{
 };
 
 use super::{
-    build_ir::BuildIrComponentInput, ComponentTypes, CoreDef, GlobalInitializer, InstantiateModule,
-    LinearComponent, LoweredIndex, RuntimeImportIndex, RuntimeInstanceIndex, StaticModuleIndex,
-    TypeFuncIndex,
+    ComponentTypes, CoreDef, GlobalInitializer, InstantiateModule, LinearComponent,
+    LinearComponentTranslation, LoweredIndex, RuntimeImportIndex, RuntimeInstanceIndex,
+    StaticModuleIndex, TypeFuncIndex,
 };
 
 /// A component import
@@ -42,12 +42,22 @@ impl<'data> ComponentInstance<'data> {
 }
 
 pub struct ComponentInstanceBuilder<'data> {
-    pub input: BuildIrComponentInput<'data>,
+    linear_component_translation: LinearComponentTranslation,
+    component_types: ComponentTypes,
+    modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
 }
 
 impl<'data> ComponentInstanceBuilder<'data> {
-    pub fn new(input: BuildIrComponentInput<'data>) -> Self {
-        Self { input }
+    pub fn new(
+        linear_component_translation: LinearComponentTranslation,
+        component_types: ComponentTypes,
+        modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
+    ) -> Self {
+        Self {
+            linear_component_translation,
+            component_types,
+            modules,
+        }
     }
 
     pub fn build(self) -> WasmResult<ComponentInstance<'data>> {
@@ -55,7 +65,7 @@ impl<'data> ComponentInstanceBuilder<'data> {
             PrimaryMap::new();
         let mut lower_imports: HashMap<LoweredIndex, RuntimeImportIndex> = HashMap::new();
         let mut imports: HashMap<StaticModuleIndex, Vec<ComponentImport>> = HashMap::new();
-        let component = &self.input.linear_component_translation.component;
+        let component = &self.linear_component_translation.component;
         for initializer in &component.initializers {
             match initializer {
                 GlobalInitializer::InstantiateModule(m) => {
@@ -79,9 +89,9 @@ impl<'data> ComponentInstanceBuilder<'data> {
                                     CoreDef::Export(_) => todo!(),
                                     CoreDef::InstanceFlags(_) => todo!(),
                                     CoreDef::Trampoline(trampoline_idx) => {
-                                        let trampoline =
-                                            &self.input.linear_component_translation.trampolines
-                                                [*trampoline_idx];
+                                        let trampoline = &self
+                                            .linear_component_translation
+                                            .trampolines[*trampoline_idx];
                                         match trampoline {
                                             Trampoline::LowerImport {
                                                 index,
@@ -118,10 +128,10 @@ impl<'data> ComponentInstanceBuilder<'data> {
             }
         }
         Ok(ComponentInstance {
-            modules: self.input.modules,
+            modules: self.modules,
             module_instances,
-            component: self.input.linear_component_translation.component,
-            component_types: self.input.component_types,
+            component: self.linear_component_translation.component,
+            component_types: self.component_types,
             imports,
         })
     }
