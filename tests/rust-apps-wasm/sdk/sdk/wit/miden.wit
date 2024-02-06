@@ -124,7 +124,10 @@ interface core-types {
         inner: word
     }
 
-    
+    /// An id of the created note 
+    record note-id {
+        inner: felt
+    }
 
     /// A list of field elements representing the inputs of a currently executing note
     /// 
@@ -215,7 +218,7 @@ interface note {
 
 /// Transaction-related functions
 interface tx {
-    use core-types.{felt, core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment, block-hash, word};
+    use core-types.{felt, core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment, block-hash, word, note-id};
 
     /// Returns the block number of the last known block at the time of transaction execution.
     get-block-number: func() -> felt;
@@ -231,8 +234,8 @@ interface tx {
     /// asset is the asset to be included in the note.
     /// tag is the tag to be included in the note.
     /// recipient is the recipient of the note.
-    /// Returns pointer to the created note.
-    create-note: func(asset: core-asset, tag: tag, recipient: recipient) -> felt;
+    /// Returns the id of the created note.
+    create-note: func(asset: core-asset, tag: tag, recipient: recipient) -> note-id;
 }
 
 /// Asset-related functions. These functions can only be called by faucet accounts.
