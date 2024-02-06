@@ -25,9 +25,9 @@ pub struct ExportMetadata {
 /// Configuration for the WASM translation.
 #[derive(Debug)]
 pub struct WasmTranslationConfig {
-    /// The moduie name to use if Wasm module doesn't have one.
-    // TODO: Should we ditch it altogether? In CM there are multiple modules without names.
-    pub module_name_fallback: String,
+    /// The source file name.
+    /// This is used as a fallback for module/component name if it's not parsed from the Wasm binary.
+    pub source_name: String,
 
     /// Whether or not to generate native DWARF debug information.
     pub generate_native_debuginfo: bool,
@@ -47,7 +47,7 @@ pub struct WasmTranslationConfig {
 impl Default for WasmTranslationConfig {
     fn default() -> Self {
         Self {
-            module_name_fallback: "noname".to_string(),
+            source_name: "noname".to_string(),
             generate_native_debuginfo: false,
             parse_wasm_debuginfo: false,
             import_metadata: Default::default(),

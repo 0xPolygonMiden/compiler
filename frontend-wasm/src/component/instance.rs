@@ -30,7 +30,7 @@ impl<'data> ComponentInstance<'data> {
         for (idx, parsed_module) in self.modules.iter_mut() {
             parsed_module
                 .module
-                .set_name_fallback(Some(format!("module{}", idx.as_u32())));
+                .set_name_fallback(format!("module{}", idx.as_u32()));
         }
     }
 

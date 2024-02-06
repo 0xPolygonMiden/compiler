@@ -42,11 +42,8 @@ impl Stage for ParseStage {
                     &input,
                     &session,
                     &WasmTranslationConfig {
-                        module_name_fallback: name.to_string().clone(),
-                        generate_native_debuginfo: false,
-                        parse_wasm_debuginfo: false,
-                        import_metadata: Default::default(),
-                        export_metadata: Default::default(),
+                        source_name: name.to_string().clone(),
+                        ..Default::default()
                     },
                 ),
                 unsupported => unreachable!("unsupported file type: {unsupported}"),
@@ -93,11 +90,8 @@ impl ParseStage {
         file.read_to_end(&mut bytes)?;
         let file_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
         let config = wasm::WasmTranslationConfig {
-            module_name_fallback: file_name,
-            generate_native_debuginfo: false,
-            parse_wasm_debuginfo: false,
-            import_metadata: Default::default(),
-            export_metadata: Default::default(),
+            source_name: file_name,
+            ..Default::default()
         };
         self.parse_hir_from_wasm_bytes(&bytes, session, &config)
     }

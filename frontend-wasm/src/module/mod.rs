@@ -347,8 +347,8 @@ impl Module {
     }
 
     /// Sets the fallback name of this module, used if there is no module name in the name section
-    pub fn set_name_fallback(&mut self, name_fallback: Option<String>) {
-        self.name_fallback = name_fallback;
+    pub fn set_name_fallback(&mut self, name_fallback: String) {
+        self.name_fallback = Some(name_fallback);
     }
 }
 

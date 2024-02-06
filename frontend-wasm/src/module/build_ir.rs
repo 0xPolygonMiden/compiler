@@ -30,7 +30,7 @@ pub fn translate_module(
     .parse(parser, wasm, diagnostics)?;
     parsed_module
         .module
-        .set_name_fallback(Some(config.module_name_fallback.clone()));
+        .set_name_fallback(config.source_name.clone());
     let module_types = module_types_builder.finish();
     build_ir_module(parsed_module, &module_types, config, diagnostics)
 }

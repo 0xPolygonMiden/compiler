@@ -350,11 +350,8 @@ mod tests {
         .into_iter()
         .collect();
         let config = WasmTranslationConfig {
-            module_name_fallback: "test".to_owned(),
-            generate_native_debuginfo: false,
-            parse_wasm_debuginfo: false,
-            import_metadata: Default::default(),
             export_metadata,
+            ..Default::default()
         };
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &diagnostics).unwrap();
@@ -458,11 +455,9 @@ mod tests {
         .into_iter()
         .collect();
         let config = WasmTranslationConfig {
-            module_name_fallback: "test".to_owned(),
-            generate_native_debuginfo: false,
-            parse_wasm_debuginfo: false,
             import_metadata,
             export_metadata,
+            ..Default::default()
         };
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &diagnostics).unwrap();

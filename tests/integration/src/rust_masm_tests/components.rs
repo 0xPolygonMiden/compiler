@@ -35,11 +35,8 @@ fn wcm_add() {
     .into_iter()
     .collect();
     let config = WasmTranslationConfig {
-        module_name_fallback: "test".to_owned(),
-        generate_native_debuginfo: false,
-        parse_wasm_debuginfo: false,
-        import_metadata: Default::default(),
         export_metadata,
+        ..Default::default()
     };
     let component = translate_component(&wasm_bytes, &config, &session.diagnostics)
         .expect("Failed to translate Wasm to IR module");
@@ -83,11 +80,9 @@ fn wcm_inc() {
     .into_iter()
     .collect();
     let config = WasmTranslationConfig {
-        module_name_fallback: "test".to_owned(),
-        generate_native_debuginfo: false,
-        parse_wasm_debuginfo: false,
         import_metadata,
         export_metadata,
+        ..Default::default()
     };
     let ir = translate_component(&wasm_bytes, &config, &session.diagnostics)
         .expect("Failed to translate Wasm to IR module");

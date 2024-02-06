@@ -1355,7 +1355,6 @@ impl VariantInfo {
             abi,
         )
     }
-    /// TODO
     pub const fn new_static(cases: &[Option<CanonicalAbiInfo>]) -> VariantInfo {
         let size = match DiscriminantSize::from_count(cases.len()) {
             Some(size) => size,
