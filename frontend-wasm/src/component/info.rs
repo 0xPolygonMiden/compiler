@@ -257,7 +257,6 @@ pub enum InstantiateModule {
     /// order of imports required is statically known and can be pre-calculated
     /// to avoid string lookups related to names at runtime, represented by the
     /// flat list of arguments here.
-    // TODO: make it a struct to name parameters
     Static(StaticModuleIndex, Box<[CoreDef]>),
 
     /// An imported module is being instantiated.

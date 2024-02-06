@@ -48,8 +48,6 @@ impl<'data> ComponentInstanceBuilder<'data> {
         Self { input }
     }
 
-    // TODO: make it a function?
-    #[allow(unused_variables)]
     pub fn build(self) -> ComponentInstance<'data> {
         let mut module_instances: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex> =
             PrimaryMap::new();
@@ -73,7 +71,6 @@ impl<'data> ComponentInstanceBuilder<'data> {
                             }
 
                             module_instances.push(*static_module_idx);
-                            // TODO: store args (imports) for every module instance
                             let mut module_args: Vec<ComponentImport> = Vec::new();
                             for arg in args.iter() {
                                 match arg {
@@ -87,7 +84,7 @@ impl<'data> ComponentInstanceBuilder<'data> {
                                             Trampoline::LowerImport {
                                                 index,
                                                 lower_ty,
-                                                options,
+                                                options: _,
                                             } => {
                                                 let import = lower_imports[index];
                                                 let import = ComponentImport {
@@ -111,27 +108,6 @@ impl<'data> ComponentInstanceBuilder<'data> {
                     import,
                 } => {
                     lower_imports.insert(*init_lowered_idx, *import);
-                    // let (import_idx, names) = &component.imports[*import];
-                    // assert_eq!(names.len(), 1, "multi-name imports not yet supported");
-                    // let func_name = names.first().unwrap();
-                    // let (full_interface_name, component_instance_type) =
-                    //     component.import_types[*import_idx].clone();
-                    // let func_ty: &TypeFuncIndex = self
-                    //     .input
-                    //     .linear_component_translation
-                    //     .trampolines
-                    //     .iter()
-                    //     .find_map(|(_, t)| match t {
-                    //         Trampoline::LowerImport {
-                    //             index,
-                    //             lower_ty,
-                    //             options: _,
-                    //         } if index == init_lowered_idx => Some(lower_ty),
-                    //         _ => None,
-                    //     })
-                    //     .unwrap();
-                    // let func_type = self.input.component_types[*func_ty].clone();
-                    // todo!("get the component function type from the trampoline")
                 }
                 GlobalInitializer::ExtractMemory(_) => todo!(),
                 GlobalInitializer::ExtractRealloc(_) => todo!(),
