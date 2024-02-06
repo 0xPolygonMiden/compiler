@@ -157,9 +157,8 @@ pub struct Module {
     /// WebAssembly module memories.
     pub memories: PrimaryMap<MemoryIndex, Memory>,
 
-    // TODO: make it private
     /// Parsed names section.
-    pub name_section: NameSection,
+    name_section: NameSection,
 
     /// The fallback name of this module, used if there is no module name in the name section
     name_fallback: Option<String>,
@@ -281,6 +280,14 @@ impl Module {
     #[inline]
     pub fn is_imported_global(&self, index: GlobalIndex) -> bool {
         index.index() < self.num_imported_globals
+    }
+
+    pub fn global_name(&self, index: GlobalIndex) -> String {
+        self.name_section
+            .globals_names
+            .get(&index)
+            .cloned()
+            .unwrap_or(format!("global{}", index.as_u32()))
     }
 
     /// Returns the type of an item based on its index

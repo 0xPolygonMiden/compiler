@@ -74,13 +74,13 @@ pub fn translate_operator(
         /********************************** Globals ****************************************/
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.name_section.globals_names[&global_index].clone();
+            let name = mod_info.global_name(global_index);
             let ty = ir_type(mod_info.globals[global_index].ty)?;
             state.push1(builder.ins().load_symbol(name, ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.name_section.globals_names[&global_index].clone();
+            let name = mod_info.global_name(global_index);
             let ty = ir_type(mod_info.globals[global_index].ty)?;
             let ptr = builder
                 .ins()
