@@ -452,7 +452,7 @@ impl FuncTranslationState {
         &mut self,
         dfg: &mut DataFlowGraph,
         index: FuncIndex,
-        mod_info: &Module,
+        module: &Module,
         mod_types: &ModuleTypes,
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<(FunctionIdent, usize)> {
@@ -460,7 +460,7 @@ impl FuncTranslationState {
             Occupied(entry) => *entry.get(),
             Vacant(entry) => {
                 let (module_id, func_name_id, sig) = if let Some((func_id, sig)) =
-                    mod_info.translated_function_imports.get(&index)
+                    module.translated_function_imports.get(&index)
                 {
                     // This is an imported function
                     (
@@ -470,10 +470,10 @@ impl FuncTranslationState {
                     )
                 } else {
                     // This is a local function so use the current module name
-                    let func_type_idx = mod_info.functions[index].clone();
+                    let func_type_idx = module.functions[index].clone();
                     let func_type = mod_types[func_type_idx.signature].clone();
-                    let func_name = mod_info.func_name(index);
-                    let mod_name = mod_info.name();
+                    let func_name = module.func_name(index);
+                    let mod_name = module.name();
                     let mod_ident = mod_name.as_str().into();
                     let func_name_id = func_name.as_str().into();
                     let ir_func_type = ir_func_type(&func_type)?;

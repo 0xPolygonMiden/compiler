@@ -41,7 +41,7 @@ pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    mod_info: &Module,
+    module: &Module,
     mod_types: &ModuleTypes,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
@@ -74,14 +74,14 @@ pub fn translate_operator(
         /********************************** Globals ****************************************/
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.global_name(global_index);
-            let ty = ir_type(mod_info.globals[global_index].ty)?;
+            let name = module.global_name(global_index);
+            let ty = ir_type(module.globals[global_index].ty)?;
             state.push1(builder.ins().load_symbol(name, ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.global_name(global_index);
-            let ty = ir_type(mod_info.globals[global_index].ty)?;
+            let name = module.global_name(global_index);
+            let ty = ir_type(module.globals[global_index].ty)?;
             let ptr = builder
                 .ins()
                 .symbol_addr(name, Ptr(ty.clone().into()), span);
@@ -120,7 +120,7 @@ pub fn translate_operator(
                 state,
                 builder,
                 FuncIndex::from_u32(*function_index),
-                mod_info,
+                module,
                 mod_types,
                 span,
                 diagnostics,
@@ -632,7 +632,7 @@ fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
-    mod_info: &Module,
+    module: &Module,
     mod_types: &ModuleTypes,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
@@ -640,7 +640,7 @@ fn translate_call(
     let (fident, num_args) = state.get_direct_func(
         builder.data_flow_graph_mut(),
         function_index,
-        mod_info,
+        module,
         mod_types,
         diagnostics,
     )?;
