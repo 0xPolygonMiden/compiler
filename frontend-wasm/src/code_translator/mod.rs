@@ -645,6 +645,7 @@ fn translate_call(
         diagnostics,
     )?;
     let args = state.peekn_mut(num_args);
+    // TODO: For imported functions, use their intended invocation method (e.g. `call` or `exec`)
     let call = builder.ins().call(fident, &args, span);
     let inst_results = builder.inst_results(call);
     state.popn(num_args);

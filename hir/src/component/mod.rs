@@ -7,67 +7,9 @@ use std::collections::BTreeMap;
 
 use super::*;
 
-// TODO: extract relevant types to interface.rs
+mod interface;
 
-/// A fully-qualified identifier for the interface being imported, e.g. `namespace::package/interface@version`
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InterfaceIdent {
-    /// A fully-qualified identifier for the interface being imported, e.g. `namespace::package/interface@version`
-    pub full_name: Symbol,
-}
-
-impl InterfaceIdent {
-    /// Create a new [InterfaceIdent] from a fully-qualified interface identifier, e.g. `namespace::package/interface@version`
-    pub fn from_full_ident(full_ident: String) -> Self {
-        Self {
-            full_name: Symbol::intern(full_ident),
-        }
-    }
-}
-
-/// An identifier for a function in an interface
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InterfaceFunctionIdent {
-    /// An interface identifier for the interface being imported (e.g. `namespace::package/interface@version`)
-    pub interface: InterfaceIdent,
-    /// The name of the function from the interface
-    pub function: Symbol,
-}
-
-impl InterfaceFunctionIdent {
-    /// Create a new [InterfaceFunctionIdent] from a fully-qualified interface
-    /// identifier(e.g. `namespace::package/interface@version`) and a function name
-    pub fn from_full(interface: String, function: String) -> Self {
-        Self {
-            interface: InterfaceIdent::from_full_ident(interface.to_string()),
-            function: Symbol::intern(function),
-        }
-    }
-}
-
-// TODO: extract into mast_root_hash.rs?
-
-/// The size of a MAST root hash in bytes
-pub const MAST_ROOT_HASH_SIZE_BYTES: usize = 32;
-
-/// A MAST root hash of a function in Miden VM.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MastRootHash([u8; MAST_ROOT_HASH_SIZE_BYTES]);
-
-impl MastRootHash {
-    /// An invalid MAST root hash composed of all zeroes to use in tests
-    pub const ZEROES: Self = Self([0u8; MAST_ROOT_HASH_SIZE_BYTES]);
-
-    /// Create a new [MastRootHash] from a byte array
-    pub fn new(hash: [u8; MAST_ROOT_HASH_SIZE_BYTES]) -> Self {
-        Self(hash)
-    }
-
-    /// Get the MAST root hash as a byte array
-    pub fn as_bytes(&self) -> &[u8; MAST_ROOT_HASH_SIZE_BYTES] {
-        &self.0
-    }
-}
+pub use interface::*;
 
 /// Represents the method by which a component function should be invoked in Miden VM
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

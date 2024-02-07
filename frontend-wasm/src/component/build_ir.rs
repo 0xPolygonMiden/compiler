@@ -141,7 +141,7 @@ fn build_import(
             interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
             function: Symbol::intern(import_func_name),
         };
-        let Some(codegen_metadata) = config.import_metadata.get(&interface_function) else {
+        let Some(import_metadata) = config.import_metadata.get(&interface_function) else {
             return Err(crate::WasmError::MissingImportMetadata(format!(
                 "Import metadata for interface function {:?} not found",
                 &interface_function,
@@ -152,8 +152,8 @@ fn build_import(
         let component_import = miden_hir::ComponentImport {
             function_ty: lifted_func_ty,
             interface_function,
-            invoke_method: codegen_metadata.invoke_method,
-            function_mast_root_hash: codegen_metadata.function_mast_root_hash.clone(),
+            invoke_method: import_metadata.invoke_method,
+            function_mast_root_hash: import_metadata.function_mast_root_hash.clone(),
         };
         let function_id =
             find_module_import_function(parsed_module, full_interface_name, import_func_name)?;
@@ -244,7 +244,7 @@ fn build_export_function(
     };
     let lifted_func_ty = convert_lifted_func_ty(ty, &component_instance.component_types);
     let export_name = Symbol::intern(name).into();
-    let Some(codegen_metadata) = config.export_metadata.get(&export_name) else {
+    let Some(export_metadata) = config.export_metadata.get(&export_name) else {
         return Err(WasmError::MissingExportMetadata(format!(
             "Export metadata for interface function {:?} not found",
             &export_name,
@@ -253,7 +253,7 @@ fn build_export_function(
     let export = miden_hir::ComponentExport {
         function: func_ident,
         function_ty: lifted_func_ty,
-        invoke_method: codegen_metadata.invoke_method,
+        invoke_method: export_metadata.invoke_method,
     };
     cb.add_export(export_name, export);
     Ok(())
@@ -300,12 +300,13 @@ fn assert_empty_canonical_options(options: &CanonicalOptions) {
 #[cfg(test)]
 mod tests {
 
+    use miden_hir::MastRootHash;
     use miden_hir_type::Type;
 
     use crate::{
         component::StaticModuleIndex,
         config::{ExportMetadata, ImportMetadata},
-        test_utils::{invalid_mast_root_hash, test_diagnostics},
+        test_utils::test_diagnostics,
     };
 
     use super::*;
@@ -441,7 +442,7 @@ mod tests {
         let import_metadata = [(
             interface_function_ident.clone(),
             ImportMetadata {
-                function_mast_root_hash: invalid_mast_root_hash(),
+                function_mast_root_hash: MastRootHash::ZEROES,
                 invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         )]
