@@ -10,7 +10,7 @@ There are four calling conventions represented in the compiler:
 - `Fast`, this convention allows the compiler to follow either the `C` calling convention, or modify it
   as it sees fit on a function-by-function basis. This convention provides no guarantees about how a
   callee will expect arguments to be passed, so should not be used for functions which are expected to
-  have a stable, predicatble interface. This is a good choice for local functions, or functions which are
+  have a stable, predictable interface. This is a good choice for local functions, or functions which are
   only used within an executable/library and are not part of the public interface.
 - `Kernel`, this is a special calling convention that is used when defining kernel modules in the IR.
   Functions which are part of the kernel's public API are required to use this convention, and it is not

@@ -10,7 +10,7 @@ pub enum InvalidInputError {
     /// Occurs if an unsupported file type is given as an input
     #[error("invalid input file '{}': unsupported file type", .0.display())]
     UnsupportedFileType(std::path::PathBuf),
-    /// We attemped to detecth the file type from the raw bytes, but failed
+    /// We attempted to detecth the file type from the raw bytes, but failed
     #[error("could not detect file type of input")]
     UnrecognizedFileType,
     /// Unable to read input file

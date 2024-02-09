@@ -743,7 +743,7 @@ impl OperandStack {
     /// Drops the top word on the stack
     ///
     /// NOTE: A word will always be 4 field elements, so if an operand is
-    /// larger than a field element, it may be split to accomodate the request.
+    /// larger than a field element, it may be split to accommodate the request.
     #[allow(unused)]
     pub fn dropw(&mut self) {
         assert!(

@@ -224,7 +224,7 @@ pub enum ScheduleOp {
     Exit,
     /// Emit the given instruction, using the provided analysis
     Inst(Rc<InstInfo>),
-    /// Drop the first occurrance of the given value on the operand stack
+    /// Drop the first occurrence of the given value on the operand stack
     Drop(hir::Value),
 }
 
@@ -483,7 +483,7 @@ impl<'a> BlockScheduler<'a> {
 
     /// Schedule pre-requisites for an instruction based on the given analysis, see [Plan::PreInst] docs for more.
     ///
-    /// This function, while nominally occuring during the scheduling phase, actually emits planning
+    /// This function, while nominally occurring during the scheduling phase, actually emits planning
     /// tasks which are processed _before_ the [Plan::Inst] task corresponding to `inst_info`. As a
     /// result, we visit the pre-requisites in planning order, _not_ execution order.
     fn schedule_pre_inst(&mut self, inst_info: Rc<InstInfo>) {
