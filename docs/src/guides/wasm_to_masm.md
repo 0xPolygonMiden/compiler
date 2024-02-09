@@ -27,7 +27,7 @@ address various other higher-priority tasks. Ultimately, using `midenc` directly
 less common than other use cases (such as using `cargo miden`, or using the compiler as a
 library for your own language frontend).
 
-    $ midenc compile -o wasm_fib.masm --emit=masm target/wasm32-unknown-unknown/release/wasm_fib.wasm
+    midenc compile -o wasm_fib.masm --emit=masm target/wasm32-unknown-unknown/release/wasm_fib.wasm
     
 This will place the generated Miden Assembly code for our `wasm_fib` crate in the current directory.
 If we dump the contents of this file, we'll see the following generated code:
@@ -84,7 +84,7 @@ we can test this program out as follows:
 First, we need to define a program to link our `wasm_fib.masm` module into, since 
 it is not a program, but a library module:
 
-    $ cat <<EOF > main.masm
+    cat <<EOF > main.masm
     use.wasm_fib::wasm_fib
     
     begin
@@ -93,7 +93,7 @@ it is not a program, but a library module:
     
 We will also need a `.inputs` file to pass arguments to the program:
 
-    $ cat <<EOF > wasm_fib.inputs
+    cat <<EOF > wasm_fib.inputs
     {
         "operand_stack": ["10"],
         "advice_stack": ["0"],
@@ -102,12 +102,12 @@ We will also need a `.inputs` file to pass arguments to the program:
 Next, we need to build a MASL library (normally `midenc` would do this, but there is a bug
 blocking it at the moment, this example will be updated accordingly soon):
 
-    $ mkdir -p wasm_fib && mv wasm_fib.masm wasm_fib/
-    $ miden bundle -n wasm_fib wasm_fib
+    mkdir -p wasm_fib && mv wasm_fib.masm wasm_fib/
+    miden bundle -n wasm_fib wasm_fib
 
 With these in place, we can put it all together and run it:
 
-    $ miden run -a main.masm -n 1 -i wasm_fib.inputs -l wasm_fib/wasm_fib.masl
+    miden run -a main.masm -n 1 -i wasm_fib.inputs -l wasm_fib/wasm_fib.masl
     ============================================================
     Run program
     ============================================================
