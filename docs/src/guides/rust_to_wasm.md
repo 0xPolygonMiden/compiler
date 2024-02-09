@@ -12,7 +12,7 @@ make it easier to show the results at each step, so bear with me):
 
 Start by creating a new library crate:
 
-    $ cargo new --lib wasm-fib && cd wasm-fib
+    cargo new --lib wasm-fib && cd wasm-fib
 
 
 To compile to WebAssembly, you must have the appropriate Rust toolchain installed, and we
@@ -20,10 +20,10 @@ will also need additional Cargo nightly features to build for Miden, so let's ad
 file to our project root so that `rustup` and `cargo` will know what we need, and use them by
 default:
 
-    $ cat <<EOF > rust-toolchain.toml
+    cat <<EOF > rust-toolchain.toml
     [toolchain]
     channel = "nightly"
-    targets = "wasm32-unknown-unknown"
+    targets = ["wasm32-unknown-unknown"]
     EOF
 
 Next, edit the `Cargo.toml` file as follows:
@@ -97,7 +97,7 @@ Next, edit `src/lib.rs` as shown below:
 // Required for no-std crates
 #[panic_handler]
 fn panic(info: core::panic::PanicInfo) -> ! {
-    unsafe { core::intrinsics::abort() }
+    core::intrinsics::abort()
 }
 
 // Marking the function no_mangle ensures that it is exported
@@ -125,12 +125,12 @@ This exports our `fib` function from the library, making it callable from within
 
 All that remains is to compile to WebAssembly:
 
-    $ cargo build --release --target=wasm32-unknown-unknown
+    cargo build --release --target=wasm32-unknown-unknown
 
 This places a `wasm_fib.wasm` file under the `target/wasm32-unknown-unknown/release/` directory, which
 we can then examine with [wasm2wat](https://github.com/WebAssembly/wabt) to set the code we generated:
 
-    $ wasm2wat target/wasm32-unknown-unknown/release/wasm_fib.wasm
+    wasm2wat target/wasm32-unknown-unknown/release/wasm_fib.wasm
     
 Which dumps the following output (may differ slightly on your machine, depending on the specific compiler version):
 
