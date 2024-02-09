@@ -182,7 +182,7 @@
 available, so it must be built from source, but the requirements for this are minimal,
 as shown below:</p>
 <h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
-<p>First, you'll need to have Rust installed (at time of writing, we're doing development 
+<p>First, you'll need to have Rust installed (at time of writing, we're doing development
 against Rust 1.74).</p>
 <p>Then, simply install <code>midenc</code> using Cargo, like so:</p>
 <pre><code># If you have cloned the git repo, and are in the project root:
@@ -226,13 +226,13 @@ Options:
           Print help (see a summary with '-h')
 </code></pre>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
-<p>We currently have two frontends to the compiler, one that accepts the compiler's IR in textual 
+<p>We currently have two frontends to the compiler, one that accepts the compiler's IR in textual
 form (as a <code>.hir</code> file), primarily used for testing; and one that accepts a WebAssembly module
 in binary form (i.e. as a <code>.wasm</code> file).</p>
 <p>For the vast majority of people, if not everyone, the <code>.wasm</code> form will be the one you are interested
 in, so we have put together a <a href="../guides/wasm_to_masm.html">helpful guide</a> that walks through how to
 compile a WebAssembly module (in this case, produced by <code>rustc</code>) to Miden Assembly using <code>midenc</code>.</p>
-<p>If you aren't sure how to produce a WebAssembly module, you may be interested in 
+<p>If you aren't sure how to produce a WebAssembly module, you may be interested in
 <a href="../guides/rust_to_wasm.html">another guide</a> that demonstrates how to emit a WebAssembly module from
 a Rust crate.</p>
 
