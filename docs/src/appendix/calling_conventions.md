@@ -56,23 +56,31 @@ General type | C Type | IR Type | `sizeof` | Alignment (bytes) | Miden Type
  Floating point | `long double` | 16 | 16 | (none)[^5]
 
 [^1]: i32 is not a native Miden type, but is implemented using compiler intrinsics on top of the native u32 type
+
 [^2]: i64 is not a native Miden type, but is implemented using compiler intrinsics on top of the stdlib u64 type
+
 [^3]: u64 is not a native Miden type, but is implemented in software using two 32-bit limbs (i.e. a pair of field elements)
+
 [^4]: floating-point types are not currently supported, but will be implemented using compiler intrinsics
+
 [^5]: `long double` values correspond to 128-bit IEEE-754 quad-precision binary128 values. These are not currently
 supported, and we have no plans to support them in the near term. Should we ever provide such support, we will do
 so using compiler intrinsics.
+
 [^6]: A null pointer (for all types) always has the value zero.
+
 [^7]: Miden's linear memory is word-addressable, not byte-addressable. The `Ptr` type has an `AddressSpace` parameter,
 that by default is set to the byte-addressable address space. The compiler translates values of `Ptr` type that are in
 this address space, into the Miden-native, word-addressable address space during codegen of load/store operations. See
 the section on the memory model below for more details.
+
 [^8]: An `enum` is `i32` if all members of the enumeration can be represented by an `int`/`unsigned int`, otherwise it
 uses i64.
 
-NOTE: The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is 
-larger than that must be allocated in linear memory, or in an automatic allocation (function-local memory), and passed 
-around by reference.
+> [!NOTE] 
+> The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is 
+> larger than that must be allocated in linear memory, or in an automatic allocation (function-local memory), and passed 
+> around by reference.
 
 The native scalar type for the Miden VM is a "field element", specifically a 64-bit value representing an integer 
 in the "Goldilocks" field, i.e. `0..(2^64-2^32+1)`. A number of instructions in the VM operate on field elements directly.
@@ -262,6 +270,7 @@ other struct or union     | indirect      | indirect |
 array                     | indirect      | N/A      |
 
 [^1]: Zero-sized types have no representation in memory, so they are ignored/skipped
+
 [^2]: Any struct or union that recursively (including through nested structs,
 unions, and arrays) contains just a single scalar value and is not specified to
 have greater than natural alignment.

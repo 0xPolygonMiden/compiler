@@ -14,7 +14,6 @@ Start by creating a new library crate:
 
     cargo new --lib wasm-fib && cd wasm-fib
 
-
 To compile to WebAssembly, you must have the appropriate Rust toolchain installed, and we
 will also need additional Cargo nightly features to build for Miden, so let's add a toolchain
 file to our project root so that `rustup` and `cargo` will know what we need, and use them by
@@ -64,11 +63,12 @@ going to benefit from less code, even if conventionally that code would be less 
 to the difference in proving time accumulated due to extra instructions. That said, there are no hard 
 and fast rules, but these defaults are good ones to start with.
 
-**NOTE:** We recommended `wee_alloc` here, but any simple allocator will do, including a hand-written
-bump allocator. The trade offs made by these small allocators are not generally suitable for long-
-running, or allocation-heavy applications, as they "leak" memory (generally because they make little
-to no attempt to recover freed allocations), however they are very useful for one-shot programs that 
-do minimal allocation, which is going to be the typical case for Miden programs.
+> [!TIP] 
+> We recommended `wee_alloc` here, but any simple allocator will do, including a hand-written
+> bump allocator. The trade offs made by these small allocators are not generally suitable for long-
+> running, or allocation-heavy applications, as they "leak" memory (generally because they make little
+> to no attempt to recover freed allocations), however they are very useful for one-shot programs that 
+> do minimal allocation, which is going to be the typical case for Miden programs.
 
 Next, edit `src/lib.rs` as shown below:
 

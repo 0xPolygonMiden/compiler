@@ -17,9 +17,11 @@ Then, simply install `midenc` using Cargo, like so:
     # If you have Rust installed, but have not cloned the git repo:
     cargo install --git https://github.com/0xpolygonmiden/compiler --branch develop midenc
 
-NOTE: This installation method relies on Cargo-managed binaries being in your shell `PATH`,
-which is almost always the case, but if you have disabled this functionality, you'll need
-to add `midenc` to your `PATH` manually.
+
+> [!NOTE] 
+> This installation method relies on Cargo-managed binaries being in your shell `PATH`,
+> which is almost always the case, but if you have disabled this functionality, you'll need
+> to add `midenc` to your `PATH` manually.
 
 ## Usage
 
