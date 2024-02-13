@@ -196,8 +196,7 @@ fn build_export(
             build_export_function(component_instance, name, func, ty, options, cb, config)
         }
         Export::Instance(exports) => {
-            // We don't support exporting an interface instance, add the interface items to the
-            // IR `Component` exports instead
+            // Flatten any(nested) interface instance exports into the IR `Component` exports
             for (name, export) in exports {
                 build_export(export, component_instance, name, cb, config)?;
             }
@@ -358,14 +357,14 @@ mod tests {
             inline(&mut component_types_builder, &parsed_component).unwrap();
 
         assert_eq!(parsed_component.static_modules.len(), 1);
-        dbg!(&component_translation.component);
+        // dbg!(&component_translation.component);
         let module = &parsed_component.static_modules[StaticModuleIndex::from_u32(0)].module;
-        dbg!(module);
+        // dbg!(module);
         assert_eq!(module.imports.len(), 0);
         assert_eq!(component_translation.trampolines.len(), 0);
-        dbg!(&component_translation.component.initializers);
+        // dbg!(&component_translation.component.initializers);
         assert_eq!(component_translation.component.initializers.len(), 1);
-        dbg!(&component_translation.component.exports);
+        // dbg!(&component_translation.component.exports);
         assert_eq!(component_translation.component.exports.len(), 1);
         let component_types = component_types_builder.finish();
         let ir = build_ir(
@@ -376,7 +375,7 @@ mod tests {
             &diagnostics,
         )
         .unwrap();
-        dbg!(&ir.exports());
+        // dbg!(&ir.exports());
         assert!(!ir.modules().is_empty());
         assert!(!ir.exports().is_empty());
         let export_name_sym = Symbol::intern("add");
@@ -468,18 +467,18 @@ mod tests {
         assert_eq!(parsed_component.static_modules.len(), 1);
         let module = &parsed_component.static_modules[StaticModuleIndex::from_u32(0)].module;
 
-        dbg!(&module.imports);
+        // dbg!(&module.imports);
         assert_eq!(module.imports.len(), 1);
 
-        dbg!(&component_translation.trampolines);
+        // dbg!(&component_translation.trampolines);
         assert_eq!(component_translation.trampolines.len(), 1);
 
-        dbg!(&component_translation.component.initializers);
+        // dbg!(&component_translation.component.initializers);
         assert_eq!(component_translation.component.initializers.len(), 2);
 
-        dbg!(&component_translation.component.imports);
+        // dbg!(&component_translation.component.imports);
         assert_eq!(component_translation.component.imports.len(), 1);
-        dbg!(&component_translation.component.import_types);
+        // dbg!(&component_translation.component.import_types);
         assert_eq!(component_translation.component.import_types.len(), 1);
 
         // dbg!(&component_translation.component.exports);
@@ -495,7 +494,7 @@ mod tests {
             &diagnostics,
         )
         .unwrap();
-        dbg!(&ir.exports());
+        // dbg!(&ir.exports());
         assert!(!ir.modules().is_empty());
         assert!(!ir.exports().is_empty());
         assert!(!ir.imports().is_empty());
@@ -508,7 +507,7 @@ mod tests {
         };
         assert_eq!(export.function_ty, expected_export_func_ty);
         let module = ir.modules().front().get().unwrap();
-        dbg!(&module.imports());
+        // dbg!(&module.imports());
         let import_info = module.imports();
         let function_id = import_info
             .imported(&module.name)

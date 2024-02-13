@@ -163,7 +163,7 @@ impl CompilerTest {
             .join("bindings")
             .join(crate_name_dashed)
             .join("bindings.rs");
-        dbg!(&wit_bind_path);
+        // dbg!(&wit_bind_path);
         let wit_bind_str = String::from_utf8(std::fs::read(wit_bind_path).unwrap()).unwrap();
         Self {
             session: default_session(),
