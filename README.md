@@ -1,5 +1,10 @@
 # Miden Compiler
 
+> [!IMPORTANT] 
+> This project is a work-in-progress, so if you encounter bugs or other
+> things which are not covered in the issue tracker, there is a good chance we know
+> about them, but please do report them anyway so we can ensure they are tracked
+> publically as well.
 
 This repository contains the Miden compiler, which can be used both as a compiler backend
 for existing languages that wish to target Miden Assembly using a standard SSA-based IR;
@@ -14,12 +19,12 @@ emit Miden Assembly for.
 * The `midenc` executable, which provides a command-line tool that provides a convenient way
 to compile Wasm or HIR modules/programs to Miden Assembly and test them.
 
-We've published initial [documentation](https://0xpolygonmiden.github.io/compiler) in mdBook format
-for easier reading, but you can also read it directly in the `docs` directory. This documentation 
-covers how to get started with the compiler, as well as various odds and ends about the design and 
-implementation of HIR and the various passes comprising the compilation pipeline.
-
-This project is a work-in-progress, stay tuned for updates as things develop.
+> [!TIP] 
+> We've published initial [documentation](https://0xpolygonmiden.github.io/compiler) 
+> in mdBook format for easier reading, also accesible in the `docs` directory. This documentation 
+> covers how to get started with the compiler, provides a couple guides for currently supported
+> use cases, and contains appendices that go into detail about various design aspects of the 
+> toolchain.
 
 ## Building
 

@@ -20,12 +20,13 @@ In the last chapter, we compiled a Rust crate to WebAssembly that contains an im
 of the Fibonacci function called `fib`, that was emitted to `target/wasm32-unknown-unknown/release/wasm_fib.wasm`.
 All that remains is to tell `midenc` to compile this module to WebAssembly, as shown below:
 
-**NOTE:** The compiler is still under heavy development, so there are some known bugs that
-may interfere with compilation depending on the flags you use - for the moment, the compiler
-invocation we have to use is quite verbose, but this is a short term situation while we 
-address various other higher-priority tasks. Ultimately, using `midenc` directly will be
-less common than other use cases (such as using `cargo miden`, or using the compiler as a
-library for your own language frontend).
+> [!NOTE] 
+> The compiler is still under heavy development, so there are some known bugs that
+> may interfere with compilation depending on the flags you use - for the moment, the compiler
+> invocation we have to use is quite verbose, but this is a short term situation while we 
+> address various other higher-priority tasks. Ultimately, using `midenc` directly will be
+> less common than other use cases (such as using `cargo miden`, or using the compiler as a
+> library for your own language frontend).
 
     midenc compile -o wasm_fib.masm --emit=masm target/wasm32-unknown-unknown/release/wasm_fib.wasm
     
@@ -76,7 +77,8 @@ the code we generate will match what you would write by hand.
 
 ## Testing with the Miden VM
 
-**NOTE: This example is more complicated than it needs to be at the moment, bear with us!**
+> [!NOTE] 
+> This example is more complicated than it needs to be at the moment, bear with us!
 
 Assuming you have followed the instruction for installing the Miden VM locally,
 we can test this program out as follows:
