@@ -321,8 +321,6 @@ pub struct AdapterOptions {
     pub string_encoding: StringEncoding,
     /// An optional memory definition supplied.
     pub memory: Option<dfg::CoreExport<MemoryIndex>>,
-    /// If `memory` is specified, whether it's a 64-bit memory.
-    pub memory64: bool,
     /// An optional definition of `realloc` to used.
     pub realloc: Option<dfg::CoreDef>,
     /// An optional definition of a `post-return` to use.
@@ -518,7 +516,7 @@ impl<'a> Inliner<'a> {
             } => {
                 let lower_ty =
                     types.convert_component_func_type(frame.translation.types_ref(), *lower_ty)?;
-                let options_lower = self.adapter_options(frame, types, options);
+                let options_lower = self.adapter_options(frame, options);
                 let func = match &frame.component_funcs[*func] {
                     // If this component function was originally a host import
                     // then this is a lowered host function which needs a
@@ -588,7 +586,7 @@ impl<'a> Inliner<'a> {
             // plumbed through to exports or a fused adapter later on.
             Lift(ty, func, options) => {
                 let ty = types.convert_component_func_type(frame.translation.types_ref(), *ty)?;
-                let options = self.adapter_options(frame, types, options);
+                let options = self.adapter_options(frame, options);
                 frame.component_funcs.push(ComponentFuncDef::Lifted {
                     ty,
                     func: frame.funcs[*func].clone(),
@@ -944,7 +942,6 @@ impl<'a> Inliner<'a> {
     fn adapter_options(
         &mut self,
         frame: &InlinerFrame<'a>,
-        types: &ComponentTypesBuilder,
         options: &LocalCanonicalOptions,
     ) -> AdapterOptions {
         let memory = options.memory.map(|i| {
@@ -953,33 +950,12 @@ impl<'a> Inliner<'a> {
                 _ => unreachable!(),
             })
         });
-        let memory64 = match &memory {
-            Some(memory) => match &self.runtime_instances[memory.instance] {
-                InstanceModule::Static(_idx) => match &memory.item {
-                    ExportItem::Index(_i) => {
-                        false
-                        // let plan = &self.nested_modules[*idx].module.memories[*i];
-                        // plan.memory.memory64
-                    }
-                    ExportItem::Name(_) => unreachable!(),
-                },
-                InstanceModule::Import(ty) => match &memory.item {
-                    ExportItem::Name(name) => match types[*ty].exports[name] {
-                        EntityType::Memory(m) => m.memory64,
-                        _ => unreachable!(),
-                    },
-                    ExportItem::Index(_) => unreachable!(),
-                },
-            },
-            None => false,
-        };
         let realloc = options.realloc.map(|i| frame.funcs[i].clone());
         let post_return = options.post_return.map(|i| frame.funcs[i].clone());
         AdapterOptions {
             instance: frame.instance,
             string_encoding: options.string_encoding,
             memory,
-            memory64,
             realloc,
             post_return,
         }

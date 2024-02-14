@@ -1046,18 +1046,13 @@ impl From<&wasmparser::PrimitiveValType> for InterfaceType {
     }
 }
 
-/// Bye information about a type in the canonical ABI, with metadata for both
-/// memory32 and memory64-based types.
+/// Bye information about a type in the canonical ABI
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct CanonicalAbiInfo {
     /// The byte-size of this type in a 32-bit memory.
     pub size32: u32,
     /// The byte-alignment of this type in a 32-bit memory.
     pub align32: u32,
-    /// The byte-size of this type in a 64-bit memory.
-    pub size64: u32,
-    /// The byte-alignment of this type in a 64-bit memory.
-    pub align64: u32,
     /// The number of types it takes to represents this type in the "flat"
     /// representation of the canonical abi where everything is passed as
     /// immediate arguments or results.
@@ -1072,8 +1067,6 @@ impl Default for CanonicalAbiInfo {
         CanonicalAbiInfo {
             size32: 0,
             align32: 1,
-            size64: 0,
-            align64: 1,
             flat_count: Some(0),
         }
     }
@@ -1097,8 +1090,6 @@ impl CanonicalAbiInfo {
     const ZERO: CanonicalAbiInfo = CanonicalAbiInfo {
         size32: 0,
         align32: 1,
-        size64: 0,
-        align64: 1,
         flat_count: Some(0),
     };
 
@@ -1115,8 +1106,6 @@ impl CanonicalAbiInfo {
         CanonicalAbiInfo {
             size32: size,
             align32: size,
-            size64: size,
-            align64: size,
             flat_count: Some(1),
         }
     }
@@ -1125,8 +1114,6 @@ impl CanonicalAbiInfo {
     pub const POINTER_PAIR: CanonicalAbiInfo = CanonicalAbiInfo {
         size32: 8,
         align32: 4,
-        size64: 16,
-        align64: 8,
         flat_count: Some(2),
     };
 
@@ -1139,12 +1126,9 @@ impl CanonicalAbiInfo {
         for field in fields {
             ret.size32 = align_to(ret.size32, field.align32) + field.size32;
             ret.align32 = ret.align32.max(field.align32);
-            ret.size64 = align_to(ret.size64, field.align64) + field.size64;
-            ret.align64 = ret.align64.max(field.align64);
             ret.flat_count = add_flat(ret.flat_count, field.flat_count);
         }
         ret.size32 = align_to(ret.size32, ret.align32);
-        ret.size64 = align_to(ret.size64, ret.align64);
         return ret;
     }
 
@@ -1159,13 +1143,10 @@ impl CanonicalAbiInfo {
             let field = &fields[i];
             ret.size32 = align_to(ret.size32, field.align32) + field.size32;
             ret.align32 = max(ret.align32, field.align32);
-            ret.size64 = align_to(ret.size64, field.align64) + field.size64;
-            ret.align64 = max(ret.align64, field.align64);
             ret.flat_count = add_flat(ret.flat_count, field.flat_count);
             i += 1;
         }
         ret.size32 = align_to(ret.size32, ret.align32);
-        ret.size64 = align_to(ret.size64, ret.align64);
         return ret;
     }
 
@@ -1184,21 +1165,6 @@ impl CanonicalAbiInfo {
         usize::try_from(cur - self.size32).unwrap()
     }
 
-    /// Returns the delta from the current value of `offset` to align properly
-    /// and read the next record field of type `abi` for 64-bit memories.
-    pub fn next_field64(&self, offset: &mut u32) -> u32 {
-        *offset = align_to(*offset, self.align64) + self.size64;
-        *offset - self.size64
-    }
-
-    /// Same as `next_field64`, but bumps a usize pointer
-    pub fn next_field64_size(&self, offset: &mut usize) -> usize {
-        let cur = u32::try_from(*offset).unwrap();
-        let cur = align_to(cur, self.align64) + self.size64;
-        *offset = usize::try_from(cur).unwrap();
-        usize::try_from(cur - self.size64).unwrap()
-    }
-
     /// Returns ABI information for a structure which contains `count` flags.
     pub const fn flags(count: usize) -> CanonicalAbiInfo {
         let (size, align, flat_count) = match FlagsSize::from_count(count) {
@@ -1210,8 +1176,6 @@ impl CanonicalAbiInfo {
         CanonicalAbiInfo {
             size32: size,
             align32: align,
-            size64: size,
-            align64: align,
             flat_count: Some(flat_count),
         }
     }
@@ -1228,15 +1192,11 @@ impl CanonicalAbiInfo {
         let discrim_size = u32::from(DiscriminantSize::from_count(cases.len()).unwrap());
         let mut max_size32 = 0;
         let mut max_align32 = discrim_size;
-        let mut max_size64 = 0;
-        let mut max_align64 = discrim_size;
         let mut max_case_count = Some(0);
         for case in cases {
             if let Some(case) = case {
                 max_size32 = max_size32.max(case.size32);
                 max_align32 = max_align32.max(case.align32);
-                max_size64 = max_size64.max(case.size64);
-                max_align64 = max_align64.max(case.align64);
                 max_case_count = max_flat(max_case_count, case.flat_count);
             }
         }
@@ -1246,11 +1206,6 @@ impl CanonicalAbiInfo {
                 max_align32,
             ),
             align32: max_align32,
-            size64: align_to(
-                align_to(discrim_size, max_align64) + max_size64,
-                max_align64,
-            ),
-            align64: max_align64,
             flat_count: add_flat(max_case_count, Some(1)),
         }
     }
@@ -1266,8 +1221,6 @@ impl CanonicalAbiInfo {
         };
         let mut max_size32 = 0;
         let mut max_align32 = discrim_size;
-        let mut max_size64 = 0;
-        let mut max_align64 = discrim_size;
         let mut max_case_count = Some(0);
         let mut i = 0;
         while i < cases.len() {
@@ -1275,8 +1228,6 @@ impl CanonicalAbiInfo {
             if let Some(case) = case {
                 max_size32 = max(max_size32, case.size32);
                 max_align32 = max(max_align32, case.align32);
-                max_size64 = max(max_size64, case.size64);
-                max_align64 = max(max_align64, case.align64);
                 max_case_count = max_flat(max_case_count, case.flat_count);
             }
             i += 1;
@@ -1287,11 +1238,6 @@ impl CanonicalAbiInfo {
                 max_align32,
             ),
             align32: max_align32,
-            size64: align_to(
-                align_to(discrim_size, max_align64) + max_size64,
-                max_align64,
-            ),
-            align64: max_align64,
             flat_count: add_flat(max_case_count, Some(1)),
         }
     }
@@ -1316,9 +1262,6 @@ pub struct VariantInfo {
     /// The offset of the payload from the start of the variant in 32-bit
     /// memories.
     pub payload_offset32: u32,
-    /// The offset of the payload from the start of the variant in 64-bit
-    /// memories.
-    pub payload_offset64: u32,
 }
 
 impl VariantInfo {
@@ -1336,7 +1279,6 @@ impl VariantInfo {
             VariantInfo {
                 size,
                 payload_offset32: align_to(u32::from(size), abi.align32),
-                payload_offset64: align_to(u32::from(size), abi.align64),
             },
             abi,
         )
@@ -1350,7 +1292,6 @@ impl VariantInfo {
         VariantInfo {
             size,
             payload_offset32: align_to(size.byte_size(), abi.align32),
-            payload_offset64: align_to(size.byte_size(), abi.align64),
         }
     }
 }
@@ -1522,8 +1463,6 @@ const fn max_flat(a: Option<u8>, b: Option<u8>) -> Option<u8> {
 pub struct FlatTypes<'a> {
     /// The flat representation of this type in 32-bit memories.
     pub memory32: &'a [FlatType],
-    /// The flat representation of this type in 64-bit memories.
-    pub memory64: &'a [FlatType],
 }
 
 impl FlatTypes<'_> {
@@ -1531,7 +1470,6 @@ impl FlatTypes<'_> {
     ///
     /// Note that this length is the same regardless to the size of memory.
     pub fn len(&self) -> usize {
-        assert_eq!(self.memory32.len(), self.memory64.len());
         self.memory32.len()
     }
 }
@@ -1554,7 +1492,6 @@ struct FlatTypesStorage {
     // `MAX_FLAT_TYPES` is 16, so it should ideally be more space-efficient to
     // use a flat array instead of a heap-based vector.
     memory32: [FlatType; MAX_FLAT_TYPES],
-    memory64: [FlatType; MAX_FLAT_TYPES],
 
     // Tracks the number of flat types pushed into this storage. If this is
     // `MAX_FLAT_TYPES + 1` then this storage represents an un-reprsentable
@@ -1566,7 +1503,6 @@ impl FlatTypesStorage {
     const fn new() -> FlatTypesStorage {
         FlatTypesStorage {
             memory32: [FlatType::I32; MAX_FLAT_TYPES],
-            memory64: [FlatType::I32; MAX_FLAT_TYPES],
             len: 0,
         }
     }
@@ -1579,22 +1515,19 @@ impl FlatTypesStorage {
         } else {
             Some(FlatTypes {
                 memory32: &self.memory32[..len],
-                memory64: &self.memory64[..len],
             })
         }
     }
 
     /// Pushes a new flat type into this list using `t32` for 32-bit memories
-    /// and `t64` for 64-bit memories.
     ///
     /// Returns whether the type was actually pushed or whether this list of
     /// flat types just exceeded the maximum meaning that it is now
     /// unrepresentable with a flat list of types.
-    fn push(&mut self, t32: FlatType, t64: FlatType) -> bool {
+    fn push(&mut self, t32: FlatType) -> bool {
         let len = usize::from(self.len);
         if len < MAX_FLAT_TYPES {
             self.memory32[len] = t32;
-            self.memory64[len] = t64;
             self.len += 1;
             true
         } else {
@@ -1651,7 +1584,6 @@ impl TypeInformation {
         let mut info = TypeInformation::new();
         info.depth = 1;
         info.flat.memory32[0] = flat;
-        info.flat.memory64[0] = flat;
         info.flat.len = 1;
         info
     }
@@ -1661,8 +1593,6 @@ impl TypeInformation {
         info.depth = 1;
         info.flat.memory32[0] = FlatType::I32;
         info.flat.memory32[1] = FlatType::I32;
-        info.flat.memory64[0] = FlatType::I64;
-        info.flat.memory64[1] = FlatType::I64;
         info.flat.len = 2;
         info
     }
@@ -1676,8 +1606,8 @@ impl TypeInformation {
             self.has_borrow = self.has_borrow || info.has_borrow;
             match info.flat.as_flat_types() {
                 Some(types) => {
-                    for (t32, t64) in types.memory32.iter().zip(types.memory64) {
-                        if !self.flat.push(*t32, *t64) {
+                    for t32 in types.memory32.iter() {
+                        if !self.flat.push(*t32) {
                             break;
                         }
                     }
@@ -1705,7 +1635,7 @@ impl TypeInformation {
         I: IntoIterator<Item = Option<&'a TypeInformation>>,
     {
         let cases = cases.into_iter();
-        self.flat.push(FlatType::I32, FlatType::I32);
+        self.flat.push(FlatType::I32);
         self.depth = 1;
 
         for info in cases {
@@ -1740,24 +1670,12 @@ impl TypeInformation {
                 self.flat.len = u8::try_from(MAX_FLAT_TYPES + 1).unwrap();
                 continue;
             }
-            let dst = self
-                .flat
-                .memory32
-                .iter_mut()
-                .zip(&mut self.flat.memory64)
-                .skip(1);
-            for (i, ((t32, t64), (dst32, dst64))) in types
-                .memory32
-                .iter()
-                .zip(types.memory64)
-                .zip(dst)
-                .enumerate()
-            {
+            let dst = self.flat.memory32.iter_mut().skip(1);
+            for (i, (t32, dst32)) in types.memory32.iter().zip(dst).enumerate() {
                 if i + 1 < usize::from(self.flat.len) {
                     // If this index hs already been set by some previous case
                     // then the types are joined together.
                     dst32.join(*t32);
-                    dst64.join(*t64);
                 } else {
                     // Otherwise if this is the first time that the
                     // representation has gotten this large then the destination
@@ -1765,7 +1683,6 @@ impl TypeInformation {
                     // increased here to indicate this.
                     self.flat.len += 1;
                     *dst32 = *t32;
-                    *dst64 = *t64;
                 }
             }
         }
@@ -1781,7 +1698,7 @@ impl TypeInformation {
 
     fn enums(&mut self, _types: &ComponentTypesBuilder, _ty: &TypeEnum) {
         self.depth = 1;
-        self.flat.push(FlatType::I32, FlatType::I32);
+        self.flat.push(FlatType::I32);
     }
 
     fn flags(&mut self, _types: &ComponentTypesBuilder, ty: &TypeFlags) {
@@ -1789,11 +1706,11 @@ impl TypeInformation {
         match FlagsSize::from_count(ty.names.len()) {
             FlagsSize::Size0 => {}
             FlagsSize::Size1 | FlagsSize::Size2 => {
-                self.flat.push(FlatType::I32, FlatType::I32);
+                self.flat.push(FlatType::I32);
             }
             FlagsSize::Size4Plus(n) => {
                 for _ in 0..n {
-                    self.flat.push(FlatType::I32, FlatType::I32);
+                    self.flat.push(FlatType::I32);
                 }
             }
         }

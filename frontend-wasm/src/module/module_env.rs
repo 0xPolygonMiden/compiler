@@ -546,7 +546,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     params: sig.params().into(),
                 });
         }
-        body.allow_memarg64(self.validator.features().memory64);
+        body.allow_memarg64(false);
         self.result
             .function_body_inputs
             .push(FunctionBodyData { validator, body });
