@@ -32,7 +32,7 @@ pub struct ComponentImport {
     /// The method of calling the function
     pub invoke_method: FunctionInvocationMethod,
     /// The MAST root hash of the function to be used in codegen
-    pub function_mast_root_hash: RpoDigest,
+    pub digest: RpoDigest,
 }
 
 /// The name of a exported function

@@ -7,8 +7,8 @@ use rustc_hash::FxHashMap;
 /// for this MAST hash is located (to be loaded by the VM)
 #[derive(Debug, Clone)]
 pub struct ImportMetadata {
-    /// The MAST hash of the function to be used in codegen
-    pub function_mast_root_hash: RpoDigest,
+    /// The MAST root hash of the function to be used in codegen
+    pub digest: RpoDigest,
     /// The method of calling the function
     pub invoke_method: FunctionInvocationMethod,
 }

@@ -153,7 +153,7 @@ fn build_import(
             function_ty: lifted_func_ty,
             interface_function,
             invoke_method: import_metadata.invoke_method,
-            function_mast_root_hash: import_metadata.function_mast_root_hash.clone(),
+            digest: import_metadata.digest.clone(),
         };
         let function_id =
             find_module_import_function(parsed_module, full_interface_name, import_func_name)?;
@@ -441,7 +441,7 @@ mod tests {
         let import_metadata = [(
             interface_function_ident.clone(),
             ImportMetadata {
-                function_mast_root_hash: RpoDigest::default(),
+                digest: RpoDigest::default(),
                 invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         )]

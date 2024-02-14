@@ -65,7 +65,7 @@ fn wcm_inc() {
     let import_metadata = [(
         interface_function_ident.clone(),
         ImportMetadata {
-            function_mast_root_hash: RpoDigest::default(),
+            digest: RpoDigest::default(),
             invoke_method: miden_hir::FunctionInvocationMethod::Call,
         },
     )]
