@@ -232,11 +232,14 @@ where the conventional wisdom about performance should be treated very carefully
 going to benefit from less code, even if conventionally that code would be less efficient, simply due
 to the difference in proving time accumulated due to extra instructions. That said, there are no hard
 and fast rules, but these defaults are good ones to start with.</p>
-<p><strong>NOTE:</strong> We recommended <code>wee_alloc</code> here, but any simple allocator will do, including a hand-written
+<blockquote>
+<p>[!TIP]
+We recommended <code>wee_alloc</code> here, but any simple allocator will do, including a hand-written
 bump allocator. The trade offs made by these small allocators are not generally suitable for long-
 running, or allocation-heavy applications, as they "leak" memory (generally because they make little
 to no attempt to recover freed allocations), however they are very useful for one-shot programs that
 do minimal allocation, which is going to be the typical case for Miden programs.</p>
+</blockquote>
 <p>Next, edit <code>src/lib.rs</code> as shown below:</p>
 <pre><code class="language-rust noplayground">// This allows us to abort if the panic handler is invoked, but
 // it is gated behind a perma-unstable nightly feature

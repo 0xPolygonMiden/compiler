@@ -192,12 +192,15 @@ and then return here.</p>
 <p>In the last chapter, we compiled a Rust crate to WebAssembly that contains an implementation
 of the Fibonacci function called <code>fib</code>, that was emitted to <code>target/wasm32-unknown-unknown/release/wasm_fib.wasm</code>.
 All that remains is to tell <code>midenc</code> to compile this module to WebAssembly, as shown below:</p>
-<p><strong>NOTE:</strong> The compiler is still under heavy development, so there are some known bugs that
+<blockquote>
+<p>[!NOTE]
+The compiler is still under heavy development, so there are some known bugs that
 may interfere with compilation depending on the flags you use - for the moment, the compiler
 invocation we have to use is quite verbose, but this is a short term situation while we
 address various other higher-priority tasks. Ultimately, using <code>midenc</code> directly will be
 less common than other use cases (such as using <code>cargo miden</code>, or using the compiler as a
 library for your own language frontend).</p>
+</blockquote>
 <pre><code>midenc compile -o wasm_fib.masm --emit=masm target/wasm32-unknown-unknown/release/wasm_fib.wasm
 </code></pre>
 <p>This will place the generated Miden Assembly code for our <code>wasm_fib</code> crate in the current directory.
@@ -241,7 +244,10 @@ and only in regards to operand stack management. In other words, if you see an i
 sequence you think is bad, certainly bring it to our attention, but we can't guarantee that
 the code we generate will match what you would write by hand.</p>
 <h2 id="testing-with-the-miden-vm"><a class="header" href="#testing-with-the-miden-vm">Testing with the Miden VM</a></h2>
-<p><strong>NOTE: This example is more complicated than it needs to be at the moment, bear with us!</strong></p>
+<blockquote>
+<p>[!NOTE]
+This example is more complicated than it needs to be at the moment, bear with us!</p>
+</blockquote>
 <p>Assuming you have followed the instruction for installing the Miden VM locally,
 we can test this program out as follows:</p>
 <p>First, we need to define a program to link our <code>wasm_fib.masm</code> module into, since

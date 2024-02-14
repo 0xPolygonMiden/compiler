@@ -210,9 +210,12 @@ cargo install --path midenc midenc
 # If you have Rust installed, but have not cloned the git repo:
 cargo install --git https://github.com/0xpolygonmiden/compiler --branch develop midenc
 </code></pre>
-<p>NOTE: This installation method relies on Cargo-managed binaries being in your shell <code>PATH</code>,
+<blockquote>
+<p>[!NOTE]
+This installation method relies on Cargo-managed binaries being in your shell <code>PATH</code>,
 which is almost always the case, but if you have disabled this functionality, you'll need
 to add <code>midenc</code> to your <code>PATH</code> manually.</p>
+</blockquote>
 <h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <p>Once built, you should be able to invoke the compiler now, for example:</p>
 <pre><code>midenc help compile
@@ -310,11 +313,14 @@ where the conventional wisdom about performance should be treated very carefully
 going to benefit from less code, even if conventionally that code would be less efficient, simply due
 to the difference in proving time accumulated due to extra instructions. That said, there are no hard
 and fast rules, but these defaults are good ones to start with.</p>
-<p><strong>NOTE:</strong> We recommended <code>wee_alloc</code> here, but any simple allocator will do, including a hand-written
+<blockquote>
+<p>[!TIP]
+We recommended <code>wee_alloc</code> here, but any simple allocator will do, including a hand-written
 bump allocator. The trade offs made by these small allocators are not generally suitable for long-
 running, or allocation-heavy applications, as they "leak" memory (generally because they make little
 to no attempt to recover freed allocations), however they are very useful for one-shot programs that
 do minimal allocation, which is going to be the typical case for Miden programs.</p>
+</blockquote>
 <p>Next, edit <code>src/lib.rs</code> as shown below:</p>
 <pre><code class="language-rust noplayground">// This allows us to abort if the panic handler is invoked, but
 // it is gated behind a perma-unstable nightly feature
@@ -429,12 +435,15 @@ and then return here.</p>
 <p>In the last chapter, we compiled a Rust crate to WebAssembly that contains an implementation
 of the Fibonacci function called <code>fib</code>, that was emitted to <code>target/wasm32-unknown-unknown/release/wasm_fib.wasm</code>.
 All that remains is to tell <code>midenc</code> to compile this module to WebAssembly, as shown below:</p>
-<p><strong>NOTE:</strong> The compiler is still under heavy development, so there are some known bugs that
+<blockquote>
+<p>[!NOTE]
+The compiler is still under heavy development, so there are some known bugs that
 may interfere with compilation depending on the flags you use - for the moment, the compiler
 invocation we have to use is quite verbose, but this is a short term situation while we
 address various other higher-priority tasks. Ultimately, using <code>midenc</code> directly will be
 less common than other use cases (such as using <code>cargo miden</code>, or using the compiler as a
 library for your own language frontend).</p>
+</blockquote>
 <pre><code>midenc compile -o wasm_fib.masm --emit=masm target/wasm32-unknown-unknown/release/wasm_fib.wasm
 </code></pre>
 <p>This will place the generated Miden Assembly code for our <code>wasm_fib</code> crate in the current directory.
@@ -478,7 +487,10 @@ and only in regards to operand stack management. In other words, if you see an i
 sequence you think is bad, certainly bring it to our attention, but we can't guarantee that
 the code we generate will match what you would write by hand.</p>
 <h2 id="testing-with-the-miden-vm"><a class="header" href="#testing-with-the-miden-vm">Testing with the Miden VM</a></h2>
-<p><strong>NOTE: This example is more complicated than it needs to be at the moment, bear with us!</strong></p>
+<blockquote>
+<p>[!NOTE]
+This example is more complicated than it needs to be at the moment, bear with us!</p>
+</blockquote>
 <p>Assuming you have followed the instruction for installing the Miden VM locally,
 we can test this program out as follows:</p>
 <p>First, we need to define a program to link our <code>wasm_fib.masm</code> module into, since
@@ -613,9 +625,12 @@ the section on the memory model below for more details.</p>
 <p>An <code>enum</code> is <code>i32</code> if all members of the enumeration can be represented by an <code>int</code>/<code>unsigned int</code>, otherwise it
 uses i64.</p>
 </div>
-<p>NOTE: The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is
+<blockquote>
+<p>[!NOTE]
+The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is
 larger than that must be allocated in linear memory, or in an automatic allocation (function-local memory), and passed
 around by reference.</p>
+</blockquote>
 <p>The native scalar type for the Miden VM is a "field element", specifically a 64-bit value representing an integer
 in the "Goldilocks" field, i.e. <code>0..(2^64-2^32+1)</code>. A number of instructions in the VM operate on field elements directly.
 However, the native integral/pointer type, i.e. a "machine word", is actually <code>u32</code>. This is because a field element

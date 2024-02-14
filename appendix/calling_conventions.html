@@ -257,9 +257,12 @@ the section on the memory model below for more details.</p>
 <p>An <code>enum</code> is <code>i32</code> if all members of the enumeration can be represented by an <code>int</code>/<code>unsigned int</code>, otherwise it
 uses i64.</p>
 </div>
-<p>NOTE: The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is
+<blockquote>
+<p>[!NOTE]
+The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is
 larger than that must be allocated in linear memory, or in an automatic allocation (function-local memory), and passed
 around by reference.</p>
+</blockquote>
 <p>The native scalar type for the Miden VM is a "field element", specifically a 64-bit value representing an integer
 in the "Goldilocks" field, i.e. <code>0..(2^64-2^32+1)</code>. A number of instructions in the VM operate on field elements directly.
 However, the native integral/pointer type, i.e. a "machine word", is actually <code>u32</code>. This is because a field element

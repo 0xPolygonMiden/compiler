@@ -191,9 +191,12 @@ cargo install --path midenc midenc
 # If you have Rust installed, but have not cloned the git repo:
 cargo install --git https://github.com/0xpolygonmiden/compiler --branch develop midenc
 </code></pre>
-<p>NOTE: This installation method relies on Cargo-managed binaries being in your shell <code>PATH</code>,
+<blockquote>
+<p>[!NOTE]
+This installation method relies on Cargo-managed binaries being in your shell <code>PATH</code>,
 which is almost always the case, but if you have disabled this functionality, you'll need
 to add <code>midenc</code> to your <code>PATH</code> manually.</p>
+</blockquote>
 <h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <p>Once built, you should be able to invoke the compiler now, for example:</p>
 <pre><code>midenc help compile
