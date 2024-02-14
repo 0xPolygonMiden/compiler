@@ -14,6 +14,7 @@ use std::{collections::HashMap, hash::Hash, ops::Index};
 use wasmparser::{names::KebabString, types};
 
 use crate::{
+    indices,
     module::types::{
         convert_func_type, convert_global_type, convert_table_type, EntityType, ModuleTypes,
         ModuleTypesBuilder,
@@ -39,21 +40,6 @@ pub const MAX_FLAT_PARAMS: usize = 16;
 /// This number of results are returned directly from wasm and otherwise results
 /// are transferred through memory.
 pub const MAX_FLAT_RESULTS: usize = 1;
-
-macro_rules! indices {
-    ($(
-        $(#[$a:meta])*
-        pub struct $name:ident(u32);
-    )*) => ($(
-        $(#[$a])*
-        #[derive(
-            Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
-        )]
-        #[repr(transparent)]
-        pub struct $name(u32);
-        miden_hir::cranelift_entity::entity_impl!($name);
-    )*);
-}
 
 indices! {
     // ========================================================================

@@ -15,6 +15,8 @@ use crate::error::WasmResult;
 use crate::module::Module;
 use crate::{unsupported_diag, WasmError};
 
+/// Generates a new index type for each entity.
+#[macro_export]
 macro_rules! indices {
     ($(
         $(#[$a:meta])*
