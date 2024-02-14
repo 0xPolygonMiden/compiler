@@ -14,7 +14,8 @@ use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use miden_hir::{FunctionIdent, Signature};
-use std::collections::{BTreeMap, HashMap};
+use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
 
 use std::ops::Range;
 
@@ -101,7 +102,7 @@ pub struct Module {
     pub imports: Vec<ModuleImport>,
 
     /// A translated function imports, indexed by the function index.
-    pub translated_function_imports: HashMap<FuncIndex, (FunctionIdent, Signature)>,
+    pub translated_function_imports: FxHashMap<FuncIndex, (FunctionIdent, Signature)>,
 
     /// Exported entities.
     pub exports: IndexMap<String, EntityIndex>,
@@ -387,8 +388,8 @@ miden_hir::cranelift_entity::entity_impl!(FuncRefIndex);
 #[derive(Debug, Default)]
 pub struct NameSection {
     pub module_name: Option<String>,
-    pub func_names: HashMap<FuncIndex, String>,
-    pub locals_names: HashMap<FuncIndex, HashMap<u32, String>>,
-    pub globals_names: HashMap<GlobalIndex, String>,
-    pub data_segment_names: HashMap<DataSegmentIndex, String>,
+    pub func_names: FxHashMap<FuncIndex, String>,
+    pub locals_names: FxHashMap<FuncIndex, FxHashMap<u32, String>>,
+    pub globals_names: FxHashMap<GlobalIndex, String>,
+    pub data_segment_names: FxHashMap<DataSegmentIndex, String>,
 }

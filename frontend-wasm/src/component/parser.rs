@@ -9,10 +9,12 @@ use crate::module::types::{
     convert_func_type, convert_valtype, EntityIndex, FuncIndex, GlobalIndex, MemoryIndex,
     TableIndex, WasmType,
 };
+use crate::translation_utils::BuildFxHasher;
 use crate::{component::*, unsupported_diag, WasmError, WasmTranslationConfig};
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::PrimaryMap;
+use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use std::mem;
 use wasmparser::types::{
@@ -195,8 +197,8 @@ pub enum LocalInitializer<'data> {
     ModuleStatic(StaticModuleIndex),
 
     // core wasm module instances
-    ModuleInstantiate(ModuleIndex, HashMap<&'data str, ModuleInstanceIndex>),
-    ModuleSynthetic(HashMap<&'data str, EntityIndex>),
+    ModuleInstantiate(ModuleIndex, FxHashMap<&'data str, ModuleInstanceIndex>),
+    ModuleSynthetic(FxHashMap<&'data str, EntityIndex>),
 
     // components
     ComponentStatic(StaticComponentIndex, ClosedOverVars),
@@ -204,10 +206,10 @@ pub enum LocalInitializer<'data> {
     // component instances
     ComponentInstantiate(
         ComponentIndex,
-        HashMap<&'data str, ComponentItem>,
+        FxHashMap<&'data str, ComponentItem>,
         ComponentInstanceTypeId,
     ),
-    ComponentSynthetic(HashMap<&'data str, ComponentItem>),
+    ComponentSynthetic(FxHashMap<&'data str, ComponentItem>),
 
     // alias section
     AliasExportFunc(ModuleInstanceIndex, &'data str),
@@ -681,7 +683,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         raw_args: &[wasmparser::ComponentInstantiationArg<'data>],
         ty: ComponentInstanceTypeId,
     ) -> WasmResult<LocalInitializer<'data>> {
-        let mut args = HashMap::with_capacity(raw_args.len());
+        let mut args = HashMap::with_capacity_and_hasher(raw_args.len(), BuildFxHasher::default());
         for arg in raw_args {
             let idx = self.kind_to_item(arg.kind, arg.index)?;
             args.insert(arg.name, idx);
@@ -696,7 +698,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         &mut self,
         exports: &[wasmparser::ComponentExport<'data>],
     ) -> WasmResult<LocalInitializer<'data>> {
-        let mut map = HashMap::with_capacity(exports.len());
+        let mut map = HashMap::with_capacity_and_hasher(exports.len(), BuildFxHasher::default());
         for export in exports {
             let idx = self.kind_to_item(export.kind, export.index)?;
             map.insert(export.name.0, idx);
@@ -805,7 +807,7 @@ fn instantiate_module<'data>(
     module: ModuleIndex,
     raw_args: &[wasmparser::InstantiationArg<'data>],
 ) -> LocalInitializer<'data> {
-    let mut args = HashMap::with_capacity(raw_args.len());
+    let mut args = HashMap::with_capacity_and_hasher(raw_args.len(), BuildFxHasher::default());
     for arg in raw_args {
         match arg.kind {
             wasmparser::InstantiationArgKind::Instance => {
@@ -822,7 +824,7 @@ fn instantiate_module<'data>(
 fn instantiate_module_from_exports<'data>(
     exports: &[wasmparser::Export<'data>],
 ) -> LocalInitializer<'data> {
-    let mut map = HashMap::with_capacity(exports.len());
+    let mut map = HashMap::with_capacity_and_hasher(exports.len(), BuildFxHasher::default());
     for export in exports {
         let idx = match export.kind {
             wasmparser::ExternalKind::Func => {

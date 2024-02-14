@@ -2702,6 +2702,7 @@ dependencies = [
  "miden-hir",
  "miden-hir-type",
  "miden-integration-tests",
+ "rustc-hash",
  "smallvec",
  "thiserror",
  "wasmparser 0.118.1",

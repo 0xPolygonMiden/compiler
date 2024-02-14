@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-
 use miden_hir::{
     FunctionExportName, FunctionInvocationMethod, InterfaceFunctionIdent, MastRootHash,
 };
+use rustc_hash::FxHashMap;
 
-/// A Miden VM codegen metadata for the function import.
+/// Represents Miden VM codegen metadata for a function import.
 /// This struct will have more fields in the future e.g. where the function
 /// for this MAST hash is located (to be loaded by the VM)
 #[derive(Debug, Clone)]
@@ -15,7 +14,7 @@ pub struct ImportMetadata {
     pub invoke_method: FunctionInvocationMethod,
 }
 
-/// A function export metadata
+/// Represents function export metadata
 #[derive(Debug, Clone)]
 pub struct ExportMetadata {
     /// The method of calling the function
@@ -38,10 +37,10 @@ pub struct WasmTranslationConfig {
     /// Import metadata for MAST hashes, calling convention, of
     /// each imported function. Having it here might be a temporary solution,
     /// later we might want to move it to Wasm custom section.
-    pub import_metadata: HashMap<InterfaceFunctionIdent, ImportMetadata>,
+    pub import_metadata: FxHashMap<InterfaceFunctionIdent, ImportMetadata>,
 
     /// Export metadata for calling convention, etc.
-    pub export_metadata: HashMap<FunctionExportName, ExportMetadata>,
+    pub export_metadata: FxHashMap<FunctionExportName, ExportMetadata>,
 }
 
 impl Default for WasmTranslationConfig {

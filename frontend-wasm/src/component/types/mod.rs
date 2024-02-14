@@ -10,7 +10,8 @@ pub mod resources;
 use anyhow::{bail, Result};
 use indexmap::IndexSet;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
-use std::{collections::HashMap, hash::Hash, ops::Index};
+use rustc_hash::FxHashMap;
+use std::{hash::Hash, ops::Index};
 use wasmparser::{names::KebabString, types};
 
 use crate::{
@@ -375,15 +376,15 @@ where
 /// managing building up core wasm [`ModuleTypes`] as well.
 #[derive(Default)]
 pub struct ComponentTypesBuilder {
-    functions: HashMap<TypeFunc, TypeFuncIndex>,
-    lists: HashMap<TypeList, TypeListIndex>,
-    records: HashMap<TypeRecord, TypeRecordIndex>,
-    variants: HashMap<TypeVariant, TypeVariantIndex>,
-    tuples: HashMap<TypeTuple, TypeTupleIndex>,
-    enums: HashMap<TypeEnum, TypeEnumIndex>,
-    flags: HashMap<TypeFlags, TypeFlagsIndex>,
-    options: HashMap<TypeOption, TypeOptionIndex>,
-    results: HashMap<TypeResult, TypeResultIndex>,
+    functions: FxHashMap<TypeFunc, TypeFuncIndex>,
+    lists: FxHashMap<TypeList, TypeListIndex>,
+    records: FxHashMap<TypeRecord, TypeRecordIndex>,
+    variants: FxHashMap<TypeVariant, TypeVariantIndex>,
+    tuples: FxHashMap<TypeTuple, TypeTupleIndex>,
+    enums: FxHashMap<TypeEnum, TypeEnumIndex>,
+    flags: FxHashMap<TypeFlags, TypeFlagsIndex>,
+    options: FxHashMap<TypeOption, TypeOptionIndex>,
+    results: FxHashMap<TypeResult, TypeResultIndex>,
 
     component_types: ComponentTypes,
     module_types: ModuleTypesBuilder,
@@ -905,7 +906,7 @@ impl ComponentTypesBuilder {
     }
 }
 
-fn intern<T, U>(map: &mut HashMap<T, U>, list: &mut PrimaryMap<U, T>, item: T) -> U
+fn intern<T, U>(map: &mut FxHashMap<T, U>, list: &mut PrimaryMap<U, T>, item: T) -> U
 where
     T: Hash + Clone + Eq,
     U: Copy + EntityRef,
@@ -955,22 +956,22 @@ pub struct TypeModule {
     /// two-level namespace of core WebAssembly, but unlike core wasm all import
     /// names are required to be unique to describe a module in the component
     /// model.
-    pub imports: HashMap<(String, String), EntityType>,
+    pub imports: FxHashMap<(String, String), EntityType>,
 
     /// The values that this module exports.
     ///
     /// Note that the value of this map is the core wasm `EntityType` to
     /// represent that core wasm items are being exported.
-    pub exports: HashMap<String, EntityType>,
+    pub exports: FxHashMap<String, EntityType>,
 }
 
 /// The type of a component in the component model.
 #[derive(Default)]
 pub struct TypeComponent {
     /// The named values that this component imports.
-    pub imports: HashMap<String, TypeDef>,
+    pub imports: FxHashMap<String, TypeDef>,
     /// The named values that this component exports.
-    pub exports: HashMap<String, TypeDef>,
+    pub exports: FxHashMap<String, TypeDef>,
 }
 
 /// The type of a component instance in the component model, or an instantiated
@@ -980,7 +981,7 @@ pub struct TypeComponent {
 #[derive(Default)]
 pub struct TypeComponentInstance {
     /// The list of exports that this component has along with their types.
-    pub exports: HashMap<String, TypeDef>,
+    pub exports: FxHashMap<String, TypeDef>,
 }
 
 /// A component function type in the component model.

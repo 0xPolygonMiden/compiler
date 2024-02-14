@@ -72,7 +72,7 @@ use crate::component::{
     ComponentTypes, ResourceIndex, RuntimeComponentInstanceIndex, TypeResourceTable,
     TypeResourceTableIndex,
 };
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use wasmparser::types;
 
 /// Builder state used to translate wasmparser's `ResourceId` types to
@@ -111,7 +111,7 @@ pub struct ResourcesBuilder {
     /// A cache of previously visited `ResourceId` items and which table they
     /// correspond to. This is lazily populated as resources are visited and is
     /// exclusively used by the `convert` function below.
-    resource_id_to_table_index: HashMap<types::ResourceId, TypeResourceTableIndex>,
+    resource_id_to_table_index: FxHashMap<types::ResourceId, TypeResourceTableIndex>,
 
     /// A cache of the origin resource type behind a `ResourceId`.
     ///
@@ -121,7 +121,7 @@ pub struct ResourcesBuilder {
     /// phase. This is used to record the actual underlying type of a resource
     /// and where it originally comes from. When a resource is later referred to
     /// then a table is injected to be referred to.
-    resource_id_to_resource_index: HashMap<types::ResourceId, ResourceIndex>,
+    resource_id_to_resource_index: FxHashMap<types::ResourceId, ResourceIndex>,
 
     /// The current instance index that's being visited. This is updated as
     /// inliner frames are processed and components are instantiated.

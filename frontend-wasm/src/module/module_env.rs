@@ -11,7 +11,7 @@ use crate::{unsupported_diag, WasmError, WasmTranslationConfig};
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::PrimaryMap;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -651,7 +651,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 .name_section
                                 .locals_names
                                 .entry(FuncIndex::from_u32(f.index))
-                                .or_insert(HashMap::new())
+                                .or_insert(FxHashMap::default())
                                 .insert(index, name.to_string());
                         }
                     }

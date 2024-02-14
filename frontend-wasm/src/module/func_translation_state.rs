@@ -15,8 +15,9 @@ use miden_hir::{
     Block, CallConv, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Linkage, Signature, Value,
 };
 use miden_hir_type::Type;
+use rustc_hash::FxHashMap;
 use std::{
-    collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant, HashMap},
+    collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant},
     vec::Vec,
 };
 
@@ -239,7 +240,7 @@ pub struct FuncTranslationState {
     // Imported and local functions that have been created by
     // `FuncEnvironment::make_direct_func()`.
     // Stores both the function reference and the number of WebAssembly arguments
-    functions: HashMap<FuncIndex, (FunctionIdent, usize)>,
+    functions: FxHashMap<FuncIndex, (FunctionIdent, usize)>,
 }
 
 impl FuncTranslationState {
@@ -249,7 +250,7 @@ impl FuncTranslationState {
             stack: Vec::new(),
             control_stack: Vec::new(),
             reachable: true,
-            functions: HashMap::new(),
+            functions: FxHashMap::default(),
         }
     }
 

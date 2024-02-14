@@ -37,7 +37,7 @@ use crate::component::*;
 use crate::module::types::{EntityIndex, MemoryIndex, WasmType};
 use indexmap::IndexMap;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::hash::Hash;
 use std::ops::Index;
 
@@ -270,7 +270,7 @@ pub struct Resource {
 /// Note that this can also be used where `V` can't be intern'd to represent a
 /// flat list of items.
 pub struct Intern<K: EntityRef, V> {
-    intern_map: HashMap<V, K>,
+    intern_map: FxHashMap<V, K>,
     key_map: PrimaryMap<K, V>,
 }
 
@@ -310,7 +310,7 @@ impl<K: EntityRef, V> Index<K> for Intern<K, V> {
 impl<K: EntityRef, V> Default for Intern<K, V> {
     fn default() -> Intern<K, V> {
         Intern {
-            intern_map: HashMap::new(),
+            intern_map: FxHashMap::default(),
             key_map: PrimaryMap::new(),
         }
     }
@@ -391,11 +391,11 @@ struct LinearizeDfg<'a> {
     initializers: Vec<GlobalInitializer>,
     trampolines: PrimaryMap<TrampolineIndex, SignatureIndex>,
     trampoline_defs: PrimaryMap<TrampolineIndex, info::Trampoline>,
-    trampoline_map: HashMap<TrampolineIndex, TrampolineIndex>,
-    runtime_memories: HashMap<MemoryId, RuntimeMemoryIndex>,
-    runtime_reallocs: HashMap<ReallocId, RuntimeReallocIndex>,
-    runtime_post_return: HashMap<PostReturnId, RuntimePostReturnIndex>,
-    runtime_instances: HashMap<RuntimeInstance, RuntimeInstanceIndex>,
+    trampoline_map: FxHashMap<TrampolineIndex, TrampolineIndex>,
+    runtime_memories: FxHashMap<MemoryId, RuntimeMemoryIndex>,
+    runtime_reallocs: FxHashMap<ReallocId, RuntimeReallocIndex>,
+    runtime_post_return: FxHashMap<PostReturnId, RuntimePostReturnIndex>,
+    runtime_instances: FxHashMap<RuntimeInstance, RuntimeInstanceIndex>,
     num_lowerings: u32,
 }
 
@@ -594,7 +594,7 @@ impl LinearizeDfg<'_> {
     fn intern<K, V, T>(
         &mut self,
         key: K,
-        map: impl Fn(&mut Self) -> &mut HashMap<K, V>,
+        map: impl Fn(&mut Self) -> &mut FxHashMap<K, V>,
         gen: impl FnOnce(&mut Self, K) -> T,
         init: impl FnOnce(V, T) -> GlobalInitializer,
     ) -> V

@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use miden_hir::cranelift_entity::PrimaryMap;
+use rustc_hash::FxHashMap;
 
 use crate::{
     component::Trampoline, error::WasmResult, module::module_env::ParsedModule, WasmError,
@@ -24,7 +23,7 @@ pub struct ComponentInstance<'data> {
     pub module_instances: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex>,
     pub component: LinearComponent,
     pub component_types: ComponentTypes,
-    pub imports: HashMap<StaticModuleIndex, Vec<ComponentImport>>,
+    pub imports: FxHashMap<StaticModuleIndex, Vec<ComponentImport>>,
 }
 
 impl<'data> ComponentInstance<'data> {
@@ -63,8 +62,8 @@ impl<'data> ComponentInstanceBuilder<'data> {
     pub fn build(self) -> WasmResult<ComponentInstance<'data>> {
         let mut module_instances: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex> =
             PrimaryMap::new();
-        let mut lower_imports: HashMap<LoweredIndex, RuntimeImportIndex> = HashMap::new();
-        let mut imports: HashMap<StaticModuleIndex, Vec<ComponentImport>> = HashMap::new();
+        let mut lower_imports: FxHashMap<LoweredIndex, RuntimeImportIndex> = FxHashMap::default();
+        let mut imports: FxHashMap<StaticModuleIndex, Vec<ComponentImport>> = FxHashMap::default();
         let component = &self.linear_component_translation.component;
         for initializer in &component.initializers {
             match initializer {

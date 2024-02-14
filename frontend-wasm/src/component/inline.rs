@@ -55,9 +55,11 @@ use crate::component::dfg;
 use crate::component::LocalInitializer;
 use crate::module::module_env::ParsedModule;
 use crate::module::{types::*, ModuleImport};
+use crate::translation_utils::BuildFxHasher;
 use anyhow::{bail, Result};
 use indexmap::IndexMap;
 use miden_hir::cranelift_entity::PrimaryMap;
+use rustc_hash::FxHashMap;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use wasmparser::types::{ComponentAnyTypeId, ComponentEntityType, ComponentInstanceTypeId};
@@ -85,7 +87,8 @@ pub fn run<'a, 'data>(
     //
     // Note that this is represents the abstract state of a host import of an
     // item since we don't know the precise structure of the host import.
-    let mut args = HashMap::with_capacity(root_component.exports.len());
+    let mut args =
+        HashMap::with_capacity_and_hasher(root_component.exports.len(), BuildFxHasher::default());
     let mut path = Vec::new();
     types.resources_mut().set_current_instance(index);
     let types_ref = root_component.types_ref();
@@ -180,7 +183,7 @@ struct Inliner<'a> {
 
     // Maps used to "intern" various runtime items to only save them once at
     // runtime instead of multiple times.
-    import_path_interner: HashMap<ImportPath<'a>, RuntimeImportIndex>,
+    import_path_interner: FxHashMap<ImportPath<'a>, RuntimeImportIndex>,
 
     /// Origin information about where each runtime instance came from
     runtime_instances: PrimaryMap<dfg::InstanceId, InstanceModule>,
@@ -212,7 +215,7 @@ struct InlinerFrame<'a> {
     ///
     /// At the root level these are all imports from the host and between
     /// components this otherwise tracks how all the arguments are defined.
-    args: HashMap<&'a str, ComponentItemDef<'a>>,
+    args: FxHashMap<&'a str, ComponentItemDef<'a>>,
 
     // core wasm index spaces
     funcs: PrimaryMap<FuncIndex, dfg::CoreDef>,
@@ -307,7 +310,7 @@ enum ModuleInstanceDef<'a> {
     ///
     /// Note that this can really only be used for passing as an argument to
     /// another module's instantiation and is used to rename arguments locally.
-    Synthetic(&'a HashMap<&'a str, EntityIndex>),
+    Synthetic(&'a FxHashMap<&'a str, EntityIndex>),
 }
 
 /// Configuration options which can be specified as part of the canonical ABI
@@ -1064,7 +1067,7 @@ impl<'a> InlinerFrame<'a> {
         instance: RuntimeComponentInstanceIndex,
         translation: &'a ParsedComponent<'a>,
         closure: ComponentClosure<'a>,
-        args: HashMap<&'a str, ComponentItemDef<'a>>,
+        args: FxHashMap<&'a str, ComponentItemDef<'a>>,
         instance_ty: Option<ComponentInstanceTypeId>,
     ) -> Self {
         InlinerFrame {

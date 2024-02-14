@@ -13,7 +13,7 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::{hash_map, HashMap};
+use std::collections::hash_map;
 use std::u64;
 
 use crate::error::{WasmError, WasmResult};
@@ -28,6 +28,7 @@ use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::Type::*;
 use miden_hir::{Block, Inst, InstBuilder, Value};
 use miden_hir::{Immediate, Type};
+use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
 
 #[cfg(test)]
@@ -491,7 +492,7 @@ fn translate_br_table(
         // We then proceed to split the edges going out of the br_table
         let return_count = jump_args_count;
         let mut dest_block_sequence = vec![];
-        let mut dest_block_map = HashMap::new();
+        let mut dest_block_map = FxHashMap::default();
         for depth in targets.targets() {
             let depth = depth?;
             let branch_block = match dest_block_map.entry(depth as usize) {
