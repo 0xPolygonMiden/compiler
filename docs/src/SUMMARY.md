@@ -27,7 +27,7 @@
 # Architecture
 
 - [Overview](design/overview.md)
-- [Frontends]()
+- [Frontends](design/frontends.md)
 - [HIR]()
 - [Code Generation]()
 - [Testing]()
