@@ -12,6 +12,7 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
+miden-core.workspace = true
 miden-hir.workspace = true
 miden-hir-type.workspace = true
 miden-diagnostics.workspace = true

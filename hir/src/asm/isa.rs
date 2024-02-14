@@ -1341,25 +1341,3 @@ impl fmt::Display for MasmOp {
         }
     }
 }
-
-/// The size of a MAST root hash in bytes
-pub const MAST_ROOT_HASH_SIZE_BYTES: usize = 32;
-
-/// A MAST root hash of a function in Miden VM.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MastRootHash([u8; MAST_ROOT_HASH_SIZE_BYTES]);
-
-impl MastRootHash {
-    /// An invalid MAST root hash composed of all zeroes to use in tests
-    pub const ZEROES: Self = Self([0u8; MAST_ROOT_HASH_SIZE_BYTES]);
-
-    /// Create a new [MastRootHash] from a byte array
-    pub fn new(hash: [u8; MAST_ROOT_HASH_SIZE_BYTES]) -> Self {
-        Self(hash)
-    }
-
-    /// Get the MAST root hash as a byte array
-    pub fn as_bytes(&self) -> &[u8; MAST_ROOT_HASH_SIZE_BYTES] {
-        &self.0
-    }
-}

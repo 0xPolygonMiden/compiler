@@ -1,6 +1,7 @@
 use crate::compiler_test::default_session;
 use crate::CompilerTest;
 use expect_test::expect_file;
+use miden_core::crypto::hash::RpoDigest;
 use miden_frontend_wasm::translate_component;
 use miden_frontend_wasm::ExportMetadata;
 use miden_frontend_wasm::ImportMetadata;
@@ -8,7 +9,6 @@ use miden_frontend_wasm::WasmTranslationConfig;
 use miden_hir::InterfaceFunctionIdent;
 use miden_hir::InterfaceIdent;
 use miden_hir::LiftedFunctionType;
-use miden_hir::MastRootHash;
 use miden_hir::Symbol;
 use miden_hir::Type;
 
@@ -65,7 +65,7 @@ fn wcm_inc() {
     let import_metadata = [(
         interface_function_ident.clone(),
         ImportMetadata {
-            function_mast_root_hash: MastRootHash::ZEROES,
+            function_mast_root_hash: RpoDigest::default(),
             invoke_method: miden_hir::FunctionInvocationMethod::Call,
         },
     )]

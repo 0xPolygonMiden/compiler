@@ -1,6 +1,5 @@
-use miden_hir::{
-    FunctionExportName, FunctionInvocationMethod, InterfaceFunctionIdent, MastRootHash,
-};
+use miden_core::crypto::hash::RpoDigest;
+use miden_hir::{FunctionExportName, FunctionInvocationMethod, InterfaceFunctionIdent};
 use rustc_hash::FxHashMap;
 
 /// Represents Miden VM codegen metadata for a function import.
@@ -9,7 +8,7 @@ use rustc_hash::FxHashMap;
 #[derive(Debug, Clone)]
 pub struct ImportMetadata {
     /// The MAST hash of the function to be used in codegen
-    pub function_mast_root_hash: MastRootHash,
+    pub function_mast_root_hash: RpoDigest,
     /// The method of calling the function
     pub invoke_method: FunctionInvocationMethod,
 }

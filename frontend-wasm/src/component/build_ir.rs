@@ -299,7 +299,7 @@ fn assert_empty_canonical_options(options: &CanonicalOptions) {
 #[cfg(test)]
 mod tests {
 
-    use miden_hir::MastRootHash;
+    use miden_core::crypto::hash::RpoDigest;
     use miden_hir_type::Type;
 
     use crate::{
@@ -441,7 +441,7 @@ mod tests {
         let import_metadata = [(
             interface_function_ident.clone(),
             ImportMetadata {
-                function_mast_root_hash: MastRootHash::ZEROES,
+                function_mast_root_hash: RpoDigest::default(),
                 invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         )]

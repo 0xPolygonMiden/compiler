@@ -3,6 +3,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use intrusive_collections::RBTree;
+use miden_core::crypto::hash::RpoDigest;
 use std::collections::BTreeMap;
 
 use super::*;
@@ -31,7 +32,7 @@ pub struct ComponentImport {
     /// The method of calling the function
     pub invoke_method: FunctionInvocationMethod,
     /// The MAST root hash of the function to be used in codegen
-    pub function_mast_root_hash: MastRootHash,
+    pub function_mast_root_hash: RpoDigest,
 }
 
 /// The name of a exported function
