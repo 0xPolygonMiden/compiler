@@ -6,7 +6,7 @@ const _: () = {
   #[allow(non_snake_case)]
   unsafe extern "C" fn __export_inc(arg0: i32,) -> i32 {
     #[allow(unused_imports)]
-    use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+    use wit_bindgen::rt::{alloc, vec::Vec, string::String};
     
     // Before executing any other code, use this function to run all static
     // constructors, if they have not yet been run. This is a hack required
@@ -20,10 +20,10 @@ const _: () = {
     // https://github.com/bytecodealliance/preview2-prototyping/issues/99
     // for more details.
     #[cfg(target_arch="wasm32")]
-    ::cargo_component_bindings::rt::run_ctors_once();
+    wit_bindgen::rt::run_ctors_once();
     
     let result0 = <_GuestImpl as Guest>::inc(arg0 as u32);
-    ::cargo_component_bindings::rt::as_i32(result0)
+    wit_bindgen::rt::as_i32(result0)
   }
 };
 use super::Component as _GuestImpl;
@@ -43,7 +43,7 @@ pub mod miden {
       pub fn add(a: u32,b: u32,) -> u32{
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[cfg(target_arch = "wasm32")]
@@ -55,7 +55,7 @@ pub mod miden {
           
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, _: i32, ) -> i32{ unreachable!() }
-          let ret = wit_import(::cargo_component_bindings::rt::as_i32(a), ::cargo_component_bindings::rt::as_i32(b));
+          let ret = wit_import(wit_bindgen::rt::as_i32(a), wit_bindgen::rt::as_i32(b));
           ret as u32
         }
       }

@@ -16,7 +16,7 @@ pub mod exports {
           #[allow(non_snake_case)]
           unsafe extern "C" fn __export_add(arg0: i32,arg1: i32,) -> i32 {
             #[allow(unused_imports)]
-            use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+            use wit_bindgen::rt::{alloc, vec::Vec, string::String};
             
             // Before executing any other code, use this function to run all static
             // constructors, if they have not yet been run. This is a hack required
@@ -30,10 +30,10 @@ pub mod exports {
             // https://github.com/bytecodealliance/preview2-prototyping/issues/99
             // for more details.
             #[cfg(target_arch="wasm32")]
-            ::cargo_component_bindings::rt::run_ctors_once();
+            wit_bindgen::rt::run_ctors_once();
             
             let result0 = <_GuestImpl as Guest>::add(arg0 as u32, arg1 as u32);
-            ::cargo_component_bindings::rt::as_i32(result0)
+            wit_bindgen::rt::as_i32(result0)
           }
         };
         use super::super::super::super::super::Component as _GuestImpl;
