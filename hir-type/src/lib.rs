@@ -638,6 +638,29 @@ pub struct LiftedFunctionType {
     pub results: Vec<Type>,
 }
 
+impl fmt::Display for LiftedFunctionType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "fn(")?;
+        for (i, param) in self.params.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", param)?;
+        }
+        write!(f, ")")?;
+        if !self.results.is_empty() {
+            write!(f, " -> ")?;
+            for (i, result) in self.results.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", result)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// This error is raised when parsing an [AddressSpace]
 #[derive(Debug)]
 pub enum InvalidAddressSpaceError {

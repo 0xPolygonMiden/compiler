@@ -35,3 +35,9 @@ impl InterfaceFunctionIdent {
         }
     }
 }
+
+impl std::fmt::Display for InterfaceFunctionIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}::{}", self.interface.full_name, self.function)
+    }
+}

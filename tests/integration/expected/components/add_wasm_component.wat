@@ -6,7 +6,7 @@
     (type (;3;) (func (param i32 i32 i32) (result i32)))
     (type (;4;) (func (param i32 i32 i32 i32)))
     (func $__wasm_call_ctors (;0;) (type 0))
-    (func $miden:add/add@1.0.0#add (;1;) (type 1) (param i32 i32) (result i32)
+    (func $miden:add-package/add-interface@1.0.0#add (;1;) (type 1) (param i32 i32) (result i32)
       call $wit_bindgen::rt::run_ctors_once
       local.get 1
       local.get 0
@@ -663,14 +663,14 @@
     (memory (;0;) 17)
     (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
     (export "memory" (memory 0))
-    (export "miden:add/add@1.0.0#add" (func $miden:add/add@1.0.0#add))
+    (export "miden:add-package/add-interface@1.0.0#add" (func $miden:add-package/add-interface@1.0.0#add))
     (export "cabi_realloc" (func $cabi_realloc))
   )
   (core instance (;0;) (instantiate 0))
   (alias core export 0 "memory" (core memory (;0;)))
   (alias core export 0 "cabi_realloc" (core func (;0;)))
   (type (;0;) (func (param "a" u32) (param "b" u32) (result u32)))
-  (alias core export 0 "miden:add/add@1.0.0#add" (core func (;1;)))
+  (alias core export 0 "miden:add-package/add-interface@1.0.0#add" (core func (;1;)))
   (func (;0;) (type 0) (canon lift (core func 1)))
   (component (;0;)
     (type (;0;) (func (param "a" u32) (param "b" u32) (result u32)))
@@ -682,5 +682,5 @@
       (with "import-func-add" (func 0))
     )
   )
-  (export (;1;) "miden:add/add@1.0.0" (instance 0))
+  (export (;1;) "miden:add-package/add-interface@1.0.0" (instance 0))
 )

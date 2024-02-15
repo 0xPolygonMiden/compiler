@@ -2804,6 +2804,7 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata",
  "concat-idents",
+ "derive_more",
  "expect-test",
  "miden-assembly",
  "miden-codegen-masm",

@@ -22,6 +22,15 @@ pub enum FunctionInvocationMethod {
     Exec,
 }
 
+impl fmt::Display for FunctionInvocationMethod {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FunctionInvocationMethod::Call => write!(f, "\"call\""),
+            FunctionInvocationMethod::Exec => write!(f, "\"exec\""),
+        }
+    }
+}
+
 /// A component import
 #[derive(Debug)]
 pub struct ComponentImport {
@@ -33,6 +42,19 @@ pub struct ComponentImport {
     pub invoke_method: FunctionInvocationMethod,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
+}
+
+impl fmt::Display for ComponentImport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} {} {} mast#0x{}",
+            self.invoke_method,
+            self.interface_function,
+            self.function_ty,
+            self.function_mast_root_hash
+        )
+    }
 }
 
 /// The name of a exported function
@@ -97,6 +119,26 @@ impl Component {
 
     pub fn exports(&self) -> &BTreeMap<FunctionExportName, ComponentExport> {
         &self.exports
+    }
+}
+
+impl fmt::Display for Component {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "component")?;
+        writeln!(f, "")?;
+        for (function_id, import) in self.imports.iter() {
+            writeln!(f, "import {import} lower {function_id}",)?;
+        }
+        writeln!(f, "")?;
+        for module in self.modules.iter() {
+            // temporary hack to separate modules, until curly braces and indentation are implemented
+            writeln!(
+                f,
+                "// ===================================================================="
+            )?;
+            writeln!(f, "{}", module)?;
+        }
+        Ok(())
     }
 }
 
