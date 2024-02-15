@@ -14,7 +14,9 @@ pub use intrusive_collections::UnsafeRef;
 pub use miden_diagnostics::SourceSpan;
 pub use miden_hir_macros::*;
 pub use miden_hir_symbol::{symbols, Symbol};
-pub use miden_hir_type::{AddressSpace, Alignable, FunctionType, StructType, Type};
+pub use miden_hir_type::{
+    AddressSpace, Alignable, FunctionType, LiftedFunctionType, StructType, Type,
+};
 pub use winter_math::{FieldElement, StarkField};
 
 /// Represents a field element in Miden
@@ -146,6 +148,7 @@ mod asm;
 mod attribute;
 mod block;
 mod builder;
+mod component;
 mod constants;
 mod dataflow;
 mod display;
@@ -173,6 +176,7 @@ pub use self::block::{Block, BlockData};
 pub use self::builder::{
     DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder,
 };
+pub use self::component::*;
 pub use self::constants::{Constant, ConstantData, ConstantPool, IntoBytes};
 pub use self::dataflow::DataFlowGraph;
 pub use self::display::{Decorator, DisplayValues};

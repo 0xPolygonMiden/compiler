@@ -19,6 +19,7 @@ cranelift-entity.workspace = true
 intrusive-collections.workspace = true
 inventory.workspace = true
 lalrpop-util="0.20"
+miden-core.workspace = true
 miden-assembly.workspace = true
 miden-diagnostics.workspace = true
 miden-hir-symbol.workspace = true
@@ -35,6 +36,7 @@ smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
 winter-math = { version = "0.7", default-features = false }
+derive_more.workspace = true
 
 [dev-dependencies]
 pretty_assertions = "1.0"

@@ -10,21 +10,13 @@ use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::PrimaryMap;
 use miden_hir_type as hir;
 
+use crate::component::SignatureIndex;
 use crate::error::WasmResult;
 use crate::module::Module;
 use crate::{unsupported_diag, WasmError};
 
-/// WebAssembly page sizes are defined to be 64KiB.
-pub const WASM_PAGE_SIZE: u32 = 0x10000;
-
-/// The number of pages (for 32-bit modules) we can have before we run out of
-/// byte index space.
-pub const WASM32_MAX_PAGES: u64 = 1 << 16;
-
-/// The number of pages (for 64-bit modules) we can have before we run out of
-/// byte index space.
-pub const WASM64_MAX_PAGES: u64 = 1 << 48;
-
+/// Generates a new index type for each entity.
+#[macro_export]
 macro_rules! indices {
     ($(
         $(#[$a:meta])*
@@ -80,8 +72,6 @@ pub struct TypeIndex(u32);
 /// Index type of a data segment inside the WebAssembly module.
 pub struct DataSegmentIndex(u32);
 
-/// Index type of a signature (imported or defined) inside the WebAssembly module.
-pub struct SignatureIndex(u32);
 }
 
 /// WebAssembly value type -- equivalent of `wasmparser`'s Type.
@@ -159,8 +149,6 @@ pub enum WasmHeapType {
     ///
     /// Introduced in the references-types proposal.
     Extern,
-    /// Typed function.
-    TypedFunc(SignatureIndex),
 }
 
 impl fmt::Display for WasmHeapType {
@@ -168,7 +156,6 @@ impl fmt::Display for WasmHeapType {
         match self {
             Self::Func => write!(f, "func"),
             Self::Extern => write!(f, "extern"),
-            Self::TypedFunc(i) => write!(f, "func_sig{}", i.as_u32()),
         }
     }
 }
@@ -245,17 +232,23 @@ pub enum EntityIndex {
     Global(GlobalIndex),
 }
 
+impl EntityIndex {
+    pub fn unwrap_func(&self) -> FuncIndex {
+        match self {
+            EntityIndex::Function(f) => *f,
+            _ => panic!("not a func"),
+        }
+    }
+}
+
 /// A type of an item in a wasm module where an item is typically something that
 /// can be exported.
-#[allow(missing_docs)]
 #[derive(Clone, Debug)]
 pub enum EntityType {
     /// A global variable with the specified content type
     Global(Global),
     /// A linear memory with the specified limits
     Memory(Memory),
-    /// An event definition.
-    Tag(Tag),
     /// A table with the specified element type and limits
     Table(Table),
     /// A function type where the index points to the type section and records a
@@ -277,14 +270,6 @@ impl EntityType {
         match self {
             EntityType::Memory(g) => g,
             _ => panic!("not a memory"),
-        }
-    }
-
-    /// Assert that this entity is a tag
-    pub fn unwrap_tag(&self) -> &Tag {
-        match self {
-            EntityType::Tag(g) => g,
-            _ => panic!("not a tag"),
         }
     }
 
@@ -383,8 +368,6 @@ pub struct Memory {
     pub minimum: u64,
     /// The maximum number of pages in the memory.
     pub maximum: Option<u64>,
-    /// Whether or not this is a 64-bit memory
-    pub memory64: bool,
 }
 
 impl From<wasmparser::MemoryType> for Memory {
@@ -392,7 +375,6 @@ impl From<wasmparser::MemoryType> for Memory {
         Memory {
             minimum: ty.initial,
             maximum: ty.maximum,
-            memory64: ty.memory64,
         }
     }
 }
@@ -519,7 +501,7 @@ impl Index<SignatureIndex> for ModuleTypes {
 pub struct ModuleTypesBuilder {
     types: ModuleTypes,
     interned_func_types: HashMap<WasmFuncType, SignatureIndex>,
-    wasmparser_to_wasmtime: HashMap<CoreTypeId, SignatureIndex>,
+    wasmparser_to_our: HashMap<CoreTypeId, SignatureIndex>,
 }
 
 impl ModuleTypesBuilder {
@@ -533,7 +515,7 @@ impl ModuleTypesBuilder {
     /// at runtime.
     pub fn wasm_func_type(&mut self, id: CoreTypeId, sig: WasmFuncType) -> SignatureIndex {
         let sig = self.intern_func_type(sig);
-        self.wasmparser_to_wasmtime.insert(id, sig);
+        self.wasmparser_to_our.insert(id, sig);
         sig
     }
 
@@ -632,7 +614,7 @@ pub fn ir_func_sig(
     }
 }
 
-/// Converts a wasmparser table type into a wasmtime type
+/// Converts a wasmparser table type
 pub fn convert_global_type(ty: &wasmparser::GlobalType) -> Global {
     Global {
         ty: convert_valtype(ty.content_type),
@@ -640,7 +622,7 @@ pub fn convert_global_type(ty: &wasmparser::GlobalType) -> Global {
     }
 }
 
-/// Converts a wasmparser table type into a wasmtime type
+/// Converts a wasmparser table type
 pub fn convert_table_type(ty: &wasmparser::TableType) -> Table {
     Table {
         wasm_ty: convert_ref_type(ty.element_type),
@@ -649,14 +631,14 @@ pub fn convert_table_type(ty: &wasmparser::TableType) -> Table {
     }
 }
 
-/// Converts a wasmparser function type to a wasmtime type
+/// Converts a wasmparser function type
 pub fn convert_func_type(ty: &wasmparser::FuncType) -> WasmFuncType {
     let params = ty.params().iter().map(|t| convert_valtype(*t)).collect();
     let results = ty.results().iter().map(|t| convert_valtype(*t)).collect();
     WasmFuncType::new(params, results)
 }
 
-/// Converts a wasmparser value type to a wasmtime type
+/// Converts a wasmparser value type
 pub fn convert_valtype(ty: wasmparser::ValType) -> WasmType {
     match ty {
         wasmparser::ValType::I32 => WasmType::I32,
@@ -668,7 +650,7 @@ pub fn convert_valtype(ty: wasmparser::ValType) -> WasmType {
     }
 }
 
-/// Converts a wasmparser reference type to a wasmtime type
+/// Converts a wasmparser reference type
 pub fn convert_ref_type(ty: wasmparser::RefType) -> WasmRefType {
     WasmRefType {
         nullable: ty.is_nullable(),
@@ -676,7 +658,7 @@ pub fn convert_ref_type(ty: wasmparser::RefType) -> WasmRefType {
     }
 }
 
-/// Converts a wasmparser heap type to a wasmtime type
+/// Converts a wasmparser heap type
 pub fn convert_heap_type(ty: wasmparser::HeapType) -> WasmHeapType {
     match ty {
         wasmparser::HeapType::Func => WasmHeapType::Func,

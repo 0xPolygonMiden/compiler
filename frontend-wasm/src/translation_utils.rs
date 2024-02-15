@@ -3,8 +3,11 @@
 use miden_diagnostics::SourceSpan;
 use miden_hir::{AbiParam, CallConv, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
+use rustc_hash::FxHasher;
 
 use crate::{error::WasmResult, module::function_builder_ext::FunctionBuilderExt, WasmError};
+
+pub type BuildFxHasher = std::hash::BuildHasherDefault<FxHasher>;
 
 /// Represents the possible sizes in bytes of the discriminant of a variant type in the component model
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

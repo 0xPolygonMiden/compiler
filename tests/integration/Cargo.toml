@@ -29,5 +29,6 @@ rustc-demangle = {version = "0.1.19", features = ["std"]}
 cargo_metadata = "0.18"
 
 [dev-dependencies]
+miden-core.workspace = true
 proptest.workspace = true
 concat-idents = "1.1"

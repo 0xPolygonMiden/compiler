@@ -13,13 +13,13 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::{hash_map, HashMap};
+use std::collections::hash_map;
 use std::u64;
 
 use crate::error::{WasmError, WasmResult};
 use crate::module::func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState};
 use crate::module::function_builder_ext::FunctionBuilderExt;
-use crate::module::types::{ir_type, BlockType, GlobalIndex, ModuleTypes};
+use crate::module::types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes};
 use crate::module::Module;
 use crate::ssa::Variable;
 use crate::unsupported_diag;
@@ -28,6 +28,7 @@ use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::Type::*;
 use miden_hir::{Block, Inst, InstBuilder, Value};
 use miden_hir::{Immediate, Type};
+use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
 
 #[cfg(test)]
@@ -41,7 +42,7 @@ pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
-    mod_info: &Module,
+    module: &Module,
     mod_types: &ModuleTypes,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
@@ -74,14 +75,14 @@ pub fn translate_operator(
         /********************************** Globals ****************************************/
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.name_section.globals_names[&global_index].clone();
-            let ty = ir_type(mod_info.globals[global_index].ty)?;
+            let name = module.global_name(global_index);
+            let ty = ir_type(module.globals[global_index].ty)?;
             state.push1(builder.ins().load_symbol(name, ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
-            let name = mod_info.name_section.globals_names[&global_index].clone();
-            let ty = ir_type(mod_info.globals[global_index].ty)?;
+            let name = module.global_name(global_index);
+            let ty = ir_type(module.globals[global_index].ty)?;
             let ptr = builder
                 .ins()
                 .symbol_addr(name, Ptr(ty.clone().into()), span);
@@ -119,8 +120,8 @@ pub fn translate_operator(
             translate_call(
                 state,
                 builder,
-                function_index,
-                mod_info,
+                FuncIndex::from_u32(*function_index),
+                module,
                 mod_types,
                 span,
                 diagnostics,
@@ -491,7 +492,7 @@ fn translate_br_table(
         // We then proceed to split the edges going out of the br_table
         let return_count = jump_args_count;
         let mut dest_block_sequence = vec![];
-        let mut dest_block_map = HashMap::new();
+        let mut dest_block_map = FxHashMap::default();
         for depth in targets.targets() {
             let depth = depth?;
             let branch_block = match dest_block_map.entry(depth as usize) {
@@ -631,20 +632,21 @@ fn prepare_addr(
 fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
-    function_index: &u32,
-    mod_info: &Module,
+    function_index: FuncIndex,
+    module: &Module,
     mod_types: &ModuleTypes,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
     let (fident, num_args) = state.get_direct_func(
         builder.data_flow_graph_mut(),
-        *function_index,
-        mod_info,
+        function_index,
+        module,
         mod_types,
         diagnostics,
     )?;
     let args = state.peekn_mut(num_args);
+    // TODO: For imported functions, use their intended invocation method (e.g. `call` or `exec`)
     let call = builder.ins().call(fident, &args, span);
     let inst_results = builder.inst_results(call);
     state.popn(num_args);

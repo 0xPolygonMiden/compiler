@@ -163,7 +163,7 @@ impl CompilerTest {
             .join("bindings")
             .join(crate_name_dashed)
             .join("bindings.rs");
-        dbg!(&wit_bind_path);
+        // dbg!(&wit_bind_path);
         let wit_bind_str = String::from_utf8(std::fs::read(wit_bind_path).unwrap()).unwrap();
         Self {
             session: default_session(),
@@ -417,7 +417,7 @@ fn compile_rust_file(rust_source: &str) -> Vec<u8> {
         "--target",
         "wasm32-unknown-unknown",
     ];
-    let file_name = hash_string(&[rust_source]);
+    let file_name = hash_string(rust_source);
     let proj_dir = std::env::temp_dir().join(&file_name);
     if proj_dir.exists() {
         fs::remove_dir_all(&proj_dir).unwrap();
@@ -480,13 +480,9 @@ pub fn default_session() -> Session {
     session
 }
 
-fn hash_string(inputs: &[&str]) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    for input in inputs {
-        hasher.update(input);
-    }
-    format!("{:x}", hasher.finalize())
+fn hash_string(inputs: &str) -> String {
+    let hash = <sha2::Sha256 as sha2::Digest>::digest(inputs.as_bytes());
+    format!("{:x}", hash)
 }
 
 fn wasm_to_ir(wasm_bytes: &[u8], session: &Session) -> miden_hir::Module {

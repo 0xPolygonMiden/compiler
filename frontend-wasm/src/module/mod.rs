@@ -1,5 +1,9 @@
 //! Data structures for representing parsed Wasm modules.
 
+// TODO: remove this once Wasm CM support is complete
+#![allow(dead_code)]
+
+use crate::component::SignatureIndex;
 use crate::error::WasmResult;
 use crate::unsupported_diag;
 
@@ -9,15 +13,17 @@ use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
-use std::collections::{BTreeMap, HashMap};
+use miden_hir::{FunctionIdent, Signature};
+use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
 
 use std::ops::Range;
 
+pub mod build_ir;
 pub mod func_translation_state;
 pub mod func_translator;
 pub mod function_builder_ext;
 pub mod module_env;
-pub mod translate;
 pub mod types;
 
 /// Table initialization data for all tables in the module.
@@ -93,7 +99,10 @@ impl ModuleType {
 #[derive(Default, Debug)]
 pub struct Module {
     /// All import records, in the order they are declared in the module.
-    pub initializers: Vec<Initializer>,
+    pub imports: Vec<ModuleImport>,
+
+    /// A translated function imports, indexed by the function index.
+    pub translated_function_imports: FxHashMap<FuncIndex, (FunctionIdent, Signature)>,
 
     /// Exported entities.
     pub exports: IndexMap<String, EntityIndex>,
@@ -150,23 +159,22 @@ pub struct Module {
     pub memories: PrimaryMap<MemoryIndex, Memory>,
 
     /// Parsed names section.
-    pub name_section: NameSection,
+    name_section: NameSection,
+
+    /// The fallback name of this module, used if there is no module name in the name section
+    name_fallback: Option<String>,
 }
 
-/// Initialization routines for creating an instance, encompassing imports,
-/// modules, instances, aliases, etc.
-#[derive(Debug)]
-pub enum Initializer {
-    /// An imported item is required to be provided.
-    Import {
-        /// Name of this import
-        name: String,
-        /// The field name projection of this import
-        field: String,
-        /// Where this import will be placed, which also has type information
-        /// about the import.
-        index: EntityIndex,
-    },
+/// Module imports
+#[derive(Debug, Clone)]
+pub struct ModuleImport {
+    /// Name of this import
+    pub module: String,
+    /// The field name projection of this import
+    pub field: String,
+    /// Where this import will be placed, which also has type information
+    /// about the import.
+    pub index: EntityIndex,
 }
 
 impl Module {
@@ -275,14 +283,12 @@ impl Module {
         index.index() < self.num_imported_globals
     }
 
-    /// Returns an iterator of all the imports in this module, along with their
-    /// module name, field name, and type that's being imported.
-    pub fn imports(&self) -> impl ExactSizeIterator<Item = (&str, &str, EntityType)> {
-        self.initializers.iter().map(move |i| match i {
-            Initializer::Import { name, field, index } => {
-                (name.as_str(), field.as_str(), self.type_of(*index))
-            }
-        })
+    pub fn global_name(&self, index: GlobalIndex) -> String {
+        self.name_section
+            .globals_names
+            .get(&index)
+            .cloned()
+            .unwrap_or(format!("global{}", index.as_u32()))
     }
 
     /// Returns the type of an item based on its index
@@ -329,6 +335,29 @@ impl Module {
             unsupported_diag!(diagnostics, "Imported globals are not supported yet");
         }
     }
+
+    /// Returns the name of this module
+    pub fn name(&self) -> String {
+        self.name_section.module_name.clone().unwrap_or(
+            self.name_fallback
+                .clone()
+                .expect("No module name in the name section and no fallback name is set"),
+        )
+    }
+
+    /// Returns the name of the given function
+    pub fn func_name(&self, index: FuncIndex) -> String {
+        self.name_section
+            .func_names
+            .get(&index)
+            .cloned()
+            .unwrap_or(format!("func{}", index.as_u32()))
+    }
+
+    /// Sets the fallback name of this module, used if there is no module name in the name section
+    pub fn set_name_fallback(&mut self, name_fallback: String) {
+        self.name_fallback = Some(name_fallback);
+    }
 }
 
 /// Type information about functions in a wasm module.
@@ -351,7 +380,7 @@ impl FunctionTypeInfo {
     }
 }
 
-/// Index into the funcref table within a VMContext for a function.
+/// Index into the funcref table
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct FuncRefIndex(u32);
 miden_hir::cranelift_entity::entity_impl!(FuncRefIndex);
@@ -359,8 +388,8 @@ miden_hir::cranelift_entity::entity_impl!(FuncRefIndex);
 #[derive(Debug, Default)]
 pub struct NameSection {
     pub module_name: Option<String>,
-    pub func_names: HashMap<FuncIndex, String>,
-    pub locals_names: HashMap<FuncIndex, HashMap<u32, String>>,
-    pub globals_names: HashMap<GlobalIndex, String>,
-    pub data_segment_names: HashMap<DataSegmentIndex, String>,
+    pub func_names: FxHashMap<FuncIndex, String>,
+    pub locals_names: FxHashMap<FuncIndex, FxHashMap<u32, String>>,
+    pub globals_names: FxHashMap<GlobalIndex, String>,
+    pub data_segment_names: FxHashMap<DataSegmentIndex, String>,
 }

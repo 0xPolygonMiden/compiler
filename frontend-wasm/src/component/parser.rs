@@ -1,48 +1,37 @@
-//! Translation of a Wasm component from binary into an intermediate form
-//! suitable for further processing and IR module generation
+//! Parsing of a Wasm component from binary into an intermediate form
+//! suitable for further translation and IR component generation
 
 // Based on wasmtime v16.0 Wasm component translation
 
 use crate::error::WasmResult;
-use crate::module::module_env::{ModuleEnvironment, ModuleTranslation};
+use crate::module::module_env::{ModuleEnvironment, ParsedModule};
 use crate::module::types::{
     convert_func_type, convert_valtype, EntityIndex, FuncIndex, GlobalIndex, MemoryIndex,
-    ModuleTypesBuilder, SignatureIndex, TableIndex, WasmType,
+    TableIndex, WasmType,
 };
-use crate::{component::*, unsupported_diag, WasmTranslationConfig};
+use crate::translation_utils::BuildFxHasher;
+use crate::{component::*, unsupported_diag, WasmError, WasmTranslationConfig};
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::PrimaryMap;
+use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use std::mem;
 use wasmparser::types::{
     AliasableResourceId, ComponentEntityType, ComponentFuncTypeId, ComponentInstanceTypeId, Types,
 };
-use wasmparser::{Chunk, ComponentImportName, Encoding, Parser, Payload, Validator, WasmFeatures};
+use wasmparser::{Chunk, ComponentImportName, Encoding, Parser, Payload, Validator};
 
-/// Translate a Wasm component binary into Miden IR module
-pub fn translate_component(
-    wasm: &[u8],
-    config: WasmTranslationConfig,
-    diagnostics: &DiagnosticsHandler,
-) -> WasmResult<miden_hir::Module> {
-    let wasm_features = WasmFeatures::all();
-    let mut validator = wasmparser::Validator::new_with_features(wasm_features);
-    let mut types = Default::default();
-    let translator = Translator::new(config, &mut validator, &mut types);
-    translator.translate(wasm, diagnostics)
-}
-
-/// Structure used to parse a Wasm component and translate it into an IR `Module`
-pub struct Translator<'a, 'data> {
+/// Structure used to parse a Wasm component
+pub struct ComponentParser<'a, 'data> {
     /// Configuration options for the translation.
-    config: WasmTranslationConfig,
+    config: &'a WasmTranslationConfig,
 
-    /// The current component being translated.
+    /// The current component being parsed.
     ///
-    /// This will get swapped out as translation traverses the body of a
+    /// This will get swapped out as parsing traverses the body of a
     /// component and a sub-component is entered or left.
-    result: Translation<'data>,
+    pub result: ParsedComponent<'data>,
 
     /// Current state of parsing a binary component. Note that like `result`
     /// this will change as the component is traversed.
@@ -53,7 +42,7 @@ pub struct Translator<'a, 'data> {
     /// This is pushed to whenever a component is entered and popped from
     /// whenever a component is left. Each lexical scope also contains
     /// information about the variables that it is currently required to close
-    /// over which is threaded into the current in-progress translation of
+    /// over which is threaded into the current in-progress parsing of
     /// the sub-component which pushed a scope here.
     lexical_scopes: Vec<LexicalScope<'data>>,
 
@@ -62,22 +51,36 @@ pub struct Translator<'a, 'data> {
     validator: &'a mut Validator,
 
     /// Type information shared for the entire component.
-    ///
-    /// This builder is also used for all core wasm modules found to intern
-    /// signatures across all modules.
-    types: &'a mut ModuleTypesBuilder,
+    pub types: &'a mut ComponentTypesBuilder,
 
-    /// Completely translated core wasm modules that have been found so far.
+    /// Completely parsed core wasm modules that have been found so far.
     ///
     /// Note that this translation only involves learning about type
     /// information and functions are not actually translated here.
-    static_modules: PrimaryMap<StaticModuleIndex, ModuleTranslation<'data>>,
+    pub static_modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
 
-    /// Completely translated components that have been found so far.
+    /// Completely parsed components that have been found so far.
     ///
     /// As frames are popped from `lexical_scopes` their completed component
     /// will be pushed onto this list.
-    static_components: PrimaryMap<StaticComponentIndex, Translation<'data>>,
+    pub static_components: PrimaryMap<StaticComponentIndex, ParsedComponent<'data>>,
+}
+
+pub struct ParsedRootComponent<'data> {
+    /// The root component
+    pub root_component: ParsedComponent<'data>,
+
+    /// Completely parsed core wasm modules that have been found so far.
+    ///
+    /// Note that this translation only involves learning about type
+    /// information and functions are not actually translated here.
+    pub static_modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
+
+    /// Completely parsed components that have been found so far.
+    ///
+    /// As frames are popped from `lexical_scopes` their completed component
+    /// will be pushed onto this list.
+    pub static_components: PrimaryMap<StaticComponentIndex, ParsedComponent<'data>>,
 }
 
 /// Representation of the syntactic scope of a component meaning where it is
@@ -86,7 +89,7 @@ pub struct Translator<'a, 'data> {
 /// These scopes are pushed and popped when a sub-component starts being
 /// parsed and finishes being parsed. The main purpose of this frame is to
 /// have a `ClosedOverVars` field which encapsulates data that is inherited
-/// from the scope specified into the component being translated just beneath
+/// from the scope specified into the component being parsed just beneath
 /// it.
 ///
 /// This structure exists to implement outer aliases to components and modules.
@@ -110,7 +113,7 @@ pub struct Translator<'a, 'data> {
 /// ```
 ///
 /// here the `C` component is closing over `M` located in the root component
-/// `A`. When `C` is being translated the `lexical_scopes` field will look like
+/// `A`. When `C` is being parsed the `lexical_scopes` field will look like
 /// `[A, B]`. When the alias is encountered (for module index 0) this will
 /// place a `ClosedOverModule::Local(0)` entry into the `closure_args` field of
 /// `A`'s frame. This will in turn give a `ModuleUpvarIndex` which is then
@@ -130,49 +133,48 @@ pub struct Translator<'a, 'data> {
 /// outer variable automatically injects references into all parents up to
 /// where the reference is. This variable scopes are then processed during
 /// inlining where a component definition is a reference to the static
-/// component information (`Translation`) plus closed over variables
+/// component information (`ParsedComponent`) plus closed over variables
 /// (`ComponentClosure` during inlining).
 struct LexicalScope<'data> {
-    /// Current state of translating the `translation` below.
+    /// Underlying wasmparser for the component being parsed
     parser: Parser,
-    /// Current state of the component's translation as found so far.
-    translation: Translation<'data>,
-    /// List of captures that `translation` will need to process to create the
-    ///
+    /// Current state of the component's parsing as found so far.
+    parsed_component: ParsedComponent<'data>,
+    /// List of captures that `parsed_component` will need to process to create the
     /// sub-component which is directly beneath this lexical scope.
     closure_args: ClosedOverVars,
 }
 
-/// A "local" translation of a component.
+/// A "local" parsing of a component.
 ///
-/// This structure is used as a sort of in-progress translation of a component.
+/// This structure is used as a sort of in-progress parsing of a component.
 #[derive(Default)]
-struct Translation<'data> {
+pub struct ParsedComponent<'data> {
     /// Instructions which form this component.
     ///
     /// There is one initializer for all members of each index space, and all
     /// index spaces are incrementally built here as the initializer list is
     /// processed.
-    initializers: Vec<LocalInitializer<'data>>,
+    pub initializers: Vec<LocalInitializer<'data>>,
 
     /// The list of exports from this component, as pairs of names and an
     /// index into an index space of what's being exported.
-    exports: IndexMap<&'data str, ComponentItem>,
+    pub exports: IndexMap<&'data str, ComponentItem>,
 
     /// Type information produced by `wasmparser` for this component.
     ///
-    /// This type information is available after the translation of the entire
+    /// This type information is available after the parsing of the entire
     /// component has finished, e.g. for the `inline` pass, but beforehand this
     /// is set to `None`.
-    types: Option<Types>,
+    pub types: Option<Types>,
 }
 
 // NB: the type information contained in `LocalInitializer` should always point
-// to `wasmparser`'s type information, not Wasmtime's. Component types cannot be
+// to `wasmparser`'s type information, not ours. Component types cannot be
 // fully determined due to resources until instantiations are known which is
 // tracked during the inlining phase. This means that all type information below
 // is straight from `wasmparser`'s passes.
-enum LocalInitializer<'data> {
+pub enum LocalInitializer<'data> {
     // imports
     Import(ComponentImportName<'data>, ComponentEntityType),
 
@@ -195,8 +197,8 @@ enum LocalInitializer<'data> {
     ModuleStatic(StaticModuleIndex),
 
     // core wasm module instances
-    ModuleInstantiate(ModuleIndex, HashMap<&'data str, ModuleInstanceIndex>),
-    ModuleSynthetic(HashMap<&'data str, EntityIndex>),
+    ModuleInstantiate(ModuleIndex, FxHashMap<&'data str, ModuleInstanceIndex>),
+    ModuleSynthetic(FxHashMap<&'data str, EntityIndex>),
 
     // components
     ComponentStatic(StaticComponentIndex, ClosedOverVars),
@@ -204,10 +206,10 @@ enum LocalInitializer<'data> {
     // component instances
     ComponentInstantiate(
         ComponentIndex,
-        HashMap<&'data str, ComponentItem>,
+        FxHashMap<&'data str, ComponentItem>,
         ComponentInstanceTypeId,
     ),
-    ComponentSynthetic(HashMap<&'data str, ComponentItem>),
+    ComponentSynthetic(FxHashMap<&'data str, ComponentItem>),
 
     // alias section
     AliasExportFunc(ModuleInstanceIndex, &'data str),
@@ -226,16 +228,16 @@ enum LocalInitializer<'data> {
 ///
 /// For more information see `LexicalScope`.
 #[derive(Default)]
-struct ClosedOverVars {
-    components: PrimaryMap<ComponentUpvarIndex, ClosedOverComponent>,
-    modules: PrimaryMap<ModuleUpvarIndex, ClosedOverModule>,
+pub struct ClosedOverVars {
+    pub components: PrimaryMap<ComponentUpvarIndex, ClosedOverComponent>,
+    pub modules: PrimaryMap<ModuleUpvarIndex, ClosedOverModule>,
 }
 
 /// Description how a component is closed over when the closure variables for
 /// a component are being created.
 ///
 /// For more information see `LexicalScope`.
-enum ClosedOverComponent {
+pub enum ClosedOverComponent {
     /// A closed over component is coming from the local component's index
     /// space, meaning a previously defined component is being captured.
     Local(ComponentIndex),
@@ -247,17 +249,17 @@ enum ClosedOverComponent {
 }
 
 /// Same as `ClosedOverComponent`, but for modules.
-enum ClosedOverModule {
+pub enum ClosedOverModule {
     Local(ModuleIndex),
     Upvar(ModuleUpvarIndex),
 }
 
 /// Representation of canonical ABI options.
-struct LocalCanonicalOptions {
-    string_encoding: StringEncoding,
-    memory: Option<MemoryIndex>,
-    realloc: Option<FuncIndex>,
-    post_return: Option<FuncIndex>,
+pub struct LocalCanonicalOptions {
+    pub string_encoding: StringEncoding,
+    pub memory: Option<MemoryIndex>,
+    pub realloc: Option<FuncIndex>,
+    pub post_return: Option<FuncIndex>,
 }
 
 /// Action to take after parsing a payload.
@@ -270,16 +272,16 @@ enum Action {
     Done,
 }
 
-impl<'a, 'data> Translator<'a, 'data> {
-    /// Creates a new translation state ready to translate a component.
+impl<'a, 'data> ComponentParser<'a, 'data> {
+    /// Creates a new parsing state ready to parse a component.
     pub fn new(
-        config: WasmTranslationConfig,
+        config: &'a WasmTranslationConfig,
         validator: &'a mut Validator,
-        types: &'a mut ModuleTypesBuilder,
+        types: &'a mut ComponentTypesBuilder,
     ) -> Self {
         Self {
             config,
-            result: Translation::default(),
+            result: ParsedComponent::default(),
             validator,
             types,
             parser: Parser::new(0),
@@ -289,27 +291,12 @@ impl<'a, 'data> Translator<'a, 'data> {
         }
     }
 
-    /// Translates the binary `component`.
-    ///
-    /// This is the workhorse of the translation which will parse all of `component`
-    /// and create type information. The `component` does not have to be valid
-    /// and it will be validated during compilation.
-    pub fn translate(
+    /// Parses the given the Wasm component
+    pub fn parse(
         mut self,
         component: &'data [u8],
         diagnostics: &DiagnosticsHandler,
-    ) -> WasmResult<miden_hir::Module> {
-        self.parse(component, diagnostics)?;
-
-        todo!("translate the parsed Wasm component to IR Module");
-    }
-
-    /// Parses the given the Wasm component into an intermediate `Translation` in self.result.
-    fn parse(
-        &mut self,
-        component: &'data [u8],
-        diagnostics: &DiagnosticsHandler,
-    ) -> Result<(), crate::WasmError> {
+    ) -> Result<ParsedRootComponent<'data>, crate::WasmError> {
         let mut remaining = component;
         loop {
             let payload = match self.parser.parse(remaining, true)? {
@@ -328,7 +315,12 @@ impl<'a, 'data> Translator<'a, 'data> {
         }
         assert!(remaining.is_empty());
         assert!(self.lexical_scopes.is_empty());
-        Ok(())
+
+        Ok(ParsedRootComponent {
+            root_component: self.result,
+            static_modules: self.static_modules,
+            static_components: self.static_components,
+        })
     }
 
     /// Parses a given payload from the Wasm component.
@@ -357,19 +349,19 @@ impl<'a, 'data> Translator<'a, 'data> {
                 assert!(self.result.types.is_none());
                 self.result.types = Some(self.validator.end(offset)?);
                 // Exit the current lexical scope. If there is no parent (no
-                // frame currently on the stack) then translation is finished.
+                // frame currently on the stack) then parsing is finished.
                 // Otherwise that means that a nested component has been
                 // completed and is recorded as such.
                 let LexicalScope {
                     parser,
-                    translation,
+                    parsed_component,
                     closure_args,
                 } = match self.lexical_scopes.pop() {
                     Some(frame) => frame,
                     None => return Ok(Action::Done),
                 };
                 self.parser = parser;
-                let component = mem::replace(&mut self.result, translation);
+                let component = mem::replace(&mut self.result, parsed_component);
                 let static_idx = self.static_components.push(component);
                 self.result
                     .initializers
@@ -389,7 +381,7 @@ impl<'a, 'data> Translator<'a, 'data> {
             Payload::ComponentExportSection(s) => self.component_export_section(s)?,
             Payload::ComponentStartSection { start, range } => {
                 self.validator.component_start_section(&start, &range)?;
-                unimplemented!("component start section");
+                unsupported_diag!(diagnostics, "component start section is not supported");
             }
             Payload::ComponentAliasSection(s) => self.component_alias_section(s)?,
             // All custom sections are ignored at this time.
@@ -535,7 +527,7 @@ impl<'a, 'data> Translator<'a, 'data> {
         component: &'data [u8],
         diagnostics: &DiagnosticsHandler,
     ) -> Result<(), crate::WasmError> {
-        // Core wasm modules are translated inline directly here with the
+        // Core wasm modules are parsed inline directly here with the
         // `ModuleEnvironment` from core wasm compilation. This will return
         // to the caller the size of the module so it knows how many bytes
         // of the input are skipped.
@@ -544,12 +536,13 @@ impl<'a, 'data> Translator<'a, 'data> {
         // module and actual function translation is deferred until this
         // entire process has completed.
         self.validator.module_section(&range)?;
-        let translation = ModuleEnvironment::new(&self.config, self.validator, self.types).parse(
-            parser,
-            &component[range.start..range.end],
-            diagnostics,
-        )?;
-        let static_idx = self.static_modules.push(translation);
+        let parsed_module = ModuleEnvironment::new(
+            &self.config,
+            self.validator,
+            &mut self.types.module_types_builder_mut(),
+        )
+        .parse(parser, &component[range.start..range.end], diagnostics)?;
+        let static_idx = self.static_modules.push(parsed_module);
         self.result
             .initializers
             .push(LocalInitializer::ModuleStatic(static_idx));
@@ -561,18 +554,18 @@ impl<'a, 'data> Translator<'a, 'data> {
         range: std::ops::Range<usize>,
         parser: Parser,
     ) -> Result<(), crate::WasmError> {
-        // When a sub-component is found then the current translation state
+        // When a sub-component is found then the current parsing state
         // is pushed onto the `lexical_scopes` stack. This will subsequently
         // get popped as part of `Payload::End` processing above.
         //
         // Note that the set of closure args for this new lexical scope
-        // starts empty since it will only get populated if translation of
+        // starts empty since it will only get populated if parsing of
         // the nested component ends up aliasing some outer module or
         // component.
         self.validator.component_section(&range)?;
         self.lexical_scopes.push(LexicalScope {
             parser: mem::replace(&mut self.parser, parser),
-            translation: mem::take(&mut self.result),
+            parsed_component: mem::take(&mut self.result),
             closure_args: ClosedOverVars::default(),
         });
         Ok(())
@@ -632,7 +625,7 @@ impl<'a, 'data> Translator<'a, 'data> {
         s: wasmparser::ComponentExportSectionReader<'data>,
     ) -> Result<(), crate::WasmError> {
         // Exports don't actually fill out the `initializers` array but
-        // instead fill out the one other field in a `Translation`, the
+        // instead fill out the one other field in a `ParsedComponent`, the
         // `exports` field (as one might imagine). This for now simply
         // records the index of what's exported and that's tracked further
         // later during inlining.
@@ -690,7 +683,7 @@ impl<'a, 'data> Translator<'a, 'data> {
         raw_args: &[wasmparser::ComponentInstantiationArg<'data>],
         ty: ComponentInstanceTypeId,
     ) -> WasmResult<LocalInitializer<'data>> {
-        let mut args = HashMap::with_capacity(raw_args.len());
+        let mut args = HashMap::with_capacity_and_hasher(raw_args.len(), BuildFxHasher::default());
         for arg in raw_args {
             let idx = self.kind_to_item(arg.kind, arg.index)?;
             args.insert(arg.name, idx);
@@ -705,7 +698,7 @@ impl<'a, 'data> Translator<'a, 'data> {
         &mut self,
         exports: &[wasmparser::ComponentExport<'data>],
     ) -> WasmResult<LocalInitializer<'data>> {
-        let mut map = HashMap::with_capacity(exports.len());
+        let mut map = HashMap::with_capacity_and_hasher(exports.len(), BuildFxHasher::default());
         for export in exports {
             let idx = self.kind_to_item(export.kind, export.index)?;
             map.insert(export.name.0, idx);
@@ -738,7 +731,9 @@ impl<'a, 'data> Translator<'a, 'data> {
                 ComponentItem::Component(index)
             }
             wasmparser::ComponentExternalKind::Value => {
-                unimplemented!("component values");
+                return Err(WasmError::Unsupported(
+                    "component values are not supported".to_string(),
+                ));
             }
             wasmparser::ComponentExternalKind::Type => {
                 let types = self.validator.types(0).unwrap();
@@ -803,7 +798,7 @@ impl<'a, 'data> Translator<'a, 'data> {
         let id = types.core_function_at(idx);
         let ty = types[id].unwrap_func();
         let ty = convert_func_type(ty);
-        self.types.wasm_func_type(id, ty)
+        self.types.module_types_builder_mut().wasm_func_type(id, ty)
     }
 }
 
@@ -812,7 +807,7 @@ fn instantiate_module<'data>(
     module: ModuleIndex,
     raw_args: &[wasmparser::InstantiationArg<'data>],
 ) -> LocalInitializer<'data> {
-    let mut args = HashMap::with_capacity(raw_args.len());
+    let mut args = HashMap::with_capacity_and_hasher(raw_args.len(), BuildFxHasher::default());
     for arg in raw_args {
         match arg.kind {
             wasmparser::InstantiationArgKind::Instance => {
@@ -829,7 +824,7 @@ fn instantiate_module<'data>(
 fn instantiate_module_from_exports<'data>(
     exports: &[wasmparser::Export<'data>],
 ) -> LocalInitializer<'data> {
-    let mut map = HashMap::with_capacity(exports.len());
+    let mut map = HashMap::with_capacity_and_hasher(exports.len(), BuildFxHasher::default());
     for export in exports {
         let idx = match export.kind {
             wasmparser::ExternalKind::Func => {
@@ -910,58 +905,8 @@ fn alias_module_instance_export<'data>(
     }
 }
 
-impl Translation<'_> {
-    fn types_ref(&self) -> wasmparser::types::TypesRef<'_> {
+impl ParsedComponent<'_> {
+    pub fn types_ref(&self) -> wasmparser::types::TypesRef<'_> {
         self.types.as_ref().unwrap().as_ref()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::test_utils::test_diagnostics;
-
-    use super::*;
-
-    #[test]
-    fn parse_simple() {
-        let wat = format!(
-            r#"
-(component
-  (core module (;0;)
-    (type (;0;) (func))
-    (type (;1;) (func (param i32 i32) (result i32)))
-    (func $add (;0;) (type 1) (param i32 i32) (result i32)
-      local.get 1
-      local.get 0
-      i32.add
-    )
-    (memory (;0;) 17)
-    (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
-    (export "memory" (memory 0))
-    (export "add" (func $add))
-  )
-  (core instance (;0;) (instantiate 0))
-  (alias core export 0 "memory" (core memory (;0;)))
-  (type (;0;) (func (param "a" s32) (param "b" s32) (result s32)))
-  (alias core export 0 "add" (core func (;0;)))
-  (func (;0;) (type 0) (canon lift (core func 0)))
-  (export (;1;) "add" (func 0))
-)
-        "#,
-        );
-        let wasm = wat::parse_str(wat).unwrap();
-        let wasm_features = WasmFeatures::all();
-        let diagnostics = test_diagnostics();
-        let mut validator = wasmparser::Validator::new_with_features(wasm_features);
-        let mut types = Default::default();
-        let mut translator =
-            Translator::new(WasmTranslationConfig::default(), &mut validator, &mut types);
-        translator.parse(&wasm, &diagnostics).unwrap();
-        let translation = translator.result;
-        assert_eq!(translation.exports.len(), 1);
-        assert_eq!(translation.initializers.len(), 6);
-        assert_eq!(translator.static_components.len(), 0);
-        assert_eq!(translator.static_modules.len(), 1);
     }
 }

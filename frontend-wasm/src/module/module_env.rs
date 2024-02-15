@@ -1,21 +1,22 @@
+use crate::component::SignatureIndex;
 use crate::error::WasmResult;
 use crate::module::types::{
     convert_func_type, convert_global_type, convert_table_type, convert_valtype, DataSegmentOffset,
     DefinedFuncIndex, ElemIndex, EntityIndex, EntityType, FuncIndex, GlobalIndex, GlobalInit,
-    MemoryIndex, ModuleTypesBuilder, SignatureIndex, TableIndex, TypeIndex, WasmType,
+    MemoryIndex, ModuleTypesBuilder, TableIndex, TypeIndex, WasmType,
 };
-use crate::module::{FuncRefIndex, Initializer, Module, ModuleType, TableSegment};
+use crate::module::{FuncRefIndex, Module, ModuleType, TableSegment};
 use crate::{unsupported_diag, WasmError, WasmTranslationConfig};
 
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::PrimaryMap;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
-use wasmparser::types::{CoreTypeId, Types};
+use wasmparser::types::CoreTypeId;
 use wasmparser::{
     CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind, Encoding,
     ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator, Parser,
@@ -23,12 +24,12 @@ use wasmparser::{
 };
 
 use super::types::{DataSegment, DataSegmentIndex};
-use super::TableInitialValue;
+use super::{ModuleImport, TableInitialValue};
 
 /// Object containing the standalone environment information.
 pub struct ModuleEnvironment<'a, 'data> {
     /// The current module being translated
-    result: ModuleTranslation<'data>,
+    result: ParsedModule<'data>,
 
     /// Intern'd types for this entire translation, shared by all modules.
     types: &'a mut ModuleTypesBuilder,
@@ -44,7 +45,7 @@ pub struct ModuleEnvironment<'a, 'data> {
 /// yet translated, and data initializers have not yet been copied out of the
 /// original buffer.
 #[derive(Default)]
-pub struct ModuleTranslation<'data> {
+pub struct ParsedModule<'data> {
     /// Module information.
     pub module: Module,
 
@@ -68,19 +69,6 @@ pub struct ModuleTranslation<'data> {
     /// When we're parsing the code section this will be incremented so we know
     /// which function is currently being defined.
     code_index: u32,
-
-    /// The type information of the current module made available at the end of the
-    /// validation process.
-    types: Option<Types>,
-}
-
-impl<'data> ModuleTranslation<'data> {
-    /// Returns a reference to the type information of the current module.
-    pub fn get_types(&self) -> &Types {
-        self.types
-            .as_ref()
-            .expect("module type information to be available")
-    }
 }
 
 /// Contains function data: byte code and its offset in the module.
@@ -127,7 +115,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         types: &'a mut ModuleTypesBuilder,
     ) -> Self {
         Self {
-            result: ModuleTranslation::default(),
+            result: ParsedModule::default(),
             types,
             config,
             validator,
@@ -139,14 +127,14 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     /// This function will parse the `data` provided with `parser`,
     /// validating everything along the way with this environment's validator.
     ///
-    /// The result of parsing, [`ModuleTranslation`], contains everything
+    /// The result of parsing, [`ParsedModule`], contains everything
     /// necessary to translate functions afterwards
     pub fn parse(
         mut self,
         parser: Parser,
         data: &'data [u8],
         diagnostics: &DiagnosticsHandler,
-    ) -> WasmResult<ModuleTranslation<'data>> {
+    ) -> WasmResult<ParsedModule<'data>> {
         for payload in parser.parse_all(data) {
             self.parse_payload(payload?, diagnostics)?;
         }
@@ -221,7 +209,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     }
 
     fn payload_end(&mut self, offset: usize) -> Result<(), WasmError> {
-        self.result.types = Some(self.validator.end(offset)?);
+        self.validator.end(offset)?;
         self.result.exported_signatures = self
             .result
             .module
@@ -261,7 +249,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     ) -> Result<(), WasmError> {
         self.validator.import_section(&imports)?;
         let cnt = usize::try_from(imports.count()).unwrap();
-        self.result.module.initializers.reserve(cnt);
+        self.result.module.imports.reserve(cnt);
         Ok(for entry in imports {
             let import = entry?;
             let ty = match import.ty {
@@ -558,7 +546,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     params: sig.params().into(),
                 });
         }
-        body.allow_memarg64(self.validator.features().memory64);
+        body.allow_memarg64(false);
         self.result
             .function_body_inputs
             .push(FunctionBodyData { validator, body });
@@ -663,7 +651,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 .name_section
                                 .locals_names
                                 .entry(FuncIndex::from_u32(f.index))
-                                .or_insert(HashMap::new())
+                                .or_insert(FxHashMap::default())
                                 .insert(index, name.to_string());
                         }
                     }
@@ -757,8 +745,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     /// `ty` specified.
     fn declare_import(&mut self, module: &'data str, field: &'data str, ty: EntityType) {
         let index = self.push_type(ty);
-        self.result.module.initializers.push(Initializer::Import {
-            name: module.to_owned(),
+        self.result.module.imports.push(ModuleImport {
+            module: module.to_owned(),
             field: field.to_owned(),
             index,
         });
@@ -770,7 +758,6 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             EntityType::Table(ty) => EntityIndex::Table(self.result.module.tables.push(ty)),
             EntityType::Memory(ty) => EntityIndex::Memory(self.result.module.memories.push(ty)),
             EntityType::Global(ty) => EntityIndex::Global(self.result.module.globals.push(ty)),
-            EntityType::Tag(_) => unimplemented!(),
         }
     }
 
