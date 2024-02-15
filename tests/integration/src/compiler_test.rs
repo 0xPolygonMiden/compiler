@@ -80,6 +80,8 @@ impl CompilerTest {
         let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
         // dbg!(&pwd);
         let mut cargo_build_cmd = Command::new("cargo");
+        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
+        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
         cargo_build_cmd
             .arg("component")
             .arg("build")
@@ -163,8 +165,8 @@ impl CompilerTest {
             .join("bindings")
             .join(crate_name_dashed)
             .join("bindings.rs");
-        // dbg!(&wit_bind_path);
-        let wit_bind_str = String::from_utf8(std::fs::read(wit_bind_path).unwrap()).unwrap();
+        dbg!(&wit_bind_path);
+        // let wit_bind_str = String::from_utf8(std::fs::read(wit_bind_path).unwrap()).unwrap();
         Self {
             session: default_session(),
             source: CompilerTestSource::RustCargo {
@@ -173,7 +175,7 @@ impl CompilerTest {
             },
             entrypoint: None,
             wasm_bytes: fs::read(wasm_artifacts.first().unwrap()).unwrap(),
-            wit_bind: Some(wit_bind_str),
+            wit_bind: None,
             hir: None,
             ir_masm: None,
         }
@@ -307,12 +309,6 @@ impl CompilerTest {
         let wasm_bytes = self.wasm_bytes.as_ref();
         let wat = demangle(&wasm_to_wat(wasm_bytes));
         expected_wat_file.assert_eq(&wat);
-    }
-
-    /// Compare the generated WIT Rust bindings against the expected output
-    pub fn expect_wit_bind(&self, expected_wit_bind_file: expect_test::ExpectFile) {
-        let wit_bind = self.wit_bind.as_ref().unwrap();
-        expected_wit_bind_file.assert_eq(&wit_bind);
     }
 
     /// Compare the compiled IR against the expected output

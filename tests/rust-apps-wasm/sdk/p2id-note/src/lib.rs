@@ -1,6 +1,15 @@
 #![no_std]
 
-cargo_component_bindings::generate!();
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+#[panic_handler]
+fn my_panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
+#[allow(dead_code)]
+mod bindings;
 
 use bindings::miden::base::tx_kernel::{get_assets, get_id, get_inputs};
 use bindings::miden::basic_wallet::basic_wallet::receive_asset;

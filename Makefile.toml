@@ -195,7 +195,7 @@ args = ["component", "add", "rust-src"]
 category = "Test"
 description = "Install cargo-component extension"
 command = "cargo"
-args = ["install", "cargo-component@0.6.0"]
+args = ["install", "cargo-component@0.7.0"]
 
 [tasks.test-rust]
 category = "Test"

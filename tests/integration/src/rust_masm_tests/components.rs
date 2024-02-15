@@ -20,9 +20,9 @@ fn wcm_add() {
     test.expect_wasm(expect_file![format!(
         "../../expected/components/{artifact_name}.wat"
     )]);
-    test.expect_wit_bind(expect_file![format!(
-        "../../expected/components/bindings/{artifact_name}_bindings.rs"
-    )]);
+    // test.expect_wit_bind(expect_file![format!(
+    //     "../../expected/components/bindings/{artifact_name}_bindings.rs"
+    // )]);
     let wasm_bytes = test.wasm_bytes;
 
     let session = default_session();
@@ -51,9 +51,9 @@ fn wcm_inc() {
     test.expect_wasm(expect_file![format!(
         "../../expected/components/{artifact_name}.wat"
     )]);
-    test.expect_wit_bind(expect_file![format!(
-        "../../expected/components/bindings/{artifact_name}_bindings.rs"
-    )]);
+    // test.expect_wit_bind(expect_file![format!(
+    //     "../../expected/components/bindings/{artifact_name}_bindings.rs"
+    // )]);
     let wasm_bytes = test.wasm_bytes;
 
     let session = default_session();

@@ -111,7 +111,7 @@ pub mod miden {
         }
       }
       /// Inputs of the currently executed note, never exceeds 16 felts
-      pub type NoteInputs = ::cargo_component_bindings::rt::vec::Vec::<Felt>;
+      pub type NoteInputs = wit_bindgen::rt::vec::Vec::<Felt>;
       
     }
     
@@ -133,7 +133,7 @@ pub mod miden {
       pub fn get_id() -> AccountId{
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[cfg(target_arch = "wasm32")]
@@ -154,7 +154,7 @@ pub mod miden {
       pub fn add_asset(asset: Asset,) -> Asset{
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[repr(align(8))]
@@ -165,12 +165,12 @@ pub mod miden {
             V2::Fungible(e) => {
               let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
               
-              (0i32, ::cargo_component_bindings::rt::as_i64(asset0), ::cargo_component_bindings::rt::as_i64(amount0), 0i64, 0i64)
+              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
             },
             V2::NonFungible(e) => {
               let (t1_0, t1_1, t1_2, t1_3, ) = e;
               
-              (1i32, ::cargo_component_bindings::rt::as_i64(t1_0), ::cargo_component_bindings::rt::as_i64(t1_1), ::cargo_component_bindings::rt::as_i64(t1_2), ::cargo_component_bindings::rt::as_i64(t1_3))
+              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
             },
           };
           let ptr4 = ret_area.as_mut_ptr() as i32;
@@ -220,7 +220,7 @@ pub mod miden {
       pub fn remove_asset(asset: Asset,) -> Asset{
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[repr(align(8))]
@@ -231,12 +231,12 @@ pub mod miden {
             V2::Fungible(e) => {
               let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
               
-              (0i32, ::cargo_component_bindings::rt::as_i64(asset0), ::cargo_component_bindings::rt::as_i64(amount0), 0i64, 0i64)
+              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
             },
             V2::NonFungible(e) => {
               let (t1_0, t1_1, t1_2, t1_3, ) = e;
               
-              (1i32, ::cargo_component_bindings::rt::as_i64(t1_0), ::cargo_component_bindings::rt::as_i64(t1_1), ::cargo_component_bindings::rt::as_i64(t1_2), ::cargo_component_bindings::rt::as_i64(t1_3))
+              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
             },
           };
           let ptr4 = ret_area.as_mut_ptr() as i32;
@@ -290,19 +290,19 @@ pub mod miden {
       pub fn create_note(asset: Asset,tag: Tag,recipient: Recipient,){
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           use super::super::super::miden::base::types::Asset as V2;
           let (result3_0,result3_1,result3_2,result3_3,result3_4,) = match asset {
             V2::Fungible(e) => {
               let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
               
-              (0i32, ::cargo_component_bindings::rt::as_i64(asset0), ::cargo_component_bindings::rt::as_i64(amount0), 0i64, 0i64)
+              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
             },
             V2::NonFungible(e) => {
               let (t1_0, t1_1, t1_2, t1_3, ) = e;
               
-              (1i32, ::cargo_component_bindings::rt::as_i64(t1_0), ::cargo_component_bindings::rt::as_i64(t1_1), ::cargo_component_bindings::rt::as_i64(t1_2), ::cargo_component_bindings::rt::as_i64(t1_3))
+              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
             },
           };
           let (t4_0, t4_1, t4_2, t4_3, ) = recipient;
@@ -316,7 +316,7 @@ pub mod miden {
           
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, ){ unreachable!() }
-          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, ::cargo_component_bindings::rt::as_i64(tag), ::cargo_component_bindings::rt::as_i64(t4_0), ::cargo_component_bindings::rt::as_i64(t4_1), ::cargo_component_bindings::rt::as_i64(t4_2), ::cargo_component_bindings::rt::as_i64(t4_3));
+          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, wit_bindgen::rt::as_i64(tag), wit_bindgen::rt::as_i64(t4_0), wit_bindgen::rt::as_i64(t4_1), wit_bindgen::rt::as_i64(t4_2), wit_bindgen::rt::as_i64(t4_3));
         }
       }
       #[allow(unused_unsafe, clippy::all)]
@@ -324,7 +324,7 @@ pub mod miden {
       pub fn get_inputs() -> NoteInputs{
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[repr(align(4))]
@@ -349,10 +349,10 @@ pub mod miden {
       }
       #[allow(unused_unsafe, clippy::all)]
       /// Get the assets of the currently executing note
-      pub fn get_assets() -> ::cargo_component_bindings::rt::vec::Vec::<Asset>{
+      pub fn get_assets() -> wit_bindgen::rt::vec::Vec::<Asset>{
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[repr(align(4))]
@@ -410,7 +410,7 @@ pub mod miden {
             };
             result11.push(e11);
           }
-          ::cargo_component_bindings::rt::dealloc(base11, (len11 as usize) * 40, 8);
+          wit_bindgen::rt::dealloc(base11, (len11 as usize) * 40, 8);
           result11
         }
       }
@@ -433,19 +433,19 @@ pub mod miden {
       pub fn receive_asset(asset: Asset,){
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           use super::super::super::miden::base::types::Asset as V2;
           let (result3_0,result3_1,result3_2,result3_3,result3_4,) = match asset {
             V2::Fungible(e) => {
               let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
               
-              (0i32, ::cargo_component_bindings::rt::as_i64(asset0), ::cargo_component_bindings::rt::as_i64(amount0), 0i64, 0i64)
+              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
             },
             V2::NonFungible(e) => {
               let (t1_0, t1_1, t1_2, t1_3, ) = e;
               
-              (1i32, ::cargo_component_bindings::rt::as_i64(t1_0), ::cargo_component_bindings::rt::as_i64(t1_1), ::cargo_component_bindings::rt::as_i64(t1_2), ::cargo_component_bindings::rt::as_i64(t1_3))
+              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
             },
           };
           
@@ -465,19 +465,19 @@ pub mod miden {
       pub fn send_asset(asset: Asset,tag: Tag,recipient: Recipient,){
         
         #[allow(unused_imports)]
-        use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           use super::super::super::miden::base::types::Asset as V2;
           let (result3_0,result3_1,result3_2,result3_3,result3_4,) = match asset {
             V2::Fungible(e) => {
               let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
               
-              (0i32, ::cargo_component_bindings::rt::as_i64(asset0), ::cargo_component_bindings::rt::as_i64(amount0), 0i64, 0i64)
+              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
             },
             V2::NonFungible(e) => {
               let (t1_0, t1_1, t1_2, t1_3, ) = e;
               
-              (1i32, ::cargo_component_bindings::rt::as_i64(t1_0), ::cargo_component_bindings::rt::as_i64(t1_1), ::cargo_component_bindings::rt::as_i64(t1_2), ::cargo_component_bindings::rt::as_i64(t1_3))
+              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
             },
           };
           let (t4_0, t4_1, t4_2, t4_3, ) = recipient;
@@ -491,7 +491,7 @@ pub mod miden {
           
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, ){ unreachable!() }
-          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, ::cargo_component_bindings::rt::as_i64(tag), ::cargo_component_bindings::rt::as_i64(t4_0), ::cargo_component_bindings::rt::as_i64(t4_1), ::cargo_component_bindings::rt::as_i64(t4_2), ::cargo_component_bindings::rt::as_i64(t4_3));
+          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, wit_bindgen::rt::as_i64(tag), wit_bindgen::rt::as_i64(t4_0), wit_bindgen::rt::as_i64(t4_1), wit_bindgen::rt::as_i64(t4_2), wit_bindgen::rt::as_i64(t4_3));
         }
       }
       
@@ -516,7 +516,7 @@ pub mod exports {
           #[allow(non_snake_case)]
           unsafe extern "C" fn __export_note_script() {
             #[allow(unused_imports)]
-            use ::cargo_component_bindings::rt::{alloc, vec::Vec, string::String};
+            use wit_bindgen::rt::{alloc, vec::Vec, string::String};
             
             // Before executing any other code, use this function to run all static
             // constructors, if they have not yet been run. This is a hack required
@@ -530,7 +530,7 @@ pub mod exports {
             // https://github.com/bytecodealliance/preview2-prototyping/issues/99
             // for more details.
             #[cfg(target_arch="wasm32")]
-            ::cargo_component_bindings::rt::run_ctors_once();
+            wit_bindgen::rt::run_ctors_once();
             
             <_GuestImpl as Guest>::note_script();
           }
