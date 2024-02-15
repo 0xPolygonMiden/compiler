@@ -48,11 +48,8 @@ impl fmt::Display for ComponentImport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} {} {} mast#0x{}",
-            self.invoke_method,
-            self.interface_function,
-            self.function_ty,
-            self.function_mast_root_hash
+            "{} {} {} mast#{}",
+            self.invoke_method, self.interface_function, self.function_ty, self.digest
         )
     }
 }

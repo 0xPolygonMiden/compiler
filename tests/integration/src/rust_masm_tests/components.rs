@@ -1,7 +1,6 @@
 use crate::CompilerTest;
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
-use miden_frontend_wasm::translate_component;
 use miden_frontend_wasm::ExportMetadata;
 use miden_frontend_wasm::ImportMetadata;
 use miden_frontend_wasm::WasmTranslationConfig;
