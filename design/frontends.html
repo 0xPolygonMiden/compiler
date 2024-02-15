@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>As an Executable - Miden Compiler Documentation</title>
+        <title>Frontends - Miden Compiler Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../getting_started.html">Getting Started</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><a href="../usage/midenc.html" class="active"><strong aria-hidden="true">1.</strong> As an Executable</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">2.</strong> As a Library</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">3.</strong> As a Cargo extension</div></li><li class="chapter-item expanded affix "><li class="part-title">Guides</li><li class="chapter-item expanded "><a href="../guides/rust_to_wasm.html"><strong aria-hidden="true">4.</strong> Rust To WebAssembly</a></li><li class="chapter-item expanded "><a href="../guides/wasm_to_masm.html"><strong aria-hidden="true">5.</strong> WebAssembly To Miden Assembly</a></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> midenc</div></li><li><ol class="section"><li class="chapter-item expanded "><div><strong aria-hidden="true">6.1.</strong> compile</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.2.</strong> exec</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.3.</strong> run</div></li></ol></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> cargo miden</div></li><li class="chapter-item expanded affix "><li class="part-title">Architecture</li><li class="chapter-item expanded "><a href="../design/overview.html"><strong aria-hidden="true">8.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../design/frontends.html"><strong aria-hidden="true">9.</strong> Frontends</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">10.</strong> HIR</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">11.</strong> Code Generation</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">12.</strong> Testing</div></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../appendix/calling_conventions.html">Calling Conventions</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../getting_started.html">Getting Started</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><a href="../usage/midenc.html"><strong aria-hidden="true">1.</strong> As an Executable</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">2.</strong> As a Library</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">3.</strong> As a Cargo extension</div></li><li class="chapter-item expanded affix "><li class="part-title">Guides</li><li class="chapter-item expanded "><a href="../guides/rust_to_wasm.html"><strong aria-hidden="true">4.</strong> Rust To WebAssembly</a></li><li class="chapter-item expanded "><a href="../guides/wasm_to_masm.html"><strong aria-hidden="true">5.</strong> WebAssembly To Miden Assembly</a></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> midenc</div></li><li><ol class="section"><li class="chapter-item expanded "><div><strong aria-hidden="true">6.1.</strong> compile</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.2.</strong> exec</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.3.</strong> run</div></li></ol></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> cargo miden</div></li><li class="chapter-item expanded affix "><li class="part-title">Architecture</li><li class="chapter-item expanded "><a href="../design/overview.html"><strong aria-hidden="true">8.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../design/frontends.html" class="active"><strong aria-hidden="true">9.</strong> Frontends</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">10.</strong> HIR</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">11.</strong> Code Generation</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">12.</strong> Testing</div></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../appendix/calling_conventions.html">Calling Conventions</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -177,77 +177,20 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
-<h1 id="as-an-executable"><a class="header" href="#as-an-executable">As an Executable</a></h1>
-<p>At the present time, we do not yet have prebuilt packages of the compiler toolchain
-available, so it must be built from source, but the requirements for this are minimal,
-as shown below:</p>
-<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
-<p>First, you'll need to have Rust installed (at time of writing, we're doing development
-against Rust 1.74).</p>
-<p>Then, simply install <code>midenc</code> using Cargo, like so:</p>
-<pre><code># If you have cloned the git repo, and are in the project root:
-cargo install --path midenc midenc
-
-# If you have Rust installed, but have not cloned the git repo:
-cargo install --git https://github.com/0xpolygonmiden/compiler --branch develop midenc
-</code></pre>
-<blockquote>
-<p>[!NOTE]
-This installation method relies on Cargo-managed binaries being in your shell <code>PATH</code>,
-which is almost always the case, but if you have disabled this functionality, you'll need
-to add <code>midenc</code> to your <code>PATH</code> manually.</p>
-</blockquote>
-<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
-<p>Once built, you should be able to invoke the compiler now, for example:</p>
-<pre><code>midenc help compile
-Usage: midenc compile [OPTIONS] [-- &lt;INPUTS&gt;...]
-
-Arguments:
-  [INPUTS]...
-          Path(s) to the source file(s) to compile.
-
-          You may also use `-` as a file name to read a file from stdin.
-
-Options:
-      --output-dir &lt;DIR&gt;
-          Write all compiler artifacts to DIR
-
-  -W &lt;LEVEL&gt;
-          Modify how warnings are treated by the compiler
-
-          [default: auto]
-
-          Possible values:
-          - none:  Disable all warnings
-          - auto:  Enable all warnings
-          - error: Promotes warnings to errors
-
-  -v, --verbose
-          When set, produces more verbose output during compilation
-
-  -h, --help
-          Print help (see a summary with '-h')
-</code></pre>
-<h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
-<p>We currently have two frontends to the compiler, one that accepts the compiler's IR in textual
-form (as a <code>.hir</code> file), primarily used for testing; and one that accepts a WebAssembly module
-in binary form (i.e. as a <code>.wasm</code> file).</p>
-<p>For the vast majority of people, if not everyone, the <code>.wasm</code> form will be the one you are interested
-in, so we have put together a <a href="../guides/wasm_to_masm.html">helpful guide</a> that walks through how to
-compile a WebAssembly module (in this case, produced by <code>rustc</code>) to Miden Assembly using <code>midenc</code>.</p>
-<p>If you aren't sure how to produce a WebAssembly module, you may be interested in
-<a href="../guides/rust_to_wasm.html">another guide</a> that demonstrates how to emit a WebAssembly module from
-a Rust crate.</p>
+<h1 id="compiler-frontends"><a class="header" href="#compiler-frontends">Compiler frontends</a></h1>
+<h2 id="wasm-frontend"><a class="header" href="#wasm-frontend">Wasm frontend</a></h2>
+<p>TODO</p>
+<p>For the list of the unsupported Wasm core types, instructions and features, see <a href="https://github.com/0xPolygonMiden/compiler/frontend-wasm/README.md">Wasm frontend</a>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../getting_started.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../design/overview.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../guides/rust_to_wasm.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../appendix/calling_conventions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -257,11 +200,11 @@ a Rust crate.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../getting_started.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../design/overview.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../guides/rust_to_wasm.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../appendix/calling_conventions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
