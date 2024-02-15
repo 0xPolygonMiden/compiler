@@ -69,6 +69,8 @@ impl CompilerTest {
         let mut cargo_build_cmd = Command::new("cargo");
         // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
         cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
+        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
+        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
         cargo_build_cmd
             .arg("component")
             .arg("build")
