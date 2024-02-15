@@ -629,6 +629,15 @@ impl fmt::Display for FunctionType {
     }
 }
 
+/// Represents the lifted(component) type of a component imported/exported function
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LiftedFunctionType {
+    /// The arguments expected by this function
+    pub params: Vec<Type>,
+    /// The results returned by this function
+    pub results: Vec<Type>,
+}
+
 /// This error is raised when parsing an [AddressSpace]
 #[derive(Debug)]
 pub enum InvalidAddressSpaceError {

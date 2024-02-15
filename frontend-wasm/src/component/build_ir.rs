@@ -1,8 +1,9 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{
     cranelift_entity::PrimaryMap, FunctionIdent, Ident, InterfaceFunctionIdent, InterfaceIdent,
-    LiftedFunctionType, Symbol,
+    Symbol,
 };
+use miden_hir_type::LiftedFunctionType;
 use wasmparser::WasmFeatures;
 
 use crate::{

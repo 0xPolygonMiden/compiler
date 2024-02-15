@@ -224,15 +224,6 @@ impl PartialEq for Signature {
     }
 }
 
-/// Represents the lifted(component) type of a component imported/exported function
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LiftedFunctionType {
-    /// The arguments expected by this function
-    pub params: Vec<Type>,
-    /// The results returned by this function
-    pub results: Vec<Type>,
-}
-
 /// An [ExternalFunction] represents a function whose name and signature are known,
 /// but which may or may not be compiled as part of the current translation unit.
 ///
