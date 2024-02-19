@@ -21,7 +21,7 @@
   - [compile]()
   - [exec]()
   - [run]()
-  
+
 - [cargo miden]()
 
 # Architecture
@@ -35,3 +35,4 @@
 ---
 
 [Calling Conventions](appendix/calling_conventions.md)
+[Package Format](appendix/packaging.md)
