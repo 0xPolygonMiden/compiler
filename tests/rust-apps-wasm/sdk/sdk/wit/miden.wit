@@ -254,8 +254,9 @@ interface faucet {
 }
 
 
+/// High-level representation of core types
 interface types {
-    use core-types.{felt, account-id, word};
+    use core-types.{felt, account-id, word, core-asset};
 
     /// A fungible asset 
     record fungible-asset {
@@ -280,14 +281,10 @@ interface types {
         fungible(fungible-asset),
         non-fungible(non-fungible-asset),
     }
-}
 
-/// Conversion functions to/from core types
-interface conversion {
-    use core-types.{felt, account-id, word, core-asset};
-    use types.{asset};
-
+    /// Converts a core asset to a an asset representation.
     from-core-asset: func(core-asset: core-asset) -> asset;
+    /// Converts an asset to a core asset representation.
     to-core-asset: func(asset: asset) -> core-asset;
 }
 
