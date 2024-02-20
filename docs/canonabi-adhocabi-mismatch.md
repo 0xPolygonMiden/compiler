@@ -134,7 +134,8 @@ For example, the `get_id` function falls under this Miden ABI pattern and its ca
 
 
 ## Transaction kernel functions that require manual adapter functions:
-// TODO: check if the note inputs limit is 16 and make `get_inputs` return a big tuple
+
+### `get_assets` 
 
 `get_assets:func() -> list<core-asset>` in the `note` interface is the only function that requires attention. In Canonical ABI, any function that returns a dynamic list of items needs to allocate memory in the caller's module due to the shared-nothing nature of the Wasm component model. For this case, a `realloc` function is passed as a part of lift/lower Canonical ABI options for the caller to allocate memory in the caller's module. 
 

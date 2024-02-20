@@ -23,7 +23,7 @@ pub struct Component;
 impl Guest for Component {
     fn note_script() {
         let inputs = get_inputs();
-        let target_account_id_felt = inputs[0];
+        let target_account_id_felt = inputs.0;
         let target_account_id = account_id_from_felt(target_account_id_felt);
         let account_id = get_id();
         assert_eq!(account_id, target_account_id);

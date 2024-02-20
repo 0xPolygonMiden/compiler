@@ -5,12 +5,14 @@
       (export (;1;) "felt" (type (eq 0)))
       (type (;2;) (record (field "inner" 1)))
       (export (;3;) "account-id" (type (eq 2)))
-      (type (;4;) (tuple 1 1 1 1))
-      (export (;5;) "word" (type (eq 4)))
-      (type (;6;) (record (field "inner" 5)))
-      (export (;7;) "core-asset" (type (eq 6)))
-      (type (;8;) (func (param "felt" 1) (result 3)))
-      (export (;0;) "account-id-from-felt" (func (type 8)))
+      (type (;4;) (tuple 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+      (export (;5;) "note-inputs" (type (eq 4)))
+      (type (;6;) (tuple 1 1 1 1))
+      (export (;7;) "word" (type (eq 6)))
+      (type (;8;) (record (field "inner" 7)))
+      (export (;9;) "core-asset" (type (eq 8)))
+      (type (;10;) (func (param "felt" 1) (result 3)))
+      (export (;0;) "account-id-from-felt" (func (type 10)))
     )
   )
   (import "miden:base/core-types@1.0.0" (instance (;0;) (type 0)))
@@ -24,20 +26,19 @@
     )
   )
   (import "miden:base/account@1.0.0" (instance (;1;) (type 2)))
-  (alias export 0 "felt" (type (;3;)))
+  (alias export 0 "note-inputs" (type (;3;)))
   (alias export 0 "core-asset" (type (;4;)))
   (type (;5;)
     (instance
       (alias outer 1 3 (type (;0;)))
-      (export (;1;) "felt" (type (eq 0)))
+      (export (;1;) "note-inputs" (type (eq 0)))
       (alias outer 1 4 (type (;2;)))
       (export (;3;) "core-asset" (type (eq 2)))
-      (type (;4;) (list 1))
-      (type (;5;) (func (result 4)))
-      (export (;0;) "get-inputs" (func (type 5)))
-      (type (;6;) (list 3))
-      (type (;7;) (func (result 6)))
-      (export (;1;) "get-assets" (func (type 7)))
+      (type (;4;) (func (result 1)))
+      (export (;0;) "get-inputs" (func (type 4)))
+      (type (;5;) (list 3))
+      (type (;6;) (func (result 5)))
+      (export (;1;) "get-assets" (func (type 6)))
     )
   )
   (import "miden:base/note@1.0.0" (instance (;2;) (type 5)))
@@ -53,6 +54,7 @@
   (import "miden:basic-wallet/basic-wallet@1.0.0" (instance (;3;) (type 7)))
   (core module (;0;)
     (type (;0;) (func (param i32)))
+<<<<<<< HEAD
     (type (;1;) (func (result i64)))
     (type (;2;) (func (param i32 i64 i64 i64 i64)))
     (type (;3;) (func))
@@ -195,13 +197,34 @@
     )
     (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;6;) (type 5) (param i32 i32)
       (local i32 i32 i32 i32)
+=======
+    (type (;1;) (func (param f64) (result f64)))
+    (type (;2;) (func (result f64)))
+    (type (;3;) (func (param f64 f64 f64 f64)))
+    (type (;4;) (func))
+    (type (;5;) (func (param i32 i32) (result i32)))
+    (type (;6;) (func (param i32 i32 i32)))
+    (type (;7;) (func (param i32 i32 i32 i32) (result i32)))
+    (type (;8;) (func (param i32) (result i32)))
+    (type (;9;) (func (param i32 i32)))
+    (type (;10;) (func (param i32 i32 i32) (result i32)))
+    (import "miden:base/note@1.0.0" "get-inputs" (func $basic_wallet_p2id_note::bindings::miden::base::note::get_inputs::wit_import (;0;) (type 0)))
+    (import "miden:base/core-types@1.0.0" "account-id-from-felt" (func $basic_wallet_p2id_note::bindings::miden::base::core_types::account_id_from_felt::wit_import (;1;) (type 1)))
+    (import "miden:base/account@1.0.0" "get-id" (func $basic_wallet_p2id_note::bindings::miden::base::account::get_id::wit_import (;2;) (type 2)))
+    (import "miden:base/note@1.0.0" "get-assets" (func $basic_wallet_p2id_note::bindings::miden::base::note::get_assets::wit_import (;3;) (type 0)))
+    (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;4;) (type 3)))
+    (func $__wasm_call_ctors (;5;) (type 4))
+    (func $miden:base/note-script@1.0.0#note-script (;6;) (type 4)
+      (local i32 i32 i32 i32 i32)
+>>>>>>> 886aab3 (refactor: make note's `get_inputs` return a `tuple` instead of `list` in Miden SDK;)
       global.get $__stack_pointer
-      i32.const 16
+      i32.const 128
       i32.sub
       local.tee 0
       global.set $__stack_pointer
       call $wit_bindgen::rt::run_ctors_once
       local.get 0
+<<<<<<< HEAD
       i32.const 8
       i32.add
       call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_inputs::wit_import
@@ -444,6 +467,66 @@
         i32.const 40
         i32.mul
         call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc
+=======
+      call $basic_wallet_p2id_note::bindings::miden::base::note::get_inputs::wit_import
+      block ;; label = @1
+        local.get 0
+        f64.load
+        call $basic_wallet_p2id_note::bindings::miden::base::core_types::account_id_from_felt::wit_import
+        call $basic_wallet_p2id_note::bindings::miden::base::account::get_id::wit_import
+        f64.ne
+        br_if 0 (;@1;)
+        local.get 0
+        call $basic_wallet_p2id_note::bindings::miden::base::note::get_assets::wit_import
+        block ;; label = @2
+          local.get 0
+          i32.const 4
+          i32.add
+          i32.load
+          local.tee 1
+          i32.eqz
+          br_if 0 (;@2;)
+          local.get 0
+          i32.load
+          local.tee 2
+          local.get 1
+          i32.const 5
+          i32.shl
+          i32.add
+          local.set 3
+          local.get 2
+          local.set 4
+          loop ;; label = @3
+            local.get 4
+            f64.load
+            local.get 4
+            f64.load offset=8
+            local.get 4
+            f64.load offset=16
+            local.get 4
+            f64.load offset=24
+            call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
+            local.get 4
+            i32.const 32
+            i32.add
+            local.tee 4
+            local.get 3
+            i32.ne
+            br_if 0 (;@3;)
+          end
+          local.get 2
+          local.get 1
+          i32.const 5
+          i32.shl
+          i32.const 8
+          call $__rust_dealloc
+        end
+        local.get 0
+        i32.const 128
+        i32.add
+        global.set $__stack_pointer
+        return
+>>>>>>> 886aab3 (refactor: make note's `get_inputs` return a `tuple` instead of `list` in Miden SDK;)
       end
       i32.const 1048576
       local.get 2
@@ -1194,7 +1277,7 @@
   (alias core export 5 "cabi_realloc" (core func (;5;)))
   (alias core export 0 "$imports" (core table (;0;)))
   (alias export 2 "get-inputs" (func (;3;)))
-  (core func (;6;) (canon lower (func 3) (memory 0) (realloc 5)))
+  (core func (;6;) (canon lower (func 3) (memory 0)))
   (alias export 2 "get-assets" (func (;4;)))
   (core func (;7;) (canon lower (func 4) (memory 0) (realloc 5)))
   (core instance (;6;)

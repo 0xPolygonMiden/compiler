@@ -6165,8 +6165,10 @@
     (export (;28;) "account-code-root" (type 27))
     (type (;29;) (record (field "inner" 8)))
     (export (;30;) "vault-commitment" (type 29))
-    (type (;31;) (func (param "felt" 6) (result 10)))
-    (export (;1;) "account-id-from-felt" (func 0) (func (type 31)))
+    (type (;31;) (tuple 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6))
+    (export (;32;) "note-inputs" (type 31))
+    (type (;33;) (func (param "felt" 6) (result 10)))
+    (export (;1;) "account-id-from-felt" (func 0) (func (type 33)))
   )
   (instance (;0;) (instantiate 0
       (with "import-func-account-id-from-felt" (func 0))

@@ -124,6 +124,32 @@ interface core-types {
         inner: word
     }
 
+    
+
+    /// A list of field elements representing the inputs of a currently executing note
+    /// 
+    /// The static size data type (tuple) is used instead of a `list` 
+    /// to avoid the need for a dynamic memory allocation when generating 
+    /// the ABI mismatch adapter function for Miden API functions that return this type.
+    type note-inputs = tuple<
+        felt, // 1 note input
+        felt, // 2 note input
+        felt, // 3 note input
+        felt, // 4 note input
+        felt, // 5 note input
+        felt, // 6 note input
+        felt, // 7 note input
+        felt, // 8 note input
+        felt, // 9 note input
+        felt, // 10 note input
+        felt, // 11 note input
+        felt, // 12 note input
+        felt, // 13 note input
+        felt, // 14 note input
+        felt, // 15 note input
+        felt, // 16 note input
+        >;
+
 }
 
 
@@ -176,10 +202,10 @@ interface account {
 
 // Note-related functions 
 interface note {
-    use core-types.{felt, core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment};
+    use core-types.{felt, core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment, note-inputs};
     
     /// Get the inputs of the currently executed note 
-    get-inputs: func() -> list<felt>;
+    get-inputs: func() -> note-inputs;
     /// Get the assets of the currently executing note 
     get-assets: func() -> list<core-asset>;
     /// Get the sender of the currently executing note
