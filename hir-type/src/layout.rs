@@ -384,6 +384,7 @@ impl Type {
                     _ => (split, Some(remaining.into())),
                 }
             }
+            Type::Tuple(_) => todo!("Type::split for Tuple is not yet implemented"),
             // These types either have no size, or are 1 byte in size, so must have
             // been handled above when checking if the size of the type is <= the
             // requested split size
@@ -414,6 +415,7 @@ impl Type {
             Self::Struct(ref struct_ty) => struct_ty.min_alignment(),
             // Arrays use the minimum alignment of their element type
             Self::Array(ref element_ty, _) => element_ty.min_alignment(),
+            Self::Tuple(_) => todo!("Type::min_alignment for Tuple is not yet implemented"),
         }
     }
 
@@ -452,6 +454,13 @@ impl Type {
                 let element_size = element_ty.size_in_bits();
                 let padded_element_size = element_size.align_up(min_align);
                 element_size + (padded_element_size * (n - 1))
+            }
+            Type::Tuple(tys) => {
+                let mut size = 0;
+                for ty in tys {
+                    size += ty.size_in_bits();
+                }
+                size
             }
         }
     }

@@ -4,6 +4,7 @@ use miden_hir::{
     Symbol,
 };
 use miden_hir_type::LiftedFunctionType;
+use rustc_hash::FxHashMap;
 use wasmparser::WasmFeatures;
 
 use crate::{
@@ -14,11 +15,10 @@ use crate::{
 };
 
 use super::{
-    inline,
-    instance::{ComponentImport, ComponentInstance, ComponentInstanceBuilder},
-    interface_type_to_ir, CanonicalOptions, ComponentTypes, ComponentTypesBuilder, CoreDef, Export,
-    ExportItem, LinearComponent, LinearComponentTranslation, ParsedRootComponent,
-    StaticModuleIndex, TypeFuncIndex,
+    inline, instance::ComponentImport, interface_type_to_ir, CanonicalOptions, ComponentTypes,
+    ComponentTypesBuilder, CoreDef, Export, ExportItem, GlobalInitializer, InstantiateModule,
+    LinearComponent, LinearComponentTranslation, LoweredIndex, ParsedRootComponent,
+    RuntimeImportIndex, RuntimeInstanceIndex, StaticModuleIndex, Trampoline, TypeFuncIndex,
 };
 
 /// Translate a Wasm component binary into Miden IR component
@@ -80,103 +80,274 @@ fn inline(
 fn build_ir<'data>(
     linear_component_translation: LinearComponentTranslation,
     component_types: ComponentTypes,
-    modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
+    mut parsed_modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
     config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Component> {
     let mut cb = miden_hir::ComponentBuilder::new(diagnostics);
 
-    let component_instance_builder =
-        ComponentInstanceBuilder::new(linear_component_translation, component_types, modules);
-    let mut component_instance = component_instance_builder.build()?;
+    // let component_instance_builder =
+    //     ComponentInstanceBuilder::new(linear_component_translation, component_types, modules);
+    // let mut component_instance = component_instance_builder.build()?;
 
-    component_instance.ensure_module_names();
+    let mut module_instances: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex> =
+        PrimaryMap::new();
+    let mut lower_imports: FxHashMap<LoweredIndex, RuntimeImportIndex> = FxHashMap::default();
+    // let mut imports: FxHashMap<StaticModuleIndex, Vec<ComponentImport>> = FxHashMap::default();
+    let component = &linear_component_translation.component;
 
-    // build exports
-    for (name, export) in &component_instance.component.exports {
-        build_export(export, &component_instance, name, &mut cb, config)?;
+    ensure_module_names(&mut parsed_modules);
+
+    dbg!(&component.initializers);
+    dbg!(&linear_component_translation.trampolines);
+    for initializer in &component.initializers {
+        match initializer {
+            GlobalInitializer::InstantiateModule(m) => {
+                match m {
+                    InstantiateModule::Static(static_module_idx, args) => {
+                        if module_instances
+                            .values()
+                            .find(|idx| **idx == *static_module_idx)
+                            .is_some()
+                        {
+                            return Err(WasmError::Unsupported(format!(
+                                    "A module with a static index {} is already instantiated. We don't support multiple instantiations of the same module.",
+                                    static_module_idx.as_u32()
+                                )));
+                        }
+                        module_instances.push(*static_module_idx);
+                        let mut module_args: Vec<ComponentImport> = Vec::new();
+                        for arg in args.iter() {
+                            match arg {
+                                CoreDef::Export(export) => {
+                                    // let static_module_idx = module_instances[export.instance];
+                                    match export.item {
+                                        ExportItem::Index(entity_idx) => match entity_idx {
+                                            EntityIndex::Function(_func_idx) => {
+                                                // Do nothing.
+                                                // The function indent (module ident + function name)
+                                                // will be resolved during the `call` resolution.
+                                                ()
+
+                                                // module_args.push(import);
+                                            }
+                                            EntityIndex::Table(_) => {
+                                                // Do nothing for now
+                                            }
+                                            EntityIndex::Memory(_) => {
+                                                todo!()
+                                            }
+                                            EntityIndex::Global(_) => {
+                                                todo!()
+                                            }
+                                        },
+                                        ExportItem::Name(_) => todo!(),
+                                    }
+                                }
+                                CoreDef::InstanceFlags(_) => todo!(),
+                                CoreDef::Trampoline(trampoline_idx) => {
+                                    let trampoline =
+                                        &linear_component_translation.trampolines[*trampoline_idx];
+                                    match trampoline {
+                                        Trampoline::LowerImport {
+                                            index,
+                                            lower_ty,
+                                            options: _,
+                                        } => {
+                                            let import = lower_imports[index];
+                                            let import = ComponentImport {
+                                                runtime_import_index: import,
+                                                signature: *lower_ty,
+                                            };
+                                            build_import(
+                                                &import,
+                                                &parsed_modules,
+                                                &component_types,
+                                                component,
+                                                &mut cb,
+                                                config,
+                                            )?;
+                                            module_args.push(import);
+                                        }
+                                        _ => unreachable!(),
+                                    }
+                                }
+                            }
+                        }
+
+                        let parsed_module = parsed_modules.get_mut(*static_module_idx).unwrap();
+                        let module = build_ir_module(
+                            parsed_module,
+                            component_types.module_types(),
+                            config,
+                            diagnostics,
+                        )?;
+                        cb.add_module(module.into())
+                            .expect("module is already added");
+                    }
+                    InstantiateModule::Import(_, _) => todo!(),
+                };
+            }
+            GlobalInitializer::LowerImport {
+                index: init_lowered_idx,
+                import,
+            } => {
+                lower_imports.insert(*init_lowered_idx, *import);
+            }
+            GlobalInitializer::ExtractMemory(_) => {
+                // Do nothing for now
+            }
+            GlobalInitializer::ExtractRealloc(_) => todo!(),
+            GlobalInitializer::ExtractPostReturn(_) => todo!(),
+            GlobalInitializer::Resource(_) => todo!(),
+        }
     }
 
-    for (static_module_idx, parsed_module) in component_instance.modules {
-        let component = &component_instance.component;
-        build_import(
-            &component_instance.imports[&static_module_idx],
-            &component_instance.component_types,
-            component,
-            &parsed_module,
+    // component_instance.ensure_module_names();
+
+    // build exports
+    for (name, export) in &component.exports {
+        build_export(
+            export,
+            &parsed_modules,
+            &module_instances,
+            &component_types,
+            name,
             &mut cb,
             config,
         )?;
-
-        let module = build_ir_module(
-            parsed_module,
-            component_instance.component_types.module_types(),
-            config,
-            diagnostics,
-        )?;
-        cb.add_module(module.into())
-            .expect("module is already added");
     }
+
+    // for (static_module_idx, parsed_module) in component_instance.modules {
+    //     let component = &component_instance.component;
+    //     build_imports(
+    //         &component_instance.imports[&static_module_idx],
+    //         &component_instance.component_types,
+    //         component,
+    //         &parsed_module,
+    //         &mut cb,
+    //         config,
+    //     )?;
+
+    //     let module = build_ir_module(
+    //         parsed_module,
+    //         component_instance.component_types.module_types(),
+    //         config,
+    //         diagnostics,
+    //     )?;
+    //     cb.add_module(module.into())
+    //         .expect("module is already added");
+    // }
 
     Ok(cb.build())
 }
 
+pub fn ensure_module_names(modules: &mut PrimaryMap<StaticModuleIndex, ParsedModule<'_>>) {
+    for (idx, parsed_module) in modules.iter_mut() {
+        parsed_module
+            .module
+            .set_name_fallback(format!("module{}", idx.as_u32()));
+    }
+}
+
 fn build_import(
-    component_imports: &[ComponentImport],
+    import: &ComponentImport,
+    parsed_modules: &PrimaryMap<StaticModuleIndex, ParsedModule>,
     component_types: &ComponentTypes,
     component: &LinearComponent,
-    parsed_module: &ParsedModule<'_>,
     cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
 ) -> WasmResult<()> {
-    for import in component_imports {
-        let (import_idx, import_names) = &component.imports[import.runtime_import_index];
-        if import_names.len() != 1 {
-            return Err(crate::WasmError::Unsupported(
-                "multi-name imports not supported".to_string(),
-            ));
-        }
-        let import_func_name = import_names.first().unwrap();
-        let (full_interface_name, _) = component.import_types[*import_idx].clone();
-        let interface_function = InterfaceFunctionIdent {
-            interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
-            function: Symbol::intern(import_func_name),
-        };
-        let Some(import_metadata) = config.import_metadata.get(&interface_function) else {
-            return Err(crate::WasmError::MissingImportMetadata(format!(
-                "Import metadata for interface function {:?} not found",
-                &interface_function,
-            )));
-        };
-        let lifted_func_ty = convert_lifted_func_ty(&import.signature, component_types);
-
-        let component_import = miden_hir::ComponentImport {
-            function_ty: lifted_func_ty,
-            interface_function,
-            invoke_method: import_metadata.invoke_method,
-            digest: import_metadata.digest.clone(),
-        };
-        let function_id =
-            find_module_import_function(parsed_module, full_interface_name, import_func_name)?;
-        cb.add_import(function_id, component_import);
+    let (import_idx, import_names) = &component.imports[import.runtime_import_index];
+    if import_names.len() != 1 {
+        return Err(crate::WasmError::Unsupported(
+            "multi-name imports not supported".to_string(),
+        ));
     }
+    let import_func_name = import_names.first().unwrap();
+    let (full_interface_name, _) = component.import_types[*import_idx].clone();
+    let interface_function = InterfaceFunctionIdent {
+        interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
+        function: Symbol::intern(import_func_name),
+    };
+    let Some(import_metadata) = config.import_metadata.get(&interface_function) else {
+        return Err(crate::WasmError::MissingImportMetadata(format!(
+            "Import metadata for interface function {:?} not found",
+            &interface_function,
+        )));
+    };
+    let lifted_func_ty = convert_lifted_func_ty(&import.signature, component_types);
+
+    let component_import = miden_hir::ComponentImport {
+        function_ty: lifted_func_ty,
+        interface_function,
+        invoke_method: import_metadata.invoke_method,
+        digest: import_metadata.digest.clone(),
+    };
+    let function_id =
+        find_module_import_function(parsed_modules, full_interface_name, import_func_name)?;
+    cb.add_import(function_id, component_import);
     Ok(())
 }
 
+// fn build_imports(
+//     component_imports: &[ComponentImport],
+//     component_types: &ComponentTypes,
+//     component: &LinearComponent,
+//     parsed_module: &ParsedModule<'_>,
+//     cb: &mut miden_hir::ComponentBuilder<'_>,
+//     config: &WasmTranslationConfig,
+// ) -> WasmResult<()> {
+//     for import in component_imports {
+//         let (import_idx, import_names) = &component.imports[import.runtime_import_index];
+//         if import_names.len() != 1 {
+//             return Err(crate::WasmError::Unsupported(
+//                 "multi-name imports not supported".to_string(),
+//             ));
+//         }
+//         let import_func_name = import_names.first().unwrap();
+//         let (full_interface_name, _) = component.import_types[*import_idx].clone();
+//         let interface_function = InterfaceFunctionIdent {
+//             interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
+//             function: Symbol::intern(import_func_name),
+//         };
+//         let Some(import_metadata) = config.import_metadata.get(&interface_function) else {
+//             return Err(crate::WasmError::MissingImportMetadata(format!(
+//                 "Import metadata for interface function {:?} not found",
+//                 &interface_function,
+//             )));
+//         };
+//         let lifted_func_ty = convert_lifted_func_ty(&import.signature, component_types);
+
+//         let component_import = miden_hir::ComponentImport {
+//             function_ty: lifted_func_ty,
+//             interface_function,
+//             invoke_method: import_metadata.invoke_method,
+//             digest: import_metadata.digest.clone(),
+//         };
+//         let function_id =
+//             find_module_import_function(parsed_module, full_interface_name, import_func_name)?;
+//         cb.add_import(function_id, component_import);
+//     }
+//     Ok(())
+// }
+
 fn find_module_import_function(
-    parsed_module: &ParsedModule,
+    parsed_modules: &PrimaryMap<StaticModuleIndex, ParsedModule>,
     full_interface_name: String,
     import_func_name: &String,
 ) -> WasmResult<FunctionIdent> {
-    for import in &parsed_module.module.imports {
-        if import.module == full_interface_name && &import.field == import_func_name {
-            let func_idx = import.index.unwrap_func();
-            let func_name = parsed_module.module.func_name(func_idx);
-            let module_instance_name = parsed_module.module.name();
-            return Ok(FunctionIdent {
-                module: Ident::with_empty_span(Symbol::intern(module_instance_name)),
-                function: Ident::with_empty_span(Symbol::intern(func_name)),
-            });
+    for (_idx, parsed_module) in parsed_modules {
+        for import in &parsed_module.module.imports {
+            if import.module == full_interface_name && &import.field == import_func_name {
+                let func_idx = import.index.unwrap_func();
+                let func_name = parsed_module.module.func_name(func_idx);
+                let module_instance_name = parsed_module.module.name();
+                return Ok(FunctionIdent {
+                    module: Ident::with_empty_span(Symbol::intern(module_instance_name)),
+                    function: Ident::with_empty_span(Symbol::intern(func_name)),
+                });
+            }
         }
     }
     Err(WasmError::Unexpected(format!(
@@ -185,32 +356,55 @@ fn find_module_import_function(
     )))
 }
 
-fn build_export(
+fn build_export<'data>(
     export: &Export,
-    component_instance: &ComponentInstance<'_>,
+    modules: &PrimaryMap<StaticModuleIndex, ParsedModule>,
+    module_instances: &PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex>,
+    component_types: &ComponentTypes,
     name: &String,
     cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
 ) -> WasmResult<()> {
     match export {
-        Export::LiftedFunction { ty, func, options } => {
-            build_export_function(component_instance, name, func, ty, options, cb, config)
-        }
+        Export::LiftedFunction { ty, func, options } => build_export_function(
+            modules,
+            module_instances,
+            component_types,
+            name,
+            func,
+            ty,
+            options,
+            cb,
+            config,
+        ),
         Export::Instance(exports) => {
             // Flatten any(nested) interface instance exports into the IR `Component` exports
             for (name, export) in exports {
-                build_export(export, component_instance, name, cb, config)?;
+                build_export(
+                    export,
+                    modules,
+                    module_instances,
+                    component_types,
+                    name,
+                    cb,
+                    config,
+                )?;
             }
             Ok(())
         }
         Export::ModuleStatic(_) => todo!(),
         Export::ModuleImport(_) => todo!(),
-        Export::Type(_) => todo!(),
+        Export::Type(_) => {
+            // TODO: implement type exports
+            Ok(())
+        }
     }
 }
 
-fn build_export_function(
-    component_instance: &ComponentInstance<'_>,
+fn build_export_function<'data>(
+    modules: &PrimaryMap<StaticModuleIndex, ParsedModule>,
+    module_instances: &PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex>,
+    component_types: &ComponentTypes,
     name: &String,
     func: &CoreDef,
     ty: &TypeFuncIndex,
@@ -221,12 +415,12 @@ fn build_export_function(
     assert_empty_canonical_options(options);
     let func_ident = match func {
         CoreDef::Export(core_export) => {
-            let parsed_module = component_instance.module(core_export.instance);
-            let module_name = parsed_module.module.name();
+            let module = &modules[module_instances[core_export.instance]].module;
+            let module_name = module.name();
             let module_ident = miden_hir::Ident::with_empty_span(Symbol::intern(module_name));
             let func_name = match core_export.item {
                 ExportItem::Index(idx) => match idx {
-                    EntityIndex::Function(func_idx) => parsed_module.module.func_name(func_idx),
+                    EntityIndex::Function(func_idx) => module.func_name(func_idx),
                     EntityIndex::Table(_) => todo!(),
                     EntityIndex::Memory(_) => todo!(),
                     EntityIndex::Global(_) => todo!(),
@@ -242,7 +436,7 @@ fn build_export_function(
         CoreDef::InstanceFlags(_) => todo!(),
         CoreDef::Trampoline(_) => todo!(),
     };
-    let lifted_func_ty = convert_lifted_func_ty(ty, &component_instance.component_types);
+    let lifted_func_ty = convert_lifted_func_ty(ty, component_types);
     let export_name = Symbol::intern(name).into();
     let Some(export_metadata) = config.export_metadata.get(&export_name) else {
         return Err(WasmError::MissingExportMetadata(format!(

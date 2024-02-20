@@ -236,7 +236,7 @@ impl EntityIndex {
     pub fn unwrap_func(&self) -> FuncIndex {
         match self {
             EntityIndex::Function(f) => *f,
-            _ => panic!("not a func"),
+            entity_idx => panic!("not a func, but {:?}", entity_idx),
         }
     }
 }

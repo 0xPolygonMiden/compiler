@@ -1,12 +1,17 @@
+use std::mem;
+
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{CallConv, ConstantData, FunctionIdent, Ident, Linkage, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
 use crate::{
     error::WasmResult,
-    module::func_translator::FuncTranslator,
-    module::module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
-    module::types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
+    module::{
+        func_translator::FuncTranslator,
+        module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
+        types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
+        EntityIndex,
+    },
     WasmError, WasmTranslationConfig,
 };
 
@@ -32,11 +37,11 @@ pub fn translate_module(
         .module
         .set_name_fallback(config.source_name.clone());
     let module_types = module_types_builder.finish();
-    build_ir_module(parsed_module, &module_types, config, diagnostics)
+    build_ir_module(&mut parsed_module, &module_types, config, diagnostics)
 }
 
 pub fn build_ir_module(
-    mut parsed_module: ParsedModule,
+    parsed_module: &mut ParsedModule,
     module_types: &ModuleTypes,
     _config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
@@ -44,27 +49,41 @@ pub fn build_ir_module(
     let name = parsed_module.module.name();
     let mut module_builder = ModuleBuilder::new(name.clone().as_str());
     for import in parsed_module.module.imports.clone() {
-        let func_idx = import.index.unwrap_func();
-        let func_name = parsed_module.module.func_name(func_idx);
-        let sig_idx = parsed_module.module.type_of(import.index).unwrap_func();
-        let func = &module_types[sig_idx];
-        let func_type = ir_func_type(&func)?;
-        let sig = ir_func_sig(&func_type, CallConv::SystemV, Linkage::External);
+        match import.index {
+            EntityIndex::Function(func_idx) => {
+                let func_name = parsed_module.module.func_name(func_idx);
+                let sig_idx = parsed_module.module.type_of(import.index).unwrap_func();
+                let func = &module_types[sig_idx];
+                let func_type = ir_func_type(&func)?;
+                let sig = ir_func_sig(&func_type, CallConv::SystemV, Linkage::External);
 
-        let function_id: FunctionIdent = FunctionIdent {
-            module: module_builder.name(),
-            function: Ident::with_empty_span(Symbol::intern(func_name)),
+                let function_id: FunctionIdent = FunctionIdent {
+                    module: module_builder.name(),
+                    function: Ident::with_empty_span(Symbol::intern(func_name)),
+                };
+
+                // TODO: extract translated_function_imports from parsed_module so we don't mutate it here
+                parsed_module
+                    .module
+                    .translated_function_imports
+                    .insert(func_idx, (function_id, sig));
+            }
+            EntityIndex::Table(_) => {
+                // TODO: implement table imports
+            }
+            EntityIndex::Memory(_) => todo!(),
+            EntityIndex::Global(_) => todo!(),
         };
-
-        parsed_module
-            .module
-            .translated_function_imports
-            .insert(func_idx, (function_id, sig));
     }
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
     build_data_segments(&parsed_module, &mut module_builder, diagnostics)?;
     let mut func_translator = FuncTranslator::new();
-    for (defined_func_idx, body_data) in parsed_module.function_body_inputs {
+    // debug_assert!(
+    //     !parsed_module.function_body_inputs.is_empty(),
+    //     "No function bodies in a module. Check if it was already translated earlier."
+    // );
+    let function_bodies = mem::take(&mut parsed_module.function_body_inputs);
+    for (defined_func_idx, body_data) in function_bodies {
         let func_index = parsed_module.module.func_index(defined_func_idx);
         let func_type = parsed_module.module.functions[func_index];
         let func_name = parsed_module.module.func_name(func_index);

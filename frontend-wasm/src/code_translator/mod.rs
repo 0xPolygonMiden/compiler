@@ -127,6 +127,13 @@ pub fn translate_operator(
                 diagnostics,
             )?;
         }
+        Operator::CallIndirect {
+            type_index: _,
+            table_index: _,
+            table_byte: _,
+        } => {
+            // TODO: implement call_indirect
+        }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
             let arg = state.pop1_casted(U32, builder, span);

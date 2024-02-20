@@ -65,6 +65,8 @@ pub enum Type {
     Struct(StructType),
     /// A vector of fixed size
     Array(Box<Type>, usize),
+    /// A tuple of values of the given types
+    Tuple(Vec<Type>),
 }
 impl Type {
     /// Returns true if this type is a zero-sized type, which includes:
@@ -95,7 +97,8 @@ impl Type {
             | Self::F64
             | Self::Felt
             | Self::Ptr(_)
-            | Self::NativePtr(_, _) => false,
+            | Self::NativePtr(_, _)
+            | Self::Tuple(_) => false,
         }
     }
 
@@ -319,6 +322,17 @@ impl fmt::Display for Type {
             }
             Self::Struct(sty) => write!(f, "{sty}"),
             Self::Array(element_ty, arity) => write!(f, "[{}; {}]", &element_ty, arity),
+            Self::Tuple(tys) => {
+                f.write_char('(')?;
+                for (i, ty) in tys.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", {}", ty)?;
+                    } else {
+                        write!(f, "{}", ty)?;
+                    }
+                }
+                f.write_char(')')
+            }
         }
     }
 }

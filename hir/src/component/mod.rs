@@ -206,6 +206,21 @@ impl<'a> ComponentBuilder<'a> {
         self.imports.insert(function_id, import);
     }
 
+    // fn find_import(&self, interface_function_id: &InterfaceFunctionIdent) -> Option<FunctionIdent> {
+    //     dbg!(&interface_function_id);
+    //     for (_id, module) in &self.modules {
+    //         for import_function_id in module.imports().imported(&module.name().unwrap()).unwrap() {
+    //             dbg!(&import_function_id);
+    //             if import_function_id.module == interface_function_id.interface.full_name
+    //                 && import_function_id.function.as_str()
+    //                     == interface_function_id.function.as_str()
+    //             {
+    //                 return Some(import_function_id.clone());
+    //             }
+    //         }
+    //     }
+    //     None
+    // }
     pub fn add_export(&mut self, name: FunctionExportName, export: ComponentExport) {
         self.exports.insert(name, export);
     }

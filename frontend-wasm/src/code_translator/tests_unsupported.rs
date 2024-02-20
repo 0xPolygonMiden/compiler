@@ -58,11 +58,6 @@ fn check_unsupported(op: &Operator) {
 
 // Wasm Spec v1.0
 const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
-    CallIndirect {
-        type_index: 0,
-        table_index: 0,
-        table_byte: 0,
-    },
     /****************************** Memory Operators ************************************/
     F32Load {
         memarg: MemArg {

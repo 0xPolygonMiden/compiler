@@ -119,6 +119,7 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> WasmResult<Valu
         | Type::NativePtr(_, _)
         | Type::Struct(_)
         | Type::Array(_, _)
+        | Type::Tuple(_)
         | Type::Unknown
         | Type::Unit
         | Type::Never => {

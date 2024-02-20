@@ -1765,7 +1765,14 @@ pub fn interface_type_to_ir(
         InterfaceType::Record(_) => todo!(),
         InterfaceType::Variant(_) => todo!(),
         InterfaceType::List(_) => todo!(),
-        InterfaceType::Tuple(_) => todo!(),
+        InterfaceType::Tuple(tuple_idx) => {
+            let tys = _component_types.tuples[*tuple_idx]
+                .types
+                .iter()
+                .map(|t| interface_type_to_ir(t, _component_types))
+                .collect();
+            miden_hir_type::Type::Tuple(tys)
+        }
         InterfaceType::Flags(_) => todo!(),
         InterfaceType::Enum(_) => todo!(),
         InterfaceType::Option(_) => todo!(),
