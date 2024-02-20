@@ -9,3 +9,15 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 mod bindings;
+
+use bindings::exports::miden::base::core_types::Guest;
+use bindings::exports::miden::base::core_types::{AccountId, Felt};
+
+pub struct Component;
+
+impl Guest for Component {
+    fn account_id_from_felt(felt: Felt) -> AccountId {
+        // TODO: assert that felt is a valid account id
+        AccountId { inner: felt }
+    }
+}

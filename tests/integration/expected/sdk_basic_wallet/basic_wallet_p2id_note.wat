@@ -1,48 +1,47 @@
 (component
   (type (;0;)
     (instance
-      (type (;0;) u64)
+      (type (;0;) (record (field "inner" float64)))
       (export (;1;) "felt" (type (eq 0)))
-      (export (;2;) "account-id" (type (eq 1)))
-      (type (;3;) (list 1))
-      (export (;4;) "note-inputs" (type (eq 3)))
-      (type (;5;) (record (field "asset" 2) (field "amount" u64)))
-      (export (;6;) "fungible-asset" (type (eq 5)))
-      (type (;7;) (tuple 1 1 1 1))
-      (export (;8;) "word" (type (eq 7)))
-      (export (;9;) "non-fungible-asset" (type (eq 8)))
-      (type (;10;) (variant (case "fungible" 6) (case "non-fungible" 9)))
-      (export (;11;) "asset" (type (eq 10)))
+      (type (;2;) (record (field "inner" 1)))
+      (export (;3;) "account-id" (type (eq 2)))
+      (type (;4;) (tuple 1 1 1 1))
+      (export (;5;) "word" (type (eq 4)))
+      (type (;6;) (record (field "inner" 5)))
+      (export (;7;) "core-asset" (type (eq 6)))
+      (type (;8;) (func (param "felt" 1) (result 3)))
+      (export (;0;) "account-id-from-felt" (func (type 8)))
     )
   )
-  (import "miden:base/types@1.0.0" (instance (;0;) (type 0)))
+  (import "miden:base/core-types@1.0.0" (instance (;0;) (type 0)))
   (alias export 0 "account-id" (type (;1;)))
-  (alias export 0 "note-inputs" (type (;2;)))
-  (alias export 0 "asset" (type (;3;)))
+  (alias export 0 "felt" (type (;2;)))
+  (alias export 0 "core-asset" (type (;3;)))
   (type (;4;)
     (instance
       (alias outer 1 1 (type (;0;)))
       (export (;1;) "account-id" (type (eq 0)))
       (alias outer 1 2 (type (;2;)))
-      (export (;3;) "note-inputs" (type (eq 2)))
+      (export (;3;) "felt" (type (eq 2)))
       (alias outer 1 3 (type (;4;)))
-      (export (;5;) "asset" (type (eq 4)))
+      (export (;5;) "core-asset" (type (eq 4)))
       (type (;6;) (func (result 1)))
       (export (;0;) "get-id" (func (type 6)))
-      (type (;7;) (func (result 3)))
-      (export (;1;) "get-inputs" (func (type 7)))
-      (type (;8;) (list 5))
-      (type (;9;) (func (result 8)))
-      (export (;2;) "get-assets" (func (type 9)))
+      (type (;7;) (list 3))
+      (type (;8;) (func (result 7)))
+      (export (;1;) "get-inputs" (func (type 8)))
+      (type (;9;) (list 5))
+      (type (;10;) (func (result 9)))
+      (export (;2;) "get-assets" (func (type 10)))
     )
   )
   (import "miden:base/tx-kernel@1.0.0" (instance (;1;) (type 4)))
-  (alias export 0 "asset" (type (;5;)))
+  (alias export 0 "core-asset" (type (;5;)))
   (type (;6;)
     (instance
       (alias outer 1 5 (type (;0;)))
-      (export (;1;) "asset" (type (eq 0)))
-      (type (;2;) (func (param "asset" 1)))
+      (export (;1;) "core-asset" (type (eq 0)))
+      (type (;2;) (func (param "core-asset" 1)))
       (export (;0;) "receive-asset" (func (type 2)))
     )
   )
@@ -192,124 +191,13 @@
     (func $alloc::raw_vec::RawVec<T,A>::reserve_for_push (;6;) (type 5) (param i32 i32)
       (local i32 i32 i32 i32)
       global.get $__stack_pointer
-      i32.const 32
-      i32.sub
-      local.tee 2
-      global.set $__stack_pointer
-      block ;; label = @1
-        block ;; label = @2
-          local.get 1
-          i32.const 1
-          i32.add
-          local.tee 1
-          i32.eqz
-          br_if 0 (;@2;)
-          local.get 0
-          i32.load offset=4
-          local.tee 3
-          i32.const 1
-          i32.shl
-          local.tee 4
-          local.get 1
-          local.get 4
-          local.get 1
-          i32.gt_u
-          select
-          local.tee 1
-          i32.const 4
-          local.get 1
-          i32.const 4
-          i32.gt_u
-          select
-          local.tee 1
-          i32.const 40
-          i32.mul
-          local.set 4
-          local.get 1
-          i32.const 53687092
-          i32.lt_u
-          i32.const 3
-          i32.shl
-          local.set 5
-          block ;; label = @3
-            block ;; label = @4
-              local.get 3
-              br_if 0 (;@4;)
-              local.get 2
-              i32.const 0
-              i32.store offset=24
-              br 1 (;@3;)
-            end
-            local.get 2
-            i32.const 8
-            i32.store offset=24
-            local.get 2
-            local.get 3
-            i32.const 40
-            i32.mul
-            i32.store offset=28
-            local.get 2
-            local.get 0
-            i32.load
-            i32.store offset=20
-          end
-          local.get 2
-          i32.const 8
-          i32.add
-          local.get 5
-          local.get 4
-          local.get 2
-          i32.const 20
-          i32.add
-          call $alloc::raw_vec::finish_grow
-          local.get 2
-          i32.load offset=12
-          local.set 3
-          block ;; label = @3
-            local.get 2
-            i32.load offset=8
-            br_if 0 (;@3;)
-            local.get 0
-            local.get 1
-            i32.store offset=4
-            local.get 0
-            local.get 3
-            i32.store
-            br 2 (;@1;)
-          end
-          local.get 3
-          i32.const -2147483647
-          i32.eq
-          br_if 1 (;@1;)
-          local.get 3
-          i32.eqz
-          br_if 0 (;@2;)
-          local.get 3
-          local.get 2
-          i32.const 16
-          i32.add
-          i32.load
-          call $alloc::alloc::handle_alloc_error
-          unreachable
-        end
-        call $alloc::raw_vec::capacity_overflow
-        unreachable
-      end
-      local.get 2
-      i32.const 32
-      i32.add
-      global.set $__stack_pointer
-    )
-    (func $miden:base/note@1.0.0#note-script (;7;) (type 3)
-      (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i64 i64 i64 i64 i64 i32)
-      global.get $__stack_pointer
-      i32.const 32
+      i32.const 16
       i32.sub
       local.tee 0
       global.set $__stack_pointer
       call $wit_bindgen::rt::run_ctors_once
       local.get 0
-      i32.const 20
+      i32.const 8
       i32.add
       call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_inputs::wit_import
       block ;; label = @1
@@ -577,7 +465,7 @@
       local.get 1
       call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc
     )
-    (func $__rust_realloc (;10;) (type 8) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;9;) (type 7) (param i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         i32.const 1048576
@@ -1278,35 +1166,41 @@
     (export "get-inputs" (func 1))
     (export "get-assets" (func 2))
   )
-  (alias export 2 "receive-asset" (func (;1;)))
+  (alias export 0 "account-id-from-felt" (func (;1;)))
   (core func (;3;) (canon lower (func 1)))
   (core instance (;2;)
-    (export "receive-asset" (func 3))
+    (export "account-id-from-felt" (func 3))
   )
-  (core instance (;3;) (instantiate 0
+  (alias export 2 "receive-asset" (func (;2;)))
+  (core func (;4;) (canon lower (func 2)))
+  (core instance (;3;)
+    (export "receive-asset" (func 4))
+  )
+  (core instance (;4;) (instantiate 0
       (with "miden:base/tx-kernel@1.0.0" (instance 1))
-      (with "miden:basic-wallet/basic-wallet@1.0.0" (instance 2))
+      (with "miden:base/core-types@1.0.0" (instance 2))
+      (with "miden:basic-wallet/basic-wallet@1.0.0" (instance 3))
     )
   )
-  (alias core export 3 "memory" (core memory (;0;)))
-  (alias core export 3 "cabi_realloc" (core func (;4;)))
+  (alias core export 4 "memory" (core memory (;0;)))
+  (alias core export 4 "cabi_realloc" (core func (;5;)))
   (alias core export 0 "$imports" (core table (;0;)))
-  (alias export 1 "get-inputs" (func (;2;)))
-  (core func (;5;) (canon lower (func 2) (memory 0) (realloc 4)))
-  (alias export 1 "get-assets" (func (;3;)))
-  (core func (;6;) (canon lower (func 3) (memory 0) (realloc 4)))
-  (core instance (;4;)
+  (alias export 1 "get-inputs" (func (;3;)))
+  (core func (;6;) (canon lower (func 3) (memory 0) (realloc 5)))
+  (alias export 1 "get-assets" (func (;4;)))
+  (core func (;7;) (canon lower (func 4) (memory 0) (realloc 5)))
+  (core instance (;5;)
     (export "$imports" (table 0))
-    (export "0" (func 5))
-    (export "1" (func 6))
+    (export "0" (func 6))
+    (export "1" (func 7))
   )
-  (core instance (;5;) (instantiate 2
-      (with "" (instance 4))
+  (core instance (;6;) (instantiate 2
+      (with "" (instance 5))
     )
   )
   (type (;7;) (func))
-  (alias core export 3 "miden:base/note@1.0.0#note-script" (core func (;7;)))
-  (func (;4;) (type 7) (canon lift (core func 7)))
+  (alias core export 4 "miden:base/note@1.0.0#note-script" (core func (;8;)))
+  (func (;5;) (type 7) (canon lift (core func 8)))
   (component (;0;)
     (type (;0;) (func))
     (import "import-func-note-script" (func (;0;) (type 0)))
@@ -1314,7 +1208,7 @@
     (export (;1;) "note-script" (func 0) (func (type 1)))
   )
   (instance (;3;) (instantiate 0
-      (with "import-func-note-script" (func 4))
+      (with "import-func-note-script" (func 5))
     )
   )
   (export (;4;) "miden:base/note@1.0.0" (instance 3))

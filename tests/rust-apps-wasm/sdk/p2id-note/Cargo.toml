@@ -27,5 +27,8 @@ package = "miden:basic-wallet-p2id-note"
 "miden:base" = { path = "../sdk/wit" }
 "miden:basic-wallet" = { path = "../basic-wallet/wit" }
 
+[package.metadata.component.bindings]
+derives = ["PartialEq"]
+
 [profile.release]
 panic = "abort"
