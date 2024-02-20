@@ -51,13 +51,14 @@
     (type (;1;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64) (result f64)))
     (type (;2;) (func))
     (type (;3;) (func (param f64 f64 f64 f64)))
-    (type (;4;) (func (param i32 i32) (result i32)))
-    (type (;5;) (func (param i32 i32 i32 i32) (result i32)))
-    (type (;6;) (func (param i32 i32 i32) (result i32)))
-    (type (;7;) (func (param i32 i32 i32 i32)))
-    (import "miden:base/tx-kernel@1.0.0" "add-asset" (func $basic_wallet::bindings::miden::base::tx_kernel::add_asset::wit_import (;0;) (type 0)))
-    (import "miden:base/tx-kernel@1.0.0" "remove-asset" (func $basic_wallet::bindings::miden::base::tx_kernel::remove_asset::wit_import (;1;) (type 0)))
-    (import "miden:base/tx-kernel@1.0.0" "create-note" (func $basic_wallet::bindings::miden::base::tx_kernel::create_note::wit_import (;2;) (type 1)))
+    (type (;4;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64)))
+    (type (;5;) (func (param i32 i32) (result i32)))
+    (type (;6;) (func (param i32 i32 i32 i32) (result i32)))
+    (type (;7;) (func (param i32 i32 i32) (result i32)))
+    (type (;8;) (func (param i32 i32 i32 i32)))
+    (import "miden:base/account@1.0.0" "add-asset" (func $basic_wallet::bindings::miden::base::account::add_asset::wit_import (;0;) (type 0)))
+    (import "miden:base/account@1.0.0" "remove-asset" (func $basic_wallet::bindings::miden::base::account::remove_asset::wit_import (;1;) (type 0)))
+    (import "miden:base/tx@1.0.0" "create-note" (func $basic_wallet::bindings::miden::base::tx::create_note::wit_import (;2;) (type 1)))
     (func $__wasm_call_ctors (;3;) (type 2))
     (func $miden:basic-wallet/basic-wallet@1.0.0#receive-asset (;4;) (type 3) (param f64 f64 f64 f64)
       (local i32)
@@ -118,13 +119,13 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $__rust_alloc (;6;) (type 4) (param i32 i32) (result i32)
+    (func $__rust_alloc (;6;) (type 5) (param i32 i32) (result i32)
       i32.const 1048576
       local.get 1
       local.get 0
       call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
     )
-    (func $__rust_realloc (;7;) (type 5) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;7;) (type 6) (param i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
         i32.const 1048576
@@ -151,7 +152,7 @@
       end
       local.get 4
     )
-    (func $wee_alloc::alloc_first_fit (;8;) (type 6) (param i32 i32 i32) (result i32)
+    (func $wee_alloc::alloc_first_fit (;8;) (type 7) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 2
@@ -452,7 +453,7 @@
       end
       i32.const 0
     )
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;9;) (type 6) (param i32 i32 i32) (result i32)
+    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;9;) (type 7) (param i32 i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -556,7 +557,7 @@
       global.set $__stack_pointer
       local.get 2
     )
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;10;) (type 7) (param i32 i32 i32 i32)
+    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;10;) (type 8) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 1
@@ -733,7 +734,7 @@
         i32.store8 offset=1048581
       end
     )
-    (func $cabi_realloc (;12;) (type 5) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_realloc (;12;) (type 6) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
