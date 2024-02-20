@@ -12,7 +12,8 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 mod bindings;
 
 use bindings::exports::miden::basic_wallet::basic_wallet::{CoreAsset, Guest, Recipient, Tag};
-use bindings::miden::base::tx_kernel::{add_asset, create_note, remove_asset};
+use bindings::miden::base::account::{add_asset, remove_asset};
+use bindings::miden::base::tx::create_note;
 
 struct Component;
 

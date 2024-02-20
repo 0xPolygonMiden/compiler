@@ -11,11 +11,12 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 #[allow(dead_code)]
 mod bindings;
 
+use bindings::miden::base::account::get_id;
 use bindings::miden::base::core_types::account_id_from_felt;
-use bindings::miden::base::tx_kernel::{get_assets, get_id, get_inputs};
+use bindings::miden::base::note::{get_assets, get_inputs};
 use bindings::miden::basic_wallet::basic_wallet::receive_asset;
 
-use bindings::exports::miden::base::note::Guest;
+use bindings::exports::miden::base::note_script::Guest;
 
 pub struct Component;
 

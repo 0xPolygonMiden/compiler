@@ -13,27 +13,38 @@
   )
   (import "miden:base/core-types@1.0.0" (instance (;0;) (type 0)))
   (alias export 0 "core-asset" (type (;1;)))
-  (alias export 0 "tag" (type (;2;)))
-  (alias export 0 "recipient" (type (;3;)))
-  (type (;4;)
+  (type (;2;)
     (instance
       (alias outer 1 1 (type (;0;)))
       (export (;1;) "core-asset" (type (eq 0)))
-      (alias outer 1 2 (type (;2;)))
-      (export (;3;) "tag" (type (eq 2)))
-      (alias outer 1 3 (type (;4;)))
-      (export (;5;) "recipient" (type (eq 4)))
-      (type (;6;) (func (param "core-asset" 1) (result 1)))
-      (export (;0;) "add-asset" (func (type 6)))
-      (export (;1;) "remove-asset" (func (type 6)))
-      (type (;7;) (func (param "core-asset" 1) (param "tag" 3) (param "recipient" 5)))
-      (export (;2;) "create-note" (func (type 7)))
+      (type (;2;) (func (param "asset" 1) (result 1)))
+      (export (;0;) "add-asset" (func (type 2)))
+      (export (;1;) "remove-asset" (func (type 2)))
     )
   )
-  (import "miden:base/tx-kernel@1.0.0" (instance (;1;) (type 4)))
+  (import "miden:base/account@1.0.0" (instance (;1;) (type 2)))
+  (alias export 0 "core-asset" (type (;3;)))
+  (alias export 0 "tag" (type (;4;)))
+  (alias export 0 "recipient" (type (;5;)))
+  (alias export 0 "felt" (type (;6;)))
+  (type (;7;)
+    (instance
+      (alias outer 1 3 (type (;0;)))
+      (export (;1;) "core-asset" (type (eq 0)))
+      (alias outer 1 4 (type (;2;)))
+      (export (;3;) "tag" (type (eq 2)))
+      (alias outer 1 5 (type (;4;)))
+      (export (;5;) "recipient" (type (eq 4)))
+      (alias outer 1 6 (type (;6;)))
+      (export (;7;) "felt" (type (eq 6)))
+      (type (;8;) (func (param "asset" 1) (param "tag" 3) (param "recipient" 5) (result 7)))
+      (export (;0;) "create-note" (func (type 8)))
+    )
+  )
+  (import "miden:base/tx@1.0.0" (instance (;2;) (type 7)))
   (core module (;0;)
     (type (;0;) (func (param f64 f64 f64 f64 i32)))
-    (type (;1;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64)))
+    (type (;1;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64) (result f64)))
     (type (;2;) (func))
     (type (;3;) (func (param f64 f64 f64 f64)))
     (type (;4;) (func (param i32 i32) (result i32)))
@@ -57,13 +68,13 @@
       local.get 2
       local.get 3
       local.get 4
-      call $basic_wallet::bindings::miden::base::tx_kernel::add_asset::wit_import
+      call $basic_wallet::bindings::miden::base::account::add_asset::wit_import
       local.get 4
       i32.const 32
       i32.add
       global.set $__stack_pointer
     )
-    (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset (;5;) (type 1) (param f64 f64 f64 f64 f64 f64 f64 f64 f64)
+    (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset (;5;) (type 4) (param f64 f64 f64 f64 f64 f64 f64 f64 f64)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -76,7 +87,7 @@
       local.get 2
       local.get 3
       local.get 9
-      call $basic_wallet::bindings::miden::base::tx_kernel::remove_asset::wit_import
+      call $basic_wallet::bindings::miden::base::account::remove_asset::wit_import
       local.get 9
       f64.load
       local.get 9
@@ -96,7 +107,8 @@
       local.get 6
       local.get 7
       local.get 8
-      call $basic_wallet::bindings::miden::base::tx_kernel::create_note::wit_import
+      call $basic_wallet::bindings::miden::base::tx::create_note::wit_import
+      drop
       local.get 9
       i32.const 32
       i32.add
@@ -759,7 +771,7 @@
   )
   (core module (;1;)
     (type (;0;) (func (param f64 f64 f64 f64 i32)))
-    (func $indirect-miden:base/tx-kernel@1.0.0-add-asset (;0;) (type 0) (param f64 f64 f64 f64 i32)
+    (func $indirect-miden:base/account@1.0.0-add-asset (;0;) (type 0) (param f64 f64 f64 f64 i32)
       local.get 0
       local.get 1
       local.get 2
@@ -768,7 +780,7 @@
       i32.const 0
       call_indirect (type 0)
     )
-    (func $indirect-miden:base/tx-kernel@1.0.0-remove-asset (;1;) (type 0) (param f64 f64 f64 f64 i32)
+    (func $indirect-miden:base/account@1.0.0-remove-asset (;1;) (type 0) (param f64 f64 f64 f64 i32)
       local.get 0
       local.get 1
       local.get 2
@@ -778,8 +790,8 @@
       call_indirect (type 0)
     )
     (table (;0;) 2 2 funcref)
-    (export "0" (func $indirect-miden:base/tx-kernel@1.0.0-add-asset))
-    (export "1" (func $indirect-miden:base/tx-kernel@1.0.0-remove-asset))
+    (export "0" (func $indirect-miden:base/account@1.0.0-add-asset))
+    (export "1" (func $indirect-miden:base/account@1.0.0-remove-asset))
     (export "$imports" (table 0))
   )
   (core module (;2;)
@@ -792,51 +804,51 @@
   (core instance (;0;) (instantiate 1))
   (alias core export 0 "0" (core func (;0;)))
   (alias core export 0 "1" (core func (;1;)))
-  (alias export 1 "create-note" (func (;0;)))
-  (core func (;2;) (canon lower (func 0)))
   (core instance (;1;)
     (export "add-asset" (func 0))
     (export "remove-asset" (func 1))
+  )
+  (alias export 2 "create-note" (func (;0;)))
+  (core func (;2;) (canon lower (func 0)))
+  (core instance (;2;)
     (export "create-note" (func 2))
   )
-  (core instance (;2;) (instantiate 0
-      (with "miden:base/tx-kernel@1.0.0" (instance 1))
+  (core instance (;3;) (instantiate 0
+      (with "miden:base/account@1.0.0" (instance 1))
+      (with "miden:base/tx@1.0.0" (instance 2))
     )
   )
-  (alias core export 2 "memory" (core memory (;0;)))
-  (alias core export 2 "cabi_realloc" (core func (;3;)))
+  (alias core export 3 "memory" (core memory (;0;)))
+  (alias core export 3 "cabi_realloc" (core func (;3;)))
   (alias core export 0 "$imports" (core table (;0;)))
   (alias export 1 "add-asset" (func (;1;)))
   (core func (;4;) (canon lower (func 1) (memory 0)))
   (alias export 1 "remove-asset" (func (;2;)))
   (core func (;5;) (canon lower (func 2) (memory 0)))
-  (core instance (;3;)
+  (core instance (;4;)
     (export "$imports" (table 0))
     (export "0" (func 4))
     (export "1" (func 5))
   )
-  (core instance (;4;) (instantiate 2
-      (with "" (instance 3))
+  (core instance (;5;) (instantiate 2
+      (with "" (instance 4))
     )
   )
-  (component (;0;))
-  (instance (;2;) (instantiate 0))
-  (export (;3;) "miden:base/account@1.0.0" (instance 2))
-  (alias export 0 "core-asset" (type (;5;)))
-  (type (;6;) (func (param "core-asset" 5)))
-  (alias core export 2 "miden:basic-wallet/basic-wallet@1.0.0#receive-asset" (core func (;6;)))
-  (func (;3;) (type 6) (canon lift (core func 6)))
-  (alias export 0 "tag" (type (;7;)))
-  (alias export 0 "recipient" (type (;8;)))
-  (type (;9;) (func (param "core-asset" 5) (param "tag" 7) (param "recipient" 8)))
-  (alias core export 2 "miden:basic-wallet/basic-wallet@1.0.0#send-asset" (core func (;7;)))
-  (func (;4;) (type 9) (canon lift (core func 7)))
-  (alias export 0 "felt" (type (;10;)))
-  (alias export 0 "word" (type (;11;)))
-  (alias export 0 "core-asset" (type (;12;)))
-  (alias export 0 "tag" (type (;13;)))
-  (alias export 0 "recipient" (type (;14;)))
-  (component (;1;)
+  (alias export 0 "core-asset" (type (;8;)))
+  (type (;9;) (func (param "core-asset" 8)))
+  (alias core export 3 "miden:basic-wallet/basic-wallet@1.0.0#receive-asset" (core func (;6;)))
+  (func (;3;) (type 9) (canon lift (core func 6)))
+  (alias export 0 "tag" (type (;10;)))
+  (alias export 0 "recipient" (type (;11;)))
+  (type (;12;) (func (param "core-asset" 8) (param "tag" 10) (param "recipient" 11)))
+  (alias core export 3 "miden:basic-wallet/basic-wallet@1.0.0#send-asset" (core func (;7;)))
+  (func (;4;) (type 12) (canon lift (core func 7)))
+  (alias export 0 "felt" (type (;13;)))
+  (alias export 0 "word" (type (;14;)))
+  (alias export 0 "core-asset" (type (;15;)))
+  (alias export 0 "tag" (type (;16;)))
+  (alias export 0 "recipient" (type (;17;)))
+  (component (;0;)
     (type (;0;) (record (field "inner" float64)))
     (import "import-type-felt" (type (;1;) (eq 0)))
     (type (;2;) (tuple 1 1 1 1))
@@ -860,18 +872,18 @@
     (type (;17;) (func (param "core-asset" 13) (param "tag" 14) (param "recipient" 15)))
     (export (;3;) "send-asset" (func 1) (func (type 17)))
   )
-  (instance (;4;) (instantiate 1
+  (instance (;3;) (instantiate 0
       (with "import-func-receive-asset" (func 3))
       (with "import-func-send-asset" (func 4))
-      (with "import-type-felt" (type 10))
-      (with "import-type-word" (type 11))
-      (with "import-type-core-asset" (type 12))
-      (with "import-type-tag" (type 13))
-      (with "import-type-recipient" (type 14))
-      (with "import-type-core-asset0" (type 5))
-      (with "import-type-tag0" (type 7))
-      (with "import-type-recipient0" (type 8))
+      (with "import-type-felt" (type 13))
+      (with "import-type-word" (type 14))
+      (with "import-type-core-asset" (type 15))
+      (with "import-type-tag" (type 16))
+      (with "import-type-recipient" (type 17))
+      (with "import-type-core-asset0" (type 8))
+      (with "import-type-tag0" (type 10))
+      (with "import-type-recipient0" (type 11))
     )
   )
-  (export (;5;) "miden:basic-wallet/basic-wallet@1.0.0" (instance 4))
+  (export (;4;) "miden:basic-wallet/basic-wallet@1.0.0" (instance 3))
 )
