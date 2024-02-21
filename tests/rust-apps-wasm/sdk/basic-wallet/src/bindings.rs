@@ -3,16 +3,27 @@ pub mod miden {
   pub mod base {
     
     #[allow(clippy::all)]
-    pub mod types {
+    pub mod core_types {
       #[used]
       #[doc(hidden)]
       #[cfg(target_arch = "wasm32")]
       static __FORCE_SECTION_REF: fn() = super::super::super::__link_section;
       /// Represents base field element in the field using Montgomery representation.
       /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
-      /// The backing type is `u64` but the internal values are always in the range [0, M).
+      /// The backing type is `f64` but the internal values are always integer in the range [0, M).
       /// Field modulus M = 2^64 - 2^32 + 1
-      pub type Felt = u64;
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct Felt {
+        /// We use f64 as the backing type for the field element. It has the size that we need and
+        /// we don't plan to support floating point arithmetic in programs for Miden VM.
+        pub inner: f64,
+      }
+      impl ::core::fmt::Debug for Felt {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("Felt").field("inner", &self.inner).finish()
+        }
+      }
       /// A group of four field elements in the Miden base field.
       pub type Word = (Felt,Felt,Felt,Felt,);
       /// Unique identifier of an account.
@@ -28,31 +39,37 @@ pub mod miden {
       /// - 0 - full account data is stored on-chain.
       /// - 1 - only the account hash is stored on-chain which serves as a commitment to the account state.
       /// As such the three most significant bits fully describes the type of the account.
-      pub type AccountId = Felt;
-      /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash), input_hash)
-      pub type Recipient = Word;
-      pub type Tag = Felt;
-      /// A fungible asset
       #[repr(C)]
       #[derive(Clone, Copy)]
-      pub struct FungibleAsset {
-        /// Faucet ID of the faucet which issued the asset as well as the asset amount.
-        pub asset: AccountId,
-        /// Asset amount is guaranteed to be 2^63 - 1 or smaller.
-        pub amount: u64,
+      pub struct AccountId {
+        pub inner: Felt,
       }
-      impl ::core::fmt::Debug for FungibleAsset {
+      impl ::core::fmt::Debug for AccountId {
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-          f.debug_struct("FungibleAsset").field("asset", &self.asset).field("amount", &self.amount).finish()
+          f.debug_struct("AccountId").field("inner", &self.inner).finish()
         }
       }
-      /// A commitment to a non-fungible asset.
-      /// 
-      /// A non-fungible asset consists of 4 field elements which are computed by hashing asset data
-      /// (which can be of arbitrary length) to produce: [d0, d1, d2, d3].  We then replace d1 with the
-      /// faucet_id that issued the asset: [d0, faucet_id, d2, d3]. We then set the most significant bit
-      /// of the most significant element to ZERO.
-      pub type NonFungibleAsset = Word;
+      /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash), input_hash)
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct Recipient {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for Recipient {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("Recipient").field("inner", &self.inner).finish()
+        }
+      }
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct Tag {
+        pub inner: Felt,
+      }
+      impl ::core::fmt::Debug for Tag {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("Tag").field("inner", &self.inner).finish()
+        }
+      }
       /// A fungible or a non-fungible asset.
       /// 
       /// All assets are encoded using a single word (4 elements) such that it is easy to determine the
@@ -93,42 +110,150 @@ pub mod miden {
       /// as the faucet_id is included in the description of the non-fungible asset and this is guaranteed
       /// to be different as per the faucet creation logic. Collision resistance for non-fungible assets
       /// issued by the same faucet is ~2^95.
+      #[repr(C)]
       #[derive(Clone, Copy)]
-      pub enum Asset{
-        Fungible(FungibleAsset),
-        NonFungible(NonFungibleAsset),
+      pub struct CoreAsset {
+        pub inner: Word,
       }
-      impl ::core::fmt::Debug for Asset {
+      impl ::core::fmt::Debug for CoreAsset {
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-          match self {
-            Asset::Fungible(e) => {
-              f.debug_tuple("Asset::Fungible").field(e).finish()
-            }
-            Asset::NonFungible(e) => {
-              f.debug_tuple("Asset::NonFungible").field(e).finish()
-            }
+          f.debug_struct("CoreAsset").field("inner", &self.inner).finish()
+        }
+      }
+      /// Account nonce
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct Nonce {
+        pub inner: Felt,
+      }
+      impl ::core::fmt::Debug for Nonce {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("Nonce").field("inner", &self.inner).finish()
+        }
+      }
+      /// Account hash
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct AccountHash {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for AccountHash {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("AccountHash").field("inner", &self.inner).finish()
+        }
+      }
+      /// Block hash
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct BlockHash {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for BlockHash {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("BlockHash").field("inner", &self.inner).finish()
+        }
+      }
+      /// Storage value
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct StorageValue {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for StorageValue {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("StorageValue").field("inner", &self.inner).finish()
+        }
+      }
+      /// Account storage root
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct StorageRoot {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for StorageRoot {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("StorageRoot").field("inner", &self.inner).finish()
+        }
+      }
+      /// Account code root
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct AccountCodeRoot {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for AccountCodeRoot {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("AccountCodeRoot").field("inner", &self.inner).finish()
+        }
+      }
+      /// Commitment to the account vault
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct VaultCommitment {
+        pub inner: Word,
+      }
+      impl ::core::fmt::Debug for VaultCommitment {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("VaultCommitment").field("inner", &self.inner).finish()
+        }
+      }
+      /// An id of the created note
+      #[repr(C)]
+      #[derive(Clone, Copy)]
+      pub struct NoteId {
+        pub inner: Felt,
+      }
+      impl ::core::fmt::Debug for NoteId {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+          f.debug_struct("NoteId").field("inner", &self.inner).finish()
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Creates a new account ID from a field element.
+      pub fn account_id_from_felt(felt: Felt,) -> AccountId{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          let Felt{ inner:inner0, } = felt;
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/core-types@1.0.0")]
+          extern "C" {
+            #[link_name = "account-id-from-felt"]
+            fn wit_import(_: f64, ) -> f64;
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, ) -> f64{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_f64(inner0));
+          AccountId{
+            inner: Felt{
+              inner: ret,
+            },
           }
         }
       }
-      /// Inputs of the currently executed note, never exceeds 16 felts
-      pub type NoteInputs = wit_bindgen::rt::vec::Vec::<Felt>;
       
     }
     
     
     #[allow(clippy::all)]
-    pub mod tx_kernel {
+    pub mod account {
       #[used]
       #[doc(hidden)]
       #[cfg(target_arch = "wasm32")]
       static __FORCE_SECTION_REF: fn() = super::super::super::__link_section;
-      pub type Asset = super::super::super::miden::base::types::Asset;
-      pub type Tag = super::super::super::miden::base::types::Tag;
-      pub type Recipient = super::super::super::miden::base::types::Recipient;
-      pub type NoteInputs = super::super::super::miden::base::types::NoteInputs;
-      pub type AccountId = super::super::super::miden::base::types::AccountId;
+      pub type Felt = super::super::super::miden::base::core_types::Felt;
+      pub type CoreAsset = super::super::super::miden::base::core_types::CoreAsset;
+      pub type AccountId = super::super::super::miden::base::core_types::AccountId;
+      pub type Nonce = super::super::super::miden::base::core_types::Nonce;
+      pub type AccountHash = super::super::super::miden::base::core_types::AccountHash;
+      pub type StorageValue = super::super::super::miden::base::core_types::StorageValue;
+      pub type StorageRoot = super::super::super::miden::base::core_types::StorageRoot;
+      pub type AccountCodeRoot = super::super::super::miden::base::core_types::AccountCodeRoot;
+      pub type VaultCommitment = super::super::super::miden::base::core_types::VaultCommitment;
       #[allow(unused_unsafe, clippy::all)]
-      /// Account-related functions
       /// Get the id of the currently executing account
       pub fn get_id() -> AccountId{
         
@@ -137,281 +262,664 @@ pub mod miden {
         unsafe {
           
           #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "miden:base/tx-kernel@1.0.0")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "get-id"]
-            fn wit_import() -> i64;
+            fn wit_import() -> f64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import() -> i64{ unreachable!() }
+          fn wit_import() -> f64{ unreachable!() }
           let ret = wit_import();
-          ret as u64
+          super::super::super::miden::base::core_types::AccountId{
+            inner: super::super::super::miden::base::core_types::Felt{
+              inner: ret,
+            },
+          }
         }
       }
       #[allow(unused_unsafe, clippy::all)]
-      /// Add the specified asset to the vault
-      pub fn add_asset(asset: Asset,) -> Asset{
+      /// Return the account nonce
+      pub fn get_nonce() -> Nonce{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "get-nonce"]
+            fn wit_import() -> f64;
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import() -> f64{ unreachable!() }
+          let ret = wit_import();
+          super::super::super::miden::base::core_types::Nonce{
+            inner: super::super::super::miden::base::core_types::Felt{
+              inner: ret,
+            },
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Get the initial hash of the currently executing account
+      pub fn get_initial_hash() -> AccountHash{
         
         #[allow(unused_imports)]
         use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[repr(align(8))]
-          struct RetArea([u8; 40]);
+          struct RetArea([u8; 32]);
           let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-          use super::super::super::miden::base::types::Asset as V2;
-          let (result3_0,result3_1,result3_2,result3_3,result3_4,) = match asset {
-            V2::Fungible(e) => {
-              let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
-              
-              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
-            },
-            V2::NonFungible(e) => {
-              let (t1_0, t1_1, t1_2, t1_3, ) = e;
-              
-              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
-            },
-          };
-          let ptr4 = ret_area.as_mut_ptr() as i32;
+          let ptr0 = ret_area.as_mut_ptr() as i32;
           #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "miden:base/tx-kernel@1.0.0")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
-            #[link_name = "add-asset"]
-            fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i32, );
+            #[link_name = "get-initial-hash"]
+            fn wit_import(_: i32, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i32, ){ unreachable!() }
-          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, ptr4);
-          let l5 = i32::from(*((ptr4 + 0) as *const u8));
-          use super::super::super::miden::base::types::Asset as V12;
-          let v12 = match l5 {
-            0 => {
-              let e12 = {
-                let l6 = *((ptr4 + 8) as *const i64);
-                let l7 = *((ptr4 + 16) as *const i64);
-                
-                super::super::super::miden::base::types::FungibleAsset{
-                  asset: l6 as u64,
-                  amount: l7 as u64,
-                }
-              };
-              V12::Fungible(e12)
-            }
-            n => {
-              debug_assert_eq!(n, 1, "invalid enum discriminant");
-              let e12 = {
-                let l8 = *((ptr4 + 8) as *const i64);
-                let l9 = *((ptr4 + 16) as *const i64);
-                let l10 = *((ptr4 + 24) as *const i64);
-                let l11 = *((ptr4 + 32) as *const i64);
-                
-                (l8 as u64, l9 as u64, l10 as u64, l11 as u64)
-              };
-              V12::NonFungible(e12)
-            }
-          };
-          v12
+          fn wit_import(_: i32, ){ unreachable!() }
+          wit_import(ptr0);
+          let l1 = *((ptr0 + 0) as *const f64);
+          let l2 = *((ptr0 + 8) as *const f64);
+          let l3 = *((ptr0 + 16) as *const f64);
+          let l4 = *((ptr0 + 24) as *const f64);
+          super::super::super::miden::base::core_types::AccountHash{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l1,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l2,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l3,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l4,
+            }),
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Get the current hash of the account data stored in memory
+      pub fn get_current_hash() -> AccountHash{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let ptr0 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "get-current-hash"]
+            fn wit_import(_: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: i32, ){ unreachable!() }
+          wit_import(ptr0);
+          let l1 = *((ptr0 + 0) as *const f64);
+          let l2 = *((ptr0 + 8) as *const f64);
+          let l3 = *((ptr0 + 16) as *const f64);
+          let l4 = *((ptr0 + 24) as *const f64);
+          super::super::super::miden::base::core_types::AccountHash{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l1,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l2,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l3,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l4,
+            }),
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Increment the account nonce by the specified value.
+      /// value can be at most 2^32 - 1 otherwise this procedure panics
+      pub fn incr_nonce(value: Felt,){
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          let super::super::super::miden::base::core_types::Felt{ inner:inner0, } = value;
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "incr-nonce"]
+            fn wit_import(_: f64, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_f64(inner0));
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Get the value of the specified key in the account storage
+      pub fn get_item(index: Felt,) -> StorageValue{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let super::super::super::miden::base::core_types::Felt{ inner:inner0, } = index;
+          let ptr1 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "get-item"]
+            fn wit_import(_: f64, _: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_f64(inner0), ptr1);
+          let l2 = *((ptr1 + 0) as *const f64);
+          let l3 = *((ptr1 + 8) as *const f64);
+          let l4 = *((ptr1 + 16) as *const f64);
+          let l5 = *((ptr1 + 24) as *const f64);
+          super::super::super::miden::base::core_types::StorageValue{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l2,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l3,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l4,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l5,
+            }),
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Set the value of the specified key in the account storage
+      /// Returns the old value of the key and the new storage root
+      pub fn set_item(index: Felt,value: StorageValue,) -> (StorageRoot,StorageValue,){
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 64]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let super::super::super::miden::base::core_types::Felt{ inner:inner0, } = index;
+          let super::super::super::miden::base::core_types::StorageValue{ inner:inner1, } = value;
+          let (t2_0, t2_1, t2_2, t2_3, ) = inner1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner3, } = t2_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner4, } = t2_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner5, } = t2_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner6, } = t2_3;
+          let ptr7 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "set-item"]
+            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_f64(inner0), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), wit_bindgen::rt::as_f64(inner6), ptr7);
+          let l8 = *((ptr7 + 0) as *const f64);
+          let l9 = *((ptr7 + 8) as *const f64);
+          let l10 = *((ptr7 + 16) as *const f64);
+          let l11 = *((ptr7 + 24) as *const f64);
+          let l12 = *((ptr7 + 32) as *const f64);
+          let l13 = *((ptr7 + 40) as *const f64);
+          let l14 = *((ptr7 + 48) as *const f64);
+          let l15 = *((ptr7 + 56) as *const f64);
+          (super::super::super::miden::base::core_types::StorageRoot{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l8,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l9,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l10,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l11,
+            }),
+          }, super::super::super::miden::base::core_types::StorageValue{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l12,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l13,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l14,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l15,
+            }),
+          })
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Sets the code of the account the transaction is being executed against.
+      /// This procedure can only be executed on regular accounts with updatable
+      /// code. Otherwise, this procedure fails. code is the hash of the code
+      /// to set.
+      pub fn set_code(code_root: AccountCodeRoot,){
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          let super::super::super::miden::base::core_types::AccountCodeRoot{ inner:inner0, } = code_root;
+          let (t1_0, t1_1, t1_2, t1_3, ) = inner0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner2, } = t1_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner3, } = t1_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner4, } = t1_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner5, } = t1_3;
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "set-code"]
+            fn wit_import(_: f64, _: f64, _: f64, _: f64, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, _: f64, _: f64, _: f64, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5));
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Returns the balance of a fungible asset associated with a account_id.
+      /// Panics if the asset is not a fungible asset. account_id is the faucet id
+      /// of the fungible asset of interest. balance is the vault balance of the
+      /// fungible asset.
+      pub fn get_balance(account_id: AccountId,) -> Felt{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          let super::super::super::miden::base::core_types::AccountId{ inner:inner0, } = account_id;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner1, } = inner0;
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "get-balance"]
+            fn wit_import(_: f64, ) -> f64;
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, ) -> f64{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_f64(inner1));
+          super::super::super::miden::base::core_types::Felt{
+            inner: ret,
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Returns a boolean indicating whether the non-fungible asset is present
+      /// in the vault. Panics if the asset is a fungible asset. asset is the
+      /// non-fungible asset of interest. has_asset is a boolean indicating
+      /// whether the account vault has the asset of interest.
+      pub fn has_non_fungible_asset(asset: CoreAsset,) -> bool{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          let super::super::super::miden::base::core_types::CoreAsset{ inner:inner0, } = asset;
+          let (t1_0, t1_1, t1_2, t1_3, ) = inner0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner2, } = t1_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner3, } = t1_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner4, } = t1_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner5, } = t1_3;
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "has-non-fungible-asset"]
+            fn wit_import(_: f64, _: f64, _: f64, _: f64, ) -> i32;
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, _: f64, _: f64, _: f64, ) -> i32{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5));
+          wit_bindgen::rt::bool_lift(ret as u8)
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Add the specified asset to the vault. Panics under various conditions.
+      /// Returns the final asset in the account vault defined as follows: If asset is
+      /// a non-fungible asset, then returns the same as asset. If asset is a
+      /// fungible asset, then returns the total fungible asset in the account
+      /// vault after asset was added to it.
+      pub fn add_asset(asset: CoreAsset,) -> CoreAsset{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let super::super::super::miden::base::core_types::CoreAsset{ inner:inner0, } = asset;
+          let (t1_0, t1_1, t1_2, t1_3, ) = inner0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner2, } = t1_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner3, } = t1_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner4, } = t1_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner5, } = t1_3;
+          let ptr6 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "add-asset"]
+            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), ptr6);
+          let l7 = *((ptr6 + 0) as *const f64);
+          let l8 = *((ptr6 + 8) as *const f64);
+          let l9 = *((ptr6 + 16) as *const f64);
+          let l10 = *((ptr6 + 24) as *const f64);
+          super::super::super::miden::base::core_types::CoreAsset{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l7,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l8,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l9,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l10,
+            }),
+          }
         }
       }
       #[allow(unused_unsafe, clippy::all)]
       /// Remove the specified asset from the vault
-      pub fn remove_asset(asset: Asset,) -> Asset{
+      pub fn remove_asset(asset: CoreAsset,) -> CoreAsset{
         
         #[allow(unused_imports)]
         use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
           
           #[repr(align(8))]
-          struct RetArea([u8; 40]);
+          struct RetArea([u8; 32]);
           let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-          use super::super::super::miden::base::types::Asset as V2;
-          let (result3_0,result3_1,result3_2,result3_3,result3_4,) = match asset {
-            V2::Fungible(e) => {
-              let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
-              
-              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
-            },
-            V2::NonFungible(e) => {
-              let (t1_0, t1_1, t1_2, t1_3, ) = e;
-              
-              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
-            },
-          };
-          let ptr4 = ret_area.as_mut_ptr() as i32;
+          let super::super::super::miden::base::core_types::CoreAsset{ inner:inner0, } = asset;
+          let (t1_0, t1_1, t1_2, t1_3, ) = inner0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner2, } = t1_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner3, } = t1_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner4, } = t1_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner5, } = t1_3;
+          let ptr6 = ret_area.as_mut_ptr() as i32;
           #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "miden:base/tx-kernel@1.0.0")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "remove-asset"]
-            fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i32, );
+            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i32, ){ unreachable!() }
-          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, ptr4);
-          let l5 = i32::from(*((ptr4 + 0) as *const u8));
-          use super::super::super::miden::base::types::Asset as V12;
-          let v12 = match l5 {
-            0 => {
-              let e12 = {
-                let l6 = *((ptr4 + 8) as *const i64);
-                let l7 = *((ptr4 + 16) as *const i64);
-                
-                super::super::super::miden::base::types::FungibleAsset{
-                  asset: l6 as u64,
-                  amount: l7 as u64,
-                }
-              };
-              V12::Fungible(e12)
-            }
-            n => {
-              debug_assert_eq!(n, 1, "invalid enum discriminant");
-              let e12 = {
-                let l8 = *((ptr4 + 8) as *const i64);
-                let l9 = *((ptr4 + 16) as *const i64);
-                let l10 = *((ptr4 + 24) as *const i64);
-                let l11 = *((ptr4 + 32) as *const i64);
-                
-                (l8 as u64, l9 as u64, l10 as u64, l11 as u64)
-              };
-              V12::NonFungible(e12)
-            }
-          };
-          v12
+          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), ptr6);
+          let l7 = *((ptr6 + 0) as *const f64);
+          let l8 = *((ptr6 + 8) as *const f64);
+          let l9 = *((ptr6 + 16) as *const f64);
+          let l10 = *((ptr6 + 24) as *const f64);
+          super::super::super::miden::base::core_types::CoreAsset{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l7,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l8,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l9,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l10,
+            }),
+          }
         }
       }
       #[allow(unused_unsafe, clippy::all)]
-      /// Note-related functions
+      /// Returns the commitment to the account vault.
+      pub fn get_vault_commitment() -> VaultCommitment{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let ptr0 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/account@1.0.0")]
+          extern "C" {
+            #[link_name = "get-vault-commitment"]
+            fn wit_import(_: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: i32, ){ unreachable!() }
+          wit_import(ptr0);
+          let l1 = *((ptr0 + 0) as *const f64);
+          let l2 = *((ptr0 + 8) as *const f64);
+          let l3 = *((ptr0 + 16) as *const f64);
+          let l4 = *((ptr0 + 24) as *const f64);
+          super::super::super::miden::base::core_types::VaultCommitment{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l1,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l2,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l3,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l4,
+            }),
+          }
+        }
+      }
+      
+    }
+    
+    
+    #[allow(clippy::all)]
+    pub mod tx {
+      #[used]
+      #[doc(hidden)]
+      #[cfg(target_arch = "wasm32")]
+      static __FORCE_SECTION_REF: fn() = super::super::super::__link_section;
+      pub type Felt = super::super::super::miden::base::core_types::Felt;
+      pub type CoreAsset = super::super::super::miden::base::core_types::CoreAsset;
+      pub type Tag = super::super::super::miden::base::core_types::Tag;
+      pub type Recipient = super::super::super::miden::base::core_types::Recipient;
+      pub type BlockHash = super::super::super::miden::base::core_types::BlockHash;
+      pub type Word = super::super::super::miden::base::core_types::Word;
+      pub type NoteId = super::super::super::miden::base::core_types::NoteId;
+      #[allow(unused_unsafe, clippy::all)]
+      /// Returns the block number of the last known block at the time of transaction execution.
+      pub fn get_block_number() -> Felt{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/tx@1.0.0")]
+          extern "C" {
+            #[link_name = "get-block-number"]
+            fn wit_import() -> f64;
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import() -> f64{ unreachable!() }
+          let ret = wit_import();
+          super::super::super::miden::base::core_types::Felt{
+            inner: ret,
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Returns the block hash of the last known block at the time of transaction execution.
+      pub fn get_block_hash() -> BlockHash{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let ptr0 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/tx@1.0.0")]
+          extern "C" {
+            #[link_name = "get-block-hash"]
+            fn wit_import(_: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: i32, ){ unreachable!() }
+          wit_import(ptr0);
+          let l1 = *((ptr0 + 0) as *const f64);
+          let l2 = *((ptr0 + 8) as *const f64);
+          let l3 = *((ptr0 + 16) as *const f64);
+          let l4 = *((ptr0 + 24) as *const f64);
+          super::super::super::miden::base::core_types::BlockHash{
+            inner: (super::super::super::miden::base::core_types::Felt{
+              inner: l1,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l2,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l3,
+            }, super::super::super::miden::base::core_types::Felt{
+              inner: l4,
+            }),
+          }
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Returns the input notes hash. This is computed as a sequential hash of
+      /// (nullifier, script_root) tuples over all input notes.
+      pub fn get_input_notes_hash() -> Word{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let ptr0 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/tx@1.0.0")]
+          extern "C" {
+            #[link_name = "get-input-notes-hash"]
+            fn wit_import(_: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: i32, ){ unreachable!() }
+          wit_import(ptr0);
+          let l1 = *((ptr0 + 0) as *const f64);
+          let l2 = *((ptr0 + 8) as *const f64);
+          let l3 = *((ptr0 + 16) as *const f64);
+          let l4 = *((ptr0 + 24) as *const f64);
+          (super::super::super::miden::base::core_types::Felt{
+            inner: l1,
+          }, super::super::super::miden::base::core_types::Felt{
+            inner: l2,
+          }, super::super::super::miden::base::core_types::Felt{
+            inner: l3,
+          }, super::super::super::miden::base::core_types::Felt{
+            inner: l4,
+          })
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
+      /// Returns the output notes hash. This is computed as a sequential hash of
+      /// (note_hash, note_metadata) tuples over all output notes.
+      pub fn get_output_notes_hash() -> Word{
+        
+        #[allow(unused_imports)]
+        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
+        unsafe {
+          
+          #[repr(align(8))]
+          struct RetArea([u8; 32]);
+          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+          let ptr0 = ret_area.as_mut_ptr() as i32;
+          #[cfg(target_arch = "wasm32")]
+          #[link(wasm_import_module = "miden:base/tx@1.0.0")]
+          extern "C" {
+            #[link_name = "get-output-notes-hash"]
+            fn wit_import(_: i32, );
+          }
+          
+          #[cfg(not(target_arch = "wasm32"))]
+          fn wit_import(_: i32, ){ unreachable!() }
+          wit_import(ptr0);
+          let l1 = *((ptr0 + 0) as *const f64);
+          let l2 = *((ptr0 + 8) as *const f64);
+          let l3 = *((ptr0 + 16) as *const f64);
+          let l4 = *((ptr0 + 24) as *const f64);
+          (super::super::super::miden::base::core_types::Felt{
+            inner: l1,
+          }, super::super::super::miden::base::core_types::Felt{
+            inner: l2,
+          }, super::super::super::miden::base::core_types::Felt{
+            inner: l3,
+          }, super::super::super::miden::base::core_types::Felt{
+            inner: l4,
+          })
+        }
+      }
+      #[allow(unused_unsafe, clippy::all)]
       /// Creates a new note.
       /// asset is the asset to be included in the note.
       /// tag is the tag to be included in the note.
       /// recipient is the recipient of the note.
-      pub fn create_note(asset: Asset,tag: Tag,recipient: Recipient,){
+      /// Returns the id of the created note.
+      pub fn create_note(asset: CoreAsset,tag: Tag,recipient: Recipient,) -> NoteId{
         
         #[allow(unused_imports)]
         use wit_bindgen::rt::{alloc, vec::Vec, string::String};
         unsafe {
-          use super::super::super::miden::base::types::Asset as V2;
-          let (result3_0,result3_1,result3_2,result3_3,result3_4,) = match asset {
-            V2::Fungible(e) => {
-              let super::super::super::miden::base::types::FungibleAsset{ asset:asset0, amount:amount0, } = e;
-              
-              (0i32, wit_bindgen::rt::as_i64(asset0), wit_bindgen::rt::as_i64(amount0), 0i64, 0i64)
-            },
-            V2::NonFungible(e) => {
-              let (t1_0, t1_1, t1_2, t1_3, ) = e;
-              
-              (1i32, wit_bindgen::rt::as_i64(t1_0), wit_bindgen::rt::as_i64(t1_1), wit_bindgen::rt::as_i64(t1_2), wit_bindgen::rt::as_i64(t1_3))
-            },
-          };
-          let (t4_0, t4_1, t4_2, t4_3, ) = recipient;
+          let super::super::super::miden::base::core_types::CoreAsset{ inner:inner0, } = asset;
+          let (t1_0, t1_1, t1_2, t1_3, ) = inner0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner2, } = t1_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner3, } = t1_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner4, } = t1_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner5, } = t1_3;
+          let super::super::super::miden::base::core_types::Tag{ inner:inner6, } = tag;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner7, } = inner6;
+          let super::super::super::miden::base::core_types::Recipient{ inner:inner8, } = recipient;
+          let (t9_0, t9_1, t9_2, t9_3, ) = inner8;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner10, } = t9_0;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner11, } = t9_1;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner12, } = t9_2;
+          let super::super::super::miden::base::core_types::Felt{ inner:inner13, } = t9_3;
           
           #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "miden:base/tx-kernel@1.0.0")]
+          #[link(wasm_import_module = "miden:base/tx@1.0.0")]
           extern "C" {
             #[link_name = "create-note"]
-            fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, );
+            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, ) -> f64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: i32, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, ){ unreachable!() }
-          wit_import(result3_0, result3_1, result3_2, result3_3, result3_4, wit_bindgen::rt::as_i64(tag), wit_bindgen::rt::as_i64(t4_0), wit_bindgen::rt::as_i64(t4_1), wit_bindgen::rt::as_i64(t4_2), wit_bindgen::rt::as_i64(t4_3));
-        }
-      }
-      #[allow(unused_unsafe, clippy::all)]
-      /// Get the inputs of the currently executed note
-      pub fn get_inputs() -> NoteInputs{
-        
-        #[allow(unused_imports)]
-        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
-        unsafe {
-          
-          #[repr(align(4))]
-          struct RetArea([u8; 8]);
-          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-          let ptr0 = ret_area.as_mut_ptr() as i32;
-          #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "miden:base/tx-kernel@1.0.0")]
-          extern "C" {
-            #[link_name = "get-inputs"]
-            fn wit_import(_: i32, );
+          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, ) -> f64{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), wit_bindgen::rt::as_f64(inner7), wit_bindgen::rt::as_f64(inner10), wit_bindgen::rt::as_f64(inner11), wit_bindgen::rt::as_f64(inner12), wit_bindgen::rt::as_f64(inner13));
+          super::super::super::miden::base::core_types::NoteId{
+            inner: super::super::super::miden::base::core_types::Felt{
+              inner: ret,
+            },
           }
-          
-          #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: i32, ){ unreachable!() }
-          wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const i32);
-          let l2 = *((ptr0 + 4) as *const i32);
-          let len3 = l2 as usize;
-          Vec::from_raw_parts(l1 as *mut _, len3, len3)
-        }
-      }
-      #[allow(unused_unsafe, clippy::all)]
-      /// Get the assets of the currently executing note
-      pub fn get_assets() -> wit_bindgen::rt::vec::Vec::<Asset>{
-        
-        #[allow(unused_imports)]
-        use wit_bindgen::rt::{alloc, vec::Vec, string::String};
-        unsafe {
-          
-          #[repr(align(4))]
-          struct RetArea([u8; 8]);
-          let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-          let ptr0 = ret_area.as_mut_ptr() as i32;
-          #[cfg(target_arch = "wasm32")]
-          #[link(wasm_import_module = "miden:base/tx-kernel@1.0.0")]
-          extern "C" {
-            #[link_name = "get-assets"]
-            fn wit_import(_: i32, );
-          }
-          
-          #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: i32, ){ unreachable!() }
-          wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const i32);
-          let l2 = *((ptr0 + 4) as *const i32);
-          let base11 = l1;
-          let len11 = l2;
-          let mut result11 = Vec::with_capacity(len11 as usize);
-          for i in 0..len11 {
-            let base = base11 + i * 40;
-            let e11 = {
-              let l3 = i32::from(*((base + 0) as *const u8));
-              use super::super::super::miden::base::types::Asset as V10;
-              let v10 = match l3 {
-                0 => {
-                  let e10 = {
-                    let l4 = *((base + 8) as *const i64);
-                    let l5 = *((base + 16) as *const i64);
-                    
-                    super::super::super::miden::base::types::FungibleAsset{
-                      asset: l4 as u64,
-                      amount: l5 as u64,
-                    }
-                  };
-                  V10::Fungible(e10)
-                }
-                n => {
-                  debug_assert_eq!(n, 1, "invalid enum discriminant");
-                  let e10 = {
-                    let l6 = *((base + 8) as *const i64);
-                    let l7 = *((base + 16) as *const i64);
-                    let l8 = *((base + 24) as *const i64);
-                    let l9 = *((base + 32) as *const i64);
-                    
-                    (l6 as u64, l7 as u64, l8 as u64, l9 as u64)
-                  };
-                  V10::NonFungible(e10)
-                }
-              };
-              
-              v10
-            };
-            result11.push(e11);
-          }
-          wit_bindgen::rt::dealloc(base11, (len11 as usize) * 40, 8);
-          result11
         }
       }
       
@@ -421,18 +929,6 @@ pub mod miden {
 }
 pub mod exports {
   pub mod miden {
-    pub mod base {
-      
-      #[allow(clippy::all)]
-      pub mod account {
-        #[used]
-        #[doc(hidden)]
-        #[cfg(target_arch = "wasm32")]
-        static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_section;
-        
-      }
-      
-    }
     pub mod basic_wallet {
       
       #[allow(clippy::all)]
@@ -441,15 +937,15 @@ pub mod exports {
         #[doc(hidden)]
         #[cfg(target_arch = "wasm32")]
         static __FORCE_SECTION_REF: fn() = super::super::super::super::__link_section;
-        pub type Asset = super::super::super::super::miden::base::types::Asset;
-        pub type Tag = super::super::super::super::miden::base::types::Tag;
-        pub type Recipient = super::super::super::super::miden::base::types::Recipient;
+        pub type CoreAsset = super::super::super::super::miden::base::core_types::CoreAsset;
+        pub type Tag = super::super::super::super::miden::base::core_types::Tag;
+        pub type Recipient = super::super::super::super::miden::base::core_types::Recipient;
         const _: () = {
           
           #[doc(hidden)]
           #[export_name = "miden:basic-wallet/basic-wallet@1.0.0#receive-asset"]
           #[allow(non_snake_case)]
-          unsafe extern "C" fn __export_receive_asset(arg0: i32,arg1: i64,arg2: i64,arg3: i64,arg4: i64,) {
+          unsafe extern "C" fn __export_receive_asset(arg0: f64,arg1: f64,arg2: f64,arg3: f64,) {
             #[allow(unused_imports)]
             use wit_bindgen::rt::{alloc, vec::Vec, string::String};
             
@@ -467,22 +963,17 @@ pub mod exports {
             #[cfg(target_arch="wasm32")]
             wit_bindgen::rt::run_ctors_once();
             
-            use super::super::super::super::miden::base::types::Asset as V0;
-            let v0 = match arg0 {
-              0 => {
-                let e0 = super::super::super::super::miden::base::types::FungibleAsset{
-                  asset: arg1 as u64,
-                  amount: arg2 as u64,
-                };
-                V0::Fungible(e0)
-              }
-              n => {
-                debug_assert_eq!(n, 1, "invalid enum discriminant");
-                let e0 = (arg1 as u64, arg2 as u64, arg3 as u64, arg4 as u64);
-                V0::NonFungible(e0)
-              }
-            };
-            <_GuestImpl as Guest>::receive_asset(v0);
+            <_GuestImpl as Guest>::receive_asset(super::super::super::super::miden::base::core_types::CoreAsset{
+              inner: (super::super::super::super::miden::base::core_types::Felt{
+                inner: arg0,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg1,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg2,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg3,
+              }),
+            });
           }
         };
         const _: () = {
@@ -490,7 +981,7 @@ pub mod exports {
           #[doc(hidden)]
           #[export_name = "miden:basic-wallet/basic-wallet@1.0.0#send-asset"]
           #[allow(non_snake_case)]
-          unsafe extern "C" fn __export_send_asset(arg0: i32,arg1: i64,arg2: i64,arg3: i64,arg4: i64,arg5: i64,arg6: i64,arg7: i64,arg8: i64,arg9: i64,) {
+          unsafe extern "C" fn __export_send_asset(arg0: f64,arg1: f64,arg2: f64,arg3: f64,arg4: f64,arg5: f64,arg6: f64,arg7: f64,arg8: f64,) {
             #[allow(unused_imports)]
             use wit_bindgen::rt::{alloc, vec::Vec, string::String};
             
@@ -508,28 +999,37 @@ pub mod exports {
             #[cfg(target_arch="wasm32")]
             wit_bindgen::rt::run_ctors_once();
             
-            use super::super::super::super::miden::base::types::Asset as V0;
-            let v0 = match arg0 {
-              0 => {
-                let e0 = super::super::super::super::miden::base::types::FungibleAsset{
-                  asset: arg1 as u64,
-                  amount: arg2 as u64,
-                };
-                V0::Fungible(e0)
-              }
-              n => {
-                debug_assert_eq!(n, 1, "invalid enum discriminant");
-                let e0 = (arg1 as u64, arg2 as u64, arg3 as u64, arg4 as u64);
-                V0::NonFungible(e0)
-              }
-            };
-            <_GuestImpl as Guest>::send_asset(v0, arg5 as u64, (arg6 as u64, arg7 as u64, arg8 as u64, arg9 as u64));
+            <_GuestImpl as Guest>::send_asset(super::super::super::super::miden::base::core_types::CoreAsset{
+              inner: (super::super::super::super::miden::base::core_types::Felt{
+                inner: arg0,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg1,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg2,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg3,
+              }),
+            }, super::super::super::super::miden::base::core_types::Tag{
+              inner: super::super::super::super::miden::base::core_types::Felt{
+                inner: arg4,
+              },
+            }, super::super::super::super::miden::base::core_types::Recipient{
+              inner: (super::super::super::super::miden::base::core_types::Felt{
+                inner: arg5,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg6,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg7,
+              }, super::super::super::super::miden::base::core_types::Felt{
+                inner: arg8,
+              }),
+            });
           }
         };
         use super::super::super::super::super::Component as _GuestImpl;
         pub trait Guest {
-          fn receive_asset(asset: Asset,);
-          fn send_asset(asset: Asset,tag: Tag,recipient: Recipient,);
+          fn receive_asset(core_asset: CoreAsset,);
+          fn send_asset(core_asset: CoreAsset,tag: Tag,recipient: Recipient,);
         }
         
       }
@@ -541,7 +1041,7 @@ pub mod exports {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:basic-wallet-world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 1410] = [3, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 0, 97, 115, 109, 13, 0, 1, 0, 7, 170, 3, 1, 65, 7, 1, 66, 14, 1, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 1, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 3, 4, 0, 3, 116, 97, 103, 3, 0, 1, 1, 114, 2, 5, 97, 115, 115, 101, 116, 4, 6, 97, 109, 111, 117, 110, 116, 119, 4, 0, 14, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 7, 4, 0, 18, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 3, 1, 113, 2, 8, 102, 117, 110, 103, 105, 98, 108, 101, 1, 8, 0, 12, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 1, 9, 0, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 10, 1, 112, 1, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 12, 3, 1, 22, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 5, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 1, 66, 10, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 5, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 5, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 4, 11, 18, 1, 0, 12, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 3, 0, 0, 7, 173, 6, 1, 65, 2, 1, 65, 13, 1, 66, 14, 1, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 1, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 3, 4, 0, 3, 116, 97, 103, 3, 0, 1, 1, 114, 2, 5, 97, 115, 115, 101, 116, 4, 6, 97, 109, 111, 117, 110, 116, 119, 4, 0, 14, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 7, 4, 0, 18, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 3, 0, 3, 1, 113, 2, 8, 102, 117, 110, 103, 105, 98, 108, 101, 1, 8, 0, 12, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 1, 9, 0, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 10, 1, 112, 1, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 12, 3, 1, 22, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 5, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 2, 3, 0, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 2, 3, 0, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 1, 66, 22, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 11, 110, 111, 116, 101, 45, 105, 110, 112, 117, 116, 115, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 1, 64, 0, 0, 9, 4, 0, 6, 103, 101, 116, 45, 105, 100, 1, 10, 1, 64, 1, 5, 97, 115, 115, 101, 116, 1, 0, 1, 4, 0, 9, 97, 100, 100, 45, 97, 115, 115, 101, 116, 1, 11, 4, 0, 12, 114, 101, 109, 111, 118, 101, 45, 97, 115, 115, 101, 116, 1, 11, 1, 64, 3, 5, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 11, 99, 114, 101, 97, 116, 101, 45, 110, 111, 116, 101, 1, 12, 1, 64, 0, 0, 7, 4, 0, 10, 103, 101, 116, 45, 105, 110, 112, 117, 116, 115, 1, 13, 1, 112, 1, 1, 64, 0, 0, 14, 4, 0, 10, 103, 101, 116, 45, 97, 115, 115, 101, 116, 115, 1, 15, 3, 1, 26, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 120, 45, 107, 101, 114, 110, 101, 108, 64, 49, 46, 48, 46, 48, 5, 6, 1, 66, 0, 4, 1, 24, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 97, 99, 99, 111, 117, 110, 116, 64, 49, 46, 48, 46, 48, 5, 7, 1, 66, 10, 2, 3, 2, 1, 1, 4, 0, 5, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 5, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 5, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 8, 4, 1, 43, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 64, 49, 46, 48, 46, 48, 4, 0, 11, 24, 1, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 3, 2, 0, 0, 16, 12, 112, 97, 99, 107, 97, 103, 101, 45, 100, 111, 99, 115, 0, 123, 125, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 49, 56, 46, 50, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 54, 46, 48];
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2717] = [3, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 0, 97, 115, 109, 13, 0, 1, 0, 7, 227, 4, 1, 65, 7, 1, 66, 28, 1, 114, 1, 5, 105, 110, 110, 101, 114, 117, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 4, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 3, 116, 97, 103, 3, 0, 8, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 10, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 12, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 14, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 16, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 18, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 20, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 22, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 24, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 3, 1, 27, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 99, 111, 114, 101, 45, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 1, 66, 10, 2, 3, 2, 1, 1, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 4, 11, 18, 1, 0, 12, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 3, 0, 0, 7, 143, 15, 1, 65, 2, 1, 65, 22, 1, 66, 30, 1, 114, 1, 5, 105, 110, 110, 101, 114, 117, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 4, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 3, 116, 97, 103, 3, 0, 8, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 10, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 12, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 14, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 16, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 18, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 20, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 22, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 24, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 1, 64, 1, 4, 102, 101, 108, 116, 1, 0, 5, 4, 0, 20, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 45, 102, 114, 111, 109, 45, 102, 101, 108, 116, 1, 28, 3, 1, 27, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 99, 111, 114, 101, 45, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 4, 102, 101, 108, 116, 2, 3, 0, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 2, 3, 0, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 2, 3, 0, 0, 5, 110, 111, 110, 99, 101, 2, 3, 0, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 2, 3, 0, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 2, 3, 0, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 2, 3, 0, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 2, 3, 0, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 1, 66, 47, 2, 3, 2, 1, 1, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 2, 3, 2, 1, 6, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 10, 2, 3, 2, 1, 7, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 12, 2, 3, 2, 1, 8, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 14, 2, 3, 2, 1, 9, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 16, 2, 3, 2, 1, 10, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 18, 2, 3, 2, 1, 11, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 20, 1, 64, 0, 0, 9, 4, 0, 6, 103, 101, 116, 45, 105, 100, 1, 22, 1, 64, 0, 0, 11, 4, 0, 9, 103, 101, 116, 45, 110, 111, 110, 99, 101, 1, 23, 1, 64, 0, 0, 13, 4, 0, 16, 103, 101, 116, 45, 105, 110, 105, 116, 105, 97, 108, 45, 104, 97, 115, 104, 1, 24, 4, 0, 16, 103, 101, 116, 45, 99, 117, 114, 114, 101, 110, 116, 45, 104, 97, 115, 104, 1, 24, 1, 64, 1, 5, 118, 97, 108, 117, 101, 1, 1, 0, 4, 0, 10, 105, 110, 99, 114, 45, 110, 111, 110, 99, 101, 1, 25, 1, 64, 1, 5, 105, 110, 100, 101, 120, 1, 0, 15, 4, 0, 8, 103, 101, 116, 45, 105, 116, 101, 109, 1, 26, 1, 111, 2, 17, 15, 1, 64, 2, 5, 105, 110, 100, 101, 120, 1, 5, 118, 97, 108, 117, 101, 15, 0, 27, 4, 0, 8, 115, 101, 116, 45, 105, 116, 101, 109, 1, 28, 1, 64, 1, 9, 99, 111, 100, 101, 45, 114, 111, 111, 116, 19, 1, 0, 4, 0, 8, 115, 101, 116, 45, 99, 111, 100, 101, 1, 29, 1, 64, 1, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 9, 0, 1, 4, 0, 11, 103, 101, 116, 45, 98, 97, 108, 97, 110, 99, 101, 1, 30, 1, 64, 1, 5, 97, 115, 115, 101, 116, 3, 0, 127, 4, 0, 22, 104, 97, 115, 45, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 1, 31, 1, 64, 1, 5, 97, 115, 115, 101, 116, 3, 0, 3, 4, 0, 9, 97, 100, 100, 45, 97, 115, 115, 101, 116, 1, 32, 4, 0, 12, 114, 101, 109, 111, 118, 101, 45, 97, 115, 115, 101, 116, 1, 32, 1, 64, 0, 0, 21, 4, 0, 20, 103, 101, 116, 45, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 1, 33, 3, 1, 24, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 97, 99, 99, 111, 117, 110, 116, 64, 49, 46, 48, 46, 48, 5, 12, 2, 3, 0, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 2, 3, 0, 0, 4, 119, 111, 114, 100, 2, 3, 0, 0, 7, 110, 111, 116, 101, 45, 105, 100, 1, 66, 37, 2, 3, 2, 1, 1, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 2, 3, 2, 1, 6, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 10, 2, 3, 2, 1, 7, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 12, 2, 3, 2, 1, 8, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 14, 2, 3, 2, 1, 9, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 16, 2, 3, 2, 1, 10, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 18, 2, 3, 2, 1, 11, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 20, 2, 3, 2, 1, 13, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 22, 2, 3, 2, 1, 14, 4, 0, 4, 119, 111, 114, 100, 3, 0, 24, 2, 3, 2, 1, 15, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 1, 64, 0, 0, 1, 4, 0, 16, 103, 101, 116, 45, 98, 108, 111, 99, 107, 45, 110, 117, 109, 98, 101, 114, 1, 28, 1, 64, 0, 0, 23, 4, 0, 14, 103, 101, 116, 45, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 1, 29, 1, 64, 0, 0, 25, 4, 0, 20, 103, 101, 116, 45, 105, 110, 112, 117, 116, 45, 110, 111, 116, 101, 115, 45, 104, 97, 115, 104, 1, 30, 4, 0, 21, 103, 101, 116, 45, 111, 117, 116, 112, 117, 116, 45, 110, 111, 116, 101, 115, 45, 104, 97, 115, 104, 1, 30, 1, 64, 3, 5, 97, 115, 115, 101, 116, 3, 3, 116, 97, 103, 5, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 7, 0, 27, 4, 0, 11, 99, 114, 101, 97, 116, 101, 45, 110, 111, 116, 101, 1, 31, 3, 1, 19, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 120, 64, 49, 46, 48, 46, 48, 5, 16, 1, 66, 10, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 17, 4, 1, 43, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 64, 49, 46, 48, 46, 48, 4, 0, 11, 24, 1, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 3, 2, 0, 0, 16, 12, 112, 97, 99, 107, 97, 103, 101, 45, 100, 111, 99, 115, 0, 123, 125, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 49, 56, 46, 50, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 54, 46, 48];
 
 #[inline(never)]
 #[doc(hidden)]

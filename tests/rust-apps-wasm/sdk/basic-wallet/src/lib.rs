@@ -11,17 +11,18 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 #[allow(dead_code)]
 mod bindings;
 
-use bindings::exports::miden::basic_wallet::basic_wallet::{Asset, Guest, Recipient, Tag};
-use bindings::miden::base::tx_kernel::{add_asset, create_note, remove_asset};
+use bindings::exports::miden::basic_wallet::basic_wallet::{CoreAsset, Guest, Recipient, Tag};
+use bindings::miden::base::account::{add_asset, remove_asset};
+use bindings::miden::base::tx::create_note;
 
 struct Component;
 
 impl Guest for Component {
-    fn receive_asset(asset: Asset) {
+    fn receive_asset(asset: CoreAsset) {
         add_asset(asset);
     }
 
-    fn send_asset(asset: Asset, tag: Tag, recipient: Recipient) {
+    fn send_asset(asset: CoreAsset, tag: Tag, recipient: Recipient) {
         let asset = remove_asset(asset);
         create_note(asset, tag, recipient);
     }
