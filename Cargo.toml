@@ -62,6 +62,7 @@ smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
 toml = { version = "0.5", features = ["preserve_order"] }
 derive_more = "0.99"
+indexmap = "2.1"
 # 211152c631d16a943aae503466b198b93c61150f is latest (as of Jan 25th) commit in the next branch
 miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f"}
 miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }

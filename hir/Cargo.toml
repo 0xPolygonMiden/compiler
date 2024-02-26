@@ -37,6 +37,7 @@ thiserror.workspace = true
 typed-arena = "2.0"
 winter-math = { version = "0.7", default-features = false }
 derive_more.workspace = true
+indexmap.workspace = true
 
 [dev-dependencies]
 pretty_assertions = "1.0"
