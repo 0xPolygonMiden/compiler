@@ -28,7 +28,7 @@ block0(v0: i64, v1: i64, v2: i64, v3: i64):
     v8 = global.symbol @__stack_pointer : *mut i32;
     store v8, v7;
     call module0::wit_bindgen::rt::run_ctors_once();
-    call module0::basic_wallet::bindings::miden::base::tx_kernel::add_asset::wit_import(v0, v1, v2, v3, v7);
+    call wit-component:shim::indirect-miden:base/tx-kernel@1.0.0-add-asset(v0, v1, v2, v3, v7);
     v9 = const.i32 32 : i32;
     v10 = add.wrapping v7, v9 : i32;
     v11 = global.symbol @__stack_pointer : *mut i32;
@@ -48,7 +48,7 @@ block0(v0: i64, v1: i64, v2: i64, v3: i64, v4: i64, v5: i64, v6: i64, v7: i64, v
     v13 = global.symbol @__stack_pointer : *mut i32;
     store v13, v12;
     call module0::wit_bindgen::rt::run_ctors_once();
-    call module0::basic_wallet::bindings::miden::base::tx_kernel::remove_asset::wit_import(v0, v1, v2, v3, v12);
+    call wit-component:shim::indirect-miden:base/tx-kernel@1.0.0-remove-asset(v0, v1, v2, v3, v12);
     v14 = cast v12 : u32;
     v15 = inttoptr v14 : *mut i64;
     v16 = load v15 : i64;
@@ -885,6 +885,11 @@ block6:
 block7:
     unreachable ;
 }
+
+
+pub fn wit-component:shim::indirect-miden:base/tx-kernel@1.0.0-add-asset(i64, i64, i64, i64, i32);
+
+pub fn wit-component:shim::indirect-miden:base/tx-kernel@1.0.0-remove-asset(i64, i64, i64, i64, i32);
 
 // ====================================================================
 module wit-component:fixups

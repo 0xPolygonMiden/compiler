@@ -13,16 +13,17 @@ use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
-use miden_hir::{FunctionIdent, Signature};
 use rustc_hash::FxHashMap;
 use std::collections::BTreeMap;
 
 use std::ops::Range;
 
 pub mod build_ir;
+pub mod func_env;
 pub mod func_translation_state;
 pub mod func_translator;
 pub mod function_builder_ext;
+pub mod instance;
 pub mod module_env;
 pub mod types;
 
@@ -100,9 +101,6 @@ impl ModuleType {
 pub struct Module {
     /// All import records, in the order they are declared in the module.
     pub imports: Vec<ModuleImport>,
-
-    /// A translated function imports, indexed by the function index.
-    pub translated_function_imports: FxHashMap<FuncIndex, (FunctionIdent, Signature)>,
 
     /// Exported entities.
     pub exports: IndexMap<String, EntityIndex>,

@@ -17,6 +17,7 @@ use std::collections::hash_map;
 use std::u64;
 
 use crate::error::{WasmError, WasmResult};
+use crate::module::func_env::FuncEnvironment;
 use crate::module::func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState};
 use crate::module::function_builder_ext::FunctionBuilderExt;
 use crate::module::types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes};
@@ -44,6 +45,7 @@ pub fn translate_operator(
     state: &mut FuncTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
+    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
@@ -121,8 +123,7 @@ pub fn translate_operator(
                 state,
                 builder,
                 FuncIndex::from_u32(*function_index),
-                module,
-                mod_types,
+                func_env,
                 span,
                 diagnostics,
             )?;
@@ -640,16 +641,14 @@ fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
-    module: &Module,
-    mod_types: &ModuleTypes,
+    func_env: &FuncEnvironment,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
     let (fident, num_args) = state.get_direct_func(
         builder.data_flow_graph_mut(),
         function_index,
-        module,
-        mod_types,
+        func_env,
         diagnostics,
     )?;
     let args = state.peekn_mut(num_args);

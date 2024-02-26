@@ -18,6 +18,7 @@ use miden_hir::cranelift_entity::EntityRef;
 use miden_hir::{Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
+use super::func_env::FuncEnvironment;
 use super::Module;
 
 /// WebAssembly to Miden IR function translator.
@@ -46,6 +47,7 @@ impl FuncTranslator {
         mod_func_builder: &mut ModuleFunctionBuilder,
         module: &Module,
         mod_types: &ModuleTypes,
+        func_env: &FuncEnvironment,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
@@ -70,6 +72,7 @@ impl FuncTranslator {
             &mut self.state,
             module,
             mod_types,
+            func_env,
             diagnostics,
             func_validator,
         )?;
@@ -151,6 +154,7 @@ fn parse_function_body(
     state: &mut FuncTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
+    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
@@ -167,6 +171,7 @@ fn parse_function_body(
             state,
             module,
             mod_types,
+            func_env,
             diagnostics,
             SourceSpan::default(),
         )?;
