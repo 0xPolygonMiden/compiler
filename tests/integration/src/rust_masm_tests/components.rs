@@ -1,7 +1,6 @@
 use crate::CompilerTest;
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
-use miden_frontend_wasm::ExportMetadata;
 use miden_frontend_wasm::ImportMetadata;
 use miden_frontend_wasm::WasmTranslationConfig;
 use miden_hir::InterfaceFunctionIdent;
@@ -13,18 +12,7 @@ use miden_hir::Type;
 #[test]
 fn wcm_add() {
     // Has no imports
-    let export_metadata = [(
-        Symbol::intern("add").into(),
-        ExportMetadata {
-            invoke_method: miden_hir::FunctionInvocationMethod::Call,
-        },
-    )]
-    .into_iter()
-    .collect();
-    let config = WasmTranslationConfig {
-        export_metadata,
-        ..Default::default()
-    };
+    let config = Default::default();
     let mut test = CompilerTest::rust_source_cargo_component("add-comp", config);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!(
@@ -48,22 +36,13 @@ fn wcm_inc() {
         interface_function_ident.clone(),
         ImportMetadata {
             digest: RpoDigest::default(),
-            invoke_method: miden_hir::FunctionInvocationMethod::Call,
         },
     )]
     .into_iter()
     .collect();
-    let export_metadata = [(
-        Symbol::intern("inc").into(),
-        ExportMetadata {
-            invoke_method: miden_hir::FunctionInvocationMethod::Call,
-        },
-    )]
-    .into_iter()
-    .collect();
+
     let config = WasmTranslationConfig {
         import_metadata,
-        export_metadata,
         ..Default::default()
     };
     let mut test = CompilerTest::rust_source_cargo_component("inc-comp", config);

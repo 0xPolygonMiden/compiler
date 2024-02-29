@@ -1,5 +1,5 @@
 use miden_core::crypto::hash::RpoDigest;
-use miden_hir::{FunctionExportName, FunctionInvocationMethod, InterfaceFunctionIdent};
+use miden_hir::InterfaceFunctionIdent;
 use rustc_hash::FxHashMap;
 
 /// Represents Miden VM codegen metadata for a function import.
@@ -9,15 +9,6 @@ use rustc_hash::FxHashMap;
 pub struct ImportMetadata {
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
-    /// The method of calling the function
-    pub invoke_method: FunctionInvocationMethod,
-}
-
-/// Represents function export metadata
-#[derive(Debug, Clone)]
-pub struct ExportMetadata {
-    /// The method of calling the function
-    pub invoke_method: FunctionInvocationMethod,
 }
 
 /// Configuration for the WASM translation.
@@ -37,9 +28,6 @@ pub struct WasmTranslationConfig {
     /// each imported function. Having it here might be a temporary solution,
     /// later we might want to move it to Wasm custom section.
     pub import_metadata: FxHashMap<InterfaceFunctionIdent, ImportMetadata>,
-
-    /// Export metadata for calling convention, etc.
-    pub export_metadata: FxHashMap<FunctionExportName, ExportMetadata>,
 }
 
 impl Default for WasmTranslationConfig {
@@ -49,7 +37,6 @@ impl Default for WasmTranslationConfig {
             generate_native_debuginfo: false,
             parse_wasm_debuginfo: false,
             import_metadata: Default::default(),
-            export_metadata: Default::default(),
         }
     }
 }
