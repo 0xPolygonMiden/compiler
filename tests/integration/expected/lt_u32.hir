@@ -1,16 +1,17 @@
-module noname
+module noname {
 
-const $0 = 0x00100000;
+    const $0 = 0x00100000;
 
-global external @__stack_pointer : i32 = $0 { id = 0 };
-global external @gv1 : i32 = $0 { id = 1 };
-global external @gv2 : i32 = $0 { id = 2 };
+    global external @__stack_pointer : i32 = $0 { id = 0 };
+    global external @gv1 : i32 = $0 { id = 1 };
+    global external @gv2 : i32 = $0 { id = 2 };
 
-pub fn entrypoint(i32, i32) -> i32 {
-block0(v0: i32, v1: i32):
-    v3 = cast v0 : u32;
-    v4 = cast v1 : u32;
-    v5 = lt v3, v4 : i1;
-    v6 = cast v5 : i32;
-    ret v6;
+    pub fn entrypoint(i32, i32) -> i32     {
+    block0(v0: i32, v1: i32):
+        v3 = cast v0 : u32;
+        v4 = cast v1 : u32;
+        v5 = lt v3, v4 : i1;
+        v6 = cast v5 : i32;
+        ret v6;
+    }
 }

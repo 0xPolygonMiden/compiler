@@ -8,6 +8,8 @@ use intrusive_collections::{
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use rustc_hash::FxHashSet;
 
+use crate::write::{write_indent, INDENT};
+
 use super::{pass::AnalysisKey, *};
 
 /// This error is raised when two modules conflict with the same symbol name
@@ -69,18 +71,21 @@ impl fmt::Display for Module {
         use std::fmt::Write;
 
         if self.is_kernel {
-            writeln!(f, "kernel {}\n", DisplayIdent(&self.name))?;
+            writeln!(f, "kernel {} {{\n", DisplayIdent(&self.name))?;
         } else {
-            writeln!(f, "module {}\n", DisplayIdent(&self.name))?;
+            writeln!(f, "module {} {{\n", DisplayIdent(&self.name))?;
         }
+        let indent = INDENT;
 
         let has_segments = !self.segments.is_empty();
         let has_globals = !self.globals.is_empty();
         let has_constants = self.globals.has_constants();
 
         if has_segments {
+            write_indent(f, indent)?;
             f.write_str("memory {\n")?;
             for segment in self.segments.iter() {
+                write_indent(f, indent)?;
                 writeln!(
                     f,
                     "    segment @{:#x} x {} = {};",
@@ -89,6 +94,7 @@ impl fmt::Display for Module {
                     segment.init(),
                 )?;
             }
+            write_indent(f, indent)?;
             f.write_str("}\n")?;
         }
 
@@ -99,6 +105,7 @@ impl fmt::Display for Module {
                 }
                 for (constant, constant_data) in self.globals.constants() {
                     let id = constant.as_u32();
+                    write_indent(f, indent)?;
                     writeln!(f, "const ${id} = {constant_data};")?;
                 }
 
@@ -106,6 +113,7 @@ impl fmt::Display for Module {
             }
 
             for global in self.globals.iter() {
+                write_indent(f, indent)?;
                 write!(
                     f,
                     "global {} @{} : {}",
@@ -144,7 +152,7 @@ impl fmt::Display for Module {
             if i > 0 {
                 writeln!(f)?;
             }
-            write_function(f, function)?;
+            write_function(f, function, indent)?;
         }
 
         if !external_functions.is_empty() {
@@ -155,8 +163,7 @@ impl fmt::Display for Module {
                 write_external_function(f, id, sig)?;
             }
         }
-
-        Ok(())
+        writeln!(f, "}}")
     }
 }
 impl fmt::Debug for Module {

@@ -1,32 +1,33 @@
-module noname
+module noname {
 
-const $0 = 0x00100000;
+    const $0 = 0x00100000;
 
-global external @__stack_pointer : i32 = $0 { id = 0 };
-global external @gv1 : i32 = $0 { id = 1 };
-global external @gv2 : i32 = $0 { id = 2 };
+    global external @__stack_pointer : i32 = $0 { id = 0 };
+    global external @gv1 : i32 = $0 { id = 1 };
+    global external @gv2 : i32 = $0 { id = 2 };
 
-pub fn fib(i32) -> i32 {
-block0(v0: i32):
-    v2 = const.i32 0 : i32;
-    v3 = const.i32 0 : i32;
-    v4 = const.i32 1 : i32;
-    br block2(v4, v0, v3);
+    pub fn fib(i32) -> i32     {
+    block0(v0: i32):
+        v2 = const.i32 0 : i32;
+        v3 = const.i32 0 : i32;
+        v4 = const.i32 1 : i32;
+        br block2(v4, v0, v3);
 
-block1(v1: i32):
+    block1(v1: i32):
 
-block2(v6: i32, v7: i32, v9: i32):
-    v8 = neq v7, 0 : i1;
-    condbr v8, block4, block5;
+    block2(v6: i32, v7: i32, v9: i32):
+        v8 = neq v7, 0 : i1;
+        condbr v8, block4, block5;
 
-block3(v5: i32):
+    block3(v5: i32):
 
-block4:
-    v10 = const.i32 -1 : i32;
-    v11 = add.wrapping v7, v10 : i32;
-    v12 = add.wrapping v9, v6 : i32;
-    br block2(v12, v11, v6);
+    block4:
+        v10 = const.i32 -1 : i32;
+        v11 = add.wrapping v7, v10 : i32;
+        v12 = add.wrapping v9, v6 : i32;
+        br block2(v12, v11, v6);
 
-block5:
-    ret v9;
+    block5:
+        ret v9;
+    }
 }

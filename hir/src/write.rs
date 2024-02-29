@@ -2,22 +2,28 @@ use std::fmt::{self, Write};
 
 use super::{display::DisplayValues, *};
 
-pub fn write_function(w: &mut dyn Write, func: &Function) -> fmt::Result {
+pub const INDENT: usize = 4;
+
+pub fn write_function(w: &mut dyn Write, func: &Function, indent: usize) -> fmt::Result {
     for attr in func.dfg.attrs.iter() {
+        write_indent(w, indent)?;
         writeln!(w, "{attr}")?;
     }
+    write_indent(w, indent)?;
     write_signature(w, None, func.id.function, &func.signature)?;
+    write_indent(w, indent)?;
     writeln!(w, " {{")?;
     for (i, (block, block_data)) in func.dfg.blocks().enumerate() {
         if i > 0 {
             writeln!(w)?;
         }
 
-        write_block_header(w, func, block, 4)?;
+        write_block_header(w, func, block, indent + INDENT)?;
         for inst in block_data.insts() {
-            write_instruction(w, func, inst, 4)?;
+            write_instruction(w, func, inst, indent + INDENT)?;
         }
     }
+    write_indent(w, indent)?;
     writeln!(w, "}}")
 }
 
@@ -99,8 +105,8 @@ pub fn write_block_header(
     block: Block,
     indent: usize,
 ) -> fmt::Result {
-    // The indent is for instructions, block header is 4 spaces outdented
-    write!(w, "{1:0$}{2}", indent - 4, "", block)?;
+    // The indent is for instructions, block header is INDENT spaces outdented
+    write!(w, "{1:0$}{2}", indent - INDENT, "", block)?;
 
     let mut args = func.dfg.block_params(block).iter().cloned();
     match args.next() {
@@ -257,10 +263,10 @@ fn write_operands(
         }) => {
             writeln!(w, " {} {{", arg)?;
             for (value, dest) in arms.iter() {
-                write_indent(w, indent + 4)?;
+                write_indent(w, indent + INDENT)?;
                 writeln!(w, "{} => {},", value, dest)?;
             }
-            write_indent(w, indent + 4)?;
+            write_indent(w, indent + INDENT)?;
             writeln!(w, "_ => {}", default)?;
             write_indent(w, indent)?;
             w.write_char('}')
@@ -361,7 +367,7 @@ fn write_block_args(w: &mut dyn Write, args: &[Value]) -> fmt::Result {
 }
 
 #[inline(always)]
-fn write_indent(w: &mut dyn Write, indent: usize) -> fmt::Result {
+pub fn write_indent(w: &mut dyn Write, indent: usize) -> fmt::Result {
     write!(w, "{1:0$}", indent, "")
 }
 

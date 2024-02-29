@@ -128,11 +128,6 @@ impl fmt::Display for Component {
         }
         writeln!(f, "")?;
         for module in self.modules.iter() {
-            // temporary hack to separate modules, until curly braces and indentation are implemented
-            writeln!(
-                f,
-                "// ===================================================================="
-            )?;
             writeln!(f, "{}", module)?;
         }
         Ok(())

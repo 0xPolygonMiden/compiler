@@ -1,14 +1,15 @@
-module noname
+module noname {
 
-const $0 = 0x00100000;
+    const $0 = 0x00100000;
 
-global external @__stack_pointer : i32 = $0 { id = 0 };
-global external @gv1 : i32 = $0 { id = 1 };
-global external @gv2 : i32 = $0 { id = 2 };
+    global external @__stack_pointer : i32 = $0 { id = 0 };
+    global external @gv1 : i32 = $0 { id = 1 };
+    global external @gv2 : i32 = $0 { id = 2 };
 
-pub fn entrypoint(i32) -> i32 {
-block0(v0: i32):
-    v2 = const.i32 0 : i32;
-    v3 = sub.wrapping v2, v0 : i32;
-    ret v3;
+    pub fn entrypoint(i32) -> i32     {
+    block0(v0: i32):
+        v2 = const.i32 0 : i32;
+        v3 = sub.wrapping v2, v0 : i32;
+        ret v3;
+    }
 }

@@ -2,837 +2,837 @@ component
 
 import miden:add-package/add-interface@1.0.0::add fn(u32, u32) -> u32 mast#0x0000000000000000000000000000000000000000000000000000000000000000 lower module0::inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import
 
-// ====================================================================
-module module0
-
-const $0 = 0x00100000;
-
-global external @__stack_pointer : i32 = $0 { id = 0 };
-
-pub fn __wasm_call_ctors() {
-block0:
-    br block1;
-
-block1:
-    ret;
-}
-
-pub fn inc(i32) -> i32 {
-block0(v0: i32):
-    call module0::wit_bindgen::rt::run_ctors_once();
-    v2 = const.i32 1 : i32;
-    v3 = call module0::inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import(v0, v2) : i32;
-    br block1(v3);
-
-block1(v1: i32):
-    ret v1;
-}
-
-pub fn __rust_alloc(i32, i32) -> i32 {
-block0(v0: i32, v1: i32):
-    v3 = const.i32 1048576 : i32;
-    v4 = call module0::<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc(v3, v1, v0) : i32;
-    br block1(v4);
-
-block1(v2: i32):
-    ret v2;
-}
-
-pub fn __rust_realloc(i32, i32, i32, i32) -> i32 {
-block0(v0: i32, v1: i32, v2: i32, v3: i32):
-    v5 = const.i32 0 : i32;
-    v6 = const.i32 1048576 : i32;
-    v7 = call module0::<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc(v6, v2, v3) : i32;
-    v8 = eq v7, 0 : i1;
-    v9 = cast v8 : i32;
-    v10 = neq v9, 0 : i1;
-    condbr v10, block2(v7), block3;
-
-block1(v4: i32):
-    ret v4;
-
-block2(v22: i32):
-    br block1(v22);
-
-block3:
-    v11 = cast v1 : u32;
-    v12 = cast v3 : u32;
-    v13 = lt v11, v12 : i1;
-    v14 = cast v13 : i32;
-    v15 = neq v14, 0 : i1;
-    v16 = select v15, v1, v3 : i32;
-    v17 = cast v7 : u32;
-    v18 = inttoptr v17 : *mut u8;
-    v19 = cast v0 : u32;
-    v20 = inttoptr v19 : *mut u8;
-    memcpy v20, v18, v16;
-    v21 = const.i32 1048576 : i32;
-    call module0::<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc(v21, v0, v2, v1);
-    br block2(v7);
-}
-
-pub fn wee_alloc::alloc_first_fit(i32, i32, i32) -> i32 {
-block0(v0: i32, v1: i32, v2: i32):
-    v4 = const.i32 0 : i32;
-    v5 = cast v2 : u32;
-    v6 = inttoptr v5 : *mut i32;
-    v7 = load v6 : i32;
-    v8 = neq v7, 0 : i1;
-    condbr v8, block2, block3;
-
-block1(v3: i32):
-    ret v3;
-
-block2:
-    v10 = const.i32 -1 : i32;
-    v11 = add.wrapping v1, v10 : i32;
-    v12 = const.i32 0 : i32;
-    v13 = sub.wrapping v12, v1 : i32;
-    v14 = const.i32 2 : i32;
-    v15 = shl.wrapping v0, v14 : i32;
-    br block4(v7, v2, v15, v13, v11);
-
-block3:
-    v9 = const.i32 0 : i32;
-    ret v9;
-
-block4(v16: i32, v147: i32, v158: i32, v173: i32, v186: i32):
-    v17 = cast v16 : u32;
-    v18 = add.checked v17, 8 : u32;
-    v19 = inttoptr v18 : *mut i32;
-    v20 = load v19 : i32;
-    v21 = const.i32 1 : i32;
-    v22 = band v20, v21 : i32;
-    v23 = neq v22, 0 : i1;
-    condbr v23, block7, block8;
-
-block5:
-    v305 = const.i32 0 : i32;
-    br block1(v305);
-
-block6(v148: i32, v157: i32, v172: i32, v185: i32, v194: i32, v298: i32):
-    v149 = cast v148 : u32;
-    v150 = inttoptr v149 : *mut i32;
-    v151 = load v150 : i32;
-    v152 = const.i32 -4 : i32;
-    v153 = band v151, v152 : i32;
-    v154 = const.i32 8 : i32;
-    v155 = add.wrapping v148, v154 : i32;
-    v156 = sub.wrapping v153, v155 : i32;
-    v164 = cast v156 : u32;
-    v165 = cast v157 : u32;
-    v166 = lt v164, v165 : i1;
-    v167 = cast v166 : i32;
-    v168 = neq v167, 0 : i1;
-    condbr v168, block22(v194, v298, v157, v172, v185), block23;
-
-block7:
-    br block9(v16, v20, v147, v158, v173, v186);
-
-block8:
-    br block6(v16, v158, v173, v186, v147, v20);
-
-block9(v24: i32, v25: i32, v136: i32, v163: i32, v178: i32, v191: i32):
-    v26 = const.i32 -2 : i32;
-    v27 = band v25, v26 : i32;
-    v28 = cast v24 : u32;
-    v29 = add.checked v28, 8 : u32;
-    v30 = inttoptr v29 : *mut i32;
-    store v30, v27;
-    v31 = cast v24 : u32;
-    v32 = add.checked v31, 4 : u32;
-    v33 = inttoptr v32 : *mut i32;
-    v34 = load v33 : i32;
-    v35 = const.i32 -4 : i32;
-    v36 = band v34, v35 : i32;
-    v37 = neq v36, 0 : i1;
-    condbr v37, block12, block13;
-
-block10:
-    br block6(v137, v159, v174, v187, v132, v143);
-
-block11(v48: i32, v66: i32, v106: i32, v124: i32, v135: i32, v162: i32, v177: i32, v190: i32):
-    v49 = cast v48 : u32;
-    v50 = inttoptr v49 : *mut i32;
-    v51 = load v50 : i32;
-    v52 = const.i32 -4 : i32;
-    v53 = band v51, v52 : i32;
-    v54 = eq v53, 0 : i1;
-    v55 = cast v54 : i32;
-    v56 = neq v55, 0 : i1;
-    condbr v56, block14(v66, v51, v48, v106, v124, v135, v162, v177, v190), block15;
-
-block12:
-    v39 = const.i32 0 : i32;
-    v40 = cast v36 : u32;
-    v41 = inttoptr v40 : *mut u8;
-    v42 = load v41 : u8;
-    v43 = zext v42 : i32;
-    v44 = const.i32 1 : i32;
-    v45 = band v43, v44 : i32;
-    v46 = neq v45, 0 : i1;
-    v47 = select v46, v39, v36 : i32;
-    br block11(v24, v36, v34, v47, v136, v163, v178, v191);
-
-block13:
-    v38 = const.i32 0 : i32;
-    br block11(v24, v36, v34, v38, v136, v163, v178, v191);
-
-block14(v80: i32, v89: i32, v95: i32, v105: i32, v123: i32, v134: i32, v161: i32, v176: i32, v189: i32):
-    v81 = eq v80, 0 : i1;
-    v82 = cast v81 : i32;
-    v83 = neq v82, 0 : i1;
-    condbr v83, block17(v95, v105, v89, v123, v134, v161, v176, v189), block18;
-
-block15:
-    v57 = const.i32 2 : i32;
-    v58 = band v51, v57 : i32;
-    v59 = neq v58, 0 : i1;
-    condbr v59, block14(v66, v51, v48, v106, v124, v135, v162, v177, v190), block16;
-
-block16:
-    v60 = cast v53 : u32;
-    v61 = add.checked v60, 4 : u32;
-    v62 = inttoptr v61 : *mut i32;
-    v63 = load v62 : i32;
-    v64 = const.i32 3 : i32;
-    v65 = band v63, v64 : i32;
-    v67 = bor v65, v66 : i32;
-    v68 = cast v53 : u32;
-    v69 = add.checked v68, 4 : u32;
-    v70 = inttoptr v69 : *mut i32;
-    store v70, v67;
-    v71 = cast v48 : u32;
-    v72 = add.checked v71, 4 : u32;
-    v73 = inttoptr v72 : *mut i32;
-    v74 = load v73 : i32;
-    v75 = const.i32 -4 : i32;
-    v76 = band v74, v75 : i32;
-    v77 = cast v48 : u32;
-    v78 = inttoptr v77 : *mut i32;
-    v79 = load v78 : i32;
-    br block14(v76, v79, v48, v74, v124, v135, v162, v177, v190);
-
-block17(v103: i32, v104: i32, v112: i32, v122: i32, v133: i32, v160: i32, v175: i32, v188: i32):
-    v107 = const.i32 3 : i32;
-    v108 = band v104, v107 : i32;
-    v109 = cast v103 : u32;
-    v110 = add.checked v109, 4 : u32;
-    v111 = inttoptr v110 : *mut i32;
-    store v111, v108;
-    v113 = const.i32 3 : i32;
-    v114 = band v112, v113 : i32;
-    v115 = cast v103 : u32;
-    v116 = inttoptr v115 : *mut i32;
-    store v116, v114;
-    v117 = const.i32 2 : i32;
-    v118 = band v112, v117 : i32;
-    v119 = eq v118, 0 : i1;
-    v120 = cast v119 : i32;
-    v121 = neq v120, 0 : i1;
-    condbr v121, block19(v133, v122, v160, v175, v188), block20;
-
-block18:
-    v84 = cast v80 : u32;
-    v85 = inttoptr v84 : *mut i32;
-    v86 = load v85 : i32;
-    v87 = const.i32 3 : i32;
-    v88 = band v86, v87 : i32;
-    v90 = const.i32 -4 : i32;
-    v91 = band v89, v90 : i32;
-    v92 = bor v88, v91 : i32;
-    v93 = cast v80 : u32;
-    v94 = inttoptr v93 : *mut i32;
-    store v94, v92;
-    v96 = cast v95 : u32;
-    v97 = add.checked v96, 4 : u32;
-    v98 = inttoptr v97 : *mut i32;
-    v99 = load v98 : i32;
-    v100 = cast v95 : u32;
-    v101 = inttoptr v100 : *mut i32;
-    v102 = load v101 : i32;
-    br block17(v95, v99, v102, v123, v134, v161, v176, v189);
-
-block19(v132: i32, v137: i32, v159: i32, v174: i32, v187: i32):
-    v138 = cast v132 : u32;
-    v139 = inttoptr v138 : *mut i32;
-    store v139, v137;
-    v140 = cast v137 : u32;
-    v141 = add.checked v140, 8 : u32;
-    v142 = inttoptr v141 : *mut i32;
-    v143 = load v142 : i32;
-    v144 = const.i32 1 : i32;
-    v145 = band v143, v144 : i32;
-    v146 = neq v145, 0 : i1;
-    condbr v146, block9(v137, v143, v132, v159, v174, v187), block21;
-
-block20:
-    v125 = cast v122 : u32;
-    v126 = inttoptr v125 : *mut i32;
-    v127 = load v126 : i32;
-    v128 = const.i32 2 : i32;
-    v129 = bor v127, v128 : i32;
-    v130 = cast v122 : u32;
-    v131 = inttoptr v130 : *mut i32;
-    store v131, v129;
-    br block19(v133, v122, v160, v175, v188);
-
-block21:
-    br block10;
-
-block22(v296: i32, v297: i32, v302: i32, v303: i32, v304: i32):
-    v299 = cast v296 : u32;
-    v300 = inttoptr v299 : *mut i32;
-    store v300, v297;
-    v301 = neq v297, 0 : i1;
-    condbr v301, block4(v297, v296, v302, v303, v304), block33;
-
-block23:
-    v169 = const.i32 72 : i32;
-    v170 = add.wrapping v155, v169 : i32;
-    v171 = sub.wrapping v153, v157 : i32;
-    v179 = band v171, v172 : i32;
-    v180 = cast v170 : u32;
-    v181 = cast v179 : u32;
-    v182 = lte v180, v181 : i1;
-    v183 = cast v182 : i32;
-    v184 = neq v183, 0 : i1;
-    condbr v184, block25, block26;
-
-block24(v288: i32, v289: i32):
-    v290 = const.i32 1 : i32;
-    v291 = bor v289, v290 : i32;
-    v292 = cast v288 : u32;
-    v293 = inttoptr v292 : *mut i32;
-    store v293, v291;
-    v294 = const.i32 8 : i32;
-    v295 = add.wrapping v288, v294 : i32;
-    ret v295;
-
-block25:
-    v206 = const.i32 0 : i32;
-    v207 = const.i32 0 : i32;
-    v208 = cast v179 : u32;
-    v209 = inttoptr v208 : *mut i32;
-    store v209, v207;
-    v210 = const.i32 -8 : i32;
-    v211 = add.wrapping v179, v210 : i32;
-    v212 = const.i64 0 : i64;
-    v213 = cast v211 : u32;
-    v214 = inttoptr v213 : *mut i64;
-    store v214, v212;
-    v215 = cast v148 : u32;
-    v216 = inttoptr v215 : *mut i32;
-    v217 = load v216 : i32;
-    v218 = const.i32 -4 : i32;
-    v219 = band v217, v218 : i32;
-    v220 = cast v211 : u32;
-    v221 = inttoptr v220 : *mut i32;
-    store v221, v219;
-    v222 = cast v148 : u32;
-    v223 = inttoptr v222 : *mut i32;
-    v224 = load v223 : i32;
-    v225 = const.i32 -4 : i32;
-    v226 = band v224, v225 : i32;
-    v227 = eq v226, 0 : i1;
-    v228 = cast v227 : i32;
-    v229 = neq v228, 0 : i1;
-    condbr v229, block28(v211, v206, v148), block29;
-
-block26:
-    v192 = band v185, v155 : i32;
-    v193 = neq v192, 0 : i1;
-    condbr v193, block22(v194, v298, v157, v172, v185), block27;
-
-block27:
-    v195 = cast v148 : u32;
-    v196 = add.checked v195, 8 : u32;
-    v197 = inttoptr v196 : *mut i32;
-    v198 = load v197 : i32;
-    v199 = const.i32 -4 : i32;
-    v200 = band v198, v199 : i32;
-    v201 = cast v194 : u32;
-    v202 = inttoptr v201 : *mut i32;
-    store v202, v200;
-    v203 = cast v148 : u32;
-    v204 = inttoptr v203 : *mut i32;
-    v205 = load v204 : i32;
-    br block24(v148, v205);
-
-block28(v249: i32, v250: i32, v251: i32):
-    v252 = bor v250, v251 : i32;
-    v253 = cast v249 : u32;
-    v254 = add.checked v253, 4 : u32;
-    v255 = inttoptr v254 : *mut i32;
-    store v255, v252;
-    v256 = cast v251 : u32;
-    v257 = add.checked v256, 8 : u32;
-    v258 = inttoptr v257 : *mut i32;
-    v259 = load v258 : i32;
-    v260 = const.i32 -2 : i32;
-    v261 = band v259, v260 : i32;
-    v262 = cast v251 : u32;
-    v263 = add.checked v262, 8 : u32;
-    v264 = inttoptr v263 : *mut i32;
-    store v264, v261;
-    v265 = cast v251 : u32;
-    v266 = inttoptr v265 : *mut i32;
-    v267 = load v266 : i32;
-    v268 = const.i32 3 : i32;
-    v269 = band v267, v268 : i32;
-    v270 = bor v269, v249 : i32;
-    v271 = cast v251 : u32;
-    v272 = inttoptr v271 : *mut i32;
-    store v272, v270;
-    v273 = const.i32 2 : i32;
-    v274 = band v267, v273 : i32;
-    v275 = neq v274, 0 : i1;
-    condbr v275, block31, block32;
-
-block29:
-    v230 = const.i32 2 : i32;
-    v231 = band v224, v230 : i32;
-    v232 = neq v231, 0 : i1;
-    condbr v232, block28(v211, v206, v148), block30;
-
-block30:
-    v233 = cast v226 : u32;
-    v234 = add.checked v233, 4 : u32;
-    v235 = inttoptr v234 : *mut i32;
-    v236 = load v235 : i32;
-    v237 = const.i32 3 : i32;
-    v238 = band v236, v237 : i32;
-    v239 = bor v238, v211 : i32;
-    v240 = cast v226 : u32;
-    v241 = add.checked v240, 4 : u32;
-    v242 = inttoptr v241 : *mut i32;
-    store v242, v239;
-    v243 = cast v211 : u32;
-    v244 = add.checked v243, 4 : u32;
-    v245 = inttoptr v244 : *mut i32;
-    v246 = load v245 : i32;
-    v247 = const.i32 3 : i32;
-    v248 = band v246, v247 : i32;
-    br block28(v211, v248, v148);
-
-block31:
-    v279 = const.i32 -3 : i32;
-    v280 = band v270, v279 : i32;
-    v281 = cast v251 : u32;
-    v282 = inttoptr v281 : *mut i32;
-    store v282, v280;
-    v283 = cast v249 : u32;
-    v284 = inttoptr v283 : *mut i32;
-    v285 = load v284 : i32;
-    v286 = const.i32 2 : i32;
-    v287 = bor v285, v286 : i32;
-    br block24(v249, v287);
-
-block32:
-    v276 = cast v249 : u32;
-    v277 = inttoptr v276 : *mut i32;
-    v278 = load v277 : i32;
-    br block24(v249, v278);
-
-block33:
-    br block5;
-}
-
-pub fn <wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc(i32, i32, i32) -> i32 {
-block0(v0: i32, v1: i32, v2: i32):
-    v4 = const.i32 0 : i32;
-    v5 = global.load (@__stack_pointer) as *mut i8 : i32;
-    v6 = const.i32 16 : i32;
-    v7 = sub.wrapping v5, v6 : i32;
-    v8 = global.symbol @__stack_pointer : *mut i32;
-    store v8, v7;
-    v9 = neq v2, 0 : i1;
-    condbr v9, block3, block4;
-
-block1(v3: i32):
-    ret v3;
-
-block2(v87: i32, v91: i32):
-    v88 = const.i32 16 : i32;
-    v89 = add.wrapping v87, v88 : i32;
-    v90 = global.symbol @__stack_pointer : *mut i32;
-    store v90, v89;
-    br block1(v91);
-
-block3:
-    v10 = cast v0 : u32;
-    v11 = inttoptr v10 : *mut i32;
-    v12 = load v11 : i32;
-    v13 = cast v7 : u32;
-    v14 = add.checked v13, 12 : u32;
-    v15 = inttoptr v14 : *mut i32;
-    store v15, v12;
-    v16 = const.i32 3 : i32;
-    v17 = add.wrapping v2, v16 : i32;
-    v18 = const.i32 2 : i32;
-    v19 = cast v17 : u32;
-    v20 = cast v18 : u32;
-    v21 = shr.wrapping v19, v20 : u32;
-    v22 = cast v21 : i32;
-    v23 = const.i32 12 : i32;
-    v24 = add.wrapping v7, v23 : i32;
-    v25 = call module0::wee_alloc::alloc_first_fit(v22, v1, v24) : i32;
-    v26 = neq v25, 0 : i1;
-    condbr v26, block5(v0, v7, v25), block6;
-
-block4:
-    br block2(v7, v1);
-
-block5(v79: i32, v80: i32, v92: i32):
-    v81 = cast v80 : u32;
-    v82 = add.checked v81, 12 : u32;
-    v83 = inttoptr v82 : *mut i32;
-    v84 = load v83 : i32;
-    v85 = cast v79 : u32;
-    v86 = inttoptr v85 : *mut i32;
-    store v86, v84;
-    br block2(v80, v92);
-
-block6:
-    v27 = const.i32 -4 : i32;
-    v28 = band v17, v27 : i32;
-    v29 = const.i32 3 : i32;
-    v30 = shl.wrapping v1, v29 : i32;
-    v31 = const.i32 512 : i32;
-    v32 = add.wrapping v30, v31 : i32;
-    v33 = cast v28 : u32;
-    v34 = cast v32 : u32;
-    v35 = gt v33, v34 : i1;
-    v36 = cast v35 : i32;
-    v37 = neq v36, 0 : i1;
-    v38 = select v37, v28, v32 : i32;
-    v39 = const.i32 65543 : i32;
-    v40 = add.wrapping v38, v39 : i32;
-    v41 = const.i32 16 : i32;
-    v42 = cast v40 : u32;
-    v43 = cast v41 : u32;
-    v44 = shr.wrapping v42, v43 : u32;
-    v45 = cast v44 : i32;
-    v46 = cast v45 : u32;
-    v47 = memory.grow v46 : i32;
-    v48 = const.i32 -1 : i32;
-    v49 = neq v47, v48 : i1;
-    v50 = cast v49 : i32;
-    v51 = neq v50, 0 : i1;
-    condbr v51, block7, block8;
-
-block7:
-    v53 = const.i32 16 : i32;
-    v54 = shl.wrapping v47, v53 : i32;
-    v55 = const.i32 0 : i32;
-    v56 = cast v54 : u32;
-    v57 = add.checked v56, 4 : u32;
-    v58 = inttoptr v57 : *mut i32;
-    store v58, v55;
-    v59 = cast v7 : u32;
-    v60 = add.checked v59, 12 : u32;
-    v61 = inttoptr v60 : *mut i32;
-    v62 = load v61 : i32;
-    v63 = cast v54 : u32;
-    v64 = add.checked v63, 8 : u32;
-    v65 = inttoptr v64 : *mut i32;
-    store v65, v62;
-    v66 = const.i32 -65536 : i32;
-    v67 = band v40, v66 : i32;
-    v68 = add.wrapping v54, v67 : i32;
-    v69 = const.i32 2 : i32;
-    v70 = bor v68, v69 : i32;
-    v71 = cast v54 : u32;
-    v72 = inttoptr v71 : *mut i32;
-    store v72, v70;
-    v73 = cast v7 : u32;
-    v74 = add.checked v73, 12 : u32;
-    v75 = inttoptr v74 : *mut i32;
-    store v75, v54;
-    v76 = const.i32 12 : i32;
-    v77 = add.wrapping v7, v76 : i32;
-    v78 = call module0::wee_alloc::alloc_first_fit(v22, v1, v77) : i32;
-    br block5(v0, v7, v78);
-
-block8:
-    v52 = const.i32 0 : i32;
-    br block5(v0, v7, v52);
-}
-
-pub fn <wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc(i32, i32, i32, i32) {
-block0(v0: i32, v1: i32, v2: i32, v3: i32):
-    v4 = const.i32 0 : i32;
-    v5 = eq v1, 0 : i1;
-    v6 = cast v5 : i32;
-    v7 = neq v6, 0 : i1;
-    condbr v7, block2, block3;
-
-block1:
-    ret;
-
-block2:
-    br block1;
-
-block3:
-    v8 = eq v3, 0 : i1;
-    v9 = cast v8 : i32;
-    v10 = neq v9, 0 : i1;
-    condbr v10, block2, block4;
-
-block4:
-    v11 = cast v0 : u32;
-    v12 = inttoptr v11 : *mut i32;
-    v13 = load v12 : i32;
-    v14 = const.i32 0 : i32;
-    v15 = cast v1 : u32;
-    v16 = inttoptr v15 : *mut i32;
-    store v16, v14;
-    v17 = const.i32 -8 : i32;
-    v18 = add.wrapping v1, v17 : i32;
-    v19 = cast v18 : u32;
-    v20 = inttoptr v19 : *mut i32;
-    v21 = load v20 : i32;
-    v22 = const.i32 -2 : i32;
-    v23 = band v21, v22 : i32;
-    v24 = cast v18 : u32;
-    v25 = inttoptr v24 : *mut i32;
-    store v25, v23;
-    v26 = const.i32 4 : i32;
-    v27 = add.wrapping v18, v26 : i32;
-    v28 = cast v27 : u32;
-    v29 = inttoptr v28 : *mut i32;
-    v30 = load v29 : i32;
-    v31 = const.i32 -4 : i32;
-    v32 = band v30, v31 : i32;
-    v33 = eq v32, 0 : i1;
-    v34 = cast v33 : i32;
-    v35 = neq v34, 0 : i1;
-    condbr v35, block8(v21, v1, v18, v13, v0), block9;
-
-block5(v155: i32, v161: i32):
-    v163 = cast v155 : u32;
-    v164 = inttoptr v163 : *mut i32;
-    store v164, v161;
-    br block2;
-
-block6(v151: i32, v152: i32, v160: i32, v162: i32):
-    v153 = cast v151 : u32;
-    v154 = inttoptr v153 : *mut i32;
-    store v154, v152;
-    br block5(v160, v162);
-
-block7(v147: i32, v156: i32):
-    br block5(v156, v147);
-
-block8(v116: i32, v132: i32, v141: i32, v150: i32, v159: i32):
-    v117 = const.i32 -4 : i32;
-    v118 = band v116, v117 : i32;
-    v119 = eq v118, 0 : i1;
-    v120 = cast v119 : i32;
-    v121 = neq v120, 0 : i1;
-    condbr v121, block6(v132, v150, v159, v141), block18;
-
-block9:
-    v36 = cast v32 : u32;
-    v37 = inttoptr v36 : *mut i32;
-    v38 = load v37 : i32;
-    v39 = const.i32 1 : i32;
-    v40 = band v38, v39 : i32;
-    v41 = neq v40, 0 : i1;
-    condbr v41, block8(v21, v1, v18, v13, v0), block10;
-
-block10:
-    v42 = const.i32 -4 : i32;
-    v43 = band v21, v42 : i32;
-    v44 = neq v43, 0 : i1;
-    condbr v44, block13, block14;
-
-block11(v90: i32, v91: i32, v96: i32, v97: i32, v107: i32, v148: i32, v157: i32):
-    v92 = const.i32 3 : i32;
-    v93 = band v91, v92 : i32;
-    v94 = cast v90 : u32;
-    v95 = inttoptr v94 : *mut i32;
-    store v95, v93;
-    v98 = const.i32 3 : i32;
-    v99 = band v97, v98 : i32;
-    v100 = cast v96 : u32;
-    v101 = inttoptr v100 : *mut i32;
-    store v101, v99;
-    v102 = const.i32 2 : i32;
-    v103 = band v97, v102 : i32;
-    v104 = eq v103, 0 : i1;
-    v105 = cast v104 : i32;
-    v106 = neq v105, 0 : i1;
-    condbr v106, block7(v148, v157), block17;
-
-block12(v72: i32, v73: i32, v76: i32, v82: i32, v86: i32, v108: i32, v149: i32, v158: i32):
-    v74 = const.i32 -4 : i32;
-    v75 = band v73, v74 : i32;
-    v77 = const.i32 3 : i32;
-    v78 = band v76, v77 : i32;
-    v79 = bor v75, v78 : i32;
-    v80 = cast v72 : u32;
-    v81 = inttoptr v80 : *mut i32;
-    store v81, v79;
-    v83 = cast v82 : u32;
-    v84 = inttoptr v83 : *mut i32;
-    v85 = load v84 : i32;
-    v87 = cast v86 : u32;
-    v88 = inttoptr v87 : *mut i32;
-    v89 = load v88 : i32;
-    br block11(v82, v85, v86, v89, v108, v149, v158);
-
-block13:
-    v45 = const.i32 2 : i32;
-    v46 = band v21, v45 : i32;
-    v47 = neq v46, 0 : i1;
-    condbr v47, block12(v32, v23, v38, v27, v18, v32, v13, v0), block15;
-
-block14:
-    br block12(v32, v23, v38, v27, v18, v32, v13, v0);
-
-block15:
-    v48 = cast v43 : u32;
-    v49 = add.checked v48, 4 : u32;
-    v50 = inttoptr v49 : *mut i32;
-    v51 = load v50 : i32;
-    v52 = const.i32 3 : i32;
-    v53 = band v51, v52 : i32;
-    v54 = bor v53, v32 : i32;
-    v55 = cast v43 : u32;
-    v56 = add.checked v55, 4 : u32;
-    v57 = inttoptr v56 : *mut i32;
-    store v57, v54;
-    v58 = cast v18 : u32;
-    v59 = inttoptr v58 : *mut i32;
-    v60 = load v59 : i32;
-    v61 = cast v27 : u32;
-    v62 = inttoptr v61 : *mut i32;
-    v63 = load v62 : i32;
-    v64 = const.i32 -4 : i32;
-    v65 = band v63, v64 : i32;
-    v66 = eq v65, 0 : i1;
-    v67 = cast v66 : i32;
-    v68 = neq v67, 0 : i1;
-    condbr v68, block11(v27, v63, v18, v60, v32, v13, v0), block16;
-
-block16:
-    v69 = cast v65 : u32;
-    v70 = inttoptr v69 : *mut i32;
-    v71 = load v70 : i32;
-    br block12(v65, v60, v71, v27, v18, v32, v13, v0);
-
-block17:
-    v109 = cast v107 : u32;
-    v110 = inttoptr v109 : *mut i32;
-    v111 = load v110 : i32;
-    v112 = const.i32 2 : i32;
-    v113 = bor v111, v112 : i32;
-    v114 = cast v107 : u32;
-    v115 = inttoptr v114 : *mut i32;
-    store v115, v113;
-    br block7(v148, v157);
-
-block18:
-    v122 = const.i32 2 : i32;
-    v123 = band v116, v122 : i32;
-    v124 = neq v123, 0 : i1;
-    condbr v124, block6(v132, v150, v159, v141), block19;
-
-block19:
-    v125 = cast v118 : u32;
-    v126 = inttoptr v125 : *mut u8;
-    v127 = load v126 : u8;
-    v128 = zext v127 : i32;
-    v129 = const.i32 1 : i32;
-    v130 = band v128, v129 : i32;
-    v131 = neq v130, 0 : i1;
-    condbr v131, block6(v132, v150, v159, v141), block20;
-
-block20:
-    v133 = cast v118 : u32;
-    v134 = add.checked v133, 8 : u32;
-    v135 = inttoptr v134 : *mut i32;
-    v136 = load v135 : i32;
-    v137 = const.i32 -4 : i32;
-    v138 = band v136, v137 : i32;
-    v139 = cast v132 : u32;
-    v140 = inttoptr v139 : *mut i32;
-    store v140, v138;
-    v142 = const.i32 1 : i32;
-    v143 = bor v141, v142 : i32;
-    v144 = cast v118 : u32;
-    v145 = add.checked v144, 8 : u32;
-    v146 = inttoptr v145 : *mut i32;
-    store v146, v143;
-    br block7(v150, v159);
-}
-
-pub fn wit_bindgen::rt::run_ctors_once() {
-block0:
-    v0 = const.i32 0 : i32;
-    v1 = cast v0 : u32;
-    v2 = add.checked v1, 1048581 : u32;
-    v3 = inttoptr v2 : *mut u8;
-    v4 = load v3 : u8;
-    v5 = zext v4 : i32;
-    v6 = neq v5, 0 : i1;
-    condbr v6, block2, block3;
-
-block1:
-    ret;
-
-block2:
-    br block1;
-
-block3:
-    call module0::__wasm_call_ctors();
-    v7 = const.i32 0 : i32;
-    v8 = const.i32 1 : i32;
-    v9 = trunc v8 : u8;
-    v10 = cast v7 : u32;
-    v11 = add.checked v10, 1048581 : u32;
-    v12 = inttoptr v11 : *mut u8;
-    store v12, v9;
-    br block2;
-}
-
-pub fn cabi_realloc(i32, i32, i32, i32) -> i32 {
-block0(v0: i32, v1: i32, v2: i32, v3: i32):
-    v5 = neq v1, 0 : i1;
-    condbr v5, block4, block5;
-
-block1(v4: i32):
-    ret v4;
-
-block2(v19: i32):
-    br block1(v19);
-
-block3(v17: i32):
-    v18 = neq v17, 0 : i1;
-    condbr v18, block2(v17), block7;
-
-block4:
-    v16 = call module0::__rust_realloc(v0, v1, v2, v3) : i32;
-    br block3(v16);
-
-block5:
-    v6 = eq v3, 0 : i1;
-    v7 = cast v6 : i32;
-    v8 = neq v7, 0 : i1;
-    condbr v8, block2(v2), block6;
-
-block6:
-    v9 = const.i32 0 : i32;
-    v10 = cast v9 : u32;
-    v11 = add.checked v10, 1048580 : u32;
-    v12 = inttoptr v11 : *mut u8;
-    v13 = load v12 : u8;
-    v14 = zext v13 : i32;
-    v15 = call module0::__rust_alloc(v3, v2) : i32;
-    br block3(v15);
-
-block7:
-    unreachable ;
+module module0 {
+
+    const $0 = 0x00100000;
+
+    global external @__stack_pointer : i32 = $0 { id = 0 };
+
+    pub fn __wasm_call_ctors()     {
+    block0:
+        br block1;
+
+    block1:
+        ret;
+    }
+
+    pub fn inc(i32) -> i32     {
+    block0(v0: i32):
+        call module0::wit_bindgen::rt::run_ctors_once();
+        v2 = const.i32 1 : i32;
+        v3 = call module0::inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import(v0, v2) : i32;
+        br block1(v3);
+
+    block1(v1: i32):
+        ret v1;
+    }
+
+    pub fn __rust_alloc(i32, i32) -> i32     {
+    block0(v0: i32, v1: i32):
+        v3 = const.i32 1048576 : i32;
+        v4 = call module0::<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc(v3, v1, v0) : i32;
+        br block1(v4);
+
+    block1(v2: i32):
+        ret v2;
+    }
+
+    pub fn __rust_realloc(i32, i32, i32, i32) -> i32     {
+    block0(v0: i32, v1: i32, v2: i32, v3: i32):
+        v5 = const.i32 0 : i32;
+        v6 = const.i32 1048576 : i32;
+        v7 = call module0::<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc(v6, v2, v3) : i32;
+        v8 = eq v7, 0 : i1;
+        v9 = cast v8 : i32;
+        v10 = neq v9, 0 : i1;
+        condbr v10, block2(v7), block3;
+
+    block1(v4: i32):
+        ret v4;
+
+    block2(v22: i32):
+        br block1(v22);
+
+    block3:
+        v11 = cast v1 : u32;
+        v12 = cast v3 : u32;
+        v13 = lt v11, v12 : i1;
+        v14 = cast v13 : i32;
+        v15 = neq v14, 0 : i1;
+        v16 = select v15, v1, v3 : i32;
+        v17 = cast v7 : u32;
+        v18 = inttoptr v17 : *mut u8;
+        v19 = cast v0 : u32;
+        v20 = inttoptr v19 : *mut u8;
+        memcpy v20, v18, v16;
+        v21 = const.i32 1048576 : i32;
+        call module0::<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc(v21, v0, v2, v1);
+        br block2(v7);
+    }
+
+    pub fn wee_alloc::alloc_first_fit(i32, i32, i32) -> i32     {
+    block0(v0: i32, v1: i32, v2: i32):
+        v4 = const.i32 0 : i32;
+        v5 = cast v2 : u32;
+        v6 = inttoptr v5 : *mut i32;
+        v7 = load v6 : i32;
+        v8 = neq v7, 0 : i1;
+        condbr v8, block2, block3;
+
+    block1(v3: i32):
+        ret v3;
+
+    block2:
+        v10 = const.i32 -1 : i32;
+        v11 = add.wrapping v1, v10 : i32;
+        v12 = const.i32 0 : i32;
+        v13 = sub.wrapping v12, v1 : i32;
+        v14 = const.i32 2 : i32;
+        v15 = shl.wrapping v0, v14 : i32;
+        br block4(v7, v2, v15, v13, v11);
+
+    block3:
+        v9 = const.i32 0 : i32;
+        ret v9;
+
+    block4(v16: i32, v147: i32, v158: i32, v173: i32, v186: i32):
+        v17 = cast v16 : u32;
+        v18 = add.checked v17, 8 : u32;
+        v19 = inttoptr v18 : *mut i32;
+        v20 = load v19 : i32;
+        v21 = const.i32 1 : i32;
+        v22 = band v20, v21 : i32;
+        v23 = neq v22, 0 : i1;
+        condbr v23, block7, block8;
+
+    block5:
+        v305 = const.i32 0 : i32;
+        br block1(v305);
+
+    block6(v148: i32, v157: i32, v172: i32, v185: i32, v194: i32, v298: i32):
+        v149 = cast v148 : u32;
+        v150 = inttoptr v149 : *mut i32;
+        v151 = load v150 : i32;
+        v152 = const.i32 -4 : i32;
+        v153 = band v151, v152 : i32;
+        v154 = const.i32 8 : i32;
+        v155 = add.wrapping v148, v154 : i32;
+        v156 = sub.wrapping v153, v155 : i32;
+        v164 = cast v156 : u32;
+        v165 = cast v157 : u32;
+        v166 = lt v164, v165 : i1;
+        v167 = cast v166 : i32;
+        v168 = neq v167, 0 : i1;
+        condbr v168, block22(v194, v298, v157, v172, v185), block23;
+
+    block7:
+        br block9(v16, v20, v147, v158, v173, v186);
+
+    block8:
+        br block6(v16, v158, v173, v186, v147, v20);
+
+    block9(v24: i32, v25: i32, v136: i32, v163: i32, v178: i32, v191: i32):
+        v26 = const.i32 -2 : i32;
+        v27 = band v25, v26 : i32;
+        v28 = cast v24 : u32;
+        v29 = add.checked v28, 8 : u32;
+        v30 = inttoptr v29 : *mut i32;
+        store v30, v27;
+        v31 = cast v24 : u32;
+        v32 = add.checked v31, 4 : u32;
+        v33 = inttoptr v32 : *mut i32;
+        v34 = load v33 : i32;
+        v35 = const.i32 -4 : i32;
+        v36 = band v34, v35 : i32;
+        v37 = neq v36, 0 : i1;
+        condbr v37, block12, block13;
+
+    block10:
+        br block6(v137, v159, v174, v187, v132, v143);
+
+    block11(v48: i32, v66: i32, v106: i32, v124: i32, v135: i32, v162: i32, v177: i32, v190: i32):
+        v49 = cast v48 : u32;
+        v50 = inttoptr v49 : *mut i32;
+        v51 = load v50 : i32;
+        v52 = const.i32 -4 : i32;
+        v53 = band v51, v52 : i32;
+        v54 = eq v53, 0 : i1;
+        v55 = cast v54 : i32;
+        v56 = neq v55, 0 : i1;
+        condbr v56, block14(v66, v51, v48, v106, v124, v135, v162, v177, v190), block15;
+
+    block12:
+        v39 = const.i32 0 : i32;
+        v40 = cast v36 : u32;
+        v41 = inttoptr v40 : *mut u8;
+        v42 = load v41 : u8;
+        v43 = zext v42 : i32;
+        v44 = const.i32 1 : i32;
+        v45 = band v43, v44 : i32;
+        v46 = neq v45, 0 : i1;
+        v47 = select v46, v39, v36 : i32;
+        br block11(v24, v36, v34, v47, v136, v163, v178, v191);
+
+    block13:
+        v38 = const.i32 0 : i32;
+        br block11(v24, v36, v34, v38, v136, v163, v178, v191);
+
+    block14(v80: i32, v89: i32, v95: i32, v105: i32, v123: i32, v134: i32, v161: i32, v176: i32, v189: i32):
+        v81 = eq v80, 0 : i1;
+        v82 = cast v81 : i32;
+        v83 = neq v82, 0 : i1;
+        condbr v83, block17(v95, v105, v89, v123, v134, v161, v176, v189), block18;
+
+    block15:
+        v57 = const.i32 2 : i32;
+        v58 = band v51, v57 : i32;
+        v59 = neq v58, 0 : i1;
+        condbr v59, block14(v66, v51, v48, v106, v124, v135, v162, v177, v190), block16;
+
+    block16:
+        v60 = cast v53 : u32;
+        v61 = add.checked v60, 4 : u32;
+        v62 = inttoptr v61 : *mut i32;
+        v63 = load v62 : i32;
+        v64 = const.i32 3 : i32;
+        v65 = band v63, v64 : i32;
+        v67 = bor v65, v66 : i32;
+        v68 = cast v53 : u32;
+        v69 = add.checked v68, 4 : u32;
+        v70 = inttoptr v69 : *mut i32;
+        store v70, v67;
+        v71 = cast v48 : u32;
+        v72 = add.checked v71, 4 : u32;
+        v73 = inttoptr v72 : *mut i32;
+        v74 = load v73 : i32;
+        v75 = const.i32 -4 : i32;
+        v76 = band v74, v75 : i32;
+        v77 = cast v48 : u32;
+        v78 = inttoptr v77 : *mut i32;
+        v79 = load v78 : i32;
+        br block14(v76, v79, v48, v74, v124, v135, v162, v177, v190);
+
+    block17(v103: i32, v104: i32, v112: i32, v122: i32, v133: i32, v160: i32, v175: i32, v188: i32):
+        v107 = const.i32 3 : i32;
+        v108 = band v104, v107 : i32;
+        v109 = cast v103 : u32;
+        v110 = add.checked v109, 4 : u32;
+        v111 = inttoptr v110 : *mut i32;
+        store v111, v108;
+        v113 = const.i32 3 : i32;
+        v114 = band v112, v113 : i32;
+        v115 = cast v103 : u32;
+        v116 = inttoptr v115 : *mut i32;
+        store v116, v114;
+        v117 = const.i32 2 : i32;
+        v118 = band v112, v117 : i32;
+        v119 = eq v118, 0 : i1;
+        v120 = cast v119 : i32;
+        v121 = neq v120, 0 : i1;
+        condbr v121, block19(v133, v122, v160, v175, v188), block20;
+
+    block18:
+        v84 = cast v80 : u32;
+        v85 = inttoptr v84 : *mut i32;
+        v86 = load v85 : i32;
+        v87 = const.i32 3 : i32;
+        v88 = band v86, v87 : i32;
+        v90 = const.i32 -4 : i32;
+        v91 = band v89, v90 : i32;
+        v92 = bor v88, v91 : i32;
+        v93 = cast v80 : u32;
+        v94 = inttoptr v93 : *mut i32;
+        store v94, v92;
+        v96 = cast v95 : u32;
+        v97 = add.checked v96, 4 : u32;
+        v98 = inttoptr v97 : *mut i32;
+        v99 = load v98 : i32;
+        v100 = cast v95 : u32;
+        v101 = inttoptr v100 : *mut i32;
+        v102 = load v101 : i32;
+        br block17(v95, v99, v102, v123, v134, v161, v176, v189);
+
+    block19(v132: i32, v137: i32, v159: i32, v174: i32, v187: i32):
+        v138 = cast v132 : u32;
+        v139 = inttoptr v138 : *mut i32;
+        store v139, v137;
+        v140 = cast v137 : u32;
+        v141 = add.checked v140, 8 : u32;
+        v142 = inttoptr v141 : *mut i32;
+        v143 = load v142 : i32;
+        v144 = const.i32 1 : i32;
+        v145 = band v143, v144 : i32;
+        v146 = neq v145, 0 : i1;
+        condbr v146, block9(v137, v143, v132, v159, v174, v187), block21;
+
+    block20:
+        v125 = cast v122 : u32;
+        v126 = inttoptr v125 : *mut i32;
+        v127 = load v126 : i32;
+        v128 = const.i32 2 : i32;
+        v129 = bor v127, v128 : i32;
+        v130 = cast v122 : u32;
+        v131 = inttoptr v130 : *mut i32;
+        store v131, v129;
+        br block19(v133, v122, v160, v175, v188);
+
+    block21:
+        br block10;
+
+    block22(v296: i32, v297: i32, v302: i32, v303: i32, v304: i32):
+        v299 = cast v296 : u32;
+        v300 = inttoptr v299 : *mut i32;
+        store v300, v297;
+        v301 = neq v297, 0 : i1;
+        condbr v301, block4(v297, v296, v302, v303, v304), block33;
+
+    block23:
+        v169 = const.i32 72 : i32;
+        v170 = add.wrapping v155, v169 : i32;
+        v171 = sub.wrapping v153, v157 : i32;
+        v179 = band v171, v172 : i32;
+        v180 = cast v170 : u32;
+        v181 = cast v179 : u32;
+        v182 = lte v180, v181 : i1;
+        v183 = cast v182 : i32;
+        v184 = neq v183, 0 : i1;
+        condbr v184, block25, block26;
+
+    block24(v288: i32, v289: i32):
+        v290 = const.i32 1 : i32;
+        v291 = bor v289, v290 : i32;
+        v292 = cast v288 : u32;
+        v293 = inttoptr v292 : *mut i32;
+        store v293, v291;
+        v294 = const.i32 8 : i32;
+        v295 = add.wrapping v288, v294 : i32;
+        ret v295;
+
+    block25:
+        v206 = const.i32 0 : i32;
+        v207 = const.i32 0 : i32;
+        v208 = cast v179 : u32;
+        v209 = inttoptr v208 : *mut i32;
+        store v209, v207;
+        v210 = const.i32 -8 : i32;
+        v211 = add.wrapping v179, v210 : i32;
+        v212 = const.i64 0 : i64;
+        v213 = cast v211 : u32;
+        v214 = inttoptr v213 : *mut i64;
+        store v214, v212;
+        v215 = cast v148 : u32;
+        v216 = inttoptr v215 : *mut i32;
+        v217 = load v216 : i32;
+        v218 = const.i32 -4 : i32;
+        v219 = band v217, v218 : i32;
+        v220 = cast v211 : u32;
+        v221 = inttoptr v220 : *mut i32;
+        store v221, v219;
+        v222 = cast v148 : u32;
+        v223 = inttoptr v222 : *mut i32;
+        v224 = load v223 : i32;
+        v225 = const.i32 -4 : i32;
+        v226 = band v224, v225 : i32;
+        v227 = eq v226, 0 : i1;
+        v228 = cast v227 : i32;
+        v229 = neq v228, 0 : i1;
+        condbr v229, block28(v211, v206, v148), block29;
+
+    block26:
+        v192 = band v185, v155 : i32;
+        v193 = neq v192, 0 : i1;
+        condbr v193, block22(v194, v298, v157, v172, v185), block27;
+
+    block27:
+        v195 = cast v148 : u32;
+        v196 = add.checked v195, 8 : u32;
+        v197 = inttoptr v196 : *mut i32;
+        v198 = load v197 : i32;
+        v199 = const.i32 -4 : i32;
+        v200 = band v198, v199 : i32;
+        v201 = cast v194 : u32;
+        v202 = inttoptr v201 : *mut i32;
+        store v202, v200;
+        v203 = cast v148 : u32;
+        v204 = inttoptr v203 : *mut i32;
+        v205 = load v204 : i32;
+        br block24(v148, v205);
+
+    block28(v249: i32, v250: i32, v251: i32):
+        v252 = bor v250, v251 : i32;
+        v253 = cast v249 : u32;
+        v254 = add.checked v253, 4 : u32;
+        v255 = inttoptr v254 : *mut i32;
+        store v255, v252;
+        v256 = cast v251 : u32;
+        v257 = add.checked v256, 8 : u32;
+        v258 = inttoptr v257 : *mut i32;
+        v259 = load v258 : i32;
+        v260 = const.i32 -2 : i32;
+        v261 = band v259, v260 : i32;
+        v262 = cast v251 : u32;
+        v263 = add.checked v262, 8 : u32;
+        v264 = inttoptr v263 : *mut i32;
+        store v264, v261;
+        v265 = cast v251 : u32;
+        v266 = inttoptr v265 : *mut i32;
+        v267 = load v266 : i32;
+        v268 = const.i32 3 : i32;
+        v269 = band v267, v268 : i32;
+        v270 = bor v269, v249 : i32;
+        v271 = cast v251 : u32;
+        v272 = inttoptr v271 : *mut i32;
+        store v272, v270;
+        v273 = const.i32 2 : i32;
+        v274 = band v267, v273 : i32;
+        v275 = neq v274, 0 : i1;
+        condbr v275, block31, block32;
+
+    block29:
+        v230 = const.i32 2 : i32;
+        v231 = band v224, v230 : i32;
+        v232 = neq v231, 0 : i1;
+        condbr v232, block28(v211, v206, v148), block30;
+
+    block30:
+        v233 = cast v226 : u32;
+        v234 = add.checked v233, 4 : u32;
+        v235 = inttoptr v234 : *mut i32;
+        v236 = load v235 : i32;
+        v237 = const.i32 3 : i32;
+        v238 = band v236, v237 : i32;
+        v239 = bor v238, v211 : i32;
+        v240 = cast v226 : u32;
+        v241 = add.checked v240, 4 : u32;
+        v242 = inttoptr v241 : *mut i32;
+        store v242, v239;
+        v243 = cast v211 : u32;
+        v244 = add.checked v243, 4 : u32;
+        v245 = inttoptr v244 : *mut i32;
+        v246 = load v245 : i32;
+        v247 = const.i32 3 : i32;
+        v248 = band v246, v247 : i32;
+        br block28(v211, v248, v148);
+
+    block31:
+        v279 = const.i32 -3 : i32;
+        v280 = band v270, v279 : i32;
+        v281 = cast v251 : u32;
+        v282 = inttoptr v281 : *mut i32;
+        store v282, v280;
+        v283 = cast v249 : u32;
+        v284 = inttoptr v283 : *mut i32;
+        v285 = load v284 : i32;
+        v286 = const.i32 2 : i32;
+        v287 = bor v285, v286 : i32;
+        br block24(v249, v287);
+
+    block32:
+        v276 = cast v249 : u32;
+        v277 = inttoptr v276 : *mut i32;
+        v278 = load v277 : i32;
+        br block24(v249, v278);
+
+    block33:
+        br block5;
+    }
+
+    pub fn <wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc(i32, i32, i32) -> i32     {
+    block0(v0: i32, v1: i32, v2: i32):
+        v4 = const.i32 0 : i32;
+        v5 = global.load (@__stack_pointer) as *mut i8 : i32;
+        v6 = const.i32 16 : i32;
+        v7 = sub.wrapping v5, v6 : i32;
+        v8 = global.symbol @__stack_pointer : *mut i32;
+        store v8, v7;
+        v9 = neq v2, 0 : i1;
+        condbr v9, block3, block4;
+
+    block1(v3: i32):
+        ret v3;
+
+    block2(v87: i32, v91: i32):
+        v88 = const.i32 16 : i32;
+        v89 = add.wrapping v87, v88 : i32;
+        v90 = global.symbol @__stack_pointer : *mut i32;
+        store v90, v89;
+        br block1(v91);
+
+    block3:
+        v10 = cast v0 : u32;
+        v11 = inttoptr v10 : *mut i32;
+        v12 = load v11 : i32;
+        v13 = cast v7 : u32;
+        v14 = add.checked v13, 12 : u32;
+        v15 = inttoptr v14 : *mut i32;
+        store v15, v12;
+        v16 = const.i32 3 : i32;
+        v17 = add.wrapping v2, v16 : i32;
+        v18 = const.i32 2 : i32;
+        v19 = cast v17 : u32;
+        v20 = cast v18 : u32;
+        v21 = shr.wrapping v19, v20 : u32;
+        v22 = cast v21 : i32;
+        v23 = const.i32 12 : i32;
+        v24 = add.wrapping v7, v23 : i32;
+        v25 = call module0::wee_alloc::alloc_first_fit(v22, v1, v24) : i32;
+        v26 = neq v25, 0 : i1;
+        condbr v26, block5(v0, v7, v25), block6;
+
+    block4:
+        br block2(v7, v1);
+
+    block5(v79: i32, v80: i32, v92: i32):
+        v81 = cast v80 : u32;
+        v82 = add.checked v81, 12 : u32;
+        v83 = inttoptr v82 : *mut i32;
+        v84 = load v83 : i32;
+        v85 = cast v79 : u32;
+        v86 = inttoptr v85 : *mut i32;
+        store v86, v84;
+        br block2(v80, v92);
+
+    block6:
+        v27 = const.i32 -4 : i32;
+        v28 = band v17, v27 : i32;
+        v29 = const.i32 3 : i32;
+        v30 = shl.wrapping v1, v29 : i32;
+        v31 = const.i32 512 : i32;
+        v32 = add.wrapping v30, v31 : i32;
+        v33 = cast v28 : u32;
+        v34 = cast v32 : u32;
+        v35 = gt v33, v34 : i1;
+        v36 = cast v35 : i32;
+        v37 = neq v36, 0 : i1;
+        v38 = select v37, v28, v32 : i32;
+        v39 = const.i32 65543 : i32;
+        v40 = add.wrapping v38, v39 : i32;
+        v41 = const.i32 16 : i32;
+        v42 = cast v40 : u32;
+        v43 = cast v41 : u32;
+        v44 = shr.wrapping v42, v43 : u32;
+        v45 = cast v44 : i32;
+        v46 = cast v45 : u32;
+        v47 = memory.grow v46 : i32;
+        v48 = const.i32 -1 : i32;
+        v49 = neq v47, v48 : i1;
+        v50 = cast v49 : i32;
+        v51 = neq v50, 0 : i1;
+        condbr v51, block7, block8;
+
+    block7:
+        v53 = const.i32 16 : i32;
+        v54 = shl.wrapping v47, v53 : i32;
+        v55 = const.i32 0 : i32;
+        v56 = cast v54 : u32;
+        v57 = add.checked v56, 4 : u32;
+        v58 = inttoptr v57 : *mut i32;
+        store v58, v55;
+        v59 = cast v7 : u32;
+        v60 = add.checked v59, 12 : u32;
+        v61 = inttoptr v60 : *mut i32;
+        v62 = load v61 : i32;
+        v63 = cast v54 : u32;
+        v64 = add.checked v63, 8 : u32;
+        v65 = inttoptr v64 : *mut i32;
+        store v65, v62;
+        v66 = const.i32 -65536 : i32;
+        v67 = band v40, v66 : i32;
+        v68 = add.wrapping v54, v67 : i32;
+        v69 = const.i32 2 : i32;
+        v70 = bor v68, v69 : i32;
+        v71 = cast v54 : u32;
+        v72 = inttoptr v71 : *mut i32;
+        store v72, v70;
+        v73 = cast v7 : u32;
+        v74 = add.checked v73, 12 : u32;
+        v75 = inttoptr v74 : *mut i32;
+        store v75, v54;
+        v76 = const.i32 12 : i32;
+        v77 = add.wrapping v7, v76 : i32;
+        v78 = call module0::wee_alloc::alloc_first_fit(v22, v1, v77) : i32;
+        br block5(v0, v7, v78);
+
+    block8:
+        v52 = const.i32 0 : i32;
+        br block5(v0, v7, v52);
+    }
+
+    pub fn <wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc(i32, i32, i32, i32)     {
+    block0(v0: i32, v1: i32, v2: i32, v3: i32):
+        v4 = const.i32 0 : i32;
+        v5 = eq v1, 0 : i1;
+        v6 = cast v5 : i32;
+        v7 = neq v6, 0 : i1;
+        condbr v7, block2, block3;
+
+    block1:
+        ret;
+
+    block2:
+        br block1;
+
+    block3:
+        v8 = eq v3, 0 : i1;
+        v9 = cast v8 : i32;
+        v10 = neq v9, 0 : i1;
+        condbr v10, block2, block4;
+
+    block4:
+        v11 = cast v0 : u32;
+        v12 = inttoptr v11 : *mut i32;
+        v13 = load v12 : i32;
+        v14 = const.i32 0 : i32;
+        v15 = cast v1 : u32;
+        v16 = inttoptr v15 : *mut i32;
+        store v16, v14;
+        v17 = const.i32 -8 : i32;
+        v18 = add.wrapping v1, v17 : i32;
+        v19 = cast v18 : u32;
+        v20 = inttoptr v19 : *mut i32;
+        v21 = load v20 : i32;
+        v22 = const.i32 -2 : i32;
+        v23 = band v21, v22 : i32;
+        v24 = cast v18 : u32;
+        v25 = inttoptr v24 : *mut i32;
+        store v25, v23;
+        v26 = const.i32 4 : i32;
+        v27 = add.wrapping v18, v26 : i32;
+        v28 = cast v27 : u32;
+        v29 = inttoptr v28 : *mut i32;
+        v30 = load v29 : i32;
+        v31 = const.i32 -4 : i32;
+        v32 = band v30, v31 : i32;
+        v33 = eq v32, 0 : i1;
+        v34 = cast v33 : i32;
+        v35 = neq v34, 0 : i1;
+        condbr v35, block8(v21, v1, v18, v13, v0), block9;
+
+    block5(v155: i32, v161: i32):
+        v163 = cast v155 : u32;
+        v164 = inttoptr v163 : *mut i32;
+        store v164, v161;
+        br block2;
+
+    block6(v151: i32, v152: i32, v160: i32, v162: i32):
+        v153 = cast v151 : u32;
+        v154 = inttoptr v153 : *mut i32;
+        store v154, v152;
+        br block5(v160, v162);
+
+    block7(v147: i32, v156: i32):
+        br block5(v156, v147);
+
+    block8(v116: i32, v132: i32, v141: i32, v150: i32, v159: i32):
+        v117 = const.i32 -4 : i32;
+        v118 = band v116, v117 : i32;
+        v119 = eq v118, 0 : i1;
+        v120 = cast v119 : i32;
+        v121 = neq v120, 0 : i1;
+        condbr v121, block6(v132, v150, v159, v141), block18;
+
+    block9:
+        v36 = cast v32 : u32;
+        v37 = inttoptr v36 : *mut i32;
+        v38 = load v37 : i32;
+        v39 = const.i32 1 : i32;
+        v40 = band v38, v39 : i32;
+        v41 = neq v40, 0 : i1;
+        condbr v41, block8(v21, v1, v18, v13, v0), block10;
+
+    block10:
+        v42 = const.i32 -4 : i32;
+        v43 = band v21, v42 : i32;
+        v44 = neq v43, 0 : i1;
+        condbr v44, block13, block14;
+
+    block11(v90: i32, v91: i32, v96: i32, v97: i32, v107: i32, v148: i32, v157: i32):
+        v92 = const.i32 3 : i32;
+        v93 = band v91, v92 : i32;
+        v94 = cast v90 : u32;
+        v95 = inttoptr v94 : *mut i32;
+        store v95, v93;
+        v98 = const.i32 3 : i32;
+        v99 = band v97, v98 : i32;
+        v100 = cast v96 : u32;
+        v101 = inttoptr v100 : *mut i32;
+        store v101, v99;
+        v102 = const.i32 2 : i32;
+        v103 = band v97, v102 : i32;
+        v104 = eq v103, 0 : i1;
+        v105 = cast v104 : i32;
+        v106 = neq v105, 0 : i1;
+        condbr v106, block7(v148, v157), block17;
+
+    block12(v72: i32, v73: i32, v76: i32, v82: i32, v86: i32, v108: i32, v149: i32, v158: i32):
+        v74 = const.i32 -4 : i32;
+        v75 = band v73, v74 : i32;
+        v77 = const.i32 3 : i32;
+        v78 = band v76, v77 : i32;
+        v79 = bor v75, v78 : i32;
+        v80 = cast v72 : u32;
+        v81 = inttoptr v80 : *mut i32;
+        store v81, v79;
+        v83 = cast v82 : u32;
+        v84 = inttoptr v83 : *mut i32;
+        v85 = load v84 : i32;
+        v87 = cast v86 : u32;
+        v88 = inttoptr v87 : *mut i32;
+        v89 = load v88 : i32;
+        br block11(v82, v85, v86, v89, v108, v149, v158);
+
+    block13:
+        v45 = const.i32 2 : i32;
+        v46 = band v21, v45 : i32;
+        v47 = neq v46, 0 : i1;
+        condbr v47, block12(v32, v23, v38, v27, v18, v32, v13, v0), block15;
+
+    block14:
+        br block12(v32, v23, v38, v27, v18, v32, v13, v0);
+
+    block15:
+        v48 = cast v43 : u32;
+        v49 = add.checked v48, 4 : u32;
+        v50 = inttoptr v49 : *mut i32;
+        v51 = load v50 : i32;
+        v52 = const.i32 3 : i32;
+        v53 = band v51, v52 : i32;
+        v54 = bor v53, v32 : i32;
+        v55 = cast v43 : u32;
+        v56 = add.checked v55, 4 : u32;
+        v57 = inttoptr v56 : *mut i32;
+        store v57, v54;
+        v58 = cast v18 : u32;
+        v59 = inttoptr v58 : *mut i32;
+        v60 = load v59 : i32;
+        v61 = cast v27 : u32;
+        v62 = inttoptr v61 : *mut i32;
+        v63 = load v62 : i32;
+        v64 = const.i32 -4 : i32;
+        v65 = band v63, v64 : i32;
+        v66 = eq v65, 0 : i1;
+        v67 = cast v66 : i32;
+        v68 = neq v67, 0 : i1;
+        condbr v68, block11(v27, v63, v18, v60, v32, v13, v0), block16;
+
+    block16:
+        v69 = cast v65 : u32;
+        v70 = inttoptr v69 : *mut i32;
+        v71 = load v70 : i32;
+        br block12(v65, v60, v71, v27, v18, v32, v13, v0);
+
+    block17:
+        v109 = cast v107 : u32;
+        v110 = inttoptr v109 : *mut i32;
+        v111 = load v110 : i32;
+        v112 = const.i32 2 : i32;
+        v113 = bor v111, v112 : i32;
+        v114 = cast v107 : u32;
+        v115 = inttoptr v114 : *mut i32;
+        store v115, v113;
+        br block7(v148, v157);
+
+    block18:
+        v122 = const.i32 2 : i32;
+        v123 = band v116, v122 : i32;
+        v124 = neq v123, 0 : i1;
+        condbr v124, block6(v132, v150, v159, v141), block19;
+
+    block19:
+        v125 = cast v118 : u32;
+        v126 = inttoptr v125 : *mut u8;
+        v127 = load v126 : u8;
+        v128 = zext v127 : i32;
+        v129 = const.i32 1 : i32;
+        v130 = band v128, v129 : i32;
+        v131 = neq v130, 0 : i1;
+        condbr v131, block6(v132, v150, v159, v141), block20;
+
+    block20:
+        v133 = cast v118 : u32;
+        v134 = add.checked v133, 8 : u32;
+        v135 = inttoptr v134 : *mut i32;
+        v136 = load v135 : i32;
+        v137 = const.i32 -4 : i32;
+        v138 = band v136, v137 : i32;
+        v139 = cast v132 : u32;
+        v140 = inttoptr v139 : *mut i32;
+        store v140, v138;
+        v142 = const.i32 1 : i32;
+        v143 = bor v141, v142 : i32;
+        v144 = cast v118 : u32;
+        v145 = add.checked v144, 8 : u32;
+        v146 = inttoptr v145 : *mut i32;
+        store v146, v143;
+        br block7(v150, v159);
+    }
+
+    pub fn wit_bindgen::rt::run_ctors_once()     {
+    block0:
+        v0 = const.i32 0 : i32;
+        v1 = cast v0 : u32;
+        v2 = add.checked v1, 1048581 : u32;
+        v3 = inttoptr v2 : *mut u8;
+        v4 = load v3 : u8;
+        v5 = zext v4 : i32;
+        v6 = neq v5, 0 : i1;
+        condbr v6, block2, block3;
+
+    block1:
+        ret;
+
+    block2:
+        br block1;
+
+    block3:
+        call module0::__wasm_call_ctors();
+        v7 = const.i32 0 : i32;
+        v8 = const.i32 1 : i32;
+        v9 = trunc v8 : u8;
+        v10 = cast v7 : u32;
+        v11 = add.checked v10, 1048581 : u32;
+        v12 = inttoptr v11 : *mut u8;
+        store v12, v9;
+        br block2;
+    }
+
+    pub fn cabi_realloc(i32, i32, i32, i32) -> i32     {
+    block0(v0: i32, v1: i32, v2: i32, v3: i32):
+        v5 = neq v1, 0 : i1;
+        condbr v5, block4, block5;
+
+    block1(v4: i32):
+        ret v4;
+
+    block2(v19: i32):
+        br block1(v19);
+
+    block3(v17: i32):
+        v18 = neq v17, 0 : i1;
+        condbr v18, block2(v17), block7;
+
+    block4:
+        v16 = call module0::__rust_realloc(v0, v1, v2, v3) : i32;
+        br block3(v16);
+
+    block5:
+        v6 = eq v3, 0 : i1;
+        v7 = cast v6 : i32;
+        v8 = neq v7, 0 : i1;
+        condbr v8, block2(v2), block6;
+
+    block6:
+        v9 = const.i32 0 : i32;
+        v10 = cast v9 : u32;
+        v11 = add.checked v10, 1048580 : u32;
+        v12 = inttoptr v11 : *mut u8;
+        v13 = load v12 : u8;
+        v14 = zext v13 : i32;
+        v15 = call module0::__rust_alloc(v3, v2) : i32;
+        br block3(v15);
+
+    block7:
+        unreachable ;
+    }
 }
 

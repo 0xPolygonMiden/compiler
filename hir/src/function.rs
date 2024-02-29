@@ -411,7 +411,7 @@ impl fmt::Debug for Function {
 }
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        crate::write_function(f, self)
+        crate::write_function(f, self, 0)
     }
 }
 impl Eq for Function {}
