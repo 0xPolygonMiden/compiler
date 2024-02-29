@@ -69,9 +69,7 @@ mod tests {
     use miden_hir_type::Type;
 
     use crate::{
-        component::StaticModuleIndex,
-        config::{ExportMetadata, ImportMetadata},
-        test_utils::test_diagnostics,
+        component::StaticModuleIndex, config::ImportMetadata, test_utils::test_diagnostics,
     };
 
     use super::*;
@@ -105,18 +103,7 @@ mod tests {
         );
         let wasm = wat::parse_str(wat).unwrap();
         let diagnostics = test_diagnostics();
-        let export_metadata = [(
-            Symbol::intern("add").into(),
-            ExportMetadata {
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
-            },
-        )]
-        .into_iter()
-        .collect();
-        let config = WasmTranslationConfig {
-            export_metadata,
-            ..Default::default()
-        };
+        let config = Default::default();
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &diagnostics).unwrap();
         let component_translation =
@@ -208,22 +195,13 @@ mod tests {
             interface_function_ident.clone(),
             ImportMetadata {
                 digest: RpoDigest::default(),
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         )]
         .into_iter()
         .collect();
-        let export_metadata = [(
-            Symbol::intern("inc").into(),
-            ExportMetadata {
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
-            },
-        )]
-        .into_iter()
-        .collect();
+
         let config = WasmTranslationConfig {
             import_metadata,
-            export_metadata,
             ..Default::default()
         };
         let (mut component_types_builder, parsed_component) =

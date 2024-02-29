@@ -1,7 +1,6 @@
 use crate::CompilerTest;
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
-use miden_frontend_wasm::ExportMetadata;
 use miden_frontend_wasm::ImportMetadata;
 use miden_frontend_wasm::WasmTranslationConfig;
 use miden_hir::FunctionExportName;
@@ -38,45 +37,29 @@ fn sdk_basic_wallet() {
             create_note_ident.clone(),
             ImportMetadata {
                 digest: RpoDigest::default(),
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         ),
         (
             remove_asset_ident.clone(),
             ImportMetadata {
                 digest: RpoDigest::default(),
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         ),
         (
             add_asset_ident.clone(),
             ImportMetadata {
                 digest: RpoDigest::default(),
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
             },
         ),
     ]
     .into_iter()
     .collect();
-    let export_metadata: FxHashMap<FunctionExportName, ExportMetadata> = [
-        (
-            Symbol::intern("send-asset").into(),
-            ExportMetadata {
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
-            },
-        ),
-        (
-            Symbol::intern("receive-asset").into(),
-            ExportMetadata {
-                invoke_method: miden_hir::FunctionInvocationMethod::Call,
-            },
-        ),
-    ]
-    .into_iter()
-    .collect();
+    let expected_exports: Vec<FunctionExportName> = vec![
+        Symbol::intern("send-asset").into(),
+        Symbol::intern("receive-asset").into(),
+    ];
     let config = WasmTranslationConfig {
         import_metadata: import_metadata.clone(),
-        export_metadata: export_metadata.clone(),
         ..Default::default()
     };
     let mut test = CompilerTest::rust_source_cargo_component("sdk/basic-wallet", config);
@@ -91,7 +74,7 @@ fn sdk_basic_wallet() {
     for (_, import) in ir.imports() {
         assert!(import_metadata.contains_key(&import.interface_function));
     }
-    for (name, _meta) in export_metadata {
+    for name in expected_exports {
         assert!(ir.exports().contains_key(&name));
     }
 }

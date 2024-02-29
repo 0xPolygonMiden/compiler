@@ -38,8 +38,6 @@ pub struct ComponentImport {
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
     pub function_ty: LiftedFunctionType,
-    /// The method of calling the function
-    pub invoke_method: FunctionInvocationMethod,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
 }
@@ -67,8 +65,6 @@ pub struct ComponentExport {
     pub function: FunctionIdent,
     /// The component(lifted) type of the exported function
     pub function_ty: LiftedFunctionType,
-    /// The method of calling the function
-    pub invoke_method: FunctionInvocationMethod,
 }
 
 /// A [Component] is a collection of [Module]s that are being compiled together as a package and have exports/imports.
