@@ -121,14 +121,14 @@ impl CompilerTest {
             .arg("build")
             .arg("--manifest-path")
             .arg(manifest_path)
-            .arg("--release")
-            // compile std as part of crate graph compilation
-            // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-            .arg("-Z")
-            .arg("build-std=std,core,alloc,panic_abort")
-            .arg("-Z")
-            // abort on panic without message formatting (core::fmt uses call_indirect)
-            .arg("build-std-features=panic_immediate_abort");
+            .arg("--release");
+        // compile std as part of crate graph compilation
+        // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+        // .arg("-Z")
+        // .arg("build-std=std,core,alloc,panic_abort")
+        // .arg("-Z")
+        // // abort on panic without message formatting (core::fmt uses call_indirect)
+        // .arg("build-std-features=panic_immediate_abort");
         let mut child = cargo_build_cmd
             .arg("--message-format=json-render-diagnostics")
             .stdout(Stdio::piped())
@@ -217,11 +217,11 @@ impl CompilerTest {
             .arg(target_dir.clone())
             // compile std as part of crate graph compilation
             // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-            .arg("-Z")
-            .arg("build-std=core,alloc")
-            .arg("-Z")
-            // abort on panic without message formatting (core::fmt uses call_indirect)
-            .arg("build-std-features=panic_immediate_abort")
+            // .arg("-Z")
+            // .arg("build-std=core,alloc")
+            // .arg("-Z")
+            // // abort on panic without message formatting (core::fmt uses call_indirect)
+            // .arg("build-std-features=panic_immediate_abort")
             .output()
             .expect("Failed to execute cargo build.");
         if !output.status.success() {
@@ -283,10 +283,15 @@ impl CompilerTest {
             r#"
             #![no_std]
             #![no_main]
+            // This allows us to abort if the panic handler is invoked, but
+            // it is gated behind a perma-unstable nightly feature
+            #![feature(core_intrinsics)]
+            // Disable the warning triggered by the use of the `core_intrinsics` feature
+            #![allow(internal_features)]
 
             #[panic_handler]
             fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
-                loop {{}}
+                core::intrinsics::abort()
             }}
 
             #[no_mangle]

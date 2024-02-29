@@ -15,16 +15,35 @@
     )
     (func $miden:base/types@1.0.0#from-core-asset (;2;) (type 2) (param i64 i64 i64 i64) (result i32)
       call $wit_bindgen::rt::run_ctors_once
-      unreachable
-      unreachable
+      i32.const 0
+      i64.const 0
+      i64.store offset=1048592
+      i32.const 0
+      local.get 0
+      i64.store offset=1048584
+      i32.const 0
+      i32.const 0
+      i32.store8 offset=1048576
+      i32.const 1048576
     )
     (func $miden:base/types@1.0.0#to-core-asset (;3;) (type 3) (param i32 i64 i64 i64 i64) (result i32)
       call $wit_bindgen::rt::run_ctors_once
-      unreachable
-      unreachable
+      i32.const 0
+      i64.const 0
+      i64.store offset=1048600
+      i32.const 0
+      i64.const 0
+      i64.store offset=1048592
+      i32.const 0
+      i64.const 0
+      i64.store offset=1048584
+      i32.const 0
+      i64.const 0
+      i64.store offset=1048576
+      i32.const 1048576
     )
     (func $__rust_alloc (;4;) (type 4) (param i32 i32) (result i32)
-      i32.const 1048576
+      i32.const 1048616
       local.get 1
       local.get 0
       call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -32,7 +51,7 @@
     (func $__rust_realloc (;5;) (type 5) (param i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
-        i32.const 1048576
+        i32.const 1048616
         local.get 2
         local.get 3
         call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -48,7 +67,7 @@
         i32.lt_u
         select
         memory.copy
-        i32.const 1048576
+        i32.const 1048616
         local.get 0
         local.get 2
         local.get 1
@@ -630,12 +649,12 @@
     (func $wit_bindgen::rt::run_ctors_once (;9;) (type 0)
       block ;; label = @1
         i32.const 0
-        i32.load8_u offset=1048581
+        i32.load8_u offset=1048621
         br_if 0 (;@1;)
         call $__wasm_call_ctors
         i32.const 0
         i32.const 1
-        i32.store8 offset=1048581
+        i32.store8 offset=1048621
       end
     )
     (func $cabi_realloc (;10;) (type 5) (param i32 i32 i32 i32) (result i32)
@@ -648,7 +667,7 @@
             i32.eqz
             br_if 2 (;@1;)
             i32.const 0
-            i32.load8_u offset=1048580
+            i32.load8_u offset=1048620
             drop
             local.get 3
             local.get 2
