@@ -546,6 +546,13 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         self.result
             .initializers
             .push(LocalInitializer::ModuleStatic(static_idx));
+        // Set a fallback name for the newly added parsed module to be used if
+        // the name section does not define a name for the module.
+        self.static_modules
+            .get_mut(static_idx)
+            .unwrap()
+            .module
+            .set_name_fallback(format!("module{}", static_idx.as_u32()));
         Ok(())
     }
 
