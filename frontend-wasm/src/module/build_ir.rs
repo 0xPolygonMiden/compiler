@@ -54,7 +54,9 @@ pub fn build_ir_module(
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
     build_data_segments(parsed_module, &mut module_builder, diagnostics)?;
     let mut func_translator = FuncTranslator::new();
-    // TODO: Ugly! Find a better way to consume the function body inputs
+    // Although this renders this parsed module invalid(without functiong
+    // bodies), we don't support multiple module instances. Thus, this
+    // ParseModule will not be used again to make another module instance.
     let func_body_inputs = mem::take(&mut parsed_module.function_body_inputs);
     for (defined_func_idx, body_data) in func_body_inputs {
         let func_index = &parsed_module.module.func_index(defined_func_idx);

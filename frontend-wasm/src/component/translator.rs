@@ -131,6 +131,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 }
                 self.module_instances_source.push(*static_module_idx);
                 // TODO: create and init module instance tables
+                // see https://github.com/0xPolygonMiden/compiler/issues/133
                 let module = &self.parsed_modules[*static_module_idx].module;
                 let mut module_args: Vec<ModuleArgument> = Vec::new();
                 for (idx, arg) in args.iter().enumerate() {
@@ -222,6 +223,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 }
                 EntityIndex::Table(_idx) => {
                     // TODO: init the exported table with this module's table initialization values
+                    // see https://github.com/0xPolygonMiden/compiler/issues/133
                     Ok(ModuleArgument::Table)
                 }
                 EntityIndex::Memory(_) => {
@@ -301,7 +303,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 "Exporting of an imported module is not supported".to_string(),
             )),
             Export::Type(_) => {
-                // TODO: implement type exports
+                // Besides the function exports the individual type are also exported from the component
+                // We can ignore them for now
                 Ok(())
             }
         }

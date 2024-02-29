@@ -2,7 +2,6 @@
 
 // Based on wasmtime v16.0 Wasm component translation
 
-// TODO: remove this once Wasm CM support is complete
 #![allow(dead_code)]
 
 pub mod resources;
