@@ -1,8 +1,8 @@
 (component 
     ;; Component Imports
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (call) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#basic_wallet.wasm #basic_wallet::bindings::miden::base::tx::create_note::wit_import)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (call) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#wit-component:fixups #func0)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (call) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#wit-component:fixups #func1)
+    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#basic_wallet.wasm #basic_wallet::bindings::miden::base::tx::create_note::wit_import)
+    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#wit-component:fixups #func0)
+    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#wit-component:fixups #func1)
 
     ;; Modules
     (module #wit-component:shim

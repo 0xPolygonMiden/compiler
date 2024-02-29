@@ -1,6 +1,6 @@
 (component 
     ;; Component Imports
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (call) (type (func (param u32) (param u32) (result u32)))) (#inc_wasm_component.wasm #inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import)
+    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param u32) (param u32) (result u32)))) (#inc_wasm_component.wasm #inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import)
 
     ;; Modules
     (module #inc_wasm_component.wasm
