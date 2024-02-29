@@ -415,7 +415,7 @@ impl Type {
             Self::Struct(ref struct_ty) => struct_ty.min_alignment(),
             // Arrays use the minimum alignment of their element type
             Self::Array(ref element_ty, _) => element_ty.min_alignment(),
-            Self::Tuple(_) => todo!("Type::min_alignment for Tuple is not yet implemented"),
+            Self::Tuple(elems) => elems.iter().map(|ty| ty.min_alignment()).max().unwrap_or(1),
         }
     }
 

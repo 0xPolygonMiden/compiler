@@ -1,9 +1,8 @@
 (component
   (type (;0;)
     (instance
-      (type (;0;) (record (field "inner" float64)))
+      (type (;0;) (record (field "inner" u64)))
       (export (;1;) "felt" (type (eq 0)))
-<<<<<<< HEAD
       (type (;2;) (record (field "inner" 1)))
       (export (;3;) "account-id" (type (eq 2)))
       (type (;4;) (tuple 1 1 1 1))
@@ -12,14 +11,6 @@
       (export (;7;) "core-asset" (type (eq 6)))
       (type (;8;) (func (param "felt" 1) (result 3)))
       (export (;0;) "account-id-from-felt" (func (type 8)))
-=======
-      (export (;2;) "account-id" (type (eq 1)))
-      (type (;3;) (list 1))
-      (export (;4;) "note-inputs" (type (eq 3)))
-      (type (;5;) (tuple 1 1 1 1))
-      (export (;6;) "word" (type (eq 5)))
-      (export (;7;) "asset" (type (eq 6)))
->>>>>>> 553b59f (draft basic wallet translation)
     )
   )
   (import "miden:base/core-types@1.0.0" (instance (;0;) (type 0)))
@@ -62,10 +53,9 @@
   (import "miden:basic-wallet/basic-wallet@1.0.0" (instance (;3;) (type 7)))
   (core module (;0;)
     (type (;0;) (func (param i32)))
-<<<<<<< HEAD
-    (type (;1;) (func (param f64) (result f64)))
-    (type (;2;) (func (result f64)))
-    (type (;3;) (func (param f64 f64 f64 f64)))
+    (type (;1;) (func (param i64) (result i64)))
+    (type (;2;) (func (result i64)))
+    (type (;3;) (func (param i64 i64 i64 i64)))
     (type (;4;) (func))
     (type (;5;) (func (param i32 i32) (result i32)))
     (type (;6;) (func (param i32 i32 i32 i32) (result i32)))
@@ -78,21 +68,6 @@
     (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;4;) (type 3)))
     (func $__wasm_call_ctors (;5;) (type 4))
     (func $miden:base/note-script@1.0.0#note-script (;6;) (type 4)
-=======
-    (type (;1;) (func (result i64)))
-    (type (;2;) (func (param i64 i64 i64 i64)))
-    (type (;3;) (func))
-    (type (;4;) (func (param i32 i32) (result i32)))
-    (type (;5;) (func (param i32 i32 i32 i32) (result i32)))
-    (type (;6;) (func (param i32 i32 i32) (result i32)))
-    (type (;7;) (func (param i32 i32 i32 i32)))
-    (import "miden:base/tx-kernel@1.0.0" "get-inputs" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_inputs::wit_import (;0;) (type 0)))
-    (import "miden:base/tx-kernel@1.0.0" "get-id" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import (;1;) (type 1)))
-    (import "miden:base/tx-kernel@1.0.0" "get-assets" (func $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import (;2;) (type 0)))
-    (import "miden:basic-wallet/basic-wallet@1.0.0" "receive-asset" (func $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import (;3;) (type 2)))
-    (func $__wasm_call_ctors (;4;) (type 3))
-    (func $miden:base/note@1.0.0#note-script (;5;) (type 3)
->>>>>>> 553b59f (draft basic wallet translation)
       (local i32 i32 i32 i32 i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -115,25 +90,15 @@
         local.get 0
         i32.load offset=8
         local.tee 2
-<<<<<<< HEAD
-        f64.load
+        i64.load
         call $basic_wallet_p2id_note::bindings::miden::base::core_types::account_id_from_felt::wit_import
         call $basic_wallet_p2id_note::bindings::miden::base::account::get_id::wit_import
-        f64.ne
-=======
-        i64.load
-        call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_id::wit_import
         i64.ne
->>>>>>> 553b59f (draft basic wallet translation)
         br_if 0 (;@1;)
         local.get 0
         i32.const 8
         i32.add
-<<<<<<< HEAD
         call $basic_wallet_p2id_note::bindings::miden::base::note::get_assets::wit_import
-=======
-        call $basic_wallet_p2id_note::bindings::miden::base::tx_kernel::get_assets::wit_import
->>>>>>> 553b59f (draft basic wallet translation)
         block ;; label = @2
           local.get 0
           i32.const 12
@@ -154,15 +119,6 @@
           local.set 6
           loop ;; label = @3
             local.get 6
-<<<<<<< HEAD
-            f64.load
-            local.get 6
-            f64.load offset=8
-            local.get 6
-            f64.load offset=16
-            local.get 6
-            f64.load offset=24
-=======
             i64.load
             local.get 6
             i64.load offset=8
@@ -170,7 +126,6 @@
             i64.load offset=16
             local.get 6
             i64.load offset=24
->>>>>>> 553b59f (draft basic wallet translation)
             call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
             local.get 6
             i32.const 32
@@ -204,21 +159,13 @@
       unreachable
       unreachable
     )
-<<<<<<< HEAD
     (func $__rust_alloc (;7;) (type 5) (param i32 i32) (result i32)
-=======
-    (func $__rust_alloc (;6;) (type 4) (param i32 i32) (result i32)
->>>>>>> 553b59f (draft basic wallet translation)
       i32.const 1048576
       local.get 1
       local.get 0
       call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
     )
-<<<<<<< HEAD
     (func $__rust_realloc (;8;) (type 6) (param i32 i32 i32 i32) (result i32)
-=======
-    (func $__rust_realloc (;7;) (type 5) (param i32 i32 i32 i32) (result i32)
->>>>>>> 553b59f (draft basic wallet translation)
       (local i32)
       block ;; label = @1
         i32.const 1048576
@@ -245,11 +192,7 @@
       end
       local.get 4
     )
-<<<<<<< HEAD
     (func $wee_alloc::alloc_first_fit (;9;) (type 7) (param i32 i32 i32) (result i32)
-=======
-    (func $wee_alloc::alloc_first_fit (;8;) (type 6) (param i32 i32 i32) (result i32)
->>>>>>> 553b59f (draft basic wallet translation)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 2
@@ -550,11 +493,7 @@
       end
       i32.const 0
     )
-<<<<<<< HEAD
     (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;10;) (type 7) (param i32 i32 i32) (result i32)
-=======
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;9;) (type 6) (param i32 i32 i32) (result i32)
->>>>>>> 553b59f (draft basic wallet translation)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -658,11 +597,7 @@
       global.set $__stack_pointer
       local.get 2
     )
-<<<<<<< HEAD
     (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;11;) (type 8) (param i32 i32 i32 i32)
-=======
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;10;) (type 7) (param i32 i32 i32 i32)
->>>>>>> 553b59f (draft basic wallet translation)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 1
@@ -828,11 +763,7 @@
         i32.store
       end
     )
-<<<<<<< HEAD
     (func $wit_bindgen::rt::run_ctors_once (;12;) (type 4)
-=======
-    (func $wit_bindgen::rt::run_ctors_once (;11;) (type 3)
->>>>>>> 553b59f (draft basic wallet translation)
       block ;; label = @1
         i32.const 0
         i32.load8_u offset=1048581
@@ -843,11 +774,7 @@
         i32.store8 offset=1048581
       end
     )
-<<<<<<< HEAD
     (func $cabi_realloc (;13;) (type 6) (param i32 i32 i32 i32) (result i32)
-=======
-    (func $cabi_realloc (;12;) (type 5) (param i32 i32 i32 i32) (result i32)
->>>>>>> 553b59f (draft basic wallet translation)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3

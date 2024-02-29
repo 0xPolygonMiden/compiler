@@ -7,9 +7,10 @@ interface core-types {
     /// The backing type is `f64` but the internal values are always integer in the range [0, M).
     /// Field modulus M = 2^64 - 2^32 + 1
     record felt {
-        /// We use f64 as the backing type for the field element. It has the size that we need and
+        /// We plan to use f64 as the backing type for the field element. It has the size that we need and
         /// we don't plan to support floating point arithmetic in programs for Miden VM.
-        inner: f64 
+        /// For now its u64
+        inner: u64 
     }
 
 
