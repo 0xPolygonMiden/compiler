@@ -4,7 +4,9 @@ use miden_core::crypto::hash::RpoDigest;
 use miden_frontend_wasm::ExportMetadata;
 use miden_frontend_wasm::ImportMetadata;
 use miden_frontend_wasm::WasmTranslationConfig;
+use miden_hir::FunctionExportName;
 use miden_hir::{InterfaceFunctionIdent, InterfaceIdent, Symbol};
+use rustc_hash::FxHashMap;
 
 #[test]
 fn sdk() {
@@ -30,7 +32,7 @@ fn sdk_basic_wallet() {
         interface: interface.clone(),
         function: Symbol::intern("remove-asset"),
     };
-    let import_metadata = [
+    let import_metadata: FxHashMap<InterfaceFunctionIdent, ImportMetadata> = [
         (
             create_note_ident.clone(),
             ImportMetadata {
@@ -55,7 +57,7 @@ fn sdk_basic_wallet() {
     ]
     .into_iter()
     .collect();
-    let export_metadata = [
+    let export_metadata: FxHashMap<FunctionExportName, ExportMetadata> = [
         (
             Symbol::intern("send-asset").into(),
             ExportMetadata {
@@ -72,8 +74,8 @@ fn sdk_basic_wallet() {
     .into_iter()
     .collect();
     let config = WasmTranslationConfig {
-        import_metadata,
-        export_metadata,
+        import_metadata: import_metadata.clone(),
+        export_metadata: export_metadata.clone(),
         ..Default::default()
     };
     let mut test = CompilerTest::rust_source_cargo_component("sdk/basic-wallet", config);
@@ -84,6 +86,13 @@ fn sdk_basic_wallet() {
     test.expect_ir(expect_file![format!(
         "../../expected/sdk_basic_wallet/{artifact_name}.hir"
     )]);
+    let ir = test.hir().unwrap_component();
+    for (_, import) in ir.imports() {
+        assert!(import_metadata.contains_key(&import.interface_function));
+    }
+    for (name, _meta) in export_metadata {
+        assert!(ir.exports().contains_key(&name));
+    }
 }
 
 #[test]

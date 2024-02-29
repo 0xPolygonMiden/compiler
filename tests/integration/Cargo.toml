@@ -33,3 +33,4 @@ derive_more.workspace = true
 miden-core.workspace = true
 proptest.workspace = true
 concat-idents = "1.1"
+rustc-hash.workspace = true
