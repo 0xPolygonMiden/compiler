@@ -1,6 +1,6 @@
 component
 
-import "call" miden:add-package/add-interface@1.0.0::add fn(u32, u32) -> u32 mast#0x0000000000000000000000000000000000000000000000000000000000000000 lower module0::inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import
+import miden:add-package/add-interface@1.0.0::add fn(u32, u32) -> u32 mast#0x0000000000000000000000000000000000000000000000000000000000000000 lower module0::inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import
 
 // ====================================================================
 module module0
