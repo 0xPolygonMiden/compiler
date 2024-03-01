@@ -11,6 +11,15 @@ mod interface;
 
 pub use interface::*;
 
+/// Canonical ABI options associated with a lifted or lowered function.
+#[derive(Debug, Clone)]
+pub struct CanonicalOptions {
+    /// The realloc function used by these options, if specified.
+    pub realloc: Option<FunctionIdent>,
+    /// The post-return function used by these options, if specified.
+    pub post_return: Option<FunctionIdent>,
+}
+
 /// A component import
 #[derive(Debug, Clone)]
 pub struct ComponentImport {
@@ -20,6 +29,8 @@ pub struct ComponentImport {
     pub function_ty: LiftedFunctionType,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
+    /// Any options associated with this import
+    pub options: CanonicalOptions,
 }
 impl fmt::Display for ComponentImport {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -57,6 +68,8 @@ pub struct ComponentExport {
     pub function: FunctionIdent,
     /// The component(lifted) type of the exported function
     pub function_ty: LiftedFunctionType,
+    /// Any options associated with this export
+    pub options: CanonicalOptions,
 }
 
 /// A [Component] is a collection of [Module]s that are being compiled together as a package and
