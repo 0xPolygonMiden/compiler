@@ -1,9 +1,14 @@
 #![no_std]
 #![no_main]
+// This allows us to abort if the panic handler is invoked, but
+// it is gated behind a perma-unstable nightly feature
+#![feature(core_intrinsics)]
+// Disable the warning triggered by the use of the `core_intrinsics` feature
+#![allow(internal_features)]
 
 #[panic_handler]
 fn my_panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
+    core::intrinsics::abort()
 }
 
 static mut G1: [u8; 9] = [1, 2, 3, 4, 5, 6, 7, 8, 9];

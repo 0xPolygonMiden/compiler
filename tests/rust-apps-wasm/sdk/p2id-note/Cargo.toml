@@ -32,3 +32,4 @@ derives = ["PartialEq"]
 
 [profile.release]
 panic = "abort"
+opt-level = "z"
