@@ -14,29 +14,27 @@ pub struct FuncEnvironment {
 
 impl FuncEnvironment {
     pub fn new(module: &Module, mod_types: &ModuleTypes, module_args: Vec<ModuleArgument>) -> Self {
-        assert_eq!(
-            module.imports.len(),
-            module_args.len(),
-            "Mismatched module imports and arguments"
-        );
         let mut function_import_subst = FxHashMap::default();
-        for (import, arg) in module.imports.iter().zip(module_args) {
-            match (import.index, arg) {
-                (EntityIndex::Function(func_idx), ModuleArgument::Function(func_id)) => {
-                    // Substitutes the function import with concrete function exported from another
-                    // module
-                    function_import_subst.insert(func_idx, func_id);
+        if module.imports.len() == module_args.len() {
+            for (import, arg) in module.imports.iter().zip(module_args) {
+                match (import.index, arg) {
+                    (EntityIndex::Function(func_idx), ModuleArgument::Function(func_id)) => {
+                        // Substitutes the function import with concrete function exported from
+                        // another module
+                        function_import_subst.insert(func_idx, func_id);
+                    }
+                    (EntityIndex::Function(_), ModuleArgument::ComponentImport(_)) => {
+                        // Do nothing, the local function id will be used
+                        ()
+                    }
+                    (EntityIndex::Function(_), module_arg) => {
+                        panic!(
+                            "Unexpected {module_arg:?} module argument for function import \
+                             {import:?}"
+                        )
+                    }
+                    (..) => (), // Do nothing, we interested only in function imports
                 }
-                (EntityIndex::Function(_), ModuleArgument::ComponentImport(_)) => {
-                    // Do nothing, the local function id will be used
-                    ()
-                }
-                (EntityIndex::Function(_), module_arg) => {
-                    panic!(
-                        "Unexpected {module_arg:?} module argument for function import {import:?}"
-                    )
-                }
-                (..) => (), // Do nothing, we interested only in function imports
             }
         }
         let mut function_ids = FxHashMap::default();

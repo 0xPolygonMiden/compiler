@@ -10,15 +10,13 @@ pub mod miden {
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_section;
             /// Represents base field element in the field using Montgomery representation.
             /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
-            /// The backing type is `f64` but the internal values are always integer in the range
-            /// [0, M). Field modulus M = 2^64 - 2^32 + 1
+            /// The backing type is `f64` but the internal values are always integer in the range [0, M).
+            /// Field modulus M = 2^64 - 2^32 + 1
             #[repr(C)]
             #[derive(Clone, Copy, PartialEq)]
             pub struct Felt {
-                /// We plan to use f64 as the backing type for the field element. It has the size
-                /// that we need and we don't plan to support floating point
-                /// arithmetic in programs for Miden VM.
-                ///
+                /// We plan to use f64 as the backing type for the field element. It has the size that we need and
+                /// we don't plan to support floating point arithmetic in programs for Miden VM.
                 /// For now its u64
                 pub inner: u64,
             }
@@ -31,19 +29,16 @@ pub mod miden {
             pub type Word = (Felt, Felt, Felt, Felt);
             /// Unique identifier of an account.
             ///
-            /// Account ID consists of 1 field element (~64 bits). This field element uniquely
-            /// identifies a single account and also specifies the type of the
-            /// underlying account. Specifically:
+            /// Account ID consists of 1 field element (~64 bits). This field element uniquely identifies a
+            /// single account and also specifies the type of the underlying account. Specifically:
             /// - The two most significant bits of the ID specify the type of the account:
             /// - 00 - regular account with updatable code.
             /// - 01 - regular account with immutable code.
             /// - 10 - fungible asset faucet with immutable code.
             /// - 11 - non-fungible asset faucet with immutable code.
-            /// - The third most significant bit of the ID specifies whether the account data is
-            ///   stored on-chain:
+            /// - The third most significant bit of the ID specifies whether the account data is stored on-chain:
             /// - 0 - full account data is stored on-chain.
-            /// - 1 - only the account hash is stored on-chain which serves as a commitment to the
-            ///   account state.
+            /// - 1 - only the account hash is stored on-chain which serves as a commitment to the account state.
             /// As such the three most significant bits fully describes the type of the account.
             #[repr(C)]
             #[derive(Clone, Copy, PartialEq)]
@@ -52,11 +47,12 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for AccountId {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("AccountId").field("inner", &self.inner).finish()
+                    f.debug_struct("AccountId")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
-            /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash),
-            /// input_hash)
+            /// Recipient of the note, i.e., hash(hash(hash(serial_num, [0; 4]), note_script_hash), input_hash)
             #[repr(C)]
             #[derive(Clone, Copy, PartialEq)]
             pub struct Recipient {
@@ -64,7 +60,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for Recipient {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("Recipient").field("inner", &self.inner).finish()
+                    f.debug_struct("Recipient")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             #[repr(C)]
@@ -79,49 +77,43 @@ pub mod miden {
             }
             /// A fungible or a non-fungible asset.
             ///
-            /// All assets are encoded using a single word (4 elements) such that it is easy to
-            /// determine the type of an asset both inside and outside Miden VM.
-            /// Specifically: Element 1 will be:
+            /// All assets are encoded using a single word (4 elements) such that it is easy to determine the
+            /// type of an asset both inside and outside Miden VM. Specifically:
+            /// Element 1 will be:
             /// - ZERO for a fungible asset
             /// - non-ZERO for a non-fungible asset
             /// The most significant bit will be:
             /// - ONE for a fungible asset
             /// - ZERO for a non-fungible asset
             ///
-            /// The above properties guarantee that there can never be a collision between a
-            /// fungible and a non-fungible asset.
+            /// The above properties guarantee that there can never be a collision between a fungible and a
+            /// non-fungible asset.
             ///
-            /// The methodology for constructing fungible and non-fungible assets is described
-            /// below.
+            /// The methodology for constructing fungible and non-fungible assets is described below.
             ///
             /// # Fungible assets
-            /// The most significant element of a fungible asset is set to the ID of the faucet
-            /// which issued the asset. This guarantees the properties described above
-            /// (the first bit is ONE).
+            /// The most significant element of a fungible asset is set to the ID of the faucet which issued
+            /// the asset. This guarantees the properties described above (the first bit is ONE).
             ///
-            /// The least significant element is set to the amount of the asset. This amount cannot
-            /// be greater than 2^63 - 1 and thus requires 63-bits to store.
+            /// The least significant element is set to the amount of the asset. This amount cannot be greater
+            /// than 2^63 - 1 and thus requires 63-bits to store.
             ///
             /// Elements 1 and 2 are set to ZERO.
             ///
-            /// It is impossible to find a collision between two fungible assets issued by different
-            /// faucets as the faucet_id is included in the description of the asset and
-            /// this is guaranteed to be different for each faucet as per the faucet
-            /// creation logic.
+            /// It is impossible to find a collision between two fungible assets issued by different faucets as
+            /// the faucet_id is included in the description of the asset and this is guaranteed to be different
+            /// for each faucet as per the faucet creation logic.
             ///
             /// # Non-fungible assets
             /// The 4 elements of non-fungible assets are computed as follows:
-            /// - First the asset data is hashed. This compresses an asset of an arbitrary length to
-            ///   4 field
+            /// - First the asset data is hashed. This compresses an asset of an arbitrary length to 4 field
             /// elements: [d0, d1, d2, d3].
-            /// - d1 is then replaced with the faucet_id which issues the asset: [d0, faucet_id, d2,
-            ///   d3].
+            /// - d1 is then replaced with the faucet_id which issues the asset: [d0, faucet_id, d2, d3].
             /// - Lastly, the most significant bit of d3 is set to ZERO.
             ///
-            /// It is impossible to find a collision between two non-fungible assets issued by
-            /// different faucets as the faucet_id is included in the description of the
-            /// non-fungible asset and this is guaranteed to be different as per the
-            /// faucet creation logic. Collision resistance for non-fungible assets
+            /// It is impossible to find a collision between two non-fungible assets issued by different faucets
+            /// as the faucet_id is included in the description of the non-fungible asset and this is guaranteed
+            /// to be different as per the faucet creation logic. Collision resistance for non-fungible assets
             /// issued by the same faucet is ~2^95.
             #[repr(C)]
             #[derive(Clone, Copy, PartialEq)]
@@ -130,7 +122,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for CoreAsset {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("CoreAsset").field("inner", &self.inner).finish()
+                    f.debug_struct("CoreAsset")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// Account nonce
@@ -152,7 +146,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for AccountHash {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("AccountHash").field("inner", &self.inner).finish()
+                    f.debug_struct("AccountHash")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// Block hash
@@ -163,7 +159,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for BlockHash {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("BlockHash").field("inner", &self.inner).finish()
+                    f.debug_struct("BlockHash")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// Storage value
@@ -174,7 +172,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for StorageValue {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("StorageValue").field("inner", &self.inner).finish()
+                    f.debug_struct("StorageValue")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// Account storage root
@@ -185,7 +185,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for StorageRoot {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("StorageRoot").field("inner", &self.inner).finish()
+                    f.debug_struct("StorageRoot")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// Account code root
@@ -196,7 +198,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for AccountCodeRoot {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("AccountCodeRoot").field("inner", &self.inner).finish()
+                    f.debug_struct("AccountCodeRoot")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// Commitment to the account vault
@@ -207,7 +211,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for VaultCommitment {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("VaultCommitment").field("inner", &self.inner).finish()
+                    f.debug_struct("VaultCommitment")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             /// An id of the created note
@@ -218,7 +224,9 @@ pub mod miden {
             }
             impl ::core::fmt::Debug for NoteId {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct("NoteId").field("inner", &self.inner).finish()
+                    f.debug_struct("NoteId")
+                        .field("inner", &self.inner)
+                        .finish()
                 }
             }
             #[allow(unused_unsafe, clippy::all)]
@@ -262,8 +270,7 @@ pub mod miden {
             pub type Word = super::super::super::miden::base::core_types::Word;
             pub type NoteId = super::super::super::miden::base::core_types::NoteId;
             #[allow(unused_unsafe, clippy::all)]
-            /// Returns the block number of the last known block at the time of transaction
-            /// execution.
+            /// Returns the block number of the last known block at the time of transaction execution.
             pub fn get_block_number() -> Felt {
                 #[allow(unused_imports)]
                 use wit_bindgen::rt::{alloc, string::String, vec::Vec};

@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+  "types",
+  "tx-kernel",
+  "sdk",
+]
+
+[workspace.package]
+
+version = "0.1.0"
+rust-version = "1.71"
+authors = ["Miden Team"]
+repository = "https://github.com/0xPolygonMiden/compiler"
+homepage = "https://github.com/0xPolygonMiden/compiler"
+documentation = "https://github.com/0xPolygonMiden/compiler"
+categories = ["Compilers"]
+keywords = ["compiler", "miden"]
+license = "MIT"
+readme = "README.md"
+edition = "2021"

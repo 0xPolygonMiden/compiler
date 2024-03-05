@@ -9,9 +9,11 @@ use crate::CompilerTest;
 
 #[test]
 fn sdk() {
-    let test = CompilerTest::rust_source_cargo_component("sdk/sdk", Default::default());
+    let test = CompilerTest::rust_source_cargo_component("wit-sdk/sdk", Default::default());
     let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
+    test.expect_wasm(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
+    )]);
 }
 
 #[test]
@@ -58,7 +60,7 @@ fn sdk_basic_wallet() {
         import_metadata: import_metadata.clone(),
         ..Default::default()
     };
-    let mut test = CompilerTest::rust_source_cargo_component("sdk/basic-wallet", config);
+    let mut test = CompilerTest::rust_source_cargo_component("wit-sdk/basic-wallet", config);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
@@ -132,7 +134,7 @@ fn sdk_basic_wallet_p2id_note() {
         import_metadata: import_metadata.clone(),
         ..Default::default()
     };
-    let mut test = CompilerTest::rust_source_cargo_component("sdk/p2id-note", config);
+    let mut test = CompilerTest::rust_source_cargo_component("wit-sdk/p2id-note", config);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
