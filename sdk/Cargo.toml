@@ -19,3 +19,9 @@ keywords = ["compiler", "miden"]
 license = "MIT"
 readme = "README.md"
 edition = "2021"
+
+
+[profile.release]
+panic = "abort"
+# optimize for size
+opt-level = "z"

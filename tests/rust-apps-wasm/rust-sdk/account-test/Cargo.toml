@@ -9,3 +9,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 miden-sdk = { path = "../../../../sdk/sdk" }
+
+[profile.release]
+panic = "abort"
+# optimize for size
+opt-level = "z"

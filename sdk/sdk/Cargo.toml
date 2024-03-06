@@ -17,6 +17,3 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 miden-sdk-types = { path = "../types" }
 miden-sdk-tx-kernel = { path = "../tx-kernel" }
-
-[profile.release]
-panic = "abort"
