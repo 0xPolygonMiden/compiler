@@ -662,6 +662,38 @@ impl fmt::Display for LiftedFunctionType {
     }
 }
 
+/// The Miden function type as it is defined in the MASM source (tx kernel, stdlib)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MidenAbiFunctionType {
+    /// The arguments expected by this function on the stack
+    pub params: Vec<Type>,
+    /// The results returned by this function on the stack
+    pub results: Vec<Type>,
+}
+
+impl fmt::Display for MidenAbiFunctionType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "fn(")?;
+        for (i, param) in self.params.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", param)?;
+        }
+        write!(f, ")")?;
+        if !self.results.is_empty() {
+            write!(f, " -> ")?;
+            for (i, result) in self.results.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", result)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// This error is raised when parsing an [AddressSpace]
 #[derive(Debug)]
 pub enum InvalidAddressSpaceError {

@@ -66,7 +66,7 @@ fn sdk_basic_wallet() {
     test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
     let ir = test.hir().unwrap_component();
     for (_, import) in ir.imports() {
-        assert!(import_metadata.contains_key(&import.interface_function));
+        assert!(import_metadata.contains_key(&import.unwrap_canon_abi_import().interface_function));
     }
     for name in expected_exports {
         assert!(ir.exports().contains_key(&name));
@@ -140,9 +140,12 @@ fn sdk_basic_wallet_p2id_note() {
     test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
     let ir = test.hir().unwrap_component();
     for (_, import) in ir.imports() {
-        assert!(import_metadata.contains_key(&import.interface_function));
-        if ["get-assets", "get-inputs"].contains(&import.interface_function.function.as_str()) {
-            assert!(import.options.realloc.is_some());
+        let canon_abi_import = import.unwrap_canon_abi_import();
+        assert!(import_metadata.contains_key(&canon_abi_import.interface_function));
+        if ["get-assets", "get-inputs"]
+            .contains(&canon_abi_import.interface_function.function.as_str())
+        {
+            assert!(canon_abi_import.options.realloc.is_some());
         }
     }
     for name in expected_exports {

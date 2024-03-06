@@ -262,6 +262,8 @@ mod tests {
         // assert_eq!(function_id.function, interface_function_ident.function);
         let component_import = ir.imports().get(&function_id).unwrap();
         assert_eq!(component_import.interface_function, interface_function_ident);
+        let component_import = ir.imports().get(&function_id).unwrap().unwrap_canon_abi_import();
+        assert_eq!(component_import.interface_function, interface_function_ident);
         assert!(!component_import.function_ty.params.is_empty());
         let expected_import_func_ty = LiftedFunctionType {
             params: vec![Type::U32, Type::U32],

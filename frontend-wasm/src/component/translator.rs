@@ -1,7 +1,7 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{
-    cranelift_entity::PrimaryMap, ComponentBuilder, ComponentExport, FunctionIdent, Ident,
-    InterfaceFunctionIdent, InterfaceIdent, Symbol,
+    cranelift_entity::PrimaryMap, CanonAbiImport, ComponentBuilder, ComponentExport, FunctionIdent,
+    Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
 };
 use miden_hir_type::LiftedFunctionType;
 use rustc_hash::FxHashMap;
@@ -274,12 +274,12 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         };
         let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
 
-        let component_import = miden_hir::ComponentImport {
+        let component_import = miden_hir::ComponentImport::CanonAbiImport(CanonAbiImport {
             function_ty: lifted_func_ty,
             interface_function,
             digest: import_metadata.digest.clone(),
             options: self.translate_canonical_options(options)?,
-        };
+        });
         Ok(component_import)
     }
 

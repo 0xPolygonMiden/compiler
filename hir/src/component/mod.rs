@@ -1,8 +1,10 @@
 use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
+use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
 use miden_core::crypto::hash::RpoDigest;
+use miden_hir_type::MidenAbiFunctionType;
 
 use self::formatter::PrettyPrint;
 use super::*;
@@ -20,9 +22,10 @@ pub struct CanonicalOptions {
     pub post_return: Option<FunctionIdent>,
 }
 
-/// A component import
+/// A component import translated from a Wasm component import that is following
+/// the Wasm Component Model Canonical ABI.
 #[derive(Debug, Clone)]
-pub struct ComponentImport {
+pub struct CanonAbiImport {
     /// The interfact function name that is being imported
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
@@ -32,26 +35,45 @@ pub struct ComponentImport {
     /// Any options associated with this import
     pub options: CanonicalOptions,
 }
-impl fmt::Display for ComponentImport {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.pretty_print(f)
+
+/// A Miden (sdklib, tx kernel) function import that is following the Miden ABI.
+#[derive(Debug, Clone)]
+pub struct MidenAbiImport {
+    pub name: Symbol,
+    /// The Miden function type as it is defined in the MASM
+    pub function_ty: MidenAbiFunctionType,
+    /// The MAST root hash of the function to be used in codegen
+    pub digest: RpoDigest,
+}
+
+/// A component import
+#[derive(Debug, Clone)]
+pub enum ComponentImport {
+    /// A Wasm import that is following the Wasm Component Model Canonical ABI
+    CanonAbiImport(CanonAbiImport),
+    /// A Miden import that is following the Miden ABI
+    MidenAbiImport(MidenAbiImport),
+}
+
+impl ComponentImport {
+    pub fn digest(&self) -> RpoDigest {
+        match self {
+            ComponentImport::CanonAbiImport(import) => import.digest,
+            ComponentImport::MidenAbiImport(import) => import.digest,
+        }
+    }
+
+    pub fn unwrap_canon_abi_import(&self) -> &CanonAbiImport {
+        match self {
+            ComponentImport::CanonAbiImport(import) => import,
+            _ => panic!("Expected CanonAbiImport"),
+        }
     }
 }
-impl formatter::PrettyPrint for ComponentImport {
-    fn render(&self) -> formatter::Document {
-        use crate::formatter::*;
 
-        const_text("(")
-            + const_text("import")
-            + const_text(" ")
-            + display(self.digest)
-            + const_text(" ")
-            + const_text("(")
-            + const_text("type")
-            + const_text(" ")
-            + text(format!("{}", &self.function_ty))
-            + const_text(")")
-            + const_text(")")
+impl fmt::Display for ComponentImport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {} mast#{}", self.interface_function, self.function_ty, self.digest)
     }
 }
 
