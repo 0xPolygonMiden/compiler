@@ -4,7 +4,7 @@
   (type (;2;) (func))
   (type (;3;) (func (param i32 i32 i32)))
   (type (;4;) (func (param i32 i32 i32 i32)))
-  (import "env" "miden_sdk_tx_kernel_get_inputs<0x0000000000000000000000000000>" (func $miden_sdk_tx_kernel_get_inputs<0x0000000000000000000000000000> (;0;) (type 0)))
+  (import "env" "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000>" (func $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000> (;0;) (type 0)))
   (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;1;) (type 1) (param i32)
     (local i32)
     global.get $__stack_pointer
@@ -72,7 +72,7 @@
     local.get 0
     local.get 0
     local.get 0
-    call $miden_sdk_tx_kernel_get_inputs<0x0000000000000000000000000000>
+    call $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000>
     local.tee 1
     i32.const 3
     i32.shl

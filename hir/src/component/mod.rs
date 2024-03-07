@@ -39,7 +39,8 @@ pub struct CanonAbiImport {
 /// A Miden (sdklib, tx kernel) function import that is following the Miden ABI.
 #[derive(Debug, Clone)]
 pub struct MidenAbiImport {
-    pub name: Symbol,
+    /// Function name
+    pub function_id: Ident,
     /// The Miden function type as it is defined in the MASM
     pub function_ty: MidenAbiFunctionType,
     /// The MAST root hash of the function to be used in codegen
@@ -73,7 +74,15 @@ impl ComponentImport {
 
 impl fmt::Display for ComponentImport {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {} mast#{}", self.interface_function, self.function_ty, self.digest)
+        let function_ty_str = match self {
+            ComponentImport::CanonAbiImport(import) => import.function_ty.to_string(),
+            ComponentImport::MidenAbiImport(import) => import.function_ty.to_string(),
+        };
+        let name = match self {
+            ComponentImport::CanonAbiImport(import) => import.interface_function.to_string(),
+            ComponentImport::MidenAbiImport(import) => import.function_id.to_string(),
+        };
+        write!(f, "{} {} mast#{}", name, function_ty_str, self.digest())
     }
 }
 

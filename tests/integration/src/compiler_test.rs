@@ -14,7 +14,9 @@ use miden_diagnostics::{
     term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
     Emitter, NullEmitter, SourceSpan, Verbosity,
 };
-use miden_frontend_wasm::{translate_component, translate_module, WasmTranslationConfig};
+use miden_frontend_wasm::{
+    translate_component, translate_module, translate_module_as_component, WasmTranslationConfig,
+};
 use miden_hir::{
     pass::{AnalysisManager, RewritePass, RewriteSet},
     FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Symbol,
@@ -25,6 +27,10 @@ use midenc_session::{InputFile, Session};
 pub enum CompilerTestSource {
     Rust(String),
     RustCargo {
+        cargo_project_folder_name: String,
+        artifact_name: String,
+    },
+    RustCargoLib {
         cargo_project_folder_name: String,
         artifact_name: String,
     },
@@ -41,6 +47,10 @@ impl CompilerTestSource {
                 cargo_project_folder_name: _,
                 artifact_name,
             } => artifact_name.clone(),
+            CompilerTestSource::RustCargoLib {
+                cargo_project_folder_name: _,
+                artifact_name,
+            } => artifact_name.clone(),
             CompilerTestSource::RustCargoComponent {
                 cargo_project_folder_name: _,
                 artifact_name,
@@ -53,10 +63,18 @@ impl CompilerTestSource {
 #[derive(derive_more::From)]
 pub enum HirArtifact {
     Program(Box<miden_hir::Program>),
+    Module(Box<miden_hir::Module>),
     Component(Box<miden_hir::Component>),
 }
 
 impl HirArtifact {
+    pub fn unwrap_module(&self) -> &miden_hir::Module {
+        match self {
+            HirArtifact::Module(module) => module,
+            _ => panic!("Expected a Module"),
+        }
+    }
+
     pub fn unwrap_program(&self) -> &miden_hir::Program {
         match self {
             Self::Program(program) => program,
@@ -208,7 +226,7 @@ impl CompilerTest {
         Self {
             config: Default::default(),
             session: default_session(),
-            source: CompilerTestSource::RustCargo {
+            source: CompilerTestSource::RustCargoLib {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name,
             },
@@ -356,17 +374,27 @@ impl CompilerTest {
     }
 
     fn wasm_to_ir(&self) -> HirArtifact {
+        use miden_hir_transform as transforms;
         match &self.source {
             CompilerTestSource::RustCargoComponent { .. } => {
-                // Wasm component is expected
+                // Wasm component is expectedAA
                 let ir_component =
                     translate_component(&self.wasm_bytes, &self.config, &self.session.diagnostics)
                         .expect("Failed to translate Wasm to IR component");
                 Box::new(ir_component).into()
             }
+            CompilerTestSource::RustCargoLib { .. } => {
+                // Wasm module compiled as a module
+                let ir_component = translate_module_as_component(
+                    &self.wasm_bytes,
+                    &self.config,
+                    &self.session.diagnostics,
+                )
+                .expect("Failed to translate Wasm module to IR component");
+                Box::new(ir_component).into()
+            }
             _ => {
-                // Wasm module is expected
-                use miden_hir_transform as transforms;
+                // Wasm module compiled as a program
                 let mut ir_module =
                     translate_module(&self.wasm_bytes, &self.config, &self.session.diagnostics)
                         .expect("Failed to translate Wasm to IR module");
@@ -422,6 +450,10 @@ impl CompilerTest {
                 let ir_component = demangle(&hir_component.to_string());
                 expected_hir_file.assert_eq(&ir_component);
             }
+            HirArtifact::Module(_) => {
+                let ir_module = demangle(&self.hir().unwrap_module().to_string());
+                expected_hir_file.assert_eq(&ir_module);
+            }
         }
     }
 
@@ -469,6 +501,9 @@ impl CompilerTest {
                 HirArtifact::Program(hir_program) => compiler.compile(hir_program).unwrap(),
                 HirArtifact::Component(_hir_component) => {
                     todo!("Component to MASM compilation is not implemented yet")
+                }
+                HirArtifact::Module(_) => {
+                    todo!("Module to MASM compilation is not implemented yet")
                 }
             };
             let frozen = ir_masm.freeze();

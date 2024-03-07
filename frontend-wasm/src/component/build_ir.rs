@@ -130,10 +130,7 @@ mod tests {
         let export_name_sym = Symbol::intern("add");
         let export = ir.exports().get(&export_name_sym.into()).unwrap();
         assert_eq!(export.function.function.as_symbol(), export_name_sym);
-        let expected_export_func_ty = LiftedFunctionType {
-            params: vec![Type::U32, Type::U32],
-            results: vec![Type::U32],
-        };
+        let expected_export_func_ty = LiftedFunctionType::new([Type::U32, Type::U32], [Type::U32]);
         assert_eq!(export.function_ty, expected_export_func_ty);
     }
 

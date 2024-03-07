@@ -47,10 +47,19 @@ impl FuncEnvironment {
             if let Some(subst) = function_import_subst.get(&index) {
                 function_ids.insert(index, subst.clone());
             } else {
-                let func_name = module.func_name(index);
-                let func_id = FunctionIdent {
-                    module: Ident::with_empty_span(Symbol::intern(module.name())),
-                    function: Ident::with_empty_span(Symbol::intern(func_name)),
+                let func_id = if module.is_imported_function(index) {
+                    assert!((index.as_u32() as usize) < module.num_imported_funcs);
+                    let import = &module.imports[index.as_u32() as usize];
+                    FunctionIdent {
+                        module: Ident::with_empty_span(Symbol::intern(import.module.clone())),
+                        function: Ident::with_empty_span(Symbol::intern(import.field.clone())),
+                    }
+                } else {
+                    let func_name = module.func_name(index);
+                    FunctionIdent {
+                        module: Ident::with_empty_span(Symbol::intern(module.name())),
+                        function: Ident::with_empty_span(Symbol::intern(func_name)),
+                    }
                 };
                 function_ids.insert(index, func_id);
             };

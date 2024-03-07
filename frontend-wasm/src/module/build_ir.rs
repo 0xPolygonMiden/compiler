@@ -1,12 +1,14 @@
 use core::mem;
 
+use miden_abi_conversion::tx_kernel::miden_abi_function_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{CallConv, ConstantData, Linkage, ModuleBuilder};
+use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder};
 use wasmparser::{Validator, WasmFeatures};
 
 use super::Module;
 use crate::{
     error::WasmResult,
+    miden_abi::unpack_import_function_name,
     module::{
         func_env::FuncEnvironment,
         func_translator::FuncTranslator,
@@ -40,6 +42,48 @@ pub fn translate_module(
 
     let func_env = FuncEnvironment::new(&parsed_module.module, &module_types, vec![]);
     build_ir_module(&mut parsed_module, &module_types, func_env, config, diagnostics)
+}
+
+// TODO: make it IR module -> IR component and move it into hir crate?
+/// Translate a valid Wasm core module binary into Miden IR component
+pub fn translate_module_as_component(
+    wasm: &[u8],
+    config: &WasmTranslationConfig,
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<miden_hir::Component> {
+    let module = translate_module(wasm, config, diagnostics)?;
+    let mut cb = miden_hir::ComponentBuilder::new(&diagnostics);
+    let module_imports = module.imports();
+    for import_module_id in module_imports.iter_modules() {
+        if let Some(imports) = module_imports.imported(import_module_id) {
+            for ext_func in imports {
+                let (func_id, digest) = unpack_import_function_name(ext_func.function.as_str())
+                    .expect(
+                        format!(
+                            "failed to parse mast root hash from function {}",
+                            ext_func.function
+                        )
+                        .as_str(),
+                    );
+                let function_ty = miden_abi_function_type(func_id.as_str()).expect(
+                    format!(
+                        "Cannot find Miden ABI function type for {}",
+                        ext_func.function
+                    )
+                    .as_str(),
+                );
+                let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
+                    function_id: ext_func.function,
+                    function_ty,
+                    digest,
+                });
+                cb.add_import(*ext_func, component_import);
+            }
+        }
+    }
+    cb.add_module(module.into())
+        .expect("module is already added");
+    Ok(cb.build())
 }
 
 pub fn build_ir_module(

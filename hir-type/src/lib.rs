@@ -643,6 +643,19 @@ pub struct LiftedFunctionType {
     /// The results returned by this function
     pub results: Vec<Type>,
 }
+
+impl LiftedFunctionType {
+    pub fn new<P: IntoIterator<Item = Type>, R: IntoIterator<Item = Type>>(
+        params: P,
+        results: R,
+    ) -> Self {
+        Self {
+            params: params.into_iter().collect(),
+            results: results.into_iter().collect(),
+        }
+    }
+}
+
 impl fmt::Display for LiftedFunctionType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use core::fmt::Write;
@@ -669,6 +682,18 @@ pub struct MidenAbiFunctionType {
     pub params: Vec<Type>,
     /// The results returned by this function on the stack
     pub results: Vec<Type>,
+}
+
+impl MidenAbiFunctionType {
+    pub fn new<P: IntoIterator<Item = Type>, R: IntoIterator<Item = Type>>(
+        params: P,
+        results: R,
+    ) -> Self {
+        Self {
+            params: params.into_iter().collect(),
+            results: results.into_iter().collect(),
+        }
+    }
 }
 
 impl fmt::Display for MidenAbiFunctionType {

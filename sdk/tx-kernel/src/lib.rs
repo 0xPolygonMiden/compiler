@@ -31,7 +31,8 @@ pub fn get_account_id() -> AccountId {
 // Temporary use u64 instead of Felt until https://github.com/0xPolygonMiden/compiler/issues/118#issuecomment-1978388977 is resolved
 
 extern "C" {
-    #[link_name = "miden_sdk_tx_kernel_get_inputs_mast_0x000000000000000000"]
+    // #[link_name = "miden_sdk_tx_kernel_get_inputs<mast0x000>(Felt, Word) -> (Word, Felt)"]
+    #[link_name = "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000>"]
     fn extern_get_inputs(ptr: i32) -> i32;
 }
 
