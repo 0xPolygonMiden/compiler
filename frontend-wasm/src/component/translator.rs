@@ -341,7 +341,6 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 let module =
                     &self.parsed_modules[self.module_instances_source[core_export.instance]].module;
                 let module_name = module.name();
-                let module_ident = miden_hir::Ident::with_empty_span(Symbol::intern(module_name));
                 let func_name = match core_export.item {
                     ExportItem::Index(idx) => match idx {
                         EntityIndex::Function(func_idx) => module.func_name(func_idx),
@@ -358,8 +357,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     }
                 };
                 let func_ident = miden_hir::FunctionIdent {
-                    module: module_ident,
-                    function: miden_hir::Ident::with_empty_span(Symbol::intern(func_name)),
+                    module: module_name,
+                    function: miden_hir::Ident::with_empty_span(func_name),
                 };
                 func_ident
             }
@@ -396,10 +395,9 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
 /// Get the function id from the given Wasm core module import
 fn function_id_from_import(module: &Module, module_import: &ModuleImport) -> FunctionIdent {
     let func_name = module.func_name(module_import.index.unwrap_func());
-    let module_name = module.name();
     let function_id = FunctionIdent {
-        module: Ident::with_empty_span(Symbol::intern(module_name)),
-        function: Ident::with_empty_span(Symbol::intern(func_name)),
+        module: module.name(),
+        function: Ident::with_empty_span(func_name),
     };
     function_id
 }
@@ -407,10 +405,9 @@ fn function_id_from_import(module: &Module, module_import: &ModuleImport) -> Fun
 /// Get the function id from the given Wasm func_idx in the given Wasm core exporting_module
 fn function_id_from_export(exporting_module: &Module, func_idx: FuncIndex) -> FunctionIdent {
     let func_name = exporting_module.func_name(func_idx);
-    let module_name = exporting_module.name();
     let function_id = FunctionIdent {
-        module: Ident::with_empty_span(Symbol::intern(module_name)),
-        function: Ident::with_empty_span(Symbol::intern(func_name)),
+        module: exporting_module.name(),
+        function: Ident::with_empty_span(func_name),
     };
     function_id
 }

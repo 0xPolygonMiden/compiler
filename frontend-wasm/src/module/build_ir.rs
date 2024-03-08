@@ -2,7 +2,7 @@ use core::mem;
 
 use miden_abi_conversion::tx_kernel::miden_abi_function_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder};
+use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
 use super::Module;
@@ -45,7 +45,12 @@ pub fn translate_module(
 }
 
 // TODO: make it IR module -> IR component and move it into hir crate?
-/// Translate a valid Wasm core module binary into Miden IR component
+/// Translate a valid Wasm core module binary into Miden IR component building
+/// component imports for well-known Miden ABI functions
+///
+/// This is a temporary solution until we compile an account code as Wasm
+/// component. To be able to do it we need wit-bindgen type re-mapping implemented first (see
+/// https://github.com/0xPolygonMiden/compiler/issues/116)
 pub fn translate_module_as_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,
@@ -54,7 +59,7 @@ pub fn translate_module_as_component(
     let module = translate_module(wasm, config, diagnostics)?;
     let mut cb = miden_hir::ComponentBuilder::new(&diagnostics);
     let module_imports = module.imports();
-    for import_module_id in module_imports.iter_modules() {
+    for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
             for ext_func in imports {
                 let (func_id, digest) = unpack_import_function_name(ext_func.function.as_str())
@@ -66,11 +71,8 @@ pub fn translate_module_as_component(
                         .as_str(),
                     );
                 let function_ty = miden_abi_function_type(func_id.as_str()).expect(
-                    format!(
-                        "Cannot find Miden ABI function type for {}",
-                        ext_func.function
-                    )
-                    .as_str(),
+                    format!("Cannot find Miden ABI function type for {}", ext_func.function)
+                        .as_str(),
                 );
                 let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
                     function_id: ext_func.function,
@@ -81,8 +83,7 @@ pub fn translate_module_as_component(
             }
         }
     }
-    cb.add_module(module.into())
-        .expect("module is already added");
+    cb.add_module(module.into()).expect("module is already added");
     Ok(cb.build())
 }
 
@@ -140,11 +141,11 @@ fn build_globals(
             .globals_names
             .get(&global_idx)
             .cloned()
-            .unwrap_or(format!("gv{}", global_idx.as_u32()));
+            .unwrap_or(Symbol::intern(format!("gv{}", global_idx.as_u32())));
         let global_init = wasm_module.try_global_initializer(global_idx, diagnostics)?;
         let init = ConstantData::from(global_init.to_le_bytes(&wasm_module, diagnostics)?);
         if let Err(e) = module_builder.declare_global_variable(
-            &global_name,
+            global_name.as_str(),
             ir_type(global.ty.clone())?,
             Linkage::External,
             Some(init.clone()),
@@ -172,7 +173,7 @@ fn build_data_segments(
     for (data_segment_idx, data_segment) in &translation.data_segments {
         let data_segment_name =
             translation.module.name_section.data_segment_names[&data_segment_idx].clone();
-        let readonly = data_segment_name.contains(".rodata");
+        let readonly = data_segment_name.as_str().contains(".rodata");
         let init = ConstantData::from(data_segment.data);
         let offset = data_segment.offset.as_i32(&translation.module, diagnostics)? as u32;
         let size = init.len() as u32;

@@ -132,7 +132,7 @@ impl ModuleImportInfo {
     }
 
     /// Get an iterator over the aliased module names in this table
-    pub fn iter_modules(&self) -> impl Iterator<Item = &Ident> {
+    pub fn iter_module_names(&self) -> impl Iterator<Item = &Ident> {
         self.modules.keys()
     }
 }

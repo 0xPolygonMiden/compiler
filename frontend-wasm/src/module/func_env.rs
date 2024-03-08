@@ -1,4 +1,4 @@
-use miden_hir::{CallConv, FunctionIdent, Ident, Linkage, Signature, Symbol};
+use miden_hir::{CallConv, FunctionIdent, Ident, Linkage, Signature};
 use rustc_hash::FxHashMap;
 
 use super::{instance::ModuleArgument, ir_func_type, FuncIndex, Module, ModuleTypes};
@@ -51,14 +51,14 @@ impl FuncEnvironment {
                     assert!((index.as_u32() as usize) < module.num_imported_funcs);
                     let import = &module.imports[index.as_u32() as usize];
                     FunctionIdent {
-                        module: Ident::with_empty_span(Symbol::intern(import.module.clone())),
-                        function: Ident::with_empty_span(Symbol::intern(import.field.clone())),
+                        module: Ident::from(import.module.as_str()),
+                        function: Ident::from(import.field.as_str()),
                     }
                 } else {
                     let func_name = module.func_name(index);
                     FunctionIdent {
-                        module: Ident::with_empty_span(Symbol::intern(module.name())),
-                        function: Ident::with_empty_span(Symbol::intern(func_name)),
+                        module: module.name(),
+                        function: Ident::from(func_name.as_str()),
                     }
                 };
                 function_ids.insert(index, func_id);

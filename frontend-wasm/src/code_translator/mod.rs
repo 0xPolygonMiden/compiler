@@ -83,7 +83,7 @@ pub fn translate_operator(
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
             let ty = ir_type(module.globals[global_index].ty)?;
-            state.push1(builder.ins().load_symbol(name, ty, span));
+            state.push1(builder.ins().load_symbol(name.as_str(), ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
@@ -91,7 +91,7 @@ pub fn translate_operator(
             let ty = ir_type(module.globals[global_index].ty)?;
             let ptr = builder
                 .ins()
-                .symbol_addr(name, Ptr(ty.clone().into()), span);
+                .symbol_addr(name.as_str(), Ptr(ty.clone().into()), span);
             let val = state.pop1();
             builder.ins().store(ptr, val, span);
         }
