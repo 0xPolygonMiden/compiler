@@ -62,7 +62,7 @@ fn inline(
 #[cfg(test)]
 mod tests {
     use miden_core::crypto::hash::RpoDigest;
-    use miden_hir::{InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol};
+    use miden_hir::{Ident, InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol};
     use miden_hir_type::Type;
 
     use super::*;
@@ -246,8 +246,9 @@ mod tests {
         let module = ir.modules().first().unwrap().1;
         // dbg!(&module.imports());
         let import_info = module.imports();
+        dbg!(&import_info);
         let function_id = import_info
-            .imported(&module.name)
+            .imported(&Ident::from("miden:add/add@1.0.0"))
             .unwrap()
             .into_iter()
             .collect::<Vec<_>>()
@@ -255,10 +256,8 @@ mod tests {
             .cloned()
             .unwrap()
             .clone();
-        assert_eq!(function_id.module, module.name);
-        // assert_eq!(function_id.function, interface_function_ident.function);
-        let component_import = ir.imports().get(&function_id).unwrap();
-        assert_eq!(component_import.interface_function, interface_function_ident);
+        dbg!(&function_id);
+        dbg!(ir.imports());
         let component_import = ir.imports().get(&function_id).unwrap().unwrap_canon_abi_import();
         assert_eq!(component_import.interface_function, interface_function_ident);
         assert!(!component_import.function_ty.params.is_empty());

@@ -1,7 +1,7 @@
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
 use miden_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
-use miden_hir::{InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol, Type};
+use miden_hir::{Ident, InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol, Type};
 
 use crate::CompilerTest;
 
@@ -59,7 +59,7 @@ fn wcm_inc() {
     dbg!(&module.imports());
     let import_info = module.imports();
     let function_id = import_info
-        .imported(&module.name)
+        .imported(&Ident::from("miden:add-package/add-interface@1.0.0"))
         .unwrap()
         .into_iter()
         .collect::<Vec<_>>()

@@ -393,11 +393,10 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
 }
 
 /// Get the function id from the given Wasm core module import
-fn function_id_from_import(module: &Module, module_import: &ModuleImport) -> FunctionIdent {
-    let func_name = module.func_name(module_import.index.unwrap_func());
+fn function_id_from_import(_module: &Module, module_import: &ModuleImport) -> FunctionIdent {
     let function_id = FunctionIdent {
-        module: module.name(),
-        function: Ident::with_empty_span(func_name),
+        module: Ident::from(module_import.module.as_str()),
+        function: Ident::from(module_import.field.as_str()),
     };
     function_id
 }
