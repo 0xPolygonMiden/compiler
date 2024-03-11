@@ -1,12 +1,15 @@
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::fmt;
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    fmt,
+};
 
 use smallvec::SmallVec;
 
 use crate::dependency_graph::*;
 
-/// [OrderedTreeGraph] represents an immutable, fully-constructed and topologically sorted [TreeGraph].
+/// [OrderedTreeGraph] represents an immutable, fully-constructed and topologically sorted
+/// [TreeGraph].
 ///
 /// This is the representation we use during instruction scheduling.
 #[derive(Default, Debug)]
@@ -26,13 +29,10 @@ impl TryFrom<DependencyGraph> for OrderedTreeGraph {
     fn try_from(depgraph: DependencyGraph) -> Result<Self, Self::Error> {
         let graph = TreeGraph::from(depgraph.clone());
         let ordering = graph.toposort()?;
-        let indices = ordering
-            .iter()
-            .copied()
-            .try_fold(BTreeMap::default(), |mut acc, root| {
-                acc.insert(root, depgraph.indexed(root)?);
-                Ok(acc)
-            })?;
+        let indices = ordering.iter().copied().try_fold(BTreeMap::default(), |mut acc, root| {
+            acc.insert(root, depgraph.indexed(root)?);
+            Ok(acc)
+        })?;
 
         Ok(Self {
             ordering,
@@ -117,7 +117,8 @@ impl OrderedTreeGraph {
         // scheduled before the other.
         assert!(
             !self.ordering.is_empty(),
-            "invalid treegraph: the topographical ordering is empty even though the underlying graph is not"
+            "invalid treegraph: the topographical ordering is empty even though the underlying \
+             graph is not"
         );
         for n in self.ordering.iter().copied() {
             if n == a_tree {
@@ -128,7 +129,10 @@ impl OrderedTreeGraph {
             }
         }
 
-        unreachable!("invalid treegraph: there are roots in the dependency graph not represented in the topographical ordering")
+        unreachable!(
+            "invalid treegraph: there are roots in the dependency graph not represented in the \
+             topographical ordering"
+        )
     }
 }
 impl core::convert::AsRef<TreeGraph> for OrderedTreeGraph {
@@ -206,14 +210,15 @@ impl core::ops::Deref for OrderedTreeGraph {
 ///
 /// The treegraph data structure was (to my knowledge) first described in
 /// [this paper](https://www.sciencedirect.com/science/article/pii/S1571066111001538?via=ihub)
-/// by Park, et al., called _Treegraph-based Instruction Scheduling for Stack-based Virtual Machines_.
+/// by Park, et al., called _Treegraph-based Instruction Scheduling for Stack-based Virtual
+/// Machines_.
 ///
 /// The implementation and usage of both [DependencyGraph] and [TreeGraph] are based on the design
 /// and algorithms described in that paper, so it is worth reading if you are curious about it.
 /// Our implementation here is tailored for our use case (i.e. the way we represent nodes has a
-/// specific effect on the order in which we visit instructions and their arguments during scheduling),
-/// but the overall properties of the data structure described in that paper hold for [TreeGraph]
-/// as well.
+/// specific effect on the order in which we visit instructions and their arguments during
+/// scheduling), but the overall properties of the data structure described in that paper hold for
+/// [TreeGraph] as well.
 #[derive(Default, Clone)]
 pub struct TreeGraph {
     /// The nodes which are explicitly represented in the graph
@@ -435,7 +440,8 @@ impl TreeGraph {
     /// parent (dependent), they will be visited in this order. In general, this heuristic can be
     /// thought of as falling back to the original program order when no other criteria is available
     /// for sorting. In reality, it's more of a natural synergy in the data structures representing
-    /// the graph and nodes in the graph, so it is not nearly so explicit - but the effect is the same.
+    /// the graph and nodes in the graph, so it is not nearly so explicit - but the effect is the
+    /// same.
     ///
     /// ## Example
     ///
@@ -538,7 +544,8 @@ impl TreeGraph {
     ///
     /// 1. Seed a queue with the set of treegraph roots with no predecessors, enqueuing them
     /// in their natural sort order.
-    /// 2. Pop the next root from the queue, remove all edges between that root and its dependencies,
+    /// 2. Pop the next root from the queue, remove all edges between that root and its
+    ///    dependencies,
     /// and add the root to the output vector. If any of the dependencies have no remaining
     /// predecessors after the aforementioned edge was removed, it is added to the queue.
     /// 3. The process in step 2 is repeated until the queue is empty.
@@ -547,11 +554,11 @@ impl TreeGraph {
     /// 5. Otherwise, the sort is complete.
     ///
     /// In effect, a node is only emitted once all of its dependents are emitted, so for codegen,
-    /// we can use this ordering for instruction scheduling, by visiting nodes in reverse topological
-    /// order (i.e. visiting dependencies before any of their dependents). This also has the effect
-    /// of placing items on the stack in the correct order needed for each instruction, as instruction
-    /// operands will be pushed on the stack right-to-left, so that the first operand to an instruction
-    /// is on top of the stack.
+    /// we can use this ordering for instruction scheduling, by visiting nodes in reverse
+    /// topological order (i.e. visiting dependencies before any of their dependents). This also
+    /// has the effect of placing items on the stack in the correct order needed for each
+    /// instruction, as instruction operands will be pushed on the stack right-to-left, so that
+    /// the first operand to an instruction is on top of the stack.
     pub fn toposort(&self) -> Result<Vec<NodeId>, UnexpectedCycleError> {
         let mut treegraph = self.clone();
         let mut output = Vec::<NodeId>::with_capacity(treegraph.nodes.len());
@@ -592,11 +599,7 @@ impl From<DependencyGraph> for TreeGraph {
         for node_id in depgraph.node_ids() {
             let is_multi_use = depgraph.num_predecessors(node_id) > 1;
             if is_multi_use {
-                cutset.extend(
-                    depgraph
-                        .predecessors(node_id)
-                        .map(|d| (d.dependent, d.dependency)),
-                );
+                cutset.extend(depgraph.predecessors(node_id).map(|d| (d.dependent, d.dependency)));
             }
         }
 
@@ -686,7 +689,6 @@ mod tests {
     use miden_hir as hir;
 
     use super::*;
-    use crate::dependency_graph::simple_dependency_graph;
 
     /// See [simple_dependency_graph] for details on the input dependency graph.
     ///
@@ -741,34 +743,13 @@ mod tests {
         let inst2_node = Node::Inst { id: inst2, pos: 3 };
         let inst3_node = Node::Inst { id: inst3, pos: 1 };
 
-        assert_eq!(
-            treegraph.cmp_scheduling(inst2_node, inst2_node),
-            Ordering::Equal
-        );
-        assert_eq!(
-            treegraph.cmp_scheduling(inst2_node, inst3_node),
-            Ordering::Less
-        );
-        assert_eq!(
-            treegraph.cmp_scheduling(inst2_node, inst1_node),
-            Ordering::Less
-        );
-        assert_eq!(
-            treegraph.cmp_scheduling(inst1_node, inst2_node),
-            Ordering::Greater
-        );
-        assert_eq!(
-            treegraph.cmp_scheduling(inst1_node, inst0_node),
-            Ordering::Less
-        );
-        assert_eq!(
-            treegraph.cmp_scheduling(inst1_node, v1_node),
-            Ordering::Less
-        );
-        assert_eq!(
-            treegraph.cmp_scheduling(inst0_node, v0_node),
-            Ordering::Less
-        );
+        assert_eq!(treegraph.cmp_scheduling(inst2_node, inst2_node), Ordering::Equal);
+        assert_eq!(treegraph.cmp_scheduling(inst2_node, inst3_node), Ordering::Less);
+        assert_eq!(treegraph.cmp_scheduling(inst2_node, inst1_node), Ordering::Less);
+        assert_eq!(treegraph.cmp_scheduling(inst1_node, inst2_node), Ordering::Greater);
+        assert_eq!(treegraph.cmp_scheduling(inst1_node, inst0_node), Ordering::Less);
+        assert_eq!(treegraph.cmp_scheduling(inst1_node, v1_node), Ordering::Less);
+        assert_eq!(treegraph.cmp_scheduling(inst0_node, v0_node), Ordering::Less);
 
         // Instructions must be scheduled before all of their dependencies
         assert!(treegraph.is_scheduled_before(inst2_node, inst3_node));

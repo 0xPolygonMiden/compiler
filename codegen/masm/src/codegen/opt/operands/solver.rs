@@ -1,9 +1,8 @@
 use miden_hir as hir;
 use smallvec::SmallVec;
 
-use crate::codegen::Constraint;
-
 use super::{tactics::Tactic, *};
+use crate::codegen::Constraint;
 
 /// This error type is produced by the [OperandMovementConstraintSolver]
 #[derive(Debug)]
@@ -16,35 +15,40 @@ pub enum SolverError {
 
 /// The [OperandMovementConstraintSolver] is used to produce a solution to the following problem:
 ///
-/// An instruction is being emitted which requires some specific set of operands, in a particular order.
-/// These operands are known to be on the operand stack, but their usage is constrained by a rule that
-/// determines whether a specific use of an operand can consume the operand, or must copy it and consume
-/// the copy. Furthermore, the operands on the stack are not guaranteed to be in the desired order, so we
-/// must also move operands into position while operating within the bounds of the move/copy constraints.
+/// An instruction is being emitted which requires some specific set of operands, in a particular
+/// order. These operands are known to be on the operand stack, but their usage is constrained by a
+/// rule that determines whether a specific use of an operand can consume the operand, or must copy
+/// it and consume the copy. Furthermore, the operands on the stack are not guaranteed to be in the
+/// desired order, so we must also move operands into position while operating within the bounds of
+/// the move/copy constraints.
 ///
-/// Complicating matters further, a naive approach to solving this problem will produce a lot of unnecessary
-/// stack manipulation instructions in the emitted code. We would like the code we emit to match what a human
-/// might write if facing the same set of constraints. As a result, we are looking for a solution to this
-/// problem that is also the "smallest" solution, i.e. the least expensive solution in terms of cycle count.
+/// Complicating matters further, a naive approach to solving this problem will produce a lot of
+/// unnecessary stack manipulation instructions in the emitted code. We would like the code we emit
+/// to match what a human might write if facing the same set of constraints. As a result, we are
+/// looking for a solution to this problem that is also the "smallest" solution, i.e. the least
+/// expensive solution in terms of cycle count.
 ///
 /// ## Implementation
 ///
-/// With that context in mind, what we have here is a non-trivial optimization problem. If we could treat the
-/// operand stack as an array, and didn't have to worry about copies, we could solve this using a standard
-/// minimum-swap solution, but neither of those are true here. The copy constraint, when present, means
-/// that even if the stack is in the exact order we need, we must still find a way to copy the operands
-/// we are required to copy, move the ones we are required to consume, and do so in such a way that getting
-/// them into the required order on top of the stack takes the minimum number of steps.
+/// With that context in mind, what we have here is a non-trivial optimization problem. If we could
+/// treat the operand stack as an array, and didn't have to worry about copies, we could solve this
+/// using a standard minimum-swap solution, but neither of those are true here. The copy constraint,
+/// when present, means that even if the stack is in the exact order we need, we must still find a
+/// way to copy the operands we are required to copy, move the ones we are required to consume, and
+/// do so in such a way that getting them into the required order on top of the stack takes the
+/// minimum number of steps.
 ///
-/// Even this would be relatively straightforward, but an additional problem is that the MASM instruction
-/// set does not provide us a way to swap two operands at arbitrary positions on the stack. We are forced
-/// to move operands to the top of the stack before we can move them elsewhere (either by swapping them
-/// with the current operand on top of the stack, or by moving the operand up to the top, shifting all
-/// the remaining operands on the stack down by one). However, moving a value up/down the stack also has
-/// the effect of shifting other values on the stack, which may shift them in to, or out of, position.
+/// Even this would be relatively straightforward, but an additional problem is that the MASM
+/// instruction set does not provide us a way to swap two operands at arbitrary positions on the
+/// stack. We are forced to move operands to the top of the stack before we can move them elsewhere
+/// (either by swapping them with the current operand on top of the stack, or by moving the operand
+/// up to the top, shifting all the remaining operands on the stack down by one). However, moving a
+/// value up/down the stack also has the effect of shifting other values on the stack, which may
+/// shift them in to, or out of, position.
 ///
-/// Long story short, all of this must be taken into consideration at once, which is extremely difficult
-/// to express in a way that is readable/maintainable, but also debuggable if something goes wrong.
+/// Long story short, all of this must be taken into consideration at once, which is extremely
+/// difficult to express in a way that is readable/maintainable, but also debuggable if something
+/// goes wrong.
 ///
 /// To address these concerns, the [OperandMovementConstraintSolver] is architected as follows:
 ///
@@ -56,15 +60,20 @@ pub enum SolverError {
 ///
 /// The solver produces one of three possible outcomes:
 ///
-/// * `Ok(solution)`, where `solution` is a vector of actions the code generator must take to get the operands into place correctly
+/// * `Ok(solution)`, where `solution` is a vector of actions the code generator must take to get
+///   the operands into place correctly
 /// * `Err(AlreadySolved)`, indicating that the solver is not needed, and the stack is usable as-is
-/// * `Err(_)`, indicating an unrecoverable error that prevented the solver from finding a solution with the given inputs
+/// * `Err(_)`, indicating an unrecoverable error that prevented the solver from finding a solution
+///   with the given inputs
 ///
 /// When the solver is constructed, it performs the following steps:
 ///
-/// 1. Identify and rename aliased values to make them unique (i.e. multiple uses of the same value will be uniqued)
-/// 2. Determine if any expected operands require copying (if so, then the solver is always required)
-/// 3. Determine if the solver is required for the given inputs, and if not, return `Err(AlreadySolved)`
+/// 1. Identify and rename aliased values to make them unique (i.e. multiple uses of the same value
+///    will be uniqued)
+/// 2. Determine if any expected operands require copying (if so, then the solver is always
+///    required)
+/// 3. Determine if the solver is required for the given inputs, and if not, return
+///    `Err(AlreadySolved)`
 ///
 /// When the solver is run, it attempts to find an optimal solution using the following algorithm:
 ///
@@ -72,8 +81,10 @@ pub enum SolverError {
 /// 2. If the tactic failed, go back to step 1.
 /// 3. If the tactic succeeded, take the best solution between the one we just produced, and the
 ///    last one produced (if applicable).
-/// 4. If we have optimization fuel remaining, go back to step 1 and see if we can find a better solution.
-/// 5. If we have a solution, and either run out of optimization fuel, or tactics to try, then that solution is returned.
+/// 4. If we have optimization fuel remaining, go back to step 1 and see if we can find a better
+///    solution.
+/// 5. If we have a solution, and either run out of optimization fuel, or tactics to try, then that
+///    solution is returned.
 /// 6. If we haven't found a solution, then return an error
 pub struct OperandMovementConstraintSolver {
     context: SolverContext,
@@ -82,7 +93,8 @@ pub struct OperandMovementConstraintSolver {
     fuel: usize,
 }
 impl OperandMovementConstraintSolver {
-    /// Construct a new solver for the given expected operands, constraints, and operand stack state.
+    /// Construct a new solver for the given expected operands, constraints, and operand stack
+    /// state.
     pub fn new(
         expected: &[hir::Value],
         constraints: &[Constraint],
@@ -112,20 +124,17 @@ impl OperandMovementConstraintSolver {
         // We use a few heuristics to guide which tactics we try:
         //
         // * If all operands are copies, we only apply copy-all
-        // * If copies are needed, we only apply tactics which
-        //   support copies, or a mix of copies and moves.
-        // * If no copies are needed, we start with the various
-        //   move up/down + swap patterns, as many common patterns
-        //   are solved in two moves or less with them. If no tactics
-        //   are successful, move-all is used as the fallback.
-        // * If we have no optimization fuel, we do not attempt to
-        //   look for better solutions once we've found one.
-        // * If we have optimization fuel, we will try additional
-        //   tactics looking for a solution until we have exhausted
-        //   the fuel, assuming the solution we do have can be
-        //   minimized. For example, a solution which requires less
-        //   than two actions is by definition optimal already, so
-        //   we never waste time on optimization in such cases.
+        // * If copies are needed, we only apply tactics which support copies, or a mix of copies
+        //   and moves.
+        // * If no copies are needed, we start with the various move up/down + swap patterns, as
+        //   many common patterns are solved in two moves or less with them. If no tactics are
+        //   successful, move-all is used as the fallback.
+        // * If we have no optimization fuel, we do not attempt to look for better solutions once
+        //   we've found one.
+        // * If we have optimization fuel, we will try additional tactics looking for a solution
+        //   until we have exhausted the fuel, assuming the solution we do have can be minimized.
+        //   For example, a solution which requires less than two actions is by definition optimal
+        //   already, so we never waste time on optimization in such cases.
 
         // The tactics are pushed in reverse order
         if self.tactics.is_empty() {
@@ -171,18 +180,35 @@ impl OperandMovementConstraintSolver {
                         match best_size {
                             Some(best_size) if best_size > solution_size => {
                                 best_solution = Some(solution);
-                                log::debug!("a better solution ({solution_size} vs {best_size}) was found using tactic {}", tactic.name());
+                                log::debug!(
+                                    "a better solution ({solution_size} vs {best_size}) was found \
+                                     using tactic {}",
+                                    tactic.name()
+                                );
                             }
                             Some(best_size) => {
-                                log::debug!("a solution of size {solution_size} was found using tactic {}, but it is no better than the best found so far ({best_size})", tactic.name());
+                                log::debug!(
+                                    "a solution of size {solution_size} was found using tactic \
+                                     {}, but it is no better than the best found so far \
+                                     ({best_size})",
+                                    tactic.name()
+                                );
                             }
                             None => {
                                 best_solution = Some(solution);
-                                log::debug!("an initial solution of size {solution_size} was found using tactic {}", tactic.name());
+                                log::debug!(
+                                    "an initial solution of size {solution_size} was found using \
+                                     tactic {}",
+                                    tactic.name()
+                                );
                             }
                         }
                     } else {
-                        log::debug!("a partial solution was found using tactic {}, but is not sufficient on its own", tactic.name());
+                        log::debug!(
+                            "a partial solution was found using tactic {}, but is not sufficient \
+                             on its own",
+                            tactic.name()
+                        );
                         builder.discard();
                     }
                 }
@@ -223,16 +249,15 @@ impl OperandMovementConstraintSolver {
                         "{:?} was not found on the operand stack",
                         expected.value
                     );
-                    let current_position = self
-                        .context
-                        .stack()
-                        .position(&expected.value.unaliased())
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "{:?} was not found on the operand stack",
-                                expected.value.unaliased()
-                            )
-                        });
+                    let current_position =
+                        self.context.stack().position(&expected.value.unaliased()).unwrap_or_else(
+                            || {
+                                panic!(
+                                    "{:?} was not found on the operand stack",
+                                    expected.value.unaliased()
+                                )
+                            },
+                        );
                     emitter.copy_operand_to_position(current_position, 0, false);
                 }
 
@@ -266,11 +291,10 @@ impl OperandMovementConstraintSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use miden_hir::{self as hir, Type};
-    use proptest::prelude::*;
-    use proptest::strategy::Just;
-    use proptest::test_runner::TestRunner;
+    use proptest::{prelude::*, test_runner::TestRunner};
+
+    use super::*;
 
     #[allow(unused)]
     fn setup() {
@@ -405,8 +429,10 @@ mod tests {
 
     // Strategy:
     //
-    // 1. Generate a set of 1..16 operands to form a stack (called `stack`), with no more than 2 pairs of duplicate operands
-    // 2. Generate a set of up to 8 constraints (called `constraints`) by sampling `stack` twice, and treating duplicate samples as copies
+    // 1. Generate a set of 1..16 operands to form a stack (called `stack`), with no more than 2
+    //    pairs of duplicate operands
+    // 2. Generate a set of up to 8 constraints (called `constraints`) by sampling `stack` twice,
+    //    and treating duplicate samples as copies
     // 3. Generate the set of expected operands by mapping `constraints` to values
     #[derive(Debug)]
     struct ProblemInputs {
@@ -514,6 +540,7 @@ mod tests {
     impl Strategy for CopyStrategy {
         type Tree = CopyStrategyValueTree;
         type Value = usize;
+
         fn new_tree(&self, runner: &mut TestRunner) -> proptest::strategy::NewTree<Self> {
             let tree = self.strategy.new_tree(runner)?;
             Ok(CopyStrategyValueTree {
@@ -662,16 +689,14 @@ mod tests {
                     "solver returned error {result:?} for problem: {problem:#?}"
                 );
                 let actions = result.unwrap();
-                // We are expecting that if all operands are copies, that the number of actions is equal to the number of copies
-                if problem
-                    .constraints
-                    .iter()
-                    .all(|c| matches!(c, Constraint::Copy))
-                {
+                // We are expecting that if all operands are copies, that the number of actions is
+                // equal to the number of copies
+                if problem.constraints.iter().all(|c| matches!(c, Constraint::Copy)) {
                     prop_assert_eq!(actions.len(), problem.expected.len());
                 }
-                // We are expecting that applying `actions` to the input stack will produce a stack that
-                // has all of the expected operands on top of the stack, ordered by id, e.g. [v1, v2, ..vN]
+                // We are expecting that applying `actions` to the input stack will produce a stack
+                // that has all of the expected operands on top of the stack,
+                // ordered by id, e.g. [v1, v2, ..vN]
                 let mut stack = problem.stack.clone();
                 for action in actions.into_iter() {
                     match action {

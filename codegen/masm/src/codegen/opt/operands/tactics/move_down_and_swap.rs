@@ -18,8 +18,8 @@ use super::*;
 ///   * The operand on top of the stack is out of place,
 ///   and the operand in its place is either:
 ///     1. Expected to be on top of the stack, so we can swap
-///     2. Will be moved into place if we move the top of the
-///        stack immediately past it, so we can move
+///     2. Will be moved into place if we move the top of the stack immediately past it, so we can
+///        move
 ///
 /// If we apply these steps, and the stack ends up in the
 /// desired order, then this tactic was successful.
@@ -28,7 +28,12 @@ pub struct MoveDownAndSwap;
 impl Tactic for MoveDownAndSwap {
     fn apply(&mut self, builder: &mut SolutionBuilder) -> TacticResult {
         if builder.requires_copies() || builder.arity() < 2 {
-            log::debug!("cannot apply tactic when there are required copies ({}) or fewer than 2 operands ({})", builder.requires_copies(), builder.arity());
+            log::debug!(
+                "cannot apply tactic when there are required copies ({}) or fewer than 2 operands \
+                 ({})",
+                builder.requires_copies(),
+                builder.arity()
+            );
             return Err(TacticError::PreconditionFailed);
         }
 
@@ -45,7 +50,10 @@ impl Tactic for MoveDownAndSwap {
             log::trace!(
                 "{actual0:?} expects to be at index {target_pos}, but is on top of the stack"
             );
-            log::trace!("looking for operands after index {target_pos} which need to come before {actual0:?} on the stack");
+            log::trace!(
+                "looking for operands after index {target_pos} which need to come before \
+                 {actual0:?} on the stack"
+            );
             let target_offset = builder
                 .stack()
                 .iter()
@@ -75,7 +83,10 @@ impl Tactic for MoveDownAndSwap {
         } else {
             let expected0 = builder.unwrap_expected(0);
             let expected0_at = builder.unwrap_current_position(&expected0);
-            log::trace!("{actual0:?} is not an expected operand, but is occupying index {expected0_at}, where we expect {expected0:?}, evicting..");
+            log::trace!(
+                "{actual0:?} is not an expected operand, but is occupying index {expected0_at}, \
+                 where we expect {expected0:?}, evicting.."
+            );
             builder.evict();
         }
 
@@ -88,7 +99,10 @@ impl Tactic for MoveDownAndSwap {
             // have a solution already, and also so that we can
             // potentially try combining this tactic with another
             // to find a solution
-            log::trace!("item on top of the stack is now in position, so we cannot proceed further, returning possible solution");
+            log::trace!(
+                "item on top of the stack is now in position, so we cannot proceed further, \
+                 returning possible solution"
+            );
             return Ok(());
         }
 
@@ -101,12 +115,18 @@ impl Tactic for MoveDownAndSwap {
             match target_expected_pos {
                 Some(0) => {
                     // The target expects to be on top, so we can swap
-                    log::trace!("{actual0:?} is expected at {target_pos}, the occupant of which is expected on top of the stack, swapping..");
+                    log::trace!(
+                        "{actual0:?} is expected at {target_pos}, the occupant of which is \
+                         expected on top of the stack, swapping.."
+                    );
                     builder.swap(target_pos);
                 }
                 Some(pos) if pos == target_pos - 1 => {
                     // The target would be moved into place if we move the top down
-                    log::trace!("moving {actual0:?} to {target_pos}, the occupant of which is expected at {pos}");
+                    log::trace!(
+                        "moving {actual0:?} to {target_pos}, the occupant of which is expected at \
+                         {pos}"
+                    );
                     builder.movdn(target_pos);
                 }
                 Some(_) | None => {
@@ -120,7 +140,10 @@ impl Tactic for MoveDownAndSwap {
             // that is needed here
             let expected0 = builder.unwrap_expected(0);
             let expected0_at = builder.unwrap_expected_position(&expected0);
-            log::trace!("{actual0:?} is not an expected operand, but is occupying index {expected0_at}, where we expect {expected0:?}, evicting..");
+            log::trace!(
+                "{actual0:?} is not an expected operand, but is occupying index {expected0_at}, \
+                 where we expect {expected0:?}, evicting.."
+            );
             builder.evict();
         }
 

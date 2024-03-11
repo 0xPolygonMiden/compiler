@@ -1,7 +1,6 @@
 use inflector::cases::kebabcase::to_kebab_case;
 use quote::quote;
-use syn::spanned::Spanned;
-use syn::{parse_macro_input, DeriveInput, Ident, Token};
+use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Ident, Token};
 
 #[proc_macro_derive(PassInfo)]
 pub fn derive_pass_info(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -190,17 +189,25 @@ pub fn derive_conversion_pass_registration(
             }
             syn::GenericParam::Type(ref ty) => {
                 if !ty.bounds.empty_or_trailing() {
-                    return syn::Error::new(gp.span(), "cannot derive ConversionPassRegistration on a generic type with type bounds")
-                        .into_compile_error()
-                        .into();
+                    return syn::Error::new(
+                        gp.span(),
+                        "cannot derive ConversionPassRegistration on a generic type with type \
+                         bounds",
+                    )
+                    .into_compile_error()
+                    .into();
                 }
                 let param_ty: syn::Type = syn::parse_quote_spanned! { ty.span() => () };
                 params.push(syn::GenericArgument::Type(param_ty));
             }
             syn::GenericParam::Const(_) => {
-                return syn::Error::new(gp.span(), "cannot derive ConversionPassRegistration on a generic type with const arguments")
-                    .into_compile_error()
-                    .into();
+                return syn::Error::new(
+                    gp.span(),
+                    "cannot derive ConversionPassRegistration on a generic type with const \
+                     arguments",
+                )
+                .into_compile_error()
+                .into();
             }
         }
     }

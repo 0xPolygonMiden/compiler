@@ -1,5 +1,4 @@
-use core::borrow::Borrow;
-use core::fmt;
+use core::{borrow::Borrow, fmt};
 
 use smallvec::SmallVec;
 

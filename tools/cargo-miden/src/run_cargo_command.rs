@@ -1,11 +1,13 @@
+use std::{path::PathBuf, process::Command};
+
 use anyhow::bail;
 use cargo_metadata::Metadata;
-use std::path::PathBuf;
-use std::process::Command;
 
-use crate::build::build_masm;
-use crate::config::CargoArguments;
-use crate::target::{install_wasm32_wasi, WASM32_WASI_TARGET};
+use crate::{
+    build::build_masm,
+    config::CargoArguments,
+    target::{install_wasm32_wasi, WASM32_WASI_TARGET},
+};
 
 fn is_wasm_target(target: &str) -> bool {
     target == WASM32_WASI_TARGET
@@ -75,24 +77,18 @@ pub fn run_cargo_command(
             .chain(cargo_args.targets.is_empty().then_some(WASM32_WASI_TARGET));
 
         for target in targets {
-            let out_dir = metadata
-                .target_directory
-                .join(target)
-                .join(if cargo_args.release {
+            let out_dir = metadata.target_directory.join(target).join(if cargo_args.release {
+                "release"
+            } else {
+                "debug"
+            });
+
+            let miden_out_dir =
+                metadata.target_directory.join("miden").join(if cargo_args.release {
                     "release"
                 } else {
                     "debug"
                 });
-
-            let miden_out_dir =
-                metadata
-                    .target_directory
-                    .join("miden")
-                    .join(if cargo_args.release {
-                        "release"
-                    } else {
-                        "debug"
-                    });
             if !miden_out_dir.exists() {
                 std::fs::create_dir_all(&miden_out_dir)?;
             }
@@ -107,9 +103,7 @@ pub fn run_cargo_command(
                         build_masm(path.as_std_path(), miden_out_dir.as_std_path(), is_bin)?;
                     outputs.push(output);
                 } else {
-                    let path = out_dir
-                        .join(package.name.replace('-', "_"))
-                        .with_extension("wasm");
+                    let path = out_dir.join(package.name.replace('-', "_")).with_extension("wasm");
                     if path.exists() {
                         let output =
                             build_masm(path.as_std_path(), miden_out_dir.as_std_path(), is_bin)?;

@@ -8,12 +8,10 @@ use super::*;
 ///
 /// 0. There must be no copies required and at least one operand expected
 /// 1. The value expected on top of the stack should be one of:
-///   * On top, but the next element expected behind it is off-by-one.
-///     In which case we search for the element that goes there, move
-///     it up, and swap.
-///   * Not on top, but in a cycle with another misplaced operand, such
-///     that moving the latter to the top of the stack and swapping it
-///     with the expected top operand puts them both into place
+///   * On top, but the next element expected behind it is off-by-one. In which case we search for
+///     the element that goes there, move it up, and swap.
+///   * Not on top, but in a cycle with another misplaced operand, such that moving the latter to
+///     the top of the stack and swapping it with the expected top operand puts them both into place
 ///   * Not on top, but once moved to the top, is a valid solution already
 ///
 /// If after performing those steps, the stack is in the correct order,
@@ -24,7 +22,12 @@ pub struct MoveUpAndSwap;
 impl Tactic for MoveUpAndSwap {
     fn apply(&mut self, builder: &mut SolutionBuilder) -> TacticResult {
         if builder.requires_copies() || builder.arity() < 2 {
-            log::debug!("cannot apply tactic when there are required copies ({}) or fewer than 2 operands ({})", builder.requires_copies(), builder.arity());
+            log::debug!(
+                "cannot apply tactic when there are required copies ({}) or fewer than 2 operands \
+                 ({})",
+                builder.requires_copies(),
+                builder.arity()
+            );
             return Err(TacticError::PreconditionFailed);
         }
 
@@ -32,7 +35,10 @@ impl Tactic for MoveUpAndSwap {
         let actual0 = builder.unwrap_current(0);
         if actual0 == expected0 {
             let Some(expected1) = builder.get_expected(1) else {
-                log::debug!("top two operands on the stack are already in position, returning possible solution");
+                log::debug!(
+                    "top two operands on the stack are already in position, returning possible \
+                     solution"
+                );
                 return Ok(());
             };
             let move_from = builder.unwrap_current_position(&expected1);
@@ -40,7 +46,10 @@ impl Tactic for MoveUpAndSwap {
                 log::debug!("abandoning tactic because operand at index 1 is already in position");
                 return Err(TacticError::NotApplicable);
             }
-            log::trace!("moving {expected1:?} to top of stack from index {move_from}, then swapping with {expected0:?}");
+            log::trace!(
+                "moving {expected1:?} to top of stack from index {move_from}, then swapping with \
+                 {expected0:?}"
+            );
             builder.movup(move_from);
             builder.swap(1);
 
@@ -60,22 +69,20 @@ impl Tactic for MoveUpAndSwap {
         // The movup + swap pattern can solve this as follows:
         //
         // 1. `a` is expected on top, but is down stack
-        // 2. If we traverse the stack between the top and `a`,
-        //    until we find a pair of operands where the expected
-        //    positions of the pair are not in descending order,
-        //    we will find that `d` and `c` are such a pair. If no
-        //    such pair is found, we consider this tactic failed.
+        // 2. If we traverse the stack between the top and `a`, until we find a pair of operands
+        //    where the expected positions of the pair are not in descending order, we will find
+        //    that `d` and `c` are such a pair. If no such pair is found, we consider this tactic
+        //    failed.
         //
-        //    * NOTE: If the pair includes `a` itself, then we simply
-        //      move `a` directly to the top.
+        //    * NOTE: If the pair includes `a` itself, then we simply move `a` directly to the top.
         //
-        // 3. If we move the larger of the two operands to the
-        //    top of the stack, we will obtain the following order:
+        // 3. If we move the larger of the two operands to the top of the stack, we will obtain the
+        //    following order:
         //
         //    [d, b, c, a, e]
         //
-        // 4. We then identify where `a` is on the stack, and swap
-        //    with the top operand `d`, leaving us with:
+        // 4. We then identify where `a` is on the stack, and swap with the top operand `d`, leaving
+        //    us with:
         //
         //    [a, b, c, d, e]
         let mut descending_pair = None;
@@ -139,7 +146,10 @@ impl Tactic for MoveUpAndSwap {
             // instead defer to MoveDownAndSwap or fallback, both
             // of which focus on moving elements from the top first,
             // and handle the various patterns that might arise there.
-            log::trace!("abandoning tactic because by implication, operands are in order, and an unused operand must need eviction");
+            log::trace!(
+                "abandoning tactic because by implication, operands are in order, and an unused \
+                 operand must need eviction"
+            );
             Err(TacticError::NotApplicable)
         }
     }

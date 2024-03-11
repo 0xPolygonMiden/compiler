@@ -1,6 +1,8 @@
-use std::any::{Any, TypeId};
-use std::hash::Hash;
-use std::rc::Rc;
+use std::{
+    any::{Any, TypeId},
+    hash::Hash,
+    rc::Rc,
+};
 
 use midenc_session::Session;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
@@ -265,26 +267,21 @@ impl AnalysisManager {
         A: Analysis,
     {
         let key = CachedAnalysisKey::new::<A>(key);
-        self.cached
-            .get(&key)
-            .cloned()
-            .map(preservable_analysis_to_concrete)
+        self.cached.get(&key).cloned().map(preservable_analysis_to_concrete)
     }
 
-    /// Get a reference to the analysis of the requested type, for the given entity, or panics with `msg`
+    /// Get a reference to the analysis of the requested type, for the given entity, or panics with
+    /// `msg`
     pub fn expect<A>(&self, key: &<<A as Analysis>::Entity as AnalysisKey>::Key, msg: &str) -> Rc<A>
     where
         A: Analysis,
     {
         let key = CachedAnalysisKey::new::<A>(key);
-        self.cached
-            .get(&key)
-            .cloned()
-            .map(preservable_analysis_to_concrete)
-            .expect(msg)
+        self.cached.get(&key).cloned().map(preservable_analysis_to_concrete).expect(msg)
     }
 
-    /// Get a reference to the analysis of the requested type, or the default value, for the given entity, if available
+    /// Get a reference to the analysis of the requested type, or the default value, for the given
+    /// entity, if available
     ///
     /// If unavailable, and the default value is returned, that value is not cached.
     pub fn get_or_default<A>(&self, key: &<<A as Analysis>::Entity as AnalysisKey>::Key) -> Rc<A>

@@ -131,9 +131,9 @@ where
     }
 }
 impl<R: PassInfo> PassInfo for ModuleRewritePassAdapter<R> {
+    const DESCRIPTION: &'static str = <R as PassInfo>::DESCRIPTION;
     const FLAG: &'static str = <R as PassInfo>::FLAG;
     const SUMMARY: &'static str = <R as PassInfo>::SUMMARY;
-    const DESCRIPTION: &'static str = <R as PassInfo>::DESCRIPTION;
 }
 impl<R> RewritePass for ModuleRewritePassAdapter<R>
 where

@@ -4,15 +4,16 @@ mod import;
 mod isa;
 mod stack;
 
-pub use self::builder::*;
-pub use self::display::{DisplayInlineAsm, DisplayMasmBlock};
-pub use self::import::{MasmImport, ModuleImportInfo};
-pub use self::isa::*;
-pub use self::stack::{OperandStack, Stack, StackElement};
-
 use cranelift_entity::PrimaryMap;
 use smallvec::smallvec;
 
+pub use self::{
+    builder::*,
+    display::{DisplayInlineAsm, DisplayMasmBlock},
+    import::{MasmImport, ModuleImportInfo},
+    isa::*,
+    stack::{OperandStack, Stack, StackElement},
+};
 use super::{DataFlowGraph, Opcode, Type, ValueList};
 
 /// Represents Miden Assembly (MASM) directly in the IR

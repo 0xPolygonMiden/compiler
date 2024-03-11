@@ -47,10 +47,7 @@ impl TestContext {
 
     /// Add a source file to this context
     pub fn add<P: AsRef<Path>>(&mut self, path: P) -> miden_diagnostics::SourceId {
-        self.session
-            .codemap
-            .add_file(path)
-            .expect("invalid source file")
+        self.session.codemap.add_file(path).expect("invalid source file")
     }
 
     /// Get a [SourceSpan] corresponding to the callsite of this function
@@ -58,22 +55,17 @@ impl TestContext {
     #[inline(never)]
     pub fn current_span(&self) -> miden_diagnostics::SourceSpan {
         let caller = core::panic::Location::caller();
-        let caller_file = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join(caller.file());
-        let source_id = self
-            .session
-            .codemap
-            .add_file(caller_file)
-            .expect("invalid source file");
+        let caller_file =
+            Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(caller.file());
+        let source_id = self.session.codemap.add_file(caller_file).expect("invalid source file");
         self.span(source_id, caller.line(), caller.column())
     }
 
-    /// Get a [SourceSpan] representing the location in the given source file (by id), line and column
+    /// Get a [SourceSpan] representing the location in the given source file (by id), line and
+    /// column
     ///
-    /// It is expected that line and column are 1-indexed, so they will be shifted to be 0-indexed, make
-    /// sure to add 1 if you already have a 0-indexed line/column on hand
+    /// It is expected that line and column are 1-indexed, so they will be shifted to be 0-indexed,
+    /// make sure to add 1 if you already have a 0-indexed line/column on hand
     pub fn span(
         &self,
         source_id: miden_diagnostics::SourceId,
@@ -90,19 +82,14 @@ impl TestContext {
 #[macro_export]
 macro_rules! current_file {
     () => {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join(file!())
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(file!())
     };
 }
 
 #[macro_export]
 macro_rules! span {
     ($codemap:ident, $src:ident) => {
-        $codemap
-            .line_column_to_span($src, line!() - 1, column!() - 1)
-            .unwrap()
+        $codemap.line_column_to_span($src, line!() - 1, column!() - 1).unwrap()
     };
 }
 
@@ -131,9 +118,7 @@ pub fn issue56(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionId
         cc: CallConv::SystemV,
         linkage: Linkage::External,
     };
-    let mut fb = builder
-        .function("entrypoint", sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = builder.function("entrypoint", sig).expect("unexpected symbol conflict");
 
     let entry = fb.current_block();
     // Get the value for `v0` and `v1`
@@ -144,9 +129,7 @@ pub fn issue56(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionId
 
     let v3 = fb.ins().lt(v0, v1, context.current_span());
     let v4 = fb.ins().cast(v3, Type::I32, context.current_span());
-    let v5 = fb
-        .ins()
-        .neq_imm(v4, Immediate::I32(0), context.current_span());
+    let v5 = fb.ins().neq_imm(v4, Immediate::I32(0), context.current_span());
     let v6 = fb.ins().select(v5, v0, v1, context.current_span());
     let v7 = fb.ins().i32(0, context.current_span());
     let cond = fb.ins().i1(true, context.current_span());
@@ -156,8 +139,7 @@ pub fn issue56(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionId
     let v8 = fb.append_block_param(block1, Type::I32, context.current_span());
     let v10 = fb.append_block_param(block2, Type::I32, context.current_span());
 
-    fb.ins()
-        .cond_br(cond, block1, &[v6], block2, &[v6], context.current_span());
+    fb.ins().cond_br(cond, block1, &[v6], block2, &[v6], context.current_span());
 
     fb.switch_to_block(block1);
     let v9 = fb.ins().add_wrapping(v7, v8, context.current_span());
@@ -227,9 +209,7 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
         cc: CallConv::SystemV,
         linkage: Linkage::External,
     };
-    let mut fb = builder
-        .function("fib", sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = builder.function("fib", sig).expect("unexpected symbol conflict");
 
     let entry = fb.current_block();
     // Get the value for `n`
@@ -251,30 +231,23 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
     let loop_exit = fb.create_block();
     let result = fb.append_block_param(loop_exit, Type::U32, context.current_span());
 
-    // Now, starting from the entry block, we build out the rest of the function in control flow order
+    // Now, starting from the entry block, we build out the rest of the function in control flow
+    // order
     fb.switch_to_block(entry);
     let a0 = fb.ins().u32(0, context.current_span());
     let b0 = fb.ins().u32(1, context.current_span());
     let i0 = fb.ins().u32(0, context.current_span());
-    fb.ins()
-        .br(loop_header, &[a0, b0, i0], context.current_span());
+    fb.ins().br(loop_header, &[a0, b0, i0], context.current_span());
 
     fb.switch_to_block(loop_header);
     let continue_flag = fb.ins().lt(n1, n, context.current_span());
-    fb.ins().cond_br(
-        continue_flag,
-        loop_body,
-        &[],
-        loop_exit,
-        &[a1],
-        context.current_span(),
-    );
+    fb.ins()
+        .cond_br(continue_flag, loop_body, &[], loop_exit, &[a1], context.current_span());
 
     fb.switch_to_block(loop_body);
     let b2 = fb.ins().add_checked(a1, b1, context.current_span());
     let n2 = fb.ins().incr_wrapping(n1, context.current_span());
-    fb.ins()
-        .br(loop_header, &[b1, b2, n2], context.current_span());
+    fb.ins().br(loop_header, &[b1, b2, n2], context.current_span());
 
     fb.switch_to_block(loop_exit);
     fb.ins().ret(Some(result), context.current_span());
@@ -364,9 +337,7 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> Functio
         [AbiParam::new(Type::U32)],
     );
     let id = Ident::new(Symbol::intern("sum_matrix"), context.current_span());
-    let mut fb = builder
-        .function(id, sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = builder.function(id, sig).expect("unexpected symbol conflict");
 
     let entry = fb.current_block();
 
@@ -391,11 +362,8 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> Functio
     // entry
     let sum0 = fb.ins().u32(0, context.current_span());
     let ptr1 = fb.ins().ptrtoint(ptr0, Type::U32, context.current_span());
-    let not_null = fb
-        .ins()
-        .neq_imm(ptr1, Immediate::U32(0), context.current_span());
-    fb.ins()
-        .cond_br(not_null, b, &[], a, &[sum0], context.current_span());
+    let not_null = fb.ins().neq_imm(ptr1, Immediate::U32(0), context.current_span());
+    fb.ins().cond_br(not_null, b, &[], a, &[sum0], context.current_span());
 
     // blk0
     fb.switch_to_block(a);
@@ -405,59 +373,37 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> Functio
     fb.switch_to_block(b);
     let rows0 = fb.ins().u32(0, context.current_span());
     let cols0 = fb.ins().u32(0, context.current_span());
-    let row_size = fb
-        .ins()
-        .mul_imm_checked(cols, Immediate::U32(4), context.current_span());
-    fb.ins()
-        .br(c, &[sum0, rows0, cols0], context.current_span());
+    let row_size = fb.ins().mul_imm_checked(cols, Immediate::U32(4), context.current_span());
+    fb.ins().br(c, &[sum0, rows0, cols0], context.current_span());
 
     // blk2(sum1, rows1, cols1)
     fb.switch_to_block(c);
     let has_more_rows = fb.ins().lt(rows1, rows, context.current_span());
-    let row_skip = fb
-        .ins()
-        .mul_checked(rows1, row_size, context.current_span());
-    fb.ins().cond_br(
-        has_more_rows,
-        d,
-        &[sum1, rows1, cols1],
-        a,
-        &[sum1],
-        context.current_span(),
-    );
+    let row_skip = fb.ins().mul_checked(rows1, row_size, context.current_span());
+    fb.ins()
+        .cond_br(has_more_rows, d, &[sum1, rows1, cols1], a, &[sum1], context.current_span());
 
     // blk3(sum3, rows3, cols3)
     fb.switch_to_block(d);
     let has_more_cols = fb.ins().lt(cols3, cols, context.current_span());
-    fb.ins()
-        .cond_br(has_more_cols, e, &[], f, &[], context.current_span());
+    fb.ins().cond_br(has_more_cols, e, &[], f, &[], context.current_span());
 
     // blk4
     fb.switch_to_block(e);
-    let col_skip = fb
-        .ins()
-        .mul_imm_checked(cols3, Immediate::U32(4), context.current_span());
-    let skip = fb
-        .ins()
-        .add_checked(row_skip, col_skip, context.current_span());
+    let col_skip = fb.ins().mul_imm_checked(cols3, Immediate::U32(4), context.current_span());
+    let skip = fb.ins().add_checked(row_skip, col_skip, context.current_span());
     let ptr4i = fb.ins().add_checked(ptr1, skip, context.current_span());
-    let ptr4 = fb.ins().inttoptr(
-        ptr4i,
-        Type::Ptr(Box::new(Type::U32)),
-        context.current_span(),
-    );
+    let ptr4 = fb.ins().inttoptr(ptr4i, Type::Ptr(Box::new(Type::U32)), context.current_span());
     let value = fb.ins().load(ptr4, context.current_span());
     let sum4 = fb.ins().add_checked(sum3, value, context.current_span());
     let cols4 = fb.ins().incr_wrapping(cols3, context.current_span());
-    fb.ins()
-        .br(d, &[sum4, rows3, cols4], context.current_span());
+    fb.ins().br(d, &[sum4, rows3, cols4], context.current_span());
 
     // blk5
     fb.switch_to_block(f);
     let rows5 = fb.ins().incr_wrapping(rows3, context.current_span());
     let cols5 = fb.ins().u32(0, context.current_span());
-    fb.ins()
-        .br(c, &[sum3, rows5, cols5], context.current_span());
+    fb.ins().br(c, &[sum3, rows5, cols5], context.current_span());
 
     // We're done
     fb.build(&context.session.diagnostics)
@@ -469,10 +415,8 @@ pub fn sum_matrix(builder: &mut ModuleBuilder, context: &TestContext) -> Functio
 ///
 /// This defines the following modules and functions:
 ///
-/// * The `mem` module, containing memory-management intrinsics,
-///   see [mem_intrinsics] for details.
-/// * The `str` module, containing string-related intrinsics,
-///   see [str_intrinsics] for details
+/// * The `mem` module, containing memory-management intrinsics, see [mem_intrinsics] for details.
+/// * The `str` module, containing string-related intrinsics, see [str_intrinsics] for details
 pub fn intrinsics(builder: &mut ProgramBuilder, context: &TestContext) -> anyhow::Result<()> {
     mem_intrinsics(builder, context)?;
     str_intrinsics(builder, context)
@@ -483,8 +427,8 @@ pub fn intrinsics(builder: &mut ProgramBuilder, context: &TestContext) -> anyhow
 ///
 /// * `malloc(u32) -> *mut u8`, allocates from the usable heap
 /// * `memory_size() -> u32`, returns the amount of allocated memory, in pages
-/// * `memory_grow(u32) -> u32`, grows memory by a given number of pages,
-///   returning the previous memory size
+/// * `memory_grow(u32) -> u32`, grows memory by a given number of pages, returning the previous
+///   memory size
 ///
 /// Expressed as pseudocode, the `mem` module is as follows:
 ///
@@ -564,14 +508,10 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     .expect("unexpected global variable error");
 
     // Define the alloc function
-    let mut fb = mb
-        .function("alloc", malloc_signature())
-        .expect("unexpected symbol conflict");
+    let mut fb = mb.function("alloc", malloc_signature()).expect("unexpected symbol conflict");
 
     let memory_grow_sig = Signature::new([AbiParam::new(Type::U32)], [AbiParam::new(Type::U32)]);
-    let memory_grow = fb
-        .import_function("mem", "memory_grow", memory_grow_sig.clone())
-        .unwrap();
+    let memory_grow = fb.import_function("mem", "memory_grow", memory_grow_sig.clone()).unwrap();
 
     // pub fn alloc(size: usize) -> *mut u8 {
     //   let top = HEAP_TOP as usize;
@@ -596,90 +536,50 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         let args = fb.block_params(fb.current_block());
         args[0]
     };
-    let heap_top = fb
-        .ins()
-        .load_symbol("HEAP_TOP", Type::U32, SourceSpan::UNKNOWN);
-    let heap_end = fb
-        .ins()
-        .load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
-    let available = fb
-        .ins()
-        .sub_checked(heap_end, heap_top, SourceSpan::UNKNOWN);
+    let heap_top = fb.ins().load_symbol("HEAP_TOP", Type::U32, SourceSpan::UNKNOWN);
+    let heap_end = fb.ins().load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
+    let available = fb.ins().sub_checked(heap_end, heap_top, SourceSpan::UNKNOWN);
     let requires_growth = fb.ins().gt(size, available, SourceSpan::UNKNOWN);
     let grow_mem_block = fb.create_block();
     let alloc_block = fb.create_block();
-    fb.ins().cond_br(
-        requires_growth,
-        grow_mem_block,
-        &[],
-        alloc_block,
-        &[],
-        SourceSpan::UNKNOWN,
-    );
+    fb.ins()
+        .cond_br(requires_growth, grow_mem_block, &[], alloc_block, &[], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(grow_mem_block);
     let needed = fb.ins().sub_checked(size, available, SourceSpan::UNKNOWN);
     let need_pages =
-        fb.ins()
-            .div_imm_checked(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+        fb.ins().div_imm_checked(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
     let need_extra =
-        fb.ins()
-            .mod_imm_checked(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
-    let extra_page = fb
-        .ins()
-        .gt_imm(need_extra, Immediate::U32(0), SourceSpan::UNKNOWN);
+        fb.ins().mod_imm_checked(needed, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+    let extra_page = fb.ins().gt_imm(need_extra, Immediate::U32(0), SourceSpan::UNKNOWN);
     let extra_count = fb.ins().zext(extra_page, Type::U32, SourceSpan::UNKNOWN);
-    let num_pages = fb
-        .ins()
-        .add_checked(need_pages, extra_count, SourceSpan::UNKNOWN);
+    let num_pages = fb.ins().add_checked(need_pages, extra_count, SourceSpan::UNKNOWN);
     let prev_pages = {
-        let call = fb
-            .ins()
-            .call(memory_grow, &[num_pages], SourceSpan::UNKNOWN);
+        let call = fb.ins().call(memory_grow, &[num_pages], SourceSpan::UNKNOWN);
         fb.first_result(call)
     };
     let usize_max = fb.ins().u32(u32::MAX, SourceSpan::UNKNOWN);
-    fb.ins()
-        .assert_eq(prev_pages, usize_max, SourceSpan::UNKNOWN);
+    fb.ins().assert_eq(prev_pages, usize_max, SourceSpan::UNKNOWN);
     fb.ins().br(alloc_block, &[], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(alloc_block);
     let addr = fb.ins().add_checked(heap_top, size, SourceSpan::UNKNOWN);
-    let align_offset = fb
-        .ins()
-        .mod_imm_checked(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
-    let is_aligned = fb
-        .ins()
-        .eq_imm(align_offset, Immediate::U32(0), SourceSpan::UNKNOWN);
+    let align_offset = fb.ins().mod_imm_checked(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
+    let is_aligned = fb.ins().eq_imm(align_offset, Immediate::U32(0), SourceSpan::UNKNOWN);
     let align_block = fb.create_block();
     let aligned_block = fb.create_block();
     let new_heap_top_ptr =
         fb.append_block_param(aligned_block, raw_ptr_ty.clone(), SourceSpan::UNKNOWN);
 
-    let ptr = fb
-        .ins()
-        .inttoptr(addr, raw_ptr_ty.clone(), SourceSpan::UNKNOWN);
-    fb.ins().cond_br(
-        is_aligned,
-        aligned_block,
-        &[ptr],
-        align_block,
-        &[],
-        SourceSpan::UNKNOWN,
-    );
+    let ptr = fb.ins().inttoptr(addr, raw_ptr_ty.clone(), SourceSpan::UNKNOWN);
+    fb.ins()
+        .cond_br(is_aligned, aligned_block, &[ptr], align_block, &[], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(align_block);
-    let aligned_addr = fb
-        .ins()
-        .add_imm_checked(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
-    let aligned_addr = fb
-        .ins()
-        .sub_checked(aligned_addr, align_offset, SourceSpan::UNKNOWN);
-    let aligned_ptr = fb
-        .ins()
-        .inttoptr(aligned_addr, raw_ptr_ty.clone(), SourceSpan::UNKNOWN);
-    fb.ins()
-        .br(aligned_block, &[aligned_ptr], SourceSpan::UNKNOWN);
+    let aligned_addr = fb.ins().add_imm_checked(addr, Immediate::U32(8), SourceSpan::UNKNOWN);
+    let aligned_addr = fb.ins().sub_checked(aligned_addr, align_offset, SourceSpan::UNKNOWN);
+    let aligned_ptr = fb.ins().inttoptr(aligned_addr, raw_ptr_ty.clone(), SourceSpan::UNKNOWN);
+    fb.ins().br(aligned_block, &[aligned_ptr], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(aligned_block);
     let heap_top_addr = fb.ins().symbol_addr(
@@ -687,45 +587,28 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         Type::Ptr(Box::new(raw_ptr_ty.clone())),
         SourceSpan::UNKNOWN,
     );
-    fb.ins()
-        .store(heap_top_addr, new_heap_top_ptr, SourceSpan::UNKNOWN);
+    fb.ins().store(heap_top_addr, new_heap_top_ptr, SourceSpan::UNKNOWN);
     fb.ins().ret(Some(new_heap_top_ptr), SourceSpan::UNKNOWN);
 
-    let _alloc = fb
-        .build()
-        .expect("unexpected validation error, see diagnostics output");
+    let _alloc = fb.build().expect("unexpected validation error, see diagnostics output");
 
     // Define the memory_size function
     let memory_size_sig = Signature::new([], [AbiParam::new(Type::U32)]);
-    let mut fb = mb
-        .function("memory_size", memory_size_sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = mb.function("memory_size", memory_size_sig).expect("unexpected symbol conflict");
 
     // pub fn memory_size() -> usize {
     //     (HEAP_END as usize - HEAP_BASE as usize) / PAGE_SIZE
     // }
-    let heap_base_addr = fb
-        .ins()
-        .load_symbol("HEAP_BASE", Type::U32, SourceSpan::UNKNOWN);
-    let heap_end_addr = fb
-        .ins()
-        .load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
-    let used = fb
-        .ins()
-        .sub_checked(heap_end_addr, heap_base_addr, SourceSpan::UNKNOWN);
-    let used_pages = fb
-        .ins()
-        .div_imm_checked(used, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
+    let heap_base_addr = fb.ins().load_symbol("HEAP_BASE", Type::U32, SourceSpan::UNKNOWN);
+    let heap_end_addr = fb.ins().load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
+    let used = fb.ins().sub_checked(heap_end_addr, heap_base_addr, SourceSpan::UNKNOWN);
+    let used_pages = fb.ins().div_imm_checked(used, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
     fb.ins().ret(Some(used_pages), SourceSpan::UNKNOWN);
 
-    let _memory_size = fb
-        .build()
-        .expect("unexpected validation error, see diagnostics output");
+    let _memory_size = fb.build().expect("unexpected validation error, see diagnostics output");
 
     // Define the memory_grow function
-    let mut fb = mb
-        .function("memory_grow", memory_grow_sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = mb.function("memory_grow", memory_grow_sig).expect("unexpected symbol conflict");
 
     // pub fn memory_grow(num_pages: usize) -> usize {
     //     const HEAP_MAX: usize = 2u32.pow(30);
@@ -743,18 +626,12 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         let args = fb.block_params(fb.current_block());
         args[0]
     };
-    let heap_end = fb
-        .ins()
-        .load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
+    let heap_end = fb.ins().load_symbol("HEAP_END", Type::U32, SourceSpan::UNKNOWN);
     let heap_max = fb.ins().u32(u32::MAX, SourceSpan::UNKNOWN);
-    let remaining_bytes = fb
-        .ins()
-        .sub_checked(heap_max, heap_end, SourceSpan::UNKNOWN);
-    let remaining_pages = fb.ins().div_imm_checked(
-        remaining_bytes,
-        Immediate::U32(PAGE_SIZE),
-        SourceSpan::UNKNOWN,
-    );
+    let remaining_bytes = fb.ins().sub_checked(heap_max, heap_end, SourceSpan::UNKNOWN);
+    let remaining_pages =
+        fb.ins()
+            .div_imm_checked(remaining_bytes, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
     let out_of_memory = fb.ins().gt(num_pages, remaining_pages, SourceSpan::UNKNOWN);
     let out_of_memory_block = fb.create_block();
     let grow_memory_block = fb.create_block();
@@ -768,37 +645,25 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     );
 
     fb.switch_to_block(out_of_memory_block);
-    fb.ins()
-        .ret_imm(Immediate::U32(u32::MAX), SourceSpan::UNKNOWN);
+    fb.ins().ret_imm(Immediate::U32(u32::MAX), SourceSpan::UNKNOWN);
 
     fb.switch_to_block(grow_memory_block);
-    let heap_base = fb
-        .ins()
-        .load_symbol("HEAP_BASE", Type::U32, SourceSpan::UNKNOWN);
-    let prev_bytes = fb
-        .ins()
-        .sub_checked(heap_end, heap_base, SourceSpan::UNKNOWN);
+    let heap_base = fb.ins().load_symbol("HEAP_BASE", Type::U32, SourceSpan::UNKNOWN);
+    let prev_bytes = fb.ins().sub_checked(heap_end, heap_base, SourceSpan::UNKNOWN);
     let prev_pages =
         fb.ins()
             .div_imm_checked(prev_bytes, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
     let num_bytes =
         fb.ins()
             .mul_imm_checked(num_pages, Immediate::U32(PAGE_SIZE), SourceSpan::UNKNOWN);
-    let new_heap_end = fb
-        .ins()
-        .add_checked(heap_end, num_bytes, SourceSpan::UNKNOWN);
-    let heap_end_addr = fb.ins().symbol_addr(
-        "HEAP_END",
-        Type::Ptr(Box::new(Type::U32)),
-        SourceSpan::UNKNOWN,
-    );
-    fb.ins()
-        .store(heap_end_addr, new_heap_end, SourceSpan::UNKNOWN);
+    let new_heap_end = fb.ins().add_checked(heap_end, num_bytes, SourceSpan::UNKNOWN);
+    let heap_end_addr =
+        fb.ins()
+            .symbol_addr("HEAP_END", Type::Ptr(Box::new(Type::U32)), SourceSpan::UNKNOWN);
+    fb.ins().store(heap_end_addr, new_heap_end, SourceSpan::UNKNOWN);
     fb.ins().ret(Some(prev_pages), SourceSpan::UNKNOWN);
 
-    let _memory_grow = fb
-        .build()
-        .expect("unexpected validation error, see diagnostics output");
+    let _memory_grow = fb.build().expect("unexpected validation error, see diagnostics output");
 
     mb.build()?;
 
@@ -876,9 +741,7 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         (args[0], args[1], args[2])
     };
     let addr = fb.ins().ptrtoint(ptr, Type::U32, SourceSpan::UNKNOWN);
-    let is_nonnull_addr = fb
-        .ins()
-        .gt_imm(addr, Immediate::U32(0), SourceSpan::UNKNOWN);
+    let is_nonnull_addr = fb.ins().gt_imm(addr, Immediate::U32(0), SourceSpan::UNKNOWN);
     fb.ins().assert(is_nonnull_addr, SourceSpan::UNKNOWN);
     let ptr_ptr = fb.ins().getelementptr(result, &[0], SourceSpan::UNKNOWN);
     fb.ins().store(ptr_ptr, ptr, SourceSpan::UNKNOWN);
@@ -886,9 +749,7 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     fb.ins().store(len_ptr, len, SourceSpan::UNKNOWN);
     fb.ins().ret(None, SourceSpan::UNKNOWN);
 
-    let _from_raw_parts = fb
-        .build()
-        .expect("unexpected validation error, see diagnostics output");
+    let _from_raw_parts = fb.build().expect("unexpected validation error, see diagnostics output");
 
     // Define the compare function
     let mut fb = mb
@@ -946,23 +807,18 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
 
     fb.switch_to_block(loop_header);
     let done = fb.ins().lt(i, len, SourceSpan::UNKNOWN);
-    fb.ins()
-        .cond_br(done, loop_exit, &[], loop_body, &[], SourceSpan::UNKNOWN);
+    fb.ins().cond_br(done, loop_exit, &[], loop_body, &[], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(loop_body);
     let a_char_addr = fb.ins().incr_wrapping(a_addr, SourceSpan::UNKNOWN);
-    let a_char_ptr = fb.ins().inttoptr(
-        a_char_addr,
-        Type::Ptr(Box::new(Type::U8)),
-        SourceSpan::UNKNOWN,
-    );
+    let a_char_ptr =
+        fb.ins()
+            .inttoptr(a_char_addr, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
     let a_char = fb.ins().load(a_char_ptr, SourceSpan::UNKNOWN);
     let b_char_addr = fb.ins().incr_wrapping(b_addr, SourceSpan::UNKNOWN);
-    let b_char_ptr = fb.ins().inttoptr(
-        b_char_addr,
-        Type::Ptr(Box::new(Type::U8)),
-        SourceSpan::UNKNOWN,
-    );
+    let b_char_ptr =
+        fb.ins()
+            .inttoptr(b_char_addr, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
     let b_char = fb.ins().load(b_char_ptr, SourceSpan::UNKNOWN);
     let is_eq = fb.ins().eq(a_char, b_char, SourceSpan::UNKNOWN);
     let is_gt = fb.ins().gt(a_char, b_char, SourceSpan::UNKNOWN);
@@ -983,21 +839,14 @@ pub fn str_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     fb.switch_to_block(loop_exit);
     let is_len_eq = fb.ins().eq(a_len, b_len, SourceSpan::UNKNOWN);
     let is_len_gt = fb.ins().gt(a_len, b_len, SourceSpan::UNKNOWN);
-    let len_gt_result = fb
-        .ins()
-        .select(is_len_gt, one, neg_one, SourceSpan::UNKNOWN);
-    let len_eq_result = fb
-        .ins()
-        .select(is_len_eq, zero, len_gt_result, SourceSpan::UNKNOWN);
-    fb.ins()
-        .br(exit_block, &[len_eq_result], SourceSpan::UNKNOWN);
+    let len_gt_result = fb.ins().select(is_len_gt, one, neg_one, SourceSpan::UNKNOWN);
+    let len_eq_result = fb.ins().select(is_len_eq, zero, len_gt_result, SourceSpan::UNKNOWN);
+    fb.ins().br(exit_block, &[len_eq_result], SourceSpan::UNKNOWN);
 
     fb.switch_to_block(exit_block);
     fb.ins().ret(Some(result), SourceSpan::UNKNOWN);
 
-    let _compare = fb
-        .build()
-        .expect("unexpected validation error, see diagnostics output");
+    let _compare = fb.build().expect("unexpected validation error, see diagnostics output");
 
     mb.build()?;
 
@@ -1055,20 +904,14 @@ pub fn hello_world(builder: &mut ProgramBuilder, context: &TestContext) -> anyho
     // Declare the `main` function, with the appropriate type signature
     let sig = Signature::new([], [AbiParam::new(Type::I32)]);
 
-    let mut fb = mb
-        .function("main", sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = mb.function("main", sig).expect("unexpected symbol conflict");
 
     let raw_ptr_ty = Type::Ptr(Box::new(Type::U8));
-    let malloc = fb
-        .import_function("mem", "alloc", malloc_signature())
-        .unwrap();
+    let malloc = fb.import_function("mem", "alloc", malloc_signature()).unwrap();
     let str_from_raw_parts = fb
         .import_function("str", "from_raw_parts", str_from_raw_parts_signature())
         .unwrap();
-    let str_compare = fb
-        .import_function("str", "compare", str_compare_signature())
-        .unwrap();
+    let str_compare = fb.import_function("str", "compare", str_compare_signature()).unwrap();
 
     //   const HELLO: &str = "hello";
     //
@@ -1115,30 +958,20 @@ pub fn hello_world(builder: &mut ProgramBuilder, context: &TestContext) -> anyho
         mem::size_of::<u32>() as i32,
         SourceSpan::UNKNOWN,
     );
-    //let hello_data_ptr = fb.ins().load_symbol_relative("HELLO", raw_ptr_ty.clone(), mem::size_of::<u32>(), SourceSpan::UNKNOWN);
-    fb.ins()
-        .memcpy(hello_data_ptr, ptr, len, SourceSpan::UNKNOWN);
+    //let hello_data_ptr = fb.ins().load_symbol_relative("HELLO", raw_ptr_ty.clone(),
+    // mem::size_of::<u32>(), SourceSpan::UNKNOWN);
+    fb.ins().memcpy(hello_data_ptr, ptr, len, SourceSpan::UNKNOWN);
     let greeting_ptr = fb.ins().alloca(str_type(), SourceSpan::UNKNOWN);
-    fb.ins().call(
-        str_from_raw_parts,
-        &[greeting_ptr, ptr, len],
-        SourceSpan::UNKNOWN,
-    );
-    let page_size = fb
-        .ins()
-        .load_symbol("PAGE_SIZE", Type::U32, SourceSpan::UNKNOWN);
-    let expected_page_size = fb.ins().u32(PAGE_SIZE, SourceSpan::UNKNOWN);
     fb.ins()
-        .assert_eq(page_size, expected_page_size, SourceSpan::UNKNOWN);
+        .call(str_from_raw_parts, &[greeting_ptr, ptr, len], SourceSpan::UNKNOWN);
+    let page_size = fb.ins().load_symbol("PAGE_SIZE", Type::U32, SourceSpan::UNKNOWN);
+    let expected_page_size = fb.ins().u32(PAGE_SIZE, SourceSpan::UNKNOWN);
+    fb.ins().assert_eq(page_size, expected_page_size, SourceSpan::UNKNOWN);
     let compared = {
-        let hello_ptr = fb.ins().symbol_addr(
-            "HELLO",
-            Type::Ptr(Box::new(str_type())),
-            SourceSpan::UNKNOWN,
-        );
-        let call = fb
-            .ins()
-            .call(str_compare, &[hello_ptr, greeting_ptr], SourceSpan::UNKNOWN);
+        let hello_ptr =
+            fb.ins()
+                .symbol_addr("HELLO", Type::Ptr(Box::new(str_type())), SourceSpan::UNKNOWN);
+        let call = fb.ins().call(str_compare, &[hello_ptr, greeting_ptr], SourceSpan::UNKNOWN);
         fb.first_result(call)
     };
     let compared = fb.ins().trunc(compared, Type::I1, SourceSpan::UNKNOWN);
@@ -1146,8 +979,7 @@ pub fn hello_world(builder: &mut ProgramBuilder, context: &TestContext) -> anyho
     fb.ins().ret_imm(Immediate::I32(0), SourceSpan::UNKNOWN);
 
     // Finalize 'test::main'
-    fb.build()
-        .expect("unexpected validation error, see diagnostics output");
+    fb.build().expect("unexpected validation error, see diagnostics output");
     mb.build()?;
 
     // Add intrinsics
@@ -1160,10 +992,7 @@ fn str_type() -> Type {
 }
 
 fn malloc_signature() -> Signature {
-    Signature::new(
-        [AbiParam::new(Type::U32)],
-        [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
-    )
+    Signature::new([AbiParam::new(Type::U32)], [AbiParam::new(Type::Ptr(Box::new(Type::U8)))])
 }
 
 fn str_from_raw_parts_signature() -> Signature {

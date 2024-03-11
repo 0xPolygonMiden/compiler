@@ -1,8 +1,9 @@
 use cranelift_bforest as bforest;
 use cranelift_entity::SecondaryMap;
-
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
-use miden_hir::{Block, DataFlowGraph, Function, Inst, Instruction};
+use miden_hir::{
+    pass::{Analysis, AnalysisManager, AnalysisResult},
+    Block, DataFlowGraph, Function, Inst, Instruction,
+};
 use midenc_session::Session;
 
 /// Represents the predecessor of the current basic block.
@@ -21,7 +22,8 @@ impl BlockPredecessor {
     }
 }
 
-/// A node in the control flow graph, which contains the successors and predecessors of a given `Block`.
+/// A node in the control flow graph, which contains the successors and predecessors of a given
+/// `Block`.
 #[derive(Clone, Default)]
 struct Node {
     /// Instructions which transfer control to this block
@@ -139,10 +141,7 @@ impl ControlFlowGraph {
 
     /// Return the number of predecessors for `block`
     pub fn num_predecessors(&self, block: Block) -> usize {
-        self.data[block]
-            .predecessors
-            .iter(&self.pred_forest)
-            .count()
+        self.data[block].predecessors.iter(&self.pred_forest).count()
     }
 
     /// Return the number of successors for `block`
@@ -189,12 +188,8 @@ impl ControlFlowGraph {
     }
 
     fn add_edge(&mut self, from: Block, from_inst: Inst, to: Block) {
-        self.data[from]
-            .successors
-            .insert(to, &mut self.succ_forest, &());
-        self.data[to]
-            .predecessors
-            .insert(from_inst, from, &mut self.pred_forest, &());
+        self.data[from].successors.insert(to, &mut self.succ_forest, &());
+        self.data[to].predecessors.insert(from_inst, from, &mut self.pred_forest, &());
     }
 }
 
@@ -264,7 +259,7 @@ mod tests {
     use std::sync::Arc;
 
     use miden_diagnostics::{
-        term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler, SourceSpan,
+        term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler,
     };
     use miden_hir::*;
 
@@ -313,9 +308,8 @@ mod tests {
             cc: CallConv::SystemV,
             linkage: Linkage::External,
         };
-        let mut fb = builder
-            .function("branches_and_jumps", sig)
-            .expect("unexpected symbol conflict");
+        let mut fb =
+            builder.function("branches_and_jumps", sig).expect("unexpected symbol conflict");
 
         let block0 = fb.entry_block();
         let cond = {
@@ -328,12 +322,10 @@ mod tests {
 
         let cond = fb.ins().trunc(cond, Type::I1, SourceSpan::default());
         let br_block0_block2_block1 =
-            fb.ins()
-                .cond_br(cond, block2, &[], block1, &[], SourceSpan::default());
+            fb.ins().cond_br(cond, block2, &[], block1, &[], SourceSpan::default());
         fb.switch_to_block(block1);
         let br_block1_block1_block2 =
-            fb.ins()
-                .cond_br(cond, block1, &[], block2, &[], SourceSpan::default());
+            fb.ins().cond_br(cond, block1, &[], block2, &[], SourceSpan::default());
 
         let id = fb
             .build(&diagnostics)

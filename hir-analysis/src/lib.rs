@@ -7,11 +7,13 @@ mod loops;
 mod treegraph;
 mod validation;
 
-pub use self::control_flow::{BlockPredecessor, ControlFlowGraph};
-pub use self::data::{GlobalVariableAnalysis, GlobalVariableLayout};
-pub use self::dependency_graph::DependencyGraph;
-pub use self::dominance::{DominanceFrontier, DominatorTree, DominatorTreePreorder};
-pub use self::liveness::LivenessAnalysis;
-pub use self::loops::{Loop, LoopAnalysis, LoopLevel};
-pub use self::treegraph::{OrderedTreeGraph, TreeGraph};
-pub use self::validation::{ModuleValidationAnalysis, Rule};
+pub use self::{
+    control_flow::{BlockPredecessor, ControlFlowGraph},
+    data::{GlobalVariableAnalysis, GlobalVariableLayout},
+    dependency_graph::DependencyGraph,
+    dominance::{DominanceFrontier, DominatorTree, DominatorTreePreorder},
+    liveness::LivenessAnalysis,
+    loops::{Loop, LoopAnalysis, LoopLevel},
+    treegraph::{OrderedTreeGraph, TreeGraph},
+    validation::{ModuleValidationAnalysis, Rule},
+};

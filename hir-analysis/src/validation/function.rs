@@ -59,9 +59,8 @@ impl Rule<Function> for FunctionValidator {
 /// 1. The linkage is valid for functions
 /// 2. The calling convention is valid in the context the function is defined in
 /// 3. The ABI of its parameters matches the calling convention
-/// 4. The ABI of the parameters and results are coherent, e.g.
-///    there are no signed integer parameters which are specified
-///    as being zero-extended, there are no results if an sret
+/// 4. The ABI of the parameters and results are coherent, e.g. there are no signed integer
+///    parameters which are specified as being zero-extended, there are no results if an sret
 ///    parameter is present, etc.
 struct CoherentSignature {
     in_kernel_module: bool,
@@ -86,8 +85,8 @@ impl Rule<Function> for CoherentSignature {
             invalid_function!(
                 diagnostics,
                 function.id,
-                "the signature of this function specifies '{linkage}' linkage, \
-                 but only 'external' or 'internal' are valid"
+                "the signature of this function specifies '{linkage}' linkage, but only \
+                 'external' or 'internal' are valid"
             );
         }
 
@@ -101,10 +100,10 @@ impl Rule<Function> for CoherentSignature {
                     diagnostics,
                     function.id,
                     function.id.span(),
-                    "the '{cc}' calling convention may only be used with \
-                     'internal' linkage in kernel modules",
-                    "This function is declared with 'external' linkage in a kernel module, so \
-                     it must use the 'kernel' calling convention"
+                    "the '{cc}' calling convention may only be used with 'internal' linkage in \
+                     kernel modules",
+                    "This function is declared with 'external' linkage in a kernel module, so it \
+                     must use the 'kernel' calling convention"
                 );
             } else if !is_public && is_kernel_function {
                 invalid_function!(
@@ -130,9 +129,12 @@ impl Rule<Function> for CoherentSignature {
         // 3
         // * sret parameters may not be used with kernel calling convention
         // * pointer-typed parameters/results may not be used with kernel calling convention
-        // * parameters larger than 8 bytes must be passed by reference with fast/C calling conventions
-        // * results larger than 8 bytes require the use of an sret parameter with fast/C calling conventions
-        // * total size of all parameters when laid out on the operand stack may not exceed 64 bytes (16 field elements)
+        // * parameters larger than 8 bytes must be passed by reference with fast/C calling
+        //   conventions
+        // * results larger than 8 bytes require the use of an sret parameter with fast/C calling
+        //   conventions
+        // * total size of all parameters when laid out on the operand stack may not exceed 64 bytes
+        //   (16 field elements)
         //
         // 4
         // * parameter count and types must be consistent between the signature and the entry block
@@ -150,9 +152,9 @@ impl Rule<Function> for CoherentSignature {
                 function.id,
                 function.id.span(),
                 "function signature and entry block have different arities",
-                "This happens if the signature or entry block are modified without updating the other, \
-                 make sure the number and types of all parameters are the same in both the signature and \
-                 the entry block"
+                "This happens if the signature or entry block are modified without updating the \
+                 other, make sure the number and types of all parameters are the same in both the \
+                 signature and the entry block"
             );
         }
         for (i, param) in function.signature.params.iter().enumerate() {
@@ -169,8 +171,8 @@ impl Rule<Function> for CoherentSignature {
                     span,
                     "parameter type mismatch between signature and entry block",
                     format!(
-                        "The function declares this parameter as having type {param_ty}, \
-                         but the actual type is {value_ty}"
+                        "The function declares this parameter as having type {param_ty}, but the \
+                         actual type is {value_ty}"
                     )
                 );
             }
@@ -184,7 +186,8 @@ impl Rule<Function> for CoherentSignature {
                         function.id,
                         span,
                         "signed integer parameters may not be combined with zero-extension",
-                        "Zero-extending a signed-integer loses the signedness, you should use signed-extension instead"
+                        "Zero-extending a signed-integer loses the signedness, you should use \
+                         signed-extension instead"
                     );
                 }
                 ArgumentExtension::Sext | ArgumentExtension::Zext if !is_integer => {
@@ -192,7 +195,8 @@ impl Rule<Function> for CoherentSignature {
                         diagnostics,
                         function.id,
                         span,
-                        "non-integer parameters may not be combined with argument extension attributes",
+                        "non-integer parameters may not be combined with argument extension \
+                         attributes",
                         "Argument extension has no meaning for types other than integers"
                     );
                 }
@@ -210,8 +214,10 @@ impl Rule<Function> for CoherentSignature {
                     diagnostics,
                     function.id,
                     span,
-                    "functions using the 'kernel' calling convention may not use sret or pointer-typed parameters",
-                    "Kernel functions are invoked in a different memory context, so they may not pass or return values by reference"
+                    "functions using the 'kernel' calling convention may not use sret or \
+                     pointer-typed parameters",
+                    "Kernel functions are invoked in a different memory context, so they may not \
+                     pass or return values by reference"
                 );
             }
 
@@ -222,9 +228,11 @@ impl Rule<Function> for CoherentSignature {
                             diagnostics,
                             function.id,
                             span,
-                            "a function may only have a single sret parameter, and it must be the first parameter",
-                            "The sret parameter type is used to return a large value from a function, \
-                             but it may only be used for functions with a single return value"
+                            "a function may only have a single sret parameter, and it must be the \
+                             first parameter",
+                            "The sret parameter type is used to return a large value from a \
+                             function, but it may only be used for functions with a single return \
+                             value"
                         );
                     }
                     if !is_pointer {
@@ -246,8 +254,9 @@ impl Rule<Function> for CoherentSignature {
                             function.id,
                             span,
                             "functions with an sret parameter must have no results",
-                            "An sret parameter is used in place of normal return values, but this function uses both, \
-                            which is not valid. You should remove the results from the function signature."
+                            "An sret parameter is used in place of normal return values, but this \
+                             function uses both, which is not valid. You should remove the \
+                             results from the function signature."
                         );
                     }
                 }
@@ -259,16 +268,16 @@ impl Rule<Function> for CoherentSignature {
                         function.id,
                         span,
                         "this parameter type is too large to pass by value",
-                        format!("This parameter has type {param_ty}, you must refactor this function to pass it by reference instead")
+                        format!(
+                            "This parameter has type {param_ty}, you must refactor this function \
+                             to pass it by reference instead"
+                        )
                     );
                 }
             }
 
-            effective_stack_usage += param_ty
-                .clone()
-                .to_raw_parts()
-                .map(|parts| parts.len())
-                .unwrap_or(0);
+            effective_stack_usage +=
+                param_ty.clone().to_raw_parts().map(|parts| parts.len()).unwrap_or(0);
         }
 
         if effective_stack_usage > 16 {
@@ -277,10 +286,11 @@ impl Rule<Function> for CoherentSignature {
                 function.id,
                 span,
                 "this function has a signature with too many parameters",
-                "Due to the constraints of the Miden VM, all function parameters must fit on the operand stack, \
-                 which is 16 elements (each of which is effectively 4 bytes, a maximum of 64 bytes). \
-                 The layout of the parameter list of this function requires more than this limit. \
-                 You should either remove parameters, or combine some of them into a struct which is then passed by reference."
+                "Due to the constraints of the Miden VM, all function parameters must fit on the \
+                 operand stack, which is 16 elements (each of which is effectively 4 bytes, a \
+                 maximum of 64 bytes). The layout of the parameter list of this function requires \
+                 more than this limit. You should either remove parameters, or combine some of \
+                 them into a struct which is then passed by reference."
             );
         }
 
@@ -308,7 +318,11 @@ impl Rule<Function> for CoherentSignature {
                     function.id,
                     function.id.span(),
                     "This function specifies a result type which is too large to pass by value",
-                    format!("The parameter at index {} has type {}, you must refactor this function to pass it by reference instead", i, &result.ty)
+                    format!(
+                        "The parameter at index {} has type {}, you must refactor this function \
+                         to pass it by reference instead",
+                        i, &result.ty
+                    )
                 );
             }
         }

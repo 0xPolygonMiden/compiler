@@ -82,9 +82,7 @@ impl<'f> FunctionBuilder<'f> {
     }
 
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> DefaultInstBuilder<'a> {
-        let block = self
-            .position
-            .expect("must be in a block to insert instructions");
+        let block = self.position.expect("must be in a block to insert instructions");
         DefaultInstBuilder::new(&mut self.func.dfg, block)
     }
 }
@@ -204,7 +202,8 @@ pub trait InstBuilderBase<'f>: Sized {
         ctrl_ty: Type,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph);
-    /// Get a default instruction builder using the dataflow graph and insertion point of the current builder
+    /// Get a default instruction builder using the dataflow graph and insertion point of the
+    /// current builder
     fn ins<'a, 'b: 'a>(&'b mut self) -> DefaultInstBuilder<'a> {
         let ip = self.insertion_point();
         DefaultInstBuilder::at(self.data_flow_graph_mut(), ip)
@@ -266,29 +265,15 @@ macro_rules! require_unsigned_integer {
 macro_rules! require_integer {
     ($this:ident, $val:ident) => {{
         let ty = $this.data_flow_graph().value_type($val);
-        assert!(
-            ty.is_integer(),
-            "expected {} to be of integral type",
-            stringify!($val)
-        );
+        assert!(ty.is_integer(), "expected {} to be of integral type", stringify!($val));
         ty
     }};
 
     ($this:ident, $val:ident, $ty:expr) => {{
         let ty = $this.data_flow_graph().value_type($val);
         let expected_ty = $ty;
-        assert!(
-            ty.is_integer(),
-            "expected {} to be of integral type",
-            stringify!($val)
-        );
-        assert_eq!(
-            ty,
-            &expected_ty,
-            "expected {} to be a {}",
-            stringify!($val),
-            &expected_ty
-        );
+        assert!(ty.is_integer(), "expected {} to be of integral type", stringify!($val));
+        assert_eq!(ty, &expected_ty, "expected {} to be a {}", stringify!($val), &expected_ty);
         ty
     }};
 }
@@ -603,8 +588,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             let pool = &mut self.data_flow_graph_mut().value_lists;
             vlist.push(rhs, pool);
         }
-        self.PrimOpImm(Opcode::AssertEq, Type::Unit, lhs, vlist, span)
-            .0
+        self.PrimOpImm(Opcode::AssertEq, Type::Unit, lhs, vlist, span).0
     }
 
     signed_integer_literal!(1, bool);
@@ -652,7 +636,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.symbol_relative(name, 0, span)
     }
 
-    /// Same semantics as `symbol`, but applies a constant offset to the address of the given symbol.
+    /// Same semantics as `symbol`, but applies a constant offset to the address of the given
+    /// symbol.
     ///
     /// If the offset is zero, this is equivalent to `symbol`
     fn symbol_relative<S: AsRef<str>>(
@@ -661,11 +646,10 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         offset: i32,
         span: SourceSpan,
     ) -> GlobalValue {
-        self.data_flow_graph_mut()
-            .create_global_value(GlobalValueData::Symbol {
-                name: Ident::new(Symbol::intern(name.as_ref()), span),
-                offset,
-            })
+        self.data_flow_graph_mut().create_global_value(GlobalValueData::Symbol {
+            name: Ident::new(Symbol::intern(name.as_ref()), span),
+            offset,
+        })
     }
 
     /// Get the address of a global variable whose symbol is `name`
@@ -677,7 +661,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.symbol_relative_addr(name, 0, ty, span)
     }
 
-    /// Same semantics as `symbol_addr`, but applies a constant offset to the address of the given symbol.
+    /// Same semantics as `symbol_addr`, but applies a constant offset to the address of the given
+    /// symbol.
     ///
     /// If the offset is zero, this is equivalent to `symbol_addr`
     fn symbol_relative_addr<S: AsRef<str>>(
@@ -688,12 +673,10 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         span: SourceSpan,
     ) -> Value {
         assert!(ty.is_pointer(), "expected pointer type, got '{}'", &ty);
-        let gv = self
-            .data_flow_graph_mut()
-            .create_global_value(GlobalValueData::Symbol {
-                name: Ident::new(Symbol::intern(name.as_ref()), span),
-                offset,
-            });
+        let gv = self.data_flow_graph_mut().create_global_value(GlobalValueData::Symbol {
+            name: Ident::new(Symbol::intern(name.as_ref()), span),
+            offset,
+        });
         into_first_result!(self.Global(gv, ty, span))
     }
 
@@ -706,7 +689,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.load_symbol_relative(name, ty, 0, span)
     }
 
-    /// Same semantics as `load_symbol`, but a constant offset is applied to the address before issuing the load.
+    /// Same semantics as `load_symbol`, but a constant offset is applied to the address before
+    /// issuing the load.
     fn load_symbol_relative<S: AsRef<str>>(
         mut self,
         name: S,
@@ -714,12 +698,10 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         offset: i32,
         span: SourceSpan,
     ) -> Value {
-        let base = self
-            .data_flow_graph_mut()
-            .create_global_value(GlobalValueData::Symbol {
-                name: Ident::new(Symbol::intern(name.as_ref()), span),
-                offset: 0,
-            });
+        let base = self.data_flow_graph_mut().create_global_value(GlobalValueData::Symbol {
+            name: Ident::new(Symbol::intern(name.as_ref()), span),
+            offset: 0,
+        });
         self.load_global_relative(base, ty, offset, span)
     }
 
@@ -732,7 +714,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.load_global_relative(addr, ty, 0, span)
     }
 
-    /// Same semantics as `load_global_relative`, but a constant offset is applied to the address before issuing the load.
+    /// Same semantics as `load_global_relative`, but a constant offset is applied to the address
+    /// before issuing the load.
     fn load_global_relative(
         mut self,
         base: GlobalValue,
@@ -746,31 +729,24 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         {
             // If the base global is a load, the target address cannot be computed until runtime,
             // so expand this to the appropriate sequence of instructions to do so in that case
-            assert!(
-                base_ty.is_pointer(),
-                "expected global value to have pointer type"
-            );
+            assert!(base_ty.is_pointer(), "expected global value to have pointer type");
             let base_ty = base_ty.clone();
             let base = self.ins().load_global(base, base_ty.clone(), span);
             let addr = self.ins().ptrtoint(base, Type::U32, span);
             let offset_addr = if offset >= 0 {
-                self.ins()
-                    .add_imm_checked(addr, Immediate::U32(offset as u32), span)
+                self.ins().add_imm_checked(addr, Immediate::U32(offset as u32), span)
             } else {
-                self.ins()
-                    .sub_imm_checked(addr, Immediate::U32(offset.unsigned_abs()), span)
+                self.ins().sub_imm_checked(addr, Immediate::U32(offset.unsigned_abs()), span)
             };
             let ptr = self.ins().inttoptr(offset_addr, base_ty, span);
             self.load(ptr, span)
         } else {
             // The global address can be computed statically
-            let gv = self
-                .data_flow_graph_mut()
-                .create_global_value(GlobalValueData::Load {
-                    base,
-                    offset,
-                    ty: ty.clone(),
-                });
+            let gv = self.data_flow_graph_mut().create_global_value(GlobalValueData::Load {
+                base,
+                offset,
+                ty: ty.clone(),
+            });
             into_first_result!(self.Global(gv, ty, span))
         }
     }
@@ -795,10 +771,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         {
             // If the base global is a load, the target address cannot be computed until runtime,
             // so expand this to the appropriate sequence of instructions to do so in that case
-            assert!(
-                base_ty.is_pointer(),
-                "expected global value to have pointer type"
-            );
+            assert!(base_ty.is_pointer(), "expected global value to have pointer type");
             let base_ty = base_ty.clone();
             let base = self.ins().load_global(base, base_ty.clone(), span);
             let addr = self.ins().ptrtoint(base, Type::U32, span);
@@ -808,23 +781,19 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
                 .expect("invalid type: size is larger than 2^32");
             let computed_offset = unit_size * offset;
             let offset_addr = if computed_offset >= 0 {
-                self.ins()
-                    .add_imm_checked(addr, Immediate::U32(offset as u32), span)
+                self.ins().add_imm_checked(addr, Immediate::U32(offset as u32), span)
             } else {
-                self.ins()
-                    .sub_imm_checked(addr, Immediate::U32(offset.unsigned_abs()), span)
+                self.ins().sub_imm_checked(addr, Immediate::U32(offset.unsigned_abs()), span)
             };
             let ptr = self.ins().inttoptr(offset_addr, base_ty, span);
             self.load(ptr, span)
         } else {
             // The global address can be computed statically
-            let gv = self
-                .data_flow_graph_mut()
-                .create_global_value(GlobalValueData::IAddImm {
-                    base,
-                    offset,
-                    ty: unit_ty.clone(),
-                });
+            let gv = self.data_flow_graph_mut().create_global_value(GlobalValueData::IAddImm {
+                base,
+                offset,
+                ty: unit_ty.clone(),
+            });
             let ty = self.data_flow_graph().global_type(gv);
             into_first_result!(self.Global(gv, ty, span))
         }
@@ -849,11 +818,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     fn store(mut self, ptr: Value, value: Value, span: SourceSpan) -> Inst {
         let pointee_ty = require_pointee!(self, ptr);
         let value_ty = self.data_flow_graph().value_type(value);
-        assert_eq!(
-            pointee_ty, value_ty,
-            "expected value to be a {}, got {}",
-            pointee_ty, value_ty
-        );
+        assert_eq!(pointee_ty, value_ty, "expected value to be a {}, got {}", pointee_ty, value_ty);
         let mut vlist = ValueList::default();
         {
             let dfg = self.data_flow_graph_mut();
@@ -872,10 +837,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         require_integer!(self, count);
         let src_ty = require_pointer!(self, src);
         let dst_ty = require_pointer!(self, dst);
-        assert_eq!(
-            src_ty, dst_ty,
-            "the source and destination pointers must be the same type"
-        );
+        assert_eq!(src_ty, dst_ty, "the source and destination pointers must be the same type");
         let mut vlist = ValueList::default();
         {
             let dfg = self.data_flow_graph_mut();
@@ -906,24 +868,22 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
 
     /// This is an intrinsic which derives a new pointer from an existing pointer to an aggregate.
     ///
-    /// In short, this represents the common need to calculate a new pointer from an existing pointer,
-    /// but without losing provenance of the original pointer. It is specifically intended for use
-    /// in obtaining a pointer to an element/field of an array/struct, of the correct type, given a
-    /// well typed pointer to the aggregate.
+    /// In short, this represents the common need to calculate a new pointer from an existing
+    /// pointer, but without losing provenance of the original pointer. It is specifically
+    /// intended for use in obtaining a pointer to an element/field of an array/struct, of the
+    /// correct type, given a well typed pointer to the aggregate.
     ///
     /// This function will panic if the pointer is not to an aggregate type
     ///
     /// The new pointer is derived by statically navigating the structure of the pointee type, using
     /// `offsets` to guide the traversal. Initially, the first offset is relative to the original
     /// pointer, where `0` refers to the base/first field of the object. The second offset is then
-    /// relative to the base of the object selected by the first offset, and so on. Offsets must remain
-    /// in bounds, any attempt to index outside a type's boundaries will result in a panic.
+    /// relative to the base of the object selected by the first offset, and so on. Offsets must
+    /// remain in bounds, any attempt to index outside a type's boundaries will result in a
+    /// panic.
     fn getelementptr(mut self, ptr: Value, mut indices: &[usize], span: SourceSpan) -> Value {
         let mut ty = require_pointee!(self, ptr);
-        assert!(
-            !indices.is_empty(),
-            "getelementptr requires at least one index"
-        );
+        assert!(!indices.is_empty(), "getelementptr requires at least one index");
 
         // Calculate the offset in bytes from `ptr` to get the element pointer
         let mut offset = 0;
@@ -954,10 +914,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
                     offset += field.offset as usize;
                     ty = &field.ty;
                 }
-                other => panic!(
-                    "invalid getelementptr: cannot index values of type {}",
-                    other
-                ),
+                other => panic!("invalid getelementptr: cannot index values of type {}", other),
             }
         }
 
@@ -969,9 +926,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let offset: u32 = offset.try_into().expect(
             "invalid getelementptr type: computed offset cannot possibly fit in linear memory",
         );
-        let new_addr = self
-            .ins()
-            .add_imm_checked(addr, Immediate::U32(offset), span);
+        let new_addr = self.ins().add_imm_checked(addr, Immediate::U32(offset), span);
         // Cast back to a pointer to the selected element type
         self.inttoptr(new_addr, ty, span)
     }
@@ -988,7 +943,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let kind_matches = both_numeric || both_pointers;
         assert!(
             kind_matches,
-            "invalid cast, expected source and target types to be of the same kind, where a kind is either numeric or pointer: value is of type {}, and target type is {}",
+            "invalid cast, expected source and target types to be of the same kind, where a kind \
+             is either numeric or pointer: value is of type {}, and target type is {}",
             &arg_ty, &ty
         );
         into_first_result!(self.Unary(Opcode::Cast, ty, arg, span))
@@ -1241,8 +1197,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             then_vlist.extend(then_args.iter().copied(), pool);
             else_vlist.extend(else_args.iter().copied(), pool);
         }
-        self.CondBr(cond, then_dest, then_vlist, else_dest, else_vlist, span)
-            .0
+        self.CondBr(cond, then_dest, then_vlist, else_dest, else_vlist, span).0
     }
 
     fn switch(self, arg: Value, arms: Vec<(u32, Block)>, default: Block, span: SourceSpan) -> Inst {

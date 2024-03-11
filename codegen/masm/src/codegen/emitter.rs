@@ -7,14 +7,13 @@ use miden_hir_analysis::{
 };
 use smallvec::SmallVec;
 
-use crate::masm::{self, Op};
-
 use super::{
     emit::{InstOpEmitter, OpEmitter},
     opt::{OperandMovementConstraintSolver, SolverError},
     scheduler::{BlockInfo, InstInfo, Schedule, ScheduleOp},
     Constraint, OperandStack,
 };
+use crate::masm::{self, Op};
 
 pub struct FunctionEmitter<'a> {
     f: &'a hir::Function,
@@ -203,13 +202,9 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         // NOTE: This does not include block arguments for control flow instructions, those are
         // handled separately within the specific handlers for those instructions
         let args = self.function.f.dfg.inst_args(inst_info.inst);
-        self.schedule_operands(args, inst_info.plain_arguments())
-            .unwrap_or_else(|err| {
-                panic!(
-                    "failed to schedule operands for {}: {err:?}",
-                    inst_info.inst
-                )
-            });
+        self.schedule_operands(args, inst_info.plain_arguments()).unwrap_or_else(|err| {
+            panic!("failed to schedule operands for {}: {err:?}", inst_info.inst)
+        });
 
         match self.function.f.dfg.inst(inst_info.inst) {
             ix @ (Instruction::RetImm(_) | Instruction::Ret(_)) => self.emit_ret(inst_info, ix),
@@ -283,10 +278,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         let args = op.args.as_slice(&self.function.f.dfg.value_lists);
         self.schedule_operands(args, inst_info.block_arguments(destination))
             .unwrap_or_else(|err| {
-                panic!(
-                    "failed to schedule operands for {}: {err:?}",
-                    inst_info.inst
-                )
+                panic!("failed to schedule operands for {}: {err:?}", inst_info.inst)
             });
         // Rename operands on stack to destination block parameters
         let params = self.function.f.dfg.block_params(destination);
@@ -317,18 +309,11 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         } else {
             // We should only be emitting code for a block more than once if that block
             // is a loop header. All other blocks should only be visited a single time.
-            assert!(
-                in_loop_header,
-                "unexpected cycle at {}",
-                self.block_info.source
-            );
+            assert!(in_loop_header, "unexpected cycle at {}", self.block_info.source);
 
             // Calculate
             let current_level = self.controlling_loop_level().unwrap_or_else(|| {
-                panic!(
-                    "expected controlling loop to be set in {}",
-                    self.block_info.source
-                )
+                panic!("expected controlling loop to be set in {}", self.block_info.source)
             });
             let target_level = self.loop_level(self.block_info.source);
             let mut emitter = self.emitter();
@@ -367,10 +352,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                 self.emit_op(Op::If(then_blk, else_blk));
             }
 
-            let successors = [
-                (then_dest, then_blk, op.then_dest.1),
-                (else_dest, else_blk, op.else_dest.1),
-            ];
+            let successors =
+                [(then_dest, then_blk, op.then_dest.1), (else_dest, else_blk, op.else_dest.1)];
             for (block, masm_block, args) in successors.into_iter() {
                 // Make a copy of the operand stack in the current block
                 // to be used as the state of the operand stack in the
@@ -419,10 +402,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             );
 
             let current_level = self.controlling_loop_level().unwrap_or_else(|| {
-                panic!(
-                    "expected controlling loop to be set in {}",
-                    self.block_info.source
-                )
+                panic!("expected controlling loop to be set in {}", self.block_info.source)
             });
             let target_level = self.loop_level(self.block_info.source);
             // Continue the target loop when it is reached, the top of the stack
@@ -649,11 +629,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             }
             // Store a value at a constant address
             hir::Opcode::Store => {
-                emitter.store_imm(
-                    op.imm
-                        .as_u32()
-                        .expect("invalid address immediate: out of range"),
-                );
+                emitter
+                    .store_imm(op.imm.as_u32().expect("invalid address immediate: out of range"));
             }
             opcode => unimplemented!("unrecognized primop with immediate opcode: '{opcode}'"),
         }
@@ -745,17 +722,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         self.rewrite_inline_assembly_block(op, &mut rewrites, &mapped);
 
         // Pop arguments, push results
-        self.stack
-            .dropn(op.args.len(&self.function.f.dfg.value_lists));
-        for result in self
-            .function
-            .f
-            .dfg
-            .inst_results(inst_info.inst)
-            .iter()
-            .copied()
-            .rev()
-        {
+        self.stack.dropn(op.args.len(&self.function.f.dfg.value_lists));
+        for result in self.function.f.dfg.inst_results(inst_info.inst).iter().copied().rev() {
             let ty = self.function.f.dfg.value_type(result).clone();
             self.stack.push(TypedValue { value: result, ty });
         }
@@ -807,9 +775,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         let mut unused = SmallVec::<[hir::Value; 4]>::default();
         let mut constraints = SmallVec::<[Constraint; 4]>::default();
         for operand in self.stack.iter().rev() {
-            let value = operand
-                .as_value()
-                .expect("unexpected non-ssa value on stack");
+            let value = operand.as_value().expect("unexpected non-ssa value on stack");
             // If the given value is not live on entry to this block, it should be dropped
             if !self.function.liveness.is_live_at(&value, pp) {
                 println!(
@@ -928,13 +894,12 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     current_index = 0;
                 }
             } else {
-                self.schedule_operands(&unused, &constraints)
-                    .unwrap_or_else(|err| {
-                        panic!(
-                            "failed to schedule unused operands for {}: {err:?}",
-                            self.block_info.source
-                        )
-                    });
+                self.schedule_operands(&unused, &constraints).unwrap_or_else(|err| {
+                    panic!(
+                        "failed to schedule unused operands for {}: {err:?}",
+                        self.block_info.source
+                    )
+                });
                 let mut emitter = self.emitter();
                 emitter.dropn(unused.len());
             }
@@ -1036,8 +1001,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                             );
                             self.controlling_loop
                         }
-                        // If we're entering a nested loop, then we need to update the controlling loop
-                        // to reflect the loop we've entered
+                        // If we're entering a nested loop, then we need to update the controlling
+                        // loop to reflect the loop we've entered
                         Ordering::Less => Some(dst),
                         Ordering::Equal => self.controlling_loop,
                     }
@@ -1083,8 +1048,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn controlling_loop_level(&self) -> Option<usize> {
-        self.controlling_loop
-            .map(|lp| self.function.loops.level(lp).level())
+        self.controlling_loop.map(|lp| self.function.loops.level(lp).level())
     }
 
     fn loop_level(&self, block: hir::Block) -> usize {

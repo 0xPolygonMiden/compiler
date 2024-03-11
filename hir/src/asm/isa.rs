@@ -184,7 +184,8 @@ pub enum MasmOp {
     AssertEqwWithError(u32),
     /// Places the memory address of the given local index on top of the stack
     LocAddr(LocalId),
-    /// Writes a value to the first element of the word at the address corresponding to the given local index
+    /// Writes a value to the first element of the word at the address corresponding to the given
+    /// local index
     LocStore(LocalId),
     /// Writes a word to the address corresponding to the given local index
     LocStorew(LocalId),
@@ -195,14 +196,15 @@ pub enum MasmOp {
     MemLoad,
     /// Same as above, but the address is given as an immediate
     MemLoadImm(u32),
-    /// Pops `a`, representing a memory address + offset pair, from the top of the stack, then loads the
-    /// element at the given offset from the base of the word starting at that address, placing it on top
-    /// of the stack.
+    /// Pops `a`, representing a memory address + offset pair, from the top of the stack, then
+    /// loads the element at the given offset from the base of the word starting at that
+    /// address, placing it on top of the stack.
     ///
     /// Traps if `a` >= 2^32
     ///
-    /// NOTE: This instruction doesn't actually exist in Miden Assembly yet, it is a proposed extension of
-    /// `MemLoad` which allows addressing all field elements of a word individually. It is here for testing.
+    /// NOTE: This instruction doesn't actually exist in Miden Assembly yet, it is a proposed
+    /// extension of `MemLoad` which allows addressing all field elements of a word
+    /// individually. It is here for testing.
     MemLoadOffset,
     /// Same as above, but the address and offset are given as a immediates
     MemLoadOffsetImm(u32, u8),
@@ -221,26 +223,28 @@ pub enum MasmOp {
     MemStore,
     /// Same as above, but the address is given as an immediate
     MemStoreImm(u32),
-    /// Pops `a, v` from the stack, where `a` represents a memory address + offset pair, and `v` the value
-    /// to be stored, and stores `v` as the element at the given offset from the base of the word starting
-    /// at that address. The remaining elements of the word are not modified.
+    /// Pops `a, v` from the stack, where `a` represents a memory address + offset pair, and `v`
+    /// the value to be stored, and stores `v` as the element at the given offset from the base
+    /// of the word starting at that address. The remaining elements of the word are not
+    /// modified.
     ///
     /// Traps if `a` >= 2^32
     ///
-    /// NOTE: This instruction doesn't actually exist in Miden Assembly yet, it is a proposed extension of
-    /// `MemStore` which allows addressing all field elements of a word individually. It is here for testing.
+    /// NOTE: This instruction doesn't actually exist in Miden Assembly yet, it is a proposed
+    /// extension of `MemStore` which allows addressing all field elements of a word
+    /// individually. It is here for testing.
     MemStoreOffset,
     /// Same as above, but the address and offset are given as a immediates
     MemStoreOffsetImm(u32, u8),
-    /// Pops `a, V` from the stack, where `a` represents a memory address, and `V` is a word to be stored
-    /// at that location, and overwrites the word located at `a`.
+    /// Pops `a, V` from the stack, where `a` represents a memory address, and `V` is a word to be
+    /// stored at that location, and overwrites the word located at `a`.
     ///
     /// Traps if `a` >= 2^32
     MemStorew,
     /// Same as above, but the address is given as an immediate
     MemStorewImm(u32),
-    /// Read two sequential words from memory starting at `a`, overwriting the first two words on the stack,
-    /// and advancing `a` to the next address following the two that were loaded
+    /// Read two sequential words from memory starting at `a`, overwriting the first two words on
+    /// the stack, and advancing `a` to the next address following the two that were loaded
     /// [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
     MemStream,
     /// Pops the next two words from the advice stack, overwrites the
@@ -270,13 +274,16 @@ pub enum MasmOp {
     Repeat(u8, MasmBlockId),
     /// Pops `N` args off the stack, executes the procedure, results will be placed on the stack
     Exec(FunctionIdent),
-    /// Pops `N` args off the stack, executes the procedure in the root context, results will be placed on the stack
+    /// Pops `N` args off the stack, executes the procedure in the root context, results will be
+    /// placed on the stack
     Syscall(FunctionIdent),
-    /// Pops the address (MAST root hash) of a callee off the stack, and dynamically `exec` the function
+    /// Pops the address (MAST root hash) of a callee off the stack, and dynamically `exec` the
+    /// function
     DynExec,
     /// TODO
     DynCall,
-    /// Pushes the address (MAST root hash) of the given function on the stack, to be used by `dynexec` or `dyncall`
+    /// Pushes the address (MAST root hash) of the given function on the stack, to be used by
+    /// `dynexec` or `dyncall`
     ProcRef(FunctionIdent),
     /// Pops `b, a` off the stack, and places the result of `(a + b) mod p` on the stack
     Add,
@@ -381,7 +388,8 @@ pub enum MasmOp {
     Clk,
     /// Peeks `a` from the top of the stack, and places the 1 on the stack if `a < 2^32`, else 0
     U32Test,
-    /// Peeks `A` from the top of the stack, and places the 1 on the stack if `forall a : A, a < 2^32`, else 0
+    /// Peeks `A` from the top of the stack, and places the 1 on the stack if `forall a : A, a <
+    /// 2^32`, else 0
     U32Testw,
     /// Peeks `a` from the top of the stack, and traps if `a >= 2^32`
     U32Assert,
@@ -389,11 +397,13 @@ pub enum MasmOp {
     U32AssertWithError(u32),
     /// Peeks `b, a` from the top of the stack, and traps if either `a` or `b` is >= 2^32
     U32Assert2,
-    /// Peeks `b, a` from the top of the stack, and traps if either `a` or `b` is >= 2^32, raising the given error code
+    /// Peeks `b, a` from the top of the stack, and traps if either `a` or `b` is >= 2^32, raising
+    /// the given error code
     U32Assert2WithError(u32),
     /// Peeks `A` from the top of the stack, and traps unless `forall a : A, a < 2^32`, else 0
     U32Assertw,
-    /// Peeks `A` from the top of the stack, and traps unless `forall a : A, a < 2^32`, else 0, raising the given error code
+    /// Peeks `A` from the top of the stack, and traps unless `forall a : A, a < 2^32`, else 0,
+    /// raising the given error code
     U32AssertwWithError(u32),
     /// Pops `a` from the top of the stack, and places the result of `a mod 2^32` on the stack
     ///
@@ -574,8 +584,9 @@ impl MasmOp {
         locals: &[FunctionIdent],
         imported: &miden_assembly::ast::ModuleImports,
     ) -> SmallVec<[Self; 2]> {
-        use crate::{StarkField, Symbol};
         use miden_assembly::ast::Instruction;
+
+        use crate::{StarkField, Symbol};
 
         let op = match ix {
             Instruction::Assert => Self::Assert,
@@ -994,16 +1005,16 @@ impl MasmOp {
             Self::MemStorew => Instruction::MemStoreW,
             Self::MemStorewImm(addr) => Instruction::MemStoreWImm(addr),
             Self::MemLoadOffset
-            | Self::MemLoadOffsetImm(_, _)
+            | Self::MemLoadOffsetImm(..)
             | Self::MemStoreOffset
-            | Self::MemStoreOffsetImm(_, _) => unimplemented!(
+            | Self::MemStoreOffsetImm(..) => unimplemented!(
                 "this is an experimental instruction that is not supported by the Miden VM"
             ),
             Self::MemStream => Instruction::MemStream,
             Self::AdvPipe => Instruction::AdvPipe,
             Self::AdvPush(n) => Instruction::AdvPush(n),
             Self::AdvLoadw => Instruction::AdvLoadW,
-            Self::If(_, _) | Self::While(_) | Self::Repeat(_, _) => {
+            Self::If(..) | Self::While(_) | Self::Repeat(..) => {
                 panic!("control flow instructions are meant to be handled specially by the caller")
             }
             Self::Exec(ref callee) => {
@@ -1251,20 +1262,20 @@ impl fmt::Display for MasmOp {
             Self::MemLoad
             | Self::MemLoadOffset
             | Self::MemLoadImm(_)
-            | Self::MemLoadOffsetImm(_, _) => f.write_str("mem_load"),
+            | Self::MemLoadOffsetImm(..) => f.write_str("mem_load"),
             Self::MemLoadw | Self::MemLoadwImm(_) => f.write_str("mem_loadw"),
             Self::MemStore
             | Self::MemStoreOffset
             | Self::MemStoreImm(_)
-            | Self::MemStoreOffsetImm(_, _) => f.write_str("mem_store"),
+            | Self::MemStoreOffsetImm(..) => f.write_str("mem_store"),
             Self::MemStorew | Self::MemStorewImm(_) => f.write_str("mem_storew"),
             Self::MemStream => f.write_str("mem_stream"),
             Self::AdvPipe => f.write_str("adv_pipe"),
             Self::AdvPush(_) => f.write_str("adv_push"),
             Self::AdvLoadw => f.write_str("adv_loadw"),
-            Self::If(_, _) => f.write_str("if.true"),
+            Self::If(..) => f.write_str("if.true"),
             Self::While(_) => f.write_str("while.true"),
-            Self::Repeat(_, _) => f.write_str("repeat"),
+            Self::Repeat(..) => f.write_str("repeat"),
             Self::Exec(_) => f.write_str("exec"),
             Self::Syscall(_) => f.write_str("syscall"),
             Self::DynExec => f.write_str("dynexec"),

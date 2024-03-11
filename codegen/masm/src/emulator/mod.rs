@@ -3,12 +3,6 @@ mod debug;
 mod events;
 mod functions;
 
-pub use self::breakpoints::*;
-pub use self::debug::{CallFrame, DebugInfo, DebugInfoWithStack};
-pub use self::events::{BreakpointEvent, ControlEffect, EmulatorEvent};
-use self::functions::{Activation, Stub};
-pub use self::functions::{Instruction, InstructionWithOp, NativeFn};
-
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
 use miden_hir::{
@@ -16,6 +10,13 @@ use miden_hir::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use self::functions::{Activation, Stub};
+pub use self::{
+    breakpoints::*,
+    debug::{CallFrame, DebugInfo, DebugInfoWithStack},
+    events::{BreakpointEvent, ControlEffect, EmulatorEvent},
+    functions::{Instruction, InstructionWithOp, NativeFn},
+};
 use crate::{Begin, BlockId, Function, Module, Op, Program};
 
 /// This type represents the various sorts of errors which can occur when
@@ -132,26 +133,21 @@ pub struct Emulator {
 }
 impl Default for Emulator {
     fn default() -> Self {
-        Self::new(
-            Self::DEFAULT_HEAP_SIZE,
-            Self::DEFAULT_HEAP_START,
-            Self::DEFAULT_LOCALS_START,
-        )
+        Self::new(Self::DEFAULT_HEAP_SIZE, Self::DEFAULT_HEAP_START, Self::DEFAULT_LOCALS_START)
     }
 }
 impl Emulator {
-    const PAGE_SIZE: u32 = 64 * 1024;
     pub const DEFAULT_HEAP_SIZE: u32 = (4 * Self::PAGE_SIZE) / 16;
     pub const DEFAULT_HEAP_START: u32 = (2 * Self::PAGE_SIZE) / 16;
     pub const DEFAULT_LOCALS_START: u32 = (3 * Self::PAGE_SIZE) / 16;
     const EMPTY_WORD: [Felt; 4] = [Felt::ZERO; 4];
+    const PAGE_SIZE: u32 = 64 * 1024;
 
     /// Construct a new, empty emulator with:
     ///
     /// * A linear memory heap of `memory_size` words
     /// * The start of the usable heap set to `hp` (an address in words)
     /// * The start of the reserved heap used for locals set to `lp` (an address in words)
-    ///
     pub fn new(memory_size: u32, hp: u32, lp: u32) -> Self {
         let memory = vec![Self::EMPTY_WORD; memory_size as usize];
         Self {
@@ -260,16 +256,12 @@ impl Emulator {
 
     /// Get the instruction pointer that will be next executed by the emulator
     pub fn current_ip(&self) -> Option<Instruction> {
-        self.callstack
-            .last()
-            .and_then(|activation| activation.peek())
+        self.callstack.last().and_then(|activation| activation.peek())
     }
 
     /// Get the name of the function that is currently executing
     pub fn current_function(&self) -> Option<FunctionIdent> {
-        self.callstack
-            .last()
-            .map(|activation| activation.function().name)
+        self.callstack.last().map(|activation| activation.function().name)
     }
 
     /// Get access to the current state of the operand stack
@@ -315,7 +307,12 @@ impl Emulator {
     pub fn load_module(&mut self, module: Arc<Module>) -> Result<(), EmulationError> {
         use std::collections::hash_map::Entry;
 
-        assert_matches!(self.status, Status::Init | Status::Loaded, "cannot load modules once execution has started without calling stop() or reset() first");
+        assert_matches!(
+            self.status,
+            Status::Init | Status::Loaded,
+            "cannot load modules once execution has started without calling stop() or reset() \
+             first"
+        );
 
         match self.modules_loaded.entry(module.name) {
             Entry::Occupied(_) => return Err(EmulationError::AlreadyLoaded(module.name)),
@@ -359,7 +356,12 @@ impl Emulator {
     ///
     /// This function will panic if the named module is not currently loaded.
     pub fn unload_module(&mut self, name: Ident) {
-        assert_matches!(self.status, Status::Loaded, "cannot unload modules once execution has started without calling stop() or reset() first");
+        assert_matches!(
+            self.status,
+            Status::Loaded,
+            "cannot unload modules once execution has started without calling stop() or reset() \
+             first"
+        );
 
         let prev = self
             .modules_loaded
@@ -372,7 +374,8 @@ impl Emulator {
             self.locals.remove(&f.name);
         }
 
-        // Determine if we need to add `name` to `modules_pending` if there are dependents still loaded
+        // Determine if we need to add `name` to `modules_pending` if there are dependents still
+        // loaded
         for module in self.modules_loaded.values() {
             if module.imports.is_import(&name) {
                 self.modules_pending.insert(name);
@@ -431,8 +434,7 @@ impl Emulator {
         if self.functions.contains_key(&id) {
             return Err(EmulationError::DuplicateFunction(id));
         }
-        self.functions
-            .insert(id, Stub::Native(Rc::new(RefCell::new(function))));
+        self.functions.insert(id, Stub::Native(Rc::new(RefCell::new(function))));
 
         Ok(())
     }
@@ -460,10 +462,7 @@ impl Emulator {
             };
             if elem_idx == 4 {
                 elem_idx = 0;
-                assert!(
-                    self.hp + 1 < self.lp,
-                    "heap has overflowed into reserved region"
-                );
+                assert!(self.hp + 1 < self.lp, "heap has overflowed into reserved region");
                 self.hp += 1;
             }
             self.memory[self.hp as usize][elem_idx] = Felt::new(elem as u64);
@@ -486,10 +485,7 @@ impl Emulator {
         let size = size as u32;
         let extra = size % 16;
         let words = (size / 16) + (extra > 0) as u32;
-        assert!(
-            self.hp + words < self.lp,
-            "heap has overflowed into reserved region"
-        );
+        assert!(self.hp + words < self.lp, "heap has overflowed into reserved region");
         self.hp += words;
 
         addr * 16
@@ -507,9 +503,11 @@ impl Emulator {
         self.memory[addr][ptr.index as usize] = value;
     }
 
-    /// Start executing the current program by `invoke`ing the top-level initialization block (the entrypoint).
+    /// Start executing the current program by `invoke`ing the top-level initialization block (the
+    /// entrypoint).
     ///
-    /// This function will run the program to completion, and return the state of the operand stack on exit.
+    /// This function will run the program to completion, and return the state of the operand stack
+    /// on exit.
     ///
     /// NOTE: If no entrypoint has been loaded, an error is returned.
     ///
@@ -521,7 +519,10 @@ impl Emulator {
             Status::Stopped => {
                 self.stop();
             }
-            Status::Started | Status::Suspended => panic!("cannot start the emulator when it is already started without calling stop() or reset() first"),
+            Status::Started | Status::Suspended => panic!(
+                "cannot start the emulator when it is already started without calling stop() or \
+                 reset() first"
+            ),
             Status::Faulted(ref err) => return Err(err.clone()),
         }
 
@@ -558,7 +559,10 @@ impl Emulator {
             Status::Stopped => {
                 self.stop();
             }
-            Status::Started | Status::Suspended => panic!("cannot start the emulator when it is already started without calling stop() or reset() first"),
+            Status::Started | Status::Suspended => panic!(
+                "cannot start the emulator when it is already started without calling stop() or \
+                 reset() first"
+            ),
             Status::Faulted(ref err) => return Err(err.clone()),
         }
 
@@ -622,7 +626,12 @@ impl Emulator {
         callee: FunctionIdent,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
-        assert_matches!(self.status, Status::Loaded, "cannot start executing a function when the emulator is already started without calling stop() or reset() first");
+        assert_matches!(
+            self.status,
+            Status::Loaded,
+            "cannot start executing a function when the emulator is already started without \
+             calling stop() or reset() first"
+        );
         let fun = self
             .functions
             .get(&callee)
@@ -700,7 +709,12 @@ impl Emulator {
         callee: FunctionIdent,
         args: &[Felt],
     ) -> Result<EmulatorEvent, EmulationError> {
-        assert_matches!(self.status, Status::Loaded, "cannot start executing a function when the emulator is already started without calling stop() or reset() first");
+        assert_matches!(
+            self.status,
+            Status::Loaded,
+            "cannot start executing a function when the emulator is already started without \
+             calling stop() or reset() first"
+        );
 
         let fun = self
             .functions
@@ -719,7 +733,8 @@ impl Emulator {
     }
 
     /// Stage a MASM IR function for execution by the emulator, placing the given arguments on the
-    /// operand stack in FIFO order, then immediately suspending execution until the next resumption.
+    /// operand stack in FIFO order, then immediately suspending execution until the next
+    /// resumption.
     #[inline]
     fn enter_function(
         &mut self,
@@ -1292,10 +1307,8 @@ impl Emulator {
                 Op::LocStorew(id) => {
                     let addr = (state.fp() + id.as_usize() as u32) as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
-                    let word = self
-                        .stack
-                        .peekw()
-                        .expect("operand stack does not contain a full word");
+                    let word =
+                        self.stack.peekw().expect("operand stack does not contain a full word");
                     self.memory[addr] = word;
                     return Ok(EmulatorEvent::MemoryWrite {
                         addr: addr as u32,
@@ -1382,10 +1395,8 @@ impl Emulator {
                 }
                 Op::MemStorew => {
                     let addr = pop_addr!(self);
-                    let word = self
-                        .stack
-                        .peekw()
-                        .expect("operand stack does not contain a full word");
+                    let word =
+                        self.stack.peekw().expect("operand stack does not contain a full word");
                     self.memory[addr] = word;
                     self.callstack.push(state);
                     return Ok(EmulatorEvent::MemoryWrite {
@@ -1396,10 +1407,8 @@ impl Emulator {
                 Op::MemStorewImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
-                    let word = self
-                        .stack
-                        .peekw()
-                        .expect("operand stack does not contain a full word");
+                    let word =
+                        self.stack.peekw().expect("operand stack does not contain a full word");
                     self.memory[addr] = word;
                     self.callstack.push(state);
                     return Ok(EmulatorEvent::MemoryWrite {

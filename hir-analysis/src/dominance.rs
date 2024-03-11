@@ -3,14 +3,13 @@ use std::{
     mem,
 };
 
-use cranelift_entity::packed_option::PackedOption;
-use cranelift_entity::SecondaryMap;
-
-use rustc_hash::FxHashSet;
-
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
-use miden_hir::{Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint};
+use cranelift_entity::{packed_option::PackedOption, SecondaryMap};
+use miden_hir::{
+    pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
+    Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint,
+};
 use midenc_session::Session;
+use rustc_hash::FxHashSet;
 
 use super::{BlockPredecessor, ControlFlowGraph};
 
@@ -24,15 +23,16 @@ const SEEN: u32 = 1;
 /// A node in the dominator tree. Each block has one of these.
 #[derive(Clone, Default)]
 struct Node {
-    /// Number of this node in a reverse post-order traversal of the control-flow graph, starting from 1.
+    /// Number of this node in a reverse post-order traversal of the control-flow graph, starting
+    /// from 1.
     ///
-    /// This number is monotonic in the reverse post-order but not contiguous, as we leave holes for
-    /// localized modifications of the dominator tree after it is initially computed.
+    /// This number is monotonic in the reverse post-order but not contiguous, as we leave holes
+    /// for localized modifications of the dominator tree after it is initially computed.
     ///
     /// Unreachable nodes get number 0, all others are > 0.
     rpo_number: u32,
-    /// The immediate dominator of this block, represented as the instruction at the end of the dominating
-    /// block which transfers control to this block.
+    /// The immediate dominator of this block, represented as the instruction at the end of the
+    /// dominating block which transfers control to this block.
     ///
     /// This is `None` for unreachable blocks, as well as the entry block, which has no dominators.
     idom: PackedOption<Inst>,
@@ -132,17 +132,17 @@ impl DominatorTree {
     /// Returns the immediate dominator of `block`.
     ///
     /// The immediate dominator of a basic block is the instruction which transfers control to that
-    /// block (and implicitly, its enclosing block). This instruction does not have to be the terminator
-    /// of its block, though it typically is.
+    /// block (and implicitly, its enclosing block). This instruction does not have to be the
+    /// terminator of its block, though it typically is.
     ///
-    /// An instruction "dominates" `block` if all control flow paths from the function entry to `block`
-    /// must go through that instruction.
+    /// An instruction "dominates" `block` if all control flow paths from the function entry to
+    /// `block` must go through that instruction.
     ///
     /// The "immediate dominator" is the dominator that is closest to `block`. All other dominators
     /// also dominate the immediate dominator.
     ///
-    /// This returns `None` if `block` is not reachable from the entry block, or if it is the entry block
-    /// which has no dominators.
+    /// This returns `None` if `block` is not reachable from the entry block, or if it is the entry
+    /// block which has no dominators.
     pub fn idom(&self, block: Block) -> Option<Inst> {
         self.nodes[block].idom.into()
     }
@@ -207,10 +207,9 @@ impl DominatorTree {
     {
         let (mut block_b, mut inst_b) = match b.into() {
             ProgramPoint::Block(block) => (block, None),
-            ProgramPoint::Inst(inst) => (
-                dfg.inst_block(inst).expect("Instruction not in layout."),
-                Some(inst),
-            ),
+            ProgramPoint::Inst(inst) => {
+                (dfg.inst_block(inst).expect("Instruction not in layout."), Some(inst))
+            }
         };
         let rpo_a = self.nodes[a].rpo_number;
 
@@ -262,10 +261,7 @@ impl DominatorTree {
             }
         }
 
-        debug_assert_eq!(
-            a.block, b.block,
-            "Unreachable block passed to common_dominator?"
-        );
+        debug_assert_eq!(a.block, b.block, "Unreachable block passed to common_dominator?");
 
         // We're in the same block. The common dominator is the earlier instruction.
         if dfg.pp_cmp(a.inst, b.inst) == Ordering::Less {
@@ -406,9 +402,8 @@ impl DominatorTree {
             .filter(|&BlockPredecessor { block: pred, .. }| self.nodes[pred].rpo_number > 1);
 
         // The RPO must visit at least one predecessor before this node.
-        let mut idom = reachable_preds
-            .next()
-            .expect("block node must have one reachable predecessor");
+        let mut idom =
+            reachable_preds.next().expect("block node must have one reachable predecessor");
 
         for pred in reachable_preds {
             idom = self.common_dominator(idom, pred, dfg);
@@ -505,8 +500,8 @@ impl DominatorTreePreorder {
 
     /// Get an iterator over the immediate children of `block` in the dominator tree.
     ///
-    /// These are the blocks whose immediate dominator is an instruction in `block`, ordered according
-    /// to the CFG reverse post-order.
+    /// These are the blocks whose immediate dominator is an instruction in `block`, ordered
+    /// according to the CFG reverse post-order.
     pub fn children(&self, block: Block) -> ChildIter {
         ChildIter {
             dtpo: self,
@@ -613,24 +608,25 @@ impl<'a> Iterator for ChildIter<'a> {
 /// You might wonder if `block3` is in the dominance frontier of `block0`, and the answer is no.
 /// That's because `block0` strictly dominates `block3`, i.e. all control flow must pass through it
 /// to reach `block3`. The reason why strict dominance matters becomes more clear when you consider
-/// that any value defined in `block0` will have the same definition same regardless of which path is
-/// taken to reach `block3`.
+/// that any value defined in `block0` will have the same definition same regardless of which path
+/// is taken to reach `block3`.
 ///
 /// ## Purpose
 ///
-/// The dominance frontier is used to place new phi nodes (which in our IR are represented by block arguments)
-/// after introducing register spills/reloads. Reloads would naturally introduce multiple definitions for
-/// a given value, which would break the SSA property of the IR, so to preserve it, reloads introduce new
-/// definitions, and all uses of the original definition dominated by the reload are updated.
+/// The dominance frontier is used to place new phi nodes (which in our IR are represented by block
+/// arguments) after introducing register spills/reloads. Reloads would naturally introduce multiple
+/// definitions for a given value, which would break the SSA property of the IR, so to preserve it,
+/// reloads introduce new definitions, and all uses of the original definition dominated by the
+/// reload are updated.
 ///
-/// However, that alone is insufficient, since there may be uses of the original definition which are _not_
-/// dominated by the reload due to branching control flow. To address this, we must introduce new block
-/// arguments to every block in the dominance frontier of the block in which reloads occur, and where
-/// the reloaded value is live. All uses of either the original definition dominated by that phi node are
-/// rewritten to use the definition produced by the phi.
+/// However, that alone is insufficient, since there may be uses of the original definition which
+/// are _not_ dominated by the reload due to branching control flow. To address this, we must
+/// introduce new block arguments to every block in the dominance frontier of the block in which
+/// reloads occur, and where the reloaded value is live. All uses of either the original definition
+/// dominated by that phi node are rewritten to use the definition produced by the phi.
 ///
-/// The actual algorithm works bottom-up, rather than top-down, but the relationship to the dominance frontier
-/// is the same in both cases.
+/// The actual algorithm works bottom-up, rather than top-down, but the relationship to the
+/// dominance frontier is the same in both cases.
 #[derive(Default)]
 pub struct DominanceFrontier {
     /// The dominance frontier for each block, as a set of blocks
@@ -698,11 +694,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::ControlFlowGraph;
     use miden_hir::{
-        AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
+        AbiParam, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
     };
+
+    use super::*;
 
     #[test]
     fn domtree_empty() {
@@ -737,12 +733,8 @@ mod tests {
             };
 
             builder.switch_to_block(block0);
-            let cond = builder
-                .ins()
-                .neq_imm(v0, Immediate::I32(0), SourceSpan::UNKNOWN);
-            builder
-                .ins()
-                .cond_br(cond, block2, &[], trap_block, &[], SourceSpan::UNKNOWN);
+            let cond = builder.ins().neq_imm(v0, Immediate::I32(0), SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block2, &[], trap_block, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(trap_block);
             builder.ins().unreachable(SourceSpan::UNKNOWN);
@@ -796,9 +788,7 @@ mod tests {
         let block1 = function.dfg.create_block();
         let block2 = function.dfg.create_block();
         let block3 = function.dfg.create_block();
-        let cond = function
-            .dfg
-            .append_block_param(block3, Type::I1, SourceSpan::UNKNOWN);
+        let cond = function.dfg.append_block_param(block3, Type::I1, SourceSpan::UNKNOWN);
         function.dfg.entry = block3;
         function.signature.params.push(AbiParam::new(Type::I1));
         let (br_block3_block1, br_block1_block0_block2) = {
@@ -809,9 +799,7 @@ mod tests {
 
             builder.switch_to_block(block1);
             let br_block1_block0_block2 =
-                builder
-                    .ins()
-                    .cond_br(cond, block0, &[], block2, &[], SourceSpan::UNKNOWN);
+                builder.ins().cond_br(cond, block0, &[], block2, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block2);
             builder.ins().br(block0, &[], SourceSpan::UNKNOWN);
@@ -848,26 +836,13 @@ mod tests {
         assert_eq!(domtree.idom(block2).unwrap(), br_block1_block0_block2);
         assert_eq!(domtree.idom(block0).unwrap(), br_block1_block0_block2);
 
-        assert!(domtree.dominates(
-            br_block1_block0_block2,
-            br_block1_block0_block2,
-            &function.dfg
-        ));
+        assert!(domtree.dominates(br_block1_block0_block2, br_block1_block0_block2, &function.dfg));
         assert!(!domtree.dominates(br_block1_block0_block2, br_block3_block1, &function.dfg));
         assert!(domtree.dominates(br_block3_block1, br_block1_block0_block2, &function.dfg));
 
-        assert_eq!(
-            domtree.rpo_cmp(block3, block3, &function.dfg),
-            Ordering::Equal
-        );
-        assert_eq!(
-            domtree.rpo_cmp(block3, block1, &function.dfg),
-            Ordering::Less
-        );
-        assert_eq!(
-            domtree.rpo_cmp(block3, br_block3_block1, &function.dfg),
-            Ordering::Less
-        );
+        assert_eq!(domtree.rpo_cmp(block3, block3, &function.dfg), Ordering::Equal);
+        assert_eq!(domtree.rpo_cmp(block3, block1, &function.dfg), Ordering::Less);
+        assert_eq!(domtree.rpo_cmp(block3, br_block3_block1, &function.dfg), Ordering::Less);
         assert_eq!(
             domtree.rpo_cmp(br_block3_block1, br_block1_block0_block2, &function.dfg),
             Ordering::Less

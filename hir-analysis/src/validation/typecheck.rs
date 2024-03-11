@@ -2,7 +2,6 @@ use core::fmt;
 
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use miden_hir::*;
-
 use rustc_hash::FxHashMap;
 
 use super::{Rule, ValidationError};
@@ -30,7 +29,8 @@ pub enum TypeError {
         actual: Type,
         index: usize,
     },
-    /// The number of arguments given to a successor block does not match what is expected by the block
+    /// The number of arguments given to a successor block does not match what is expected by the
+    /// block
     #[error("{successor} expected {expected} arguments, but {actual} are given")]
     IncorrectSuccessorArgumentCount {
         successor: Block,
@@ -45,25 +45,33 @@ pub enum TypeError {
         actual: Type,
         index: usize,
     },
-    /// An attempt was made to cast from a larger integer type to a smaller one via widening cast, e.g. `zext`
+    /// An attempt was made to cast from a larger integer type to a smaller one via widening cast,
+    /// e.g. `zext`
     #[error("expected result to be an integral type larger than {expected}, but got {actual}")]
     InvalidWideningCast { expected: Type, actual: Type },
-    /// An attempt was made to cast from a smaller integer type to a larger one via narrowing cast, e.g. `trunc`
+    /// An attempt was made to cast from a smaller integer type to a larger one via narrowing cast,
+    /// e.g. `trunc`
     #[error("expected result to be an integral type smaller than {expected}, but got {actual}")]
     InvalidNarrowingCast { expected: Type, actual: Type },
-    /// The arguments of an instruction were supposed to be the same type, but at least one differs from the controlling type
-    #[error("expected arguments to be the same type ({expected}), but argument at index {index} is {actual}")]
+    /// The arguments of an instruction were supposed to be the same type, but at least one differs
+    /// from the controlling type
+    #[error(
+        "expected arguments to be the same type ({expected}), but argument at index {index} is \
+         {actual}"
+    )]
     MatchingArgumentTypeViolation {
         expected: Type,
         actual: Type,
         index: usize,
     },
-    /// The result type of an instruction was supposed to be the same as the arguments, but it wasn't
+    /// The result type of an instruction was supposed to be the same as the arguments, but it
+    /// wasn't
     #[error("expected result to be the same type ({expected}) as the arguments, but got {actual}")]
     MatchingResultTypeViolation { expected: Type, actual: Type },
 }
 
-/// This validation rule type checks a block to catch any type violations by instructions in that block
+/// This validation rule type checks a block to catch any type violations by instructions in that
+/// block
 pub struct TypeCheck<'a> {
     signature: &'a Signature,
     dfg: &'a DataFlowGraph,
@@ -121,7 +129,13 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                 },
                 Instruction::Load(LoadOp { ref ty, addr, .. }) => {
                     if ty.size_in_felts() > 4 {
-                        invalid_instruction!(diagnostics, node.key, span, "cannot load a value of type {ty} on the stack, as it is larger than 16 bytes");
+                        invalid_instruction!(
+                            diagnostics,
+                            node.key,
+                            span,
+                            "cannot load a value of type {ty} on the stack, as it is larger than \
+                             16 bytes"
+                        );
                     }
                     typechecker.check(&[*addr], results)?;
                 }
@@ -151,12 +165,8 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                             },
                         ));
                     }
-                    for (index, (expected, arg)) in self
-                        .signature
-                        .results
-                        .iter()
-                        .zip(args.iter().copied())
-                        .enumerate()
+                    for (index, (expected, arg)) in
+                        self.signature.results.iter().zip(args.iter().copied()).enumerate()
                     {
                         let actual = self.dfg.value_type(arg);
                         if actual != &expected.ty {
@@ -182,13 +192,11 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     let expected = &self.signature.results[0].ty;
                     let actual = arg.ty();
                     if &actual != expected {
-                        return Err(ValidationError::TypeError(
-                            TypeError::IncorrectArgumentType {
-                                expected: expected.clone().into(),
-                                actual,
-                                index: 0,
-                            },
-                        ));
+                        return Err(ValidationError::TypeError(TypeError::IncorrectArgumentType {
+                            expected: expected.clone().into(),
+                            actual,
+                            index: 0,
+                        }));
                     }
                 }
                 Instruction::Br(Br {
@@ -208,11 +216,8 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                             },
                         ));
                     }
-                    for (index, (param, arg)) in expected
-                        .iter()
-                        .copied()
-                        .zip(args.iter().copied())
-                        .enumerate()
+                    for (index, (param, arg)) in
+                        expected.iter().copied().zip(args.iter().copied()).enumerate()
                     {
                         let expected = self.dfg.value_type(param);
                         let actual = self.dfg.value_type(arg);
@@ -252,11 +257,8 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                                 },
                             ));
                         }
-                        for (index, (param, arg)) in expected
-                            .iter()
-                            .copied()
-                            .zip(args.iter().copied())
-                            .enumerate()
+                        for (index, (param, arg)) in
+                            expected.iter().copied().zip(args.iter().copied()).enumerate()
                         {
                             let expected = self.dfg.value_type(param);
                             let actual = self.dfg.value_type(arg);
@@ -284,17 +286,42 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     let mut seen = FxHashMap::<u32, usize>::default();
                     for (i, (key, successor)) in arms.iter().enumerate() {
                         if let Some(prev) = seen.insert(*key, i) {
-                            return Err(ValidationError::InvalidInstruction { span, inst: node.key, reason: format!("all arms of a 'switch' must have a unique discriminant, but the arm at index {i} has the same discriminant as the arm at {prev}") });
+                            return Err(ValidationError::InvalidInstruction {
+                                span,
+                                inst: node.key,
+                                reason: format!(
+                                    "all arms of a 'switch' must have a unique discriminant, but \
+                                     the arm at index {i} has the same discriminant as the arm at \
+                                     {prev}"
+                                ),
+                            });
                         }
 
                         let expected = self.dfg.block_args(*successor);
                         if !expected.is_empty() {
-                            return Err(ValidationError::InvalidInstruction { span, inst: node.key, reason: format!("all successors of a 'switch' must not have block parameters, but {successor}, the successor for discriminant {key}, has {} arguments", expected.len()) });
+                            return Err(ValidationError::InvalidInstruction {
+                                span,
+                                inst: node.key,
+                                reason: format!(
+                                    "all successors of a 'switch' must not have block parameters, \
+                                     but {successor}, the successor for discriminant {key}, has \
+                                     {} arguments",
+                                    expected.len()
+                                ),
+                            });
                         }
                     }
                     let expected = self.dfg.block_args(*fallback);
                     if !expected.is_empty() {
-                        return Err(ValidationError::InvalidInstruction { span, inst: node.key, reason: format!("all successors of a 'switch' must not have block parameters, but {fallback}, the default successor, has {} arguments", expected.len()) });
+                        return Err(ValidationError::InvalidInstruction {
+                            span,
+                            inst: node.key,
+                            reason: format!(
+                                "all successors of a 'switch' must not have block parameters, but \
+                                 {fallback}, the default successor, has {} arguments",
+                                expected.len()
+                            ),
+                        });
                     }
                 }
             }
@@ -369,15 +396,20 @@ pub enum InstPattern {
     Unary(TypePattern),
     /// The instruction matches if it has one argument of the given type and no results
     UnaryNoResult(TypePattern),
-    /// The instruction matches if it has one argument of the first type and one result of the second type
+    /// The instruction matches if it has one argument of the first type and one result of the
+    /// second type
     ///
-    /// This is used to represent things like `inttoptr` or `ptrtoint` which map one type to another
+    /// This is used to represent things like `inttoptr` or `ptrtoint` which map one type to
+    /// another
     UnaryMap(TypePattern, TypePattern),
-    /// The instruction matches if it has one argument of integral type, and one result of a larger integral type
+    /// The instruction matches if it has one argument of integral type, and one result of a larger
+    /// integral type
     UnaryWideningCast(TypePattern, TypePattern),
-    /// The instruction matches if it has one argument of integral type, and one result of a smaller integral type
+    /// The instruction matches if it has one argument of integral type, and one result of a
+    /// smaller integral type
     UnaryNarrowingCast(TypePattern, TypePattern),
-    /// The instruction matches if it has two arguments of the given type, and one result which is the same type as the first argument
+    /// The instruction matches if it has two arguments of the given type, and one result which is
+    /// the same type as the first argument
     Binary(TypePattern, TypePattern),
     /// The instruction matches if it has two arguments and one result, all of the same type
     BinaryMatching(TypePattern),
@@ -385,11 +417,13 @@ pub enum InstPattern {
     BinaryMatchingNoResult(TypePattern),
     /// The instruction matches if it has two arguments of the same type, and returns a boolean
     BinaryPredicate(TypePattern),
-    /// The instruction matches if its first argument matches the first type, with two more arguments and one result matching the second type
+    /// The instruction matches if its first argument matches the first type, with two more
+    /// arguments and one result matching the second type
     ///
     /// This is used to model instructions like `select`
     TernaryMatching(TypePattern, TypePattern),
-    /// The instruction matches if it has the exact number of arguments and results given, each corresponding to the given type
+    /// The instruction matches if it has the exact number of arguments and results given, each
+    /// corresponding to the given type
     Exact(Vec<TypePattern>, Vec<TypePattern>),
     /// The instruction matches any number of arguments and results, of any type
     Any,
@@ -419,9 +453,9 @@ impl InstPattern {
                 Ok(())
             }
             Self::Unary(_)
-            | Self::UnaryMap(_, _)
-            | Self::UnaryWideningCast(_, _)
-            | Self::UnaryNarrowingCast(_, _) => {
+            | Self::UnaryMap(..)
+            | Self::UnaryWideningCast(..)
+            | Self::UnaryNarrowingCast(..) => {
                 if args.len() != 1 {
                     return Err(TypeError::IncorrectArgumentCount {
                         expected: 1,
@@ -454,7 +488,7 @@ impl InstPattern {
                 let actual = dfg.value_type(args[0]);
                 self.into_unary_match(actual, None)
             }
-            Self::Binary(_, _) | Self::BinaryMatching(_) | Self::BinaryPredicate(_) => {
+            Self::Binary(..) | Self::BinaryMatching(_) | Self::BinaryPredicate(_) => {
                 if args.len() != 2 {
                     return Err(TypeError::IncorrectArgumentCount {
                         expected: 2,
@@ -489,7 +523,7 @@ impl InstPattern {
                 let rhs = dfg.value_type(args[1]);
                 self.into_binary_match(lhs, rhs, None)
             }
-            Self::TernaryMatching(_, _) => {
+            Self::TernaryMatching(..) => {
                 if args.len() != 3 {
                     return Err(TypeError::IncorrectArgumentCount {
                         expected: 3,
@@ -521,10 +555,8 @@ impl InstPattern {
                         actual: results.len(),
                     });
                 }
-                for (index, (expected, arg)) in expected_args
-                    .into_iter()
-                    .zip(args.iter().copied())
-                    .enumerate()
+                for (index, (expected, arg)) in
+                    expected_args.into_iter().zip(args.iter().copied()).enumerate()
                 {
                     let actual = dfg.value_type(arg);
                     if !expected.matches(actual) {
@@ -535,10 +567,8 @@ impl InstPattern {
                         });
                     }
                 }
-                for (index, (expected, result)) in expected_results
-                    .into_iter()
-                    .zip(results.iter().copied())
-                    .enumerate()
+                for (index, (expected, result)) in
+                    expected_results.into_iter().zip(results.iter().copied()).enumerate()
                 {
                     let actual = dfg.value_type(result);
                     if !expected.matches(actual) {
@@ -556,7 +586,8 @@ impl InstPattern {
         }
     }
 
-    /// Evaluate this pattern against the given arguments (including an immediate argument) and results
+    /// Evaluate this pattern against the given arguments (including an immediate argument) and
+    /// results
     pub fn into_match_with_immediate(
         self,
         dfg: &DataFlowGraph,
@@ -567,9 +598,9 @@ impl InstPattern {
         match self {
             Self::Empty => panic!("invalid empty pattern for instruction with immediate argument"),
             Self::Unary(_)
-            | Self::UnaryMap(_, _)
-            | Self::UnaryWideningCast(_, _)
-            | Self::UnaryNarrowingCast(_, _) => {
+            | Self::UnaryMap(..)
+            | Self::UnaryWideningCast(..)
+            | Self::UnaryNarrowingCast(..) => {
                 if !args.is_empty() {
                     return Err(TypeError::IncorrectArgumentCount {
                         expected: 1,
@@ -602,7 +633,7 @@ impl InstPattern {
                 let actual = imm.ty();
                 self.into_unary_match(&actual, None)
             }
-            Self::Binary(_, _) | Self::BinaryMatching(_) | Self::BinaryPredicate(_) => {
+            Self::Binary(..) | Self::BinaryMatching(_) | Self::BinaryPredicate(_) => {
                 if args.len() != 1 {
                     return Err(TypeError::IncorrectArgumentCount {
                         expected: 2,
@@ -637,7 +668,7 @@ impl InstPattern {
                 let rhs = imm.ty();
                 self.into_binary_match(lhs, &rhs, None)
             }
-            Self::TernaryMatching(_, _) => {
+            Self::TernaryMatching(..) => {
                 if args.len() != 2 {
                     return Err(TypeError::IncorrectArgumentCount {
                         expected: 3,
@@ -669,10 +700,8 @@ impl InstPattern {
                         actual: results.len(),
                     });
                 }
-                for (index, (expected, arg)) in expected_args
-                    .into_iter()
-                    .zip(args.iter().copied())
-                    .enumerate()
+                for (index, (expected, arg)) in
+                    expected_args.into_iter().zip(args.iter().copied()).enumerate()
                 {
                     let actual = dfg.value_type(arg);
                     if !expected.matches(actual) {
@@ -683,10 +712,8 @@ impl InstPattern {
                         });
                     }
                 }
-                for (index, (expected, result)) in expected_results
-                    .into_iter()
-                    .zip(results.iter().copied())
-                    .enumerate()
+                for (index, (expected, result)) in
+                    expected_results.into_iter().zip(results.iter().copied()).enumerate()
                 {
                     let actual = dfg.value_type(result);
                     if !expected.matches(actual) {
@@ -791,12 +818,12 @@ impl InstPattern {
                 }
             }
             Self::Empty
-            | Self::Binary(_, _)
+            | Self::Binary(..)
             | Self::BinaryMatching(_)
             | Self::BinaryMatchingNoResult(_)
             | Self::BinaryPredicate(_)
-            | Self::TernaryMatching(_, _)
-            | Self::Exact(_, _)
+            | Self::TernaryMatching(..)
+            | Self::Exact(..)
             | Self::Any => unreachable!(),
         }
 
@@ -884,11 +911,11 @@ impl InstPattern {
             Self::Empty
             | Self::Unary(_)
             | Self::UnaryNoResult(_)
-            | Self::UnaryMap(_, _)
-            | Self::UnaryWideningCast(_, _)
-            | Self::UnaryNarrowingCast(_, _)
-            | Self::TernaryMatching(_, _)
-            | Self::Exact(_, _)
+            | Self::UnaryMap(..)
+            | Self::UnaryWideningCast(..)
+            | Self::UnaryNarrowingCast(..)
+            | Self::TernaryMatching(..)
+            | Self::Exact(..)
             | Self::Any => unreachable!(),
         }
 
@@ -935,14 +962,14 @@ impl InstPattern {
             Self::Empty
             | Self::Unary(_)
             | Self::UnaryNoResult(_)
-            | Self::UnaryMap(_, _)
-            | Self::UnaryWideningCast(_, _)
-            | Self::UnaryNarrowingCast(_, _)
-            | Self::Binary(_, _)
+            | Self::UnaryMap(..)
+            | Self::UnaryWideningCast(..)
+            | Self::UnaryNarrowingCast(..)
+            | Self::Binary(..)
             | Self::BinaryMatching(_)
             | Self::BinaryMatchingNoResult(_)
             | Self::BinaryPredicate(_)
-            | Self::Exact(_, _)
+            | Self::Exact(..)
             | Self::Any => unreachable!(),
         }
 
@@ -1085,7 +1112,8 @@ impl<'a> InstTypeChecker<'a> {
         })
     }
 
-    /// Checks that the given `operands` and `results` match the types represented by this [InstTypeChecker]
+    /// Checks that the given `operands` and `results` match the types represented by this
+    /// [InstTypeChecker]
     pub fn check(self, operands: &[Value], results: &[Value]) -> Result<(), ValidationError> {
         let diagnostics = self.diagnostics;
         let dfg = self.dfg;
@@ -1104,7 +1132,8 @@ impl<'a> InstTypeChecker<'a> {
         }
     }
 
-    /// Checks that the given `operands` (with immediate) and `results` match the types represented by this [InstTypeChecker]
+    /// Checks that the given `operands` (with immediate) and `results` match the types represented
+    /// by this [InstTypeChecker]
     pub fn check_immediate(
         self,
         operands: &[Value],
@@ -1113,10 +1142,7 @@ impl<'a> InstTypeChecker<'a> {
     ) -> Result<(), ValidationError> {
         let diagnostics = self.diagnostics;
         let dfg = self.dfg;
-        match self
-            .pattern
-            .into_match_with_immediate(dfg, operands, imm, results)
-        {
+        match self.pattern.into_match_with_immediate(dfg, operands, imm, results) {
             Ok(_) => Ok(()),
             Err(err) => {
                 let opcode = self.opcode;

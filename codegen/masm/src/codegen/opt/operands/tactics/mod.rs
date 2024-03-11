@@ -8,11 +8,10 @@ mod move_down_and_swap;
 mod move_up_and_swap;
 mod swap_and_move_up;
 
-pub use self::copy_all::CopyAll;
-pub use self::linear::Linear;
-pub use self::move_down_and_swap::MoveDownAndSwap;
-pub use self::move_up_and_swap::MoveUpAndSwap;
-pub use self::swap_and_move_up::SwapAndMoveUp;
+pub use self::{
+    copy_all::CopyAll, linear::Linear, move_down_and_swap::MoveDownAndSwap,
+    move_up_and_swap::MoveUpAndSwap, swap_and_move_up::SwapAndMoveUp,
+};
 
 /// An error returned by an [OperandMovementConstraintSolver] tactic
 #[derive(Debug)]
@@ -179,10 +178,7 @@ impl<'a> SolutionBuilder<'a> {
 
     /// Get the position at which `value` is expected
     pub fn get_expected_position(&self, value: &ValueOrAlias) -> Option<u8> {
-        self.context
-            .expected()
-            .position(value)
-            .map(|index| index as u8)
+        self.context.expected().position(value).map(|index| index as u8)
     }
 
     #[track_caller]

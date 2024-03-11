@@ -1,12 +1,14 @@
 use std::collections::VecDeque;
 
-use rustc_hash::FxHashSet;
-use smallvec::SmallVec;
-
-use miden_hir::pass::{AnalysisManager, RewritePass, RewriteResult};
-use miden_hir::{self as hir, Block as BlockId, *};
+use miden_hir::{
+    self as hir,
+    pass::{AnalysisManager, RewritePass, RewriteResult},
+    Block as BlockId, *,
+};
 use miden_hir_analysis::ControlFlowGraph;
 use midenc_session::Session;
+use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 
 /// This pass breaks any critical edges in the CFG of a function.
 ///
@@ -21,9 +23,8 @@ use midenc_session::Session;
 /// a new block, `B`, in which we insert a branch to `S` with whatever arguments were originally
 /// provided in `P`, and then rewriting the branch in `P` that went to `S`, to go to `B` instead.
 ///
-/// After this pass completes, no node in the control flow graph will have both multiple predecessors
-/// and multiple successors.
-///
+/// After this pass completes, no node in the control flow graph will have both multiple
+/// predecessors and multiple successors.
 #[derive(Default, PassInfo, ModuleRewritePassAdapter)]
 pub struct SplitCriticalEdges;
 impl RewritePass for SplitCriticalEdges {
@@ -187,10 +188,7 @@ mod tests {
         let mut function = Function::new(
             id,
             Signature::new(
-                [
-                    AbiParam::new(Type::Ptr(Box::new(Type::U8))),
-                    AbiParam::new(Type::U32),
-                ],
+                [AbiParam::new(Type::Ptr(Box::new(Type::U8))), AbiParam::new(Type::U32)],
                 [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
             ),
         );
@@ -218,25 +216,15 @@ mod tests {
 
             // blk0
             builder.switch_to_block(a);
-            let is_null = builder
-                .ins()
-                .eq_imm(ptr2, Immediate::U32(0), SourceSpan::UNKNOWN);
-            builder
-                .ins()
-                .cond_br(is_null, c, &[ptr0], b, &[ptr2, n1], SourceSpan::UNKNOWN);
+            let is_null = builder.ins().eq_imm(ptr2, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder.ins().cond_br(is_null, c, &[ptr0], b, &[ptr2, n1], SourceSpan::UNKNOWN);
 
             // blk1
             builder.switch_to_block(b);
             let ptr4 = builder.ins().sub_checked(ptr3, n2, SourceSpan::UNKNOWN);
-            let n3 = builder
-                .ins()
-                .sub_imm_checked(n2, Immediate::U32(1), SourceSpan::UNKNOWN);
-            let is_zero = builder
-                .ins()
-                .eq_imm(n3, Immediate::U32(0), SourceSpan::UNKNOWN);
-            builder
-                .ins()
-                .cond_br(is_zero, c, &[ptr4], a, &[ptr4, n3], SourceSpan::UNKNOWN);
+            let n3 = builder.ins().sub_imm_checked(n2, Immediate::U32(1), SourceSpan::UNKNOWN);
+            let is_zero = builder.ins().eq_imm(n3, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder.ins().cond_br(is_zero, c, &[ptr4], a, &[ptr4, n3], SourceSpan::UNKNOWN);
 
             // blk2
             builder.switch_to_block(c);

@@ -1,17 +1,13 @@
 use miden_diagnostics::{SourceSpan, Span};
 
-use crate::parser::ast::*;
 use crate::{
-    AbiParam, ArgumentExtension, ArgumentPurpose, CallConv, ExternalFunction, FunctionIdent, Ident,
-    Linkage, Opcode, Overflow, Signature, StructType, Type,
+    parser::ast::*, AbiParam, ArgumentExtension, ArgumentPurpose, CallConv, ExternalFunction,
+    FunctionIdent, Ident, Linkage, Opcode, Overflow, Signature, StructType, Type,
 };
 
 macro_rules! ident {
     ($name:ident) => {
-        Ident::new(
-            crate::Symbol::intern(stringify!($name)),
-            miden_diagnostics::SourceSpan::UNKNOWN,
-        )
+        Ident::new(crate::Symbol::intern(stringify!($name)), miden_diagnostics::SourceSpan::UNKNOWN)
     };
 }
 
@@ -25,11 +21,8 @@ fn parser_integration_test() {
 
     // global internal @DEADBEEF : u32 = 0xdeadbeef { id = 0 };
     let deadbeef_const_id = crate::Constant::from_u32(0);
-    let deadbeef_const = ConstantDeclaration::new(
-        dummy_sourcespan,
-        deadbeef_const_id,
-        "deadbeef".parse().unwrap(),
-    );
+    let deadbeef_const =
+        ConstantDeclaration::new(dummy_sourcespan, deadbeef_const_id, "deadbeef".parse().unwrap());
     let deadbeef = GlobalVarDeclaration::new(
         dummy_sourcespan,
         crate::GlobalVariable::from_u32(0),

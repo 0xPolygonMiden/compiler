@@ -125,12 +125,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
     fn dropn(&mut self, n: usize) {
         let stack = self.stack_mut();
         let len = stack.len();
-        assert!(
-            n <= len,
-            "unable to drop {} elements, operand stack only has {}",
-            n,
-            len
-        );
+        assert!(n <= len, "unable to drop {} elements, operand stack only has {}", n, len);
         stack.truncate(len - n);
     }
 
@@ -289,7 +284,8 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
         // Split the stack so that the desired position is in the top half
         let mid = len - (n + 1);
         let (_, r) = stack.split_at_mut(mid);
-        // Move all elements above the `n`th position up by one, moving the top element to the `n`th position
+        // Move all elements above the `n`th position up by one, moving the top element to the `n`th
+        // position
         r.rotate_right(1);
     }
 
@@ -312,7 +308,8 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
         // Split the stack so that the desired position is in the top half
         let mid = len - index;
         let (_, r) = stack.split_at_mut(mid);
-        // Move all elements above the `n`th word up by one word, moving the top word to the `n`th position
+        // Move all elements above the `n`th word up by one word, moving the top word to the `n`th
+        // position
         r.rotate_right(4);
     }
 }
@@ -377,10 +374,12 @@ impl<T: StackElement> Stack for OperandStack<T> {
     fn stack(&self) -> &Vec<Self::Element> {
         &self.stack
     }
+
     #[inline(always)]
     fn stack_mut(&mut self) -> &mut Vec<Self::Element> {
         &mut self.stack
     }
+
     #[inline(always)]
     fn clear(&mut self) {
         self.stack.clear();
@@ -473,7 +472,6 @@ impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> fmt::Debug for DebugSt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Felt;
 
     #[test]
     fn operand_stack_primitive_ops_test() {
@@ -501,12 +499,7 @@ mod tests {
 
         #[inline(always)]
         fn as_int(word: [Felt; 4]) -> [u64; 4] {
-            [
-                word[0].as_int(),
-                word[1].as_int(),
-                word[2].as_int(),
-                word[3].as_int(),
-            ]
+            [word[0].as_int(), word[1].as_int(), word[2].as_int(), word[3].as_int()]
         }
 
         // peekw

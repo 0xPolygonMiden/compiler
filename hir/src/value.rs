@@ -1,5 +1,4 @@
 use cranelift_entity::{self as entity, entity_impl};
-
 use miden_diagnostics::SourceSpan;
 
 use super::{Block, Inst, Type};

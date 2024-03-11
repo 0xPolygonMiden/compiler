@@ -1,8 +1,7 @@
 use miden_hir::{StructType, Type};
 
-use crate::masm::{NativePtr, Op};
-
 use super::OpEmitter;
+use crate::masm::{NativePtr, Op};
 
 /// Allocation
 impl<'a> OpEmitter<'a> {
@@ -125,10 +124,7 @@ impl<'a> OpEmitter<'a> {
     }
 
     fn load_felt_imm(&mut self, ptr: NativePtr) {
-        assert!(
-            ptr.is_element_aligned(),
-            "felt values must be naturally aligned"
-        );
+        assert!(ptr.is_element_aligned(), "felt values must be naturally aligned");
         match ptr.index {
             0 => self.emit(Op::MemLoadImm(ptr.waddr)),
             1 => {
@@ -165,7 +161,8 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
-    /// Loads a single 32-bit machine word, i.e. a single field element, not the Miden notion of a word
+    /// Loads a single 32-bit machine word, i.e. a single field element, not the Miden notion of a
+    /// word
     ///
     /// Expects a native pointer triplet on the stack if an immediate address is not given.
     fn load_word(&mut self, ptr: Option<NativePtr>) {
@@ -605,11 +602,11 @@ impl<'a> OpEmitter<'a> {
     /// [00000000111111111111111111111111, 111111111111111111111111111111, 11111111111111111111111100000000]
     /// ```
     ///
-    /// As illustrated above, what should be a double-word value is occupying three words. To "realign" the
-    /// value, i.e. ensure that it is naturally aligned and fits in two words, we have to perform a sequence
-    /// of shifts and masks to get the bits where they belong. This function performs those steps, with the
-    /// assumption that the caller has three values on the operand stack representing any unaligned double-word
-    /// value
+    /// As illustrated above, what should be a double-word value is occupying three words. To
+    /// "realign" the value, i.e. ensure that it is naturally aligned and fits in two words, we
+    /// have to perform a sequence of shifts and masks to get the bits where they belong. This
+    /// function performs those steps, with the assumption that the caller has three values on
+    /// the operand stack representing any unaligned double-word value
     fn realign_double_word(&mut self, ptr: NativePtr) {
         // The stack starts as: [chunk_hi, chunk_mid, chunk_lo]
         //
@@ -828,15 +825,9 @@ impl<'a> OpEmitter<'a> {
         let ptr = self.stack.pop().expect("operand stack is empty");
         let value = self.stack.pop().expect("operand stack is empty");
         let ptr_ty = ptr.ty();
-        assert!(
-            ptr_ty.is_pointer(),
-            "expected load operand to be a pointer, got {ptr_ty}"
-        );
+        assert!(ptr_ty.is_pointer(), "expected load operand to be a pointer, got {ptr_ty}");
         let value_ty = value.ty();
-        assert!(
-            !value_ty.is_zst(),
-            "cannot store a zero-sized type in memory"
-        );
+        assert!(!value_ty.is_zst(), "cannot store a zero-sized type in memory");
         match ptr_ty {
             Type::Ptr(_) => {
                 // Converet the pointer to a native pointer representation
@@ -867,10 +858,7 @@ impl<'a> OpEmitter<'a> {
     pub fn store_imm(&mut self, addr: u32) {
         let value = self.stack.pop().expect("operand stack is empty");
         let value_ty = value.ty();
-        assert!(
-            !value_ty.is_zst(),
-            "cannot store a zero-sized type in memory"
-        );
+        assert!(!value_ty.is_zst(), "cannot store a zero-sized type in memory");
         let ptr = NativePtr::from_ptr(addr);
         match value_ty {
             Type::I128 => self.store_quad_word(Some(ptr)),
@@ -891,8 +879,8 @@ impl<'a> OpEmitter<'a> {
     /// The order of operands on the stack is `src`, `dst`, then `count`.
     ///
     /// The addresses on the stack are interpreted based on the pointer type: native pointers are
-    /// in the Miden address space; non-native pointers are assumed to be in the IR's byte addressable
-    /// address space, and require translation.
+    /// in the Miden address space; non-native pointers are assumed to be in the IR's byte
+    /// addressable address space, and require translation.
     ///
     /// The semantics of this instruction are as follows:
     ///
@@ -903,11 +891,7 @@ impl<'a> OpEmitter<'a> {
         let count = self.stack.pop().expect("operand stack is empty");
         assert_eq!(count.ty(), Type::U32, "expected count operand to be a u32");
         let ty = src.ty();
-        assert_eq!(
-            ty,
-            dst.ty(),
-            "expected src and dst operands to have the same type"
-        );
+        assert_eq!(ty, dst.ty(), "expected src and dst operands to have the same type");
         match ty {
             Type::Ptr(ref _pointee) => {
                 todo!()

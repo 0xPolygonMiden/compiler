@@ -14,7 +14,12 @@ impl Tactic for CopyAll {
         // We can't apply this tactic if any values should be moved
         let arity = builder.arity();
         if builder.num_copies() != arity {
-            log::debug!("expected all operands to require copying; but only {} out of {} operands are copied", builder.num_copies(), arity);
+            log::debug!(
+                "expected all operands to require copying; but only {} out of {} operands are \
+                 copied",
+                builder.num_copies(),
+                arity
+            );
             return Err(TacticError::PreconditionFailed);
         }
 
@@ -36,7 +41,11 @@ impl Tactic for CopyAll {
                     continue;
                 }
 
-                log::trace!("moving {expected_value:?} at index {index} up to top of stack, shifting {:?} down one", builder.unwrap_current(0));
+                log::trace!(
+                    "moving {expected_value:?} at index {index} up to top of stack, shifting {:?} \
+                     down one",
+                    builder.unwrap_current(0)
+                );
                 builder.movup(current_position);
             } else {
                 let current_position = builder
@@ -48,7 +57,11 @@ impl Tactic for CopyAll {
                         )
                     });
                 // A copy already exists, so use it
-                log::trace!("copying {expected_value:?} at index {index} to top of stack, shifting {:?} down one", builder.unwrap_current(0));
+                log::trace!(
+                    "copying {expected_value:?} at index {index} to top of stack, shifting {:?} \
+                     down one",
+                    builder.unwrap_current(0)
+                );
                 builder.dup(current_position, expected_value.unwrap_alias());
             }
         }

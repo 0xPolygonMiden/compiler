@@ -1,8 +1,7 @@
 use miden_hir::{Felt, FieldElement};
 
-use crate::masm::Op;
-
 use super::OpEmitter;
+use crate::masm::Op;
 
 /// The value zero, as a field element
 pub const ZERO: Felt = Felt::ZERO;

@@ -1,10 +1,9 @@
 use std::ops::{Deref, Index, IndexMut};
 
 use cranelift_entity::{PrimaryMap, SecondaryMap};
+use miden_diagnostics::{Span, Spanned};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-
-use miden_diagnostics::{Span, Spanned};
 
 use super::*;
 
@@ -236,12 +235,7 @@ impl DataFlowGraph {
         ctrl_ty: Type,
         span: SourceSpan,
     ) -> Inst {
-        self.insert_inst(
-            InsertionPoint::after(ProgramPoint::Block(block)),
-            data,
-            ctrl_ty,
-            span,
-        )
+        self.insert_inst(InsertionPoint::after(ProgramPoint::Block(block)), data, ctrl_ty, span)
     }
 
     /// Insert a new instruction at `ip`, using the provided instruction
@@ -257,13 +251,12 @@ impl DataFlowGraph {
         let id = self.insts.alloc_key();
         let block_id = match ip.at {
             ProgramPoint::Block(block) => block,
-            ProgramPoint::Inst(inst) => self
-                .inst_block(inst)
-                .expect("cannot insert after detached instruction"),
+            ProgramPoint::Inst(inst) => {
+                self.inst_block(inst).expect("cannot insert after detached instruction")
+            }
         };
         // Store the instruction metadata
-        self.insts
-            .append(id, InstNode::new(id, block_id, Span::new(span, data)));
+        self.insts.append(id, InstNode::new(id, block_id, Span::new(span, data)));
         // Manufacture values for all of the instruction results
         self.make_results(id, ctrl_ty);
         // Insert the instruction based on the insertion point provided
@@ -317,10 +310,8 @@ impl DataFlowGraph {
         let id = self.insts.alloc_key();
         let span = self.insts[inst].data.span();
         let data = self.insts[inst].data.deep_clone(&mut self.value_lists);
-        self.insts.append(
-            id,
-            InstNode::new(id, Block::default(), Span::new(span, data)),
-        );
+        self.insts
+            .append(id, InstNode::new(id, Block::default(), Span::new(span, data)));
 
         // Derive results for the cloned instruction using the results
         // of the original instruction
@@ -349,9 +340,7 @@ impl DataFlowGraph {
     }
 
     pub fn first_result(&self, inst: Inst) -> Value {
-        self.results[inst]
-            .first(&self.value_lists)
-            .expect("instruction has no results")
+        self.results[inst].first(&self.value_lists).expect("instruction has no results")
     }
 
     pub fn has_results(&self, inst: Inst) -> bool {
@@ -615,10 +604,7 @@ impl DataFlowGraph {
     }
 
     pub fn block_param_types(&self, block: Block) -> SmallVec<[Type; 1]> {
-        self.block_params(block)
-            .iter()
-            .map(|&v| self.value_type(v).clone())
-            .collect()
+        self.block_params(block).iter().map(|&v| self.value_type(v).clone()).collect()
     }
 
     /// Clone the block parameters of `src` as a new set of values, derived from the data used to
@@ -667,14 +653,10 @@ impl DataFlowGraph {
         } else {
             panic!("{} must be a block parameter", val);
         };
-        self.blocks[block]
-            .params
-            .remove(num as usize, &mut self.value_lists);
+        self.blocks[block].params.remove(num as usize, &mut self.value_lists);
         for index in num..(self.num_block_params(block) as u16) {
-            let value_data = &mut self.values[self.blocks[block]
-                .params
-                .get(index as usize, &self.value_lists)
-                .unwrap()];
+            let value_data = &mut self.values
+                [self.blocks[block].params.get(index as usize, &self.value_lists).unwrap()];
             let mut value_data_clone = value_data.clone();
             match &mut value_data_clone {
                 ValueData::Param { ref mut num, .. } => {
@@ -683,10 +665,7 @@ impl DataFlowGraph {
                 }
                 _ => panic!(
                     "{} must be a block parameter",
-                    self.blocks[block]
-                        .params
-                        .get(index as usize, &self.value_lists)
-                        .unwrap()
+                    self.blocks[block].params.get(index as usize, &self.value_lists).unwrap()
                 ),
             }
         }
@@ -726,7 +705,10 @@ impl DataFlowGraph {
                 arms: _,
                 default: _,
             }) => {
-                panic!("cannot append argument {value} to Switch destination block {dest}, since it has no block arguments support");
+                panic!(
+                    "cannot append argument {value} to Switch destination block {dest}, since it \
+                     has no block arguments support"
+                );
             }
             _ => panic!("{} must be a branch instruction", branch_inst),
         }

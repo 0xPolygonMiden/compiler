@@ -2,12 +2,14 @@ extern crate inflector;
 extern crate rustc_hash;
 extern crate toml;
 
-use std::cmp::Ordering;
-use std::collections::BTreeSet;
-use std::env;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::{
+    cmp::Ordering,
+    collections::BTreeSet,
+    env,
+    fs::{self, File},
+    io::prelude::*,
+    path::{Path, PathBuf},
+};
 
 use inflector::Inflector;
 use rustc_hash::FxHashSet;
@@ -51,13 +53,8 @@ impl Symbol {
     fn from_value<S: Into<String>>(name: S, value: &Value) -> Self {
         let name = name.into();
         let table = value.as_table().unwrap();
-        let id = table
-            .get("id")
-            .map(|id| id.as_integer().expect("id must be an integer"));
-        let value = match table
-            .get("value")
-            .map(|v| v.as_str().expect("value must be a string"))
-        {
+        let id = table.get("id").map(|id| id.as_integer().expect("id must be an integer"));
+        let value = match table.get("value").map(|v| v.as_str().expect("value must be a string")) {
             None => name.clone(),
             Some(value) => value.to_string(),
         };
@@ -117,10 +114,7 @@ fn main() {
     let root = root.as_table().unwrap();
     let mut sections = vec![];
     for (name, value) in root.iter() {
-        sections.push(Section::from_table(
-            name.to_string(),
-            value.as_table().unwrap(),
-        ));
+        sections.push(Section::from_table(name.to_string(), value.as_table().unwrap()));
     }
 
     let mut reserved = FxHashSet::default();
@@ -164,10 +158,7 @@ fn generate_symbols_rs(path: &Path, symbols: Vec<Symbol>) -> std::io::Result<()>
         let key = &symbol.key;
         let id = symbol.id.unwrap();
         writeln!(&mut file, "#[allow(non_upper_case_globals)]")?;
-        writeln!(
-            &mut file,
-            "pub const {key}: crate::Symbol = crate::Symbol::new({id});"
-        )?
+        writeln!(&mut file, "pub const {key}: crate::Symbol = crate::Symbol::new({id});")?
     }
 
     // Symbol strings

@@ -1,8 +1,7 @@
 use core::fmt;
 
-use crate::{Opcode, Overflow, Type};
-
 use super::*;
+use crate::{Opcode, Overflow, Type};
 
 /// Represents a single instruction.
 #[derive(Spanned)]

@@ -265,10 +265,12 @@ pub type FunctionList = LinkedList<FunctionListAdapter>;
 /// fully-qualified names.
 /// * Functions consist of one or more basic blocks, where the entry block is predefined based
 /// on the function signature.
-/// * Basic blocks consist of a sequence of [Instruction] without any control flow (excluding calls),
+/// * Basic blocks consist of a sequence of [Instruction] without any control flow (excluding
+///   calls),
 /// terminating with a control flow instruction. Our SSA representation uses block arguments rather
 /// than phi nodes to represent join points in the control flow graph.
-/// * Instructions consume zero or more arguments, and produce zero or more results. Results produced
+/// * Instructions consume zero or more arguments, and produce zero or more results. Results
+///   produced
 /// by an instruction constitute definitions of those values. A value may only ever have a single
 /// definition, e.g. you can't reassign a value after it is introduced by an instruction.
 ///
@@ -427,7 +429,8 @@ impl PartialEq for Function {
             return false;
         }
 
-        // We expect the blocks to be laid out in the same order, and to have the same parameter lists
+        // We expect the blocks to be laid out in the same order, and to have the same parameter
+        // lists
         for (block_id, block) in self.dfg.blocks() {
             if let Some(other_block) = other.dfg.blocks.get(block_id) {
                 if block.params.as_slice(&self.dfg.value_lists)
@@ -443,13 +446,10 @@ impl PartialEq for Function {
                         inst: i,
                         value_lists: &self.dfg.value_lists,
                     })
-                    .eq(other_block
-                        .insts
-                        .iter()
-                        .map(|i| InstructionWithValueListPool {
-                            inst: i,
-                            value_lists: &other.dfg.value_lists,
-                        }))
+                    .eq(other_block.insts.iter().map(|i| InstructionWithValueListPool {
+                        inst: i,
+                        value_lists: &other.dfg.value_lists,
+                    }))
                 {
                     return false;
                 }

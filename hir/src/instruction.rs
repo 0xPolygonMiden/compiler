@@ -2,9 +2,8 @@ use core::ops::{Deref, DerefMut};
 
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedListLink};
-use smallvec::SmallVec;
-
 use miden_diagnostics::{Span, Spanned};
+use smallvec::SmallVec;
 
 use super::*;
 
@@ -176,7 +175,6 @@ impl Instruction {
     ///
     /// Side effects are defined as control flow, writing memory, trapping execution,
     /// I/O, etc.
-    ///
     #[inline]
     pub fn has_side_effects(&self) -> bool {
         self.opcode().has_side_effects()
@@ -262,10 +260,8 @@ impl Instruction {
                 ref default,
                 ..
             }) => {
-                let mut targets = arms
-                    .iter()
-                    .map(|(_, b)| JumpTable::new(*b, &[]))
-                    .collect::<Vec<_>>();
+                let mut targets =
+                    arms.iter().map(|(_, b)| JumpTable::new(*b, &[])).collect::<Vec<_>>();
                 targets.push(JumpTable::new(*default, &[]));
                 BranchInfo::MultiDest(targets)
             }
@@ -347,8 +343,9 @@ pub enum Opcode {
     /// of the type, but whose contents are undefined, i.e. you cannot assume that the binary
     /// representation of the value is zeroed.
     Alloca,
-    /// Like the WebAssembly `memory.grow` instruction, this allocates a given number of pages from the
-    /// global heap, and returns the previous size of the heap, in pages. Each page is 64kb by default.
+    /// Like the WebAssembly `memory.grow` instruction, this allocates a given number of pages from
+    /// the global heap, and returns the previous size of the heap, in pages. Each page is 64kb
+    /// by default.
     ///
     /// For the time being, this instruction is emulated using a heap pointer global which tracks
     /// the "end" of the available heap. Nothing actually prevents one from accessing memory past
@@ -357,8 +354,8 @@ pub enum Opcode {
     MemGrow,
     /// This instruction is used to represent a global value in the IR
     ///
-    /// See [GlobalValueOp] and [GlobalValueData] for details on what types of values are represented
-    /// behind this opcode.
+    /// See [GlobalValueOp] and [GlobalValueData] for details on what types of values are
+    /// represented behind this opcode.
     GlobalValue,
     /// Loads a value from a pointer to memory
     Load,
@@ -377,9 +374,11 @@ pub enum Opcode {
     Cast,
     /// Truncates a larger integral type to a smaller integral type, e.g. i64 -> i32
     Trunc,
-    /// Zero-extends a smaller unsigned integral type to a larger unsigned integral type, e.g. u32 -> u64
+    /// Zero-extends a smaller unsigned integral type to a larger unsigned integral type, e.g. u32
+    /// -> u64
     Zext,
-    /// Sign-extends a smaller signed integral type to a larger signed integral type, e.g. i32 -> i64
+    /// Sign-extends a smaller signed integral type to a larger signed integral type, e.g. i32 ->
+    /// i64
     Sext,
     /// Returns true if argument fits in the given integral type, e.g. u32, otherwise false
     Test,
@@ -429,10 +428,7 @@ pub enum Opcode {
 }
 impl Opcode {
     pub fn is_terminator(&self) -> bool {
-        matches!(
-            self,
-            Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Unreachable
-        )
+        matches!(self, Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Unreachable)
     }
 
     pub fn is_branch(&self) -> bool {
@@ -786,15 +782,16 @@ impl fmt::Display for Opcode {
 /// meaning of each variant.
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub enum Overflow {
-    /// Typically, this means the operation is performed using the equivalent field element operation, rather
-    /// than a dedicated operation for the given type. Because of this, the result of the operation may exceed
-    /// that of the integral type expected, but this will not be caught right away.
+    /// Typically, this means the operation is performed using the equivalent field element
+    /// operation, rather than a dedicated operation for the given type. Because of this, the
+    /// result of the operation may exceed that of the integral type expected, but this will
+    /// not be caught right away.
     ///
     /// It is the callers responsibility to ensure that resulting value is in range.
     #[default]
     Unchecked,
-    /// The operation will trap if the operands, or the result, is not valid for the range of the integral
-    /// type involved, e.g. u32.
+    /// The operation will trap if the operands, or the result, is not valid for the range of the
+    /// integral type involved, e.g. u32.
     Checked,
     /// The operation will wrap around, depending on the range of the integral type. For example,
     /// given a u32 value, this is done by applying `mod 2^32` to the result.
@@ -1029,7 +1026,7 @@ impl<'a> PartialEq for InstructionWithValueListPool<'a> {
                     && l.body == r.body
                     && l.blocks == r.blocks
             }
-            (_, _) => unreachable!(),
+            (..) => unreachable!(),
         }
     }
 }

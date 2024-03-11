@@ -1,8 +1,7 @@
 use miden_hir::{assert_matches, Felt, Immediate, Overflow, Type};
 
-use crate::masm::Op;
-
 use super::OpEmitter;
+use crate::masm::Op;
 
 impl<'a> OpEmitter<'a> {
     pub fn eq(&mut self) {
@@ -450,7 +449,8 @@ impl<'a> OpEmitter<'a> {
                 //
                 // z = z2 * (2^63)^2 + z1 * 2^63 + z0
                 //
-                // We assume the stack holds two words representing x and y, with y on top of the stack
+                // We assume the stack holds two words representing x and y, with y on top of the
+                // stack
                 todo!()
             }
             Type::U64 => self.mul_u64(overflow),
@@ -806,11 +806,8 @@ impl<'a> OpEmitter<'a> {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected exp operands to be the same type");
-        let exp: u8 = imm
-            .as_u64()
-            .unwrap()
-            .try_into()
-            .expect("invalid exponent: must be value < 64");
+        let exp: u8 =
+            imm.as_u64().unwrap().try_into().expect("invalid exponent: must be value < 64");
         match &ty {
             Type::U64 => todo!("exponentiation by squaring"),
             Type::Felt => {
@@ -1047,10 +1044,7 @@ impl<'a> OpEmitter<'a> {
         assert_eq!(ty, imm.ty(), "expected shl operands to be the same type");
         match &ty {
             Type::U64 => {
-                assert!(
-                    imm.as_u64().unwrap() < 64,
-                    "invalid shift value: must be < 64"
-                );
+                assert!(imm.as_u64().unwrap() < 64, "invalid shift value: must be < 64");
                 self.push_immediate(imm);
                 self.shl_u64();
             }

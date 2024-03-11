@@ -1,7 +1,6 @@
 use std::env;
 
 use anyhow::anyhow;
-
 use midenc_driver::{self as driver, DriverError};
 
 pub fn main() -> Result<(), DriverError> {
@@ -22,9 +21,10 @@ pub fn main() -> Result<(), DriverError> {
             "ns" => builder.format_timestamp_nanos(),
             other => {
                 return Err(DriverError::Failed(anyhow!(
-                "invalid MIDENC_TRACE_TIMING precision, expected one of [s, ms, us, ns], got '{}'",
-                other
-            )))
+                    "invalid MIDENC_TRACE_TIMING precision, expected one of [s, ms, us, ns], got \
+                     '{}'",
+                    other
+                )))
             }
         };
     } else {

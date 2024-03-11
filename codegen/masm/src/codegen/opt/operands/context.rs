@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-use std::num::NonZeroU8;
+use std::{collections::BTreeMap, num::NonZeroU8};
 
 use miden_hir as hir;
 
@@ -67,10 +66,7 @@ impl SolverContext {
         // copies of them anyway.
         let requires_copies = !copies.is_empty();
         let is_solved = !requires_copies
-            && expected_output
-                .iter()
-                .rev()
-                .all(|op| &stack[op.pos as usize] == op);
+            && expected_output.iter().rev().all(|op| &stack[op.pos as usize] == op);
         if is_solved {
             return Err(SolverError::AlreadySolved);
         }

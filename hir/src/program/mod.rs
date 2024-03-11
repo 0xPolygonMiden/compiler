@@ -1,10 +1,10 @@
 mod linker;
 
 use core::ops::{Deref, DerefMut};
+
 use intrusive_collections::RBTree;
 
 pub use self::linker::{Linker, LinkerError};
-
 use super::*;
 
 /// A [Program] is a collection of [Module]s that are being compiled together as a package.
@@ -19,10 +19,10 @@ use super::*;
 ///
 /// This structure is intended to be allocated via [std::sync::Arc], so that it can be shared
 /// across multiple threads which are emitting/compiling modules at the same time. It is designed
-/// so that individual fields are locked, rather than the structure as a whole, to minimize contention.
-/// The intuition is that, in general, changes at the [Program] level are relatively infrequent, i.e.
-/// only when declaring a new [Module], or [GlobalVariable], do we actually need to mutate the structure.
-/// In all other situations, changes are scoped at the [Module] level.
+/// so that individual fields are locked, rather than the structure as a whole, to minimize
+/// contention. The intuition is that, in general, changes at the [Program] level are relatively
+/// infrequent, i.e. only when declaring a new [Module], or [GlobalVariable], do we actually need to
+/// mutate the structure. In all other situations, changes are scoped at the [Module] level.
 #[derive(Default)]
 pub struct Program {
     /// This tree stores all of the modules being compiled as part of the current program.
@@ -67,8 +67,7 @@ impl Program {
 
     /// Returns the [FunctionIdent] corresponding to the program entrypoint
     pub fn entrypoint(&self) -> Option<FunctionIdent> {
-        self.entrypoint
-            .or_else(|| self.modules.iter().find_map(|m| m.entrypoint()))
+        self.entrypoint.or_else(|| self.modules.iter().find_map(|m| m.entrypoint()))
     }
 
     /// Return a reference to the module table for this program
@@ -121,7 +120,8 @@ impl crate::pass::AnalysisKey for Program {
 
 /// This struct provides an ergonomic way to construct a [Program] in an imperative fashion.
 ///
-/// Simply create the builder, add/build one or more modules, then call `link` to obtain a [Program].
+/// Simply create the builder, add/build one or more modules, then call `link` to obtain a
+/// [Program].
 pub struct ProgramBuilder<'a> {
     modules: std::collections::BTreeMap<Ident, Box<Module>>,
     entry: Option<FunctionIdent>,
@@ -186,9 +186,7 @@ impl<'a> ProgramBuilder<'a> {
     /// Link a [Program] from the current [ProgramBuilder] state
     pub fn link(self) -> Result<Box<Program>, LinkerError> {
         let mut linker = Linker::new();
-        let entrypoint = self
-            .entry
-            .or_else(|| self.modules.values().find_map(|m| m.entrypoint()));
+        let entrypoint = self.entry.or_else(|| self.modules.values().find_map(|m| m.entrypoint()));
         if let Some(entry) = entrypoint {
             linker.with_entrypoint(entry)?;
         }

@@ -18,7 +18,7 @@ const INTRINSICS: [(&str, &str, &str); 2] = [
 /// Expects the fully-qualified name to be given, e.g. `intrinsics::mem`
 pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
     let name = name.as_ref();
-    let (name, source, filename) = INTRINSICS.iter().copied().find(|(n, _, _)| *n == name)?;
+    let (name, source, filename) = INTRINSICS.iter().copied().find(|(n, ..)| *n == name)?;
     let id = codemap.add(FileName::Virtual(filename.into()), source.to_string());
     let source_file = codemap.get(id).unwrap();
     match Module::parse_source_file(source_file, name, codemap) {

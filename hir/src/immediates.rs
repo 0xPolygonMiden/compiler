@@ -349,7 +349,8 @@ impl Ord for Immediate {
                             o => o,
                         }
                     } else {
-                        // The float is larger than i128 can represent, the sign tells us in what direction
+                        // The float is larger than i128 can represent, the sign tells us in what
+                        // direction
                         if is_positive {
                             Ordering::Greater
                         } else {
@@ -363,42 +364,34 @@ impl Ord for Immediate {
             (Self::I128(x), Self::I128(y)) => x.cmp(y),
             // We're only comparing against values here which are u64, i64, or smaller than 64-bits
             (Self::I128(x), y) => {
-                let y = y
-                    .as_i128()
-                    .expect("expected rhs to be an integer smaller than i128");
+                let y = y.as_i128().expect("expected rhs to be an integer smaller than i128");
                 x.cmp(&y)
             }
             (x, Self::I128(y)) => {
-                let x = x
-                    .as_i128()
-                    .expect("expected rhs to be an integer smaller than i128");
+                let x = x.as_i128().expect("expected rhs to be an integer smaller than i128");
                 x.cmp(y)
             }
             // u64 immediates may not fit in an i64
             (Self::U64(x), Self::U64(y)) => x.cmp(y),
             // We're only comparing against values here which are i64, or smaller than 64-bits
             (Self::U64(x), y) => {
-                let y = y
-                    .as_i64()
-                    .expect("expected rhs to be an integer capable of fitting in an i64")
-                    as u64;
+                let y =
+                    y.as_i64().expect("expected rhs to be an integer capable of fitting in an i64")
+                        as u64;
                 x.cmp(&y)
             }
             (x, Self::U64(y)) => {
-                let x = x
-                    .as_i64()
-                    .expect("expected rhs to be an integer capable of fitting in an i64")
-                    as u64;
+                let x =
+                    x.as_i64().expect("expected rhs to be an integer capable of fitting in an i64")
+                        as u64;
                 x.cmp(y)
             }
             // All immediates at this point are i64 or smaller
             (x, y) => {
-                let x = x
-                    .as_i64()
-                    .expect("expected rhs to be an integer capable of fitting in an i64");
-                let y = y
-                    .as_i64()
-                    .expect("expected rhs to be an integer capable of fitting in an i64");
+                let x =
+                    x.as_i64().expect("expected rhs to be an integer capable of fitting in an i64");
+                let y =
+                    y.as_i64().expect("expected rhs to be an integer capable of fitting in an i64");
                 x.cmp(&y)
             }
         }
@@ -503,12 +496,15 @@ impl FloatToInt<i8> for f64 {
     fn upper_bound() -> Self {
         f64::from(i8::MAX) + 1.0
     }
+
     fn lower_bound() -> Self {
         f64::from(i8::MIN) - 1.0
     }
+
     fn to_int(self) -> Result<i8, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> i8 {
         f64::to_int_unchecked(self)
     }
@@ -519,12 +515,15 @@ impl FloatToInt<u8> for f64 {
     fn upper_bound() -> Self {
         f64::from(u8::MAX) + 1.0
     }
+
     fn lower_bound() -> Self {
         0.0
     }
+
     fn to_int(self) -> Result<u8, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> u8 {
         f64::to_int_unchecked(self)
     }
@@ -535,12 +534,15 @@ impl FloatToInt<i16> for f64 {
     fn upper_bound() -> Self {
         f64::from(i16::MAX) + 1.0
     }
+
     fn lower_bound() -> Self {
         f64::from(i16::MIN) - 1.0
     }
+
     fn to_int(self) -> Result<i16, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> i16 {
         f64::to_int_unchecked(self)
     }
@@ -551,12 +553,15 @@ impl FloatToInt<u16> for f64 {
     fn upper_bound() -> Self {
         f64::from(u16::MAX) + 1.0
     }
+
     fn lower_bound() -> Self {
         0.0
     }
+
     fn to_int(self) -> Result<u16, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> u16 {
         f64::to_int_unchecked(self)
     }
@@ -567,12 +572,15 @@ impl FloatToInt<i32> for f64 {
     fn upper_bound() -> Self {
         f64::from(i32::MAX) + 1.0
     }
+
     fn lower_bound() -> Self {
         f64::from(i32::MIN) - 1.0
     }
+
     fn to_int(self) -> Result<i32, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> i32 {
         f64::to_int_unchecked(self)
     }
@@ -583,12 +591,15 @@ impl FloatToInt<u32> for f64 {
     fn upper_bound() -> Self {
         f64::from(u32::MAX) + 1.0
     }
+
     fn lower_bound() -> Self {
         0.0
     }
+
     fn to_int(self) -> Result<u32, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> u32 {
         f64::to_int_unchecked(self)
     }
@@ -599,12 +610,15 @@ impl FloatToInt<i64> for f64 {
     fn upper_bound() -> Self {
         63.0f64.exp2()
     }
+
     fn lower_bound() -> Self {
         (63.0f64.exp2() * -1.0) - 1.0
     }
+
     fn to_int(self) -> Result<i64, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> i64 {
         f64::to_int_unchecked(self)
     }
@@ -615,12 +629,15 @@ impl FloatToInt<u64> for f64 {
     fn upper_bound() -> Self {
         64.0f64.exp2()
     }
+
     fn lower_bound() -> Self {
         0.0
     }
+
     fn to_int(self) -> Result<u64, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> u64 {
         f64::to_int_unchecked(self)
     }
@@ -631,12 +648,15 @@ impl FloatToInt<Felt> for f64 {
     fn upper_bound() -> Self {
         64.0f64.exp2() - 32.0f64.exp2() + 1.0
     }
+
     fn lower_bound() -> Self {
         0.0
     }
+
     fn to_int(self) -> Result<Felt, ()> {
         float_to_int(self).map(Felt::new)
     }
+
     unsafe fn to_int_unchecked(self) -> Felt {
         Felt::new(f64::to_int_unchecked::<u64>(self))
     }
@@ -647,12 +667,15 @@ impl FloatToInt<i128> for f64 {
     fn upper_bound() -> Self {
         f64::from(i128::BITS - 1).exp2()
     }
+
     fn lower_bound() -> Self {
         (f64::from(i128::BITS - 1) * -1.0).exp2() - 1.0
     }
+
     fn to_int(self) -> Result<i128, ()> {
         float_to_int(self)
     }
+
     unsafe fn to_int_unchecked(self) -> i128 {
         f64::to_int_unchecked(self)
     }

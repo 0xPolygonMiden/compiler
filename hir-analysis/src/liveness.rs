@@ -3,8 +3,11 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
-use miden_hir::{self as hir, Block as BlockId, Inst as InstId, Value as ValueId, *};
+use miden_hir::{
+    self as hir,
+    pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
+    Block as BlockId, Inst as InstId, Value as ValueId, *,
+};
 use midenc_session::Session;
 use rustc_hash::FxHashMap;
 
@@ -185,10 +188,7 @@ impl LivenessAnalysis {
     pub fn chromatic_number(&self) -> usize {
         let mut max = 0;
         for (_pp, next_used) in self.live_in.iter() {
-            max = cmp::max(
-                next_used.iter().filter(|(_, d)| *d < &u32::MAX).count(),
-                max,
-            );
+            max = cmp::max(next_used.iter().filter(|(_, d)| *d < &u32::MAX).count(), max);
         }
         max
     }
@@ -384,12 +384,13 @@ impl<'a, 'b> std::ops::BitXor<&'b NextUseSet> for &'a NextUseSet {
 
 /// This function computes global next-use distances/liveness until a fixpoint is reached.
 ///
-/// The resulting data structure associates two [NextUseSet]s with every block and instruction in `function`.
-/// One set provides next-use distances _at_ a given program point, the other _after_ a given program point.
-/// Intuitively, these are basically what they sound like. If a value is used "at" a given instruction, it's
-/// next-use distance will be 0, and if it is never used after that, it won't be present in the "after" set.
-/// However, if it used again later, it's distance in the "after" set will be the distance from the instruction
-/// following the current one (or the block exit if the current one is a terminator).
+/// The resulting data structure associates two [NextUseSet]s with every block and instruction in
+/// `function`. One set provides next-use distances _at_ a given program point, the other _after_ a
+/// given program point. Intuitively, these are basically what they sound like. If a value is used
+/// "at" a given instruction, it's next-use distance will be 0, and if it is never used after that,
+/// it won't be present in the "after" set. However, if it used again later, it's distance in the
+/// "after" set will be the distance from the instruction following the current one (or the block
+/// exit if the current one is a terminator).
 fn compute_liveness(
     liveness: &mut LivenessAnalysis,
     function: &Function,
@@ -472,11 +473,7 @@ fn compute_liveness(
                         let mut inst_next_uses_after = inst_next_uses.clone();
 
                         // Add uses by this instruction to the live-in set, with a distance of 0
-                        for arg in inst_data
-                            .arguments(&function.dfg.value_lists)
-                            .iter()
-                            .copied()
-                        {
+                        for arg in inst_data.arguments(&function.dfg.value_lists).iter().copied() {
                             inst_next_uses.insert(arg, 0);
                         }
 
@@ -495,11 +492,7 @@ fn compute_liveness(
 
                         // Add uses by this instruction to the live-in set, with a distance of 0
                         let mut inst_next_uses = NextUseSet::default();
-                        for arg in inst_data
-                            .arguments(&function.dfg.value_lists)
-                            .iter()
-                            .copied()
-                        {
+                        for arg in inst_data.arguments(&function.dfg.value_lists).iter().copied() {
                             inst_next_uses.insert(arg, 0);
                         }
 
@@ -508,15 +501,13 @@ fn compute_liveness(
                         (inst_next_uses, NextUseSet::default())
                     }
                 }
-                // This is a branch instruction, so get the next-use set at the entry of each successor,
-                // increment the distances in those sets based on the distance of the edge, and then take
-                // the join of those sets as the initial next-use set for `inst`
+                // This is a branch instruction, so get the next-use set at the entry of each
+                // successor, increment the distances in those sets based on the
+                // distance of the edge, and then take the join of those sets as the
+                // initial next-use set for `inst`
                 BranchInfo::SingleDest(succ, extra_uses) => {
-                    let mut inst_next_uses = liveness
-                        .live_in
-                        .entry(ProgramPoint::Block(succ))
-                        .or_default()
-                        .clone();
+                    let mut inst_next_uses =
+                        liveness.live_in.entry(ProgramPoint::Block(succ)).or_default().clone();
 
                     // Increment the next-use distance for all inherited next uses
                     for (_value, dist) in inst_next_uses.iter_mut() {
@@ -550,7 +541,8 @@ fn compute_liveness(
                         inst_next_uses_after.remove(value);
                     }
 
-                    // If this block is in a loop, make sure we add the loop exit distance for edges leaving the loop
+                    // If this block is in a loop, make sure we add the loop exit distance for edges
+                    // leaving the loop
                     if let Some(block_loop) = block_loop {
                         let succ_loop = loops.innermost_loop(succ);
                         let is_loop_exit = succ_loop
@@ -569,9 +561,10 @@ fn compute_liveness(
                 }
                 // Same as above
                 //
-                // NOTE: We additionally assert here that all critical edges in the control flow graph have been split,
-                // as we cannot proceed correctly otherwise. It is expected that either no critical edges
-                // exist, or that they have been split by a prior transformation.
+                // NOTE: We additionally assert here that all critical edges in the control flow
+                // graph have been split, as we cannot proceed correctly otherwise.
+                // It is expected that either no critical edges exist, or that they
+                // have been split by a prior transformation.
                 BranchInfo::MultiDest(jts) => {
                     let mut inst_next_uses = NextUseSet::default();
                     let mut inst_next_uses_after = NextUseSet::default();
@@ -581,8 +574,9 @@ fn compute_liveness(
                     } in jts.iter()
                     {
                         let destination = *destination;
-                        // If the successor block has multiple predecessors, this is a critical edge, as by
-                        // definition this instruction means the current block has multiple successors
+                        // If the successor block has multiple predecessors, this is a critical
+                        // edge, as by definition this instruction means the
+                        // current block has multiple successors
                         assert_eq!(
                             cfg.num_predecessors(destination),
                             1,
@@ -600,7 +594,8 @@ fn compute_liveness(
                             *dist = dist.saturating_add(1);
                         }
 
-                        // The next uses up to this point forms the initial next-use set after `inst`
+                        // The next uses up to this point forms the initial next-use set after
+                        // `inst`
                         let mut jt_next_uses_after = jt_next_uses.clone();
 
                         // Add uses by this instruction to the live-in set, with a distance of 0
@@ -613,9 +608,10 @@ fn compute_liveness(
                             jt_next_uses.insert(arg, 0);
                         }
 
-                        // Remove the successor block arguments from live-in/live-out, as those values
-                        // cannot be live before they are defined, and even if the destination block
-                        // dominates the current block (via loop), those values must be dead at this
+                        // Remove the successor block arguments from live-in/live-out, as those
+                        // values cannot be live before they are defined,
+                        // and even if the destination block dominates the
+                        // current block (via loop), those values must be dead at this
                         // instruction as we're providing new definitions for them.
                         for value in function.dfg.block_args(destination) {
                             // Only remove them from live-in if they are not actually used though,
@@ -627,7 +623,8 @@ fn compute_liveness(
                             jt_next_uses_after.remove(value);
                         }
 
-                        // If this block is in a loop, make sure we add the loop exit distance for edges leaving the loop
+                        // If this block is in a loop, make sure we add the loop exit distance for
+                        // edges leaving the loop
                         if let Some(block_loop) = block_loop {
                             let succ_loop = loops.innermost_loop(destination);
                             let is_loop_exit = succ_loop
@@ -653,10 +650,7 @@ fn compute_liveness(
             // live-in values at any point within the block.
             max_register_pressure = cmp::max(
                 max_register_pressure,
-                inst_next_uses
-                    .iter()
-                    .filter(|(_, d)| *d < &u32::MAX)
-                    .count(),
+                inst_next_uses.iter().filter(|(_, d)| *d < &u32::MAX).count(),
             );
 
             // Record the next-use distances for this program point
@@ -669,17 +663,13 @@ fn compute_liveness(
 
         // Handle the block header
         let pp = ProgramPoint::Block(block_id);
-        // The block header derives it's next-use distances from the live-in set of it's first instruction
+        // The block header derives it's next-use distances from the live-in set of it's first
+        // instruction
         let first_inst = block.insts.front().get().unwrap().key;
         let mut block_next_uses = liveness.live_in[&ProgramPoint::Inst(first_inst)].clone();
         // For each block argument, make sure a default next-use distance (u32::MAX) is set
         // if a distance is not found in the live-in set of the first instruction
-        for arg in block
-            .params
-            .as_slice(&function.dfg.value_lists)
-            .iter()
-            .copied()
-        {
+        for arg in block.params.as_slice(&function.dfg.value_lists).iter().copied() {
             block_next_uses.entry(arg).or_insert(u32::MAX);
         }
         // For blocks, the "after" set corresponds to the next-use set "after" the block
@@ -708,9 +698,7 @@ fn compute_liveness(
                 liveness.live_out.insert(pp, block_next_uses_after);
             }
         }
-        liveness
-            .per_block_register_pressure
-            .insert(block_id, max_register_pressure);
+        liveness.per_block_register_pressure.insert(block_id, max_register_pressure);
     }
 }
 

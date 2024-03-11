@@ -41,11 +41,14 @@ impl Type {
 
     /// Split this type into two parts:
     ///
-    /// * The first part is no more than `n` bytes in size, and may contain the type itself if it fits
-    /// * The second part is None if the first part is smaller than or equal in size to the requested split size
-    /// * The second part is Some if there is data left in the original type after the split. This part will be
-    /// a type that attempts to preserve, to the extent possible, the original type structure, but will fall back
-    /// to an array of bytes if a larger type must be split down the middle somewhere.
+    /// * The first part is no more than `n` bytes in size, and may contain the type itself if it
+    /// fits
+    /// * The second part is None if the first part is smaller than or equal in size to the
+    /// requested split size
+    /// * The second part is Some if there is data left in the original type after the split. This
+    /// part will be a type that attempts to preserve, to the extent possible, the original type
+    /// structure, but will fall back to an array of bytes if a larger type must be split down
+    /// the middle somewhere.
     pub fn split(self, n: usize) -> (Type, Option<Type>) {
         if n == 0 {
             return (self, None);
@@ -130,7 +133,8 @@ impl Type {
                         };
                         (split, Some(rest))
                     } else {
-                        // The element type must be split somewhere in order to get the input type down to the requested size
+                        // The element type must be split somewhere in order to get the input type
+                        // down to the requested size
                         let (partial1, partial2) = (*elem_ty).clone().split(elem_size - extra);
                         match array_len - take {
                             0 => unreachable!(),
@@ -197,7 +201,10 @@ impl Type {
                     size: 0,
                     fields: Vec::new(),
                 };
-                let mut needed: u32 = n.try_into().expect("invalid type split: number of bytes is larger than what is representable in memory");
+                let mut needed: u32 = n.try_into().expect(
+                    "invalid type split: number of bytes is larger than what is representable in \
+                     memory",
+                );
                 let mut current_offset = 0u32;
                 while let Some(mut field) = fields.pop_front() {
                     let padding = field.offset - current_offset;
@@ -303,7 +310,11 @@ impl Type {
                         field.offset = current_offset;
                         split.fields.push(field);
 
-                        debug_assert!(!fields.is_empty(), "expected struct that is the exact size of the split request to have been handled elsewhere");
+                        debug_assert!(
+                            !fields.is_empty(),
+                            "expected struct that is the exact size of the split request to have \
+                             been handled elsewhere"
+                        );
 
                         remaining.repr = original_repr;
                         remaining.size = original_size - split.size;
@@ -405,7 +416,7 @@ impl Type {
             // 64-bit integers and floats must be element-aligned
             Self::I64 | Self::U64 | Self::F64 => 4,
             // 32-bit integers and pointers must be element-aligned
-            Self::I32 | Self::U32 | Self::Ptr(_) | Self::NativePtr(_, _) => 4,
+            Self::I32 | Self::U32 | Self::Ptr(_) | Self::NativePtr(..) => 4,
             // 16-bit integers can be naturally aligned
             Self::I16 | Self::U16 => 2,
             // 8-bit integers and booleans can be naturally aligned
@@ -439,7 +450,7 @@ impl Type {
             // Raw pointers  are 32-bits, the same size as the native integer width, u32
             Self::Ptr(_) => 32,
             // Native pointers are essentially a tuple/struct, composed of three 32-bit parts
-            Self::NativePtr(_, _) => 96,
+            Self::NativePtr(..) => 96,
             // Packed structs have no alignment padding between fields
             Self::Struct(ref struct_ty) => struct_ty.size as usize * 8,
             // Zero-sized arrays have no size in memory
@@ -609,8 +620,9 @@ alignable!(u8, u16, u32, u64, usize);
 #[cfg(test)]
 #[allow(unstable_name_collisions)]
 mod tests {
-    use crate::*;
     use smallvec::smallvec;
+
+    use crate::*;
 
     #[test]
     fn struct_type_test() {
@@ -745,10 +757,7 @@ mod tests {
 
         // Default struct
         let ty = Type::Struct(StructType::new([ptr_ty.clone(), Type::U8, Type::I32]));
-        assert_eq!(
-            ty.to_raw_parts(),
-            Some(smallvec![ptr_ty.clone(), Type::U8, Type::I32,])
-        );
+        assert_eq!(ty.to_raw_parts(), Some(smallvec![ptr_ty.clone(), Type::U8, Type::I32,]));
 
         // Packed struct
         let ty = Type::Struct(StructType::new_with_repr(
@@ -759,10 +768,7 @@ mod tests {
             TypeRepr::packed(1),
             [Type::U8, Type::Array(Box::new(Type::U8), 3)],
         ));
-        assert_eq!(
-            ty.to_raw_parts(),
-            Some(smallvec![ptr_ty.clone(), partial_ty, Type::U8])
-        );
+        assert_eq!(ty.to_raw_parts(), Some(smallvec![ptr_ty.clone(), partial_ty, Type::U8]));
     }
 
     #[test]

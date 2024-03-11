@@ -1,6 +1,8 @@
-use std::ffi::OsStr;
-use std::fmt;
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::OsStr,
+    fmt,
+    path::{Path, PathBuf},
+};
 
 use miden_diagnostics::FileName;
 
@@ -62,9 +64,9 @@ impl InputFile {
                 file_type,
             }),
             // We do not yet have frontends for these file types
-            FileType::Masm | FileType::Masl | FileType::Wat => Err(
-                InvalidInputError::UnsupportedFileType(PathBuf::from("stdin")),
-            ),
+            FileType::Masm | FileType::Masl | FileType::Wat => {
+                Err(InvalidInputError::UnsupportedFileType(PathBuf::from("stdin")))
+            }
         }
     }
 

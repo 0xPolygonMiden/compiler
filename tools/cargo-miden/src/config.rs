@@ -18,13 +18,12 @@
 //! that `cargo` supports which are necessary for `cargo-miden`
 //! to function.
 
+use std::{collections::BTreeMap, fmt, fmt::Display, path::PathBuf, str::FromStr};
+
 use anyhow::{anyhow, bail, Context, Result};
 use cargo_component_core::terminal::{Color, Terminal};
 use parse_arg::{iter_short, match_arg};
 use semver::Version;
-use std::fmt;
-use std::str::FromStr;
-use std::{collections::BTreeMap, fmt::Display, path::PathBuf};
 
 /// Represents a cargo package specifier.
 ///
@@ -425,12 +424,7 @@ impl CargoArguments {
         }
 
         Ok(Self {
-            color: args
-                .get_mut("--color")
-                .unwrap()
-                .take_single()
-                .map(|v| v.parse())
-                .transpose()?,
+            color: args.get_mut("--color").unwrap().take_single().map(|v| v.parse()).transpose()?,
             verbose: args.get("--verbose").unwrap().count(),
             quiet: args.get("--quiet").unwrap().count() > 0,
             manifest_path: args
@@ -479,8 +473,9 @@ impl Config {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::iter::empty;
+
+    use super::*;
 
     #[test]
     fn it_parses_flags() {
@@ -494,9 +489,7 @@ mod test {
         // Test the flag
         args.parse("--flag", &mut empty::<String>()).unwrap();
         assert_eq!(
-            args.parse("--flag", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("--flag", &mut empty::<String>()).unwrap_err().to_string(),
             "the argument '--flag' cannot be used multiple times"
         );
         let arg = args.get_mut("--flag").unwrap();
@@ -511,9 +504,7 @@ mod test {
         // Test the short flag
         args.parse("-rfx", &mut empty::<String>()).unwrap();
         assert_eq!(
-            args.parse("-fxz", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("-fxz", &mut empty::<String>()).unwrap_err().to_string(),
             "the argument '--flag' cannot be used multiple times"
         );
         let arg = args.get("--flag").unwrap();
@@ -534,19 +525,14 @@ mod test {
 
         // Test missing value
         assert_eq!(
-            args.parse("--option", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("--option", &mut empty::<String>()).unwrap_err().to_string(),
             "a value is required for '--option <VALUE>' but none was supplied"
         );
 
         // Test the option with equals
-        args.parse("--option=value", &mut empty::<String>())
-            .unwrap();
+        args.parse("--option=value", &mut empty::<String>()).unwrap();
         assert_eq!(
-            args.parse("--option=value", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("--option=value", &mut empty::<String>()).unwrap_err().to_string(),
             "the argument '--option <VALUE>' cannot be used multiple times"
         );
         let arg = args.get_mut("--option").unwrap();
@@ -572,9 +558,7 @@ mod test {
         assert_eq!(arg.take_single(), None);
 
         assert_eq!(
-            args.parse("-fo", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("-fo", &mut empty::<String>()).unwrap_err().to_string(),
             "a value is required for '--option <VALUE>' but none was supplied"
         );
 
@@ -622,9 +606,7 @@ mod test {
 
         // Test missing value
         assert_eq!(
-            args.parse("--option", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("--option", &mut empty::<String>()).unwrap_err().to_string(),
             "a value is required for '--option <VALUE>' but none was supplied"
         );
 
@@ -663,9 +645,7 @@ mod test {
 
         // Test missing shot option value
         assert_eq!(
-            args.parse("-fo", &mut empty::<String>())
-                .unwrap_err()
-                .to_string(),
+            args.parse("-fo", &mut empty::<String>()).unwrap_err().to_string(),
             "a value is required for '--option <VALUE>' but none was supplied"
         );
 

@@ -4,17 +4,12 @@ mod functions;
 mod globals;
 mod instruction;
 
-pub use self::block::*;
-pub use self::convert::ConvertAstToHir;
-pub use self::functions::*;
-pub use self::globals::*;
-pub use self::instruction::*;
-
 use std::{collections::BTreeMap, fmt};
 
 use miden_diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned};
 use rustc_hash::FxHashMap;
 
+pub use self::{block::*, convert::ConvertAstToHir, functions::*, globals::*, instruction::*};
 use crate::{ExternalFunction, FunctionIdent, Ident};
 
 /// This represents the parsed contents of a single Miden IR module
@@ -45,9 +40,11 @@ impl midenc_session::Emit for Module {
     fn name(&self) -> Option<crate::Symbol> {
         Some(self.name.as_symbol())
     }
+
     fn output_type(&self) -> midenc_session::OutputType {
         midenc_session::OutputType::Ast
     }
+
     fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
         writer.write_fmt(format_args!("{:#?}", self))
     }
@@ -138,9 +135,16 @@ impl Module {
                     if let Some(id) = global.init {
                         if !constants_by_id.contains_key(&id) {
                             let id = id.as_u32();
-                            diagnostics.diagnostic(Severity::Error)
+                            diagnostics
+                                .diagnostic(Severity::Error)
                                 .with_message("invalid global variable declaration")
-                                .with_primary_label(global.span, format!("invalid initializer: no constant named '{id}' in this module"))
+                                .with_primary_label(
+                                    global.span,
+                                    format!(
+                                        "invalid initializer: no constant named '{id}' in this \
+                                         module"
+                                    ),
+                                )
                                 .emit();
                             is_valid = false;
                         }
@@ -183,9 +187,14 @@ impl Module {
         let mut is_valid = true;
         for external in core::mem::take(&mut self.externals).into_iter() {
             if external.id.module == self.name {
-                diagnostics.diagnostic(Severity::Error)
+                diagnostics
+                    .diagnostic(Severity::Error)
                     .with_message("invalid external function declaration")
-                    .with_primary_label(external.span(), "external function declarations may not reference functions in the current module")
+                    .with_primary_label(
+                        external.span(),
+                        "external function declarations may not reference functions in the \
+                         current module",
+                    )
                     .emit();
                 is_valid = false;
                 continue;

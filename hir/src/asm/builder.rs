@@ -1,10 +1,9 @@
-use crate::{
-    CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, SourceSpan, Value,
-};
-
 use smallvec::smallvec;
 
 use super::*;
+use crate::{
+    CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, SourceSpan, Value,
+};
 
 /// Used to construct an [InlineAsm] instruction, while checking the input/output types,
 /// and enforcing various safety invariants.
@@ -30,15 +29,18 @@ pub struct MasmBuilder<B> {
     stack: OperandStack<Type>,
 }
 impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
-    /// Construct a new inline assembly builder in the function represented by `dfg`, to be inserted at `ip`.
+    /// Construct a new inline assembly builder in the function represented by `dfg`, to be inserted
+    /// at `ip`.
     ///
-    /// The `args` list represents the arguments which will be visible on the operand stack in this inline assembly block.
+    /// The `args` list represents the arguments which will be visible on the operand stack in this
+    /// inline assembly block.
     ///
-    /// The `results` set represents the types that are expected to be found on the operand stack when the inline
-    /// assembly block finishes executing. Use an empty set to represent no results.
+    /// The `results` set represents the types that are expected to be found on the operand stack
+    /// when the inline assembly block finishes executing. Use an empty set to represent no
+    /// results.
     ///
-    /// Any attempt to modify the operand stack beyond what is made visible via arguments, or introduced within the
-    /// inline assembly block, will cause an assertion to fail.
+    /// Any attempt to modify the operand stack beyond what is made visible via arguments, or
+    /// introduced within the inline assembly block, will cause an assertion to fail.
     pub fn new(mut builder: B, args: &[Value], results: Vec<Type>, span: SourceSpan) -> Self {
         // Construct the initial operand stack with the given arguments
         let mut stack = OperandStack::<Type>::default();
@@ -90,13 +92,19 @@ impl<'f, B: InstBuilder<'f>> MasmBuilder<B> {
         }
     }
 
-    /// Finalize this inline assembly block, inserting it into the `Function` from which this builder was derived.
+    /// Finalize this inline assembly block, inserting it into the `Function` from which this
+    /// builder was derived.
     ///
-    /// Returns the [Inst] which corresponds to the inline assembly instruction, and the inner [DataFlowGraph] reference
-    /// held by the underlying [InstBuilderBase].
+    /// Returns the [Inst] which corresponds to the inline assembly instruction, and the inner
+    /// [DataFlowGraph] reference held by the underlying [InstBuilderBase].
     pub fn build(self) -> Inst {
         if self.asm.results.is_empty() {
-            assert!(self.stack.is_empty(), "invalid inline assembly: expected operand stack to be empty upon exit, found: {:?}", self.stack.debug());
+            assert!(
+                self.stack.is_empty(),
+                "invalid inline assembly: expected operand stack to be empty upon exit, found: \
+                 {:?}",
+                self.stack.debug()
+            );
         } else {
             let mut len = 0;
             for ty in self.asm.results.iter() {
@@ -262,33 +270,25 @@ impl<'a> MasmOpBuilder<'a> {
 
     /// Pops the top element on the stack, and traps if that element is != 1.
     pub fn assert(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::AssertWithError)
-            .unwrap_or(MasmOp::Assert);
+        let op = error_code.map(MasmOp::AssertWithError).unwrap_or(MasmOp::Assert);
         self.build(self.ip, op);
     }
 
     /// Pops the top element on the stack, and traps if that element is != 0.
     pub fn assertz(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::AssertzWithError)
-            .unwrap_or(MasmOp::Assertz);
+        let op = error_code.map(MasmOp::AssertzWithError).unwrap_or(MasmOp::Assertz);
         self.build(self.ip, op);
     }
 
     /// Pops the top two elements on the stack, and traps if they are not equal.
     pub fn assert_eq(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::AssertEqWithError)
-            .unwrap_or(MasmOp::AssertEq);
+        let op = error_code.map(MasmOp::AssertEqWithError).unwrap_or(MasmOp::AssertEq);
         self.build(self.ip, op);
     }
 
     /// Pops the top two words on the stack, and traps if they are not equal.
     pub fn assert_eqw(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::AssertEqwWithError)
-            .unwrap_or(MasmOp::AssertEqw);
+        let op = error_code.map(MasmOp::AssertEqwWithError).unwrap_or(MasmOp::AssertEqw);
         self.build(self.ip, op);
     }
 
@@ -311,15 +311,12 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::MemLoadOffset);
     }
 
-    /// Loads the element of the word at the given address and element offset to the top of the stack.
+    /// Loads the element of the word at the given address and element offset to the top of the
+    /// stack.
     ///
     /// NOTE: This is an experimental instruction which is not implemented in Miden VM yet.
     pub fn load_offset_imm(mut self, addr: u32, offset: u8) {
-        assert!(
-            offset < 4,
-            "invalid element offset, must be in the range 0..=3, got {}",
-            offset
-        );
+        assert!(offset < 4, "invalid element offset, must be in the range 0..=3, got {}", offset);
         self.build(self.ip, MasmOp::MemLoadOffsetImm(addr, offset));
     }
 
@@ -356,11 +353,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// Pops an element from the top of the stack, and stores it at the given offset of
     /// the word at the given address.
     pub fn store_offset_imm(mut self, addr: u32, offset: u8) {
-        assert!(
-            offset < 4,
-            "invalid element offset, must be in the range 0..=3, got {}",
-            offset
-        );
+        assert!(offset < 4, "invalid element offset, must be in the range 0..=3, got {}", offset);
         self.build(self.ip, MasmOp::MemStoreOffsetImm(addr, offset));
     }
 
@@ -390,11 +383,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// fails, the builder will panic.
     pub fn if_true(self) -> IfTrueBuilder<'a> {
         let cond = self.stack.pop().expect("operand stack is empty");
-        assert_eq!(
-            cond,
-            Type::I1,
-            "expected while.true condition to be a boolean value"
-        );
+        assert_eq!(cond, Type::I1, "expected while.true condition to be a boolean value");
         let out_stack = self.stack.clone();
         IfTrueBuilder {
             dfg: self.dfg,
@@ -429,11 +418,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// Both of these are validated by [LoopBuilder], and a panic is raised if validation fails.
     pub fn while_true(self) -> LoopBuilder<'a> {
         let cond = self.stack.pop().expect("operand stack is empty");
-        assert_eq!(
-            cond,
-            Type::I1,
-            "expected while.true condition to be a boolean value"
-        );
+        assert_eq!(cond, Type::I1, "expected while.true condition to be a boolean value");
         let out_stack = self.stack.clone();
         let body = self.asm.create_block();
         LoopBuilder {
@@ -449,14 +434,12 @@ impl<'a> MasmOpBuilder<'a> {
 
     /// Begins construction of a `repeat` loop, with an iteration count of `n`.
     ///
-    /// A `repeat` instruction requires no operands on the stack, and will execute the loop body `n` times.
+    /// A `repeat` instruction requires no operands on the stack, and will execute the loop body `n`
+    /// times.
     ///
     /// NOTE: The iteration count must be non-zero, or this function will panic.
     pub fn repeat(self, n: u8) -> LoopBuilder<'a> {
-        assert!(
-            n > 0,
-            "invalid iteration count for `repeat.n`, must be non-zero"
-        );
+        assert!(n > 0, "invalid iteration count for `repeat.n`, must be non-zero");
         let out_stack = self.stack.clone();
         let body = self.asm.create_block();
         LoopBuilder {
@@ -497,17 +480,20 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Add);
     }
 
-    /// Pops a field element from the stack, adds the given value to it, and places the result on the stack.
+    /// Pops a field element from the stack, adds the given value to it, and places the result on
+    /// the stack.
     pub fn add_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::AddImm(imm));
     }
 
-    /// Pops two field elements from the stack, subtracts the second from the first, and places the result on the stack.
+    /// Pops two field elements from the stack, subtracts the second from the first, and places the
+    /// result on the stack.
     pub fn sub(mut self) {
         self.build(self.ip, MasmOp::Sub);
     }
 
-    /// Pops a field element from the stack, subtracts the given value from it, and places the result on the stack.
+    /// Pops a field element from the stack, subtracts the given value from it, and places the
+    /// result on the stack.
     pub fn sub_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::SubImm(imm));
     }
@@ -517,17 +503,20 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Mul);
     }
 
-    /// Pops a field element from the stack, multiplies it by the given value, and places the result on the stack.
+    /// Pops a field element from the stack, multiplies it by the given value, and places the result
+    /// on the stack.
     pub fn mul_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::MulImm(imm));
     }
 
-    /// Pops two field elements from the stack, divides the first by the second, and places the result on the stack.
+    /// Pops two field elements from the stack, divides the first by the second, and places the
+    /// result on the stack.
     pub fn div(mut self) {
         self.build(self.ip, MasmOp::Div);
     }
 
-    /// Pops a field element from the stack, divides it by the given value, and places the result on the stack.
+    /// Pops a field element from the stack, divides it by the given value, and places the result on
+    /// the stack.
     pub fn div_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::DivImm(imm));
     }
@@ -537,7 +526,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Neg);
     }
 
-    /// Replaces the field element on top of the stack with it's multiplicative inverse, i.e. `a^-1 mod p`
+    /// Replaces the field element on top of the stack with it's multiplicative inverse, i.e. `a^-1
+    /// mod p`
     pub fn inv(mut self) {
         self.build(self.ip, MasmOp::Inv);
     }
@@ -547,29 +537,32 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Incr);
     }
 
-    /// Pops an element, `a`, from the top of the stack, and places the result of `2^a` on the stack.
+    /// Pops an element, `a`, from the top of the stack, and places the result of `2^a` on the
+    /// stack.
     ///
     /// Traps if `a` is not in the range 0..=63
     pub fn pow2(mut self) {
         self.build(self.ip, MasmOp::Pow2);
     }
 
-    /// Pops two elements from the stack, `b` and `a` respectively, and places the result of `a^b` on the stack.
+    /// Pops two elements from the stack, `b` and `a` respectively, and places the result of `a^b`
+    /// on the stack.
     ///
     /// Traps if `b` is not in the range 0..=63
     pub fn exp(mut self) {
         self.build(self.ip, MasmOp::Exp);
     }
 
-    /// Pops an element from the stack, `a`, and places the result of `a^b` on the stack, where `b` is
-    /// the given immediate value.
+    /// Pops an element from the stack, `a`, and places the result of `a^b` on the stack, where `b`
+    /// is the given immediate value.
     ///
     /// Traps if `b` is not in the range 0..=63
     pub fn exp_imm(mut self, exponent: u8) {
         self.build(self.ip, MasmOp::ExpImm(exponent));
     }
 
-    /// Pops a value off the stack, and applies logical NOT, and places the result back on the stack.
+    /// Pops a value off the stack, and applies logical NOT, and places the result back on the
+    /// stack.
     ///
     /// Traps if the value is not 0 or 1.
     pub fn not(mut self) {
@@ -583,7 +576,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::And);
     }
 
-    /// Pops a value off the stack, applies logical AND with the given immediate, and places the result back on the stack.
+    /// Pops a value off the stack, applies logical AND with the given immediate, and places the
+    /// result back on the stack.
     ///
     /// Traps if the value is not 0 or 1.
     pub fn and_imm(mut self, imm: bool) {
@@ -597,7 +591,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Or);
     }
 
-    /// Pops a value off the stack, applies logical OR with the given immediate, and places the result back on the stack.
+    /// Pops a value off the stack, applies logical OR with the given immediate, and places the
+    /// result back on the stack.
     ///
     /// Traps if the value is not 0 or 1.
     pub fn or_imm(mut self, imm: bool) {
@@ -611,7 +606,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Xor);
     }
 
-    /// Pops a value off the stack, applies logical XOR with the given immediate, and places the result back on the stack.
+    /// Pops a value off the stack, applies logical XOR with the given immediate, and places the
+    /// result back on the stack.
     ///
     /// Traps if the value is not 0 or 1.
     pub fn xor_imm(mut self, imm: bool) {
@@ -623,7 +619,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Eq);
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value and the given immediate are equal, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value and the given
+    /// immediate are equal, else 0.
     pub fn eq_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::EqImm(imm));
     }
@@ -638,52 +635,62 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Neq);
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value and the given immediate are not equal, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value and the given
+    /// immediate are not equal, else 0.
     pub fn neq_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::NeqImm(imm));
     }
 
-    /// Pops two elements off the stack, and pushes 1 on the stack if the first is greater than the second, else 0.
+    /// Pops two elements off the stack, and pushes 1 on the stack if the first is greater than the
+    /// second, else 0.
     pub fn gt(mut self) {
         self.build(self.ip, MasmOp::Gt);
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value is greater than the given immediate, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value is greater than the
+    /// given immediate, else 0.
     pub fn gt_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::GtImm(imm));
     }
 
-    /// Pops two elements off the stack, and pushes 1 on the stack if the first is greater than or equal to the second, else 0.
+    /// Pops two elements off the stack, and pushes 1 on the stack if the first is greater than or
+    /// equal to the second, else 0.
     pub fn gte(mut self) {
         self.build(self.ip, MasmOp::Gte);
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value is greater than or equal to the given immediate, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value is greater than or
+    /// equal to the given immediate, else 0.
     pub fn gte_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::GteImm(imm));
     }
 
-    /// Pops two elements off the stack, and pushes 1 on the stack if the first is less than the second, else 0.
+    /// Pops two elements off the stack, and pushes 1 on the stack if the first is less than the
+    /// second, else 0.
     pub fn lt(mut self) {
         self.build(self.ip, MasmOp::Lt);
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value is less than the given immediate, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value is less than the
+    /// given immediate, else 0.
     pub fn lt_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::LtImm(imm));
     }
 
-    /// Pops two elements off the stack, and pushes 1 on the stack if the first is less than or equal to the second, else 0.
+    /// Pops two elements off the stack, and pushes 1 on the stack if the first is less than or
+    /// equal to the second, else 0.
     pub fn lte(mut self) {
         self.build(self.ip, MasmOp::Lte);
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value is less than or equal to the given immediate, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value is less than or equal
+    /// to the given immediate, else 0.
     pub fn lte_imm(mut self, imm: Felt) {
         self.build(self.ip, MasmOp::LteImm(imm));
     }
 
-    /// Pops an element off the stack, and pushes 1 on the stack if that value is an odd number, else 0.
+    /// Pops an element off the stack, and pushes 1 on the stack if that value is an odd number,
+    /// else 0.
     pub fn is_odd(mut self) {
         self.build(self.ip, MasmOp::IsOdd);
     }
@@ -703,32 +710,28 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32Test);
     }
 
-    /// Pushes 1 on the stack if every element of the word on top of the stack is less than 2^32, else 0.
+    /// Pushes 1 on the stack if every element of the word on top of the stack is less than 2^32,
+    /// else 0.
     pub fn testw_u32(mut self) {
         self.build(self.ip, MasmOp::U32Testw);
     }
 
     /// Traps if the element on top of the stack is greater than or equal to 2^32
     pub fn assert_u32(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::U32AssertWithError)
-            .unwrap_or(MasmOp::U32Assert);
+        let op = error_code.map(MasmOp::U32AssertWithError).unwrap_or(MasmOp::U32Assert);
         self.build(self.ip, op);
     }
 
-    /// Traps if either of the first two elements on top of the stack are greater than or equal to 2^32
+    /// Traps if either of the first two elements on top of the stack are greater than or equal to
+    /// 2^32
     pub fn assert2_u32(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::U32Assert2WithError)
-            .unwrap_or(MasmOp::U32Assert2);
+        let op = error_code.map(MasmOp::U32Assert2WithError).unwrap_or(MasmOp::U32Assert2);
         self.build(self.ip, op);
     }
 
     /// Traps if any element of the first word on the stack are greater than or equal to 2^32
     pub fn assertw_u32(mut self, error_code: Option<u32>) {
-        let op = error_code
-            .map(MasmOp::U32AssertwWithError)
-            .unwrap_or(MasmOp::U32Assertw);
+        let op = error_code.map(MasmOp::U32AssertwWithError).unwrap_or(MasmOp::U32Assertw);
         self.build(self.ip, op);
     }
 
@@ -737,26 +740,25 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32Cast);
     }
 
-    /// Pops an element, `a`, from the stack, and splits it into two elements, `b` and `c`, each of which are a valid u32 value.
+    /// Pops an element, `a`, from the stack, and splits it into two elements, `b` and `c`, each of
+    /// which are a valid u32 value.
     ///
-    /// The value for `b` is given by `a mod 2^32`, and the value for `c` by `a / 2^32`. They are pushed on the stack in
-    /// that order, i.e. `c` will be on top of the stack afterwards.
+    /// The value for `b` is given by `a mod 2^32`, and the value for `c` by `a / 2^32`. They are
+    /// pushed on the stack in that order, i.e. `c` will be on top of the stack afterwards.
     pub fn split_u32(mut self) {
         self.build(self.ip, MasmOp::U32Split);
     }
 
-    /// Performs unsigned addition of the top two elements on the stack, `b` and `a` respectively, which
-    /// are expected to be valid u32 values.
+    /// Performs unsigned addition of the top two elements on the stack, `b` and `a` respectively,
+    /// which are expected to be valid u32 values.
     ///
     /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
     pub fn add_u32(mut self, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Add,
             Overflow::Checked => {
-                return self.build_many(
-                    self.ip,
-                    [MasmOp::U32Assert2, MasmOp::Add, MasmOp::U32Assert],
-                );
+                return self
+                    .build_many(self.ip, [MasmOp::U32Assert2, MasmOp::Add, MasmOp::U32Assert]);
             }
             Overflow::Overflowing => MasmOp::U32OverflowingAdd,
             Overflow::Wrapping => MasmOp::U32WrappingAdd,
@@ -772,11 +774,7 @@ impl<'a> MasmOpBuilder<'a> {
             Overflow::Checked => {
                 return self.build_many(
                     self.ip,
-                    [
-                        MasmOp::U32Assert,
-                        MasmOp::AddImm(Felt::new(imm as u64)),
-                        MasmOp::U32Assert,
-                    ],
+                    [MasmOp::U32Assert, MasmOp::AddImm(Felt::new(imm as u64)), MasmOp::U32Assert],
                 );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingAddImm(imm),
@@ -786,30 +784,30 @@ impl<'a> MasmOpBuilder<'a> {
     }
 
     /// Pops three elements from the stack, `c`, `b`, and `a`, and computes `a + b + c` using the
-    /// overflowing semantics of `add_u32`. The first two elements on the stack after this instruction
-    /// will be a boolean indicating whether addition overflowed, and the result itself, mod 2^32.
+    /// overflowing semantics of `add_u32`. The first two elements on the stack after this
+    /// instruction will be a boolean indicating whether addition overflowed, and the result
+    /// itself, mod 2^32.
     pub fn add3_overflowing_u32(mut self) {
         self.build(self.ip, MasmOp::U32OverflowingAdd3);
     }
 
     /// Pops three elements from the stack, `c`, `b`, and `a`, and computes `a + b + c` using the
-    /// wrapping semantics of `add_u32`. The result will be on top of the stack afterwards, mod 2^32.
+    /// wrapping semantics of `add_u32`. The result will be on top of the stack afterwards, mod
+    /// 2^32.
     pub fn add3_wrapping_u32(mut self) {
         self.build(self.ip, MasmOp::U32WrappingAdd3);
     }
 
-    /// Performs unsigned subtraction of the top two elements on the stack, `b` and `a` respectively, which
-    /// are expected to be valid u32 values.
+    /// Performs unsigned subtraction of the top two elements on the stack, `b` and `a`
+    /// respectively, which are expected to be valid u32 values.
     ///
     /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
     pub fn sub_u32(mut self, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Sub,
             Overflow::Checked => {
-                return self.build_many(
-                    self.ip,
-                    [MasmOp::U32Assert2, MasmOp::Sub, MasmOp::U32Assert],
-                );
+                return self
+                    .build_many(self.ip, [MasmOp::U32Assert2, MasmOp::Sub, MasmOp::U32Assert]);
             }
             Overflow::Overflowing => MasmOp::U32OverflowingSub,
             Overflow::Wrapping => MasmOp::U32WrappingSub,
@@ -824,11 +822,7 @@ impl<'a> MasmOpBuilder<'a> {
             Overflow::Checked => {
                 return self.build_many(
                     self.ip,
-                    [
-                        MasmOp::U32Assert,
-                        MasmOp::SubImm(Felt::new(imm as u64)),
-                        MasmOp::U32Assert,
-                    ],
+                    [MasmOp::U32Assert, MasmOp::SubImm(Felt::new(imm as u64)), MasmOp::U32Assert],
                 );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingSubImm(imm),
@@ -837,18 +831,16 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, op);
     }
 
-    /// Performs unsigned multiplication of the top two elements on the stack, `b` and `a` respectively, which
-    /// are expected to be valid u32 values.
+    /// Performs unsigned multiplication of the top two elements on the stack, `b` and `a`
+    /// respectively, which are expected to be valid u32 values.
     ///
     /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
     pub fn mul_u32(mut self, overflow: Overflow) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Mul,
             Overflow::Checked => {
-                return self.build_many(
-                    self.ip,
-                    [MasmOp::U32Assert2, MasmOp::Mul, MasmOp::U32Assert],
-                );
+                return self
+                    .build_many(self.ip, [MasmOp::U32Assert2, MasmOp::Mul, MasmOp::U32Assert]);
             }
             Overflow::Overflowing => MasmOp::U32OverflowingMul,
             Overflow::Wrapping => MasmOp::U32WrappingMul,
@@ -863,11 +855,7 @@ impl<'a> MasmOpBuilder<'a> {
             Overflow::Checked => {
                 return self.build_many(
                     self.ip,
-                    [
-                        MasmOp::U32Assert,
-                        MasmOp::MulImm(Felt::new(imm as u64)),
-                        MasmOp::U32Assert,
-                    ],
+                    [MasmOp::U32Assert, MasmOp::MulImm(Felt::new(imm as u64)), MasmOp::U32Assert],
                 );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingMulImm(imm),
@@ -876,21 +864,21 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, op);
     }
 
-    /// Pops three elements from the stack, `b`, `a`, and `c`, and computes `a * b + c`, using overflowing
-    /// semantics, i.e. the result is wrapped mod 2^32, and a flag is pushed on the stack if the result
-    /// overflowed the u32 range.
+    /// Pops three elements from the stack, `b`, `a`, and `c`, and computes `a * b + c`, using
+    /// overflowing semantics, i.e. the result is wrapped mod 2^32, and a flag is pushed on the
+    /// stack if the result overflowed the u32 range.
     pub fn madd_overflowing_u32(mut self) {
         self.build(self.ip, MasmOp::U32OverflowingMadd);
     }
 
-    /// Pops three elements from the stack, `b`, `a`, and `c`, and computes `a * b + c`, using wrapping
-    /// semantics, i.e. the result is wrapped mod 2^32.
+    /// Pops three elements from the stack, `b`, `a`, and `c`, and computes `a * b + c`, using
+    /// wrapping semantics, i.e. the result is wrapped mod 2^32.
     pub fn madd_wrapping_u32(mut self) {
         self.build(self.ip, MasmOp::U32WrappingMadd);
     }
 
-    /// Performs unsigned division of the top two elements on the stack, `b` and `a` respectively, which
-    /// are expected to be valid u32 values.
+    /// Performs unsigned division of the top two elements on the stack, `b` and `a` respectively,
+    /// which are expected to be valid u32 values.
     ///
     /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
     ///
@@ -918,8 +906,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32ModImm(imm));
     }
 
-    /// Pops two elements off the stack, `b` and `a` respectively, and computes `a / b`, and `a mod b`,
-    /// pushing the results of each on the stack in that order.
+    /// Pops two elements off the stack, `b` and `a` respectively, and computes `a / b`, and `a mod
+    /// b`, pushing the results of each on the stack in that order.
     ///
     /// This operation is unchecked, so if either operand is >= 2^32, the results are undefined.
     ///
@@ -933,36 +921,40 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32DivModImm(imm));
     }
 
-    /// Pops two elements off the stack, and computes the bitwise AND of those values, placing the result on the stack.
+    /// Pops two elements off the stack, and computes the bitwise AND of those values, placing the
+    /// result on the stack.
     ///
     /// Traps if either element is not a valid u32 value.
     pub fn band_u32(mut self) {
         self.build(self.ip, MasmOp::U32And);
     }
 
-    /// Pops two elements off the stack, and computes the bitwise OR of those values, placing the result on the stack.
+    /// Pops two elements off the stack, and computes the bitwise OR of those values, placing the
+    /// result on the stack.
     ///
     /// Traps if either element is not a valid u32 value.
     pub fn bor_u32(mut self) {
         self.build(self.ip, MasmOp::U32Or);
     }
 
-    /// Pops two elements off the stack, and computes the bitwise XOR of those values, placing the result on the stack.
+    /// Pops two elements off the stack, and computes the bitwise XOR of those values, placing the
+    /// result on the stack.
     ///
     /// Traps if either element is not a valid u32 value.
     pub fn bxor_u32(mut self) {
         self.build(self.ip, MasmOp::U32Xor);
     }
 
-    /// Pops an element off the stack, and computes the bitwise NOT of that value, placing the result on the stack.
+    /// Pops an element off the stack, and computes the bitwise NOT of that value, placing the
+    /// result on the stack.
     ///
     /// Traps if the element is not a valid u32 value.
     pub fn bnot_u32(mut self) {
         self.build(self.ip, MasmOp::U32Not);
     }
 
-    /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` left by `b` bits. More precisely,
-    /// the result is computed as `(a * 2^b) mod 2^32`.
+    /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` left by `b` bits.
+    /// More precisely, the result is computed as `(a * 2^b) mod 2^32`.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn shl_u32(mut self) {
@@ -974,8 +966,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32ShlImm(imm));
     }
 
-    /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` right by `b` bits. More precisely,
-    /// the result is computed as `a / 2^b`.
+    /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` right by `b` bits.
+    /// More precisely, the result is computed as `a / 2^b`.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn shr_u32(mut self) {
@@ -987,8 +979,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32ShrImm(imm));
     }
 
-    /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary representation of `a`
-    /// left by `b` bits.
+    /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary
+    /// representation of `a` left by `b` bits.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn rotl_u32(mut self) {
@@ -1000,8 +992,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32RotlImm(imm));
     }
 
-    /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary representation of `a`
-    /// right by `b` bits.
+    /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary
+    /// representation of `a` right by `b` bits.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
     pub fn rotr_u32(mut self) {
@@ -1013,8 +1005,8 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::U32RotrImm(imm));
     }
 
-    /// Pops an element off the stack, and computes the number of set bits in its binary representation, i.e.
-    /// its hamming weight, and places the result on the stack.
+    /// Pops an element off the stack, and computes the number of set bits in its binary
+    /// representation, i.e. its hamming weight, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
     pub fn popcnt_u32(mut self) {
@@ -1148,10 +1140,7 @@ impl<'f> IfTrueBuilder<'f> {
     ///
     /// NOTE: This function will panic if the then block has already been built
     pub fn build_then<'a: 'f, 'b: 'f + 'a>(&'b mut self) -> IfTrueBlockBuilder<'a> {
-        assert!(
-            self.then_blk.is_none(),
-            "cannot build the 'then' branch twice"
-        );
+        assert!(self.then_blk.is_none(), "cannot build the 'then' branch twice");
         let then_blk = self.asm.create_block();
         let stack = self.in_stack.clone();
         IfTrueBlockBuilder {
@@ -1166,10 +1155,7 @@ impl<'f> IfTrueBuilder<'f> {
     ///
     /// NOTE: This function will panic if the else block has already been built
     pub fn build_else<'a: 'f, 'b: 'f + 'a>(&'b mut self) -> IfTrueBlockBuilder<'a> {
-        assert!(
-            self.else_blk.is_none(),
-            "cannot build the 'else' branch twice"
-        );
+        assert!(self.else_blk.is_none(), "cannot build the 'else' branch twice");
         let else_blk = self.asm.create_block();
         let stack = self.in_stack.clone();
         IfTrueBlockBuilder {
@@ -1236,7 +1222,12 @@ impl<'a> Drop for IfTrueBlockBuilder<'a> {
         // branch when it is constructed
         let is_complete = self.builder.then_blk.is_some() && self.builder.else_blk.is_some();
         if is_complete {
-            assert_eq!(self.stack.stack(), self.builder.out_stack.stack(), "expected the operand stack to be in the same abstract state upon exit from either branch of this if.true instruction");
+            assert_eq!(
+                self.stack.stack(),
+                self.builder.out_stack.stack(),
+                "expected the operand stack to be in the same abstract state upon exit from \
+                 either branch of this if.true instruction"
+            );
         } else {
             core::mem::swap(&mut self.builder.out_stack, &mut self.stack);
         }
@@ -1382,11 +1373,21 @@ impl<'f> LoopBuilder<'f> {
             LoopType::While => {
                 // First, validate that the top of the stack holds a boolean
                 let cond = self.out_stack.pop().expect("operand stack is empty");
-                assert_eq!(cond, Type::I1, "expected there to be a boolean on top of the stack at the end of the while.true body");
+                assert_eq!(
+                    cond,
+                    Type::I1,
+                    "expected there to be a boolean on top of the stack at the end of the \
+                     while.true body"
+                );
                 // Next, validate that the contents of the operand stack match
                 // the input stack, in order to ensure that the operand stack
                 // is consistent whether the loop is taken or not
-                assert_eq!(self.in_stack.stack(), self.out_stack.stack(), "expected the operand stack to be in the same abstract state whether the while.true loop is taken or skipped");
+                assert_eq!(
+                    self.in_stack.stack(),
+                    self.out_stack.stack(),
+                    "expected the operand stack to be in the same abstract state whether the \
+                     while.true loop is taken or skipped"
+                );
                 self.asm.push(self.ip, MasmOp::While(self.body));
             }
             LoopType::Repeat(1) => {
@@ -1407,19 +1408,22 @@ impl<'f> LoopBuilder<'f> {
             }
             LoopType::Repeat(n) => {
                 // Apply the stack effects of the loop body `n` times, asserting if some operation
-                // in the loop fails due to type mismatches. This is sufficient to validate `repeat`,
-                // as it's iteration count is known statically, entry into the loop is unconditional,
-                // and the only way to exit the loop is to complete all `n` iterations.
+                // in the loop fails due to type mismatches. This is sufficient to validate
+                // `repeat`, as it's iteration count is known statically, entry into
+                // the loop is unconditional, and the only way to exit the loop is
+                // to complete all `n` iterations.
                 //
                 // By validating in this way, we also implicitly validate the following:
                 //
-                // 1. If we were to translate this to SSA form, the resulting control flow graph would
-                // have the same number and type of arguments passed to the loop header both on entry
-                // and along the loopback edges.
+                // 1. If we were to translate this to SSA form, the resulting control flow graph
+                //    would
+                // have the same number and type of arguments passed to the loop header both on
+                // entry and along the loopback edges.
                 //
-                // 2. If the body of the loop removes elements from the stack, we ensure that all `n`
-                // iterations can be performed without exhausting the stack, or perform any other invalid
-                // stack operation.
+                // 2. If the body of the loop removes elements from the stack, we ensure that all
+                //    `n`
+                // iterations can be performed without exhausting the stack, or perform any other
+                // invalid stack operation.
                 let code = &self.asm.blocks[self.body];
                 for _ in 1..n {
                     for op in code.ops.iter() {
@@ -1481,7 +1485,8 @@ macro_rules! assert_compatible_u32_operands {
     };
 }
 
-/// Asserts that the given value is an integer or pointer type which is compatible with basic felt arithmetic
+/// Asserts that the given value is an integer or pointer type which is compatible with basic felt
+/// arithmetic
 macro_rules! assert_compatible_arithmetic_operand {
     ($ty:ident) => {
         assert!(
@@ -1584,14 +1589,28 @@ macro_rules! assert_compatible_felt_operands {
     };
 }
 
-/// Asserts that the two operands are of compatible types, where the first operand is assumed to determine the controlling type
+/// Asserts that the two operands are of compatible types, where the first operand is assumed to
+/// determine the controlling type
 macro_rules! assert_compatible_operand_types {
     ($lty:ident, $rty:ident) => {
-        assert!($lty.is_compatible_operand(&$rty), "expected operands to be compatible types, the controlling type {} is not compatible with {}", $lty, $rty);
+        assert!(
+            $lty.is_compatible_operand(&$rty),
+            "expected operands to be compatible types, the controlling type {} is not compatible \
+             with {}",
+            $lty,
+            $rty
+        );
     };
 
     ($lty:ident, $rty:ident, $op:expr) => {
-        assert!($lty.is_compatible_operand(&$rty), "expected operands for {} to be compatible types, the controlling type {} is not compatible with {}", $op, $lty, $rty);
+        assert!(
+            $lty.is_compatible_operand(&$rty),
+            "expected operands for {} to be compatible types, the controlling type {} is not \
+             compatible with {}",
+            $op,
+            $lty,
+            $rty
+        );
     };
 }
 
@@ -1690,7 +1709,7 @@ fn apply_op_stack_effects(
             );
             stack.push(ty.pointee().unwrap().clone());
         }
-        MasmOp::MemLoadImm(_) | MasmOp::MemLoadOffsetImm(_, _) => {
+        MasmOp::MemLoadImm(_) | MasmOp::MemLoadOffsetImm(..) => {
             // We don't know what we're loading, so fall back to the default type of field element
             stack.push(Type::Felt);
         }
@@ -1717,7 +1736,7 @@ fn apply_op_stack_effects(
             );
             stack.drop();
         }
-        MasmOp::MemStoreImm(_) | MasmOp::MemStoreOffsetImm(_, _) => {
+        MasmOp::MemStoreImm(_) | MasmOp::MemStoreOffsetImm(..) => {
             stack.drop();
         }
         MasmOp::MemStorew => {
@@ -1733,13 +1752,10 @@ fn apply_op_stack_effects(
             stack.dropw();
         }
         MasmOp::MemStream => {
-            // Read two sequential words from memory starting at `a`, overwriting the first two words on the stack,
-            // and advancing `a` to the next address following the two that were loaded
-            // [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
-            assert!(
-                stack.len() > 12,
-                "expected at least 13 elements on the stack for mem_stream"
-            );
+            // Read two sequential words from memory starting at `a`, overwriting the first two
+            // words on the stack, and advancing `a` to the next address following the
+            // two that were loaded [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
+            assert!(stack.len() > 12, "expected at least 13 elements on the stack for mem_stream");
             stack.dropw();
             stack.dropw();
             stack.padw();
@@ -1751,10 +1767,7 @@ fn apply_op_stack_effects(
             // into memory at `a` and `a + 1`
             //
             // [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
-            assert!(
-                stack.len() > 12,
-                "expected at least 13 elements on the stack for mem_stream"
-            );
+            assert!(stack.len() > 12, "expected at least 13 elements on the stack for mem_stream");
             stack.dropw();
             stack.dropw();
             stack.padw();
@@ -1766,17 +1779,14 @@ fn apply_op_stack_effects(
             }
         }
         MasmOp::AdvLoadw => {
-            assert!(
-                stack.len() > 3,
-                "expected at least 4 elements on the stack for mem_stream"
-            );
+            assert!(stack.len() > 3, "expected at least 4 elements on the stack for mem_stream");
             stack.dropw();
             stack.padw();
         }
         // This function is not called from [MasmOpBuilder] when building an `if.true` instruction,
         // instead, the only time we are evaluating this is when traversing the body of a `repeat.n`
-        // instruction and applying the stack effects of instructions which have already been inserted
-        // once.
+        // instruction and applying the stack effects of instructions which have already been
+        // inserted once.
         //
         // NOTE: We only apply the effects from a single branch, because we have already validated
         // that regardless of which branch is taken, the stack effects are the same.
@@ -1788,21 +1798,21 @@ fn apply_op_stack_effects(
                 apply_op_stack_effects(op, stack, dfg, asm);
             }
         }
-        // This function is not called from [MasmOpBuilder] when building an `while.true` instruction,
-        // instead, the only time we are evaluating this is when traversing the body of a `repeat.n`
-        // instruction and applying the stack effects of instructions which have already been inserted
-        // once.
+        // This function is not called from [MasmOpBuilder] when building an `while.true`
+        // instruction, instead, the only time we are evaluating this is when traversing the
+        // body of a `repeat.n` instruction and applying the stack effects of instructions
+        // which have already been inserted once.
         //
-        // NOTE: We don't need to traverse the body of the `while.true`, because we have already validated
-        // that whether the loop is taken or not, the stack effects are the same
+        // NOTE: We don't need to traverse the body of the `while.true`, because we have already
+        // validated that whether the loop is taken or not, the stack effects are the same
         MasmOp::While(_body) => {
             let lty = stack.pop().expect("operand stack is empty");
             assert_eq!(lty, Type::I1, "expected boolean conditional");
         }
         // This function is not called from [MasmOpBuilder] when building an `repeat.n` instruction,
         // instead, the only time we are evaluating this is when traversing the body of a `repeat.n`
-        // instruction and applying the stack effects of instructions which have already been inserted
-        // once.
+        // instruction and applying the stack effects of instructions which have already been
+        // inserted once.
         MasmOp::Repeat(n, body) => {
             let body = asm.blocks[*body].ops.as_slice();
             for _ in 0..*n {
@@ -1894,10 +1904,7 @@ fn apply_op_stack_effects(
             stack.push(Type::Felt);
         }
         MasmOp::Caller => {
-            assert!(
-                stack.len() > 3,
-                "expected at least 4 elements on the operand stack"
-            );
+            assert!(stack.len() > 3, "expected at least 4 elements on the operand stack");
             stack.popw();
             stack.pushw([Type::Felt, Type::Felt, Type::Felt, Type::Felt]);
         }
@@ -1906,26 +1913,17 @@ fn apply_op_stack_effects(
             stack.push(Type::I1);
         }
         MasmOp::U32Testw => {
-            assert!(
-                stack.len() > 3,
-                "expected at least 4 elements on the operand stack"
-            );
+            assert!(stack.len() > 3, "expected at least 4 elements on the operand stack");
             stack.push(Type::I1);
         }
         MasmOp::U32Assert | MasmOp::U32AssertWithError(_) => {
             assert!(!stack.is_empty());
         }
         MasmOp::U32Assert2 | MasmOp::U32Assert2WithError(_) => {
-            assert!(
-                stack.len() > 1,
-                "expected at least 2 elements on the operand stack"
-            );
+            assert!(stack.len() > 1, "expected at least 2 elements on the operand stack");
         }
         MasmOp::U32Assertw | MasmOp::U32AssertwWithError(_) => {
-            assert!(
-                stack.len() > 3,
-                "expected at least 4 elements on the operand stack"
-            );
+            assert!(stack.len() > 3, "expected at least 4 elements on the operand stack");
         }
         MasmOp::U32Cast => {
             let lty = stack.pop().expect("operand stack is empty");
@@ -1939,12 +1937,8 @@ fn apply_op_stack_effects(
             stack.push(Type::U32);
         }
         MasmOp::U32Lt | MasmOp::U32Gt | MasmOp::U32Lte | MasmOp::U32Gte => {
-            let rty = stack
-                .pop()
-                .expect("failed to pop right operand: stack is empty");
-            let lty = stack
-                .pop()
-                .expect("failed to pop left operand: stack is empty");
+            let rty = stack.pop().expect("failed to pop right operand: stack is empty");
+            let lty = stack.pop().expect("failed to pop left operand: stack is empty");
             assert_compatible_u32_operands!(lty, rty, op);
             stack.push(Type::I1);
         }
@@ -2044,9 +2038,7 @@ fn execute_call(
     stack: &mut OperandStack<Type>,
     dfg: &DataFlowGraph,
 ) {
-    let import = dfg
-        .get_import(id)
-        .expect("unknown function, are you missing an import?");
+    let import = dfg.get_import(id).expect("unknown function, are you missing an import?");
     if is_syscall {
         assert_eq!(
             import.signature.cc,
@@ -2072,7 +2064,14 @@ fn execute_call(
 
             // Verify that we have `elements_needed` values on the operand stack
             let elements_available = stack.len();
-            assert!(elements_needed <= elements_available, "the operand stack does not contain enough values to call {} ({} exepected vs {} available)", id, elements_needed, elements_available);
+            assert!(
+                elements_needed <= elements_available,
+                "the operand stack does not contain enough values to call {} ({} exepected vs {} \
+                 available)",
+                id,
+                elements_needed,
+                elements_available
+            );
             stack.dropn(elements_needed);
 
             // Update the operand stack to reflect the results
@@ -2084,9 +2083,7 @@ fn execute_call(
 }
 
 fn push_type_on_stack(ty: Type, stack: &mut OperandStack<Type>) {
-    let parts = ty
-        .to_raw_parts()
-        .expect("invalid unknown type: cannot proceed");
+    let parts = ty.to_raw_parts().expect("invalid unknown type: cannot proceed");
     for part in parts.into_iter().rev() {
         stack.push(part);
     }

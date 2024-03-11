@@ -121,11 +121,8 @@ impl ToDiagnostic for ParseError {
 
                 Diagnostic::error()
                     .with_message("unexpected eof")
-                    .with_labels(vec![Label::primary(
-                        at.source_id(),
-                        SourceSpan::new(at, at),
-                    )
-                    .with_message(message)])
+                    .with_labels(vec![Label::primary(at.source_id(), SourceSpan::new(at, at))
+                        .with_message(message)])
             }
             Self::UnrecognizedToken {
                 span, ref expected, ..
@@ -141,9 +138,7 @@ impl ToDiagnostic for ParseError {
 
                 Diagnostic::error()
                     .with_message("unexpected token")
-                    .with_labels(vec![
-                        Label::primary(span.source_id(), span).with_message(message)
-                    ])
+                    .with_labels(vec![Label::primary(span.source_id(), span).with_message(message)])
             }
             Self::ExtraToken { span, .. } => Diagnostic::error()
                 .with_message("extraneous token")

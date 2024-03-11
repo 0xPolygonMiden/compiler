@@ -30,7 +30,8 @@ pub enum LinkerError {
     /// * The calling convention is different
     /// * The number and/or types of the arguments and results are not the same
     /// * A special purpose parameter is declared in one signature but not the other
-    /// * Argument extension conflicts, i.e. one signature says a parameter is zero-extended, the other sign-extended
+    /// * Argument extension conflicts, i.e. one signature says a parameter is zero-extended, the
+    ///   other sign-extended
     #[error(
         "signature mismatch for '{0}': external function declaration does not match definition"
     )]
@@ -40,14 +41,20 @@ pub enum LinkerError {
     /// linkage.
     ///
     /// This error is a variant of `SignatureMismatch`, but occurs when the signature is otherwise
-    /// correct, but is ultimately an invalid declaration because the function should not be visible
-    /// outside its containing module.
-    #[error("invalid reference to '{0}': only functions with external linkage can be referenced from other modules")]
+    /// correct, but is ultimately an invalid declaration because the function should not be
+    /// visible outside its containing module.
+    #[error(
+        "invalid reference to '{0}': only functions with external linkage can be referenced from \
+         other modules"
+    )]
     LinkageMismatch(FunctionIdent),
     /// A cycle in the call graph was found starting at the given function.
     ///
     /// This occurs due to recursion (self or mutual), and is not supported by Miden.
-    #[error("encountered an invalid cycle in the call graph caused by a call from '{caller}' to '{callee}'")]
+    #[error(
+        "encountered an invalid cycle in the call graph caused by a call from '{caller}' to \
+         '{callee}'"
+    )]
     InvalidCycle {
         caller: FunctionIdent,
         callee: FunctionIdent,
@@ -56,7 +63,10 @@ pub enum LinkerError {
     #[error("invalid entrypoint '{0}': must have external linkage")]
     InvalidEntryLinkage(FunctionIdent),
     /// Occurs when attempting to set the program entrypoint when it has already been set
-    #[error("conflicting entrypoints: '{current}' conflicts with previously declared entrypoint '{prev}'")]
+    #[error(
+        "conflicting entrypoints: '{current}' conflicts with previously declared entrypoint \
+         '{prev}'"
+    )]
     InvalidMultipleEntry {
         current: FunctionIdent,
         prev: FunctionIdent,
@@ -70,8 +80,8 @@ pub enum LinkerError {
     SegmentError(#[from] DataSegmentError),
     /// A conflict between two global variables with the same symbol was detected.
     ///
-    /// When this occurs, the definitions must have been in separate modules, with external linkage,
-    /// and they disagree on the type of the value or its initializer.
+    /// When this occurs, the definitions must have been in separate modules, with external
+    /// linkage, and they disagree on the type of the value or its initializer.
     #[error(transparent)]
     GlobalVariableError(#[from] GlobalVariableError),
 }
@@ -85,16 +95,18 @@ enum Node {
     Function(FunctionIdent),
 }
 
-/// The [Linker] performs a similar role in conjunction with the Miden compiler, as the system linker
-/// does (e.g. `ld`) when used with compilers like `clang` or `rustc`.
+/// The [Linker] performs a similar role in conjunction with the Miden compiler, as the system
+/// linker does (e.g. `ld`) when used with compilers like `clang` or `rustc`.
 ///
 /// As a (very) rough overview, a typical linker is given a set of object files containing machine
-/// code and data, one for every translation unit participating in the link (e.g. for Rust the translation
-/// unit is a single crate). The linker will also be informed when dependencies are expected to be provided
-/// at runtime, i.e. dynamic libraries. With this, a linker does the following:
+/// code and data, one for every translation unit participating in the link (e.g. for Rust the
+/// translation unit is a single crate). The linker will also be informed when dependencies are
+/// expected to be provided at runtime, i.e. dynamic libraries. With this, a linker does the
+/// following:
 ///
 /// * Determines the final layout of all code and data in the executable or library being produced,
-/// this allows the linker to know the absolute and/or relative address for every symbol in the program.
+/// this allows the linker to know the absolute and/or relative address for every symbol in the
+/// program.
 /// * Ensures that all referenced symbols (functions/globals) are defined, or that there are runtime
 /// dependencies that will satisfy the missing symbols (in practice, what actually happens is the
 /// static linker, i.e. `ld`, assumes missing symbols will be provided by the runtime dependencies,
@@ -104,31 +116,39 @@ enum Node {
 /// layout of the program in memory is known.
 /// * Emits the linked program in binary form, either as an executable or as a library
 ///
-/// However, there a couple of things that make [Linker] somewhat different than your typical system linker:
+/// However, there a couple of things that make [Linker] somewhat different than your typical system
+/// linker:
 ///
-/// * We do not emit assembly/run the assembler prior to linking. This is because Miden Assembly (MASM)
-/// does not have a way to represent things like data segments or global variables natively. Instead, the
-/// linker is responsible for laying those out in memory ahead of time, and then all operations involving
-/// them are lowered to use absolute addresses.
-/// * [Linker] does not emit the final binary form of the program. It still plans the layout of program data
-/// in memory, and performs the same type of validations as a typical linker, but the output of the linker
-/// is a [Program], which must be emitted as Miden Assembly in a separate step _after_ being linked.
-/// * We cannot guarantee that the [Program] we emit constitutes a closed set of modules/functions, even
-/// accounting for functions whose definitions will be provided at runtime. This is because the Miden VM
-/// acts as the final assembler of the programs it runs, and if the [Program] we emit is used as a library,
-/// we can't know what other modules might end up being linked into the final program run by the VM. As a
-/// result, it is assumed that any code introduced separately is either:
-///   1. memory-agnostic, i.e. it doesn't use the heap and/or make any assumptions about the heap layout.
-///   2. compatible with the layout decided upon by the linker, i.e. it uses well-known allocator functions
-///      like `malloc`; or it places its memory in the range 2^30-2^31 for user contexts, or 2^30-(2^32 - 2^30)
-///      for root contexts (the latter allocates a separate region for syscall locals). The linker will always
-///      reserve memory starting at address 2^30 for locals and "unmanaged" memory allocations, to support
-///      scenarios whereby a linked library is used with a program that needs its own region of heap to manage.
-/// * Miden has separate address spaces depending on the context in which a function is executed, i.e. the root
-/// vs user context distinction. Currently, all programs are assumed to be executed in the root context, and
-/// we do not provide instructions for executing calls in another context. However, we will eventually be linking
-/// programs which have a potentially unbounded number of address spaces, which is an additional complication
-/// that your typical linker doesn't have to deal with
+/// * We do not emit assembly/run the assembler prior to linking. This is because Miden Assembly
+///   (MASM)
+/// does not have a way to represent things like data segments or global variables natively.
+/// Instead, the linker is responsible for laying those out in memory ahead of time, and then all
+/// operations involving them are lowered to use absolute addresses.
+/// * [Linker] does not emit the final binary form of the program. It still plans the layout of
+///   program data
+/// in memory, and performs the same type of validations as a typical linker, but the output of the
+/// linker is a [Program], which must be emitted as Miden Assembly in a separate step _after_ being
+/// linked.
+/// * We cannot guarantee that the [Program] we emit constitutes a closed set of modules/functions,
+///   even
+/// accounting for functions whose definitions will be provided at runtime. This is because the
+/// Miden VM acts as the final assembler of the programs it runs, and if the [Program] we emit is
+/// used as a library, we can't know what other modules might end up being linked into the final
+/// program run by the VM. As a result, it is assumed that any code introduced separately is either:
+///   1. memory-agnostic, i.e. it doesn't use the heap and/or make any assumptions about the heap
+///      layout.
+///   2. compatible with the layout decided upon by the linker, i.e. it uses well-known allocator
+///      functions like `malloc`; or it places its memory in the range 2^30-2^31 for user contexts,
+///      or 2^30-(2^32 - 2^30) for root contexts (the latter allocates a separate region for syscall
+///      locals). The linker will always reserve memory starting at address 2^30 for locals and
+///      "unmanaged" memory allocations, to support scenarios whereby a linked library is used with
+///      a program that needs its own region of heap to manage.
+/// * Miden has separate address spaces depending on the context in which a function is executed,
+///   i.e. the root
+/// vs user context distinction. Currently, all programs are assumed to be executed in the root
+/// context, and we do not provide instructions for executing calls in another context. However, we
+/// will eventually be linking programs which have a potentially unbounded number of address spaces,
+/// which is an additional complication that your typical linker doesn't have to deal with
 pub struct Linker {
     /// This is the program being constructed by the linker
     program: Box<Program>,
@@ -332,8 +352,8 @@ impl Linker {
     /// following tasks:
     ///
     /// * Verify that all referenced modules exist, or are known to be provided at runtime
-    /// * Verify that all referenced functions exist, or are known to be provided at runtime,
-    ///   and that the signature known to the caller matches the actual definition.
+    /// * Verify that all referenced functions exist, or are known to be provided at runtime, and
+    ///   that the signature known to the caller matches the actual definition.
     /// * Verifies that the entrypoint, if set, is valid
     /// * Verify that there are no cycles in the call graph, i.e. that there is no recursion present
     /// * Verify that all references to global symbols have corresponding definitions
@@ -356,9 +376,8 @@ impl Linker {
             }
 
             let module = &self.pending[&entry.module];
-            let function = module
-                .function(entry.function)
-                .ok_or(LinkerError::MissingFunction(entry))?;
+            let function =
+                module.function(entry.function).ok_or(LinkerError::MissingFunction(entry))?;
             if !function.is_public() {
                 return Err(LinkerError::InvalidEntryLinkage(entry));
             }
@@ -388,14 +407,14 @@ impl Linker {
 
             // The module is present, so we must verify that the function is defined in that module
             let module = &self.pending[&node.module];
-            let function = module
-                .function(node.function)
-                .ok_or(LinkerError::MissingFunction(node))?;
+            let function =
+                module.function(node.function).ok_or(LinkerError::MissingFunction(node))?;
             let is_externally_linkable = function.is_public();
 
             // Next, visit all of the dependent functions, and ensure their signatures match
             for dependent_id in self.callgraph.neighbors_directed(node, Direction::Incoming) {
-                // If the dependent is in another module, but the function has internal linkage, raise an error
+                // If the dependent is in another module, but the function has internal linkage,
+                // raise an error
                 if dependent_id.module != node.module && !is_externally_linkable {
                     return Err(LinkerError::LinkageMismatch(node));
                 }
@@ -404,10 +423,8 @@ impl Linker {
                 let dependent_function = dependent_module
                     .function(dependent_id.function)
                     .expect("dependency graph is outdated");
-                let external_ref = dependent_function
-                    .dfg
-                    .get_import(&node)
-                    .expect("dependency graph is outdated");
+                let external_ref =
+                    dependent_function.dfg.get_import(&node).expect("dependency graph is outdated");
                 verify_matching_signature(
                     function.id,
                     &function.signature,
@@ -460,7 +477,8 @@ impl Linker {
         // We provide three globals for managing the heap, based on the layout
         // of the data segments and these globals.
         let globals_offset = self.program.segments.next_available_offset();
-        // Compute the start of the heap by finding the end of the globals segment, aligned to the nearest word boundary
+        // Compute the start of the heap by finding the end of the globals segment, aligned to the
+        // nearest word boundary
         let heap_base = globals_offset
             .checked_add(
                 self.program
@@ -474,26 +492,22 @@ impl Linker {
         let hp = heap_base.to_le_bytes();
         // Initialize all 3 globals with the computed heap pointer
         let heap_ptr_ty = Type::Ptr(Box::new(Type::U8));
-        self.program.globals.declare("HEAP_BASE".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into())).expect("unable to declare HEAP_BASE, a conflicting global by that name was already defined");
         self.program
             .globals
-            .declare(
-                "HEAP_TOP".into(),
-                heap_ptr_ty.clone(),
-                Linkage::External,
-                Some(hp.into()),
-            )
+            .declare("HEAP_BASE".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into()))
+            .expect(
+                "unable to declare HEAP_BASE, a conflicting global by that name was already \
+                 defined",
+            );
+        self.program
+            .globals
+            .declare("HEAP_TOP".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into()))
             .expect(
                 "unable to declare HEAP_TOP, a conflicting global by that name was already defined",
             );
         self.program
             .globals
-            .declare(
-                "HEAP_END".into(),
-                heap_ptr_ty,
-                Linkage::External,
-                Some(hp.into()),
-            )
+            .declare("HEAP_END".into(), heap_ptr_ty, Linkage::External, Some(hp.into()))
             .expect(
                 "unable to declare HEAP_END, a conflicting global by that name was already defined",
             );
@@ -573,12 +587,8 @@ fn is_matching_param(expected: &AbiParam, actual: &AbiParam) -> bool {
 fn validate_callgraph(callgraph: &DiGraphMap<FunctionIdent, ()>) -> Result<(), LinkerError> {
     use petgraph::visit::{depth_first_search, DfsEvent, IntoNodeIdentifiers};
 
-    depth_first_search(
-        callgraph,
-        callgraph.node_identifiers(),
-        |event| match event {
-            DfsEvent::BackEdge(caller, callee) => Err(LinkerError::InvalidCycle { caller, callee }),
-            _ => Ok(()),
-        },
-    )
+    depth_first_search(callgraph, callgraph.node_identifiers(), |event| match event {
+        DfsEvent::BackEdge(caller, callee) => Err(LinkerError::InvalidCycle { caller, callee }),
+        _ => Ok(()),
+    })
 }

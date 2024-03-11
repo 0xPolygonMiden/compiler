@@ -122,13 +122,11 @@ impl ControlStack {
     #[inline]
     pub fn enter_repeat(&mut self, block: BlockId, n: u8) {
         let ip = InstructionPointer::new(block);
-        let pending_frame = self
-            .pending_frame
-            .replace(ControlFrame::Repeat(RepeatState {
-                ip,
-                n,
-                iterations: 0,
-            }));
+        let pending_frame = self.pending_frame.replace(ControlFrame::Repeat(RepeatState {
+            ip,
+            n,
+            iterations: 0,
+        }));
         self.pending = None;
         self.current = ControlFrame::Repeat(RepeatState {
             ip,
@@ -385,7 +383,8 @@ impl fmt::Debug for Activation {
     }
 }
 impl Activation {
-    /// Create a new activation record for `function`, using `fp` as the frame pointer for this activation
+    /// Create a new activation record for `function`, using `fp` as the frame pointer for this
+    /// activation
     pub fn new(function: Arc<Function>, fp: Addr) -> Self {
         let block = function.body.id();
         let control_stack = ControlStack::new(InstructionPointer::new(block));
@@ -441,19 +440,16 @@ impl Activation {
         self.control_stack.peek()
     }
 
-    /// Peek at the [InstructionWithOp] corresponding to the next instruction to be returned from [move_next]
+    /// Peek at the [InstructionWithOp] corresponding to the next instruction to be returned from
+    /// [move_next]
     pub fn peek_with_op(&self) -> Option<InstructionWithOp> {
-        self.control_stack
-            .peek()
-            .and_then(|ix| ix.with_op(&self.function))
+        self.control_stack.peek().and_then(|ix| ix.with_op(&self.function))
     }
 
     /// Peek at the [Op] coresponding to the next instruction to be returned from [move_next]
     #[allow(unused)]
     pub fn peek_op(&self) -> Option<Op> {
-        self.control_stack
-            .peek()
-            .and_then(|ix| ix.op(&self.function))
+        self.control_stack.peek().and_then(|ix| ix.op(&self.function))
     }
 
     /// Set the instruction pointer to the first instruction of `block`
@@ -489,10 +485,8 @@ impl Activation {
 #[cfg(test)]
 mod tests {
     use miden_hir::{assert_matches, Signature};
-    use std::sync::Arc;
 
     use super::*;
-    use crate::{Function, Op};
 
     #[test]
     fn activation_record_start_of_block() {
@@ -742,10 +736,8 @@ mod tests {
     }
 
     fn test_function() -> Arc<Function> {
-        let mut function = Function::new(
-            "test::main".parse().unwrap(),
-            Signature::new(vec![], vec![]),
-        );
+        let mut function =
+            Function::new("test::main".parse().unwrap(), Signature::new(vec![], vec![]));
         let then_blk = function.create_block();
         let else_blk = function.create_block();
         let while_blk = function.create_block();

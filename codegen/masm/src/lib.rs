@@ -8,15 +8,17 @@ mod masm;
 #[cfg(test)]
 mod tests;
 
-pub use self::convert::ConvertHirToMasm;
-pub use self::emulator::{
-    Breakpoint, BreakpointEvent, CallFrame, DebugInfo, DebugInfoWithStack, EmulationError,
-    Emulator, EmulatorEvent, InstructionPointer, WatchMode, Watchpoint, WatchpointId,
-};
-pub use self::masm::*;
-
 use miden_hir as hir;
 use midenc_session::Session;
+
+pub use self::{
+    convert::ConvertHirToMasm,
+    emulator::{
+        Breakpoint, BreakpointEvent, CallFrame, DebugInfo, DebugInfoWithStack, EmulationError,
+        Emulator, EmulatorEvent, InstructionPointer, WatchMode, Watchpoint, WatchpointId,
+    },
+    masm::*,
+};
 
 /// This error type represents all of the errors produced by [MasmCompiler]
 #[derive(Debug, thiserror::Error)]
@@ -67,9 +69,7 @@ impl<'a> MasmCompiler<'a> {
         use miden_hir_transform as transforms;
 
         let mut rewrites = RewriteSet::default();
-        rewrites.push(ModuleRewritePassAdapter::new(
-            transforms::SplitCriticalEdges,
-        ));
+        rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
         rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
         rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
 
@@ -101,9 +101,8 @@ impl<'a> MasmCompiler<'a> {
     /// rewrites have been applied. If one of these invariants is not upheld, compilation
     /// may fail.
     pub fn compile_module(&mut self, input: Box<hir::Module>) -> CompilerResult<Box<Program>> {
-        let program = hir::ProgramBuilder::new(&self.session.diagnostics)
-            .with_module(input)?
-            .link()?;
+        let program =
+            hir::ProgramBuilder::new(&self.session.diagnostics).with_module(input)?.link()?;
 
         self.compile(program)
     }

@@ -1,28 +1,26 @@
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-
-use smallvec::SmallVec;
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+};
 
 use miden_hir as hir;
+use smallvec::SmallVec;
 
 /// This represents a node in a [DependencyGraph].
 ///
 /// The node types here are carefully chosen to provide us with the following
 /// properties once we've constructed a [DependencyGraph] from a block:
 ///
-/// * Distinguish between block-local operands and those which come from a
-///   dominating block. This let's us reason globally about how function
-///   arguments and instruction results are used in blocks of the program
-///   so that they can be moved/copied as appropriate to keep them live only
+/// * Distinguish between block-local operands and those which come from a dominating block. This
+///   let's us reason globally about how function arguments and instruction results are used in
+///   blocks of the program so that they can be moved/copied as appropriate to keep them live only
 ///   for as long as they are needed.
-/// * Represent the dependencies of individual arguments, this ensures
-///   that dependencies between expressions in a block are correctly
-///   represented when we compute a [TreeGraph], and that we can determine
-///   exactly how many instances of a value are needed in a function.
-/// * Represent usage of individual instruction results - both to ensure
-///   we make copies of those results as needed, but to ensure we drop
-///   unused results immediately if they are not needed.
+/// * Represent the dependencies of individual arguments, this ensures that dependencies between
+///   expressions in a block are correctly represented when we compute a [TreeGraph], and that we
+///   can determine exactly how many instances of a value are needed in a function.
+/// * Represent usage of individual instruction results - both to ensure we make copies of those
+///   results as needed, but to ensure we drop unused results immediately if they are not needed.
 ///
 /// Furthermore, the precise layout and ordering of this enum is intentional,
 /// as it determines the order in which nodes are sorted, and thus the order
@@ -386,12 +384,12 @@ pub struct InvalidNodeIdError;
 #[repr(transparent)]
 pub struct NodeId(u64);
 impl NodeId {
+    const IS_CONDITIONAL_ARG: u64 = 1;
     const TAG_ARG_DIRECT: u64 = 1 << 60;
     const TAG_ARG_INDIRECT: u64 = 2 << 60;
     const TAG_INST: u64 = 3 << 60;
-    const TAG_RESULT: u64 = 4 << 60;
-    const IS_CONDITIONAL_ARG: u64 = 1;
     const TAG_MASK: u64 = 0b111 << 60;
+    const TAG_RESULT: u64 = 4 << 60;
 
     /// Returns true if the [Node] corresponding to this identifier is of `Stack` type
     #[inline]
@@ -414,10 +412,7 @@ impl NodeId {
     /// Returns true if the [Node] corresponding to this identifier is of `Argument` type
     #[inline]
     pub fn is_argument(&self) -> bool {
-        matches!(
-            self.0 & Self::TAG_MASK,
-            Self::TAG_ARG_DIRECT | Self::TAG_ARG_INDIRECT
-        )
+        matches!(self.0 & Self::TAG_MASK, Self::TAG_ARG_DIRECT | Self::TAG_ARG_INDIRECT)
     }
 
     /// Decode this identifier into its corresponding [Node]
@@ -728,10 +723,7 @@ impl DependencyGraph {
                 ..
             } in edges.into_iter()
             {
-                self.edges
-                    .get_mut(&other_node_id)
-                    .unwrap()
-                    .retain(|e| e.node != id);
+                self.edges.get_mut(&other_node_id).unwrap().retain(|e| e.node != id);
             }
         }
     }
@@ -756,11 +748,7 @@ impl DependencyGraph {
         let id = node.into();
         self.edges
             .get(&id)
-            .map(|es| {
-                es.iter()
-                    .filter(|e| e.direction == Direction::Dependency)
-                    .count()
-            })
+            .map(|es| es.iter().filter(|e| e.direction == Direction::Dependency).count())
             .unwrap_or_default()
     }
 
@@ -843,7 +831,8 @@ impl DependencyGraph {
         }
     }
 
-    /// Like `predecessors`, but avoids decoding [Node] values, instead producing the raw [NodeId] values.
+    /// Like `predecessors`, but avoids decoding [Node] values, instead producing the raw [NodeId]
+    /// values.
     pub fn predecessor_ids(&self, node: impl Into<NodeId>) -> impl Iterator<Item = NodeId> + '_ {
         let id = node.into();
         self.edges[&id].iter().filter_map(|edge| {
@@ -864,7 +853,8 @@ impl DependencyGraph {
         }
     }
 
-    /// Like `successors`, but avoids decoding [Node] values, instead producing the raw [NodeId] values.
+    /// Like `successors`, but avoids decoding [Node] values, instead producing the raw [NodeId]
+    /// values.
     pub fn successor_ids(&self, node: impl Into<NodeId>) -> impl Iterator<Item = NodeId> + '_ {
         let id = node.into();
         self.edges[&id].iter().filter_map(|edge| {
@@ -877,10 +867,10 @@ impl DependencyGraph {
     }
 
     /// Returns a data structure which assigns an index to each node in the graph for which `root`
-    /// is an ancestor, including `root` itself. The assigned index indicates the order in which nodes
-    /// will be emitted during code generation - the lower the index, the earlier the node is emitted.
-    /// Conversely, a higher index indicates that a node will be scheduled later in the program, so
-    /// values will be materialized from lowest index to highest.
+    /// is an ancestor, including `root` itself. The assigned index indicates the order in which
+    /// nodes will be emitted during code generation - the lower the index, the earlier the node
+    /// is emitted. Conversely, a higher index indicates that a node will be scheduled later in
+    /// the program, so values will be materialized from lowest index to highest.
     pub fn indexed(
         &self,
         root: impl Into<NodeId>,
@@ -895,18 +885,13 @@ impl DependencyGraph {
         while let Some(node) = stack.last().copied() {
             if discovered.insert(node) {
                 if node.is_instruction() {
-                    for arg in self
-                        .successors(node)
-                        .filter(|succ| succ.dependency.is_argument())
-                    {
+                    for arg in self.successors(node).filter(|succ| succ.dependency.is_argument()) {
                         let arg_source_id = self.unwrap_child(arg.dependency);
                         if !discovered.contains(&arg_source_id) {
                             stack.push(arg_source_id);
                         }
                     }
-                    for other in self
-                        .successors(node)
-                        .filter(|succ| !succ.dependency.is_argument())
+                    for other in self.successors(node).filter(|succ| !succ.dependency.is_argument())
                     {
                         let succ_node_id = if other.dependency.is_instruction() {
                             other.dependency
@@ -963,10 +948,7 @@ impl DependencyGraph {
             }
         }
 
-        let has_cycle = depgraph
-            .edges
-            .iter()
-            .any(|(n, es)| output.contains(n) && !es.is_empty());
+        let has_cycle = depgraph.edges.iter().any(|(n, es)| output.contains(n) && !es.is_empty());
         if has_cycle {
             Err(UnexpectedCycleError)
         } else {
@@ -998,11 +980,8 @@ impl DependencyGraph {
                 let dep_inst = *dep_inst;
                 let block_id = function.dfg.pp_block(pp);
                 if function.dfg.insts[dep_inst].block == block_id {
-                    let dep_inst_index = function
-                        .dfg
-                        .block_insts(block_id)
-                        .position(|id| id == dep_inst)
-                        .unwrap();
+                    let dep_inst_index =
+                        function.dfg.block_insts(block_id).position(|id| id == dep_inst).unwrap();
                     let result_inst_node_id = self.add_node(Node::Inst {
                         id: dep_inst,
                         pos: dep_inst_index as u16,
@@ -1052,7 +1031,8 @@ pub struct DependencyGraphIndices {
 impl DependencyGraphIndices {
     /// Get the index of `node`
     ///
-    /// NOTE: This function will panic if `node` was not in the corresponding dependency graph, or is unresolved
+    /// NOTE: This function will panic if `node` was not in the corresponding dependency graph, or
+    /// is unresolved
     #[inline]
     pub fn get(&self, node: impl Into<NodeId>) -> Option<usize> {
         let id = node.into();
@@ -1163,13 +1143,24 @@ fn is_valid_dependency(dependent: NodeId, dependency: NodeId) -> bool {
     match (dependent.into(), dependency.into()) {
         (Node::Argument(_), Node::Stack(_) | Node::Result { .. }) => true,
         (Node::Argument(_), Node::Inst { .. } | Node::Argument(_)) => {
-            panic!("{dependent} -> {dependency} is invalid: arguments may only depend on results or operands");
+            panic!(
+                "{dependent} -> {dependency} is invalid: arguments may only depend on results or \
+                 operands"
+            );
         }
         (Node::Inst { .. }, Node::Inst { .. } | Node::Result { .. } | Node::Argument(_)) => true,
-        (Node::Inst { .. }, _) => panic!("{dependent} -> {dependency} is invalid: instruction nodes may only depend directly on arguments"),
+        (Node::Inst { .. }, _) => panic!(
+            "{dependent} -> {dependency} is invalid: instruction nodes may only depend directly \
+             on arguments"
+        ),
         (Node::Result { .. }, Node::Inst { .. }) => true,
-        (Node::Result { .. }, _) => panic!("{dependent} -> {dependency} is invalid: result nodes may only depend directly on instructions"),
-        (Node::Stack(_), _) => panic!("{dependent} -> {dependency} is invalid: stack nodes may not have dependencies"),
+        (Node::Result { .. }, _) => panic!(
+            "{dependent} -> {dependency} is invalid: result nodes may only depend directly on \
+             instructions"
+        ),
+        (Node::Stack(_), _) => {
+            panic!("{dependent} -> {dependency} is invalid: stack nodes may not have dependencies")
+        }
     }
 }
 
@@ -1194,8 +1185,7 @@ const fn is_valid_dependency(_dependent: NodeId, _dependency: NodeId) -> bool {
 /// * All node types
 /// * All three argument types
 /// * All types of result usage (unused, singly/multiply used)
-/// * Instruction and value identifiers which are added out of order
-///   with respect to program order
+/// * Instruction and value identifiers which are added out of order with respect to program order
 #[cfg(test)]
 pub(crate) fn simple_dependency_graph() -> DependencyGraph {
     let mut graph = DependencyGraph::new();
@@ -1376,36 +1366,18 @@ mod tests {
         assert_eq!(graph.child(inst1_arg0_node), Ok(Some(v1_node.into())));
         assert_eq!(graph.child(inst1_arg1_node), Ok(Some(v0_node.into())));
         assert_eq!(graph.child(inst2_arg0_node), Ok(Some(v2_node.into())));
-        assert_eq!(
-            graph.child(inst2_block1_arg0_node),
-            Ok(Some(v1_node.into()))
-        );
-        assert_eq!(
-            graph.child(inst2_block2_arg0_node),
-            Ok(Some(v1_node.into()))
-        );
-        assert_eq!(
-            graph.child(inst2_block2_arg1_node),
-            Ok(Some(v0_node.into()))
-        );
+        assert_eq!(graph.child(inst2_block1_arg0_node), Ok(Some(v1_node.into())));
+        assert_eq!(graph.child(inst2_block2_arg0_node), Ok(Some(v1_node.into())));
+        assert_eq!(graph.child(inst2_block2_arg1_node), Ok(Some(v0_node.into())));
 
         // Arguments only have one dependent, the instruction they belong to
         assert_eq!(graph.parent(inst0_arg0_node), Ok(Some(inst0_node.into())));
         assert_eq!(graph.parent(inst1_arg0_node), Ok(Some(inst1_node.into())));
         assert_eq!(graph.parent(inst1_arg1_node), Ok(Some(inst1_node.into())));
         assert_eq!(graph.parent(inst2_arg0_node), Ok(Some(inst2_node.into())));
-        assert_eq!(
-            graph.parent(inst2_block1_arg0_node),
-            Ok(Some(inst2_node.into()))
-        );
-        assert_eq!(
-            graph.parent(inst2_block2_arg0_node),
-            Ok(Some(inst2_node.into()))
-        );
-        assert_eq!(
-            graph.parent(inst2_block2_arg1_node),
-            Ok(Some(inst2_node.into()))
-        );
+        assert_eq!(graph.parent(inst2_block1_arg0_node), Ok(Some(inst2_node.into())));
+        assert_eq!(graph.parent(inst2_block2_arg0_node), Ok(Some(inst2_node.into())));
+        assert_eq!(graph.parent(inst2_block2_arg1_node), Ok(Some(inst2_node.into())));
 
         // Results which are unused have no dependents
         assert_eq!(graph.parent(v3_node), Ok(None));

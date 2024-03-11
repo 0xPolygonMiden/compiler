@@ -1,8 +1,10 @@
-use std::collections::BTreeMap;
-use std::ffi::OsStr;
-use std::fmt;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::{
+    collections::BTreeMap,
+    ffi::OsStr,
+    fmt,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use clap::ValueEnum;
 
@@ -30,13 +32,7 @@ impl OutputType {
     }
 
     pub fn shorthand_display() -> String {
-        format!(
-            "`{}`, `{}`, `{}`, `{}`",
-            Self::Ast,
-            Self::Hir,
-            Self::Masm,
-            Self::Masl,
-        )
+        format!("`{}`, `{}`, `{}`, `{}`", Self::Ast, Self::Hir, Self::Masm, Self::Masl,)
     }
 }
 impl fmt::Display for OutputType {
@@ -205,9 +201,7 @@ pub struct OutputTypes(BTreeMap<OutputType, Option<OutputFile>>);
 impl OutputTypes {
     pub fn new<I: IntoIterator<Item = OutputTypeSpec>>(entries: I) -> Self {
         Self(BTreeMap::from_iter(
-            entries
-                .into_iter()
-                .map(|spec| (spec.output_type, spec.path)),
+            entries.into_iter().map(|spec| (spec.output_type, spec.path)),
         ))
     }
 
@@ -250,15 +244,11 @@ impl OutputTypes {
     }
 
     pub fn should_codegen(&self) -> bool {
-        self.0
-            .keys()
-            .any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
+        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
     }
 
     pub fn should_link(&self) -> bool {
-        self.0
-            .keys()
-            .any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
+        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
     }
 }
 
@@ -290,9 +280,7 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
     ) -> Result<Self::Value, clap::error::Error> {
         use clap::error::{Error, ErrorKind};
 
-        let output_type = value
-            .to_str()
-            .ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
+        let output_type = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
 
         let (shorthand, path) = match output_type.split_once('=') {
             None => (output_type, None),

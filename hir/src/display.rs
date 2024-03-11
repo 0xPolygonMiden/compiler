@@ -28,12 +28,15 @@ impl Decorator for () {
     fn skip_block(&self, _block: Block) -> bool {
         true
     }
+
     fn skip_inst(&self, _inst: Inst) -> bool {
         true
     }
+
     fn decorate_block<'a, 'd: 'a>(&'d self, _block: Block) -> Self::Display<'a> {
         ""
     }
+
     fn decorate_inst<'a, 'd: 'a>(&'d self, _inst: Inst) -> Self::Display<'a> {
         ""
     }

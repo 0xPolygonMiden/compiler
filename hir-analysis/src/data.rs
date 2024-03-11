@@ -1,11 +1,12 @@
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
 use miden_hir::{
+    pass::{Analysis, AnalysisManager, AnalysisResult},
     Function, FunctionIdent, GlobalValue, GlobalValueData, GlobalVariableTable, Module, Program,
 };
 use midenc_session::Session;
 use rustc_hash::FxHashMap;
 
-/// This analysis calculates the addresses/offsets of all global variables in a [Program] or [Module]
+/// This analysis calculates the addresses/offsets of all global variables in a [Program] or
+/// [Module]
 pub struct GlobalVariableAnalysis<T> {
     layout: GlobalVariableLayout,
     _marker: core::marker::PhantomData<T>,
@@ -104,14 +105,13 @@ impl GlobalVariableLayout {
         self.global_table_offset
     }
 
-    /// Get the statically-allocated address at which the global value `gv` for `function` is stored.
+    /// Get the statically-allocated address at which the global value `gv` for `function` is
+    /// stored.
     ///
     /// This function returns `None` if the analysis does not know about `function`, `gv`, or if
     /// the symbol which `gv` resolves to was undefined.
     pub fn get_computed_addr(&self, function: &FunctionIdent, gv: GlobalValue) -> Option<u32> {
-        self.offsets
-            .get(function)
-            .and_then(|offsets| offsets.get(&gv).copied())
+        self.offsets.get(function).and_then(|offsets| offsets.get(&gv).copied())
     }
 }
 

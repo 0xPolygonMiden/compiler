@@ -1,6 +1,4 @@
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
+use std::{fs::File, io::Write, path::Path};
 
 use miden_hir_symbol::Symbol;
 
@@ -33,18 +31,22 @@ impl<T: Emit> Emit for Box<T> {
     fn name(&self) -> Option<Symbol> {
         (**self).name()
     }
+
     #[inline]
     fn output_type(&self) -> OutputType {
         (**self).output_type()
     }
+
     #[inline]
     fn write_to_stdout(&self) -> std::io::Result<()> {
         (**self).write_to_stdout()
     }
+
     #[inline]
     fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
         (**self).write_to_file(path)
     }
+
     #[inline]
     fn write_to<W: Write>(&self, writer: W) -> std::io::Result<()> {
         (**self).write_to(writer)

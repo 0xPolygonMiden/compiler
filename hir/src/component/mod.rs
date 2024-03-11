@@ -1,7 +1,8 @@
 use core::ops::{Deref, DerefMut};
+use std::collections::BTreeMap;
+
 use intrusive_collections::RBTree;
 use miden_core::crypto::hash::RpoDigest;
-use std::collections::BTreeMap;
 
 use super::*;
 
@@ -47,7 +48,8 @@ pub struct ComponentExport {
     pub invoke_method: FunctionInvocationMethod,
 }
 
-/// A [Component] is a collection of [Module]s that are being compiled together as a package and have exports/imports.
+/// A [Component] is a collection of [Module]s that are being compiled together as a package and
+/// have exports/imports.
 #[derive(Default)]
 pub struct Component {
     /// This tree stores all of the modules
@@ -99,7 +101,8 @@ impl Component {
 
 /// This struct provides an ergonomic way to construct a [Component] in an imperative fashion.
 ///
-/// Simply create the builder, add/build one or more modules, then call `link` to obtain a [Component].
+/// Simply create the builder, add/build one or more modules, then call `link` to obtain a
+/// [Component].
 pub struct ComponentBuilder<'a> {
     modules: BTreeMap<Ident, Box<Module>>,
     imports: BTreeMap<FunctionIdent, ComponentImport>,

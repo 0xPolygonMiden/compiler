@@ -227,12 +227,7 @@ fn write_operands(
         }
         Instruction::RetImm(RetImm { arg, .. }) => write!(w, " {arg}"),
         Instruction::Call(Call { callee, args, .. }) => {
-            write!(
-                w,
-                " {}({})",
-                callee,
-                DisplayValues::new(args.as_slice(pool).iter())
-            )
+            write!(w, " {}({})", callee, DisplayValues::new(args.as_slice(pool).iter()))
         }
         Instruction::CondBr(CondBr {
             cond,
@@ -272,12 +267,7 @@ fn write_operands(
             write!(w, " {}", DisplayValues::new(args.as_slice(pool).iter()))
         }
         Instruction::PrimOpImm(PrimOpImm { imm, args, .. }) => {
-            write!(
-                w,
-                " {}, {}",
-                imm,
-                DisplayValues::new(args.as_slice(pool).iter())
-            )
+            write!(w, " {}, {}", imm, DisplayValues::new(args.as_slice(pool).iter()))
         }
         Instruction::Load(LoadOp { addr, .. }) => {
             write!(w, " {}", addr)

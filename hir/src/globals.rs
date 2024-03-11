@@ -1,7 +1,9 @@
-use std::alloc::Layout;
-use std::collections::{hash_map::DefaultHasher, BTreeMap};
-use std::fmt::{self, Write};
-use std::hash::{Hash, Hasher};
+use std::{
+    alloc::Layout,
+    collections::{hash_map::DefaultHasher, BTreeMap},
+    fmt::{self, Write},
+    hash::{Hash, Hasher},
+};
 
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
@@ -26,13 +28,13 @@ use super::*;
 ///
 /// However, with global variables, we have a bit more freedom, as it is a concept that we are
 /// completely inventing from whole cloth without explicit support from the VM or Miden Assembly.
-/// In short, when we compile a [Program] to MASM, we first gather together all of the global variables
-/// into a program-wide table, merging and garbage collecting as appropriate, and updating all
-/// references to them in each module. This global variable table is then assumed to be laid out
-/// in memory starting at the base of the linear memory address space in the same order, with appropriate
-/// padding to ensure accesses are aligned. Then, when emitting MASM instructions which reference
-/// global values, we use the layout information to derive the address where that global value
-/// is allocated.
+/// In short, when we compile a [Program] to MASM, we first gather together all of the global
+/// variables into a program-wide table, merging and garbage collecting as appropriate, and updating
+/// all references to them in each module. This global variable table is then assumed to be laid out
+/// in memory starting at the base of the linear memory address space in the same order, with
+/// appropriate padding to ensure accesses are aligned. Then, when emitting MASM instructions which
+/// reference global values, we use the layout information to derive the address where that global
+/// value is allocated.
 ///
 /// This has some downsides however, the biggest of which is that we can't prevent someone from
 /// loading modules generated from a [Program] with either their own hand-written modules, or
@@ -87,7 +89,8 @@ pub enum GlobalVariableError {
     /// An attempt was made to set the initializer for a global that already has one
     #[error("cannot set an initializer for '{0}', it is already initialized")]
     AlreadyInitialized(Ident),
-    /// The initializer data is invalid for the declared type of the given global, e.g. size mismatch.
+    /// The initializer data is invalid for the declared type of the given global, e.g. size
+    /// mismatch.
     #[error(
         "invalid global variable initializer for '{0}': the data does not match the declared type"
     )]
@@ -109,7 +112,8 @@ pub enum ConflictResolutionStrategy {
 
 /// This table is used to lay out and link together global variables for a [Program].
 ///
-/// See the docs for [Linkage], [GlobalVariableData], and [GlobalVariableTable::declare] for more details.
+/// See the docs for [Linkage], [GlobalVariableData], and [GlobalVariableTable::declare] for more
+/// details.
 pub struct GlobalVariableTable {
     layout: LinkedList<GlobalVariableAdapter>,
     names: BTreeMap<Ident, GlobalVariable>,
@@ -268,20 +272,23 @@ impl GlobalVariableTable {
         !self.data.is_empty()
     }
 
-    /// Declares a new global variable with the given symbol name, type, linkage, and optional initializer.
+    /// Declares a new global variable with the given symbol name, type, linkage, and optional
+    /// initializer.
     ///
-    /// If successful, `Ok` is returned, with the [GlobalVariable] corresponding to the data for the symbol.
+    /// If successful, `Ok` is returned, with the [GlobalVariable] corresponding to the data for the
+    /// symbol.
     ///
-    /// Returns an error if the specification of the global is invalid in any way, or the declaration conflicts
-    /// with a previous declaration of the same name.
+    /// Returns an error if the specification of the global is invalid in any way, or the
+    /// declaration conflicts with a previous declaration of the same name.
     ///
-    /// NOTE: While similar to `try_insert`, a key difference is that `try_declare` does not attempt to resolve
-    /// conflicts. If the given name has been previously declared, and the declarations are not identical,
-    /// then an error will be returned. This is because conflict resolution is a process performed when linking
-    /// together modules. Declaring globals is done during the initial construction of a module, where any
-    /// attempt to rename a global variable locally would cause unexpected issues as references to that global
-    /// are emitted. Once a module is constructed, globals it declares with internal linkage can be renamed freely,
-    /// as the name is no longer significant.
+    /// NOTE: While similar to `try_insert`, a key difference is that `try_declare` does not attempt
+    /// to resolve conflicts. If the given name has been previously declared, and the
+    /// declarations are not identical, then an error will be returned. This is because conflict
+    /// resolution is a process performed when linking together modules. Declaring globals is
+    /// done during the initial construction of a module, where any attempt to rename a global
+    /// variable locally would cause unexpected issues as references to that global are emitted.
+    /// Once a module is constructed, globals it declares with internal linkage can be renamed
+    /// freely, as the name is no longer significant.
     pub fn declare(
         &mut self,
         name: Ident,
@@ -340,9 +347,10 @@ impl GlobalVariableTable {
 
     /// Attempt to insert the given [GlobalVariableData] into this table.
     ///
-    /// Returns the id of the global variable in the table, along with a flag indicating whether the global symbol
-    /// was renamed to resolve a conflict with an existing symbol. The caller is expected to handle such renames
-    /// so that any references to the original name that are affected can be updated.
+    /// Returns the id of the global variable in the table, along with a flag indicating whether the
+    /// global symbol was renamed to resolve a conflict with an existing symbol. The caller is
+    /// expected to handle such renames so that any references to the original name that are
+    /// affected can be updated.
     ///
     /// If there was an unresolvable conflict, an error will be returned.
     pub fn try_insert(
@@ -419,9 +427,11 @@ impl GlobalVariableTable {
     /// This function will return `Err` if any of the following occur:
     ///
     /// * The global variable already has an initializer
-    /// * The given data does not match the type of the global variable, i.e. more data than the type supports.
+    /// * The given data does not match the type of the global variable, i.e. more data than the
+    ///   type supports.
     ///
-    /// If the data is smaller than the type of the global variable, the data will be zero-extended to fill it out.
+    /// If the data is smaller than the type of the global variable, the data will be zero-extended
+    /// to fill it out.
     ///
     /// NOTE: The initializer data is expected to be in little-endian order.
     pub fn set_initializer(
@@ -454,13 +464,14 @@ impl GlobalVariableTable {
         Ok(())
     }
 
-    /// This is a low-level operation to insert global variable data directly into the table, allocating
-    /// a fresh unique id, which is then returned.
+    /// This is a low-level operation to insert global variable data directly into the table,
+    /// allocating a fresh unique id, which is then returned.
     ///
     /// # SAFETY
     ///
-    /// It is expected that the caller has already guaranteed that the name of the given global variable
-    /// is not present in the table, and that all validation rules for global variables have been enforced.
+    /// It is expected that the caller has already guaranteed that the name of the given global
+    /// variable is not present in the table, and that all validation rules for global variables
+    /// have been enforced.
     pub(crate) unsafe fn insert(&mut self, mut data: GlobalVariableData) -> GlobalVariable {
         let name = data.name;
         // Allocate the data in the arena
@@ -563,7 +574,8 @@ impl GlobalVariableData {
     /// Returns true if `self` is compatible with `other`, meaning that the two declarations are
     /// identical in terms of type and linkage, and do not have conflicting initializers.
     ///
-    /// NOTE: The name of the global is not considered here, only the properties of the value itself.
+    /// NOTE: The name of the global is not considered here, only the properties of the value
+    /// itself.
     pub fn is_compatible_with(&self, other: &Self) -> bool {
         let compatible_init =
             self.init.is_none() || other.init.is_none() || self.init == other.init;
@@ -668,7 +680,8 @@ impl GlobalValueData {
         !matches!(self, Self::Load { .. })
     }
 
-    /// Return the computed offset for this global value (relative to it's position in the global table)
+    /// Return the computed offset for this global value (relative to it's position in the global
+    /// table)
     pub fn offset(&self) -> i32 {
         match self {
             Self::Symbol { offset, .. } => *offset,

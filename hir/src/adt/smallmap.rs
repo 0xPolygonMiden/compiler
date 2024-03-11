@@ -1,7 +1,9 @@
-use core::borrow::Borrow;
-use core::cmp::Ordering;
-use core::fmt;
-use core::ops::{Index, IndexMut};
+use core::{
+    borrow::Borrow,
+    cmp::Ordering,
+    fmt,
+    ops::{Index, IndexMut},
+};
 
 use smallvec::SmallVec;
 
@@ -48,9 +50,7 @@ where
 
     /// Return an iterator over mutable key/value pairs in this map
     pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = (&K, &mut V)> {
-        self.items
-            .iter_mut()
-            .map(|pair| (&pair.key, &mut pair.value))
+        self.items.iter_mut().map(|pair| (&pair.key, &mut pair.value))
     }
 
     /// Returns true if `key` has been inserted in this map
@@ -130,8 +130,7 @@ where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        self.items
-            .binary_search_by(|probe| Ord::cmp(probe.key.borrow(), item))
+        self.items.binary_search_by(|probe| Ord::cmp(probe.key.borrow(), item))
     }
 }
 impl<K, V, const N: usize> Default for SmallMap<K, V, N> {
@@ -276,6 +275,7 @@ impl<K, V, const N: usize> DoubleEndedIterator for SmallMapIntoIter<K, V, N> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back().map(|pair| (pair.key, pair.value))
     }
+
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.iter.nth_back(n).map(|pair| (pair.key, pair.value))

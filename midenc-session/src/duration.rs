@@ -1,5 +1,7 @@
-use std::fmt;
-use std::time::{Duration, Instant};
+use std::{
+    fmt,
+    time::{Duration, Instant},
+};
 
 pub struct HumanDuration(Duration);
 impl HumanDuration {

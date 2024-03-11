@@ -64,26 +64,29 @@ impl<'a> Rule<BlockData> for DefsDominateUses<'a> {
                     node.key,
                     span,
                     "an instruction may not use its own results as arguments",
-                    "This situation can only arise if one has manually modified the arguments of an instruction, \
-                     incorrectly inserting a value obtained from the set of instruction results."
+                    "This situation can only arise if one has manually modified the arguments of \
+                     an instruction, incorrectly inserting a value obtained from the set of \
+                     instruction results."
                 );
             }
 
             // Next, ensure that all used values are dominated by their definition
             for value in uses.iter().copied() {
                 match self.dfg.value_data(value) {
-                    // If the value comes from the current block's parameter list, this use is trivially dominated
+                    // If the value comes from the current block's parameter list, this use is
+                    // trivially dominated
                     ValueData::Param { block, .. } if block == &current_block => continue,
-                    // If the value comes from another block, then as long as all paths to the current
-                    // block flow through that block, then this use is dominated by its definition
+                    // If the value comes from another block, then as long as all paths to the
+                    // current block flow through that block, then this use is
+                    // dominated by its definition
                     ValueData::Param { block, .. } => {
                         if self.domtree.dominates(*block, current_block, self.dfg) {
                             continue;
                         }
                     }
-                    // If the value is an instruction result, then as long as all paths to the current
-                    // instruction flow through the defining instruction, then this use is dominated
-                    // by its definition
+                    // If the value is an instruction result, then as long as all paths to the
+                    // current instruction flow through the defining
+                    // instruction, then this use is dominated by its definition
                     ValueData::Inst { inst, .. } => {
                         if self.domtree.dominates(*inst, node.key, self.dfg) {
                             continue;
@@ -97,10 +100,11 @@ impl<'a> Rule<BlockData> for DefsDominateUses<'a> {
                     diagnostics,
                     node.key,
                     span,
-                    "an argument of this instruction, {value}, is not defined on all paths leading to this point",
-                    "All uses of a value must be dominated by its definition, i.e. all control flow paths \
-                     from the function entry to the point of each use must flow through the point where \
-                     that value is defined."
+                    "an argument of this instruction, {value}, is not defined on all paths \
+                     leading to this point",
+                    "All uses of a value must be dominated by its definition, i.e. all control \
+                     flow paths from the function entry to the point of each use must flow \
+                     through the point where that value is defined."
                 );
             }
         }
@@ -114,9 +118,8 @@ impl<'a> Rule<BlockData> for DefsDominateUses<'a> {
 /// * A block may not be empty
 /// * A block must end with a terminator instruction
 /// * A block may not contain a terminator instruction in any position but the end
-/// * A block which terminates with a branch instruction must reference a block
-///   that is present in the function body (i.e. it is not valid to reference
-///   detached blocks)
+/// * A block which terminates with a branch instruction must reference a block that is present in
+///   the function body (i.e. it is not valid to reference detached blocks)
 /// * A multi-way branch instruction must have at least one successor
 /// * A multi-way branch instruction must not specify the same block as a successor multiple times.
 ///
@@ -163,7 +166,10 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                 id,
                 self.span,
                 "invalid block terminator",
-                format!("The last instruction in a block must be a terminator, but {id} ends with {op} which is not a valid terminator")
+                format!(
+                    "The last instruction in a block must be a terminator, but {id} ends with \
+                     {op} which is not a valid terminator"
+                )
             );
         }
         match terminator.analyze_branch(&self.dfg.value_lists) {
@@ -174,8 +180,11 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                         terminator.key,
                         terminator.span(),
                         "invalid successor",
-                        format!("A block reference is only valid if the referenced block is present in the function layout. \
-                                 {id} references {destination}, but the latter is not in the layout")
+                        format!(
+                            "A block reference is only valid if the referenced block is present \
+                             in the function layout. {id} references {destination}, but the \
+                             latter is not in the layout"
+                        )
                     );
                 }
             }
@@ -199,8 +208,11 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                             terminator.key,
                             terminator.span(),
                             "invalid successor",
-                            format!("A block reference is only valid if the referenced block is present in the function layout. \
-                                    {id} references {destination}, but the latter is not in the layout")
+                            format!(
+                                "A block reference is only valid if the referenced block is \
+                                 present in the function layout. {id} references {destination}, \
+                                 but the latter is not in the layout"
+                            )
                         );
                     }
 
@@ -210,8 +222,11 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                             terminator.key,
                             terminator.span(),
                             "invalid {op} instruction",
-                            format!("A given block may only be a successor along a single control flow path, \
-                                     but {id} uses {destination} as a successor for more than one path")
+                            format!(
+                                "A given block may only be a successor along a single control \
+                                 flow path, but {id} uses {destination} as a successor for more \
+                                 than one path"
+                            )
                         );
                     }
 
@@ -230,8 +245,10 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                     id,
                     self.span,
                     "terminator found in middle of block",
-                    format!("A block may only have a terminator instruction as the last instruction in the block, \
-                             but {id} uses {op} before the end of the block")
+                    format!(
+                        "A block may only have a terminator instruction as the last instruction \
+                         in the block, but {id} uses {op} before the end of the block"
+                    )
                 );
             }
         }

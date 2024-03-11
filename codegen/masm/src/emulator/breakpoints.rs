@@ -246,15 +246,14 @@ impl BreakpointManager {
             }
             EmulatorEvent::CycleStart(cycle) => {
                 let mut cycle_hit = false;
-                self.break_at_cycles
-                    .retain(|break_at_cycle| match cycle.cmp(break_at_cycle) {
-                        Ordering::Equal => {
-                            cycle_hit = true;
-                            false
-                        }
-                        Ordering::Greater => false,
-                        Ordering::Less => true,
-                    });
+                self.break_at_cycles.retain(|break_at_cycle| match cycle.cmp(break_at_cycle) {
+                    Ordering::Equal => {
+                        cycle_hit = true;
+                        false
+                    }
+                    Ordering::Greater => false,
+                    Ordering::Less => true,
+                });
                 if cycle_hit {
                     Some(BreakpointEvent::ReachedCycle(cycle))
                 } else if self.break_every_cycle {
@@ -287,10 +286,9 @@ impl BreakpointManager {
                     }
                 }
             },
-            EmulatorEvent::MemoryWrite { addr, size } => self
-                .matches_watchpoint(addr, size)
-                .copied()
-                .map(BreakpointEvent::Watch),
+            EmulatorEvent::MemoryWrite { addr, size } => {
+                self.matches_watchpoint(addr, size).copied().map(BreakpointEvent::Watch)
+            }
             EmulatorEvent::Stopped | EmulatorEvent::Suspended => None,
             EmulatorEvent::Breakpoint(bp) => Some(bp),
         }
@@ -330,28 +328,21 @@ impl BreakpointIter {
         let mut iter = BreakpointIter {
             bps: Vec::with_capacity(4),
         };
-        iter.bps.extend(
-            bpm.break_on_writes
-                .iter()
-                .enumerate()
-                .filter_map(|(i, wp)| {
-                    if wp.mode == WatchMode::Break {
-                        Some(Breakpoint::Watch(WatchpointId(i)))
-                    } else {
-                        None
-                    }
-                }),
-        );
-        iter.bps
-            .extend(bpm.break_at_cycles.iter().copied().map(Breakpoint::Cycle));
+        iter.bps.extend(bpm.break_on_writes.iter().enumerate().filter_map(|(i, wp)| {
+            if wp.mode == WatchMode::Break {
+                Some(Breakpoint::Watch(WatchpointId(i)))
+            } else {
+                None
+            }
+        }));
+        iter.bps.extend(bpm.break_at_cycles.iter().copied().map(Breakpoint::Cycle));
         for (block, indices) in bpm.break_on_reached.iter() {
             if indices.is_empty() {
                 continue;
             }
             let block = *block;
             for index in indices.iter().copied() {
-                iter.bps
-                    .push(Breakpoint::At(InstructionPointer { block, index }))
+                iter.bps.push(Breakpoint::At(InstructionPointer { block, index }))
             }
         }
         if bpm.break_loops {
