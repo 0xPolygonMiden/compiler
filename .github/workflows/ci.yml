@@ -11,7 +11,7 @@ on:
     - '*.md'
 
 env:
-  CARGO_MAKE_TOOLCHAIN: nightly-2023-12-20
+  CARGO_MAKE_TOOLCHAIN: nightly-2024-03-10
 
 jobs:
   compiler:

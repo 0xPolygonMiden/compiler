@@ -1,4 +1,4 @@
-use miden_diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Spanned};
+use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use miden_hir::*;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;

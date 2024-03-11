@@ -16,10 +16,7 @@ use miden_hir::{
 };
 use miden_hir_type::Type;
 use rustc_hash::FxHashMap;
-use std::{
-    collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant},
-    vec::Vec,
-};
+use std::collections::{hash_map::Entry::Occupied, hash_map::Entry::Vacant};
 
 use super::{function_builder_ext::FunctionBuilderExt, Module};
 

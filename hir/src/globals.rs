@@ -4,7 +4,7 @@ use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 
 use cranelift_entity::entity_impl;
-use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, UnsafeRef};
+use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 use miden_diagnostics::Spanned;
 
 use super::*;

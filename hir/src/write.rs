@@ -1,6 +1,6 @@
 use std::fmt::{self, Write};
 
-use super::{display::DisplayValues, *};
+use super::*;
 
 pub fn write_function(w: &mut dyn Write, func: &Function) -> fmt::Result {
     for attr in func.dfg.attrs.iter() {

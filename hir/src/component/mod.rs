@@ -1,7 +1,4 @@
-use core::{
-    convert::{AsMut, AsRef},
-    ops::{Deref, DerefMut},
-};
+use core::ops::{Deref, DerefMut};
 use intrusive_collections::RBTree;
 use miden_core::crypto::hash::RpoDigest;
 use std::collections::BTreeMap;

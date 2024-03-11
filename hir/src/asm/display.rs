@@ -1,9 +1,7 @@
 use std::fmt::{self, Write};
 
-use cranelift_entity::PrimaryMap;
-
 use super::*;
-use crate::{write::DisplayIndent, DataFlowGraph, FunctionIdent, Ident, Symbol};
+use crate::{write::DisplayIndent, FunctionIdent, Ident, Symbol};
 
 pub struct DisplayInlineAsm<'a> {
     function: Option<FunctionIdent>,

@@ -1,5 +1,4 @@
 use core::{
-    convert::AsRef,
     fmt,
     hash::{Hash, Hasher},
     ops::{Index, IndexMut},

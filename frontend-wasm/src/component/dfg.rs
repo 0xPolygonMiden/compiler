@@ -32,7 +32,6 @@
 // TODO: remove this once Wasm CM support is complete
 #![allow(dead_code)]
 
-use crate::component::info;
 use crate::component::*;
 use crate::module::types::{EntityIndex, MemoryIndex, WasmType};
 use indexmap::IndexMap;

@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::{AttributeSet, Ident, Signature};
+use crate::{AttributeSet, Signature};
 
 use super::*;
 

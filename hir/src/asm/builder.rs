@@ -1,6 +1,5 @@
 use crate::{
-    CallConv, DataFlowGraph, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow,
-    SourceSpan, Type, Value,
+    CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, SourceSpan, Value,
 };
 
 use smallvec::smallvec;
@@ -1940,8 +1939,12 @@ fn apply_op_stack_effects(
             stack.push(Type::U32);
         }
         MasmOp::U32Lt | MasmOp::U32Gt | MasmOp::U32Lte | MasmOp::U32Gte => {
-            let rty = stack.pop().expect("failed to pop right operand: stack is empty");
-            let lty = stack.pop().expect("failed to pop left operand: stack is empty");
+            let rty = stack
+                .pop()
+                .expect("failed to pop right operand: stack is empty");
+            let lty = stack
+                .pop()
+                .expect("failed to pop left operand: stack is empty");
             assert_compatible_u32_operands!(lty, rty, op);
             stack.push(Type::I1);
         }

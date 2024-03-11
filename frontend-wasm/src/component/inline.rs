@@ -1278,6 +1278,8 @@ impl<'a> ComponentItemDef<'a> {
 }
 
 enum InstanceModule {
+    #[allow(dead_code)]
     Static(StaticModuleIndex),
+    #[allow(dead_code)]
     Import(TypeModuleIndex),
 }

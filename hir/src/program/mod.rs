@@ -1,9 +1,6 @@
 mod linker;
 
-use core::{
-    convert::{AsMut, AsRef},
-    ops::{Deref, DerefMut},
-};
+use core::ops::{Deref, DerefMut};
 use intrusive_collections::RBTree;
 
 pub use self::linker::{Linker, LinkerError};

@@ -491,7 +491,7 @@ impl<'a> BlockScheduler<'a> {
         if inst_info
             .pre
             .as_slice()
-            .is_sorted_by(|a, b| Some(self.block_info.treegraph.cmp_scheduling(*a, *b)))
+            .is_sorted_by(|a, b| self.block_info.treegraph.cmp_scheduling(*a, *b).is_le())
         {
             self.schedule_inst_dependencies(&inst_info, inst_info.pre.as_slice());
         } else {

@@ -1,11 +1,7 @@
-use std::{
-    convert::{AsMut, AsRef},
-    fmt,
-    ops::{Deref, DerefMut},
-};
+use core::ops::{Deref, DerefMut};
 
 use cranelift_entity::entity_impl;
-use intrusive_collections::{intrusive_adapter, LinkedListLink, UnsafeRef};
+use intrusive_collections::{intrusive_adapter, LinkedListLink};
 use smallvec::SmallVec;
 
 use miden_diagnostics::{Span, Spanned};

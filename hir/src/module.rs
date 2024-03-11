@@ -8,7 +8,7 @@ use intrusive_collections::{
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use rustc_hash::FxHashSet;
 
-use super::{pass::AnalysisKey, *};
+use super::*;
 
 /// This error is raised when two modules conflict with the same symbol name
 #[derive(Debug, thiserror::Error)]

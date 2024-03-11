@@ -1,11 +1,10 @@
 use std::ops::{Deref, Index, IndexMut};
 
 use cranelift_entity::{PrimaryMap, SecondaryMap};
-use intrusive_collections::UnsafeRef;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
-use miden_diagnostics::{SourceSpan, Span, Spanned};
+use miden_diagnostics::{Span, Spanned};
 
 use super::*;
 

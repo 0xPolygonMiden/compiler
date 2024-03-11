@@ -1,8 +1,6 @@
 use core::fmt;
 
-use miden_diagnostics::Span;
-
-use crate::{FunctionIdent, Ident, Opcode, Overflow, Type};
+use crate::{Opcode, Overflow, Type};
 
 use super::*;
 

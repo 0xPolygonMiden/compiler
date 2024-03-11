@@ -1,6 +1,4 @@
-use miden_hir::{Overflow, Type};
-
-use crate::masm::Op;
+use miden_hir::Overflow;
 
 use super::*;
 

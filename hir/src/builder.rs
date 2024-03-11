@@ -1,7 +1,5 @@
 use cranelift_entity::packed_option::PackedOption;
 
-use miden_diagnostics::SourceSpan;
-
 use super::*;
 
 pub struct FunctionBuilder<'f> {

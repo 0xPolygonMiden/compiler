@@ -4,7 +4,7 @@ use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 use miden_diagnostics::Spanned;
 
-use super::{pass::AnalysisKey, *};
+use super::*;
 
 /// This error is raised when two function declarations conflict with the same symbol name
 #[derive(Debug, thiserror::Error)]

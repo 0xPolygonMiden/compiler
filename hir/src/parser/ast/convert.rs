@@ -2,13 +2,12 @@ use std::collections::VecDeque;
 
 use cranelift_entity::packed_option::ReservedValue;
 use intrusive_collections::UnsafeRef;
-use miden_diagnostics::{Severity, SourceSpan, Spanned};
 use midenc_session::Session;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use crate::parser::ParseError;
 use crate::pass::{AnalysisManager, ConversionError, ConversionPass, ConversionResult};
-use crate::{FunctionIdent, Ident, Immediate, Opcode, PassInfo, Type};
+use crate::{Immediate, Opcode, PassInfo, Type};
 
 use super::*;
 

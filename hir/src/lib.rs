@@ -1,9 +1,11 @@
 #![deny(warnings)]
-// Temporary until 1.76 is released
-#![allow(stable_features)]
-// TODO: Stabilized in 1.76, not yet released
+// TODO: Stabilized in 1.76, then de-stablized before release due to
+// a soundness bug when interacting with #![feature(arbitrary_self_types)]
+// so this got punted to a later release once they come up with a solution.
+//
 // Required for pass infrastructure, can be removed when it gets stabilized
 // in an upcoming release, see https://github.com/rust-lang/rust/issues/65991
+// for details
 #![feature(trait_upcasting)]
 pub mod parser;
 

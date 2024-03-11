@@ -1,4 +1,4 @@
-use alloc::{alloc::Layout, boxed::Box, collections::VecDeque, vec::Vec};
+use alloc::{alloc::Layout, collections::VecDeque};
 use core::cmp::{self, Ordering};
 
 use smallvec::SmallVec;

@@ -1,6 +1,5 @@
 use cranelift_entity::entity_impl;
 use intrusive_collections::linked_list::{Cursor, CursorMut};
-use intrusive_collections::UnsafeRef;
 
 use super::*;
 

@@ -202,7 +202,7 @@ mod typecheck;
 
 pub use self::typecheck::TypeError;
 
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
+use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
 
 use miden_hir::*;
