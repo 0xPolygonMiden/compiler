@@ -10,7 +10,7 @@ fn types() -> &'static FxHashMap<String, MidenAbiFunctionType> {
         let mut m: FxHashMap<String, MidenAbiFunctionType> = Default::default();
         m.insert(
             "miden:tx_kernel/note.get_inputs".to_string(),
-            MidenAbiFunctionType::new([Felt], [Felt, Felt]),
+            MidenAbiFunctionType::new([I32], [I32, I32]),
         );
         m
     })

@@ -25,6 +25,7 @@ use wasmparser::{MemArg, Operator};
 
 use crate::{
     error::{WasmError, WasmResult},
+    miden_abi::generate_adapter,
     module::{
         func_env::FuncEnvironment,
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
@@ -643,18 +644,21 @@ fn translate_call(
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let (fident, num_args) = state.get_direct_func(
+    let (func_id, num_args) = state.get_direct_func(
         builder.data_flow_graph_mut(),
         function_index,
         func_env,
         diagnostics,
     )?;
-    let args = state.peekn_mut(num_args);
-    // TODO: For imported functions, use their intended invocation method (e.g. `call` or `exec`)
-    let call = builder.ins().call(fident, &args, span);
-    let inst_results = builder.inst_results(call);
-    state.popn(num_args);
-    state.pushn(inst_results);
+    if !generate_adapter(func_id, state, builder, span, diagnostics)? {
+        let args = state.peekn_mut(num_args);
+        // TODO: For imported functions, use their intended invocation method (e.g. `call` or
+        // `exec`)
+        let call = builder.ins().call(func_id, &args, span);
+        let inst_results = builder.inst_results(call);
+        state.popn(num_args);
+        state.pushn(inst_results);
+    }
     Ok(())
 }
 

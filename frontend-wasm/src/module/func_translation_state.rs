@@ -5,8 +5,7 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-
+use miden_abi_conversion::tx_kernel::miden_abi_function_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{Block, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Signature, Value};
 use miden_hir_type::Type;
@@ -15,6 +14,7 @@ use rustc_hash::FxHashMap;
 use super::{func_env::FuncEnvironment, function_builder_ext::FunctionBuilderExt};
 use crate::{
     error::{WasmError, WasmResult},
+    miden_abi::parse_import_function_digest,
     module::types::{BlockType, FuncIndex},
 };
 
@@ -240,7 +240,7 @@ pub struct FuncTranslationState {
     // Imported and local functions that have been created by
     // `FuncEnvironment::make_direct_func()`.
     // Stores both the function reference and the number of WebAssembly arguments
-    functions: FxHashMap<FuncIndex, (FunctionIdent, usize)>,
+    pub functions: FxHashMap<FuncIndex, (FunctionIdent, usize)>,
 }
 
 impl FuncTranslationState {
@@ -452,7 +452,20 @@ impl FuncTranslationState {
             Occupied(entry) => *entry.get(),
             Vacant(entry) => {
                 let function_id = func_env.function_id(index);
-                let sig = func_env.signature(index);
+                let wasm_sig = func_env.signature(index);
+                // TODO: don't parse on every call. Cache it?
+                let sig = if let Ok((func_name, _)) =
+                    parse_import_function_digest(function_id.function.as_symbol().as_str())
+                {
+                    // TODO: hard fail if the Miden ABI function type is not found
+                    if let Some(miden_abi) = miden_abi_function_type(&func_name) {
+                        miden_abi.into()
+                    } else {
+                        wasm_sig.clone()
+                    }
+                } else {
+                    wasm_sig.clone()
+                };
                 let Ok(func_id) =
                     dfg.import_function(function_id.module, function_id.function, sig.clone())
                 else {
