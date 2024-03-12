@@ -8,7 +8,10 @@ fn types() -> &'static FxHashMap<String, MidenAbiFunctionType> {
     static TYPES: OnceLock<FxHashMap<String, MidenAbiFunctionType>> = OnceLock::new();
     TYPES.get_or_init(|| {
         let mut m: FxHashMap<String, MidenAbiFunctionType> = Default::default();
-        m.insert("test".to_string(), MidenAbiFunctionType::new([], [Felt]));
+        m.insert(
+            "miden:tx_kernel/note.get_inputs".to_string(),
+            MidenAbiFunctionType::new([Felt], [Felt, Felt]),
+        );
         m
     })
 }

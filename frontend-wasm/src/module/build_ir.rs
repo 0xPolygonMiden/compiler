@@ -8,7 +8,7 @@ use wasmparser::{Validator, WasmFeatures};
 use super::Module;
 use crate::{
     error::WasmResult,
-    miden_abi::unpack_import_function_name,
+    miden_abi::parse_import_function_digest,
     module::{
         func_env::FuncEnvironment,
         func_translator::FuncTranslator,
@@ -62,10 +62,10 @@ pub fn translate_module_as_component(
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
             for ext_func in imports {
-                let (func_id, digest) = unpack_import_function_name(ext_func.function.as_str())
+                let (func_id, digest) = parse_import_function_digest(ext_func.function.as_str())
                     .expect(
                         format!(
-                            "failed to parse mast root hash from function {}",
+                            "failed to parse MAST root hash from function {}",
                             ext_func.function
                         )
                         .as_str(),

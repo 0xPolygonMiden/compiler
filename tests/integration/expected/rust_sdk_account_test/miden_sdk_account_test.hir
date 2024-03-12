@@ -1,5 +1,6 @@
 component
 
+import miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000> fn(felt) -> felt, felt mast#0x0000000000000000000000000000000000000000000000000000000000000000 lower env::miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>
 
 module noname {
 
@@ -101,7 +102,7 @@ module noname {
         v4 = sub.wrapping v2, v3 : i32;
         v5 = global.symbol @__stack_pointer : *mut i32;
         store v5, v4;
-        v6 = call env::miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000>(v4) : i32;
+        v6 = call env::miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>(v4) : i32;
         v7 = const.i32 3 : i32;
         v8 = shl.wrapping v6, v7 : i32;
         v9 = add.wrapping v4, v8 : i32;
@@ -423,6 +424,6 @@ module noname {
     }
 
 
-pub fn env::miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000>(i32) -> i32;
+pub fn env::miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>(i32) -> i32;
 }
 
