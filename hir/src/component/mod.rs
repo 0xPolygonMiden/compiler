@@ -82,7 +82,7 @@ impl fmt::Display for ComponentImport {
             ComponentImport::CanonAbiImport(import) => import.interface_function.to_string(),
             ComponentImport::MidenAbiImport(import) => import.function_id.to_string(),
         };
-        write!(f, "{} {} mast#{}", name, function_ty_str, self.digest())
+        write!(f, "{} {}; mast#{}", name, function_ty_str, self.digest())
     }
 }
 
