@@ -1,11 +1,14 @@
 (module
   (type (;0;) (func (param i32) (result i32)))
-  (type (;1;) (func (param i32)))
-  (type (;2;) (func))
-  (type (;3;) (func (param i32 i32 i32)))
-  (type (;4;) (func (param i32 i32 i32 i32)))
+  (type (;1;) (func (param i32 i32 i32 i32 i32)))
+  (type (;2;) (func (param i32)))
+  (type (;3;) (func))
+  (type (;4;) (func (param i32 i32)))
+  (type (;5;) (func (param i32 i32 i32)))
+  (type (;6;) (func (param i32 i32 i32 i32)))
   (import "env" "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000> (;0;) (type 0)))
-  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;1;) (type 1) (param i32)
+  (import "env" "miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000> (;1;) (type 1)))
+  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;2;) (type 2) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -26,7 +29,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;2;) (type 1) (param i32)
+  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;3;) (type 2) (param i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -43,7 +46,7 @@
       call $__rust_dealloc
     end
   )
-  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;3;) (type 1) (param i32)
+  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;4;) (type 2) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -62,7 +65,40 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $note_script (;4;) (type 2)
+  (func $test_add_asset (;5;) (type 3)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 32
+    i32.sub
+    local.tee 0
+    global.set $__stack_pointer
+    local.get 0
+    i64.const 4294967297
+    i64.store offset=8 align=4
+    local.get 0
+    i64.const 4294967297
+    i64.store align=4
+    local.get 0
+    i32.const 16
+    i32.add
+    local.get 0
+    call $miden_sdk_tx_kernel::add_assets
+    block ;; label = @1
+      local.get 0
+      i32.load offset=16
+      i32.const 42
+      i32.ne
+      br_if 0 (;@1;)
+      local.get 0
+      i32.const 32
+      i32.add
+      global.set $__stack_pointer
+      return
+    end
+    unreachable
+    unreachable
+  )
+  (func $note_script (;6;) (type 3)
     (local i32 i32 i32 i32 i64)
     global.get $__stack_pointer
     i32.const 2048
@@ -128,14 +164,58 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $__rust_dealloc (;5;) (type 3) (param i32 i32 i32)
+  (func $miden_sdk_tx_kernel::add_assets (;7;) (type 4) (param i32 i32)
+    (local i32)
+    global.get $__stack_pointer
+    i32.const 32
+    i32.sub
+    local.tee 2
+    global.set $__stack_pointer
+    local.get 1
+    i32.load
+    local.get 1
+    i32.load offset=4
+    local.get 1
+    i32.load offset=8
+    local.get 1
+    i32.load offset=12
+    local.get 2
+    call $miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>
+    local.get 0
+    local.get 2
+    i32.const 24
+    i32.add
+    i64.load
+    i64.store32 offset=12
+    local.get 0
+    local.get 2
+    i32.const 16
+    i32.add
+    i64.load
+    i64.store32 offset=8
+    local.get 0
+    local.get 2
+    i32.const 8
+    i32.add
+    i64.load
+    i64.store32 offset=4
+    local.get 0
+    local.get 2
+    i64.load
+    i64.store32
+    local.get 2
+    i32.const 32
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $__rust_dealloc (;8;) (type 5) (param i32 i32 i32)
     i32.const 1048576
     local.get 0
     local.get 2
     local.get 1
     call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc
   )
-  (func $wee_alloc::neighbors::Neighbors<T>::remove (;6;) (type 1) (param i32)
+  (func $wee_alloc::neighbors::Neighbors<T>::remove (;9;) (type 2) (param i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 0
@@ -207,7 +287,7 @@
     i32.and
     i32.store
   )
-  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;7;) (type 4) (param i32 i32 i32 i32)
+  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;10;) (type 6) (param i32 i32 i32 i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 1
@@ -318,5 +398,6 @@
   (memory (;0;) 17)
   (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
   (export "memory" (memory 0))
+  (export "test_add_asset" (func $test_add_asset))
   (export "note_script" (func $note_script))
 )

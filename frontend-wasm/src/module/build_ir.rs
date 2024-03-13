@@ -62,6 +62,7 @@ pub fn translate_module_as_component(
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
             for ext_func in imports {
+                // TODO: Don't parse function digest here, get it from the module translation state
                 let (func_id, digest) = parse_import_function_digest(ext_func.function.as_str())
                     .expect(
                         format!(

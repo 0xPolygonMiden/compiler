@@ -648,7 +648,8 @@ fn translate_call(
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let (func_id, num_args) = module_state.get_direct_func(
+    // TODO: remove num_args
+    let (func_id, _num_args) = module_state.get_direct_func(
         builder.data_flow_graph_mut(),
         function_index,
         func_env,

@@ -1,6 +1,5 @@
 use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
-use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
 use miden_core::crypto::hash::RpoDigest;
