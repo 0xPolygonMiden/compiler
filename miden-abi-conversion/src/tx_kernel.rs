@@ -17,6 +17,13 @@ fn types() -> &'static FxHashMap<String, MidenAbiFunctionType> {
 }
 
 /// Get the target tx kernel function type for the given function id
-pub fn miden_abi_function_type(_function_id: &str) -> Option<MidenAbiFunctionType> {
-    types().get(_function_id).cloned()
+#[inline(always)]
+pub fn miden_abi_function_type(_function_id: &str) -> MidenAbiFunctionType {
+    types().get(_function_id).cloned().expect(
+        format!(
+            "No Miden ABI function type found for function {}",
+            _function_id
+        )
+        .as_str(),
+    )
 }

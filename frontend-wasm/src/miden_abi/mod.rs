@@ -10,6 +10,7 @@ use thiserror::Error;
 use crate::{
     module::{
         func_translation_state::FuncTranslationState, function_builder_ext::FunctionBuilderExt,
+        module_tratnslation_state::ModuleTranslationState,
     },
     WasmError,
 };
@@ -35,30 +36,29 @@ pub enum AdapterError {}
 
 pub fn generate_adapter(
     func_id: FunctionIdent,
+    module_state: &ModuleTranslationState,
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> Result<bool, AdapterError> {
-    if let Ok((func_name, _)) = parse_import_function_digest(func_id.function.as_symbol().as_str())
+    if let Some(stable_import_func_name) =
+        module_state.get_stable_imported_miden_abi_function(&func_id)
     {
-        // TODO: hard fail if the Miden ABI function type is not found
-        if let Some(func_ty) = tx_kernel::miden_abi_function_type(&func_name) {
-            let num_args = func_ty.params.len();
-            // TODO: pop args number according to the original wasm function type
-            let args = state.peekn_mut(num_args);
-            let call = builder.ins().call(func_id, &args, span);
-            let inst_results = builder.inst_results(call);
-            state.popn(num_args);
-            // TODO: push results according to the original wasm function type (number of results and types)
-            // state.pushn(inst_results);
-            // TODO: eww! fix this
-            state.push1(inst_results[1]);
-            // panic!("Adapter generation not implemented");
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        // The function is a stable imported Miden ABI function and might need a special adapter
+        let func_ty = tx_kernel::miden_abi_function_type(&stable_import_func_name);
+        let num_args = func_ty.params.len();
+        // TODO: pop args number according to the original wasm function type
+        let args = state.peekn_mut(num_args);
+        let call = builder.ins().call(func_id, &args, span);
+        let inst_results = builder.inst_results(call);
+        state.popn(num_args);
+        // TODO: push results according to the original wasm function type (number of results and types)
+        // state.pushn(inst_results);
+        // TODO: eww! fix this
+        state.push1(inst_results[1]);
+        // panic!("Adapter generation not implemented");
+        Ok(true)
     } else {
         Ok(false)
     }

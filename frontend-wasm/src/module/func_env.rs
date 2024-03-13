@@ -1,4 +1,4 @@
-use miden_hir::{CallConv, FunctionIdent, Ident, Linkage, Signature};
+use miden_hir::{cranelift_entity::EntityRef, CallConv, FunctionIdent, Ident, Linkage, Signature};
 use rustc_hash::FxHashMap;
 
 use super::{instance::ModuleArgument, ir_func_type, FuncIndex, Module, ModuleTypes};
@@ -10,6 +10,8 @@ pub struct FuncEnvironment {
     function_ids: FxHashMap<FuncIndex, FunctionIdent>,
     /// A translated IR function signatures, indexed by the Wasm function index.
     signatures: FxHashMap<FuncIndex, Signature>,
+    /// Number of imported or aliased functions in the module.
+    pub num_imported_funcs: usize,
 }
 
 impl FuncEnvironment {
@@ -67,6 +69,7 @@ impl FuncEnvironment {
         Self {
             function_ids,
             signatures,
+            num_imported_funcs: module.num_imported_funcs,
         }
     }
 
@@ -78,5 +81,11 @@ impl FuncEnvironment {
     /// Returns a function signature for the given function index.
     pub fn signature(&self, function_idx: FuncIndex) -> &Signature {
         &self.signatures[&function_idx]
+    }
+
+    /// Test whether the given function index is for an imported function.
+    #[inline]
+    pub fn is_imported_function(&self, index: FuncIndex) -> bool {
+        index.index() < self.num_imported_funcs
     }
 }

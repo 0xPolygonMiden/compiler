@@ -654,8 +654,8 @@ fn translate_call(
         func_env,
         diagnostics,
     )?;
-    if !generate_adapter(func_id, state, builder, span, diagnostics)? {
-        let args = state.peekn_mut(num_args);
+    if !generate_adapter(func_id, module_state, func_state, builder, span, diagnostics)? {
+        let args = func_state.peekn_mut(num_args);
         // TODO: For imported functions, use their intended invocation method (e.g. `call` or
         // `exec`)
         let call = builder.ins().call(func_id, &args, span);

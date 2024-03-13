@@ -11,13 +11,16 @@ use super::{func_env::FuncEnvironment, FuncIndex};
 pub struct ModuleTranslationState {
     // Imported and local functions
     // Stores both the function reference and its signature
-    pub functions: FxHashMap<FuncIndex, (FunctionIdent, Signature)>,
+    functions: FxHashMap<FuncIndex, (FunctionIdent, Signature)>,
+
+    stable_imported_miden_abi_functions: FxHashMap<FunctionIdent, String>,
 }
 
 impl ModuleTranslationState {
     pub(crate) fn new() -> Self {
         Self {
             functions: FxHashMap::default(),
+            stable_imported_miden_abi_functions: FxHashMap::default(),
         }
     }
 
@@ -36,21 +39,29 @@ impl ModuleTranslationState {
             Occupied(entry) => entry.get().clone(),
             Vacant(entry) => {
                 let func_id = func_env.function_id(index);
-                let wasm_sig = func_env.signature(index);
-                // TODO: don't parse on every call. Cache it?
-                let sig = if let Ok((func_name, _)) =
-                    parse_import_function_digest(func_id.function.as_symbol().as_str())
+                let sig = func_env.signature(index);
+                if !func_env.is_imported_function(index) {
+                    (func_id, sig);
+                }
+                let sig: Signature = match self.stable_imported_miden_abi_functions.entry(*func_id)
                 {
-                    // TODO: hard fail if the Miden ABI function type is not found
-                    if let Some(miden_abi) = miden_abi_function_type(&func_name) {
-                        miden_abi.into()
-                    } else {
-                        wasm_sig.clone()
+                    Occupied(entry) => {
+                        let stable_name = entry.get().clone();
+                        miden_abi_function_type(&stable_name).into()
                     }
-                } else {
-                    wasm_sig.clone()
+                    Vacant(entry) => {
+                        if let Ok((stable_name, _)) =
+                            parse_import_function_digest(func_id.function.as_symbol().as_str())
+                        {
+                            entry.insert(stable_name.clone());
+                            miden_abi_function_type(&stable_name).into()
+                        } else {
+                            // This is imported but not a "well-known" Miden ABI function
+                            sig.clone()
+                        }
+                    }
                 };
-                entry.insert((*func_id, sig)).clone()
+                entry.insert((*func_id, sig.clone())).clone()
             }
         };
         if dfg.get_import(&func_id).is_none() {
@@ -64,5 +75,12 @@ impl ModuleTranslationState {
             })?;
         }
         Ok((func_id, sig.params.len()))
+    }
+
+    pub(crate) fn get_stable_imported_miden_abi_function(
+        &self,
+        func_id: &FunctionIdent,
+    ) -> Option<&String> {
+        self.stable_imported_miden_abi_functions.get(func_id)
     }
 }

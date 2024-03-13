@@ -70,10 +70,7 @@ pub fn translate_module_as_component(
                         )
                         .as_str(),
                     );
-                let function_ty = miden_abi_function_type(func_id.as_str()).expect(
-                    format!("Cannot find Miden ABI function type for {}", ext_func.function)
-                        .as_str(),
-                );
+                let function_ty = miden_abi_function_type(func_id.as_str());
                 let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
                     function_id: ext_func.function,
                     function_ty,
