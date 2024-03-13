@@ -5,7 +5,7 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
-use super::Module;
+use super::{func_env::FuncEnvironment, module_tratnslation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
     miden_abi::parse_import_function_digest,
@@ -99,6 +99,7 @@ pub fn build_ir_module(
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
     build_data_segments(parsed_module, &mut module_builder, diagnostics)?;
     let mut func_translator = FuncTranslator::new();
+    let mut module_state = ModuleTranslationState::new();
     // Although this renders this parsed module invalid(without functiong
     // bodies), we don't support multiple module instances. Thus, this
     // ParseModule will not be used again to make another module instance.
@@ -116,6 +117,7 @@ pub fn build_ir_module(
         func_translator.translate_body(
             &body,
             &mut module_func_builder,
+            &mut module_state,
             &parsed_module.module,
             &module_types,
             &func_env,

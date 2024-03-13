@@ -5,6 +5,11 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
+use std::{
+    collections::hash_map::Entry::{Occupied, Vacant},
+    vec::Vec,
+};
+
 use miden_abi_conversion::tx_kernel::miden_abi_function_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{Block, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Signature, Value};
@@ -236,11 +241,6 @@ pub struct FuncTranslationState {
     /// Is the current translation state still reachable? This is false when translating operators
     /// like End, Return, or Unreachable.
     pub(crate) reachable: bool,
-
-    // Imported and local functions that have been created by
-    // `FuncEnvironment::make_direct_func()`.
-    // Stores both the function reference and the number of WebAssembly arguments
-    pub functions: FxHashMap<FuncIndex, (FunctionIdent, usize)>,
 }
 
 impl FuncTranslationState {
@@ -250,7 +250,6 @@ impl FuncTranslationState {
             stack: Vec::new(),
             control_stack: Vec::new(),
             reachable: true,
-            functions: FxHashMap::default(),
         }
     }
 
@@ -258,7 +257,6 @@ impl FuncTranslationState {
         debug_assert!(self.stack.is_empty());
         debug_assert!(self.control_stack.is_empty());
         self.reachable = true;
-        self.functions.clear();
     }
 
     /// Initialize the state for compiling a function with the given signature.

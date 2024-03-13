@@ -30,10 +30,12 @@ fn check_unsupported(op: &Operator) {
     let func_env = FuncEnvironment::new(&module_info, &mod_types, vec![]);
     let mut state = FuncTranslationState::new();
     let mut builder_ext = FunctionBuilderExt::new(&mut module_func_builder, &mut fb_ctx);
+    let mut module_state = ModuleTranslationState::new();
     let result = translate_operator(
         op,
         &mut builder_ext,
         &mut state,
+        &mut module_state,
         &module_info,
         &mod_types,
         &func_env,

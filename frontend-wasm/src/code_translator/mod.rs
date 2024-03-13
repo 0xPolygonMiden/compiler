@@ -30,6 +30,7 @@ use crate::{
         func_env::FuncEnvironment,
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
+        module_tratnslation_state::ModuleTranslationState,
         types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes},
         Module,
     },
@@ -48,6 +49,7 @@ pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
+    module_state: &mut ModuleTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
     func_env: &FuncEnvironment,
@@ -126,6 +128,7 @@ pub fn translate_operator(
         Operator::Call { function_index } => {
             translate_call(
                 state,
+                module_state,
                 builder,
                 FuncIndex::from_u32(*function_index),
                 func_env,
@@ -637,14 +640,15 @@ fn prepare_addr(
 }
 
 fn translate_call(
-    state: &mut FuncTranslationState,
+    func_state: &mut FuncTranslationState,
+    module_state: &mut ModuleTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
     func_env: &FuncEnvironment,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let (func_id, num_args) = state.get_direct_func(
+    let (func_id, num_args) = module_state.get_direct_func(
         builder.data_flow_graph_mut(),
         function_index,
         func_env,
@@ -656,8 +660,8 @@ fn translate_call(
         // `exec`)
         let call = builder.ins().call(func_id, &args, span);
         let inst_results = builder.inst_results(call);
-        state.popn(num_args);
-        state.pushn(inst_results);
+        func_state.popn(num_args);
+        func_state.pushn(inst_results);
     }
     Ok(())
 }
