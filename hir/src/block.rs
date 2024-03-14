@@ -15,6 +15,13 @@ impl Default for Block {
         Self::reserved_value()
     }
 }
+impl formatter::PrettyPrint for Block {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        const_text("(") + const_text("block") + const_text(" ") + display(self.0) + const_text(")")
+    }
+}
 
 /// Data associated with a `Block`.
 ///

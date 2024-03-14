@@ -26,7 +26,10 @@ impl Stage for SemanticAnalysisStage {
                 session.emit(&module)?;
                 Ok(module)
             }
-            ParseOutput::Hir(module) => Ok(module),
+            ParseOutput::Hir(module) => {
+                session.emit(&module)?;
+                Ok(module)
+            }
         }
     }
 }

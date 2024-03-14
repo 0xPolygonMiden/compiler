@@ -1,16 +1,89 @@
-use std::sync::Arc;
+use alloc::sync::Arc;
+use core::num::NonZeroU16;
 
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan, Severity};
+use either::Either::{self, Left, Right};
+use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan};
 
-use crate::{AbiParam, AddressSpace, ArgumentExtension, ArgumentPurpose};
+use crate::{AbiParam, ArgumentExtension, ArgumentPurpose};
 use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
-use crate::{Ident, Linkage, Opcode, Overflow, Signature, StructType, symbols, Symbol, Type};
+use crate::{Ident, Linkage, Opcode, Overflow, Signature, symbols, Symbol};
+use crate::{Type, TypeRepr, AddressSpace, StructType};
 use crate::{AttributeSet, Attribute, AttributeValue};
 use crate::parser::{
     ast::*,
     lexer::Token,
     ParseError
 };
+
+/// Overview of grammar (not authoritative, or exhaustive):
+///
+///  MODULE          ::= "(" "module" ID MODULE_ATTRS* MODULE_FORMS+ ")"
+///  MODULE_ATTR     ::= "(" "kernel" ")"
+///  MODULE_FORMS    ::= CONSTANT
+///                    | GLOBAL
+///                    | DATA_SEGMENT
+///                    | FUNC
+///
+///  CONSTANT  ::= "(" "const" INDEX HEX_BYTES ")"
+///  CONST_ID  ::= "(" "const" U32 ")"
+///
+///  GLOBAL       ::= "(" "global" GLOBAL_ID INDEX TYPE GLOBAL_INIT? ")"
+///  GLOBAL_ID    ::= ID
+///                 | "(" "export" NAME_OR_ID ")"
+///  GLOBAL_INIT  ::= CONST_ID
+///
+///  DATA_SEGMENT ::= "(" "data" MUTABLE? OFFSET HEX_BYTES ")"
+///  MUTABLE ::= "(" "mut" ")"
+///
+///  FUNC ::= "(" "func" FUNC_ID FUNC_ATTR* PARAM* RESULT? BLOCK+ ")"
+///  FUNC_ID ::= ID
+///            | "(" "export" NAME_OR_ID ")"
+///            | "(" "import" MODULE_NAME_OR_ID FUNCTION_NAME_OR_ID ")"
+///  FUNC_ATTR  ::= "(" "cc" CALL_CONV ")"
+///
+///  PARAM  ::= "(" "param" PARAM_ATTRS* TYPE_NAME ")"
+///  PARAM_ATTR  ::= "(" "sret" ")"
+///               |  "(" "zext" ")"
+///               |  "(" "sext" ")"
+///
+///  RESULT ::= "(" "result" TYPE_NAME ")"
+///
+///  BLOCK ::= "(" "block" BLOCK_ID BLOCK_PARAM* INST+ ")
+///  BLOCK_PARAM  ::= "(" "param" VALUE_ID TYPE_NAME ")"
+///
+///  INST ::= NO_RESULTS_OP
+///         | ONE_RESULT_OP
+///         | MANY_RESULT_OP
+///         | "(" "br" SUCCESSOR ")"
+///         | "(" "condbr" VALUE_ID SUCCESSOR SUCCESSOR ")"
+///         | "(" "switch" VALUE_ID SWITCH_ARM* "(" "_" "." SUCCESSOR ")" ")"
+///
+///  NO_RESULTS_OP  ::= "(" OPCODE OPERAND* ")"
+///  ONE_RESULT_OP  ::= "(" "let" VALUE_ID NO_RESULTS_OP ")"
+///  MANY_RESULT_OP ::= "(" "let" "[" VALUE_ID+ "]" NO_RESULTS_OP ")"
+///
+///  OPCODE ::= "unreachable"
+///           | "ret"
+///           | ...
+///
+///  SWITCH_ARM ::= "(" U32 "." SUCCESSOR ")"
+///
+///  SUCCESSOR ::= "(" BLOCK_ID VALUE_ID* ")"
+///
+///  TYPE ::= "(" "type" TYPE_NAME ")"
+///  TYPE_NAME ::= "i32"
+///              | "(" "ptr" TYPE_NAME ")"
+///              | ...
+///  TYPED_VALUE_ID ::= (VALUE_ID TYPE_NAME)
+///
+///  INDEX     ::= "(" "id" U32 ")"
+///  OFFSET    ::= "(" "offset" I32 ")"
+///  BLOCK_ID  ::= [\d]+
+///  VALUE_ID  ::= v[\d]+
+///  ID        ::= "#" BARE_NAME
+///  NAME      ::= "\"" [^\s"]+ "\""
+///  BARE_NAME ::= [^[[:cntrl:]]:;,'"\s\\]+
+
 
 grammar(diagnostics: &DiagnosticsHandler, codemap: &Arc<CodeMap>, next_var: &mut usize);
 
@@ -41,45 +114,68 @@ CommaOpt<T>: Vec<T> = {
 // ================================================================================================
 
 pub Module: Module = {
-    <l:@L> "kernel" <name:Ident> <forms:Form*> <r:@R> => {
-        Module::new(span!(l, r), name, /*is_kernel=*/true, forms)
-    },
-    <l:@L> "module" <name:Ident> <forms:Form*> <r:@R> => {
-        Module::new(span!(l, r), name, /*is_kernel=*/false, forms)
+    <l:@L> "(" "module" <name:Id> <attrs:ModuleAttr*> <forms:ModuleForm*> ")" <r:@R> => {
+        let is_kernel = attrs.iter().any(|attr| attr.name == symbols::Kernel && attr.value.as_bool().unwrap_or_default());
+        Module::new(span!(l, r), name, is_kernel, forms)
     },
 }
 
-Form: Form = {
+ModuleAttr: Attribute = {
+    "(" "kernel" ")" => Attribute::new(symbols::Kernel, true),
+}
+
+ModuleForm: Form = {
     ConstantDeclaration => Form::Constant(<>),
     GlobalVarDeclaration => Form::Global(<>),
-    FunctionDeclaration => Form::Function(<>),
-    ExternalFunctionDeclaration => Form::ExternalFunction(<>),
+    DataSegmentDeclaration => Form::DataSegment(<>),
+    FunctionDeclaration,
 }
 
 // GLOBALS
 // ================================================================================================
 
 ConstantDeclaration: ConstantDeclaration = {
-    <l:@L> "const" "$" <id:Index> "=" <init:HexString> ";" <r:@R>
+    <l:@L> "(" "const" <id:Index> <init:HexString> ")" <r:@R>
         => ConstantDeclaration::new(span!(l, r), crate::Constant::from_u32(id), init),
 }
 
 GlobalVarDeclaration: GlobalVarDeclaration = {
-    <l:@L> "global" <linkage:Linkage> "@" <name:Ident> ":" <ty:Type> <init:("=" "$" <Index>)?> "{" "id" "=" <id:Index>  "}" ";" <r:@R>
-        => GlobalVarDeclaration::new(span!(l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init.map(crate::Constant::from_u32)),
+    <l:@L> "(" "global" <name_and_linkage:GlobalId> <id:Index> <ty:Type> <init:GlobalInit?> ")" <r:@R> => {
+        let (name, linkage) = name_and_linkage;
+        GlobalVarDeclaration::new(span!(l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init)
+    }
 }
 
-Linkage: Linkage = {
-    "internal" => Linkage::Internal,
-    "odr" => Linkage::Odr,
-    "external" => Linkage::Internal,
+DataSegmentDeclaration: DataSegmentDeclaration = {
+    <l:@L> "(" "data" <is_mut:("(" "mut" ")")?> <offset:("(" "offset" <U32> ")")> <size:("(" "size" <U32> ")")?> <data:DataSegmentValue> ")" <r:@R> => {
+        let readonly = is_mut.is_none();
+        let size = size.unwrap_or(data.len().try_into().expect("invalid data segment: data cannot be more than 2^32 bytes"));
+        DataSegmentDeclaration::new(span!(l, r), offset, size, readonly, data)
+    }
+}
+
+DataSegmentValue: crate::ConstantData = {
+    <HexString>
+}
+
+GlobalId: (Ident, Linkage) = {
+    "(" "export" <name:NameOrId> ")" => (name, Linkage::External),
+    <name:Id> => (name, Linkage::Internal),
+}
+
+GlobalInit: crate::Constant = {
+    "(" "const" <id:U32> ")" => crate::Constant::from_u32(id),
 }
 
 // TYPES
 // ==============================================================================================
 
 Type: Type = {
-    "(" ")" => Type::Unit,
+    "(" "type" <TypeName> ")"
+}
+
+TypeName: Type = {
+    "?" => Type::Unknown,
     "!" => Type::Never,
     "i1" => Type::I1,
     "i8" => Type::I8,
@@ -95,35 +191,73 @@ Type: Type = {
     "u256" => Type::U256,
     "f64" => Type::F64,
     "felt" => Type::Felt,
-    "*" "mut" <pointee:Type> => Type::Ptr(Box::new(pointee)),
-    "&" "mut" <pointee:Type> => Type::NativePtr(Box::new(pointee), AddressSpace::Unknown),
+    "(" ")" => Type::Unit,
+    PointerType,
     StructType,
     ArrayType,
 }
 
+PointerType: Type = {
+    "(" "ptr" <addrspace:("(" "addrspace" <AddressSpace> ")")?> <pointee:TypeName> ")" => {
+        match addrspace {
+            None => Type::Ptr(Box::new(pointee)),
+            Some(addrspace) => Type::NativePtr(Box::new(pointee), addrspace),
+        }
+    }
+}
+
 StructType: Type = {
-    "{" <fields:CommaOpt<Type>> "}" => Type::Struct(StructType::new(fields)),
+    "(" "struct" <repr:TypeRepr?> <fields:TypeName+> ")" => {
+        if let Some(repr) = repr {
+            Type::Struct(StructType::new_with_repr(repr, fields))
+        } else {
+            Type::Struct(StructType::new(fields))
+        }
+    }
+}
+
+TypeRepr: TypeRepr = {
+    "(" "repr" "transparent" ")" => TypeRepr::Transparent,
+    "(" "repr" <align:("(" "align" <Align> ")")> ")" => TypeRepr::Align(align),
+    "(" "repr" <align:("(" "packed" <Align> ")")> ")" => TypeRepr::Packed(align),
 }
 
 ArrayType: Type = {
-    "[" <element:Type> ";" <len:Index> "]" => Type::Array(Box::new(element), usize::try_from(len).unwrap()),
+    "(" "array" <element:TypeName> <len:U32> ")" => Type::Array(Box::new(element), usize::try_from(len).unwrap()),
+}
+
+AddressSpace: AddressSpace = {
+    <l:@L> "?" <r:@R> => AddressSpace::Unknown,
+    <l:@L> <i:int> <r:@R> =>? {
+        match u16::try_from(i) {
+            Ok(0) => Ok(AddressSpace::Root),
+            Ok(v) => Ok(AddressSpace::Id(unsafe { NonZeroU16::new_unchecked(v) })),
+            Err(_) => Err(ParseError::InvalidAddrSpace { span: span!(l, r), value: i }.into()),
+        }
+    }
 }
 
 // ATTRIBUTES
 // ==============================================================================================
 
-Attribute: Attribute = {
-    "#" "[" <name:Ident> "]" => Attribute { name: name.as_symbol(), value: AttributeValue::Unit },
+Attributes: AttributeSet = {
+    "[" <attrs:Attribute*> "]" => AttributeSet::from_iter(attrs),
+}
 
-    "#" "[" <name:Ident> "(" <value:AttributeValue> ")" => Attribute { name: name.as_symbol(), value },
+Attribute: Attribute = {
+    <name:Id> => Attribute { name: name.as_symbol(), value: AttributeValue::Unit },
+
+    "(" <name:Id> <value:AttributeValue> ")" => Attribute { name: name.as_symbol(), value },
 }
 
 AttributeValue: AttributeValue = {
-    <name:Ident> => match name.as_symbol() {
+    <name:ident> => match name {
         symbols::True => AttributeValue::Bool(true),
         symbols::False => AttributeValue::Bool(false),
         symbol => AttributeValue::String(symbol),
     },
+
+    <quoted:string> => AttributeValue::String(quoted),
 
     <n:Int> => AttributeValue::Int(n),
 
@@ -133,60 +267,60 @@ AttributeValue: AttributeValue = {
 // FUNCTIONS
 // ==============================================================================================
 
-ExternalFunctionDeclaration: Span<ExternalFunction> = {
-    <l:@L> "extern" <cc:CallConv?> "fn" <id:FunctionIdent> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> ";" <r:@R> => {
-        let span = span!(l, r);
+FunctionDeclaration: Form = {
+    <l:@L> "(" "func" <name_and_linkage:FuncId> <cc:CallConvAttr?> <params:FuncParam*> <result:FuncResult?> <blocks:Block*> ")" <r:@R> =>? {
+        let (name, linkage) = name_and_linkage;
         let cc = cc.unwrap_or(CallConv::SystemV);
-        let results = results.unwrap_or_default();
-        Span::new(span, ExternalFunction {
-            id,
-            signature: Signature {
-                params,
-                results,
-                cc,
-                linkage: Linkage::External,
-            }
-        })
-    },
-}
-
-FunctionDeclaration: FunctionDeclaration = {
-    <l:@L> <attrs:Attribute*> <linkage:FunctionVisibility> <cc:CallConv?> "fn" <name:Ident> "(" <params:CommaOpt<AbiParam>> ")" <results:("->" <Comma<AbiParam>>)?> "{" <blocks:Block+> "}" <r:@R> => {
-        let cc = cc.unwrap_or(CallConv::SystemV);
-        let results = results.unwrap_or_default();
+        let results = result.map(|res| vec![res]).unwrap_or_default();
         let signature = Signature {
             params,
             results,
             cc,
             linkage,
         };
-        FunctionDeclaration::new(span!(l, r), name, signature, blocks, AttributeSet::from_iter(attrs))
+        match name {
+            Left(name) if blocks.is_empty() =>  Err(ParseError::EmptyFunction { span: span!(l, r) }.into()),
+            Left(name) => {
+                Ok(Form::Function(FunctionDeclaration::new(span!(l, r), name, signature, blocks, AttributeSet::default())))
+            }
+            Right(id) if !blocks.is_empty() => Err(ParseError::ImportedFunctionWithBody { span: span!(l, r) }.into()),
+            Right(id) => {
+                Ok(Form::ExternalFunction(Span::new(span!(l, r), ExternalFunction {
+                    id,
+                    signature,
+                })))
+            }
+        }
     },
 }
 
-FunctionVisibility: Linkage = {
-    "pub" => Linkage::External,
-    => Linkage::Internal,
+FuncId: (Either<Ident, FunctionIdent>, Linkage) = {
+    "(" "export" <NameOrId> ")" => (Left(<>), Linkage::External),
+    "(" "import" <m:NameOrId> <f:NameOrId> ")" => (Right(FunctionIdent { module: m, function: f }), Linkage::External),
+    <NameOrId> => (Left(<>), Linkage::Internal),
+}
+
+FuncParam: AbiParam = {
+    "(" "param" "(" "sret" ")" <ty:TypeName> ")"
+        => AbiParam { ty, purpose: ArgumentPurpose::StructReturn, extension: ArgumentExtension::None },
+    "(" "param" "(" <extension:ArgumentExtension> ")" <ty:TypeName> ")"
+        => AbiParam { ty, purpose: ArgumentPurpose::Default, extension },
+    "(" "param" <ty:TypeName> ")"
+        => AbiParam { ty, purpose: ArgumentPurpose::Default, extension: ArgumentExtension::None },
+}
+
+FuncResult: AbiParam = {
+    "(" "result" <ty:TypeName> ")" => AbiParam { ty, purpose: Default::default(), extension: Default::default() },
+}
+
+CallConvAttr: CallConv = {
+    "(" "cc" <CallConv> ")",
 }
 
 CallConv: CallConv = {
-    "cc" "(" "fast" ")" => CallConv::Fast,
-    "cc" "(" "kernel" ")" => CallConv::Kernel,
-}
-
-AbiParam: AbiParam = {
-     <purpose:ArgumentPurpose> <extension:ArgumentExtension?> <ty:Type> => {
-        AbiParam {
-            ty,
-            purpose,
-            extension: extension.unwrap_or(ArgumentExtension::None),
-        }
-    }
-}
-
-ArgumentPurpose: ArgumentPurpose = {
-    "sret" => ArgumentPurpose::StructReturn,
-    => ArgumentPurpose::Default,
+    "fast" => CallConv::Fast,
+    "kernel" => CallConv::Kernel,
+    "wasm" => CallConv::Wasm,
 }
 
 ArgumentExtension: ArgumentExtension = {
@@ -199,99 +333,72 @@ ArgumentExtension: ArgumentExtension = {
 // ================================================================================================
 
 Block: Block = {
-    <l:@L> <id:BlockId> <args:("(" <Comma<BlockArg>> ")")?> ":" <insts:Inst+> <r:@R> => {
-        Block::new(span!(l, r), id, args.unwrap_or_default(), insts)
+    <l:@L> "(" "block" <id:U32> <params:BlockParam*> <insts:Inst+> ")" <r:@R> => {
+        let id = crate::Block::from_u32(id);
+        Block::new(span!(l, r), id, params, insts)
     }
 }
 
-BlockArg: TypedValue = {
-    <l:@L> <id:ValueId> ":" <ty:Type> <r:@R> => TypedValue::new(span!(l, r), id, ty),
+BlockParam: TypedValue = {
+    <l:@L> "(" "param" <id:ValueId> <ty:TypeName> ")" <r:@R> => TypedValue::new(span!(l, r), id, ty),
 }
 
 // INSTRUCTIONS
 // ================================================================================================
 
+TypedValueId: TypedValue = {
+    "(" <value:SpannedValueId> <ty:TypeName> ")" => TypedValue::new(value.span(), value.item, ty),
+}
+
+Let: (TypedValue, Span<InstType>) = {
+    "(" "let" <value:TypedValueId> <inst:InstWithResult> ")" => {
+        (value, inst)
+    }
+}
+
+LetMany: (Vec<TypedValue>, Span<InstType>) = {
+    "(" "let" "[" <values:TypedValueId*> "]" <inst:InstWithManyResults> ")" => {
+        (values, inst)
+    }
+}
+
 Inst: Inst = {
-    <l:@L> <value:SpannedValueId> "=" <op_and_overflow:UnaryOpcode> <operand:Operand> ":" <value_ty:Type> ";" <r:@R> => {
-        let (opcode, overflow) = op_and_overflow;
-        Inst::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand }, vec![TypedValue::new(value.span(), value.item, value_ty)])
+    <l:@L> <let_expr:Let> <r:@R> => {
+        let (value, inst_ty) = let_expr;
+        Inst::new(span!(l, r), inst_ty.item, vec![value])
     },
 
-    <l:@L> <value:SpannedValueId> "=" <op_and_overflow:BinaryOpcode> <lhs:Operand> "," <rhs:Operand> ":" <value_ty:Type> ";" <r:@R> => {
-        let (opcode, overflow) = op_and_overflow;
-        Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] }, vec![TypedValue::new(value.span(), value.item, value_ty)])
+    <l:@L> <let_expr:LetMany> <r:@R> => {
+        let (values, inst_ty) = let_expr;
+        Inst::new(span!(l, r), inst_ty.item, values)
     },
 
-    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:OverflowingUnaryOpcode> <operand:Operand> ":" <overflowed_ty:Type> "," <value_ty:Type> ";" <r:@R> =>? {
-        let num_results = values.len();
-        if num_results != 2 {
-            diagnostics.diagnostic(Severity::Error)
-                .with_message("invalid instruction")
-                .with_primary_label(span!(l, r), format!("expected this instruction to have two results, but got {num_results}"))
-                .emit();
-            Err(ParseError::Failed.into())
-        } else {
-            let mut values = values;
-            let value = values.pop().unwrap();
-            let value = TypedValue::new(value.span(), value.item, value_ty);
-            let overflowed = values.pop().unwrap();
-            let overflowed = TypedValue::new(overflowed.span(), overflowed.item, overflowed_ty);
-            Ok(Inst::new(span!(l, r), InstType::UnaryOp { opcode, overflow: Some(Overflow::Overflowing), operand }, vec![overflowed, value]))
-        }
+    <l:@L> "(" "call" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
+        Inst::new(span!(l, r), InstType::Call { opcode: Opcode::Call, callee, operands }, vec![])
     },
 
-    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:OverflowingBinaryOpcode> <lhs:Operand> "," <rhs:Operand> ":" <overflowed_ty:Type> "," <value_ty:Type> ";" <r:@R> =>? {
-        let num_results = values.len();
-        if num_results != 2 {
-            diagnostics.diagnostic(Severity::Error)
-                .with_message("invalid instruction")
-                .with_primary_label(span!(l, r), format!("expected this instruction to have two results, but got {num_results}"))
-                .emit();
-            Err(ParseError::Failed.into())
-        } else {
-            let mut values = values;
-            let value = values.pop().unwrap();
-            let value = TypedValue::new(value.span(), value.item, value_ty);
-            let overflowed = values.pop().unwrap();
-            let overflowed = TypedValue::new(overflowed.span(), overflowed.item, overflowed_ty);
-            Ok(Inst::new(span!(l, r), InstType::BinaryOp { opcode, overflow: Some(Overflow::Overflowing), operands: [lhs, rhs] }, vec![overflowed, value]))
-        }
+    <l:@L> "(" "syscall" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
+        Inst::new(span!(l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands }, vec![])
     },
 
-    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:PrimOpOpcode> <operands:Comma<Operand>> ":" <types:Comma<Type>> ";" <r:@R> => {
-        assert_eq!(values.len(), types.len());
-        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v.span(), v.item, ty)).collect();
-        Inst::new(span!(l, r), InstType::PrimOp { opcode, operands }, outputs)
-    },
-
-    <l:@L> <values:Comma<SpannedValueId>> "=" <opcode:CallOpcode> <callee:FunctionIdent> "(" <operands:CommaOpt<SpannedValueId>> ")" <types:(":" <Comma<Type>>)?> ";" <r:@R> => {
-        let types = types.unwrap_or_default();
-        assert_eq!(values.len(), types.len());
-        let outputs = values.into_iter().zip(types.into_iter()).map(|(v, ty)| TypedValue::new(v.span(), v.item, ty)).collect();
-        Inst::new(span!(l, r), InstType::Call { opcode, callee, operands }, outputs)
-    },
-
-    <l:@L> <value:SpannedValueId> "=" <expr:GlobalValueExpr> ":" <value_ty:Type> ";" <r:@R> => {
-        Inst::new(span!(l, r), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }, vec![TypedValue::new(value.span(), value.item, value_ty)])
-    },
-
-    <l:@L> "unreachable" ";" <r:@R> => {
+    <l:@L> "(" "unreachable" ")" <r:@R> => {
         Inst::new(span!(l, r), InstType::PrimOp { opcode: Opcode::Unreachable, operands: vec![] }, vec![])
     },
 
-    <l:@L> "ret" <operands:Comma<Operand>?> ";" <r:@R> => {
-        Inst::new(span!(l, r), InstType::Ret { opcode: Opcode::Ret, operands: operands.unwrap_or_default() }, vec![])
+    <l:@L> "(" "ret" <operand:Operand?> ")" <r:@R> => {
+        let operands = operand.map(|operand| vec![operand]).unwrap_or_default();
+        Inst::new(span!(l, r), InstType::Ret { opcode: Opcode::Ret, operands }, vec![])
     },
 
-    <l:@L> "br" <successor:Successor> ";" <r:@R> => {
+    <l:@L> "(" "br" <successor:Successor> ")" <r:@R> => {
         Inst::new(span!(l, r), InstType::Br { opcode: Opcode::Br, successor }, vec![])
     },
 
-    <l:@L> "condbr" <cond:SpannedValueId> <then_dest:Successor> "," <else_dest:Successor> ";" <r:@R> => {
+    <l:@L> "(" "condbr" <cond:SpannedValueId> <then_dest:Successor> <else_dest:Successor> ")" <r:@R> => {
         Inst::new(span!(l, r), InstType::CondBr { opcode: Opcode::CondBr, cond, then_dest, else_dest }, vec![])
     },
 
-    <l:@L> "switch" <input:SpannedValueId> "{" <arms:Comma<SwitchArm>> "}" <r:@R> =>? {
+    <l:@L> "(" "switch" <selector:SpannedValueId> <arms:SwitchArm+> ")" <r:@R> =>? {
         let mut arms = arms;
         let fallback = match arms.pop().unwrap() {
             (None, successor, _) => successor,
@@ -304,22 +411,56 @@ Inst: Inst = {
                 (None, _, _) => panic!("invalid switch: only one default arm is allowed"),
             }
         }
-        Ok(Inst::new(span!(l, r), InstType::Switch { opcode: Opcode::Switch, input, successors, fallback }, vec![]))
+        Ok(Inst::new(span!(l, r), InstType::Switch { opcode: Opcode::Switch, selector, successors, fallback }, vec![]))
     },
 }
 
+InstWithResult: Span<InstType> = {
+    <l:@L> "(" <op_and_overflow:UnaryOpcode> <operand:Operand> ")" <r:@R> => {
+        let (opcode, overflow) = op_and_overflow;
+        Span::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand })
+    },
+
+    <l:@L> "(" <op_and_overflow:BinaryOpcode> <lhs:Operand> <rhs:Operand> ")" <r:@R> => {
+        let (opcode, overflow) = op_and_overflow;
+        Span::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] })
+    },
+
+    <l:@L> "(" "call" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
+        Span::new(span!(l, r), InstType::Call { opcode: Opcode::Call, callee, operands })
+    },
+
+    <l:@L> "(" "syscall" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
+        Span::new(span!(l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands })
+    },
+
+    <expr:GlobalValueExpr> => Span::new(expr.span(), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }),
+}
+
+InstWithManyResults: Span<InstType> = {
+    <l:@L> "(" <opcode:OverflowingUnaryOpcode> <operand:Operand> ")" <r:@R> => {
+        let overflow = Some(Overflow::Overflowing);
+        Span::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand })
+    },
+
+    <l:@L> "(" <opcode:OverflowingBinaryOpcode> <lhs:Operand> <rhs:Operand> ")" <r:@R> => {
+        let overflow = Some(Overflow::Overflowing);
+        Span::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] })
+    },
+
+    <l:@L> "(" <opcode:PrimOpOpcode> <operands:Operand*> ")" <r:@R> => {
+        Span::new(span!(l, r), InstType::PrimOp { opcode, operands })
+    }
+}
+
 Successor: Successor = {
-    <l:@L> <id:BlockId> <args:("(" <Comma<SpannedValueId>> ")")?> <r:@R> => Successor { span: span!(l, r), id, args: args.unwrap_or_default() },
+    <l:@L> "(" "block" <id:U32> <args:SpannedValueId*> ")" <r:@R>
+        => Successor { span: span!(l, r), id: crate::Block::from_u32(id), args },
 }
 
 SwitchArm: (Option<u32>, Successor, SourceSpan) = {
-    <l:@L> <value:Index> "=>" <successor:Successor> <r:@R> => (Some(value), successor, span!(l, r)),
-    <l:@L> "_" "=>" <successor:Successor> <r:@R> => (None, successor, span!(l, r)),
-}
-
-CallOpcode: Opcode = {
-    "call" => Opcode::Call,
-    "syscall" => Opcode::Syscall,
+    <l:@L> "(" <value:U32> "." <successor:Successor> ")" <r:@R> => (Some(value), successor, span!(l, r)),
+    <l:@L> "(" "_" "." <successor:Successor> ")" <r:@R> => (None, successor, span!(l, r)),
 }
 
 UnaryOpcode: (Opcode, Option<Overflow>) = {
@@ -342,6 +483,10 @@ UnaryOpcode: (Opcode, Option<Overflow>) = {
     "not" => (Opcode::Not, None),
     "bnot" => (Opcode::Bnot, None),
     "popcnt" => (Opcode::Popcnt, None),
+    "clz" => (Opcode::Clz, None),
+    "ctz" => (Opcode::Ctz, None),
+    "clo" => (Opcode::Clo, None),
+    "cto" => (Opcode::Cto, None),
     "ptrtoint" => (Opcode::PtrToInt, None),
     "inttoptr" => (Opcode::IntToPtr, None),
     "cast" => (Opcode::Cast, None),
@@ -423,33 +568,16 @@ Operand: Operand = {
 }
 
 GlobalValueExpr: GlobalValueExpr = {
-    <l:@L> "global.symbol" "@" <symbol:Ident> <offset:Offset?> <r:@R> => GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(l, r) },
-
-    <l:@L> "global.load" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> <r:@R> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset, ty, span: span!(l, r) }
+    <l:@L> "(" "global.symbol" <symbol:NameOrId> <offset:Offset?> ")" <r:@R> => {
+        GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(l, r) }
     },
 
-    <l:@L> "global.load" <base:NestedGlobalValueExpr> <r:@R> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None, span: span!(l, r) }
+    <l:@L> "(" "global.load" <ty:TypeName> <offset:Offset?> <base:GlobalValueExpr> ")" <r:@R> => {
+        let offset = offset.unwrap_or(0);
+        GlobalValueExpr::Load { base: Box::new(base), offset, ty: Some(ty), span: span!(l, r) }
     },
 
-    <l:@L> "global.iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> <r:@R> => {
-        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty, span: span!(l, r) }
-    }
-}
-
-NestedGlobalValueExpr: GlobalValueExpr = {
-    <l:@L> "@" <symbol:Ident> <offset:Offset?> <r:@R> => GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(l, r) },
-
-    <l:@L> "*" "(" <base:NestedGlobalValueExpr> ")" <offset:Offset> <ty:("as" <Type>)?> <r:@R> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset, ty, span: span!(l, r) }
-    },
-
-    <l:@L> "*" <base:NestedGlobalValueExpr> <r:@R> => {
-        GlobalValueExpr::Load { base: Box::new(base), offset: 0, ty: None, span: span!(l, r) }
-    },
-
-    <l:@L> "iadd" "." <offset:Offset> "." <ty:Type> <base:NestedGlobalValueExpr> <r:@R> => {
+    <l:@L> "(" "global.iadd" "(" "offset" <offset:RawOffset> "." <ty:TypeName> ")" <base:GlobalValueExpr> ")" <r:@R> => {
         GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty, span: span!(l, r) }
     }
 }
@@ -466,15 +594,24 @@ Int: isize = {
 }
 
 Offset: i32 = {
+    "(" "offset" <RawOffset> ")",
+}
+
+Index: u32 = {
+    "(" "id" <U32> ")",
+}
+
+Align: NonZeroU16 = {
     <l:@L> <i:int> <r:@R> =>? {
-        match i32::try_from(i) {
-            Ok(v) => Ok(v),
-            Err(_) => Err(ParseError::InvalidOffset { span: span!(l, r), value: i }.into()),
+        match u16::try_from(i) {
+            Ok(0) => Err(ParseError::InvalidAlignment { span: span!(l, r), value: i }.into()),
+            Ok(v) => Ok(unsafe { NonZeroU16::new_unchecked(v) }),
+            Err(_) => Err(ParseError::InvalidAlignment { span: span!(l, r), value: i }.into()),
         }
     }
 }
 
-Index: u32 = {
+U32: u32 = {
     <l:@L> <i:int> <r:@R> =>? {
         match u32::try_from(i) {
             Ok(v) => Ok(v),
@@ -483,17 +620,31 @@ Index: u32 = {
     }
 }
 
-Ident: Ident = {
+RawOffset: i32 = {
+    <l:@L> <i:int> <r:@R> =>? {
+        match i32::try_from(i) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::InvalidOffset { span: span!(l, r), value: i }.into()),
+        }
+    }
+}
+
+Name: Ident = {
+    <l:@L> <id:string> <r:@R> => Ident::new(id, span!(l, r)),
+}
+
+Id: Ident = {
     <l:@L> <id:ident> <r:@R> => Ident::new(id, span!(l, r)),
 }
 
-FunctionIdent: FunctionIdent = {
-    <l:@L> <id:function_ident> <r:@R> => {
-        let offset = id.0.as_str().as_bytes().len();
-        let module_span = SourceSpan::new(l, l + offset);
-        let function_span = SourceSpan::new(l + offset + 2, r);
-        FunctionIdent { module: Ident::new(id.0, module_span), function: Ident::new(id.1, function_span) }
-    }
+NameOrId: Ident = {
+    Name,
+    Id,
+}
+
+CalleeId: Either<Ident, FunctionIdent> = {
+    <NameOrId> => Left(<>),
+    "(" <module:NameOrId> <function:NameOrId> ")" => Right(FunctionIdent { module, function }),
 }
 
 SpannedValueId: Span<crate::Value> = {
@@ -504,11 +655,6 @@ ValueId: crate::Value = {
     value_id,
 }
 
-BlockId: crate::Block = {
-    block_id,
-}
-
-
 // LEXER
 // ================================================================================================
 
@@ -518,28 +664,35 @@ extern {
 
     enum Token {
         ident => Token::Ident(<Symbol>),
-        function_ident => Token::FunctionIdent(<(Symbol, Symbol)>),
+        string => Token::String(<Symbol>),
         int => Token::Int(<isize>),
         bigint => Token::BigInt(<num_bigint::BigInt>),
         data => Token::Hex(<ConstantData>),
-        value_id => Token::Value(<crate::Value>),
-        block_id => Token::Block(<crate::Block>),
-        "kernel" => Token::Kernel,
+        value_id => Token::ValueId(<crate::Value>),
         "module" => Token::Module,
-        "internal" => Token::Internal,
-        "odr" => Token::Odr,
-        "external" => Token::External,
-        "extern" => Token::Extern,
-        "pub" => Token::Pub,
-        "fn" => Token::Fn,
+        "kernel" => Token::Kernel,
+        "const" => Token::Const,
+        "global" => Token::Global,
+        "data" => Token::Data,
+        "type" => Token::Type,
+        "func" => Token::Func,
+        "block" => Token::Block,
+        "let" => Token::Let,
+        "export" => Token::Export,
+        "import" => Token::Import,
+        "id" => Token::Id,
+        "param" => Token::Param,
+        "result" => Token::Result,
         "cc" => Token::Cc,
         "fast" => Token::Fast,
+        "wasm" => Token::Wasm,
         "sret" => Token::Sret,
         "zext" => Token::Zext,
         "sext" => Token::Sext,
         "trunc" => Token::Trunc,
         "ret" => Token::Ret,
         "call" => Token::Call,
+        "call.indirect" => Token::CallIndirect,
         "syscall" => Token::Syscall,
         "br" => Token::Br,
         "condbr" => Token::CondBr,
@@ -602,6 +755,10 @@ extern {
         "not" => Token::Not,
         "bnot" => Token::BNot,
         "popcnt" => Token::PopCnt,
+        "clz" => Token::Clz,
+        "ctz" => Token::Ctz,
+        "clo" => Token::Clo,
+        "cto" => Token::Cto,
         "is_odd" => Token::IsOdd,
         "cast" => Token::Cast,
         "ptrtoint" => Token::PtrToInt,
@@ -637,37 +794,31 @@ extern {
         "u256" => Token::U256,
         "f64" => Token::F64,
         "felt" => Token::Felt,
+        "ptr" => Token::Ptr,
+        "addrspace" => Token::Addrspace,
+        "struct" => Token::Struct,
+        "array" => Token::Array,
+        "repr" => Token::Repr,
+        "transparent" => Token::Transparent,
+        "align" => Token::Align,
+        "size" => Token::Size,
+        "packed" => Token::Packed,
         "mut" => Token::Mut,
-        "as" => Token::As,
-        "id" => Token::Id,
-        "const" => Token::Const,
-        "global" => Token::Global,
+        "offset" => Token::Offset,
         "global.symbol" => Token::GlobalSymbol,
         "global.load" => Token::GlobalLoad,
         "global.iadd" => Token::GlobalIAdd,
         "symbol" => Token::Symbol,
         "iadd" => Token::IAdd,
-        "=" => Token::Equal,
-        "=>" => Token::RDoubleArrow,
         "+" => Token::Plus,
         "-" => Token::Minus,
         "_" => Token::Underscore,
-        "->" => Token::RArrow,
-        "*" => Token::Star,
-        "&" => Token::Ampersand,
         "!" => Token::Bang,
-        ":" => Token::Colon,
-        ";" => Token::Semicolon,
-        "," => Token::Comma,
+        "?" => Token::Question,
         "[" => Token::LBracket,
         "]" => Token::RBracket,
         "(" => Token::LParen,
         ")" => Token::RParen,
-        "{" => Token::LBrace,
-        "}" => Token::RBrace,
         "." => Token::Dot,
-        "#" => Token::Hash,
-        "$" => Token::Dollar,
-        "@" => Token::At,
     }
 }

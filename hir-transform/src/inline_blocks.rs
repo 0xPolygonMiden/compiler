@@ -428,30 +428,30 @@ mod tests {
             .apply(&mut function, &mut analyses, &context.session)
             .expect("inlining failed");
 
-        let expected = "pub fn inlining_test(*mut u8, i32) -> *mut u8 {
-block0(v0: *mut u8, v1: i32):
-    v8 = ptrtoint v0 : u32;
-    v9 = eq v8, 0 : i1;
-    condbr v9, block3(v0), block2(v8);
+        let expected = "\
+(func (export #inlining_test) (param (ptr u8)) (param i32) (result (ptr u8))
+    (block 0 (param v0 (ptr u8)) (param v1 i32)
+        (let (v8 u32) (ptrtoint v0))
+        (let (v9 i1) (eq v8 0))
+        (condbr v9 (block 3 v0) (block 2 v8)))
 
-block2(v4: u32):
-    v10 = cast v4 : i32;
-    v11 = add.checked v10, v1 : i32;
-    v12 = cast v11 : u32;
-    v13 = eq v12, 0 : i1;
-    condbr v13, block5(v0), block6(v12);
+    (block 2 (param v4 u32)
+        (let (v10 i32) (cast v4))
+        (let (v11 i32) (add.checked v10 v1))
+        (let (v12 u32) (cast v11))
+        (let (v13 i1) (eq v12 0))
+        (condbr v13 (block 5 v0) (block 6 v12)))
 
-block3(v5: *mut u8):
-    ret v5;
+    (block 3 (param v5 (ptr u8))
+        (ret v5))
 
-block5(v6: *mut u8):
-    ret v6;
+    (block 5 (param v6 (ptr u8))
+        (ret v6))
 
-block6(v7: u32):
-    v14 = inttoptr v7 : *mut u8;
-    ret v14;
-}
-";
+    (block 6 (param v7 u32)
+        (let (v14 (ptr u8)) (inttoptr v7))
+        (ret v14))
+)";
 
         let inlined = function.to_string();
         assert_ne!(inlined, original);

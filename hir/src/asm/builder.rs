@@ -2079,6 +2079,7 @@ fn execute_call(
                 push_type_on_stack(result.ty.clone(), stack);
             }
         }
+        CallConv::Wasm => unimplemented!("canonical abi support is not yet implemented"),
     }
 }
 

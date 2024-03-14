@@ -1,4 +1,4 @@
-(module
+(module $miden_integration_tests_rust_fib_wasm.wasm
   (type (;0;) (func (param i32) (result i32)))
   (func $fib (;0;) (type 0) (param i32) (result i32)
     (local i32 i32 i32)

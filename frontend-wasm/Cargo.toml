@@ -23,10 +23,13 @@ anyhow.workspace = true
 wasmparser = "0.118.1"
 derive_more.workspace = true
 indexmap = "2.1"
-gimli = { version = "0.28.0", default-features = false, features = ['read', 'std'] }
+gimli = { version = "0.28.0", default-features = false, features = [
+    'read',
+    'std',
+] }
 rustc-hash.workspace = true
 
 [dev-dependencies]
-wat = "1.0.69"
+wat.workspace = true
 expect-test = "1.4.1"
 miden-integration-tests.workspace = true

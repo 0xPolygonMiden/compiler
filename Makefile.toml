@@ -11,9 +11,13 @@ CARGO_MAKE_CARGO_VERBOSE_FLAGS = { source = "${CARGO_MAKE_CI}", default_value = 
 CARGO_MAKE_RUST_SCRIPT_PROVIDER = "rust-script"
 CARGO_MAKE_USE_WORKSPACE_PROFILE = true
 CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--no-fail-fast"
-CARGO_TARGET_DIR = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target", condition = { env_not_set = ["CARGO_TARGET_DIR"] } }
+CARGO_TARGET_DIR = { value = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target", condition = { env_not_set = [
+    "CARGO_TARGET_DIR",
+] } }
 BACKTRACE_DEFAULT = { source = "${CARGO_MAKE_CI}", mapping = { "true" = "1", "false" = "0" } }
-RUST_BACKTRACE = { value = "${BACKTRACE_DEFAULT}", condition = { env_not_set = ["RUST_BACKTRACE"] } }
+RUST_BACKTRACE = { value = "${BACKTRACE_DEFAULT}", condition = { env_not_set = [
+    "RUST_BACKTRACE",
+] } }
 MIDEN_BIN_DIR = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"
 MIDEN_INSTALL_DIR = "${MIDEN_BIN_DIR}/${CARGO_MAKE_RUST_TARGET_TRIPLE}"
 
@@ -27,12 +31,18 @@ alias = "build"
 
 [tasks.print-env]
 category = "Tools"
-run_task = [{ name = ["print-build-env", "print-ci-env", "print-rust-env", "print-cargo-env"] }]
+run_task = [
+    { name = [
+        "print-build-env",
+        "print-ci-env",
+        "print-rust-env",
+        "print-cargo-env",
+    ] },
+]
 
 [tasks.print-build-env]
 private = true
-script = [
-'''
+script = ['''
 #!@duckscript
 echo "*************************************"
 echo "Build Environment:"
@@ -47,14 +57,12 @@ echo "    Install Directory: ${MIDEN_INSTALL_DIR}"
 echo "    Target Triple: ${CARGO_MAKE_RUST_TARGET_TRIPLE}"
 echo "    RUST_BACKTRACE: ${RUST_BACKTRACE}"
 echo "*************************************"
-'''
-]
+''']
 
 [tasks.print-ci-env]
 private = true
 condition = { env = { "CARGO_MAKE_CI" = "true" } }
-script = [
-'''
+script = ['''
 #!@duckscript
 echo "*************************************"
 echo "CI:"
@@ -63,14 +71,12 @@ echo "    PR: ${CARGO_MAKE_PR}"
 echo "    Branch Name: ${CARGO_MAKE_CI_BRANCH_NAME}"
 echo "    CI Vendor: ${CARGO_MAKE_CI_VENDOR}"
 echo "*************************************"
-'''
-]
+''']
 
 [tasks.print-rust-env]
 category = "Tools"
-condition = { env_set = [ "CARGO_MAKE_RUST_CHANNEL" ] }
-script = [
-'''
+condition = { env_set = ["CARGO_MAKE_RUST_CHANNEL"] }
+script = ['''
 #!@duckscript
 echo "*************************************"
 echo "Rust:"
@@ -82,22 +88,19 @@ echo "    Target OS: ${CARGO_MAKE_RUST_TARGET_OS}"
 echo "    Pointer Width: ${CARGO_MAKE_RUST_TARGET_POINTER_WIDTH}"
 echo "    Target Triple: ${CARGO_MAKE_RUST_TARGET_TRIPLE}"
 echo "*************************************"
-'''
-]
+''']
 
 [tasks.print-cargo-env]
 category = "Tools"
-condition = { env_set = [ "CARGO_MAKE_CARGO_HOME" ] }
-script = [
-'''
+condition = { env_set = ["CARGO_MAKE_CARGO_HOME"] }
+script = ['''
 #!@duckscript
 echo "*************************************"
 echo "Cargo:"
 echo "    Home: ${CARGO_MAKE_CARGO_HOME}"
 echo "    Profile: ${CARGO_MAKE_CARGO_PROFILE}"
 echo "*************************************"
-'''
-]
+''']
 
 [tasks.format]
 category = "Development"
@@ -120,8 +123,12 @@ dependencies = ["install-rustfmt"]
 [tasks.install-rustfmt]
 category = "Development"
 description = "Installs cargo rustfmt plugin."
-env.CFG_RELEASE = { value = "${CARGO_MAKE_RUST_VERSION}", condition = { env_not_set = ["CFG_RELEASE"] } }
-env.CFG_RELEASE_CHANNEL = { value = "${CARGO_MAKE_RUST_CHANNEL}", condition = { env_not_set = ["CFG_RELEASE_CHANNEL"] } }
+env.CFG_RELEASE = { value = "${CARGO_MAKE_RUST_VERSION}", condition = { env_not_set = [
+    "CFG_RELEASE",
+] } }
+env.CFG_RELEASE_CHANNEL = { value = "${CARGO_MAKE_RUST_CHANNEL}", condition = { env_not_set = [
+    "CFG_RELEASE_CHANNEL",
+] } }
 install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustfmt", binary = "rustfmt", test_arg = "--help" }
 
 [tasks.bloat]
@@ -134,21 +141,25 @@ args = ["bloat", "${@}"]
 category = "Build"
 description = "Builds midenc and installs it to the bin folder"
 command = "cargo"
-args = ["-Z", "unstable-options", "build", "-p", "midenc", "--out-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"]
+args = [
+    "-Z",
+    "unstable-options",
+    "build",
+    "-p",
+    "midenc",
+    "--out-dir",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin",
+]
 
 [tasks.build]
 category = "Build"
 description = "Runs cargo build on the workspace"
-run_task = [
-  { name = ["midenc"] },
-]
+run_task = [{ name = ["midenc"] }]
 
 [tasks.install]
 category = "Install"
 description = "Installs the compiler suite via cargo"
-run_task = [
-  { name = ["install-midenc"] },
-]
+run_task = [{ name = ["install-midenc"] }]
 
 [tasks.check]
 category = "Build"
@@ -171,7 +182,13 @@ dependencies = ["test-rust"]
 category = "Install"
 description = "Builds midenc and installs it globally via the cargo bin directory"
 command = "cargo"
-args = ["cargo", "install", "--path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/midenc", "midenc"]
+args = [
+    "cargo",
+    "install",
+    "--path",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/midenc",
+    "midenc",
+]
 
 [tasks.install-wasm-target]
 category = "Test"
@@ -201,20 +218,38 @@ args = ["install", "cargo-component@0.7.0"]
 category = "Test"
 description = "Runs tests written in Rust"
 command = "cargo"
-args = ["test", "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)", "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )", "${@}"]
-dependencies = ["install-wasm-target", "install-wasm-wasi-target", "install-rust-src", "install-cargo-component"]
+args = [
+    "test",
+    "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)",
+    "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )",
+    "${@}",
+]
+dependencies = [
+    "install-wasm-target",
+    "install-wasm-wasi-target",
+    "install-rust-src",
+    "install-cargo-component",
+]
 
 [tasks.test-lit]
 category = "Test"
 description = "Runs the lit/filecheck test suite"
-command = "bin/lit"
-install_script = '''
-if [ ! -f "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin/litcheck" ]; then
-    cargo install --git 'https://github.com/bitwalker/litcheck' --root "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
-    bin/litcheck help
-fi
-'''
-args = ["run", "--path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/parse"]
+command = "litcheck"
+args = [
+    "lit",
+    "run",
+    "--verbose",
+    "--path",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/parse",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/wasm-translation",
+]
+dependencies = ["litcheck"]
+
+[tasks.litcheck]
+category = "Test"
+description = "Set up the litcheck utility"
+install_crate = { crate_name = "litcheck", test_arg = "--help" }
 
 [tasks.book]
 category = "Build"
@@ -225,7 +260,9 @@ args = ["build", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
 
 [tasks.mdbook]
 category = "Build"
-install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = ["--help"] }
+install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = [
+    "--help",
+] }
 
 [tasks.mdbook-linkcheck]
 category = "Build"
@@ -238,6 +275,8 @@ install_crate = { crate_name = "mdbook-alerts" }
 [tasks.serve-book]
 category = "Build"
 description = "Opens the compiler documentation"
-install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = ["--help"] }
+install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = [
+    "--help",
+] }
 command = "mdbook"
 args = ["serve", "--open", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]

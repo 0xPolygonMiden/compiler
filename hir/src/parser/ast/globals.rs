@@ -83,3 +83,49 @@ impl PartialEq for ConstantDeclaration {
         self.id == other.id && self.init == other.init
     }
 }
+
+/// This represents the declaration of a data segment
+#[derive(Spanned)]
+pub struct DataSegmentDeclaration {
+    #[span]
+    pub span: SourceSpan,
+    pub readonly: bool,
+    pub offset: u32,
+    pub size: u32,
+    pub data: ConstantData,
+}
+impl DataSegmentDeclaration {
+    pub fn new(
+        span: SourceSpan,
+        offset: u32,
+        size: u32,
+        readonly: bool,
+        data: ConstantData,
+    ) -> Self {
+        Self {
+            span,
+            readonly,
+            offset,
+            size,
+            data,
+        }
+    }
+}
+impl fmt::Debug for DataSegmentDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DataSegmentDeclaration")
+            .field("offset", &self.offset)
+            .field("size", &self.size)
+            .field("readonly", &self.readonly)
+            .field("data", &format_args!("{}", &self.data))
+            .finish()
+    }
+}
+impl PartialEq for DataSegmentDeclaration {
+    fn eq(&self, other: &Self) -> bool {
+        self.offset == other.offset
+            && self.size == other.size
+            && self.readonly == other.readonly
+            && self.data == other.data
+    }
+}

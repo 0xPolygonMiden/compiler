@@ -91,7 +91,6 @@ impl ParseTest {
         parser.parse_str::<Module>(source)
     }
 
-    #[allow(unused)]
     pub fn parse_module_from_file<P: AsRef<Path>>(
         &self,
         path: P,
@@ -121,7 +120,7 @@ impl ParseTest {
     }
 
     /// Parses a [Module] from the given source string and asserts that executing the test will
-    /// result in the expected AST.
+    /// result in the expected IR.
     #[track_caller]
     pub fn expect_module(&self, source: &str, expected: &crate::Module) {
         match self.parse_module(source) {
@@ -139,26 +138,26 @@ impl ParseTest {
     /// result in the expected AST.
     #[track_caller]
     #[allow(unused)]
-    pub fn expect_module_ast(&self, source: &str, expected: Module) {
+    pub fn expect_module_ast(&self, source: &str, expected: &Module) {
         match self.parse_module_ast(source) {
             Err(err) => {
                 self.context.session.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");
             }
-            Ok(ast) => assert_eq!(ast, expected),
+            Ok(ref ast) => assert_eq!(ast, expected),
         }
     }
 
     /// Parses a [Module] from the given source path and asserts that executing the test will result
     /// in the expected AST.
     #[track_caller]
-    pub fn expect_module_ast_from_file(&self, path: &str, expected: Module) {
+    pub fn expect_module_ast_from_file(&self, path: &str, expected: &Module) {
         match self.parse_module_ast_from_file(path) {
             Err(err) => {
                 self.context.session.diagnostics.emit(err);
                 panic!("expected parsing to succeed, see diagnostics for details");
             }
-            Ok(ast) => assert_eq!(ast, expected),
+            Ok(ref ast) => assert_eq!(ast, expected),
         }
     }
 }

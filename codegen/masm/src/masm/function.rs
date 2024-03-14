@@ -209,10 +209,10 @@ impl<'a> fmt::Display for DisplayMasmFunction<'a> {
         let name = self.function.name;
         match self.function.locals.len() {
             0 => {
-                writeln!(f, "{visibility}.{}", &name.function)?;
+                writeln!(f, "{visibility}.{}", &name.function.as_str())?;
             }
             n => {
-                writeln!(f, "{visibility}.{}.{}", &name.function, n)?;
+                writeln!(f, "{visibility}.{}.{}", &name.function.as_str(), n)?;
             }
         }
 

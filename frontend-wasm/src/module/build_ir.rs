@@ -2,15 +2,16 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{CallConv, ConstantData, FunctionIdent, Ident, Linkage, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
+use super::Module;
 use crate::{
     error::WasmResult,
-    module::func_translator::FuncTranslator,
-    module::module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
-    module::types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
+    module::{
+        func_translator::FuncTranslator,
+        module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
+        types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
+    },
     WasmError, WasmTranslationConfig,
 };
-
-use super::Module;
 
 /// Translate a valid Wasm core module binary into Miden IR module
 pub fn translate_module(
@@ -28,9 +29,10 @@ pub fn translate_module(
         &mut module_types_builder,
     )
     .parse(parser, wasm, diagnostics)?;
-    parsed_module
-        .module
-        .set_name_fallback(config.source_name.clone());
+    parsed_module.module.set_name_fallback(config.source_name.clone());
+    if let Some(name_override) = config.override_name.as_ref() {
+        parsed_module.module.set_name_override(name_override.clone());
+    }
     let module_types = module_types_builder.finish();
     build_ir_module(parsed_module, &module_types, config, diagnostics)
 }
@@ -111,7 +113,11 @@ fn build_globals(
             Some(init.clone()),
             SourceSpan::default(),
         ) {
-            let message = format!("Failed to declare global variable '{global_name}' with initializer '{init}' with error: {:?}", e);
+            let message = format!(
+                "Failed to declare global variable '{global_name}' with initializer '{init}' with \
+                 error: {:?}",
+                e
+            );
             diagnostics
                 .diagnostic(miden_diagnostics::Severity::Error)
                 .with_message(message.clone())
@@ -131,12 +137,14 @@ fn build_data_segments(
             translation.module.name_section.data_segment_names[&data_segment_idx].clone();
         let readonly = data_segment_name.contains(".rodata");
         let init = ConstantData::from(data_segment.data);
-        let offset = data_segment
-            .offset
-            .as_i32(&translation.module, diagnostics)? as u32;
+        let offset = data_segment.offset.as_i32(&translation.module, diagnostics)? as u32;
         let size = init.len() as u32;
         if let Err(e) = module_builder.declare_data_segment(offset, size, init, readonly) {
-            let message = format!("Failed to declare data segment '{data_segment_name}' with size '{size}' at '{offset}' with error: {:?}", e);
+            let message = format!(
+                "Failed to declare data segment '{data_segment_name}' with size '{size}' at \
+                 '{offset}' with error: {:?}",
+                e
+            );
             diagnostics
                 .diagnostic(miden_diagnostics::Severity::Error)
                 .with_message(message.clone())

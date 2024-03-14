@@ -313,12 +313,18 @@ impl fmt::Display for Type {
             Self::U256 => f.write_str("u256"),
             Self::F64 => f.write_str("f64"),
             Self::Felt => f.write_str("felt"),
-            Self::Ptr(inner) => write!(f, "*mut {}", &inner),
-            Self::NativePtr(inner, addrspace) => {
-                write!(f, "*mut(addrspace {}) {}", inner, addrspace)
+            Self::Ptr(inner) => write!(f, "(ptr {inner})"),
+            Self::NativePtr(inner, AddressSpace::Unknown) => {
+                write!(f, "(ptr (addrspace ?) {inner})")
+            }
+            Self::NativePtr(inner, AddressSpace::Root) => {
+                write!(f, "(ptr (addrspace 0) {inner})")
+            }
+            Self::NativePtr(inner, AddressSpace::Id(id)) => {
+                write!(f, "(ptr (addrspace {id}) {inner})")
             }
             Self::Struct(sty) => write!(f, "{sty}"),
-            Self::Array(element_ty, arity) => write!(f, "[{}; {}]", &element_ty, arity),
+            Self::Array(element_ty, arity) => write!(f, "(array {element_ty} {arity})"),
         }
     }
 }
@@ -564,19 +570,19 @@ impl TryFrom<Type> for StructType {
 impl fmt::Display for StructType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.repr {
-            TypeRepr::Default => f.write_str("struct {")?,
-            TypeRepr::Transparent => f.write_str("struct #[repr(transparent)] {")?,
-            TypeRepr::Align(align) => write!(f, "struct #[repr(align({align}))] {{")?,
-            TypeRepr::Packed(align) => write!(f, "struct #[repr(packed({align}))] {{")?,
+            TypeRepr::Default => f.write_str("(struct ")?,
+            TypeRepr::Transparent => f.write_str("(struct (repr transparent) ")?,
+            TypeRepr::Align(align) => write!(f, "(struct (repr (align {align})) ")?,
+            TypeRepr::Packed(align) => write!(f, "(struct (repr (packed {align})) ")?,
         };
         for (i, field) in self.fields.iter().enumerate() {
             if i > 0 {
-                write!(f, ", {}", field)?;
+                write!(f, " {}", field)?;
             } else {
                 write!(f, "{}", field)?;
             }
         }
-        f.write_str("}")
+        f.write_str(")")
     }
 }
 
@@ -606,21 +612,16 @@ impl fmt::Display for FunctionType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use core::fmt::Write;
 
-        f.write_str("fn (")?;
-        for (i, ty) in self.params.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", {}", ty)?;
-            } else {
-                write!(f, "{}", ty)?;
-            }
+        f.write_str("(func")?;
+        for ty in self.params.iter() {
+            write!(f, " (param {ty})")?;
         }
-        f.write_str(" -> (")?;
-        for (i, ty) in self.results.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", {}", ty)?;
-            } else {
-                write!(f, "{}", ty)?;
+        if !self.results.is_empty() {
+            f.write_str(" (result")?;
+            for ty in self.results.iter() {
+                write!(f, " {ty}")?;
             }
+            f.write_char(')')?;
         }
         f.write_char(')')
     }

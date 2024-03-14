@@ -94,10 +94,20 @@ impl fmt::Display for ConstantData {
     ///
     /// The printed form of the constant renders the bytes in big-endian order, for readability.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
+}
+impl fmt::LowerHex for ConstantData {
+    /// Print the constant data in hexadecimal format, e.g. 0x000102030405060708090a0b0c0d0e0f.
+    ///
+    /// The printed form of the constant renders the bytes in the same order as the data.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if !self.is_empty() {
-            write!(f, "0x")?;
-            for b in self.0.iter().rev() {
-                write!(f, "{:02x}", b)?;
+            if f.alternate() {
+                f.write_str("0x")?;
+            }
+            for byte in self.0.iter().rev() {
+                write!(f, "{byte:02x}")?;
             }
         }
         Ok(())
@@ -107,10 +117,12 @@ impl FromStr for ConstantData {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.strip_prefix("0x").unwrap_or(s);
         let len = s.len();
         if len % 2 != 0 {
             return Err(());
         }
+        // Parse big-endian
         let pairs = len / 2;
         let mut data = Vec::with_capacity(pairs);
         let mut chars = s.chars();
@@ -119,6 +131,9 @@ impl FromStr for ConstantData {
             let b = chars.next().unwrap().to_digit(16).ok_or(())?;
             data.push(((a << 4) + b) as u8);
         }
+
+        // Make little-endian
+        data.reverse();
         Ok(Self(data))
     }
 }

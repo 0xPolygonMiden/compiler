@@ -1,41 +1,42 @@
 ; RUN: midenc compile --stdout --emit=hir %s | filecheck %s
 
-module test
+(module #test
+    ;; Functions
+    (func (export #fib) (param u32) (result u32)
+        (block 0 (param v0 u32)
+            (let (v1 u32) (const.u32 0))
+            (let (v2 u32) (const.u32 1))
+            (br (block 1 v1 v2 v1)))
 
-pub fn fib(u32) -> u32 {
-block0(v0: u32):
-    v1 = const.u32 0 : u32;
-    v2 = const.u32 1 : u32;
-    br block1(v1, v2, v1)
+        (block 1 (param v3 u32) (param v4 u32) (param v5 u32)
+            (let (v6 i1) (lt v5 v0))
+            (condbr v6 (block 2) (block 3 v3)))
 
-block1(v3: u32, v4: u32, v5: u32):
-    v6 = lt v5, v0 : i1
-    cond_br v6, block2, block3(v3)
+        (block 2
+            (let (v7 u32) (add.checked v3 v4))
+            (let (v8 u32) (incr.wrapping v5))
+            (br (block 1 v4 v7 v8)))
 
-block2:
-    v7 = add.checked v3, v4 : u32
-    v8 = incr.wrapping v5: u32
-    br block1(v4, v7, v8)
+        (block 3 (param v9 u32)
+            (ret v9))
+    )
+)
 
-block3(v9: u32):
-    ret v9
-}
-
-; CHECK-LABEL: pub fn fib(u32) -> u32 {
-; CHECK-NEXT: block0(v0: u32):
-; CHECK-NEXT:     v1 = const.u32 0 : u32;
-; CHECK-NEXT:     v2 = const.u32 1 : u32;
-; CHECK-NEXT:     br block1(v1, v2, v1)
+; CHECK-LABEL: (func (export #fib
+; CHECK-NEXT:        (block 0 (param v0 u32)
+; CHECK-NEXT:            (let (v1 u32) (const.u32 0))
+; CHECK-NEXT:            (let (v2 u32) (const.u32 1))
+; CHECK-NEXT:            (br (block 1 v1 v2 v1)))
 ; CHECK-EMPTY:
-; CHECK-NEXT: block1(v3: u32, v4: u32, v5: u32):
-; CHECK-NEXT:     v6 = lt v5, v0 : i1
-; CHECK-NEXT:     cond_br v6, block2, block3(v3)
+; CHECK-NEXT:        (block 1 (param v3 u32) (param v4 u32) (param v5 u32)
+; CHECK-NEXT:            (let (v6 i1) (lt v5 v0))
+; CHECK-NEXT:            (condbr v6 (block 2) (block 3 v3)))
 ; CHECK-EMPTY:
-; CHECK-NEXT: block2:
-; CHECK-NEXT:     v7 = add.checked v3, v4 : u32
-; CHECK-NEXT:     v8 = incr.wrapping v5: u32
-; CHECK-NEXT:     br block1(v4, v7, v8)
+; CHECK-NEXT:        (block 2
+; CHECK-NEXT:            (let (v7 u32) (add.checked v3 v4))
+; CHECK-NEXT:            (let (v8 u32) (incr.wrapping v5))
+; CHECK-NEXT:            (br (block 1 v4 v7 v8)))
 ; CHECK-EMPTY:
-; CHECK-NEXT: block3(v9: u32):
-; CHECK-NEXT:     ret v9
-; CHECK-NEXT: }
+; CHECK-NEXT:        (block 3 (param v9 u32)
+; CHECK-NEXT:            (ret v9))
+; CHECK-NEXT:    )

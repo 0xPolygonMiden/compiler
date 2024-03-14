@@ -10,15 +10,20 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 
+[features]
+default = ["std"]
+std = []
+
 [build-dependencies]
 lalrpop = { version = "0.20", default-features = false }
 
 [dependencies]
 anyhow.workspace = true
+either.workspace = true
 cranelift-entity.workspace = true
 intrusive-collections.workspace = true
 inventory.workspace = true
-lalrpop-util="0.20"
+lalrpop-util = "0.20"
 miden-core.workspace = true
 miden-assembly.workspace = true
 miden-diagnostics.workspace = true
@@ -35,6 +40,7 @@ rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
+unicode-width = { version = "0.1", features = ["no_std"] }
 winter-math = { version = "0.7", default-features = false }
 derive_more.workspace = true
 

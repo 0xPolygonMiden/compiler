@@ -274,16 +274,16 @@ impl From<&hir::Program> for Program {
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for module in self.modules() {
-            writeln!(f, "mod {}\n", &module.name)?;
+            writeln!(f, "mod {}\n", &module.name.as_str())?;
             writeln!(f, "{}", module)?;
         }
         if let Some(entry) = self.body.as_ref() {
             writeln!(f, "program\n")?;
             for import in entry.imports.iter() {
                 if import.is_aliased() {
-                    writeln!(f, "use {}->{}", &import.name, &import.alias)?;
+                    writeln!(f, "use {}->{}", &import.name.as_str(), &import.alias.as_str())?;
                 } else {
-                    writeln!(f, "use {}", &import.name)?;
+                    writeln!(f, "use {}", &import.name.as_str())?;
                 }
             }
             writeln!(f, "\n{entry}")?;

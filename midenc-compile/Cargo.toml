@@ -27,3 +27,4 @@ miden-hir-transform.workspace = true
 midenc-session.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true
+wat.workspace = true

@@ -9,6 +9,12 @@
 #![feature(trait_upcasting)]
 pub mod parser;
 
+#[cfg(feature = "std")]
+extern crate std;
+
+#[macro_use]
+extern crate alloc;
+
 #[macro_use]
 extern crate lalrpop_util;
 
@@ -17,7 +23,7 @@ pub use miden_diagnostics::SourceSpan;
 pub use miden_hir_macros::*;
 pub use miden_hir_symbol::{symbols, Symbol};
 pub use miden_hir_type::{
-    AddressSpace, Alignable, FunctionType, LiftedFunctionType, StructType, Type,
+    AddressSpace, Alignable, FunctionType, LiftedFunctionType, StructType, Type, TypeRepr,
 };
 pub use winter_math::{FieldElement, StarkField};
 
@@ -148,6 +154,7 @@ mod component;
 mod constants;
 mod dataflow;
 mod display;
+pub mod formatter;
 mod function;
 mod globals;
 mod ident;
@@ -164,7 +171,6 @@ pub mod testing;
 #[cfg(test)]
 mod tests;
 mod value;
-mod write;
 
 use core::fmt;
 
@@ -196,7 +202,6 @@ pub use self::{
     program::{Linker, LinkerError, Program, ProgramAnalysisKey, ProgramBuilder},
     segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable},
     value::{Value, ValueData, ValueList, ValueListPool},
-    write::{write_external_function, write_function, write_instruction},
 };
 
 /// A `ProgramPoint` represents a position in a function where the live range of an SSA value can

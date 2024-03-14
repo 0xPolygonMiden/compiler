@@ -1,4 +1,4 @@
-use core::fmt;
+use either::Either;
 
 use super::*;
 use crate::{Opcode, Overflow, Type};
@@ -57,7 +57,7 @@ pub enum InstType {
     },
     Switch {
         opcode: Opcode,
-        input: Span<crate::Value>,
+        selector: Span<crate::Value>,
         successors: Vec<Span<(u32, Successor)>>,
         fallback: Successor,
     },
@@ -67,11 +67,12 @@ pub enum InstType {
     },
     Call {
         opcode: Opcode,
-        callee: FunctionIdent,
+        callee: Either<Ident, FunctionIdent>,
         operands: Vec<Span<crate::Value>>,
     },
     CallIndirect {
         opcode: Opcode,
+        calle: Operand,
         operands: Vec<Operand>,
     },
     PrimOp {

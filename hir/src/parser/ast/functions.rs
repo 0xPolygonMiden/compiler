@@ -1,5 +1,3 @@
-use core::fmt;
-
 use super::*;
 use crate::{AttributeSet, Signature};
 
@@ -86,7 +84,7 @@ impl FunctionDeclaration {
         &mut self,
         diagnostics: &miden_diagnostics::DiagnosticsHandler,
     ) -> Result<BlocksById, BlocksById> {
-        use std::collections::hash_map::Entry;
+        use alloc::collections::btree_map::Entry;
 
         let mut blocks_by_id = BlocksById::default();
         let mut is_valid = true;

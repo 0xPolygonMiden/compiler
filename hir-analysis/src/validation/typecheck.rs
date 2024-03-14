@@ -1059,7 +1059,11 @@ impl<'a> InstTypeChecker<'a> {
             | Opcode::Incr
             | Opcode::Pow2
             | Opcode::Bnot
-            | Opcode::Popcnt => InstPattern::Unary(TypePattern::Int),
+            | Opcode::Popcnt
+            | Opcode::Clz
+            | Opcode::Ctz
+            | Opcode::Clo
+            | Opcode::Cto => InstPattern::Unary(TypePattern::Int),
             Opcode::Not => InstPattern::Unary(Type::I1.into()),
             Opcode::And | Opcode::Or | Opcode::Xor => InstPattern::BinaryMatching(Type::I1.into()),
             Opcode::Eq | Opcode::Neq => InstPattern::BinaryPredicate(TypePattern::Primitive),

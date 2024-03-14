@@ -90,4 +90,14 @@ impl InlineAsm {
     ) -> DisplayInlineAsm<'a> {
         DisplayInlineAsm::new(function, self, dfg, indent)
     }
+
+    pub fn render(
+        &self,
+        current_function: crate::FunctionIdent,
+        dfg: &DataFlowGraph,
+    ) -> crate::formatter::Document {
+        use crate::formatter::PrettyPrint;
+
+        self.display(Some(current_function), dfg, 0).render()
+    }
 }

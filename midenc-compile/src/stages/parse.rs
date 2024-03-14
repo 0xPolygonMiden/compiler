@@ -35,6 +35,7 @@ impl Stage for ParseStage {
             InputType::Real(ref path) => match file_type {
                 FileType::Hir => self.parse_ast_from_file(path.as_ref(), &session),
                 FileType::Wasm => self.parse_hir_from_wasm_file(path.as_ref(), &session),
+                FileType::Wat => self.parse_hir_from_wat_file(path.as_ref(), &session),
                 unsupported => unreachable!("unsupported file type: {unsupported}"),
             },
             InputType::Stdin { name, ref input } => match file_type {
@@ -43,7 +44,15 @@ impl Stage for ParseStage {
                     &input,
                     &session,
                     &WasmTranslationConfig {
-                        source_name: name.to_string().clone(),
+                        source_name: name.to_string().into(),
+                        ..Default::default()
+                    },
+                ),
+                FileType::Wat => self.parse_hir_from_wat_bytes(
+                    &input,
+                    &session,
+                    &WasmTranslationConfig {
+                        source_name: name.to_string().into(),
                         ..Default::default()
                     },
                 ),
@@ -71,10 +80,16 @@ impl ParseStage {
             CompilerError::Io(Error::new(ErrorKind::InvalidInput, "input is not valid utf-8"))
         })?;
         let parser = Parser::new(session);
-        let ast = Box::new(parser.parse_str(source)?);
-        session.emit(&ast)?;
-
-        Ok(ParseOutput::Ast(ast))
+        match parser.parse_str(source).map(Box::new) {
+            Ok(ast) => {
+                session.emit(&ast)?;
+                Ok(ParseOutput::Ast(ast))
+            }
+            Err(err) => {
+                session.diagnostics.emit(err);
+                Err(CompilerError::Reported)
+            }
+        }
     }
 
     fn parse_hir_from_wasm_file(
@@ -89,7 +104,7 @@ impl ParseStage {
         file.read_to_end(&mut bytes)?;
         let file_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
         let config = wasm::WasmTranslationConfig {
-            source_name: file_name,
+            source_name: file_name.into(),
             ..Default::default()
         };
         self.parse_hir_from_wasm_bytes(&bytes, session, &config)
@@ -102,6 +117,34 @@ impl ParseStage {
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
         let module = wasm::translate_module(bytes, config, &session.diagnostics)?;
+
+        Ok(ParseOutput::Hir(Box::new(module)))
+    }
+
+    fn parse_hir_from_wat_file(
+        &self,
+        path: &Path,
+        session: &Session,
+    ) -> CompilerResult<ParseOutput> {
+        let file_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
+        let config = WasmTranslationConfig {
+            source_name: file_name.into(),
+            ..Default::default()
+        };
+        let wasm = wat::parse_file(path)?;
+        let module = wasm::translate_module(&wasm, &config, &session.diagnostics)?;
+
+        Ok(ParseOutput::Hir(Box::new(module)))
+    }
+
+    fn parse_hir_from_wat_bytes(
+        &self,
+        bytes: &[u8],
+        session: &Session,
+        config: &WasmTranslationConfig,
+    ) -> CompilerResult<ParseOutput> {
+        let wasm = wat::parse_bytes(bytes)?;
+        let module = wasm::translate_module(&wasm, config, &session.diagnostics)?;
 
         Ok(ParseOutput::Hir(Box::new(module)))
     }

@@ -579,6 +579,10 @@ pub enum MasmOp {
     U32Max,
 }
 impl MasmOp {
+    pub fn has_regions(&self) -> bool {
+        matches!(self, Self::If(_, _) | Self::While(_) | Self::Repeat(_, _))
+    }
+
     pub fn from_masm(
         ix: miden_assembly::ast::Instruction,
         locals: &[FunctionIdent],

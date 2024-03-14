@@ -1,4 +1,4 @@
-(module
+(module $051fe51f50265dba6f2bf7289cceb8e7ed3693a0fa020cc6c2202f54677db6b4.wasm
   (type (;0;) (func (param i32 i32) (result i32)))
   (func $entrypoint (;0;) (type 0) (param i32 i32) (result i32)
     local.get 1

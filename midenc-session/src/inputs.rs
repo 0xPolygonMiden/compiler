@@ -39,14 +39,10 @@ impl InputFile {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, InvalidInputError> {
         let path = path.as_ref();
         let file_type = FileType::try_from(path)?;
-        match file_type {
-            FileType::Hir | FileType::Wasm | FileType::Masm | FileType::Masl => Ok(Self {
-                file: InputType::Real(path.to_path_buf()),
-                file_type,
-            }),
-            // We do not yet have frontends for these file types
-            FileType::Wat => Err(InvalidInputError::UnsupportedFileType(path.to_path_buf())),
-        }
+        Ok(Self {
+            file: InputType::Real(path.to_path_buf()),
+            file_type,
+        })
     }
 
     /// Get an [InputFile] representing the contents received from standard input.
@@ -59,12 +55,12 @@ impl InputFile {
         std::io::stdin().read_to_end(&mut input)?;
         let file_type = FileType::detect(&input)?;
         match file_type {
-            FileType::Hir | FileType::Wasm => Ok(Self {
+            FileType::Hir | FileType::Wasm | FileType::Wat => Ok(Self {
                 file: InputType::Stdin { name, input },
                 file_type,
             }),
             // We do not yet have frontends for these file types
-            FileType::Masm | FileType::Masl | FileType::Wat => {
+            FileType::Masm | FileType::Masl => {
                 Err(InvalidInputError::UnsupportedFileType(PathBuf::from("stdin")))
             }
         }
@@ -183,14 +179,20 @@ impl FileType {
         }
 
         if let Ok(content) = core::str::from_utf8(bytes) {
-            if content.starts_with("(module ") {
-                return Ok(FileType::Wat);
-            }
-            if content.starts_with("module ") {
-                return Ok(FileType::Hir);
-            }
-            if content.lines().any(is_masm_top_level_item) {
-                return Ok(FileType::Masm);
+            // Skip comment lines and empty lines
+            let first_line = content
+                .lines()
+                .find(|line| !line.starts_with(['#', ';']) && !line.trim().is_empty());
+            if let Some(first_line) = first_line {
+                if first_line.starts_with("(module #") {
+                    return Ok(FileType::Hir);
+                }
+                if first_line.starts_with("(module") {
+                    return Ok(FileType::Wat);
+                }
+                if is_masm_top_level_item(first_line) {
+                    return Ok(FileType::Masm);
+                }
             }
         }
 
