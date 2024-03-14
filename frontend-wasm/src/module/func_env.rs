@@ -39,6 +39,9 @@ impl FuncEnvironment {
                 }
             }
         }
+
+        // TODO: move all this to ModuleTranslationState and parse the digest and use stable import
+        // name as the function name
         let mut function_ids = FxHashMap::default();
         let mut signatures = FxHashMap::default();
         for (index, func_type) in &module.functions {

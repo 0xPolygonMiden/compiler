@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use miden_abi_conversion::tx_kernel;
 use miden_core::crypto::hash::RpoDigest;
 use miden_diagnostics::DiagnosticsHandler;
@@ -13,6 +11,7 @@ use crate::{
     WasmError,
 };
 
+/// Parse the stable import function name and the hex encoded digest from the function name
 pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDigest), String> {
     // parse the hex encoded digest from the function name in the angle brackets
     // and the function name (before the angle brackets) example:
@@ -39,6 +38,7 @@ impl From<AdapterError> for WasmError {
 }
 
 // TODO: never fails?
+/// Adapt a call to a Miden ABI function (if needed)
 pub fn adapt_call<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
@@ -51,7 +51,7 @@ pub fn adapt_call<'a, 'b, 'c: 'b, 'd>(
     if let Some(stable_import_func_name) =
         module_state.get_stable_imported_miden_abi_function(&func_id)
     {
-        Ok(transform_call(
+        Ok(transform_miden_abi_call(
             func_id,
             args,
             &stable_import_func_name,
@@ -67,12 +67,17 @@ pub fn adapt_call<'a, 'b, 'c: 'b, 'd>(
     }
 }
 
+/// The strategy to use for transforming a function call
 enum TransformStrategy {
+    /// The Miden ABI function returns a length and a pointer and we only want the length
     ListReturn,
+    /// The Miden ABI function returns on the stack and we want to return via a pointer argument
     ReturnViaPointer,
+    /// No transformation needed
     NoTransform,
 }
 
+/// Get the transformation strategy for a function name
 fn get_transform_strategy(function_id: &str) -> TransformStrategy {
     match function_id {
         tx_kernel::NOTE_GET_INPUTS => TransformStrategy::ListReturn,
@@ -82,7 +87,9 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
     }
 }
 
-pub fn transform_call<'a, 'b, 'c: 'b, 'd>(
+// TODO: remove lifetimes and return `Vec<Value>` instead of `&[Value]
+/// Transform a function call based on the transformation strategy
+pub fn transform_miden_abi_call<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
     stable_name: &str,
@@ -98,24 +105,27 @@ pub fn transform_call<'a, 'b, 'c: 'b, 'd>(
     }
 }
 
+/// No transformation needed
+#[inline(always)]
 pub fn no_transform<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
     builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
     span: SourceSpan,
-    diagnostics: &DiagnosticsHandler,
+    _diagnostics: &DiagnosticsHandler,
 ) -> &'d [Value] {
     let call = builder.ins().call(func_id, args, span);
     let results = builder.inst_results(call);
     results
 }
 
+/// The Miden ABI function returns a length and a pointer and we only want the length
 pub fn list_return<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
     builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
     span: SourceSpan,
-    diagnostics: &DiagnosticsHandler,
+    _diagnostics: &DiagnosticsHandler,
 ) -> &'d [Value] {
     let call = builder.ins().call(func_id, args, span);
     let results = builder.inst_results(call);
@@ -128,12 +138,13 @@ pub fn list_return<'a, 'b, 'c: 'b, 'd>(
     results[0..1].as_ref()
 }
 
+/// The Miden ABI function returns on the stack and we want to return via a pointer argument
 pub fn return_via_pointer<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
     builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
     span: SourceSpan,
-    diagnostics: &DiagnosticsHandler,
+    _diagnostics: &DiagnosticsHandler,
 ) -> &'d [Value] {
     // Omit the last argument (pointer)
     let args_wo_pointer = &args[0..args.len() - 1];
