@@ -234,14 +234,22 @@ dependencies = [
 [tasks.test-lit]
 category = "Test"
 description = "Runs the lit/filecheck test suite"
-command = "bin/lit"
-install_script = '''
-if [ ! -f "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin/litcheck" ]; then
-    cargo install --git 'https://github.com/bitwalker/litcheck' --root "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
-    bin/litcheck help
-fi
-'''
-args = ["run", "--path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/parse"]
+command = "litcheck"
+args = [
+    "lit",
+    "run",
+    "--verbose",
+    "--path",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/parse",
+    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/wasm-translation",
+]
+dependencies = ["litcheck"]
+
+[tasks.litcheck]
+category = "Test"
+description = "Set up the litcheck utility"
+install_crate = { crate_name = "litcheck", test_arg = "--help" }
 
 [tasks.book]
 category = "Build"
