@@ -81,6 +81,7 @@ midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
+wat = "1.0.69"
 
 [profile.dev]
 lto = false

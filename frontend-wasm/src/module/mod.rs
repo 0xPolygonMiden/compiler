@@ -3,21 +3,18 @@
 // TODO: remove this once Wasm CM support is complete
 #![allow(dead_code)]
 
-use crate::component::SignatureIndex;
-use crate::error::WasmResult;
-use crate::unsupported_diag;
-
-use self::types::*;
+use std::{borrow::Cow, collections::BTreeMap, ops::Range};
 
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::cranelift_entity::packed_option::ReservedValue;
-use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
-use miden_hir::{FunctionIdent, Signature};
+use miden_hir::{
+    cranelift_entity::{packed_option::ReservedValue, EntityRef, PrimaryMap},
+    FunctionIdent, Signature,
+};
 use rustc_hash::FxHashMap;
-use std::collections::BTreeMap;
 
-use std::ops::Range;
+use self::types::*;
+use crate::{component::SignatureIndex, error::WasmResult, unsupported_diag};
 
 pub mod build_ir;
 pub mod func_translation_state;
@@ -116,7 +113,8 @@ pub struct Module {
     /// WebAssembly passive elements.
     pub passive_elements: Vec<Box<[FuncIndex]>>,
 
-    /// The map from passive element index (element segment index space) to index in `passive_elements`.
+    /// The map from passive element index (element segment index space) to index in
+    /// `passive_elements`.
     pub passive_elements_map: BTreeMap<ElemIndex, usize>,
 
     /// The map from passive data index (data segment index space) to index in `passive_data`.
@@ -161,8 +159,12 @@ pub struct Module {
     /// Parsed names section.
     name_section: NameSection,
 
-    /// The fallback name of this module, used if there is no module name in the name section
-    name_fallback: Option<String>,
+    /// The fallback name of this module, used if there is no module name in the name section,
+    /// and there is no override specified
+    name_fallback: Option<Cow<'static, str>>,
+
+    /// If specified, overrides the name of the module regardless of what is in the name section
+    name_override: Option<Cow<'static, str>>,
 }
 
 /// Module imports
@@ -196,9 +198,7 @@ impl Module {
         if func.index() < self.num_imported_funcs {
             None
         } else {
-            Some(DefinedFuncIndex::new(
-                func.index() - self.num_imported_funcs,
-            ))
+            Some(DefinedFuncIndex::new(func.index() - self.num_imported_funcs))
         }
     }
 
@@ -221,9 +221,7 @@ impl Module {
         if table.index() < self.num_imported_tables {
             None
         } else {
-            Some(DefinedTableIndex::new(
-                table.index() - self.num_imported_tables,
-            ))
+            Some(DefinedTableIndex::new(table.index() - self.num_imported_tables))
         }
     }
 
@@ -246,9 +244,7 @@ impl Module {
         if memory.index() < self.num_imported_memories {
             None
         } else {
-            Some(DefinedMemoryIndex::new(
-                memory.index() - self.num_imported_memories,
-            ))
+            Some(DefinedMemoryIndex::new(memory.index() - self.num_imported_memories))
         }
     }
 
@@ -271,9 +267,7 @@ impl Module {
         if global.index() < self.num_imported_globals {
             None
         } else {
-            Some(DefinedGlobalIndex::new(
-                global.index() - self.num_imported_globals,
-            ))
+            Some(DefinedGlobalIndex::new(global.index() - self.num_imported_globals))
         }
     }
 
@@ -323,7 +317,8 @@ impl Module {
         })
     }
 
-    /// Returns the global initializer for the given index, or `Unsupported` error if the global is imported.
+    /// Returns the global initializer for the given index, or `Unsupported` error if the global is
+    /// imported.
     pub fn try_global_initializer(
         &self,
         index: GlobalIndex,
@@ -338,11 +333,12 @@ impl Module {
 
     /// Returns the name of this module
     pub fn name(&self) -> String {
-        self.name_section.module_name.clone().unwrap_or(
-            self.name_fallback
-                .clone()
-                .expect("No module name in the name section and no fallback name is set"),
-        )
+        self.name_override
+            .as_ref()
+            .map(|name| name.to_string())
+            .or_else(|| self.name_section.module_name.clone())
+            .or_else(|| self.name_fallback.as_ref().map(|name| name.to_string()))
+            .expect("No module name in the name section and no fallback name is set")
     }
 
     /// Returns the name of the given function
@@ -355,8 +351,13 @@ impl Module {
     }
 
     /// Sets the fallback name of this module, used if there is no module name in the name section
-    pub fn set_name_fallback(&mut self, name_fallback: String) {
+    pub fn set_name_fallback(&mut self, name_fallback: Cow<'static, str>) {
         self.name_fallback = Some(name_fallback);
+    }
+
+    /// Sets the name of this module, discarding whatever is in the name section
+    pub fn set_name_override(&mut self, name_override: Cow<'static, str>) {
+        self.name_override = Some(name_override);
     }
 }
 

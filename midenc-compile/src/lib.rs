@@ -24,9 +24,12 @@ pub enum CompilerError {
     /// An invalid input was given to the compiler
     #[error(transparent)]
     InvalidInput(#[from] midenc_session::InvalidInputError),
-    /// An error occurred while parsing/translating a Wasm module
+    /// An error occurred while parsing/translating a Wasm module from binary
     #[error(transparent)]
     WasmError(#[from] miden_frontend_wasm::WasmError),
+    /// An error occurred while parsing/translating a Wasm module from text
+    #[error(transparent)]
+    WatError(#[from] wat::Error),
     /// An error occurred while parsing an HIR module
     #[error(transparent)]
     Parsing(#[from] miden_hir::parser::ParseError),

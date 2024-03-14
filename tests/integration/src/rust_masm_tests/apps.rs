@@ -1,11 +1,8 @@
 use expect_test::expect_file;
 use miden_hir::Felt;
-use proptest::prelude::*;
-use proptest::test_runner::TestRunner;
+use proptest::{prelude::*, test_runner::TestRunner};
 
-use crate::execute_emulator;
-use crate::execute_vm;
-use crate::CompilerTest;
+use crate::{execute_emulator, execute_vm, CompilerTest};
 
 #[test]
 fn fib() {
@@ -23,18 +20,11 @@ fn fib() {
         .run(&(1u32..30), move |a| {
             let rust_out = miden_integration_tests_rust_fib::fib(a);
             let mut args = [Felt::from(a)];
-            let vm_out: u32 = execute_vm(&vm_program, &args)
-                .first()
-                .unwrap()
-                .clone()
-                .into();
+            let vm_out: u32 = execute_vm(&vm_program, &args).first().unwrap().clone().into();
             prop_assert_eq!(rust_out, vm_out);
             args.reverse();
-            let emul_out: u32 = execute_emulator(ir_masm.clone(), &args)
-                .first()
-                .unwrap()
-                .clone()
-                .into();
+            let emul_out: u32 =
+                execute_emulator(ir_masm.clone(), &args).first().unwrap().clone().into();
             prop_assert_eq!(rust_out, emul_out);
             Ok(())
         })

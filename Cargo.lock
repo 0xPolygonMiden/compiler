@@ -2825,6 +2825,7 @@ dependencies = [
  "midenc-session",
  "rustc-hash",
  "thiserror",
+ "wat",
 ]
 
 [[package]]

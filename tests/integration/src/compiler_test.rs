@@ -1,38 +1,26 @@
 #![allow(dead_code)]
 
-use std::fs;
-use std::io::Read;
-use std::path::Path;
-use std::process::Command;
-use std::process::Stdio;
-use std::sync::Arc;
+use std::{
+    fs,
+    io::Read,
+    path::Path,
+    process::{Command, Stdio},
+    sync::Arc,
+};
 
-use miden_assembly::Assembler;
-use miden_assembly::AssemblyContext;
+use miden_assembly::{Assembler, AssemblyContext};
 use miden_codegen_masm::MasmCompiler;
-use miden_diagnostics::term::termcolor::ColorChoice;
-use miden_diagnostics::CodeMap;
-use miden_diagnostics::DefaultEmitter;
-use miden_diagnostics::DiagnosticsConfig;
-use miden_diagnostics::DiagnosticsHandler;
-use miden_diagnostics::Emitter;
-use miden_diagnostics::NullEmitter;
-use miden_diagnostics::SourceSpan;
-use miden_diagnostics::Verbosity;
-use miden_frontend_wasm::translate_module;
-use miden_frontend_wasm::WasmTranslationConfig;
-
-use miden_hir::pass::AnalysisManager;
-use miden_hir::pass::RewritePass;
-use miden_hir::pass::RewriteSet;
-use miden_hir::FunctionIdent;
-use miden_hir::Ident;
-use miden_hir::ModuleRewritePassAdapter;
-use miden_hir::ProgramBuilder;
-use miden_hir::Symbol;
+use miden_diagnostics::{
+    term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
+    Emitter, NullEmitter, SourceSpan, Verbosity,
+};
+use miden_frontend_wasm::{translate_module, WasmTranslationConfig};
+use miden_hir::{
+    pass::{AnalysisManager, RewritePass, RewriteSet},
+    FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Symbol,
+};
 use miden_stdlib::StdLibrary;
-use midenc_session::InputFile;
-use midenc_session::Session;
+use midenc_session::{InputFile, Session};
 
 pub enum CompilerTestSource {
     Rust(String),
@@ -56,7 +44,8 @@ impl CompilerTestSource {
     }
 }
 
-/// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected output
+/// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected
+/// output
 pub struct CompilerTest {
     /// The compiler session
     pub session: Session,
@@ -127,11 +116,7 @@ impl CompilerTest {
         if !output.success() {
             eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
             let mut stderr = Vec::new();
-            child
-                .stderr
-                .unwrap()
-                .read(&mut stderr)
-                .expect("Failed to read stderr");
+            child.stderr.unwrap().read(&mut stderr).expect("Failed to read stderr");
             let stderr = String::from_utf8(stderr).expect("Failed to parse stderr");
             eprintln!("stderr: {}", stderr);
             panic!("Rust to Wasm compilation failed!");
@@ -139,12 +124,7 @@ impl CompilerTest {
         assert!(output.success());
         assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
         let wasm_comp_path = &wasm_artifacts.first().unwrap();
-        let artifact_name = wasm_comp_path
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
+        let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
         Self {
             session: default_session(),
             source: CompilerTestSource::RustCargo {
@@ -206,10 +186,7 @@ impl CompilerTest {
         let session = default_session();
         let entrypoint = FunctionIdent {
             module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
-            function: Ident::new(
-                Symbol::intern(entrypoint.to_string()),
-                SourceSpan::default(),
-            ),
+            function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
         };
         CompilerTest {
             session,
@@ -457,18 +434,16 @@ fn hash_string(inputs: &str) -> String {
 
 fn wasm_to_ir(wasm_bytes: &[u8], session: &Session) -> miden_hir::Module {
     use miden_hir_transform as transforms;
-    let mut ir_module = translate_module(
-        wasm_bytes,
-        &WasmTranslationConfig::default(),
-        &session.diagnostics,
-    )
-    .expect("Failed to translate Wasm to IR module");
+    let config = WasmTranslationConfig {
+        override_name: Some("noname".into()),
+        ..Default::default()
+    };
+    let mut ir_module = translate_module(wasm_bytes, &config, &session.diagnostics)
+        .expect("Failed to translate Wasm to IR module");
 
     let mut analyses = AnalysisManager::new();
     let mut rewrites = RewriteSet::default();
-    rewrites.push(ModuleRewritePassAdapter::new(
-        transforms::SplitCriticalEdges,
-    ));
+    rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
     rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
     rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
     rewrites

@@ -1,14 +1,13 @@
 use miden_hir::cranelift_entity::PrimaryMap;
 use rustc_hash::FxHashMap;
 
-use crate::{
-    component::Trampoline, error::WasmResult, module::module_env::ParsedModule, WasmError,
-};
-
 use super::{
     ComponentTypes, CoreDef, GlobalInitializer, InstantiateModule, LinearComponent,
     LinearComponentTranslation, LoweredIndex, RuntimeImportIndex, RuntimeInstanceIndex,
     StaticModuleIndex, TypeFuncIndex,
+};
+use crate::{
+    component::Trampoline, error::WasmResult, module::module_env::ParsedModule, WasmError,
 };
 
 /// A component import
@@ -29,9 +28,7 @@ pub struct ComponentInstance<'data> {
 impl<'data> ComponentInstance<'data> {
     pub fn ensure_module_names(&mut self) {
         for (idx, parsed_module) in self.modules.iter_mut() {
-            parsed_module
-                .module
-                .set_name_fallback(format!("module{}", idx.as_u32()));
+            parsed_module.module.set_name_fallback(format!("module{}", idx.as_u32()).into());
         }
     }
 
@@ -76,7 +73,8 @@ impl<'data> ComponentInstanceBuilder<'data> {
                                 .is_some()
                             {
                                 return Err(WasmError::Unsupported(format!(
-                                    "A module with a static index {} is already instantiated. We don't support multiple instantiations of the same module.",
+                                    "A module with a static index {} is already instantiated. We \
+                                     don't support multiple instantiations of the same module.",
                                     static_module_idx.as_u32()
                                 )));
                             }
@@ -111,7 +109,7 @@ impl<'data> ComponentInstanceBuilder<'data> {
                             }
                             imports.insert(*static_module_idx, module_args);
                         }
-                        InstantiateModule::Import(_, _) => todo!(),
+                        InstantiateModule::Import(..) => todo!(),
                     };
                 }
                 GlobalInitializer::LowerImport {
