@@ -409,6 +409,10 @@ pub enum Opcode {
     Rotl,
     Rotr,
     Popcnt,
+    Clz,
+    Ctz,
+    Clo,
+    Cto,
     Eq,
     Neq,
     Gt,
@@ -522,6 +526,10 @@ impl Opcode {
             | Self::Rotl
             | Self::Rotr
             | Self::Popcnt
+            | Self::Clz
+            | Self::Ctz
+            | Self::Clo
+            | Self::Cto
             | Self::Eq
             | Self::Neq
             | Self::Gt
@@ -592,6 +600,10 @@ impl Opcode {
             | Self::Incr
             | Self::Pow2
             | Self::Popcnt
+            | Self::Clz
+            | Self::Ctz
+            | Self::Clo
+            | Self::Cto
             | Self::Not
             | Self::Bnot
             | Self::IsOdd => 1,
@@ -670,6 +682,10 @@ impl Opcode {
             | Self::Inv
             | Self::Pow2
             | Self::Popcnt
+            | Self::Clz
+            | Self::Ctz
+            | Self::Clo
+            | Self::Cto
             | Self::Mod
             | Self::DivMod
             | Self::Exp
@@ -759,6 +775,10 @@ impl fmt::Display for Opcode {
             Self::Rotl => f.write_str("rotl"),
             Self::Rotr => f.write_str("rotr"),
             Self::Popcnt => f.write_str("popcnt"),
+            Self::Clz => f.write_str("leading_zeros"),
+            Self::Ctz => f.write_str("trailing_zeros"),
+            Self::Clo => f.write_str("leading_ones"),
+            Self::Cto => f.write_str("trailing_ones"),
             Self::Eq => f.write_str("eq"),
             Self::Neq => f.write_str("neq"),
             Self::Gt => f.write_str("gt"),

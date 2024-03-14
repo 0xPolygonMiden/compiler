@@ -9,6 +9,12 @@
 #![feature(trait_upcasting)]
 pub mod parser;
 
+#[cfg(feature = "std")]
+extern crate std;
+
+#[macro_use]
+extern crate alloc;
+
 #[macro_use]
 extern crate lalrpop_util;
 
@@ -17,7 +23,7 @@ pub use miden_diagnostics::SourceSpan;
 pub use miden_hir_macros::*;
 pub use miden_hir_symbol::{symbols, Symbol};
 pub use miden_hir_type::{
-    AddressSpace, Alignable, FunctionType, LiftedFunctionType, StructType, Type,
+    AddressSpace, Alignable, FunctionType, LiftedFunctionType, StructType, Type, TypeRepr,
 };
 pub use winter_math::{FieldElement, StarkField};
 

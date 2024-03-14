@@ -1,21 +1,21 @@
 [workspace]
 resolver = "2"
 members = [
-  "codegen/*",
-  "hir",
-  "hir-analysis",
-  "hir-macros",
-  "hir-symbol",
-  "hir-transform",
-  "hir-type",
-  "midenc",
-  "midenc-compile",
-  "midenc-driver",
-  "midenc-session",
-  "tools/*",
-  "frontend-wasm",
-  "tests/rust-apps/*",
-  "tests/integration",
+    "codegen/*",
+    "hir",
+    "hir-analysis",
+    "hir-macros",
+    "hir-symbol",
+    "hir-transform",
+    "hir-type",
+    "midenc",
+    "midenc-compile",
+    "midenc-driver",
+    "midenc-session",
+    "tools/*",
+    "frontend-wasm",
+    "tests/rust-apps/*",
+    "tests/integration",
 ]
 exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 
@@ -41,7 +41,7 @@ clap = { version = "4.1", features = ["derive", "env"] }
 cranelift-entity = "0.100"
 cranelift-bforest = "0.100"
 env_logger = "0.9"
-either = "1.9"
+either = { version = "1.10", default-features = false }
 Inflector = "0.11"
 intrusive-collections = "0.9"
 inventory = "0.3"
@@ -54,16 +54,16 @@ pretty_assertions = "1.0"
 proptest = "1.4"
 rustc-hash = "1.1"
 smallvec = { version = "1.9", features = [
-  "union",
-  "const_generics",
-  "const_new",
+    "union",
+    "const_generics",
+    "const_new",
 ] }
 smallstr = { version = "0.3", features = ["union"] }
 thiserror = "1.0"
 toml = { version = "0.5", features = ["preserve_order"] }
 derive_more = "0.99"
 # 211152c631d16a943aae503466b198b93c61150f is latest (as of Jan 25th) commit in the next branch
-miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f"}
+miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
 miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
 miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
 miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }

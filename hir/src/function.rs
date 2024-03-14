@@ -41,6 +41,8 @@ pub enum CallConv {
     /// The standard calling convention used for C on most platforms
     #[default]
     SystemV,
+    /// A function which is using the WebAssembly Component Model "Canonical ABI".
+    Wasm,
     /// A function with this calling convention must be called using
     /// the `syscall` instruction. Attempts to call it with any other
     /// call instruction will cause a validation error. The one exception
@@ -58,6 +60,7 @@ impl fmt::Display for CallConv {
         match self {
             Self::Fast => f.write_str("fast"),
             Self::SystemV => f.write_str("C"),
+            Self::Wasm => f.write_str("wasm"),
             Self::Kernel => f.write_str("kernel"),
         }
     }

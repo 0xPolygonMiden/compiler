@@ -1,5 +1,3 @@
-use core::fmt;
-
 use super::*;
 
 /// Represents a basic block in a [FunctionDeclaration]

@@ -1,15 +1,15 @@
-use std::collections::VecDeque;
+use alloc::collections::{BTreeSet, VecDeque};
 
 use cranelift_entity::packed_option::ReservedValue;
+use either::Either::{Left, Right};
 use intrusive_collections::UnsafeRef;
 use midenc_session::Session;
-use rustc_hash::FxHashSet;
 
 use super::*;
 use crate::{
     parser::ParseError,
     pass::{AnalysisManager, ConversionError, ConversionPass, ConversionResult},
-    Immediate, Opcode, PassInfo, Type,
+    Immediate, Opcode, PassInfo, Signature, Type,
 };
 
 /// This pass converts the syntax tree of an HIR module to HIR
@@ -25,7 +25,7 @@ impl ConversionPass for ConvertAstToHir {
         _analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
-        use std::collections::hash_map::Entry;
+        use alloc::collections::btree_map::Entry;
 
         let mut module = if ast.is_kernel {
             crate::Module::new_kernel(ast.name)
@@ -40,9 +40,17 @@ impl ConversionPass for ConvertAstToHir {
             ast.take_and_validate_constants(&session.diagnostics);
         is_valid &= is_constants_valid;
 
+        let mut remapped_constants = RemappedConstants::default();
+        for (constant_id, constant_data) in constants_by_id.into_iter() {
+            if let Entry::Vacant(entry) = remapped_constants.entry(constant_id) {
+                let new_constant_id = module.globals.insert_constant(constant_data.item);
+                entry.insert(new_constant_id);
+            }
+        }
+
         // Validate globals
         let (globals_by_id, is_global_vars_valid) =
-            ast.take_and_validate_globals(&constants_by_id, &session.diagnostics);
+            ast.take_and_validate_globals(&remapped_constants, &session.diagnostics);
         is_valid &= is_global_vars_valid;
 
         for (_, gv_data) in globals_by_id.into_iter() {
@@ -51,22 +59,36 @@ impl ConversionPass for ConvertAstToHir {
             }
         }
 
-        // Validate imports
-        let (imports_by_id, is_externals_valid) =
-            ast.take_and_validate_imports(&session.diagnostics);
-        is_valid &= is_externals_valid;
+        // Validate data segments
+        for segment_ast in ast.data_segments.drain(..) {
+            let span = segment_ast.span();
+            if let Err(err) = module.declare_data_segment(
+                segment_ast.offset,
+                segment_ast.size,
+                segment_ast.data,
+                segment_ast.readonly,
+            ) {
+                is_valid = false;
+                session
+                    .diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid data segment")
+                    .with_primary_label(span, err)
+                    .emit();
+            }
+        }
 
         // Validate functions
-        let mut functions_by_id = FxHashMap::<Ident, SourceSpan>::default();
+        let mut functions_by_id = BTreeMap::<Ident, Span<Signature>>::default();
         let mut worklist = Vec::with_capacity(ast.functions.len());
-        for function in ast.functions.into_iter() {
+        for function in core::mem::take(&mut ast.functions).into_iter() {
             match functions_by_id.entry(function.name) {
                 Entry::Vacant(entry) => {
-                    entry.insert(function.name.span());
+                    entry.insert(Span::new(function.name.span(), function.signature.clone()));
                     worklist.push(function);
                 }
                 Entry::Occupied(entry) => {
-                    let prev = *entry.get();
+                    let prev = entry.get().span();
                     session
                         .diagnostics
                         .diagnostic(Severity::Error)
@@ -82,10 +104,18 @@ impl ConversionPass for ConvertAstToHir {
             }
         }
 
+        // Validate imports
+        let (imports_by_id, is_externals_valid) =
+            ast.take_and_validate_imports(&session.diagnostics);
+        is_valid &= is_externals_valid;
+
         let mut functions = crate::FunctionList::default();
         let mut values_by_id = ValuesById::default();
+        let mut used_imports = BTreeSet::<FunctionIdent>::default();
+        let mut inst_results = InstResults::default();
         for mut function in worklist.into_iter() {
             values_by_id.clear();
+            inst_results.clear();
 
             let id = FunctionIdent {
                 module: module.name,
@@ -110,7 +140,7 @@ impl ConversionPass for ConvertAstToHir {
             // The entry block is always the first in the layout
             f.dfg.entry = entry;
             // Visit each block and build it, but do not yet write to the DataFlowGraph
-            let mut visited = FxHashSet::<crate::Block>::default();
+            let mut visited = BTreeSet::<crate::Block>::default();
             while let Some(block_id) = blockq.pop_front() {
                 // Do not visit the same block twice
                 if !visited.insert(block_id) {
@@ -136,7 +166,6 @@ impl ConversionPass for ConvertAstToHir {
                         }
                         None => {
                             is_valid = false;
-                            continue;
                         }
                     }
                 }
@@ -151,7 +180,10 @@ impl ConversionPass for ConvertAstToHir {
                         &blocks_by_id,
                         &visited,
                         &mut values_by_id,
+                        &mut inst_results,
+                        &mut used_imports,
                         &imports_by_id,
+                        &functions_by_id,
                         &mut f,
                         &session.diagnostics,
                     );
@@ -186,10 +218,29 @@ impl ConversionPass for ConvertAstToHir {
                 assert_eq!(f.dfg.values.push(data.item), id);
             }
 
+            // Also record all of the instruction results
+            for (inst, results) in core::mem::take(&mut inst_results).into_iter() {
+                f.dfg.results[inst].extend(results, &mut f.dfg.value_lists);
+            }
+
             functions.push_back(f);
         }
 
-        module.functions = functions;
+        // If any of the imports are unused, add them to all functions in the module
+        if imports_by_id.keys().any(|id| !used_imports.contains(id)) {
+            while let Some(mut function) = functions.pop_front() {
+                function.dfg.imports.extend(imports_by_id.iter().filter_map(|(id, ext)| {
+                    if used_imports.contains(id) {
+                        None
+                    } else {
+                        Some((*id, ext.item.clone()))
+                    }
+                }));
+                module.functions.push_back(function);
+            }
+        } else {
+            module.functions = functions;
+        }
 
         if is_valid {
             Ok(module)
@@ -206,14 +257,15 @@ fn try_insert_inst(
     block_data: &mut crate::BlockData,
     blockq: &mut VecDeque<crate::Block>,
     blocks_by_id: &BlocksById,
-    visited_blocks: &FxHashSet<crate::Block>,
+    visited_blocks: &BTreeSet<crate::Block>,
     values_by_id: &mut ValuesById,
+    inst_results: &mut InstResults,
+    used_imports: &mut BTreeSet<FunctionIdent>,
     imports_by_id: &ImportsById,
+    functions_by_id: &BTreeMap<Ident, Span<Signature>>,
     function: &mut crate::Function,
     diagnostics: &DiagnosticsHandler,
 ) -> bool {
-    use std::collections::hash_map::Entry;
-
     use crate::{BinaryOp, BinaryOpImm, Instruction, PrimOp, PrimOpImm, UnaryOp, UnaryOpImm};
 
     let id = function.dfg.insts.alloc_key();
@@ -405,13 +457,13 @@ fn try_insert_inst(
         }
         InstType::Switch {
             opcode: op,
-            input,
+            selector,
             successors,
             fallback,
         } => {
-            let mut is_valid = is_valid_value_reference(&input, span, values_by_id, diagnostics);
+            let mut is_valid = is_valid_value_reference(&selector, span, values_by_id, diagnostics);
 
-            let mut used_discriminants = FxHashSet::<Span<u32>>::default();
+            let mut used_discriminants = BTreeSet::<Span<u32>>::default();
             let mut arms = Vec::with_capacity(successors.len());
             for arm in successors.into_iter() {
                 let arm_span = arm.span();
@@ -473,7 +525,7 @@ fn try_insert_inst(
             if is_valid {
                 Some(Instruction::Switch(crate::Switch {
                     op,
-                    arg: input.item,
+                    arg: selector.item,
                     arms,
                     default: fallback.id,
                 }))
@@ -561,27 +613,60 @@ fn try_insert_inst(
             operands,
         } => {
             let mut is_valid = true;
-            if let Entry::Vacant(entry) = function.dfg.imports.entry(callee) {
-                if let Some(ef) = imports_by_id.get(&callee) {
-                    entry.insert(ef.item.clone());
-                } else {
-                    diagnostics
-                        .diagnostic(Severity::Error)
-                        .with_message("invalid call instruction")
-                        .with_primary_label(
-                            callee.span(),
-                            "this function is not imported in the current module, you must do so \
-                             in order to reference it",
-                        )
-                        .with_secondary_label(span, "invalid callee for this instruction")
-                        .emit();
-                    is_valid = false;
+            let callee = match callee {
+                Left(local) => {
+                    let callee = FunctionIdent {
+                        function: local,
+                        module: function.id.module,
+                    };
+                    if let Some(sig) = functions_by_id.get(&local) {
+                        use std::collections::hash_map::Entry;
+                        if let Entry::Vacant(entry) = function.dfg.imports.entry(callee) {
+                            entry.insert(ExternalFunction {
+                                id: callee,
+                                signature: sig.item.clone(),
+                            });
+                        }
+                    } else {
+                        diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("reference to undefined local function")
+                            .with_primary_label(
+                                local.span(),
+                                "this function is not defined in the current module, are you \
+                                 missing an import?",
+                            )
+                            .emit();
+                        is_valid = false;
+                    }
+                    callee
                 }
-            }
+                Right(external) => {
+                    use std::collections::hash_map::Entry;
+                    used_imports.insert(external);
+                    if let Entry::Vacant(entry) = function.dfg.imports.entry(external) {
+                        if let Some(ef) = imports_by_id.get(&external) {
+                            entry.insert(ef.item.clone());
+                        } else {
+                            diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("invalid call instruction")
+                                .with_primary_label(
+                                    external.span(),
+                                    "this function is not imported in the current module, you \
+                                     must do so in order to reference it",
+                                )
+                                .with_secondary_label(span, "invalid callee for this instruction")
+                                .emit();
+                            is_valid = false;
+                        }
+                    }
+                    external
+                }
+            };
 
             is_valid &=
                 is_valid_value_references(operands.as_slice(), span, values_by_id, diagnostics);
-
             if is_valid {
                 let args = crate::ValueList::from_iter(
                     operands.iter().map(|arg| arg.item),
@@ -593,7 +678,7 @@ fn try_insert_inst(
             }
         }
         InstType::CallIndirect { .. } => {
-            unimplemented!("indirect calls are not implemented in the parser yet")
+            unimplemented!("indirect calls are not implemented in the IR yet")
         }
         InstType::PrimOp {
             opcode: op,
@@ -618,10 +703,46 @@ fn try_insert_inst(
                         }
                         operand @ (Operand::Int(_) | Operand::BigInt(_)) if is_first => {
                             imm = match op {
-                                Opcode::AssertEq => operands[i + 1]
-                                    .as_value()
-                                    .and_then(|v| values_by_id.get(&v.item).map(|vd| vd.ty()))
-                                    .and_then(|ty| operand_to_immediate(operand, ty, diagnostics)),
+                                Opcode::AssertEq => {
+                                    if let Some(value) = operands[i + 1].as_value() {
+                                        match values_by_id.get(&value.item).map(|vd| vd.ty()) {
+                                            Some(ty) => {
+                                                operand_to_immediate(operand, ty, diagnostics)
+                                            }
+                                            None => {
+                                                diagnostics
+                                                    .diagnostic(Severity::Error)
+                                                    .with_message("undefined value")
+                                                    .with_primary_label(
+                                                        operand.span(),
+                                                        "this value is not defined yet",
+                                                    )
+                                                    .with_secondary_label(
+                                                        span,
+                                                        "ensure the value is defined in a \
+                                                         dominating block of this instruction",
+                                                    )
+                                                    .emit();
+                                                None
+                                            }
+                                        }
+                                    } else {
+                                        diagnostics
+                                            .diagnostic(Severity::Error)
+                                            .with_message("invalid operand")
+                                            .with_primary_label(
+                                                operand.span(),
+                                                "expected an ssa value here, but got an immediate",
+                                            )
+                                            .with_secondary_label(
+                                                span,
+                                                "only the first argument of this instruction may \
+                                                 be an immediate",
+                                            )
+                                            .emit();
+                                        None
+                                    }
+                                }
                                 Opcode::Store => {
                                     operand_to_immediate(operand, &Type::U32, diagnostics)
                                 }
@@ -678,8 +799,16 @@ fn try_insert_inst(
         function.dfg.insts.append(id, node);
 
         // Add results to values_by_id map
+        let mut is_valid = true;
+        let results_vec = inst_results.entry(id).or_insert_with(Default::default);
         for tv in results.into_iter() {
-            try_insert_result_value(tv.id, tv.span(), id, num, tv.ty, values_by_id, diagnostics);
+            if let Some(value) =
+                try_insert_result_value(tv.id, tv.span(), id, num, tv.ty, values_by_id, diagnostics)
+            {
+                results_vec.push(value);
+            } else {
+                is_valid = false;
+            }
         }
 
         // Append instruction to block
@@ -687,7 +816,7 @@ fn try_insert_inst(
             unsafe { UnsafeRef::from_raw(function.dfg.insts.get_raw(id).unwrap().as_ptr()) };
         block_data.append(unsafe_ref);
 
-        true
+        is_valid
     } else {
         for tv in results.into_iter() {
             try_insert_result_value(tv.id, tv.span(), id, num, tv.ty, values_by_id, diagnostics);
@@ -701,7 +830,7 @@ fn is_valid_successor(
     successor: &Successor,
     parent_span: SourceSpan,
     blocks_by_id: &BlocksById,
-    visited: &FxHashSet<crate::Block>,
+    visited: &BTreeSet<crate::Block>,
     values_by_id: &ValuesById,
     diagnostics: &DiagnosticsHandler,
 ) -> Result<Option<crate::Block>, crate::Block> {
@@ -739,7 +868,7 @@ fn is_valid_value_references<'a, I: IntoIterator<Item = &'a Span<crate::Value>>>
     values_by_id: &ValuesById,
     diagnostics: &DiagnosticsHandler,
 ) -> bool {
-    let mut is_valid = false;
+    let mut is_valid = true;
     let mut is_empty = true;
     for value in values.into_iter() {
         is_empty = false;
@@ -778,7 +907,7 @@ fn try_insert_param_value(
     values: &mut BTreeMap<crate::Value, Span<crate::ValueData>>,
     diagnostics: &DiagnosticsHandler,
 ) -> Option<crate::Value> {
-    use std::collections::btree_map::Entry;
+    use alloc::collections::btree_map::Entry;
 
     match values.entry(id) {
         Entry::Vacant(entry) => {
@@ -813,7 +942,7 @@ fn try_insert_result_value(
     values: &mut BTreeMap<crate::Value, Span<crate::ValueData>>,
     diagnostics: &DiagnosticsHandler,
 ) -> Option<crate::Value> {
-    use std::collections::btree_map::Entry;
+    use alloc::collections::btree_map::Entry;
 
     match values.entry(id) {
         Entry::Vacant(entry) => {
@@ -854,13 +983,20 @@ fn smallint_to_immediate(
 ) -> Option<Immediate> {
     match ty {
         Type::I1 => Some(Immediate::I1(i != 0)),
-        Type::I8 => i8::try_from(i).ok().map(Immediate::I8),
-        Type::I16 => i16::try_from(i).ok().map(Immediate::I16),
-        Type::I32 => i32::try_from(i).ok().map(Immediate::I32),
-        Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::U128 | Type::U256 if i < 0 => None,
-        Type::U8 => u8::try_from(i as usize).ok().map(Immediate::U8),
-        Type::U16 => u16::try_from(i as usize).ok().map(Immediate::U16),
-        Type::U32 => u32::try_from(i as usize).ok().map(Immediate::U32),
+        Type::I8 => try_convert_imm(i, span, ty, diagnostics).map(Immediate::I8),
+        Type::I16 => try_convert_imm(i, span, ty, diagnostics).map(Immediate::I16),
+        Type::I32 => try_convert_imm(i, span, ty, diagnostics).map(Immediate::I32),
+        Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::U128 | Type::U256 if i < 0 => {
+            diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("invalid immediate operand")
+                .with_primary_label(span, format!("expected a non-negative integer of type {ty}"))
+                .emit();
+            None
+        }
+        Type::U8 => try_convert_imm(i as usize, span, ty, diagnostics).map(Immediate::U8),
+        Type::U16 => try_convert_imm(i as usize, span, ty, diagnostics).map(Immediate::U16),
+        Type::U32 => try_convert_imm(i as usize, span, ty, diagnostics).map(Immediate::U32),
         Type::I64 => Some(Immediate::I64(i as i64)),
         Type::U64 => Some(Immediate::U64(i as u64)),
         Type::I128 => Some(Immediate::I128(i as i128)),
@@ -910,20 +1046,6 @@ fn bigint_to_immediate(
                 .emit();
             return None;
         }
-        ty if ty.is_integer() => {
-            diagnostics
-                .diagnostic(Severity::Error)
-                .with_message("invalid immediate operand")
-                .with_primary_label(
-                    span,
-                    format!(
-                        "expected an immediate of type {ty}, but got {i}, which is out of range \
-                         for that type"
-                    ),
-                )
-                .emit();
-            return None;
-        }
         ty => {
             diagnostics
                 .diagnostic(Severity::Error)
@@ -950,4 +1072,30 @@ fn bigint_to_immediate(
             .emit();
     }
     imm
+}
+
+fn try_convert_imm<T, U>(
+    i: T,
+    span: SourceSpan,
+    ty: &Type,
+    diagnostics: &DiagnosticsHandler,
+) -> Option<U>
+where
+    U: TryFrom<T>,
+    <U as TryFrom<T>>::Error: fmt::Display,
+{
+    match U::try_from(i) {
+        Ok(value) => Some(value),
+        Err(err) => {
+            diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("invalid immediate operand")
+                .with_primary_label(
+                    span,
+                    format!("cannot interpret this as a value of type {ty}: {err}"),
+                )
+                .emit();
+            None
+        }
+    }
 }

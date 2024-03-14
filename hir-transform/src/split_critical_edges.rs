@@ -242,35 +242,35 @@ mod tests {
             .apply(&mut function, &mut analyses, &context.session)
             .expect("splitting critical edges failed");
 
-        let expected = "pub fn sce(*mut u8, u32) -> *mut u8 {
-block0(v0: *mut u8, v1: u32):
-    v7 = ptrtoint v0 : u32;
-    br block1(v7, v1);
+        let expected = "\
+(func (export #sce) (param (ptr u8)) (param u32) (result (ptr u8))
+    (block 0 (param v0 (ptr u8)) (param v1 u32)
+        (let (v7 u32) (ptrtoint v0))
+        (br (block 1 v7 v1)))
 
-block1(v2: u32, v3: u32):
-    v8 = eq v2, 0 : i1;
-    condbr v8, block4, block2(v2, v3);
+    (block 1 (param v2 u32) (param v3 u32)
+        (let (v8 i1) (eq v2 0))
+        (condbr v8 (block 4) (block 2 v2 v3)))
 
-block4:
-    br block3(v0);
+    (block 4
+        (br (block 3 v0)))
 
-block2(v4: u32, v5: u32):
-    v9 = sub.checked v4, v5 : u32;
-    v10 = sub.checked v5, 1 : u32;
-    v11 = eq v10, 0 : i1;
-    condbr v11, block6, block5;
+    (block 2 (param v4 u32) (param v5 u32)
+        (let (v9 u32) (sub.checked v4 v5))
+        (let (v10 u32) (sub.checked v5 1))
+        (let (v11 i1) (eq v10 0))
+        (condbr v11 (block 6) (block 5)))
 
-block6:
-    br block3(v9);
+    (block 6
+        (br (block 3 v9)))
 
-block5:
-    br block1(v9, v10);
+    (block 5
+        (br (block 1 v9 v10)))
 
-block3(v6: u32):
-    v12 = inttoptr v6 : *mut u8;
-    ret v12;
-}
-";
+    (block 3 (param v6 u32)
+        (let (v12 (ptr u8)) (inttoptr v6))
+        (ret v12))
+)";
 
         let transformed = function.to_string();
         assert_ne!(transformed, original);

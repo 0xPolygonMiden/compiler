@@ -1,4 +1,5 @@
 use miden_diagnostics::{SourceSpan, Span};
+use pretty_assertions::assert_eq;
 
 use crate::{
     parser::ast::*, AbiParam, ArgumentExtension, ArgumentPurpose, CallConv, ExternalFunction,
@@ -144,12 +145,25 @@ fn parser_integration_test() {
         name: ident!(test),
         constants: vec![deadbeef_const],
         global_vars: vec![deadbeef],
+        data_segments: vec![],
         functions: vec![foo],
         externals: vec![Span::new(dummy_sourcespan, make_pair)],
         is_kernel: false,
     };
 
-    ParseTest::new().expect_module_ast_from_file("src/parser/tests/input/test.hir", expected);
+    ParseTest::new().expect_module_ast_from_file("src/parser/tests/input/test.hir", &expected);
+}
+
+#[test]
+fn parser_integration_test_roundtrip() {
+    let test = ParseTest::new();
+    let module = test
+        .parse_module_from_file("src/parser/tests/input/test.hir")
+        .expect("parsing failed");
+
+    let formatted = module.to_string();
+    let expected = std::fs::read_to_string("src/parser/tests/input/test.hir").unwrap();
+    assert_eq!(formatted, expected);
 }
 
 /// Round-trip an IR module through the textual format and assert that we get back the same module

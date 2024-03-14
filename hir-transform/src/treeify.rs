@@ -686,50 +686,51 @@ mod tests {
             .apply(&mut function, &mut analyses, &context.session)
             .expect("treeification failed");
 
-        let expected = "pub fn sum_matrix(*mut u32, u32, u32) -> u32 {
-block0(v0: *mut u32, v1: u32, v2: u32):
-    v10 = const.u32 0 : u32;
-    v11 = ptrtoint v0 : u32;
-    v12 = neq v11, 0 : i1;
-    condbr v12, block2, block7;
+        let expected = "\
+(func (export #sum_matrix)
+      (param (ptr u32)) (param u32) (param u32) (result u32)
+    (block 0 (param v0 (ptr u32)) (param v1 u32) (param v2 u32)
+        (let (v10 u32) (const.u32 0))
+        (let (v11 u32) (ptrtoint v0))
+        (let (v12 i1) (neq v11 0))
+        (condbr v12 (block 2) (block 7)))
 
-block7:
-    ret v10;
+    (block 7
+        (ret v10))
 
-block2:
-    v13 = const.u32 0 : u32;
-    v14 = const.u32 0 : u32;
-    v15 = mul.checked v2, 4 : u32;
-    br block3(v10, v13, v14);
+    (block 2
+        (let (v13 u32) (const.u32 0))
+        (let (v14 u32) (const.u32 0))
+        (let (v15 u32) (mul.checked v2 4))
+        (br (block 3 v10 v13 v14)))
 
-block3(v4: u32, v5: u32, v6: u32):
-    v16 = lt v5, v1 : i1;
-    v17 = mul.checked v5, v15 : u32;
-    condbr v16, block4(v4, v5, v6), block8;
+    (block 3 (param v4 u32) (param v5 u32) (param v6 u32)
+        (let (v16 i1) (lt v5 v1))
+        (let (v17 u32) (mul.checked v5 v15))
+        (condbr v16 (block 4 v4 v5 v6) (block 8)))
 
-block8:
-    ret v4;
+    (block 8
+        (ret v4))
 
-block4(v7: u32, v8: u32, v9: u32):
-    v18 = lt v9, v2 : i1;
-    condbr v18, block5, block6;
+    (block 4 (param v7 u32) (param v8 u32) (param v9 u32)
+        (let (v18 i1) (lt v9 v2))
+        (condbr v18 (block 5) (block 6)))
 
-block5:
-    v19 = mul.checked v9, 4 : u32;
-    v20 = add.checked v17, v19 : u32;
-    v21 = add.checked v11, v20 : u32;
-    v22 = inttoptr v21 : *mut u32;
-    v23 = load v22 : u32;
-    v24 = add.checked v7, v23 : u32;
-    v25 = incr.wrapping v9 : u32;
-    br block4(v24, v8, v25);
+    (block 5
+        (let (v19 u32) (mul.checked v9 4))
+        (let (v20 u32) (add.checked v17 v19))
+        (let (v21 u32) (add.checked v11 v20))
+        (let (v22 (ptr u32)) (inttoptr v21))
+        (let (v23 u32) (load v22))
+        (let (v24 u32) (add.checked v7 v23))
+        (let (v25 u32) (incr.wrapping v9))
+        (br (block 4 v24 v8 v25)))
 
-block6:
-    v26 = incr.wrapping v8 : u32;
-    v27 = const.u32 0 : u32;
-    br block3(v7, v26, v27);
-}
-";
+    (block 6
+        (let (v26 u32) (incr.wrapping v8))
+        (let (v27 u32) (const.u32 0))
+        (br (block 3 v7 v26 v27)))
+)";
 
         let transformed = function.to_string();
         assert_ne!(transformed, original);

@@ -7,8 +7,11 @@ use miden_diagnostics::{SourceIndex, SourceSpan};
 use miden_parsing::{Scanner, Source};
 use num_traits::Num;
 
-pub use self::{error::LexicalError, token::Token};
-use crate::{parser::ParseError, Block, Symbol, Value};
+pub use self::{
+    error::{InvalidEscapeKind, LexicalError},
+    token::Token,
+};
+use crate::{parser::ParseError, Symbol, Value};
 
 /// The value produced by the [Lexer] when iterated
 pub type Lexed = Result<(SourceIndex, Token, SourceIndex), ParseError>;
@@ -25,6 +28,7 @@ macro_rules! pop {
 }
 
 /// Pops two tokens from the [Lexer]
+#[allow(unused)]
 macro_rules! pop2 {
     ($lex:ident) => {{
         $lex.skip();
@@ -169,6 +173,7 @@ where
     }
 
     #[inline]
+    #[allow(unused)]
     fn slice_span(&self, span: impl Into<Range<usize>>) -> &str {
         self.scanner.slice(span)
     }
@@ -196,18 +201,8 @@ where
     fn tokenize(&mut self) -> Token {
         let c = self.read();
 
-        if c == '/' {
-            match self.peek() {
-                '/' => {
-                    self.skip();
-                    self.skip();
-                    return self.lex_comment();
-                }
-                c => Token::Error(LexicalError::UnexpectedCharacter {
-                    start: self.span().start(),
-                    found: c,
-                }),
-            };
+        if c == ';' {
+            return self.lex_comment();
         }
 
         if c == '\0' {
@@ -220,32 +215,17 @@ where
         }
 
         match self.read() {
-            ',' => pop!(self, Token::Comma),
             '.' => pop!(self, Token::Dot),
-            ':' => pop!(self, Token::Colon),
-            ';' => pop!(self, Token::Semicolon),
-            '"' => self.lex_quoted_identifier(),
+            '"' => self.lex_quoted_string(),
             '(' => pop!(self, Token::LParen),
             ')' => pop!(self, Token::RParen),
             '[' => pop!(self, Token::LBracket),
             ']' => pop!(self, Token::RBracket),
-            '{' => pop!(self, Token::LBrace),
-            '}' => pop!(self, Token::RBrace),
-            '=' => match self.peek() {
-                '>' => pop2!(self, Token::RDoubleArrow),
-                _ => pop!(self, Token::Equal),
-            },
             '+' => self.lex_number(),
-            '-' => match self.peek() {
-                '>' => pop2!(self, Token::RArrow),
-                _ => self.lex_number(),
-            },
-            '*' => pop!(self, Token::Star),
-            '&' => pop!(self, Token::Ampersand),
+            '-' => self.lex_number(),
             '!' => pop!(self, Token::Bang),
-            '@' => pop!(self, Token::At),
-            '$' => pop!(self, Token::Dollar),
-            '#' => pop!(self, Token::Hash),
+            '?' => pop!(self, Token::Question),
+            '#' => self.lex_symbol(),
             '0' => match self.peek() {
                 'x' => {
                     self.skip();
@@ -256,12 +236,8 @@ where
                 _ => pop!(self, Token::Int(0)),
             },
             '1'..='9' => self.lex_number(),
-            'a'..='z' => self.lex_keyword_or_ident(),
-            'A'..='Z' => self.lex_identifier(),
-            '_' => match self.peek() {
-                c if c.is_ascii_alphanumeric() || c == '_' => self.lex_identifier(),
-                _ => pop!(self, Token::Underscore),
-            },
+            'a'..='z' => self.lex_keyword_or_special_ident(),
+            '_' => pop!(self, Token::Underscore),
             c => Token::Error(LexicalError::UnexpectedCharacter {
                 start: self.span().start(),
                 found: c,
@@ -275,6 +251,7 @@ where
             c = self.read();
 
             if c == '\n' {
+                self.skip();
                 break;
             }
 
@@ -289,64 +266,154 @@ where
         Token::Comment
     }
 
-    #[inline]
-    fn lex_keyword_or_ident(&mut self) -> Token {
+    fn lex_symbol(&mut self) -> Token {
+        let c = self.pop();
+        debug_assert_eq!(c, '#');
+
+        // A '#' followed by any sequence of printable ASCII characters,
+        // except whitespace, quotation marks, comma, semicolon, or params/brackets
+        loop {
+            match self.read() {
+                c if c.is_ascii_control() => break,
+                ' ' | '\'' | '"' | ',' | ';' | '[' | ']' | '(' | ')' => break,
+                c if c.is_ascii_graphic() => self.skip(),
+                _ => break,
+            }
+        }
+
+        Token::Ident(Symbol::intern(&self.slice()[1..]))
+    }
+
+    fn lex_keyword_or_special_ident(&mut self) -> Token {
         let c = self.pop();
         debug_assert!(c.is_ascii_alphabetic() && c.is_lowercase());
 
-        if self.skip_ident(true) {
-            self.handle_function_ident(self.slice())
-        } else {
-            let s = self.slice();
-            if let Some(rest) = s.strip_prefix('v') {
-                return match rest.parse::<u32>() {
-                    Ok(id) => Token::Value(Value::from_u32(id)),
-                    Err(_) => Token::from_keyword_or_ident(s),
-                };
-            }
-            if let Some(rest) = s.strip_prefix("block") {
-                return match rest.parse::<u32>() {
-                    Ok(id) => Token::Block(Block::from_u32(id)),
-                    Err(_) => Token::from_keyword_or_ident(s),
-                };
-            }
-            Token::from_keyword_or_ident(self.slice())
-        }
-    }
-
-    fn lex_quoted_identifier(&mut self) -> Token {
-        use miden_diagnostics::ByteOffset;
-
-        let quote = self.pop();
-        debug_assert!(quote == '"' || quote == '\'');
-        let mut buf = None;
         loop {
             match self.read() {
-                '\0' if quote == '"' => {
-                    return Token::Error(LexicalError::UnclosedString { span: self.span() });
-                }
-                c if c == quote => {
-                    let span = self.span().shrink_front(ByteOffset(1));
-
-                    self.skip();
-                    self.advance_start();
-                    if self.read() == quote {
-                        self.skip();
-
-                        buf = Some(self.slice_span(span).to_string());
-                        continue;
+                '_' => self.skip(),
+                '.' => {
+                    // We only allow '.' when followed by a alpha character
+                    match self.peek() {
+                        c if c.is_ascii_lowercase() => self.skip(),
+                        _ => break,
                     }
-
-                    let symbol = if let Some(mut buf) = buf {
-                        buf.push_str(self.slice_span(span));
-                        Symbol::intern(&buf)
-                    } else {
-                        Symbol::intern(self.slice_span(span))
-                    };
-
-                    return Token::Ident(symbol);
                 }
-                _ => {
+                '0'..='9' => self.skip(),
+                c if c.is_ascii_lowercase() => self.skip(),
+                _ => break,
+            }
+        }
+
+        let s = self.slice();
+        if let Some(rest) = s.strip_prefix('v') {
+            return match rest.parse::<u32>() {
+                Ok(id) => Token::ValueId(Value::from_u32(id)),
+                Err(_) => Token::from_keyword(s).unwrap_or_else(|| Token::Ident(Symbol::intern(s))),
+            };
+        }
+        Token::from_keyword(s).unwrap_or_else(|| Token::Ident(Symbol::intern(s)))
+    }
+
+    fn lex_quoted_string(&mut self) -> Token {
+        let quote = self.pop();
+        debug_assert!(quote == '"');
+
+        let mut buf = String::new();
+        loop {
+            match self.read() {
+                '\0' => {
+                    break Token::Error(LexicalError::UnclosedString { span: self.span() });
+                }
+                '"' => {
+                    self.skip();
+                    let symbol = Symbol::intern(&buf);
+
+                    break Token::String(symbol);
+                }
+                '\\' => {
+                    self.skip();
+                    let start = self.token_end - 1;
+                    match self.read() {
+                        't' => buf.push('\t'),
+                        'n' => buf.push('\n'),
+                        'r' => buf.push('\r'),
+                        '"' => buf.push('"'),
+                        '\\' => buf.push('\\'),
+                        c if c.is_ascii_hexdigit() && self.peek().is_ascii_hexdigit() => {
+                            self.skip();
+                            let c2 = self.read();
+                            self.skip();
+                            let n = c.to_digit(16).unwrap();
+                            let m = c2.to_digit(16).unwrap();
+                            match char::from_u32((16 * n) + m) {
+                                Some(escaped) => buf.push(escaped),
+                                None => {
+                                    break Token::Error(LexicalError::InvalidHexEscape {
+                                        span: SourceSpan::new(start, self.token_end),
+                                        kind: InvalidEscapeKind::Invalid,
+                                    });
+                                }
+                            }
+                        }
+                        'u' if self.peek() == '{' => {
+                            let mut escape = 0u32;
+                            self.skip();
+                            self.skip();
+                            if self.read() == '}' {
+                                break Token::Error(LexicalError::InvalidUnicodeEscape {
+                                    span: SourceSpan::new(start, self.token_end),
+                                    kind: InvalidEscapeKind::Empty,
+                                });
+                            }
+                            loop {
+                                let c = self.read();
+                                if !c.is_ascii_hexdigit() {
+                                    match c {
+                                        '}' => {
+                                            self.skip();
+                                            break;
+                                        }
+                                        '_' => {
+                                            self.skip();
+                                            continue;
+                                        }
+                                        _ => {
+                                            return Token::Error(
+                                                LexicalError::InvalidUnicodeEscape {
+                                                    span: SourceSpan::new(
+                                                        self.token_end - 1,
+                                                        self.token_end,
+                                                    ),
+                                                    kind: InvalidEscapeKind::InvalidChars,
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                                escape *= 16;
+                                escape += c.to_digit(16).unwrap();
+                                self.skip();
+                            }
+                            match char::from_u32(escape) {
+                                Some(escaped) => buf.push(escaped),
+                                None => {
+                                    break Token::Error(LexicalError::InvalidUnicodeEscape {
+                                        span: SourceSpan::new(start, self.token_end),
+                                        kind: InvalidEscapeKind::Invalid,
+                                    });
+                                }
+                            }
+                        }
+                        _ => {
+                            break Token::Error(LexicalError::InvalidHexEscape {
+                                span: SourceSpan::new(start, self.token_end),
+                                kind: InvalidEscapeKind::InvalidChars,
+                            });
+                        }
+                    }
+                }
+                c => {
+                    buf.push(c);
                     self.skip();
                     continue;
                 }
@@ -354,70 +421,6 @@ where
         }
     }
 
-    #[inline]
-    fn lex_identifier(&mut self) -> Token {
-        let c = self.pop();
-        debug_assert!(c.is_ascii_alphabetic() || c == '_');
-
-        if self.skip_ident(false) {
-            self.handle_function_ident(self.slice())
-        } else {
-            Token::Ident(Symbol::intern(self.slice()))
-        }
-    }
-
-    // Returns true if the identifier is a namespaced identifier (contains double colons), false
-    // otherwise
-    fn skip_ident(&mut self, allow_dot: bool) -> bool {
-        let mut is_namespaced = false;
-        loop {
-            match self.read() {
-                '_' => self.skip(),
-                '.' if allow_dot => {
-                    // We only allow '.' when followed by a alpha character
-                    match self.peek() {
-                        c if c.is_ascii_alphabetic() => self.skip(),
-                        _ => break,
-                    }
-                }
-                '0'..='9' => self.skip(),
-                ':' => match self.peek() {
-                    ':' => {
-                        is_namespaced = true;
-                        self.skip();
-                        self.skip()
-                    }
-                    _ => break,
-                },
-                c if c.is_ascii_alphabetic() => self.skip(),
-                _ => break,
-            }
-        }
-        is_namespaced
-    }
-
-    fn handle_function_ident(&self, s: &str) -> Token {
-        if let Some((offset, c)) = s.char_indices().find(|(_, c)| *c == '.' || c.is_whitespace()) {
-            Token::Error(LexicalError::UnexpectedCharacter {
-                start: self.span().start() + offset,
-                found: c,
-            })
-        } else {
-            match s.rsplit_once("::").unwrap() {
-                (_, function) if function.is_empty() => {
-                    Token::Error(LexicalError::InvalidFunctionIdentifier { span: self.span() })
-                }
-                (module, _) if module.is_empty() => {
-                    Token::Error(LexicalError::InvalidModuleIdentifier { span: self.span() })
-                }
-                (module, function) => {
-                    Token::FunctionIdent((Symbol::intern(module), Symbol::intern(function)))
-                }
-            }
-        }
-    }
-
-    #[inline]
     fn lex_number(&mut self) -> Token {
         use num_bigint::BigInt;
 
@@ -451,7 +454,6 @@ where
         }
     }
 
-    #[inline]
     fn lex_hex(&mut self) -> Token {
         let mut res: Vec<u8> = Vec::new();
 
@@ -478,11 +480,15 @@ where
             }
             self.skip();
 
-            // The data is big-endian, so shift the first char left by 4 bits, and
-            // add to the value of the second char
+            // Each byte is represented by two hex digits, which can be converted
+            // to a value in the range 0..256 as by shifting the first left by 4
+            // bits (equivalent to multiplying by 16), then adding the second digit
             let byte = (c1.to_digit(16).unwrap() << 4) + c2.to_digit(16).unwrap();
             res.push(byte as u8);
         }
+
+        // We parse big-endian, but convert to little-endian
+        res.reverse();
 
         Token::Hex(res.into())
     }
@@ -495,26 +501,10 @@ where
     type Item = Lexed;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let last = self.token.clone();
         let mut res = self.lex();
         while let Some(Ok((_, Token::Comment, _))) = res {
             res = self.lex();
         }
-        match res {
-            Some(Ok((start, Token::FunctionIdent((mid, fid)), end))) => {
-                match last {
-                    // If we parse a namespaced identifier right after the `module` or `kernel`
-                    // keyword, it is a module name, not a function name, so
-                    // convert it into a Ident token when this happens.
-                    Token::Module | Token::Kernel => {
-                        let module_name = format!("{}::{}", mid, fid);
-                        let module_id = Symbol::intern(module_name);
-                        Some(Ok((start, Token::Ident(module_id), end)))
-                    }
-                    _ => Some(Ok((start, Token::FunctionIdent((mid, fid)), end))),
-                }
-            }
-            res => res,
-        }
+        res
     }
 }

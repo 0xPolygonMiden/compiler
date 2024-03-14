@@ -4,10 +4,10 @@ mod functions;
 mod globals;
 mod instruction;
 
-use std::{collections::BTreeMap, fmt};
+use alloc::collections::BTreeMap;
+use core::fmt;
 
 use miden_diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned};
-use rustc_hash::FxHashMap;
 
 pub use self::{block::*, convert::ConvertAstToHir, functions::*, globals::*, instruction::*};
 use crate::{ExternalFunction, FunctionIdent, Ident};
@@ -20,6 +20,7 @@ pub struct Module {
     pub name: Ident,
     pub constants: Vec<ConstantDeclaration>,
     pub global_vars: Vec<GlobalVarDeclaration>,
+    pub data_segments: Vec<DataSegmentDeclaration>,
     pub functions: Vec<FunctionDeclaration>,
     pub externals: Vec<Span<ExternalFunction>>,
     pub is_kernel: bool,
@@ -30,6 +31,7 @@ impl fmt::Debug for Module {
             .field("name", &self.name.as_symbol())
             .field("constants", &self.constants)
             .field("global_vars", &self.global_vars)
+            .field("data_segments", &self.data_segments)
             .field("functions", &self.functions)
             .field("externals", &self.externals)
             .field("is_kernel", &self.is_kernel)
@@ -50,11 +52,13 @@ impl midenc_session::Emit for Module {
     }
 }
 
-type ConstantsById = FxHashMap<crate::Constant, Span<crate::ConstantData>>;
-type GlobalVariablesById = FxHashMap<crate::GlobalVariable, Span<crate::GlobalVariableData>>;
-type ImportsById = FxHashMap<FunctionIdent, Span<crate::ExternalFunction>>;
-type BlocksById = FxHashMap<crate::Block, Block>;
+type ConstantsById = BTreeMap<crate::Constant, Span<crate::ConstantData>>;
+type RemappedConstants = BTreeMap<crate::Constant, crate::Constant>;
+type GlobalVariablesById = BTreeMap<crate::GlobalVariable, Span<crate::GlobalVariableData>>;
+type ImportsById = BTreeMap<FunctionIdent, Span<crate::ExternalFunction>>;
+type BlocksById = BTreeMap<crate::Block, Block>;
 type ValuesById = BTreeMap<crate::Value, Span<crate::ValueData>>;
+type InstResults = BTreeMap<crate::Inst, Vec<crate::Value>>;
 
 impl Module {
     pub fn new(span: SourceSpan, name: Ident, is_kernel: bool, forms: Vec<Form>) -> Self {
@@ -65,6 +69,7 @@ impl Module {
             functions: vec![],
             externals: vec![],
             global_vars: vec![],
+            data_segments: vec![],
             is_kernel,
         };
         for form in forms.into_iter() {
@@ -74,6 +79,9 @@ impl Module {
                 }
                 Form::Global(global) => {
                     module.global_vars.push(global);
+                }
+                Form::DataSegment(segment) => {
+                    module.data_segments.push(segment);
                 }
                 Form::Function(function) => {
                     module.functions.push(function);
@@ -90,7 +98,7 @@ impl Module {
         &mut self,
         diagnostics: &DiagnosticsHandler,
     ) -> (ConstantsById, bool) {
-        use std::collections::hash_map::Entry;
+        use alloc::collections::btree_map::Entry;
 
         let mut constants_by_id = ConstantsById::default();
         let constants = core::mem::take(&mut self.constants);
@@ -121,10 +129,10 @@ impl Module {
 
     fn take_and_validate_globals(
         &mut self,
-        constants_by_id: &ConstantsById,
+        remapped_constants: &RemappedConstants,
         diagnostics: &DiagnosticsHandler,
     ) -> (GlobalVariablesById, bool) {
-        use std::collections::hash_map::Entry;
+        use alloc::collections::btree_map::Entry;
 
         let mut globals_by_id = GlobalVariablesById::default();
         let global_vars = core::mem::take(&mut self.global_vars);
@@ -133,7 +141,7 @@ impl Module {
             match globals_by_id.entry(global.id) {
                 Entry::Vacant(entry) => {
                     if let Some(id) = global.init {
-                        if !constants_by_id.contains_key(&id) {
+                        if !remapped_constants.contains_key(&id) {
                             let id = id.as_u32();
                             diagnostics
                                 .diagnostic(Severity::Error)
@@ -154,7 +162,7 @@ impl Module {
                         global.name,
                         global.ty,
                         global.linkage,
-                        global.init,
+                        global.init.map(|id| remapped_constants[&id]),
                     );
                     entry.insert(Span::new(global.span, gv));
                 }
@@ -181,7 +189,7 @@ impl Module {
         &mut self,
         diagnostics: &DiagnosticsHandler,
     ) -> (ImportsById, bool) {
-        use std::collections::hash_map::Entry;
+        use alloc::collections::btree_map::Entry;
 
         let mut imports_by_id = ImportsById::default();
         let mut is_valid = true;
@@ -229,6 +237,7 @@ impl PartialEq for Module {
         self.name == other.name
             && self.is_kernel == other.is_kernel
             && self.global_vars == other.global_vars
+            && self.data_segments == other.data_segments
             && self.functions == other.functions
             && self.externals == other.externals
     }
@@ -239,6 +248,7 @@ impl PartialEq for Module {
 pub enum Form {
     Constant(ConstantDeclaration),
     Global(GlobalVarDeclaration),
+    DataSegment(DataSegmentDeclaration),
     Function(FunctionDeclaration),
     ExternalFunction(Span<ExternalFunction>),
 }

@@ -2,6 +2,22 @@ use core::{fmt, num::IntErrorKind};
 
 use miden_diagnostics::{Diagnostic, SourceIndex, SourceSpan, ToDiagnostic};
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum InvalidEscapeKind {
+    Empty,
+    InvalidChars,
+    Invalid,
+}
+impl fmt::Display for InvalidEscapeKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Empty => f.write_str("cannot be empty"),
+            Self::InvalidChars => f.write_str("contained one or more invalid characters"),
+            Self::Invalid => f.write_str("is not recognized as a valid escape"),
+        }
+    }
+}
+
 /// Errors that may occur during lexing of the source
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum LexicalError {
@@ -14,6 +30,16 @@ pub enum LexicalError {
     UnexpectedCharacter { start: SourceIndex, found: char },
     #[error("unclosed string")]
     UnclosedString { span: SourceSpan },
+    #[error("invalid unicode escape: {kind}")]
+    InvalidUnicodeEscape {
+        span: SourceSpan,
+        kind: InvalidEscapeKind,
+    },
+    #[error("invalid hex escape: {kind}")]
+    InvalidHexEscape {
+        span: SourceSpan,
+        kind: InvalidEscapeKind,
+    },
     #[error("invalid module identifier")]
     InvalidModuleIdentifier { span: SourceSpan },
     #[error("invalid function identifier")]
@@ -30,6 +56,13 @@ impl PartialEq for LexicalError {
                 Self::UnexpectedCharacter { found: rhs, .. },
             ) => lhs == rhs,
             (Self::UnclosedString { .. }, Self::UnclosedString { .. }) => true,
+            (
+                Self::InvalidUnicodeEscape { kind: k1, .. },
+                Self::InvalidUnicodeEscape { kind: k2, .. },
+            ) => k1 == k2,
+            (Self::InvalidHexEscape { kind: k1, .. }, Self::InvalidHexEscape { kind: k2, .. }) => {
+                k1 == k2
+            }
             (Self::InvalidModuleIdentifier { .. }, Self::InvalidModuleIdentifier { .. }) => true,
             (Self::InvalidFunctionIdentifier { .. }, Self::InvalidFunctionIdentifier { .. }) => {
                 true
@@ -55,6 +88,16 @@ impl ToDiagnostic for LexicalError {
             Self::UnclosedString { span, .. } => Diagnostic::error()
                 .with_message("unclosed string")
                 .with_labels(vec![Label::primary(span.source_id(), span)]),
+            Self::InvalidUnicodeEscape { span, kind } => {
+                Diagnostic::error().with_message("invalid unicode escape").with_labels(vec![
+                    Label::primary(span.source_id(), span).with_message(kind.to_string()),
+                ])
+            }
+            Self::InvalidHexEscape { span, kind } => {
+                Diagnostic::error().with_message("invalid hex escape").with_labels(vec![
+                    Label::primary(span.source_id(), span).with_message(kind.to_string()),
+                ])
+            }
             Self::InvalidModuleIdentifier { span, .. } => Diagnostic::error()
                 .with_message("invalid module identifier")
                 .with_labels(vec![Label::primary(span.source_id(), span).with_message(
