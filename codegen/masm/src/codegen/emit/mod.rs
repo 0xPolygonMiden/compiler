@@ -5,10 +5,7 @@ pub const P: u64 = (2u128.pow(64) - 2u128.pow(32) + 1) as u64;
 /// integer sizes we support as a general rule.
 macro_rules! assert_valid_integer_size {
     ($n:ident) => {
-        assert!(
-            $n > 0,
-            "invalid integer size: size in bits must be non-zero"
-        );
+        assert!($n > 0, "invalid integer size: size in bits must be non-zero");
         assert!(
             $n.is_power_of_two(),
             "invalid integer size: size in bits must be a power of two, got {}",
@@ -62,7 +59,8 @@ macro_rules! assert_valid_stack_index {
     ($idx:ident) => {
         assert!(
             $idx < 16,
-            "invalid stack index: only the first 16 elements on the stack are directly accessible, got {}",
+            "invalid stack index: only the first 16 elements on the stack are directly \
+             accessible, got {}",
             $idx
         );
     };
@@ -70,10 +68,11 @@ macro_rules! assert_valid_stack_index {
     ($idx:expr) => {
         assert!(
             ($idx) < 16,
-            "invalid stack index: only the first 16 elements on the stack are directly accessible, got {}",
+            "invalid stack index: only the first 16 elements on the stack are directly \
+             accessible, got {}",
             $idx
         );
-    }
+    };
 }
 
 pub mod binary;
@@ -87,11 +86,11 @@ pub mod smallint;
 pub mod unary;
 
 use core::ops::{Deref, DerefMut};
+
 use miden_hir::{self as hir, Immediate, Type};
 
-use crate::masm::{self as masm, Op};
-
 use super::{Operand, OperandStack};
+use crate::masm::{self as masm, Op};
 
 /// This structure is used to emit the Miden Assembly ops corresponding to an IR instruction.
 ///
@@ -199,6 +198,7 @@ impl<'a> OpEmitter<'a> {
     pub fn stack_mut<'c, 'b: 'c>(&'b mut self) -> &'c mut OperandStack {
         self.stack
     }
+
     /// Emit `op` to the current block
     #[inline(always)]
     pub fn emit(&mut self, op: masm::Op) {
@@ -479,10 +479,11 @@ impl<'a> OpEmitter<'a> {
 
     /// Copy the `n`th operand on the stack, and make it the `m`th operand on the stack.
     ///
-    /// If the operand is for a commutative, binary operator, indicated by `is_commutative_binary_operand`,
-    /// and the desired position is just below the top of stack, this function may leave it on top of the
-    /// stack instead, since the order of the operands is not strict. This can result in fewer stack
-    /// manipulation instructions in some scenarios.
+    /// If the operand is for a commutative, binary operator, indicated by
+    /// `is_commutative_binary_operand`, and the desired position is just below the top of
+    /// stack, this function may leave it on top of the stack instead, since the order of the
+    /// operands is not strict. This can result in fewer stack manipulation instructions in some
+    /// scenarios.
     pub fn copy_operand_to_position(
         &mut self,
         n: usize,
@@ -516,11 +517,11 @@ impl<'a> OpEmitter<'a> {
 
     /// Make the `n`th operand on the stack, the `m`th operand on the stack.
     ///
-    /// If the operand is for a commutative, binary operator, indicated by `is_commutative_binary_operand`,
-    /// and the desired position is one of the first two items on the stack, this function may leave the
-    /// operand in it's current position if it is already one of the first two items on the stack,
-    /// since the order of the operands is not strict. This can result in fewer stack manipulation
-    /// instructions in some scenarios.
+    /// If the operand is for a commutative, binary operator, indicated by
+    /// `is_commutative_binary_operand`, and the desired position is one of the first two items
+    /// on the stack, this function may leave the operand in it's current position if it is
+    /// already one of the first two items on the stack, since the order of the operands is not
+    /// strict. This can result in fewer stack manipulation instructions in some scenarios.
     pub fn move_operand_to_position(
         &mut self,
         n: usize,
@@ -574,13 +575,10 @@ impl<'a> OpEmitter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{AbiParam, Felt, FieldElement, Overflow, Signature, Type};
+    use miden_hir::{AbiParam, Felt, FieldElement, Overflow, Signature};
 
     use super::*;
-    use crate::{
-        codegen::{OperandStack, TypedValue},
-        masm::Function,
-    };
+    use crate::{codegen::TypedValue, masm::Function};
 
     #[test]
     fn op_emitter_stack_manipulation_test() {
@@ -609,10 +607,7 @@ mod tests {
             assert_eq!(ops[1], Op::PushU32(2));
             assert_eq!(ops[2], Op::PushU8(3));
             assert_eq!(ops[3], Op::Push2([Felt::new(1), Felt::ZERO]));
-            assert_eq!(
-                ops[4],
-                Op::Push2([Felt::new(3), Felt::new(u32::MAX as u64)])
-            );
+            assert_eq!(ops[4], Op::Push2([Felt::new(3), Felt::new(u32::MAX as u64)]));
         }
 
         assert_eq!(emitter.stack()[0], five);
@@ -688,7 +683,8 @@ mod tests {
             assert_eq!(ops[9], Op::Movdn(6)); // [five_b, three, five_c, five_d, four_a, four_b, five_a]
             assert_eq!(ops[10], Op::Movdn(6)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
             assert_eq!(ops[11], Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[12], Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
+            assert_eq!(ops[12], Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a,
+                                               // five_b]
         }
 
         emitter.movdn(2);
@@ -708,7 +704,8 @@ mod tests {
             assert_eq!(ops[11], Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
             assert_eq!(ops[12], Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
             assert_eq!(ops[13], Op::Movdn(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[14], Op::Movdn(4)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
+            assert_eq!(ops[14], Op::Movdn(4)); // [three, five_c, five_d, four_a, four_b, five_a,
+                                               // five_b]
         }
 
         emitter.movup(2);
@@ -726,7 +723,8 @@ mod tests {
             assert_eq!(ops[13], Op::Movdn(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
             assert_eq!(ops[14], Op::Movdn(4)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
             assert_eq!(ops[15], Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[16], Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
+            assert_eq!(ops[16], Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a,
+                                               // five_b]
         }
 
         emitter.drop();

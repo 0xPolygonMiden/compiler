@@ -1,8 +1,7 @@
 use miden_hir::{self as hir, ArgumentExtension, ArgumentPurpose, Felt, Immediate, Type};
 
-use crate::masm::Op;
-
 use super::{int64, OpEmitter};
+use crate::masm::Op;
 
 impl<'a> OpEmitter<'a> {
     /// Assert that an integer value on the stack has the value 1
@@ -67,11 +66,7 @@ impl<'a> OpEmitter<'a> {
         let rhs = self.pop().expect("operand stack is empty");
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(
-            ty,
-            rhs.ty(),
-            "expected assert_eq operands to have the same type"
-        );
+        assert_eq!(ty, rhs.ty(), "expected assert_eq operands to have the same type");
         match ty {
             Type::Felt
             | Type::U32
@@ -107,11 +102,7 @@ impl<'a> OpEmitter<'a> {
     pub fn assert_eq_imm(&mut self, imm: Immediate) {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(
-            ty,
-            imm.ty(),
-            "expected assert_eq_imm operands to have the same type"
-        );
+        assert_eq!(ty, imm.ty(), "expected assert_eq_imm operands to have the same type");
         match ty {
             Type::Felt
             | Type::U32
@@ -151,8 +142,9 @@ impl<'a> OpEmitter<'a> {
     /// Emit code to select between two values of the same type, based on a boolean condition.
     ///
     /// The semantics of this instruction are basically the same as Miden's `cdrop` instruction,
-    /// but with support for selecting between any of the representable integer/pointer types as values.
-    /// Given three values on the operand stack (in order of appearance), `c`, `b`, and `a`:
+    /// but with support for selecting between any of the representable integer/pointer types as
+    /// values. Given three values on the operand stack (in order of appearance), `c`, `b`, and
+    /// `a`:
     ///
     /// * Pop `c` from the stack. This value must be an i1/boolean, or execution will trap.
     /// * Pop `b` and `a` from the stack, and push back `b` if `c` is true, or `a` if `c` is false.
@@ -213,9 +205,23 @@ impl<'a> OpEmitter<'a> {
             // Validate the purpose matches
             match param.purpose {
                 ArgumentPurpose::StructReturn => {
-                    assert_eq!(i, 0, "invalid function signature: sret parameters must be the first parameter, and only one sret parameter is allowed");
-                    assert_eq!(signature.results.len(), 0, "invalid function signature: a function with sret parameters cannot also have results");
-                    assert!(ty.is_pointer(), "invalid exec to {callee}: invalid argument for sret parameter, expected {}, got {ty}", &param.ty);
+                    assert_eq!(
+                        i, 0,
+                        "invalid function signature: sret parameters must be the first parameter, \
+                         and only one sret parameter is allowed"
+                    );
+                    assert_eq!(
+                        signature.results.len(),
+                        0,
+                        "invalid function signature: a function with sret parameters cannot also \
+                         have results"
+                    );
+                    assert!(
+                        ty.is_pointer(),
+                        "invalid exec to {callee}: invalid argument for sret parameter, expected \
+                         {}, got {ty}",
+                        &param.ty
+                    );
                 }
                 ArgumentPurpose::Default => (),
             }
@@ -223,34 +229,71 @@ impl<'a> OpEmitter<'a> {
             match param.extension {
                 // Types must match exactly
                 ArgumentExtension::None => {
-                    assert_eq!(ty, param.ty, "invalid call to {callee}: invalid argument type for parameter at index {i}");
+                    assert_eq!(
+                        ty, param.ty,
+                        "invalid call to {callee}: invalid argument type for parameter at index \
+                         {i}"
+                    );
                 }
-                // Caller can provide a smaller type which will be zero-extended to the expected type
+                // Caller can provide a smaller type which will be zero-extended to the expected
+                // type
                 //
-                // However, the argument must be an unsigned integer, and of smaller or equal size in order for the types to differ
+                // However, the argument must be an unsigned integer, and of smaller or equal size
+                // in order for the types to differ
                 ArgumentExtension::Zext if ty != param.ty => {
-                    assert!(param.ty.is_unsigned_integer(), "invalid function signature: zero-extension is only valid for unsigned integer types");
-                    assert!(ty.is_unsigned_integer(), "invalid call to {callee}: invalid argument type for parameter at index {i}, expected unsigned integer type, got {ty}");
+                    assert!(
+                        param.ty.is_unsigned_integer(),
+                        "invalid function signature: zero-extension is only valid for unsigned \
+                         integer types"
+                    );
+                    assert!(
+                        ty.is_unsigned_integer(),
+                        "invalid call to {callee}: invalid argument type for parameter at index \
+                         {i}, expected unsigned integer type, got {ty}"
+                    );
                     let expected_size = param.ty.size_in_bits();
                     let provided_size = param.ty.size_in_bits();
-                    assert!(provided_size <= expected_size, "invalid call to {callee}: invalid argument type for parameter at index {i}, expected integer width to be <= {expected_size} bits");
+                    assert!(
+                        provided_size <= expected_size,
+                        "invalid call to {callee}: invalid argument type for parameter at index \
+                         {i}, expected integer width to be <= {expected_size} bits"
+                    );
                     // Zero-extend this argument
                     self.stack.push(arg);
                     self.zext(&param.ty);
                     self.stack.drop();
                 }
-                // Caller can provide a smaller type which will be sign-extended to the expected type
+                // Caller can provide a smaller type which will be sign-extended to the expected
+                // type
                 //
-                // However, the argument must be an integer which can fit in the range of the expected type
+                // However, the argument must be an integer which can fit in the range of the
+                // expected type
                 ArgumentExtension::Sext if ty != param.ty => {
-                    assert!(param.ty.is_signed_integer(), "invalid function signature: sign-extension is only valid for signed integer types");
-                    assert!(ty.is_integer(), "invalid call to {callee}: invalid argument type for parameter at index {i}, expected integer type, got {ty}");
+                    assert!(
+                        param.ty.is_signed_integer(),
+                        "invalid function signature: sign-extension is only valid for signed \
+                         integer types"
+                    );
+                    assert!(
+                        ty.is_integer(),
+                        "invalid call to {callee}: invalid argument type for parameter at index \
+                         {i}, expected integer type, got {ty}"
+                    );
                     let expected_size = param.ty.size_in_bits();
                     let provided_size = param.ty.size_in_bits();
                     if ty.is_unsigned_integer() {
-                        assert!(provided_size < expected_size, "invalid call to {callee}: invalid argument type for parameter at index {i}, expected unsigned integer width to be < {expected_size} bits");
+                        assert!(
+                            provided_size < expected_size,
+                            "invalid call to {callee}: invalid argument type for parameter at \
+                             index {i}, expected unsigned integer width to be < {expected_size} \
+                             bits"
+                        );
                     } else {
-                        assert!(provided_size <= expected_size, "invalid call to {callee}: invalid argument type for parameter at index {i}, expected integer width to be <= {expected_size} bits");
+                        assert!(
+                            provided_size <= expected_size,
+                            "invalid call to {callee}: invalid argument type for parameter at \
+                             index {i}, expected integer width to be <= {expected_size} bits"
+                        );
                     }
                     // Push the operand back on the stack for `sext`
                     self.stack.push(arg);

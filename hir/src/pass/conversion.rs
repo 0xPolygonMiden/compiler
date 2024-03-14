@@ -24,7 +24,8 @@ impl<P> ConversionPassInfo for P where P: PassInfo + ConversionPass {}
 
 /// A [ConversionPass] is a pass which applies a change in representation to some compiler entity.
 ///
-/// Specifically, this is used to convert between intermediate representations/dialects in the compiler.
+/// Specifically, this is used to convert between intermediate representations/dialects in the
+/// compiler.
 ///
 /// For example, a conversion pass would be used to lower a `miden_hir::parser::ast::Module`
 /// to a `miden_hir::Module`. Each conversion between dialects like this can be thought of

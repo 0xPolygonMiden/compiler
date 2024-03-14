@@ -1,6 +1,5 @@
-use crate::masm::Op;
-
 use super::OpEmitter;
+use crate::masm::Op;
 
 #[allow(unused)]
 impl<'a> OpEmitter<'a> {
@@ -153,7 +152,8 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
-    /// Pop two i128 values, `b` and `a`, off the operand stack, and place the result of `a == b` on the stack.
+    /// Pop two i128 values, `b` and `a`, off the operand stack, and place the result of `a == b` on
+    /// the stack.
     #[inline]
     pub fn eq_i128(&mut self) {
         self.emit_all(&[
@@ -166,7 +166,8 @@ impl<'a> OpEmitter<'a> {
         ]);
     }
 
-    /// Pop two i128 values, `b` and `a`, off the operand stack, and place the result of `a == b` on the stack.
+    /// Pop two i128 values, `b` and `a`, off the operand stack, and place the result of `a == b` on
+    /// the stack.
     #[inline]
     pub fn neq_i128(&mut self) {
         self.eq_i128();

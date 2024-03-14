@@ -7,12 +7,10 @@ use super::*;
 ///
 /// 0. There must be no copies required and at least two operands expected
 /// 1. The value on top of the stack should either be:
-///   * Evicted, and the value at the back of the constrained stack
-///     is an expected operand, thus swapping them accomplishes both
-///     goals at once
-///   * Swapped into its expected position, putting an operand at the
-///     top which is in position, can be moved into position, or is
-///     to be evicted.
+///   * Evicted, and the value at the back of the constrained stack is an expected operand, thus
+///     swapping them accomplishes both goals at once
+///   * Swapped into its expected position, putting an operand at the top which is in position, can
+///     be moved into position, or is to be evicted.
 ///
 /// If after performing those steps, the stack is in the correct order,
 /// the tactic was successful, otherwise the operand ordering cannot be
@@ -22,7 +20,12 @@ pub struct SwapAndMoveUp;
 impl Tactic for SwapAndMoveUp {
     fn apply(&mut self, builder: &mut SolutionBuilder) -> TacticResult {
         if builder.requires_copies() || builder.arity() < 2 {
-            log::debug!("cannot apply tactic when there are required copies ({}) or fewer than 2 operands ({})", builder.requires_copies(), builder.arity());
+            log::debug!(
+                "cannot apply tactic when there are required copies ({}) or fewer than 2 operands \
+                 ({})",
+                builder.requires_copies(),
+                builder.arity()
+            );
             return Err(TacticError::PreconditionFailed);
         }
 
@@ -40,7 +43,11 @@ impl Tactic for SwapAndMoveUp {
             );
             builder.swap(1);
         } else {
-            log::trace!("swapping {expected1:?} at index {expected1_pos} to the top of the stack, with {:?}", builder.stack()[0].value);
+            log::trace!(
+                "swapping {expected1:?} at index {expected1_pos} to the top of the stack, with \
+                 {:?}",
+                builder.stack()[0].value
+            );
             builder.swap(expected1_pos);
         }
 
@@ -48,7 +55,11 @@ impl Tactic for SwapAndMoveUp {
         let expected0 = builder.unwrap_expected(0);
         let expected0_pos = builder.unwrap_current_position(&expected0);
         if expected0_pos > 0 {
-            log::trace!("moving {expected0:?} from index {expected0_pos} to the top of stack, shifting {:?} down by one", builder.stack()[0].value);
+            log::trace!(
+                "moving {expected0:?} from index {expected0_pos} to the top of stack, shifting \
+                 {:?} down by one",
+                builder.stack()[0].value
+            );
             builder.movup(expected0_pos);
         }
 

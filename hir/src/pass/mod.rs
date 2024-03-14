@@ -28,11 +28,9 @@ mod analysis;
 mod conversion;
 mod rewrite;
 
-pub use self::analysis::*;
-pub use self::conversion::*;
-pub use self::rewrite::*;
-
 use midenc_session::Session;
+
+pub use self::{analysis::*, conversion::*, rewrite::*};
 
 /// This trait provides descriptive information about a pass
 ///
@@ -57,16 +55,16 @@ pub trait PassInfo {
     const DESCRIPTION: &'static str;
 }
 
-/// The [Pass] trait represents a fallible operation which takes an input of any type, and produces an
-/// output of any type. This is intentionally abstract, and is intended as a building block for compiler
-/// pipelines.
+/// The [Pass] trait represents a fallible operation which takes an input of any type, and produces
+/// an output of any type. This is intentionally abstract, and is intended as a building block for
+/// compiler pipelines.
 ///
-/// [Pass] is in fact so abstract, that it is automatically implemented for any Rust function whose type
-/// is representable by `FnMut<I, O, E>(I) -> Result<O, E>`.
+/// [Pass] is in fact so abstract, that it is automatically implemented for any Rust function whose
+/// type is representable by `FnMut<I, O, E>(I) -> Result<O, E>`.
 ///
-/// Implementations of [Pass] can be combined via [Pass::chain], which returns an instantiation of the
-/// [Chain] type that itself implements [Pass]. This permits any number of passes to be combined/chained
-/// together and passed around as a value.
+/// Implementations of [Pass] can be combined via [Pass::chain], which returns an instantiation of
+/// the [Chain] type that itself implements [Pass]. This permits any number of passes to be
+/// combined/chained together and passed around as a value.
 pub trait Pass {
     type Input<'a>;
     type Output<'a>;
@@ -96,9 +94,9 @@ impl<P, T, U, E> Pass for &mut P
 where
     P: for<'a> Pass<Input<'a> = T, Output<'a> = U, Error = E>,
 {
+    type Error = E;
     type Input<'a> = T;
     type Output<'a> = U;
-    type Error = E;
 
     fn run<'a>(
         &mut self,
@@ -113,9 +111,9 @@ impl<P, T, U, E> Pass for Box<P>
 where
     P: ?Sized + for<'a> Pass<Input<'a> = T, Output<'a> = U, Error = E>,
 {
+    type Error = E;
     type Input<'a> = T;
     type Output<'a> = U;
-    type Error = E;
 
     fn run<'a>(
         &mut self,
@@ -127,9 +125,9 @@ where
     }
 }
 impl<T, U, E> Pass for dyn FnMut(T, &mut AnalysisManager, &Session) -> Result<U, E> {
+    type Error = E;
     type Input<'a> = T;
     type Output<'a> = U;
-    type Error = E;
 
     #[inline]
     fn run<'a>(
@@ -180,9 +178,9 @@ where
     A: for<'a> Pass<Error = E>,
     B: for<'a> Pass<Input<'a> = <A as Pass>::Output<'a>, Error = E>,
 {
+    type Error = <B as Pass>::Error;
     type Input<'a> = <A as Pass>::Input<'a>;
     type Output<'a> = <B as Pass>::Output<'a>;
-    type Error = <B as Pass>::Error;
 
     fn run<'a>(
         &mut self,

@@ -44,9 +44,7 @@ impl Stage for ApplyRewritesStage {
         let mut rewrites = RewriteSet::default();
         if registered.is_empty() {
             if session.should_codegen() {
-                rewrites.push(ModuleRewritePassAdapter::new(
-                    transforms::SplitCriticalEdges,
-                ));
+                rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
                 rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
                 rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
             }

@@ -21,10 +21,7 @@ pub fn build_masm(
     };
 
     if !output_folder.exists() {
-        bail!(
-            "MASM output folder '{}' does not exist.",
-            output_folder.to_str().unwrap()
-        );
+        bail!("MASM output folder '{}' does not exist.", output_folder.to_str().unwrap());
     }
     log::debug!(
         "Compiling '{}' Wasm to '{}' directory with midenc ...",
@@ -46,16 +43,8 @@ pub fn build_masm(
         .with_output_types(output_types);
     let target = TargetEnv::default();
     let session = Arc::new(
-        Session::new(
-            target,
-            input,
-            Some(output_folder.to_path_buf()),
-            None,
-            None,
-            options,
-            None,
-        )
-        .with_project_type(project_type),
+        Session::new(target, input, Some(output_folder.to_path_buf()), None, None, options, None)
+            .with_project_type(project_type),
     );
     midenc_compile::compile(session.clone()).context("Wasm to MASM compilation failed!")?;
     let mut output_path = output_folder.join(wasm_file_path.file_stem().unwrap());

@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use clap::{Args, ColorChoice};
-use miden_diagnostics::term::termcolor::ColorChoice as MDColorChoice;
-use miden_diagnostics::Emitter;
+use miden_diagnostics::{term::termcolor::ColorChoice as MDColorChoice, Emitter};
 use midenc_session::{
     InputFile, Options, OutputFile, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session,
     TargetEnv, VerbosityFlag, Warnings,

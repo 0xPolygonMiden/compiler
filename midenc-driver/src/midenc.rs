@@ -1,6 +1,4 @@
-use std::ffi::OsString;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 use clap::{ColorChoice, Parser, Subcommand};
 use miden_diagnostics::Emitter;
@@ -171,10 +169,7 @@ impl Midenc {
         let command = command.mut_subcommand("compile", compile::register_flags);
 
         let mut matches = command.try_get_matches_from(args)?;
-        let compile_matches = matches
-            .subcommand_matches("compile")
-            .cloned()
-            .unwrap_or_default();
+        let compile_matches = matches.subcommand_matches("compile").cloned().unwrap_or_default();
         let cli = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<Self>)?;
 

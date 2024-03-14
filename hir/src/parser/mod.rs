@@ -20,8 +20,7 @@ lalrpop_mod!(
     "/parser/grammar.rs"
 );
 
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use miden_diagnostics::SourceFile;
 use miden_parsing::{FileMapSource, Scanner, Source};
@@ -57,10 +56,7 @@ impl<'a> Parser<'a> {
     where
         T: Parse,
     {
-        let id = self
-            .session
-            .codemap
-            .add("nofile", source.as_ref().to_string());
+        let id = self.session.codemap.add("nofile", source.as_ref().to_string());
         let file = self.session.codemap.get(id).unwrap();
         self.parse(file)
     }
@@ -124,12 +120,7 @@ impl Parse for crate::Module {
 
         let mut next_var = 0;
         let result = <Self as Parse>::Grammar::new()
-            .parse(
-                &parser.session.diagnostics,
-                &parser.session.codemap,
-                &mut next_var,
-                tokens,
-            )
+            .parse(&parser.session.diagnostics, &parser.session.codemap, &mut next_var, tokens)
             .map(Box::new);
         match result {
             Ok(ast) => {
@@ -138,15 +129,15 @@ impl Parse for crate::Module {
                 }
                 let mut analyses = AnalysisManager::new();
                 let mut convert_to_hir = ConvertAstToHir;
-                convert_to_hir
-                    .convert(ast, &mut analyses, parser.session)
-                    .map_err(|err| match err {
+                convert_to_hir.convert(ast, &mut analyses, parser.session).map_err(
+                    |err| match err {
                         ConversionError::Failed(err) => match err.downcast::<ParseError>() {
                             Ok(err) => err,
                             Err(_) => ParseError::InvalidModule,
                         },
                         _ => ParseError::InvalidModule,
-                    })
+                    },
+                )
             }
             Err(lalrpop_util::ParseError::User { error }) => Err(error),
             Err(err) => Err(err.into()),

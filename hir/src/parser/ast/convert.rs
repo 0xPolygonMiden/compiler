@@ -2,15 +2,15 @@ use std::collections::VecDeque;
 
 use cranelift_entity::packed_option::ReservedValue;
 use intrusive_collections::UnsafeRef;
-use miden_diagnostics::{Severity, SourceSpan, Spanned};
 use midenc_session::Session;
-use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::parser::ParseError;
-use crate::pass::{AnalysisManager, ConversionError, ConversionPass, ConversionResult};
-use crate::{FunctionIdent, Ident, Immediate, Opcode, PassInfo, Type};
+use rustc_hash::FxHashSet;
 
 use super::*;
+use crate::{
+    parser::ParseError,
+    pass::{AnalysisManager, ConversionError, ConversionPass, ConversionResult},
+    Immediate, Opcode, PassInfo, Type,
+};
 
 /// This pass converts the syntax tree of an HIR module to HIR
 #[derive(PassInfo)]
@@ -236,10 +236,7 @@ fn try_insert_inst(
             overflow,
             operands: [imm, Operand::Value(rhs)],
         } => {
-            let imm_ty = values_by_id
-                .get(&rhs)
-                .map(|v| v.ty().clone())
-                .unwrap_or(Type::Unknown);
+            let imm_ty = values_by_id.get(&rhs).map(|v| v.ty().clone()).unwrap_or(Type::Unknown);
             operand_to_immediate(imm, &imm_ty, diagnostics).map(|imm| {
                 Instruction::BinaryOpImm(BinaryOpImm {
                     op,
@@ -491,9 +488,16 @@ fn try_insert_inst(
             let expected_returns = function.signature.results.len();
             let actual_returns = operands.len();
             if actual_returns != expected_returns {
-                diagnostics.diagnostic(Severity::Error)
+                diagnostics
+                    .diagnostic(Severity::Error)
                     .with_message("invalid instruction")
-                    .with_primary_label(span, format!("the current function expects {expected_returns} values to be returned, but {actual_returns} are returned here"))
+                    .with_primary_label(
+                        span,
+                        format!(
+                            "the current function expects {expected_returns} values to be \
+                             returned, but {actual_returns} are returned here"
+                        ),
+                    )
                     .emit();
                 None
             } else {
@@ -561,9 +565,14 @@ fn try_insert_inst(
                 if let Some(ef) = imports_by_id.get(&callee) {
                     entry.insert(ef.item.clone());
                 } else {
-                    diagnostics.diagnostic(Severity::Error)
+                    diagnostics
+                        .diagnostic(Severity::Error)
                         .with_message("invalid call instruction")
-                        .with_primary_label(callee.span(), "this function is not imported in the current module, you must do so in order to reference it")
+                        .with_primary_label(
+                            callee.span(),
+                            "this function is not imported in the current module, you must do so \
+                             in order to reference it",
+                        )
                         .with_secondary_label(span, "invalid callee for this instruction")
                         .emit();
                     is_valid = false;
@@ -625,10 +634,18 @@ fn try_insert_inst(
                             }
                         }
                         operand @ (Operand::Int(_) | Operand::BigInt(_)) => {
-                            diagnostics.diagnostic(Severity::Error)
+                            diagnostics
+                                .diagnostic(Severity::Error)
                                 .with_message("invalid immediate operand")
-                                .with_primary_label(operand.span(), "expected an ssa value here, but got an immediate")
-                                .with_secondary_label(span, "only the first argument of this instruction may be an immediate")
+                                .with_primary_label(
+                                    operand.span(),
+                                    "expected an ssa value here, but got an immediate",
+                                )
+                                .with_secondary_label(
+                                    span,
+                                    "only the first argument of this instruction may be an \
+                                     immediate",
+                                )
                                 .emit();
                             is_valid = false;
                         }
@@ -709,10 +726,7 @@ fn is_valid_successor(
         diagnostics
             .diagnostic(Severity::Error)
             .with_message("invalid instruction")
-            .with_primary_label(
-                successor.span,
-                "invalid successor: the named block does not exist",
-            )
+            .with_primary_label(successor.span, "invalid successor: the named block does not exist")
             .with_secondary_label(parent_span, "found in this instruction")
             .emit();
         Err(successor.id)
@@ -854,10 +868,7 @@ fn smallint_to_immediate(
             diagnostics
                 .diagnostic(Severity::Error)
                 .with_message("invalid immediate operand")
-                .with_primary_label(
-                    span,
-                    format!("immediates of type {ty} are not yet supported"),
-                )
+                .with_primary_label(span, format!("immediates of type {ty} are not yet supported"))
                 .emit();
             None
         }
@@ -884,7 +895,8 @@ fn bigint_to_immediate(
     use num_traits::cast::ToPrimitive;
 
     let is_negative = i.sign() == num_bigint::Sign::Minus;
-    // NOTE: If we are calling this function, then `i` was too large to fit in an `isize`, so it must be a large integer type
+    // NOTE: If we are calling this function, then `i` was too large to fit in an `isize`, so it
+    // must be a large integer type
     let imm = match ty {
         Type::U32 if !is_negative => i.to_u32().map(Immediate::U32),
         Type::I64 => i.to_i64().map(Immediate::I64),
@@ -894,17 +906,21 @@ fn bigint_to_immediate(
             diagnostics
                 .diagnostic(Severity::Error)
                 .with_message("invalid immediate operand")
-                .with_primary_label(
-                    span,
-                    format!("immediates of type {ty} are not yet supported"),
-                )
+                .with_primary_label(span, format!("immediates of type {ty} are not yet supported"))
                 .emit();
             return None;
         }
         ty if ty.is_integer() => {
-            diagnostics.diagnostic(Severity::Error)
+            diagnostics
+                .diagnostic(Severity::Error)
                 .with_message("invalid immediate operand")
-                .with_primary_label(span, format!("expected an immediate of type {ty}, but got {i}, which is out of range for that type"))
+                .with_primary_label(
+                    span,
+                    format!(
+                        "expected an immediate of type {ty}, but got {i}, which is out of range \
+                         for that type"
+                    ),
+                )
                 .emit();
             return None;
         }
@@ -921,9 +937,16 @@ fn bigint_to_immediate(
         }
     };
     if imm.is_none() {
-        diagnostics.diagnostic(Severity::Error)
+        diagnostics
+            .diagnostic(Severity::Error)
             .with_message("invalid immediate operand")
-            .with_primary_label(span, format!("expected an immediate of type {ty}, but got {i}, which is out of range for that type"))
+            .with_primary_label(
+                span,
+                format!(
+                    "expected an immediate of type {ty}, but got {i}, which is out of range for \
+                     that type"
+                ),
+            )
             .emit();
     }
     imm

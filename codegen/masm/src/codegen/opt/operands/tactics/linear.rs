@@ -1,6 +1,5 @@
-use petgraph::prelude::{DiGraphMap, Direction};
-
 use miden_hir::adt::SmallSet;
+use petgraph::prelude::{DiGraphMap, Direction};
 
 use super::*;
 
@@ -68,7 +67,10 @@ impl Tactic for Linear {
                     continue;
                 }
                 let occupied_by = builder.unwrap_current(expected_at);
-                log::trace!("{value:?} at index {currently_at}, is expected at index {expected_at}, which is currently occupied by {occupied_by:?}");
+                log::trace!(
+                    "{value:?} at index {currently_at}, is expected at index {expected_at}, which \
+                     is currently occupied by {occupied_by:?}"
+                );
                 let from = graph.add_node(Operand {
                     pos: currently_at,
                     value,
@@ -94,23 +96,27 @@ impl Tactic for Linear {
                     pos: currently_at,
                     value,
                 };
-                let mut parent = graph
-                    .neighbors_directed(operand, Direction::Incoming)
-                    .next();
+                let mut parent = graph.neighbors_directed(operand, Direction::Incoming).next();
                 // There must have been an immediate parent to `value`, or it would
                 // have an expected position on the stack, and only expected operands
                 // are materialized initially.
                 let mut root = parent.unwrap();
-                log::trace!("{value:?} at index {currently_at}, is not an expected operand; but must be moved to make space for {:?}", root.value);
+                log::trace!(
+                    "{value:?} at index {currently_at}, is not an expected operand; but must be \
+                     moved to make space for {:?}",
+                    root.value
+                );
                 let mut seen = std::collections::BTreeSet::default();
                 seen.insert(root);
                 while let Some(parent_operand) = parent {
                     root = parent_operand;
-                    parent = graph
-                        .neighbors_directed(parent_operand, Direction::Incoming)
-                        .next();
+                    parent = graph.neighbors_directed(parent_operand, Direction::Incoming).next();
                 }
-                log::trace!("forming component with {value:?} by adding edge to {:?}, the start of the path which led to it", root.value);
+                log::trace!(
+                    "forming component with {value:?} by adding edge to {:?}, the start of the \
+                     path which led to it",
+                    root.value
+                );
                 graph.add_edge(operand, root, ());
             }
             current_index += 1;
@@ -119,7 +125,10 @@ impl Tactic for Linear {
         // Compute the strongly connected components of the graph we've constructed,
         // and use that to drive our decisions about moving operands into place.
         let components = petgraph::algo::kosaraju_scc(&graph);
-        log::trace!("found the following connected components when analyzing required operand moves: {components:?}");
+        log::trace!(
+            "found the following connected components when analyzing required operand moves: \
+             {components:?}"
+        );
         for component in components.into_iter() {
             // A component of two or more elements indicates a cycle of operands.
             //
@@ -164,11 +173,7 @@ impl Tactic for Linear {
             //
             if component.len() > 1 {
                 // Find the operand at the shallowest depth on the stack to move.
-                let start = component
-                    .iter()
-                    .min_by(|a, b| a.pos.cmp(&b.pos))
-                    .copied()
-                    .unwrap();
+                let start = component.iter().min_by(|a, b| a.pos.cmp(&b.pos)).copied().unwrap();
                 log::trace!(
                     "resolving component {component:?} by starting from {:?} at index {}",
                     start.value,
@@ -182,10 +187,8 @@ impl Tactic for Linear {
                 }
 
                 // Do the initial swap to set up our state for the remaining swaps
-                let mut child = graph
-                    .neighbors_directed(start, Direction::Outgoing)
-                    .next()
-                    .unwrap();
+                let mut child =
+                    graph.neighbors_directed(start, Direction::Outgoing).next().unwrap();
                 // Swap each child with its parent until we reach the edge that forms a cycle
                 while child != start {
                     log::trace!(
@@ -195,10 +198,7 @@ impl Tactic for Linear {
                         child.pos
                     );
                     builder.swap(child.pos);
-                    child = graph
-                        .neighbors_directed(child, Direction::Outgoing)
-                        .next()
-                        .unwrap();
+                    child = graph.neighbors_directed(child, Direction::Outgoing).next().unwrap();
                 }
 
                 // If necessary, move the final operand to the original starting position

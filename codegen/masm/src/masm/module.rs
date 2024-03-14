@@ -96,13 +96,7 @@ impl Module {
     ) -> Result<Self, LoadModuleError> {
         let id = codemap.add_file(path)?;
         let source_file = codemap.get(id).unwrap();
-        let basename = source_file
-            .name()
-            .as_ref()
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let basename = source_file.name().as_ref().file_name().unwrap().to_str().unwrap();
         let name = match root_ns {
             None => basename.to_string(),
             Some(root_ns) => format!("{}::{basename}", root_ns.as_str()),
@@ -220,18 +214,15 @@ impl Module {
     fn num_imported_functions(&self) -> usize {
         self.imports
             .iter()
-            .map(|i| {
-                self.imports
-                    .imported(&i.alias)
-                    .map(|imported| imported.len())
-                    .unwrap_or(0)
-            })
+            .map(|i| self.imports.imported(&i.alias).map(|imported| imported.len()).unwrap_or(0))
             .sum()
     }
 
-    /// Write this module to a new file under `dir`, assuming `dir` is the root directory for a program.
+    /// Write this module to a new file under `dir`, assuming `dir` is the root directory for a
+    /// program.
     ///
-    /// For example, if this module is named `std::math::u64`, then it will be written to `<dir>/std/math/u64.masm`
+    /// For example, if this module is named `std::math::u64`, then it will be written to
+    /// `<dir>/std/math/u64.masm`
     pub fn write_to_directory<P: AsRef<Path>>(
         &self,
         codemap: &miden_diagnostics::CodeMap,
@@ -289,9 +280,11 @@ impl midenc_session::Emit for Module {
     fn name(&self) -> Option<Symbol> {
         Some(self.name.as_symbol())
     }
+
     fn output_type(&self) -> midenc_session::OutputType {
         midenc_session::OutputType::Masm
     }
+
     fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
         writer.write_fmt(format_args!("{}", self))
     }

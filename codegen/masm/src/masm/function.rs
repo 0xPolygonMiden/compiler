@@ -1,5 +1,4 @@
-use std::fmt;
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use cranelift_entity::EntityRef;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListAtomicLink};
@@ -85,10 +84,7 @@ impl Function {
 
     /// Get the local with the given identifier
     pub fn local(&self, id: LocalId) -> &Local {
-        self.locals
-            .iter()
-            .find(|l| l.id == id)
-            .expect("invalid local id")
+        self.locals.iter().find(|l| l.id == id).expect("invalid local id")
     }
 
     /// Return the locals allocated in this function as a slice
@@ -173,9 +169,7 @@ impl Function {
                 SourceLocation::new(loc.line.to_usize() as u32, loc.column.to_usize() as u32)
             })
             .unwrap_or_default();
-        let body = self
-            .body
-            .to_code_body(codemap, imports, local_ids, proc_ids);
+        let body = self.body.to_code_body(codemap, imports, local_ids, proc_ids);
 
         ProcedureAst {
             name,
@@ -222,13 +216,7 @@ impl<'a> fmt::Display for DisplayMasmFunction<'a> {
             }
         }
 
-        writeln!(
-            f,
-            "{}",
-            self.function
-                .body
-                .display(Some(self.function.name), self.imports, 1)
-        )?;
+        writeln!(f, "{}", self.function.body.display(Some(self.function.name), self.imports, 1))?;
 
         f.write_str("end")
     }

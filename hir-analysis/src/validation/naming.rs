@@ -1,4 +1,4 @@
-use miden_diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Spanned};
+use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use miden_hir::*;
 
 use super::{Rule, ValidationError};
@@ -161,7 +161,13 @@ impl Rule<Function> for NamingConventions {
             } else {
                 debug_assert_eq!(offset, 0);
                 let span = SourceSpan::new(span.start(), span.start());
-                invalid_function!(diagnostics, function.id, span, "function names must start with an ascii-alphabetic character, '_', '$', or '@'");
+                invalid_function!(
+                    diagnostics,
+                    function.id,
+                    span,
+                    "function names must start with an ascii-alphabetic character, '_', '$', or \
+                     '@'"
+                );
             }
         }
 
@@ -179,11 +185,7 @@ impl Rule<GlobalVariableData> for NamingConventions {
 
         // 1. Must not be empty
         if name.is_empty() {
-            invalid_global!(
-                diagnostics,
-                global.name,
-                "global variable names cannot be empty"
-            );
+            invalid_global!(diagnostics, global.name, "global variable names cannot be empty");
         }
 
         // 2. Must start with an ASCII-alphabetic character, underscore, `.`, `$` or `@`
@@ -205,7 +207,13 @@ impl Rule<GlobalVariableData> for NamingConventions {
             } else {
                 debug_assert_eq!(offset, 0);
                 let span = SourceSpan::new(span.start(), span.start());
-                invalid_global!(diagnostics, global.name, span, "global variable names must start with an ascii-alphabetic character, '_', '.', '$', or '@'");
+                invalid_global!(
+                    diagnostics,
+                    global.name,
+                    span,
+                    "global variable names must start with an ascii-alphabetic character, '_', \
+                     '.', '$', or '@'"
+                );
             }
         }
 

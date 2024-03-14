@@ -1,13 +1,11 @@
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use miden_diagnostics::{Emitter, Verbosity};
 use midenc_session::{Options, Warnings};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    parser::ast::Module,
-    parser::{ParseError, Parser},
+    parser::{ast::Module, ParseError, Parser},
     testing::TestContext,
 };
 
@@ -73,7 +71,8 @@ impl ParseTest {
 
     /// This adds a new in-memory file to the [CodeMap] for this test.
     ///
-    /// This is used when we want to write a test with imports, without having to place files on disk
+    /// This is used when we want to write a test with imports, without having to place files on
+    /// disk
     #[allow(unused)]
     pub fn add_virtual_file<P: AsRef<Path>>(&self, name: P, content: String) {
         self.context.session.codemap.add(name.as_ref(), content);
@@ -121,8 +120,8 @@ impl ParseTest {
         }
     }
 
-    /// Parses a [Module] from the given source string and asserts that executing the test will result
-    /// in the expected AST.
+    /// Parses a [Module] from the given source string and asserts that executing the test will
+    /// result in the expected AST.
     #[track_caller]
     pub fn expect_module(&self, source: &str, expected: &crate::Module) {
         match self.parse_module(source) {
@@ -136,8 +135,8 @@ impl ParseTest {
         }
     }
 
-    /// Parses a [Module] from the given source string and asserts that executing the test will result
-    /// in the expected AST.
+    /// Parses a [Module] from the given source string and asserts that executing the test will
+    /// result in the expected AST.
     #[track_caller]
     #[allow(unused)]
     pub fn expect_module_ast(&self, source: &str, expected: Module) {

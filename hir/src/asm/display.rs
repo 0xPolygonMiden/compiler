@@ -1,9 +1,7 @@
 use std::fmt::{self, Write};
 
-use cranelift_entity::PrimaryMap;
-
 use super::*;
-use crate::{write::DisplayIndent, DataFlowGraph, FunctionIdent, Ident, Symbol};
+use crate::{write::DisplayIndent, FunctionIdent, Ident, Symbol};
 
 pub struct DisplayInlineAsm<'a> {
     function: Option<FunctionIdent>,
@@ -113,10 +111,7 @@ impl<'a> DisplayOp<'a> {
     pub fn is_local_module(&self, id: &Ident) -> bool {
         match self.function {
             Some(function) => &function.module == id,
-            None => self
-                .imports
-                .map(|imports| !imports.is_import(id))
-                .unwrap_or(false),
+            None => self.imports.map(|imports| !imports.is_import(id)).unwrap_or(false),
         }
     }
 
@@ -133,11 +128,9 @@ impl<'a> fmt::Display for DisplayOp<'a> {
         match self.op {
             MasmOp::Push(imm) => write!(f, "push.{imm}"),
             MasmOp::Push2([a, b]) => write!(f, "push.{a}.{b}"),
-            MasmOp::Pushw(word) => write!(
-                f,
-                "push.{}.{}.{}.{}",
-                &word[0], &word[1], &word[2], &word[3]
-            ),
+            MasmOp::Pushw(word) => {
+                write!(f, "push.{}.{}.{}.{}", &word[0], &word[1], &word[2], &word[3])
+            }
             MasmOp::PushU8(imm) => write!(f, "push.{imm}"),
             MasmOp::PushU16(imm) => write!(f, "push.{imm}"),
             MasmOp::PushU32(imm) => write!(f, "push.{imm}"),

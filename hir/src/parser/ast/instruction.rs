@@ -1,10 +1,7 @@
 use core::fmt;
 
-use miden_diagnostics::Span;
-
-use crate::{FunctionIdent, Ident, Opcode, Overflow, Type};
-
 use super::*;
+use crate::{Opcode, Overflow, Type};
 
 /// Represents a single instruction.
 #[derive(Spanned)]

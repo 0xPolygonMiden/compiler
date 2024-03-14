@@ -6,9 +6,8 @@ use miden_hir::FunctionIdent;
 use rustc_hash::FxHashMap;
 use smallvec::smallvec;
 
-use crate::InstructionPointer;
-
 use super::*;
+use crate::InstructionPointer;
 
 /// This struct represents the top-level initialization code for a [Program]
 #[derive(Default)]
@@ -87,7 +86,8 @@ impl Region {
         id
     }
 
-    /// Render the code in this region as Miden Assembly, at the specified indentation level (in units of 4 spaces)
+    /// Render the code in this region as Miden Assembly, at the specified indentation level (in
+    /// units of 4 spaces)
     pub fn display<'a, 'b: 'a>(
         &'b self,
         function: Option<FunctionIdent>,
@@ -111,14 +111,7 @@ impl Region {
         local_ids: &FxHashMap<FunctionIdent, u16>,
         proc_ids: &FxHashMap<FunctionIdent, miden_assembly::ProcedureId>,
     ) -> ast::CodeBody {
-        emit_block(
-            self.body,
-            &self.blocks,
-            codemap,
-            imports,
-            local_ids,
-            proc_ids,
-        )
+        emit_block(self.body, &self.blocks, codemap, imports, local_ids, proc_ids)
     }
 
     /// Create a [Region] from a [miden_assembly::ast::CodeBody] and the set of imports
@@ -194,17 +187,14 @@ fn import_code_body(
                 let else_blk = region.create_block();
                 import_code_body(region, then_blk, true_case, locals, imported);
                 import_code_body(region, else_blk, false_case, locals, imported);
-                region
-                    .block_mut(current_block_id)
-                    .push(Op::If(then_blk, else_blk));
+                region.block_mut(current_block_id).push(Op::If(then_blk, else_blk));
             }
             ast::Node::Repeat { times, ref body } => {
                 let body_blk = region.create_block();
                 import_code_body(region, body_blk, body, locals, imported);
-                region.block_mut(current_block_id).push(Op::Repeat(
-                    (*times).try_into().expect("too many repetitions"),
-                    body_blk,
-                ));
+                region
+                    .block_mut(current_block_id)
+                    .push(Op::Repeat((*times).try_into().expect("too many repetitions"), body_blk));
             }
             ast::Node::While { ref body } => {
                 let body_blk = region.create_block();

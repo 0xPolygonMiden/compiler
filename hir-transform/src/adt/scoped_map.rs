@@ -1,7 +1,4 @@
-use std::borrow::Borrow;
-use std::fmt;
-use std::hash::Hash;
-use std::rc::Rc;
+use std::{borrow::Borrow, fmt, hash::Hash, rc::Rc};
 
 use rustc_hash::FxHashMap;
 
@@ -40,9 +37,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        self.map
-            .get(k)
-            .or_else(|| self.parent.as_ref().and_then(|p| p.get(k)))
+        self.map.get(k).or_else(|| self.parent.as_ref().and_then(|p| p.get(k)))
     }
 
     pub fn insert(&mut self, k: K, v: V) {

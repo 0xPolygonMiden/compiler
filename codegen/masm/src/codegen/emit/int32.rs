@@ -1,8 +1,7 @@
 use miden_hir::{Felt, FieldElement, Overflow};
 
-use crate::masm::Op;
-
 use super::OpEmitter;
+use crate::masm::Op;
 
 pub const SIGN_BIT: u32 = 1 << 31;
 
@@ -107,7 +106,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Assert);
     }
 
-    /// Emits code to assert that a 32-bit value on the operand stack does not have the i32 sign bit set.
+    /// Emits code to assert that a 32-bit value on the operand stack does not have the i32 sign bit
+    /// set.
     ///
     /// The value on top of the stack IS NOT consumed.
     ///
@@ -118,7 +118,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Assertz);
     }
 
-    /// Emits code to assert that a 32-bit value on the operand stack is equal to the given constant value.
+    /// Emits code to assert that a 32-bit value on the operand stack is equal to the given constant
+    /// value.
     ///
     /// The value on top of the stack IS NOT consumed.
     ///
@@ -130,8 +131,8 @@ impl<'a> OpEmitter<'a> {
         self.emit_all(&[Op::Dup(0), Op::EqImm(Felt::new(value as u64)), Op::Assert]);
     }
 
-    /// Emits code to assert that two 32-bit values, `expected` and `value`, on top of the operand stack are equal,
-    /// without consuming `value`.
+    /// Emits code to assert that two 32-bit values, `expected` and `value`, on top of the operand
+    /// stack are equal, without consuming `value`.
     ///
     /// The `expected` operand is consumed, while the `value` operand IS NOT.
     ///
@@ -281,11 +282,13 @@ impl<'a> OpEmitter<'a> {
         ]);
     }
 
-    /// Emit code to truncate a 32-bit value on top of the operand stack, to N bits, where N is <= 32
+    /// Emit code to truncate a 32-bit value on top of the operand stack, to N bits, where N is <=
+    /// 32
     ///
     /// This consumes the input value, and leaves an N-bit value on the stack.
     ///
-    /// NOTE: This function does not validate the input as < 2^32, the caller is expected to validate this.
+    /// NOTE: This function does not validate the input as < 2^32, the caller is expected to
+    /// validate this.
     #[inline]
     pub fn trunc_int32(&mut self, n: u32) {
         assert_valid_integer_size!(n, 1, 32);
@@ -457,9 +460,9 @@ impl<'a> OpEmitter<'a> {
             Overflow::Checked => {
                 self.emit(Op::Exec("intrinsics::i32::checked_sub".parse().unwrap()))
             }
-            Overflow::Overflowing => self.emit(Op::Exec(
-                "intrinsics::i32::overflowing_sub".parse().unwrap(),
-            )),
+            Overflow::Overflowing => {
+                self.emit(Op::Exec("intrinsics::i32::overflowing_sub".parse().unwrap()))
+            }
         }
     }
 
@@ -529,9 +532,9 @@ impl<'a> OpEmitter<'a> {
             Overflow::Checked => {
                 self.emit(Op::Exec("intrinsics::i32::checked_mul".parse().unwrap()))
             }
-            Overflow::Overflowing => self.emit(Op::Exec(
-                "intrinsics::i32::overflowing_mul".parse().unwrap(),
-            )),
+            Overflow::Overflowing => {
+                self.emit(Op::Exec("intrinsics::i32::overflowing_mul".parse().unwrap()))
+            }
         }
     }
 
@@ -679,7 +682,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::U32ModImm(imm));
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
+    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
+    /// stack.
     ///
     /// This operation is checked, so if the operands or result are not valid u32, execution traps.
     pub fn checked_divmod_u32(&mut self) {
@@ -694,7 +698,8 @@ impl<'a> OpEmitter<'a> {
         self.emit_all(&[Op::U32DivModImm(imm), Op::U32Assert]);
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
+    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
+    /// stack.
     ///
     /// This operation is unchecked, so the result is not guaranteed to be a valid u32
     pub fn unchecked_divmod_u32(&mut self) {
@@ -829,7 +834,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::U32RotlImm(imm));
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and rotates the bits of `a` right by `b` bits
+    /// Pops two u32 values off the stack, `b` and `a`, and rotates the bits of `a` right by `b`
+    /// bits
     ///
     /// Execution traps if `b` > 31.
     ///
@@ -846,14 +852,16 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::U32RotrImm(imm));
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and puts the result of `min(a, b)` on the stack
+    /// Pops two u32 values off the stack, `b` and `a`, and puts the result of `min(a, b)` on the
+    /// stack
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn min_u32(&mut self) {
         self.emit(Op::U32Min);
     }
 
-    /// Pops two i32 values off the stack, `b` and `a`, and puts the result of `min(a, b)` on the stack
+    /// Pops two i32 values off the stack, `b` and `a`, and puts the result of `min(a, b)` on the
+    /// stack
     ///
     /// This operation is checked, if the operands or result are not valid i32, execution traps.
     pub fn min_i32(&mut self) {
@@ -877,14 +885,16 @@ impl<'a> OpEmitter<'a> {
         ]);
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and puts the result of `max(a, b)` on the stack
+    /// Pops two u32 values off the stack, `b` and `a`, and puts the result of `max(a, b)` on the
+    /// stack
     ///
     /// This operation is checked, if the operands or result are not valid u32, execution traps.
     pub fn max_u32(&mut self) {
         self.emit(Op::U32Max);
     }
 
-    /// Pops two i32 values off the stack, `b` and `a`, and puts the result of `max(a, b)` on the stack
+    /// Pops two i32 values off the stack, `b` and `a`, and puts the result of `max(a, b)` on the
+    /// stack
     ///
     /// This operation is checked, if the operands or result are not valid i32, execution traps.
     pub fn max_i32(&mut self) {

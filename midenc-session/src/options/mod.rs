@@ -1,11 +1,7 @@
-use std::fmt;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{fmt, path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::ValueEnum;
-use miden_diagnostics::term::termcolor::ColorChoice;
-use miden_diagnostics::{DiagnosticsConfig, Emitter, Verbosity};
+use miden_diagnostics::{term::termcolor::ColorChoice, DiagnosticsConfig, Emitter, Verbosity};
 
 use crate::OutputTypes;
 

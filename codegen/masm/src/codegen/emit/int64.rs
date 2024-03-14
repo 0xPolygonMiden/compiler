@@ -1,8 +1,7 @@
 use miden_hir::{Felt, FieldElement, Overflow};
 
-use crate::masm::{self as masm, Op};
-
 use super::{felt, OpEmitter, P};
+use crate::masm::{self as masm, Op};
 
 #[allow(unused)]
 impl<'a> OpEmitter<'a> {
@@ -21,7 +20,8 @@ impl<'a> OpEmitter<'a> {
 
     /// Convert a i64 value to felt.
     ///
-    /// This operation will assert at runtime if the value is negative, or larger than the felt field.
+    /// This operation will assert at runtime if the value is negative, or larger than the felt
+    /// field.
     pub fn i64_to_felt(&mut self) {
         self.assert_unsigned_int64();
         self.u64_to_felt();
@@ -399,7 +399,8 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
-    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a / b` on the stack.
+    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a / b` on the
+    /// stack.
     ///
     /// Both the operands and result are validated to ensure they are valid u64 values.
     #[inline]
@@ -407,7 +408,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Exec("std::math::u64::checked_div".parse().unwrap()));
     }
 
-    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a / b` on the stack.
+    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a / b` on the
+    /// stack.
     ///
     /// This operation is unchecked, it is up to the caller to ensure validity of the operands.
     #[inline]
@@ -415,7 +417,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Exec("std::math::u64::unchecked_div".parse().unwrap()));
     }
 
-    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a % b` on the stack.
+    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a % b` on the
+    /// stack.
     ///
     /// Both the operands and result are validated to ensure they are valid u64 values.
     #[inline]
@@ -423,7 +426,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Exec("std::math::u64::checked_mod".parse().unwrap()));
     }
 
-    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a % b` on the stack.
+    /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a % b` on the
+    /// stack.
     ///
     /// This operation is unchecked, it is up to the caller to ensure validity of the operands.
     #[inline]
@@ -431,7 +435,8 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Exec("std::math::u64::unchecked_mod".parse().unwrap()));
     }
 
-    /// Pops two u64 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
+    /// Pops two u64 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
+    /// stack.
     ///
     /// Both the operands and result are validated to ensure they are valid u64 values.
     #[inline]
@@ -439,14 +444,13 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Exec("std::math::u64::checked_divmod".parse().unwrap()));
     }
 
-    /// Pops two u64 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
+    /// Pops two u64 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
+    /// stack.
     ///
     /// This operation is unchecked, it is up to the caller to ensure validity of the operands.
     #[inline]
     pub fn unchecked_divmod_u64(&mut self) {
-        self.emit(Op::Exec(
-            "std::math::u64::unchecked_divmod".parse().unwrap(),
-        ));
+        self.emit(Op::Exec("std::math::u64::unchecked_divmod".parse().unwrap()));
     }
 
     /// Pops two 64-bit values off the stack, `b` and `a`, and pushes `a & b` on the stack.

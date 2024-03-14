@@ -6,21 +6,25 @@ mod options;
 mod outputs;
 mod statistics;
 
-pub use self::duration::HumanDuration;
-pub use self::emit::Emit;
-pub use self::flags::{CompileFlag, FlagAction};
-pub use self::inputs::{FileType, InputFile, InputType, InvalidInputError};
-pub use self::options::*;
-pub use self::outputs::{OutputFile, OutputFiles, OutputType, OutputTypeSpec, OutputTypes};
-pub use self::statistics::Statistics;
-
-use std::fmt;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use clap::ValueEnum;
 use miden_diagnostics::{CodeMap, DiagnosticsHandler, Emitter};
 use miden_hir_symbol::Symbol;
+
+pub use self::{
+    duration::HumanDuration,
+    emit::Emit,
+    flags::{CompileFlag, FlagAction},
+    inputs::{FileType, InputFile, InputType, InvalidInputError},
+    options::*,
+    outputs::{OutputFile, OutputFiles, OutputType, OutputTypeSpec, OutputTypes},
+    statistics::Statistics,
+};
 
 /// The type of project being compiled
 #[derive(Debug, Copy, Clone, Default)]
@@ -96,26 +100,12 @@ impl Session {
         let output_files = match output_file {
             None => {
                 let output_dir = output_dir.unwrap_or_default();
-                let stem = options
-                    .name
-                    .clone()
-                    .unwrap_or_else(|| input.filestem().to_owned());
+                let stem = options.name.clone().unwrap_or_else(|| input.filestem().to_owned());
 
-                OutputFiles::new(
-                    stem,
-                    output_dir,
-                    None,
-                    tmp_dir,
-                    options.output_types.clone(),
-                )
+                OutputFiles::new(stem, output_dir, None, tmp_dir, options.output_types.clone())
             }
             Some(out_file) => OutputFiles::new(
-                out_file
-                    .filestem()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
+                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string(),
                 output_dir.unwrap_or_default(),
                 Some(out_file),
                 tmp_dir,
@@ -193,12 +183,7 @@ impl Session {
                 }
             })
             .unwrap_or_else(|| {
-                self.options
-                    .current_dir
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned()
+                self.options.current_dir.file_name().unwrap().to_string_lossy().into_owned()
             })
     }
 
@@ -229,9 +214,7 @@ impl Session {
                 }
             }
             ProjectType::Library => OutputFile::Real(
-                outputs
-                    .out_dir
-                    .join(format!("{progname}.{}", OutputType::Masl.extension())),
+                outputs.out_dir.join(format!("{progname}.{}", OutputType::Masl.extension())),
             ),
         }
     }
@@ -267,10 +250,7 @@ impl Session {
         if self.should_emit(ty) {
             match self.output_files.path(ty) {
                 OutputFile::Real(path) => name
-                    .map(|name| {
-                        path.with_file_name(name.as_str())
-                            .with_extension(ty.extension())
-                    })
+                    .map(|name| path.with_file_name(name.as_str()).with_extension(ty.extension()))
                     .or(Some(path)),
                 OutputFile::Stdout => None,
             }
@@ -286,12 +266,9 @@ impl Session {
             match self.output_files.path(output_type) {
                 OutputFile::Real(path) => {
                     let file_path = if path.is_dir() {
-                        let item_name = item
-                            .name()
-                            .map(|s| s.to_string())
-                            .unwrap_or("noname".to_string());
-                        path.join(item_name.as_str())
-                            .with_extension(output_type.extension())
+                        let item_name =
+                            item.name().map(|s| s.to_string()).unwrap_or("noname".to_string());
+                        path.join(item_name.as_str()).with_extension(output_type.extension())
                     } else {
                         path
                     };

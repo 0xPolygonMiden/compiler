@@ -3,14 +3,12 @@ mod solver;
 mod stack;
 mod tactics;
 
-use self::context::SolverContext;
-pub use self::solver::{OperandMovementConstraintSolver, SolverError};
-use self::stack::Stack;
-
-use std::fmt;
-use std::num::NonZeroU8;
+use std::{fmt, num::NonZeroU8};
 
 use miden_hir as hir;
+
+pub use self::solver::{OperandMovementConstraintSolver, SolverError};
+use self::{context::SolverContext, stack::Stack};
 
 /// This represents a specific action that should be taken by
 /// the code generator with regard to an operand on the stack.

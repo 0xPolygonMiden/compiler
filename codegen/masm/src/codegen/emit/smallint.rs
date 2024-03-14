@@ -8,10 +8,10 @@
 //! For signed smallint operations, we implement them in terms of a two's complement representation,
 //! using a set of common primitives. The only thing that changes are which bits are considered by
 //! those primitives.
-use crate::masm::Op;
 use miden_hir::Overflow;
 
 use super::OpEmitter;
+use crate::masm::Op;
 
 #[allow(unused)]
 impl<'a> OpEmitter<'a> {
@@ -277,7 +277,8 @@ impl<'a> OpEmitter<'a> {
         self.unchecked_mod_imm_u32(imm);
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
+    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
+    /// stack.
     ///
     /// This operation is checked, so if the operands or result are not valid u32, execution traps.
     #[inline(always)]
@@ -293,7 +294,8 @@ impl<'a> OpEmitter<'a> {
         self.checked_divmod_imm_u32(imm);
     }
 
-    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the stack.
+    /// Pops two u32 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
+    /// stack.
     ///
     /// This operation is unchecked, so the result is not guaranteed to be a valid u32
     #[inline(always)]

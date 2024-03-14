@@ -1,6 +1,4 @@
-use std::cmp::Ordering;
-use std::collections::VecDeque;
-use std::rc::Rc;
+use std::{cmp::Ordering, collections::VecDeque, rc::Rc};
 
 use cranelift_entity::SecondaryMap;
 use miden_hir::{
@@ -12,11 +10,9 @@ use miden_hir_analysis::{
     dependency_graph::{ArgumentNode, DependencyGraph, Node, NodeId},
     DominatorTree, LivenessAnalysis, Loop, LoopAnalysis, OrderedTreeGraph,
 };
-
 use smallvec::SmallVec;
 
-use crate::codegen::Constraint;
-use crate::masm;
+use crate::{codegen::Constraint, masm};
 
 /// Information about a block's successor
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -361,17 +357,19 @@ impl<'a> BlockScheduler<'a> {
                 Plan::Finish => {
                     scheduled_ops.push(ScheduleOp::Exit);
                 }
-                // We're emitting code required to execute an instruction, such as materialization of
-                // data dependencies used as direct arguments. This is only emitted when an instruction
-                // has arguments which are derived from the results of an instruction that has not been
-                // scheduled yet
+                // We're emitting code required to execute an instruction, such as materialization
+                // of data dependencies used as direct arguments. This is only
+                // emitted when an instruction has arguments which are derived from
+                // the results of an instruction that has not been scheduled yet
                 Plan::PreInst(inst_info) => self.schedule_pre_inst(inst_info),
-                // We're emitting code for an instruction whose pre-requisite dependencies are already
-                // materialized, so we need only worry about how a specific instruction is lowered.
+                // We're emitting code for an instruction whose pre-requisite dependencies are
+                // already materialized, so we need only worry about how a specific
+                // instruction is lowered.
                 Plan::Inst(inst_info) => self.schedule_inst(inst_info, scheduled_ops),
-                // We're emitting code for an instruction that has started executing, and in some specific
-                // cases, may have dependencies which have been deferred until this point. This is only emitted
-                // currently for block arguments which are conditionally materialized
+                // We're emitting code for an instruction that has started executing, and in some
+                // specific cases, may have dependencies which have been deferred
+                // until this point. This is only emitted currently for block
+                // arguments which are conditionally materialized
                 Plan::PostInst(inst_info) => self.schedule_post_inst(inst_info),
                 Plan::Drop(value) => {
                     scheduled_ops.push(ScheduleOp::Drop(value));
@@ -388,7 +386,8 @@ impl<'a> BlockScheduler<'a> {
 
         // The treegraph iterator visits each node before any of that node's successors,
         // i.e. dependencies. As a result, all code that emits planning tasks (i.e. Plan),
-        // must be written in the order opposite of the resulting scheduling tasks (i.e. ScheduleOp).
+        // must be written in the order opposite of the resulting scheduling tasks (i.e.
+        // ScheduleOp).
         //
         // This is critical to internalize, because reasoning about dependencies and when things
         // are live/dead is _inverted_ here. You must ensure that when planning things based on
@@ -408,27 +407,32 @@ impl<'a> BlockScheduler<'a> {
             match node_id.into() {
                 // Result nodes are treegraph roots by two paths:
                 //
-                // * The result is used multiple times. Here, in the planning phase, we must have just
+                // * The result is used multiple times. Here, in the planning phase, we must have
+                //   just
                 // finished visiting all of its dependents, so to ensure that during scheduling the
-                // result is materialized before its first use, we must do so here. If this result is
-                // one of many produced by the same instruction, we must determine if this is the first
-                // result to be seen, or the last. The last result to be visited during planning is the
-                // one that will actually materialize all of the results for the corresponding instruction.
-                // Thus, if this is not the last result visited.
+                // result is materialized before its first use, we must do so here. If this result
+                // is one of many produced by the same instruction, we must
+                // determine if this is the first result to be seen, or the last.
+                // The last result to be visited during planning is the
+                // one that will actually materialize all of the results for the corresponding
+                // instruction. Thus, if this is not the last result visited.
                 //
-                // * The result is never used, in which case, like above, we must determine if this result
-                // should force materialization of the instruction. The caveat here is that if this is the
-                // only result produced by its instruction, and it is not live after the end of the current
-                // block, then we will avoid materializing at all if the instruction has no side effects.
-                // If it _does_ have side effects, then we will force materialization of the result, but
-                // then schedule it to be immediately dropped
+                // * The result is never used, in which case, like above, we must determine if this
+                //   result
+                // should force materialization of the instruction. The caveat here is that if this
+                // is the only result produced by its instruction, and it is not
+                // live after the end of the current block, then we will avoid
+                // materializing at all if the instruction has no side effects.
+                // If it _does_ have side effects, then we will force materialization of the result,
+                // but then schedule it to be immediately dropped
                 Node::Result { value, .. } => {
                     self.maybe_force_materialize_inst_results(value, node_id)
                 }
-                // During the planning phase, there is only one useful thing to do with this node type,
-                // which is to determine if it has any dependents in the current block, and if not,
-                // schedule a drop of the value if liveness analysis tells us that the value is not
-                // used after the current block.
+                // During the planning phase, there is only one useful thing to do with this node
+                // type, which is to determine if it has any dependents in the
+                // current block, and if not, schedule a drop of the value if
+                // liveness analysis tells us that the value is not used after the
+                // current block.
                 Node::Stack(value) => {
                     // If this value is live after the end of this block, it cannot be dropped
                     if self
@@ -481,17 +485,19 @@ impl<'a> BlockScheduler<'a> {
         }
     }
 
-    /// Schedule pre-requisites for an instruction based on the given analysis, see [Plan::PreInst] docs for more.
+    /// Schedule pre-requisites for an instruction based on the given analysis, see [Plan::PreInst]
+    /// docs for more.
     ///
-    /// This function, while nominally occurring during the scheduling phase, actually emits planning
-    /// tasks which are processed _before_ the [Plan::Inst] task corresponding to `inst_info`. As a
-    /// result, we visit the pre-requisites in planning order, _not_ execution order.
+    /// This function, while nominally occurring during the scheduling phase, actually emits
+    /// planning tasks which are processed _before_ the [Plan::Inst] task corresponding to
+    /// `inst_info`. As a result, we visit the pre-requisites in planning order, _not_ execution
+    /// order.
     fn schedule_pre_inst(&mut self, inst_info: Rc<InstInfo>) {
         // Schedule dependencies for execution in the order that they must execute
         if inst_info
             .pre
             .as_slice()
-            .is_sorted_by(|a, b| Some(self.block_info.treegraph.cmp_scheduling(*a, *b)))
+            .is_sorted_by(|a, b| self.block_info.treegraph.cmp_scheduling(*a, *b).is_le())
         {
             self.schedule_inst_dependencies(&inst_info, inst_info.pre.as_slice());
         } else {
@@ -622,10 +628,7 @@ impl<'a> BlockScheduler<'a> {
     fn materialize_inst_results(&mut self, inst_info: Rc<InstInfo>) {
         let inst_results = self.f.dfg.inst_results(inst_info.inst);
         for result in inst_results.iter().copied() {
-            let is_used = inst_info
-                .results
-                .iter()
-                .any(|v| v.value == result && v.is_used());
+            let is_used = inst_info.results.iter().any(|v| v.value == result && v.is_used());
             if !is_used {
                 self.worklist.push(Plan::Drop(result));
             }
@@ -885,9 +888,8 @@ impl<'a> BlockScheduler<'a> {
             let result_node_id = result_node.id();
 
             // A result is "externally used" if it is live after the current block
-            let is_externally_used = self
-                .liveness
-                .is_live_after(&value, ProgramPoint::Block(self.block_info.source));
+            let is_externally_used =
+                self.liveness.is_live_after(&value, ProgramPoint::Block(self.block_info.source));
 
             let mut info = ValueInfo {
                 value,
@@ -899,8 +901,7 @@ impl<'a> BlockScheduler<'a> {
             // Record all of the instructions in the current block which use this result
             for pred in self.block_info.depgraph.predecessors(result_node_id) {
                 if pred.dependent.is_argument() {
-                    info.users
-                        .push(self.block_info.depgraph.unwrap_parent(pred.dependent));
+                    info.users.push(self.block_info.depgraph.unwrap_parent(pred.dependent));
                 } else {
                     assert!(pred.dependent.is_instruction());
                     info.users.push(pred.dependent);
@@ -934,8 +935,8 @@ impl<'a> BlockScheduler<'a> {
     /// An operand must be copied unless all of the following are true:
     ///
     /// * This is the last use (in the current block) of the value
-    /// * The value is not live in any successor, with the exception of
-    ///   successors which define the value (as seen along loopback edges)
+    /// * The value is not live in any successor, with the exception of successors which define the
+    ///   value (as seen along loopback edges)
     ///
     /// If both of those properties hold, then the operand can be consumed directly.
     fn constraint(
@@ -957,34 +958,29 @@ impl<'a> BlockScheduler<'a> {
             transitive_instruction_dependents(arg_sourced_from, &self.block_info);
         let this_dependent = self.block_info.depgraph.unwrap_parent(arg_node);
         transitive_dependents.remove(&this_dependent);
-        let is_last_dependent = transitive_dependents.iter().copied().all(|td| {
-            self.block_info
-                .treegraph
-                .is_scheduled_after(td, this_dependent)
-        });
+        let is_last_dependent = transitive_dependents
+            .iter()
+            .copied()
+            .all(|td| self.block_info.treegraph.is_scheduled_after(td, this_dependent));
         let is_live_after = match arg_node.into() {
             Node::Argument(ArgumentNode::Direct { .. }) => successors
                 .map(|jts| {
                     jts.iter().any(|jt| {
                         let defined_by = self.f.dfg.block_args(jt.destination).contains(&arg);
-                        let is_live_at = self
-                            .liveness
-                            .is_live_at(&arg, ProgramPoint::Block(jt.destination));
+                        let is_live_at =
+                            self.liveness.is_live_at(&arg, ProgramPoint::Block(jt.destination));
                         is_live_at && !defined_by
                     })
                 })
                 .unwrap_or_else(|| {
-                    self.liveness
-                        .is_live_after(&arg, ProgramPoint::Block(self.block_info.source))
+                    self.liveness.is_live_after(&arg, ProgramPoint::Block(self.block_info.source))
                 }),
             Node::Argument(ArgumentNode::Indirect { successor, .. })
             | Node::Argument(ArgumentNode::Conditional { successor, .. }) => {
                 let successors = successors.unwrap();
                 let successor = successors[successor as usize].destination;
                 let defined_by = self.f.dfg.block_args(successor).contains(&arg);
-                let is_live_at = self
-                    .liveness
-                    .is_live_at(&arg, ProgramPoint::Block(successor));
+                let is_live_at = self.liveness.is_live_at(&arg, ProgramPoint::Block(successor));
                 is_live_at && !defined_by
             }
             _ => unreachable!(),
@@ -1068,7 +1064,8 @@ fn build_dependency_graph(
                 }
             }
             BranchInfo::MultiDest(ref jts) => {
-                // Preprocess the arguments which are used so we can determine materialization requirements
+                // Preprocess the arguments which are used so we can determine materialization
+                // requirements
                 for jt in jts.iter() {
                     for arg in jt.args.iter().copied() {
                         block_arg_uses
@@ -1077,12 +1074,14 @@ fn build_dependency_graph(
                             .insert(jt.destination);
                     }
                 }
-                // For each successor, check if we should implicitly require an argument along that edge due
-                // to liveness analysis indicating that it is used somewhere downstream. We only consider
-                // block arguments passed to at least one other successor, and which are not already explicitly
+                // For each successor, check if we should implicitly require an argument along that
+                // edge due to liveness analysis indicating that it is used
+                // somewhere downstream. We only consider block arguments passed to
+                // at least one other successor, and which are not already explicitly
                 // provided to this successor.
                 let materialization_threshold = jts.len();
-                // Finally, add edges to the dependency graph representing the nature of each argument
+                // Finally, add edges to the dependency graph representing the nature of each
+                // argument
                 for (succ_idx, jt) in jts.iter().enumerate() {
                     for (arg_idx, arg) in jt.args.iter().copied().enumerate() {
                         let is_conditionally_materialized =
@@ -1112,17 +1111,20 @@ fn build_dependency_graph(
         }
     }
 
-    // HACK: If there are any instruction nodes with no predecessors, with the exception of the block terminator,
-    // then we must add a control dependency to the graph to reflect the fact that the instruction
-    // must have been placed in this block intentionally. However, we are free to schedule the instruction
-    // as we see fit to avoid de-optimizing the normal instruction schedule unintentionally.
+    // HACK: If there are any instruction nodes with no predecessors, with the exception of the
+    // block terminator, then we must add a control dependency to the graph to reflect the fact
+    // that the instruction must have been placed in this block intentionally. However, we are
+    // free to schedule the instruction as we see fit to avoid de-optimizing the normal
+    // instruction schedule unintentionally.
     //
-    // We also avoid adding control dependencies for instructions without side effects that are not live
-    // beyond the current block, as those are dead code and should be eliminated in the DCE step.
+    // We also avoid adding control dependencies for instructions without side effects that are not
+    // live beyond the current block, as those are dead code and should be eliminated in the DCE
+    // step.
     //
     // The actual scheduling decision for the instruction is deferred to `analyze_inst`, where we
-    // treat the instruction similarly to argument materialization, and either make it a pre-requisite
-    // of the instruction or execute it in the post-execution phase depending on the terminator type
+    // treat the instruction similarly to argument materialization, and either make it a
+    // pre-requisite of the instruction or execute it in the post-execution phase depending on
+    // the terminator type
     assign_control_dependencies(&mut graph, block_id, function, liveness);
 
     // Eliminate dead code as indicated by the state of the dependency graph
@@ -1131,23 +1133,24 @@ fn build_dependency_graph(
     graph
 }
 
-/// Discover any instructions in the given block that have no predecessors, but that must be scheduled
-/// anyway, i.e. due to side effects - and make the block terminator dependent on them to ensure that
-/// they are scheduled.
+/// Discover any instructions in the given block that have no predecessors, but that must be
+/// scheduled anyway, i.e. due to side effects - and make the block terminator dependent on them to
+/// ensure that they are scheduled.
 ///
-/// We call these instruction->instruction dependencies "control dependencies", since control flow in the
-/// block depends on them being executed first. In a way these dependencies are control-flow sensitive, but
-/// because the instruction has no direct predecessors, we assume that we are free to schedule them anywhere
-/// in the block. For the time being, we choose to schedule them just prior to leaving the block, but in the
-/// future we may wish to do more intelligent scheduling of these items, either to reduce the live ranges of
-/// values which are used as instruction operands, or if we find that we must attempt to more faithfully
-/// preserve the original program ordering for some reason.
+/// We call these instruction->instruction dependencies "control dependencies", since control flow
+/// in the block depends on them being executed first. In a way these dependencies are control-flow
+/// sensitive, but because the instruction has no direct predecessors, we assume that we are free to
+/// schedule them anywhere in the block. For the time being, we choose to schedule them just prior
+/// to leaving the block, but in the future we may wish to do more intelligent scheduling of these
+/// items, either to reduce the live ranges of values which are used as instruction operands, or if
+/// we find that we must attempt to more faithfully preserve the original program ordering for some
+/// reason.
 ///
 /// NOTE: This function only assigns control dependencies for instructions _with_ side effects. An
-/// instruction with no dependents, and no side effects, is treated as dead code, since by definition
-/// its effects cannot be visible. It should be noted however that we are quite conservative about
-/// determining if an instruction has side effects - e.g., all function calls are assumed to have
-/// side effects at this point in time.
+/// instruction with no dependents, and no side effects, is treated as dead code, since by
+/// definition its effects cannot be visible. It should be noted however that we are quite
+/// conservative about determining if an instruction has side effects - e.g., all function calls are
+/// assumed to have side effects at this point in time.
 fn assign_control_dependencies(
     graph: &mut DependencyGraph,
     block_id: hir::Block,
@@ -1176,7 +1179,8 @@ fn assign_control_dependencies(
         };
         let node_id = node.id();
 
-        // Skip instructions with transitive dependents on at least one result, or a direct dependent
+        // Skip instructions with transitive dependents on at least one result, or a direct
+        // dependent
         let has_dependents = graph.predecessors(node_id).any(|pred| {
             if pred.dependent.is_result() {
                 graph.num_predecessors(pred.dependent) > 0
@@ -1231,20 +1235,16 @@ fn dce(
     // side-effects, then remove all of the nodes related to that instruction, continuing
     // until there are no more nodes to process.
     let mut worklist = VecDeque::<(hir::Inst, NodeId)>::from_iter(
-        function
-            .dfg
-            .block_insts(block_id)
-            .enumerate()
-            .map(|(i, inst)| {
-                (
-                    inst,
-                    Node::Inst {
-                        id: inst,
-                        pos: i as u16,
-                    }
-                    .into(),
-                )
-            }),
+        function.dfg.block_insts(block_id).enumerate().map(|(i, inst)| {
+            (
+                inst,
+                Node::Inst {
+                    id: inst,
+                    pos: i as u16,
+                }
+                .into(),
+            )
+        }),
     );
     let mut remove_nodes = Vec::<NodeId>::default();
     while let Some((inst, inst_node)) = worklist.pop_front() {
@@ -1308,7 +1308,10 @@ fn dce(
                             args[index]
                         }
                         BranchInfo::MultiDest(ref jts) => jts[successor].args[index],
-                        BranchInfo::NotABranch => unreachable!("indirect/conditional arguments are only valid as successors of a branch instruction"),
+                        BranchInfo::NotABranch => unreachable!(
+                            "indirect/conditional arguments are only valid as successors of a \
+                             branch instruction"
+                        ),
                     };
                     match function.dfg.value_data(value) {
                         hir::ValueData::Inst {
@@ -1375,20 +1378,16 @@ fn is_dead_instruction(
     }
 
     let pp = ProgramPoint::Block(block_id);
-    let is_live = results
-        .iter()
-        .copied()
-        .enumerate()
-        .any(|(result_idx, result)| {
-            let result_node = Node::Result {
-                value: result,
-                index: result_idx as u8,
-            };
-            if graph.num_predecessors(result_node) > 0 {
-                return true;
-            }
-            liveness.is_live_after(&result, pp)
-        });
+    let is_live = results.iter().copied().enumerate().any(|(result_idx, result)| {
+        let result_node = Node::Result {
+            value: result,
+            index: result_idx as u8,
+        };
+        if graph.num_predecessors(result_node) > 0 {
+            return true;
+        }
+        liveness.is_live_after(&result, pp)
+    });
 
     !is_live && !has_side_effects
 }

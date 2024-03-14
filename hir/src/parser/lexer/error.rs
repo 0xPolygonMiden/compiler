@@ -47,19 +47,19 @@ impl ToDiagnostic for LexicalError {
                 .with_message("invalid integer literal")
                 .with_labels(vec![Label::primary(span.source_id(), span)
                     .with_message(format!("{}", DisplayIntErrorKind(reason)))]),
-            Self::UnexpectedCharacter { start, .. } => Diagnostic::error()
-                .with_message("unexpected character")
-                .with_labels(vec![Label::primary(
-                    start.source_id(),
-                    SourceSpan::new(start, start),
-                )]),
+            Self::UnexpectedCharacter { start, .. } => {
+                Diagnostic::error().with_message("unexpected character").with_labels(vec![
+                    Label::primary(start.source_id(), SourceSpan::new(start, start)),
+                ])
+            }
             Self::UnclosedString { span, .. } => Diagnostic::error()
                 .with_message("unclosed string")
                 .with_labels(vec![Label::primary(span.source_id(), span)]),
             Self::InvalidModuleIdentifier { span, .. } => Diagnostic::error()
                 .with_message("invalid module identifier")
                 .with_labels(vec![Label::primary(span.source_id(), span).with_message(
-                    "module names must be non-empty, start with 'a-z', and only contain ascii alpha-numeric characters, '_', or '::' as a namespacing operator",
+                    "module names must be non-empty, start with 'a-z', and only contain ascii \
+                     alpha-numeric characters, '_', or '::' as a namespacing operator",
                 )]),
             Self::InvalidFunctionIdentifier { span, .. } => Diagnostic::error()
                 .with_message("invalid function identifier")

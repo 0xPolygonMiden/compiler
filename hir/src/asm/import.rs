@@ -96,9 +96,7 @@ impl ModuleImportInfo {
         Ident: core::borrow::Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        self.modules
-            .get(module)
-            .map(|i| Ident::new(i.alias, i.span))
+        self.modules.get(module).map(|i| Ident::new(i.alias, i.span))
     }
 
     /// Given an aliased module name, get the fully-qualified identifier
@@ -199,9 +197,7 @@ impl PartialOrd for MasmImport {
 }
 impl Ord for MasmImport {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        self.name
-            .cmp(&other.name)
-            .then_with(|| self.alias.cmp(&other.alias))
+        self.name.cmp(&other.name).then_with(|| self.alias.cmp(&other.alias))
     }
 }
 impl Hash for MasmImport {

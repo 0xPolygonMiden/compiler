@@ -184,7 +184,7 @@ impl Program {
         let library = MaslLibrary::read_from_dir(
             path,
             root_ns,
-            /*with_source_locations=*/ true,
+            /* with_source_locations= */ true,
             Default::default(),
         )
         .map_err(|err| LibraryError::file_error(path.to_str().unwrap(), &format!("{err}")))?;
@@ -197,8 +197,9 @@ impl Program {
         root_ns: S,
         codemap: &miden_diagnostics::CodeMap,
     ) -> Result<miden_assembly::MaslLibrary, miden_assembly::LibraryError> {
-        use miden_assembly::{LibraryNamespace, MaslLibrary, Version};
         use std::collections::BTreeSet;
+
+        use miden_assembly::{LibraryNamespace, MaslLibrary, Version};
 
         let ns = LibraryNamespace::new(root_ns)?;
         let version = Version::default();
@@ -255,14 +256,10 @@ impl From<&hir::Program> for Program {
             let mut begin = Begin::default();
             begin.imports.add(entry);
             let entry_module = begin.imports.alias(&entry.module);
-            begin
-                .body
-                .block_mut(begin.body.body)
-                .ops
-                .push(Op::Exec(FunctionIdent {
-                    module: entry_module.unwrap_or(entry.module),
-                    function: entry.function,
-                }));
+            begin.body.block_mut(begin.body.body).ops.push(Op::Exec(FunctionIdent {
+                module: entry_module.unwrap_or(entry.module),
+                function: entry.function,
+            }));
             Some(begin)
         } else {
             None

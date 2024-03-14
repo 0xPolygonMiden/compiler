@@ -7,10 +7,8 @@ use miden_diagnostics::{SourceIndex, SourceSpan};
 use miden_parsing::{Scanner, Source};
 use num_traits::Num;
 
+pub use self::{error::LexicalError, token::Token};
 use crate::{parser::ParseError, Block, Symbol, Value};
-
-pub use self::error::LexicalError;
-pub use self::token::Token;
 
 /// The value produced by the [Lexer] when iterated
 pub type Lexed = Result<(SourceIndex, Token, SourceIndex), ParseError>;
@@ -368,7 +366,8 @@ where
         }
     }
 
-    // Returns true if the identifier is a namespaced identifier (contains double colons), false otherwise
+    // Returns true if the identifier is a namespaced identifier (contains double colons), false
+    // otherwise
     fn skip_ident(&mut self, allow_dot: bool) -> bool {
         let mut is_namespaced = false;
         loop {
@@ -398,10 +397,7 @@ where
     }
 
     fn handle_function_ident(&self, s: &str) -> Token {
-        if let Some((offset, c)) = s
-            .char_indices()
-            .find(|(_, c)| *c == '.' || c.is_whitespace())
-        {
+        if let Some((offset, c)) = s.char_indices().find(|(_, c)| *c == '.' || c.is_whitespace()) {
             Token::Error(LexicalError::UnexpectedCharacter {
                 start: self.span().start() + offset,
                 found: c,
@@ -507,9 +503,9 @@ where
         match res {
             Some(Ok((start, Token::FunctionIdent((mid, fid)), end))) => {
                 match last {
-                    // If we parse a namespaced identifier right after the `module` or `kernel` keyword,
-                    // it is a module name, not a function name, so convert it into a Ident token when this
-                    // happens.
+                    // If we parse a namespaced identifier right after the `module` or `kernel`
+                    // keyword, it is a module name, not a function name, so
+                    // convert it into a Ident token when this happens.
                     Token::Module | Token::Kernel => {
                         let module_name = format!("{}::{}", mid, fid);
                         let module_id = Symbol::intern(module_name);

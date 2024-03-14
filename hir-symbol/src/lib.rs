@@ -1,10 +1,8 @@
-use core::fmt;
-use core::mem;
-use core::ops::Deref;
-use core::str;
-
-use std::collections::BTreeMap;
-use std::sync::{OnceLock, RwLock};
+use core::{fmt, mem, ops::Deref, str};
+use std::{
+    collections::BTreeMap,
+    sync::{OnceLock, RwLock},
+};
 
 static SYMBOL_TABLE: OnceLock<SymbolTable> = OnceLock::new();
 
@@ -94,7 +92,7 @@ impl<T: Deref<Target = str>> PartialEq<T> for Symbol {
 struct SymbolIndex(u32);
 impl SymbolIndex {
     // shave off 256 indices at the end to allow space for packing these indices into enums
-    pub const MAX_AS_U32: u32 = 0xFFFF_FF00;
+    pub const MAX_AS_U32: u32 = 0xffff_ff00;
 
     #[inline]
     const fn new(n: u32) -> Self {

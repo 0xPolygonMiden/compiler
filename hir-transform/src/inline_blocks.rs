@@ -1,12 +1,14 @@
 use std::collections::VecDeque;
 
-use rustc_hash::FxHashSet;
-use smallvec::SmallVec;
-
-use miden_hir::pass::{AnalysisManager, RewritePass, RewriteResult};
-use miden_hir::{self as hir, *};
+use miden_hir::{
+    self as hir,
+    pass::{AnalysisManager, RewritePass, RewriteResult},
+    *,
+};
 use miden_hir_analysis::ControlFlowGraph;
 use midenc_session::Session;
+use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 
 use crate::adt::ScopedMap;
 
@@ -85,9 +87,8 @@ impl RewritePass for InlineBlocks {
             // If inlining can proceed, do so until we reach a point where the inlined terminator
             // returns from the function, has multiple successors, or branches to a block with
             // multiple predecessors.
-            while let BranchInfo::SingleDest(b, args) = function
-                .dfg
-                .analyze_branch(function.dfg.last_inst(p).unwrap())
+            while let BranchInfo::SingleDest(b, args) =
+                function.dfg.analyze_branch(function.dfg.last_inst(p).unwrap())
             {
                 // If this successor has other predecessors, it can't be inlined, so
                 // add it to the work list and move on
@@ -104,12 +105,8 @@ impl RewritePass for InlineBlocks {
                 // valuable as an optimization.
                 if !args.is_empty() {
                     // Compute the set of values to rewrite
-                    for (from, to) in function
-                        .dfg
-                        .block_params(b)
-                        .iter()
-                        .copied()
-                        .zip(args.iter().copied())
+                    for (from, to) in
+                        function.dfg.block_params(b).iter().copied().zip(args.iter().copied())
                     {
                         rewrites.insert(from, to);
                     }
@@ -183,9 +180,7 @@ fn inline(
         }
         _ => (),
     }
-    function.dfg.blocks[from]
-        .insts
-        .push_back(UnsafeRef::from_box(from_terminator));
+    function.dfg.blocks[from].insts.push_back(UnsafeRef::from_box(from_terminator));
     // Detach the original block from the function
     function.dfg.detach_block(from);
     // Update the control flow graph to reflect the changes
@@ -362,10 +357,7 @@ mod tests {
         let mut function = Function::new(
             id,
             Signature::new(
-                [
-                    AbiParam::new(Type::Ptr(Box::new(Type::U8))),
-                    AbiParam::new(Type::I32),
-                ],
+                [AbiParam::new(Type::Ptr(Box::new(Type::U8))), AbiParam::new(Type::I32)],
                 [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
             ),
         );
@@ -395,30 +387,20 @@ mod tests {
 
             // entry
             let ptr1 = builder.ins().ptrtoint(ptr0, Type::U32, SourceSpan::UNKNOWN);
-            let is_null = builder
-                .ins()
-                .eq_imm(ptr1, Immediate::U32(0), SourceSpan::UNKNOWN);
+            let is_null = builder.ins().eq_imm(ptr1, Immediate::U32(0), SourceSpan::UNKNOWN);
             builder.ins().br(a, &[ptr1, is_null], SourceSpan::UNKNOWN);
 
             // blk0
             builder.switch_to_block(a);
-            builder
-                .ins()
-                .cond_br(is_null1, c, &[ptr0], b, &[ptr2], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(is_null1, c, &[ptr0], b, &[ptr2], SourceSpan::UNKNOWN);
 
             // blk1
             builder.switch_to_block(b);
             let ptr3_i32 = builder.ins().cast(ptr3, Type::I32, SourceSpan::UNKNOWN);
-            let ptr4_i32 = builder
-                .ins()
-                .add_checked(ptr3_i32, offset, SourceSpan::UNKNOWN);
+            let ptr4_i32 = builder.ins().add_checked(ptr3_i32, offset, SourceSpan::UNKNOWN);
             let ptr4 = builder.ins().cast(ptr4_i32, Type::U32, SourceSpan::UNKNOWN);
-            let is_null2 = builder
-                .ins()
-                .eq_imm(ptr4, Immediate::U32(0), SourceSpan::UNKNOWN);
-            builder
-                .ins()
-                .cond_br(is_null2, e, &[ptr0], f, &[ptr4], SourceSpan::UNKNOWN);
+            let is_null2 = builder.ins().eq_imm(ptr4, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder.ins().cond_br(is_null2, e, &[ptr0], f, &[ptr4], SourceSpan::UNKNOWN);
 
             // blk2
             builder.switch_to_block(c);
@@ -435,9 +417,7 @@ mod tests {
             // blk5
             builder.switch_to_block(f);
             let ptr6 =
-                builder
-                    .ins()
-                    .inttoptr(ptr5, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
+                builder.ins().inttoptr(ptr5, Type::Ptr(Box::new(Type::U8)), SourceSpan::UNKNOWN);
             builder.ins().ret(Some(ptr6), SourceSpan::UNKNOWN);
         }
 

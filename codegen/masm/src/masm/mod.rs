@@ -4,13 +4,16 @@ mod module;
 mod program;
 mod region;
 
-pub use self::function::{FrozenFunctionList, Function, FunctionList};
-pub use self::module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree};
-pub use self::program::Program;
-pub use self::region::{Begin, Region};
 pub use miden_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,
     ModuleImportInfo,
+};
+
+pub use self::{
+    function::{FrozenFunctionList, Function, FunctionList},
+    module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree},
+    program::Program,
+    region::{Begin, Region},
 };
 
 /// This represents a descriptor for a pointer translated from the IR into a form suitable for
@@ -19,7 +22,8 @@ pub use miden_hir::{
 pub struct NativePtr {
     /// This is the address of the word containing the first byte of data
     pub waddr: u32,
-    /// This is the element index of the word referenced by `waddr` containing the first byte of data
+    /// This is the element index of the word referenced by `waddr` containing the first byte of
+    /// data
     ///
     /// Each element is assumed to be a 32-bit value/chunk
     pub index: u8,

@@ -12,15 +12,7 @@ macro_rules! bug {
     }};
 
     ($diagnostics:ident, $msg:literal, $span:expr, $label:expr, $span2:expr, $label2:expr) => {{
-        diagnostic!(
-            $diagnostics,
-            Severity::Bug,
-            $msg,
-            $span,
-            $label,
-            $span2,
-            $label2
-        );
+        diagnostic!($diagnostics, Severity::Bug, $msg, $span, $label, $span2, $label2);
     }};
 }
 
@@ -38,15 +30,7 @@ macro_rules! error {
     }};
 
     ($diagnostics:ident, $msg:literal, $span:expr, $label:expr, $span2:expr, $label2:expr) => {{
-        diagnostic!(
-            $diagnostics,
-            Severity::Error,
-            $msg,
-            $span,
-            $label,
-            $span2,
-            $label2
-        );
+        diagnostic!($diagnostics, Severity::Error, $msg, $span, $label, $span2, $label2);
     }};
 }
 
@@ -65,13 +49,7 @@ macro_rules! invalid_instruction {
     ($diagnostics:ident, $inst:expr, $span:expr, $label:expr, $note:expr) => {{
         let span = $span;
         let reason = format!($label);
-        bug!(
-            $diagnostics,
-            "invalid instruction",
-            span,
-            reason.as_str(),
-            $note
-        );
+        bug!($diagnostics, "invalid instruction", span, reason.as_str(), $note);
         return Err(crate::validation::ValidationError::InvalidInstruction {
             span,
             inst: $inst,
@@ -144,13 +122,7 @@ macro_rules! invalid_function {
     ($diagnostics:ident, $function:expr, $span:expr, $label:expr, $note:expr) => {{
         let span = $span;
         let reason = format!($label);
-        error!(
-            $diagnostics,
-            "invalid function",
-            span,
-            reason.as_str(),
-            $note
-        );
+        error!($diagnostics, "invalid function", span, reason.as_str(), $note);
         return Err(crate::validation::ValidationError::InvalidFunction {
             function: $function,
             reason,
@@ -182,12 +154,7 @@ macro_rules! invalid_global {
     ($diagnostics:ident, $name:expr, $span:expr, $label:expr) => {{
         let span = $span;
         let reason = format!($label);
-        error!(
-            $diagnostics,
-            "invalid global variable",
-            span,
-            reason.as_str()
-        );
+        error!($diagnostics, "invalid global variable", span, reason.as_str());
         return Err(crate::validation::ValidationError::InvalidGlobalVariable {
             name: $name,
             reason,
@@ -200,18 +167,20 @@ mod function;
 mod naming;
 mod typecheck;
 
-pub use self::typecheck::TypeError;
-
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult};
-
-use miden_hir::*;
+use miden_diagnostics::DiagnosticsHandler;
+use miden_hir::{
+    pass::{Analysis, AnalysisManager, AnalysisResult},
+    *,
+};
 use midenc_session::Session;
 
-use self::block::{BlockValidator, DefsDominateUses};
-use self::function::FunctionValidator;
-use self::naming::NamingConventions;
-use self::typecheck::TypeCheck;
+pub use self::typecheck::TypeError;
+use self::{
+    block::{BlockValidator, DefsDominateUses},
+    function::FunctionValidator,
+    naming::NamingConventions,
+    typecheck::TypeCheck,
+};
 
 /// This error is produced by validation rules run against the IR
 #[derive(Debug, thiserror::Error)]
@@ -303,7 +272,7 @@ impl PartialEq for ValidationError {
             ) => ai == bi && ar == br,
             (Self::TypeError(a), Self::TypeError(b)) => a == b,
             (Self::Failed(a), Self::Failed(b)) => a.to_string() == b.to_string(),
-            (_, _) => false,
+            (..) => false,
         }
     }
 }
@@ -464,10 +433,7 @@ impl From<ModuleValidationAnalysis> for Result<(), ValidationError> {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{
-        testing::{self, TestContext},
-        ModuleBuilder,
-    };
+    use miden_hir::testing::TestContext;
 
     use super::*;
 

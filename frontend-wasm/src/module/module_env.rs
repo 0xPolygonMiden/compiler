@@ -12,7 +12,6 @@ use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::packed_option::ReservedValue;
 use miden_hir::cranelift_entity::PrimaryMap;
 use rustc_hash::FxHashMap;
-use std::convert::TryFrom;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;

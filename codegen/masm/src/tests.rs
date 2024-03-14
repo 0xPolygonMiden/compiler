@@ -1,12 +1,11 @@
+use std::sync::Arc;
+
 use miden_hir::{
-    self,
     pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
     AbiParam, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, OperandStack,
     ProgramBuilder, Signature, SourceSpan, Stack, StarkField, Type,
 };
-use std::sync::Arc;
-
 use proptest::prelude::*;
 
 use super::*;
@@ -135,9 +134,7 @@ impl TestByEmulationHarness {
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
         let entrypoint = module.entrypoint().expect("cannot execute a library");
-        self.emulator
-            .load_module(module)
-            .expect("failed to load module");
+        self.emulator.load_module(module).expect("failed to load module");
         self.emulator.invoke(entrypoint, args)
     }
 
@@ -146,9 +143,7 @@ impl TestByEmulationHarness {
         program: Arc<Program>,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
-        self.emulator
-            .load_program(program)
-            .expect("failed to load program");
+        self.emulator.load_program(program).expect("failed to load program");
         {
             let stack = self.emulator.stack_mut();
             for arg in args.iter().copied().rev() {
@@ -165,9 +160,7 @@ impl TestByEmulationHarness {
         entrypoint: FunctionIdent,
         args: &[Felt],
     ) -> Result<OperandStack<Felt>, EmulationError> {
-        self.emulator
-            .load_program(program)
-            .expect("failed to load program");
+        self.emulator.load_program(program).expect("failed to load program");
         self.emulator.invoke(entrypoint, args)
     }
 
@@ -219,10 +212,7 @@ fn issue56() {
     testing::issue56(mb.as_mut(), &harness.context);
     mb.build().unwrap();
 
-    let program = builder
-        .with_entrypoint("test::entrypoint".parse().unwrap())
-        .link()
-        .unwrap();
+    let program = builder.with_entrypoint("test::entrypoint".parse().unwrap()).link().unwrap();
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
     compiler.compile(program).expect("compilation failed");
@@ -239,8 +229,7 @@ fn fib_emulator() {
     // Build test module with fib function
     let mut mb = builder.module("test");
     testing::fib1(mb.as_mut(), &harness.context);
-    mb.build()
-        .expect("unexpected error constructing test module");
+    mb.build().expect("unexpected error constructing test module");
 
     // Link the program
     let program = builder
@@ -255,9 +244,7 @@ fn fib_emulator() {
 
     // Test it via the emulator
     let n = Felt::new(10);
-    let mut stack = harness
-        .execute_program(program.freeze(), &[n])
-        .expect("execution failed");
+    let mut stack = harness.execute_program(program.freeze(), &[n]).expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(55));
 }
@@ -291,14 +278,7 @@ fn codegen_fundamental_if() {
         let is_odd_blk = fb.create_block();
         let is_even_blk = fb.create_block();
         let is_odd = fb.ins().is_odd(a, SourceSpan::UNKNOWN);
-        fb.ins().cond_br(
-            is_odd,
-            is_odd_blk,
-            &[],
-            is_even_blk,
-            &[],
-            SourceSpan::UNKNOWN,
-        );
+        fb.ins().cond_br(is_odd, is_odd_blk, &[], is_even_blk, &[], SourceSpan::UNKNOWN);
         fb.switch_to_block(is_odd_blk);
         let c = fb.ins().add_checked(a, b, SourceSpan::UNKNOWN);
         fb.ins().ret(Some(c), SourceSpan::UNKNOWN);
@@ -308,14 +288,10 @@ fn codegen_fundamental_if() {
         fb.build().expect("unexpected error building function")
     };
 
-    mb.build()
-        .expect("unexpected error constructing test module");
+    mb.build().expect("unexpected error constructing test module");
 
     // Link the program
-    let program = builder
-        .with_entrypoint(id)
-        .link()
-        .expect("failed to link program");
+    let program = builder.with_entrypoint(id).link().expect("failed to link program");
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
     let program = compiler.compile(program).expect("compilation failed");
@@ -323,9 +299,7 @@ fn codegen_fundamental_if() {
     let a = Felt::new(3);
     let b = Felt::new(4);
 
-    let mut stack = harness
-        .execute_program(program.freeze(), &[a, b])
-        .expect("execution failed");
+    let mut stack = harness.execute_program(program.freeze(), &[a, b]).expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(12));
 }
@@ -366,20 +340,12 @@ fn codegen_fundamental_loops() {
 
         fb.switch_to_block(loop_header_blk);
         let is_zero = fb.ins().eq_imm(n1, Immediate::U32(0), SourceSpan::UNKNOWN);
-        fb.ins().cond_br(
-            is_zero,
-            loop_exit_blk,
-            &[a1],
-            loop_body_blk,
-            &[],
-            SourceSpan::UNKNOWN,
-        );
+        fb.ins()
+            .cond_br(is_zero, loop_exit_blk, &[a1], loop_body_blk, &[], SourceSpan::UNKNOWN);
 
         fb.switch_to_block(loop_body_blk);
         let a2 = fb.ins().incr_checked(a1, SourceSpan::UNKNOWN);
-        let n2 = fb
-            .ins()
-            .sub_imm_checked(n1, Immediate::U32(1), SourceSpan::UNKNOWN);
+        let n2 = fb.ins().sub_imm_checked(n1, Immediate::U32(1), SourceSpan::UNKNOWN);
         fb.ins().br(loop_header_blk, &[a2, n2], SourceSpan::UNKNOWN);
 
         fb.switch_to_block(loop_exit_blk);
@@ -388,14 +354,10 @@ fn codegen_fundamental_loops() {
         fb.build().expect("unexpected error building function")
     };
 
-    mb.build()
-        .expect("unexpected error constructing test module");
+    mb.build().expect("unexpected error constructing test module");
 
     // Link the program
-    let program = builder
-        .with_entrypoint(id)
-        .link()
-        .expect("failed to link program");
+    let program = builder.with_entrypoint(id).link().expect("failed to link program");
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
     let program = compiler.compile(program).expect("compilation failed");
@@ -403,9 +365,7 @@ fn codegen_fundamental_loops() {
     let a = Felt::new(3);
     let n = Felt::new(4);
 
-    let mut stack = harness
-        .execute_program(program.freeze(), &[a, n])
-        .expect("execution failed");
+    let mut stack = harness.execute_program(program.freeze(), &[a, n]).expect("execution failed");
     assert_eq!(stack.len(), 1);
     assert_eq!(stack.pop().map(|e| e.as_int()), Some(7));
 }
@@ -421,8 +381,7 @@ fn codegen_sum_matrix() {
     // Build test module with fib function
     let mut mb = builder.module("test");
     testing::sum_matrix(mb.as_mut(), &harness.context);
-    mb.build()
-        .expect("unexpected error constructing test module");
+    mb.build().expect("unexpected error constructing test module");
 
     // Link the program
     let program = builder

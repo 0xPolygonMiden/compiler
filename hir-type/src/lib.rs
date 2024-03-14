@@ -4,10 +4,10 @@ extern crate alloc;
 
 mod layout;
 
-pub use self::layout::Alignable;
-
 use alloc::{boxed::Box, vec::Vec};
 use core::{fmt, num::NonZeroU16, str::FromStr};
+
+pub use self::layout::Alignable;
 
 /// Represents the type of a value
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -36,11 +36,13 @@ pub enum Type {
     Felt,
     /// A pointer to a value in the default byte-addressable address space used by the IR.
     ///
-    /// Pointers of this type will be translated to an appropriate address space during code generation.
+    /// Pointers of this type will be translated to an appropriate address space during code
+    /// generation.
     Ptr(Box<Type>),
     /// A pointer to a valude in Miden's native word-addressable address space.
     ///
-    /// In the type system, we represent the type of the pointee, as well as an address space identifier.
+    /// In the type system, we represent the type of the pointee, as well as an address space
+    /// identifier.
     ///
     /// This pointer type is represented on Miden's operand stack as a u64 value, consisting of
     /// two 32-bit elements, the most-significant bits being on top of the stack:
@@ -49,16 +51,19 @@ pub enum Type {
     ///   * The least-significant 2 bits represent a zero-based element index (range is 0-3)
     ///   * The next most significant 4 bits represent a zero-based byte index (range is 0-31)
     ///   * The remaining 26 bits represent an address space identifier
-    /// 2. The lower 32-bit limb contains the word-aligned address, which forms the base address of the pointer.
+    /// 2. The lower 32-bit limb contains the word-aligned address, which forms the base address of
+    ///    the pointer.
     ///
-    /// Dereferencing a pointer of this type involves popping the pointer metadata, and determining what type
-    /// of load to issue based on the size of the value being loaded, and where the start of the data is
-    /// according to the metadata. Then the word-aligned address is popped and the value is loaded.
+    /// Dereferencing a pointer of this type involves popping the pointer metadata, and determining
+    /// what type of load to issue based on the size of the value being loaded, and where the
+    /// start of the data is according to the metadata. Then the word-aligned address is popped
+    /// and the value is loaded.
     ///
-    /// If the load is naturally aligned, i.e. the element index and byte offset are zero, and the size is exactly
-    /// one element or word; then a mem_load or mem_loadw are issued and no further action is required. If the load
-    /// is not naturally aligned, then either one or two words will be loaded, depending on the type being loaded,
-    /// unused elements will be dropped, and if the byte offset is non-zero, the data will be shifted bitwise into
+    /// If the load is naturally aligned, i.e. the element index and byte offset are zero, and the
+    /// size is exactly one element or word; then a mem_load or mem_loadw are issued and no
+    /// further action is required. If the load is not naturally aligned, then either one or
+    /// two words will be loaded, depending on the type being loaded, unused elements will be
+    /// dropped, and if the byte offset is non-zero, the data will be shifted bitwise into
     /// alignment on an element boundary.
     NativePtr(Box<Type>, AddressSpace),
     /// A compound type of fixed shape and size
@@ -95,7 +100,7 @@ impl Type {
             | Self::F64
             | Self::Felt
             | Self::Ptr(_)
-            | Self::NativePtr(_, _) => false,
+            | Self::NativePtr(..) => false,
         }
     }
 
@@ -139,22 +144,17 @@ impl Type {
     }
 
     pub fn is_signed_integer(&self) -> bool {
-        matches!(
-            self,
-            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128
-        )
+        matches!(self, Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128)
     }
 
     pub fn is_unsigned_integer(&self) -> bool {
-        matches!(
-            self,
-            Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128
-        )
+        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128)
     }
 
     /// Get this type as its unsigned integral twin, e.g. i32 becomes u32.
     ///
-    /// This function will panic if the type is not an integer type, or has no unsigned representation
+    /// This function will panic if the type is not an integer type, or has no unsigned
+    /// representation
     pub fn as_unsigned(&self) -> Type {
         match self {
             Self::I8 | Self::U8 => Self::U8,
@@ -211,24 +211,24 @@ impl Type {
         matches!(self, Self::Array(_, _))
     }
 
-    /// Returns true if `self` and `other` are compatible operand types for a binary operator, e.g. `add`
+    /// Returns true if `self` and `other` are compatible operand types for a binary operator, e.g.
+    /// `add`
     ///
     /// In short, the rules are as follows:
     ///
-    /// * The operand order is assumed to be `self <op> other`, i.e. `op` is being applied
-    ///   to `self` using `other`. The left-hand operand is used as the "controlling" type
-    ///   for the operator, i.e. it determines what instruction will be used to perform the
-    ///   operation.
+    /// * The operand order is assumed to be `self <op> other`, i.e. `op` is being applied to `self`
+    ///   using `other`. The left-hand operand is used as the "controlling" type for the operator,
+    ///   i.e. it determines what instruction will be used to perform the operation.
     /// * The operand types must be numeric, or support being manipulated numerically
-    /// * If the controlling type is unsigned, it is never compatible with signed types, because Miden
-    ///   instructions for unsigned types use a simple unsigned binary encoding, thus they will not handle
-    ///   signed operands using two's complement correctly.
-    /// * If the controlling type is signed, it is compatible with both signed and unsigned types, as long
-    ///   as the values fit in the range of the controlling type, e.g. adding a `u16` to an `i32` is fine,
-    ///   but adding a `u32` to an `i32` is not.
-    /// * Pointer types are permitted to be the controlling type, and since they are represented using u32,
-    ///   they have the same compatibility set as u32 does. In all other cases, pointer types are treated
-    ///   the same as any other non-numeric type.
+    /// * If the controlling type is unsigned, it is never compatible with signed types, because
+    ///   Miden instructions for unsigned types use a simple unsigned binary encoding, thus they
+    ///   will not handle signed operands using two's complement correctly.
+    /// * If the controlling type is signed, it is compatible with both signed and unsigned types,
+    ///   as long as the values fit in the range of the controlling type, e.g. adding a `u16` to an
+    ///   `i32` is fine, but adding a `u32` to an `i32` is not.
+    /// * Pointer types are permitted to be the controlling type, and since they are represented
+    ///   using u32, they have the same compatibility set as u32 does. In all other cases, pointer
+    ///   types are treated the same as any other non-numeric type.
     /// * Non-numeric types are always incompatible, since no operators support these types
     pub fn is_compatible_operand(&self, other: &Type) -> bool {
         match (self, other) {
@@ -271,7 +271,7 @@ impl Type {
             (Type::U128, Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::U128) => true,
             (Type::U256, rty) => rty.is_integer(),
             (Type::F64, Type::F64) => true,
-            (Type::Ptr(_) | Type::NativePtr(_, _), Type::U8 | Type::U16 | Type::U32) => true,
+            (Type::Ptr(_) | Type::NativePtr(..), Type::U8 | Type::U16 | Type::U32) => true,
             _ => false,
         }
     }
@@ -420,7 +420,8 @@ pub struct StructType {
     pub(crate) fields: Vec<StructField>,
 }
 impl StructType {
-    /// Create a new struct with default representation, i.e. a struct with representation of `TypeRepr::Packed(1)`.
+    /// Create a new struct with default representation, i.e. a struct with representation of
+    /// `TypeRepr::Packed(1)`.
     #[inline]
     pub fn new<I: IntoIterator<Item = Type>>(fields: I) -> Self {
         Self::new_with_repr(TypeRepr::Default, fields)
@@ -436,9 +437,8 @@ impl StructType {
             TypeRepr::Transparent => {
                 let mut offset = 0u32;
                 for (index, ty) in tys.into_iter().enumerate() {
-                    let index: u8 = index
-                        .try_into()
-                        .expect("invalid struct: expected no more than 255 fields");
+                    let index: u8 =
+                        index.try_into().expect("invalid struct: expected no more than 255 fields");
                     let field_size: u32 = ty
                         .size_in_bytes()
                         .try_into()
@@ -451,8 +451,15 @@ impl StructType {
                             ty,
                         });
                     } else {
-                        let align = ty.min_alignment().try_into().expect("invalid struct field alignment: expected power of two between 1 and 2^16");
-                        assert_eq!(offset, 0, "invalid transparent representation for struct: repr(transparent) is only valid for structs with a single non-zero sized field");
+                        let align = ty.min_alignment().try_into().expect(
+                            "invalid struct field alignment: expected power of two between 1 and \
+                             2^16",
+                        );
+                        assert_eq!(
+                            offset, 0,
+                            "invalid transparent representation for struct: repr(transparent) is \
+                             only valid for structs with a single non-zero sized field"
+                        );
                         fields.push(StructField {
                             index,
                             align,
@@ -466,13 +473,8 @@ impl StructType {
             }
             repr => {
                 let mut offset = 0u32;
-                let default_align: u16 = tys
-                    .iter()
-                    .map(|t| t.min_alignment())
-                    .max()
-                    .unwrap_or(1)
-                    .try_into()
-                    .expect(
+                let default_align: u16 =
+                    tys.iter().map(|t| t.min_alignment()).max().unwrap_or(1).try_into().expect(
                         "invalid struct field alignment: expected power of two between 1 and 2^16",
                     );
                 let align = match repr {
@@ -482,9 +484,8 @@ impl StructType {
                 };
 
                 for (index, ty) in tys.into_iter().enumerate() {
-                    let index: u8 = index
-                        .try_into()
-                        .expect("invalid struct: expected no more than 255 fields");
+                    let index: u8 =
+                        index.try_into().expect("invalid struct: expected no more than 255 fields");
                     let field_size: u32 = ty
                         .size_in_bytes()
                         .try_into()
@@ -519,13 +520,9 @@ impl StructType {
 
     /// Get the minimum alignment for this struct
     pub fn min_alignment(&self) -> usize {
-        self.repr.min_alignment().unwrap_or_else(|| {
-            self.fields
-                .iter()
-                .map(|f| f.align as usize)
-                .max()
-                .unwrap_or(1)
-        })
+        self.repr
+            .min_alignment()
+            .unwrap_or_else(|| self.fields.iter().map(|f| f.align as usize).max().unwrap_or(1))
     }
 
     /// Get the total size in bytes required to hold this struct, including alignment padding

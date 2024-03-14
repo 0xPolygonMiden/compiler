@@ -20,14 +20,14 @@ type ModuleGlobalVariableAnalysis = analysis::GlobalVariableAnalysis<hir::Module
 ///
 /// * The IR has been validated, or is known to be valid
 /// * If converting a single module, it must be self-contained
-/// * If converting multiple modules, they must be linked into a [Program], in order to
-///   ensure that there are no undefined symbols, and that the placement of global variables
-///   in linear memory has been fixed.
-/// * There are no critical edges in the control flow graph, or the [SplitCriticalEdges]
-///   rewrite has been applied.
-/// * The control flow graph is a tree, with the exception of loop header blocks. This
-///   means that the only blocks with more than one predecessor are loop headers. See
-///   the [Treeify] rewrite for more information.
+/// * If converting multiple modules, they must be linked into a [Program], in order to ensure that
+///   there are no undefined symbols, and that the placement of global variables in linear memory
+///   has been fixed.
+/// * There are no critical edges in the control flow graph, or the [SplitCriticalEdges] rewrite has
+///   been applied.
+/// * The control flow graph is a tree, with the exception of loop header blocks. This means that
+///   the only blocks with more than one predecessor are loop headers. See the [Treeify] rewrite for
+///   more information.
 ///
 /// Any further optimizations or rewrites are considered optional.
 #[derive(ConversionPassRegistration)]
@@ -38,10 +38,11 @@ impl<T> Default for ConvertHirToMasm<T> {
     }
 }
 impl<T> PassInfo for ConvertHirToMasm<T> {
+    const DESCRIPTION: &'static str = "Convert an HIR module or program to Miden Assembly\n\nSee \
+                                       the module documentation for ConvertHirToMasm for more \
+                                       details";
     const FLAG: &'static str = "convert-hir-to-masm";
     const SUMMARY: &'static str = "Convert an HIR module or program to Miden Assembly";
-    const DESCRIPTION: &'static str = "Convert an HIR module or program to Miden Assembly\n\n\
-                                       See the module documentation for ConvertHirToMasm for more details";
 }
 
 impl ConversionPass for ConvertHirToMasm<hir::Program> {
@@ -110,7 +111,8 @@ impl ConversionPass for ConvertHirToMasm<hir::Module> {
         // Compute import information for this module
         masm_module.imports = module.imports();
 
-        // If we don't have a program-wide global variable analysis, compute it using the module global table.
+        // If we don't have a program-wide global variable analysis, compute it using the module
+        // global table.
         if !analyses.is_available::<ProgramGlobalVariableAnalysis>(&ProgramAnalysisKey) {
             analyses.get_or_compute::<ModuleGlobalVariableAnalysis>(&module, session)?;
         }

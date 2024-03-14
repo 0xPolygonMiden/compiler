@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
-use crate::run_cargo_command::run_cargo_command;
 use anyhow::bail;
 use cargo_component::load_metadata;
 use cargo_component_core::terminal::Terminal;
 use clap::{CommandFactory, Parser};
 use config::CargoArguments;
 use new_project::NewCommand;
+
+use crate::run_cargo_command::run_cargo_command;
 
 mod build;
 pub mod config;
@@ -26,8 +27,7 @@ const BUILTIN_COMMANDS: &[&str] = &[
 
 const AFTER_HELP: &str = "Unrecognized subcommands will be passed to cargo verbatim 
      and the artifacts will be processed afterwards (e.g. `build` command compiles MASM).
-     \n\
-     See `cargo help` for more information on available cargo commands.";
+     \nSee `cargo help` for more information on available cargo commands.";
 
 /// Cargo integration for Miden
 #[derive(Parser)]

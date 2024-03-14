@@ -25,12 +25,12 @@ impl FromStr for FunctionIdent {
             Some((ns, id)) => {
                 let module = Ident::with_empty_span(Symbol::intern(ns));
                 let function = Ident::with_empty_span(Symbol::intern(id));
-                Ok(Self {
-                    module,
-                    function,
-                })
+                Ok(Self { module, function })
             }
-            None => Err(anyhow!("invalid function name, expected fully-qualified identifier, e.g. 'std::math::u64::checked_add'")),
+            None => Err(anyhow!(
+                "invalid function name, expected fully-qualified identifier, e.g. \
+                 'std::math::u64::checked_add'"
+            )),
         }
     }
 }
@@ -54,9 +54,7 @@ impl PartialOrd for FunctionIdent {
 }
 impl Ord for FunctionIdent {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.module
-            .cmp(&other.module)
-            .then(self.function.cmp(&other.function))
+        self.module.cmp(&other.module).then(self.function.cmp(&other.function))
     }
 }
 

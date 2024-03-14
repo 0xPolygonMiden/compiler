@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use cargo_generate::GenerateArgs;
-use cargo_generate::TemplatePath;
+use cargo_generate::{GenerateArgs, TemplatePath};
 use clap::Args;
 
 /// Create a new Miden project at <path>
@@ -16,16 +15,22 @@ pub struct NewCommand {
 
 impl NewCommand {
     pub fn exec(self) -> anyhow::Result<PathBuf> {
-        let name = self.path
-        .file_name()
-        .ok_or_else(|| {
-            anyhow::anyhow!("Failed to get the last segment of the provided path for the project name")
-        })?
-        .to_str()
-        .ok_or_else(|| {
-            anyhow::anyhow!("The last segment of the provided path must be valid UTF8 to generate a valid project name")
-        })?
-        .to_string();
+        let name = self
+            .path
+            .file_name()
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Failed to get the last segment of the provided path for the project name"
+                )
+            })?
+            .to_str()
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "The last segment of the provided path must be valid UTF8 to generate a valid \
+                     project name"
+                )
+            })?
+            .to_string();
 
         let generate_args = GenerateArgs {
             template_path: TemplatePath {

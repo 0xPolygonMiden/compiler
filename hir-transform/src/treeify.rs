@@ -1,8 +1,10 @@
-use std::collections::VecDeque;
-use std::rc::Rc;
+use std::{collections::VecDeque, rc::Rc};
 
-use miden_hir::pass::{AnalysisManager, RewritePass, RewriteResult};
-use miden_hir::{self as hir, Block as BlockId, Value as ValueId, *};
+use miden_hir::{
+    self as hir,
+    pass::{AnalysisManager, RewritePass, RewriteResult},
+    Block as BlockId, Value as ValueId, *,
+};
 use miden_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, LoopAnalysis};
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
@@ -256,7 +258,6 @@ use crate::adt::ScopedMap;
 ///   blk5
 /// end
 /// ```
-///
 #[derive(Default, PassInfo, ModuleRewritePassAdapter)]
 pub struct Treeify;
 impl RewritePass for Treeify {
@@ -362,25 +363,13 @@ fn treeify(
     //    block arguments of `b` to the values passed from the predecessor
     match function.dfg.analyze_branch(p.inst) {
         BranchInfo::SingleDest(_, args) => {
-            value_map.extend(
-                function
-                    .dfg
-                    .block_args(b)
-                    .iter()
-                    .copied()
-                    .zip(args.iter().copied()),
-            );
+            value_map.extend(function.dfg.block_args(b).iter().copied().zip(args.iter().copied()));
         }
         BranchInfo::MultiDest(ref jts) => {
             for jt in jts.iter() {
                 if jt.destination == b {
                     value_map.extend(
-                        function
-                            .dfg
-                            .block_args(b)
-                            .iter()
-                            .copied()
-                            .zip(jt.args.iter().copied()),
+                        function.dfg.block_args(b).iter().copied().zip(jt.args.iter().copied()),
                     );
                     break;
                 }
@@ -395,13 +384,11 @@ fn treeify(
             dest_args.clear(pool);
         }
     });
-    // 4. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands
-    //    to their new "corrected" values
+    // 4. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands to
+    //    their new "corrected" values
     copy_instructions(b, b_prime, function, &mut value_map, &block_map);
     // 5. Recursively copy all children of `b` to `b_prime`
-    copy_children(
-        b, b_prime, function, cfg, loops, block_q, value_map, block_map,
-    )
+    copy_children(b, b_prime, function, cfg, loops, block_q, value_map, block_map)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -429,19 +416,18 @@ fn treeify_loop(
     {
         value_map.insert(src, dest);
     }
-    // 2. Update the predecessor instruction to reference the new block, leave block arguments unchanged
+    // 2. Update the predecessor instruction to reference the new block, leave block arguments
+    //    unchanged
     update_predecessor(function, p, |dest, _, _| {
         if *dest == b {
             *dest = b_prime;
         }
     });
-    // 3. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands
-    //    to their new "corrected" values
+    // 3. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands to
+    //    their new "corrected" values
     copy_instructions(b, b_prime, function, &mut value_map, &block_map);
     // 4. Recursively copy all children of `b` to `b_prime`
-    copy_children(
-        b, b_prime, function, cfg, loops, block_q, value_map, block_map,
-    )
+    copy_children(b, b_prime, function, cfg, loops, block_q, value_map, block_map)
 }
 
 /// Detach `root`, and all of it's reachable children, from the layout of `function`
@@ -482,10 +468,7 @@ fn copy_children(
     block_map: ScopedMap<BlockId, BlockId>,
 ) -> anyhow::Result<()> {
     let pred = BlockPredecessor {
-        inst: function
-            .dfg
-            .last_inst(b_prime)
-            .expect("expected non-empty block"),
+        inst: function.dfg.last_inst(b_prime).expect("expected non-empty block"),
         block: b_prime,
     };
     let value_map = Rc::new(value_map);
@@ -592,10 +575,7 @@ fn copy_instructions(
                 }
             }
             other => {
-                for arg in other
-                    .arguments_mut(&mut function.dfg.value_lists)
-                    .iter_mut()
-                {
+                for arg in other.arguments_mut(&mut function.dfg.value_lists).iter_mut() {
                     if let Some(arg_prime) = value_map.get(arg) {
                         *arg = *arg_prime;
                     }
@@ -697,10 +677,7 @@ mod tests {
         let mut builder = ModuleBuilder::new("test");
         let id = testing::sum_matrix(&mut builder, &context);
         let mut module = builder.build();
-        let mut function = module
-            .cursor_mut_at(id.function)
-            .remove()
-            .expect("undefined function");
+        let mut function = module.cursor_mut_at(id.function).remove().expect("undefined function");
 
         let original = function.to_string();
         let mut analyses = AnalysisManager::default();

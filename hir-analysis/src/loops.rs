@@ -1,8 +1,8 @@
-use cranelift_entity::packed_option::PackedOption;
-use cranelift_entity::{entity_impl, PrimaryMap, SecondaryMap};
-
-use miden_hir::pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses};
-use miden_hir::{Block, DataFlowGraph, Function};
+use cranelift_entity::{entity_impl, packed_option::PackedOption, PrimaryMap, SecondaryMap};
+use miden_hir::{
+    pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
+    Block, DataFlowGraph, Function,
+};
 use midenc_session::Session;
 
 use super::{BlockPredecessor, ControlFlowGraph, DominatorTree};
@@ -173,8 +173,7 @@ impl LoopAnalysis {
 
     /// Determine if a Block is a loop header. If so, return the loop.
     pub fn is_loop_header(&self, block: Block) -> Option<Loop> {
-        self.innermost_loop(block)
-            .filter(|&lp| self.loop_header(lp) == block)
+        self.innermost_loop(block).filter(|&lp| self.loop_header(lp) == block)
     }
 
     /// Determine if a Block belongs to a loop by running a finger along the loop tree.
@@ -205,8 +204,7 @@ impl LoopAnalysis {
 
     /// Returns the loop-nest level of a given block.
     pub fn loop_level(&self, block: Block) -> LoopLevel {
-        self.innermost_loop(block)
-            .map_or(LoopLevel(0), |lp| self.loops[lp].level)
+        self.innermost_loop(block).map_or(LoopLevel(0), |lp| self.loops[lp].level)
     }
 
     /// Returns the loop level of the given level
@@ -342,11 +340,9 @@ impl LoopAnalysis {
 
 #[cfg(test)]
 mod tests {
+    use miden_hir::{AbiParam, FunctionBuilder, InstBuilder, Signature, SourceSpan, Type};
+
     use super::*;
-    use crate::{ControlFlowGraph, DominatorTree};
-    use miden_hir::{
-        AbiParam, Function, FunctionBuilder, InstBuilder, Signature, SourceSpan, Type,
-    };
 
     #[test]
     fn nested_loops_variant1_detection() {
@@ -372,14 +368,10 @@ mod tests {
             builder.ins().br(block2, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block2);
-            builder
-                .ins()
-                .cond_br(cond, block1, &[], block3, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block1, &[], block3, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block3);
-            builder
-                .ins()
-                .cond_br(cond, block0, &[], block4, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block0, &[], block4, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block4);
             builder.ins().ret(None, SourceSpan::UNKNOWN);
@@ -431,9 +423,7 @@ mod tests {
 
             // block0 is outside of any loop
             builder.switch_to_block(block0);
-            builder
-                .ins()
-                .cond_br(cond, block1, &[], exit, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block1, &[], exit, &[], SourceSpan::UNKNOWN);
 
             // block1 simply branches to a loop header
             builder.switch_to_block(block1);
@@ -441,9 +431,7 @@ mod tests {
 
             // block2 is the outer loop, which is conditionally entered
             builder.switch_to_block(block2);
-            builder
-                .ins()
-                .cond_br(cond, block3, &[], exit, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block3, &[], exit, &[], SourceSpan::UNKNOWN);
 
             // block3 simply branches to a nested loop header
             builder.switch_to_block(block3);
@@ -451,9 +439,7 @@ mod tests {
 
             // block4 is the inner loop, which is conditionally escaped to the outer loop
             builder.switch_to_block(block4);
-            builder
-                .ins()
-                .cond_br(cond, block5, &[], block6, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block5, &[], block6, &[], SourceSpan::UNKNOWN);
 
             // block5 is the loop body of the inner loop
             builder.switch_to_block(block5);
@@ -528,30 +514,22 @@ mod tests {
             builder.ins().br(block1, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block1);
-            builder
-                .ins()
-                .cond_br(cond, block2, &[], block4, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block2, &[], block4, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block2);
             builder.ins().br(block3, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block3);
-            builder
-                .ins()
-                .cond_br(cond, block2, &[], block6, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block2, &[], block6, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block4);
             builder.ins().br(block5, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block5);
-            builder
-                .ins()
-                .cond_br(cond, block4, &[], block6, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block4, &[], block6, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block6);
-            builder
-                .ins()
-                .cond_br(cond, block1, &[], block7, &[], SourceSpan::UNKNOWN);
+            builder.ins().cond_br(cond, block1, &[], block7, &[], SourceSpan::UNKNOWN);
 
             builder.switch_to_block(block7);
             builder.ins().ret(None, SourceSpan::UNKNOWN);

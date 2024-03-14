@@ -6,19 +6,18 @@ use miden_hir::{
 use miden_hir_type::LiftedFunctionType;
 use wasmparser::WasmFeatures;
 
-use crate::{
-    component::{ComponentParser, StringEncoding},
-    error::WasmResult,
-    module::{build_ir::build_ir_module, module_env::ParsedModule, types::EntityIndex},
-    WasmError, WasmTranslationConfig,
-};
-
 use super::{
     inline,
     instance::{ComponentImport, ComponentInstance, ComponentInstanceBuilder},
     interface_type_to_ir, CanonicalOptions, ComponentTypes, ComponentTypesBuilder, CoreDef, Export,
     ExportItem, LinearComponent, LinearComponentTranslation, ParsedRootComponent,
     StaticModuleIndex, TypeFuncIndex,
+};
+use crate::{
+    component::{ComponentParser, StringEncoding},
+    error::WasmResult,
+    module::{build_ir::build_ir_module, module_env::ParsedModule, types::EntityIndex},
+    WasmError, WasmTranslationConfig,
 };
 
 /// Translate a Wasm component binary into Miden IR component
@@ -114,8 +113,7 @@ fn build_ir<'data>(
             config,
             diagnostics,
         )?;
-        cb.add_module(module.into())
-            .expect("module is already added");
+        cb.add_module(module.into()).expect("module is already added");
     }
 
     Ok(cb.build())
@@ -283,18 +281,12 @@ fn assert_empty_canonical_options(options: &CanonicalOptions) {
         StringEncoding::Utf8,
         "UTF-8 is expected in CanonicalOptions, string transcoding is not yet supported"
     );
-    assert!(
-        options.realloc.is_none(),
-        "realloc in CanonicalOptions is not yet supported"
-    );
+    assert!(options.realloc.is_none(), "realloc in CanonicalOptions is not yet supported");
     assert!(
         options.post_return.is_none(),
         "post_return in CanonicalOptions is not yet supported"
     );
-    assert!(
-        options.memory.is_none(),
-        "memory in CanonicalOptions is not yet supported"
-    );
+    assert!(options.memory.is_none(), "memory in CanonicalOptions is not yet supported");
 }
 
 #[cfg(test)]
@@ -303,13 +295,11 @@ mod tests {
     use miden_core::crypto::hash::RpoDigest;
     use miden_hir_type::Type;
 
+    use super::*;
     use crate::{
-        component::StaticModuleIndex,
         config::{ExportMetadata, ImportMetadata},
         test_utils::test_diagnostics,
     };
-
-    use super::*;
 
     #[test]
     fn translate_simple() {
@@ -522,10 +512,7 @@ mod tests {
         assert_eq!(function_id.module, module.name);
         // assert_eq!(function_id.function, interface_function_ident.function);
         let component_import = ir.imports().get(&function_id).unwrap();
-        assert_eq!(
-            component_import.interface_function,
-            interface_function_ident
-        );
+        assert_eq!(component_import.interface_function, interface_function_ident);
         assert!(!component_import.function_ty.params.is_empty());
         let expected_import_func_ty = LiftedFunctionType {
             params: vec![Type::U32, Type::U32],

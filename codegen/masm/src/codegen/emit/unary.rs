@@ -1,6 +1,4 @@
-use miden_hir::{Overflow, Type};
-
-use crate::masm::Op;
+use miden_hir::Overflow;
 
 use super::*;
 
@@ -90,7 +88,8 @@ impl<'a> OpEmitter<'a> {
         let src = arg.ty();
         assert!(
             src.is_unsigned_integer() && dst.is_integer(),
-            "invalid zero-extension of {src} to {dst}: only unsigned integer-to-integer casts are supported"
+            "invalid zero-extension of {src} to {dst}: only unsigned integer-to-integer casts are \
+             supported"
         );
         let src_bits = src.size_in_bits() as u32;
         let dst_bits = dst.size_in_bits() as u32;
@@ -105,12 +104,17 @@ impl<'a> OpEmitter<'a> {
             (Type::U64, Type::I128) => self.push_u64(0),
             (Type::Felt, Type::U64 | Type::I128) => self.zext_felt(dst_bits),
             (Type::U32, Type::U64 | Type::I64 | Type::I128) => self.zext_int32(dst_bits),
-            (Type::I1 | Type::U8 | Type::U16, Type::U64 | Type::I64 | Type::I128) => self.zext_smallint(src_bits, dst_bits),
+            (Type::I1 | Type::U8 | Type::U16, Type::U64 | Type::I64 | Type::I128) => {
+                self.zext_smallint(src_bits, dst_bits)
+            }
             // Zero-extending to u32/i32 from smaller integers is a no-op
             (Type::I1 | Type::U8 | Type::U16, Type::U32 | Type::I32) => (),
             // Zero-extending to felt, from types that fit in felt, is a no-op
             (Type::I1 | Type::U8 | Type::U16 | Type::U32, Type::Felt) => (),
-            (src, dst) if dst.is_signed_integer() => panic!("invalid zero-extension from {src} to {dst}: value may not fit in range, use explicit cast instead"),
+            (src, dst) if dst.is_signed_integer() => panic!(
+                "invalid zero-extension from {src} to {dst}: value may not fit in range, use \
+                 explicit cast instead"
+            ),
             (src, dst) => panic!("unsupported zero-extension from {src} to {dst}"),
         }
         self.stack.push(dst.clone());
@@ -145,7 +149,11 @@ impl<'a> OpEmitter<'a> {
     pub fn sext(&mut self, dst: &Type) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
-        assert!(src.is_integer() && dst.is_signed_integer(), "invalid sign-extension of {src} to {dst}: only integer-to-signed-integer casts are supported");
+        assert!(
+            src.is_integer() && dst.is_signed_integer(),
+            "invalid sign-extension of {src} to {dst}: only integer-to-signed-integer casts are \
+             supported"
+        );
         let src_bits = src.size_in_bits() as u32;
         let dst_bits = dst.size_in_bits() as u32;
         assert!(
@@ -539,7 +547,8 @@ impl<'a> OpEmitter<'a> {
         self.stack.push(ty);
     }
 
-    /// Compute the modular multiplicative inverse of the operand on top of the stack, `n`, i.e. `n^-1 mod P`.
+    /// Compute the modular multiplicative inverse of the operand on top of the stack, `n`, i.e.
+    /// `n^-1 mod P`.
     ///
     /// This operation consumes the input operand.
     pub fn inv(&mut self) {

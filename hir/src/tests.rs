@@ -1,9 +1,4 @@
-use winter_math::FieldElement;
-
-use super::{
-    testing::{self, TestContext},
-    *,
-};
+use super::{testing::TestContext, *};
 
 /// Test that we can construct a basic module and function and validate it
 #[test]
@@ -29,17 +24,12 @@ fn inline_asm_builders_test() {
 
     // Declare the `sum` function, with the appropriate type signature
     let sig = Signature {
-        params: vec![
-            AbiParam::new(Type::Ptr(Box::new(Type::Felt))),
-            AbiParam::new(Type::U32),
-        ],
+        params: vec![AbiParam::new(Type::Ptr(Box::new(Type::Felt))), AbiParam::new(Type::U32)],
         results: vec![AbiParam::new(Type::Felt)],
         cc: CallConv::SystemV,
         linkage: Linkage::External,
     };
-    let mut fb = builder
-        .function("sum", sig)
-        .expect("unexpected symbol conflict");
+    let mut fb = builder.function("sum", sig).expect("unexpected symbol conflict");
 
     let entry = fb.current_block();
     let (ptr, len) = {
@@ -47,9 +37,7 @@ fn inline_asm_builders_test() {
         (args[0], args[1])
     };
 
-    let mut asm_builder = fb
-        .ins()
-        .inline_asm(&[ptr, len], [Type::Felt], SourceSpan::UNKNOWN);
+    let mut asm_builder = fb.ins().inline_asm(&[ptr, len], [Type::Felt], SourceSpan::UNKNOWN);
     asm_builder.ins().push(Felt::ZERO); // [sum, ptr, len]
     asm_builder.ins().push_u32(0); // [i, sum, ptr, len]
     asm_builder.ins().dup(0); // [i, i, sum, ptr, len]

@@ -1,13 +1,11 @@
 use core::{
-    convert::AsRef,
     fmt,
     hash::{Hash, Hasher},
     ops::{Index, IndexMut},
 };
 
-use smallvec::{smallvec, SmallVec};
-
 use miden_hir::{Felt, FieldElement, Immediate, Type, Value};
+use smallvec::{smallvec, SmallVec};
 
 /// This represents a constraint an operand's usage at
 /// a given program point, namely when used as an instruction
@@ -84,7 +82,7 @@ impl PartialEq for ConstantValue {
         match (self, other) {
             (Self::Imm(ref a), Self::Imm(ref b)) => a.cmp(b).is_eq(),
             (Self::Bytes(ref a), Self::Bytes(ref b)) => a == b,
-            (_, _) => false,
+            (..) => false,
         }
     }
 }
@@ -378,10 +376,7 @@ impl Operand {
         let ty = operand.ty();
         let mut word = ty.to_raw_parts().expect("invalid operand type");
         assert!(!word.is_empty(), "invalid operand: must be a sized type");
-        assert!(
-            word.len() <= 4,
-            "invalid operand: must be smaller than or equal to a word"
-        );
+        assert!(word.len() <= 4, "invalid operand: must be smaller than or equal to a word");
         if word.len() > 1 {
             word.reverse();
         }
@@ -415,9 +410,10 @@ impl Operand {
     /// as a new [Operand].
     ///
     /// For operands that fit in a field element, this is equivalent to cloning the operand.
-    /// For operands that are larger than a field element, the type will be split at the fourth byte,
-    /// this may destroy the semantics of a higher-level type (i.e. a large integer might become a
-    /// smaller one, or an array of raw bytes). It is assumed that the caller is doing this intentionally.
+    /// For operands that are larger than a field element, the type will be split at the fourth
+    /// byte, this may destroy the semantics of a higher-level type (i.e. a large integer might
+    /// become a smaller one, or an array of raw bytes). It is assumed that the caller is doing
+    /// this intentionally.
     #[allow(unused)]
     pub fn pop(&mut self) -> Operand {
         if self.word.len() == 1 {
@@ -592,13 +588,7 @@ impl OperandStack {
     pub fn effective_index_inclusive(&self, index: usize) -> usize {
         assert!(index < self.stack.len());
 
-        self.stack
-            .iter()
-            .rev()
-            .take(index + 1)
-            .map(|o| o.size())
-            .sum::<usize>()
-            - 1
+        self.stack.iter().rev().take(index + 1).map(|o| o.size()).sum::<usize>() - 1
     }
 
     /// Returns the number of operands on the stack
@@ -746,10 +736,7 @@ impl OperandStack {
     /// larger than a field element, it may be split to accommodate the request.
     #[allow(unused)]
     pub fn dropw(&mut self) {
-        assert!(
-            self.raw_len() >= 4,
-            "expected at least a word on the operand stack"
-        );
+        assert!(self.raw_len() >= 4, "expected at least a word on the operand stack");
         let mut dropped = 0usize;
         while let Some(mut elem) = self.stack.pop() {
             let needed = 4 - dropped;
@@ -773,12 +760,7 @@ impl OperandStack {
     #[inline]
     pub fn dropn(&mut self, n: usize) {
         let len = self.stack.len();
-        assert!(
-            n <= len,
-            "unable to drop {} operands, operand stack only has {}",
-            n,
-            len
-        );
+        assert!(n <= len, "unable to drop {} operands, operand stack only has {}", n, len);
         self.stack.truncate(len - n);
     }
 
@@ -848,7 +830,8 @@ impl OperandStack {
         // Split the stack so that the desired position is in the top half
         let mid = len - (n + 1);
         let (_, r) = self.stack.split_at_mut(mid);
-        // Move all elements above the `n`th position up by one, moving the top element to the `n`th position
+        // Move all elements above the `n`th position up by one, moving the top element to the `n`th
+        // position
         r.rotate_right(1);
     }
 
@@ -869,16 +852,11 @@ impl Index<usize> for OperandStack {
             index,
             len
         );
-        let effective_len: usize = self
-            .stack
-            .iter()
-            .rev()
-            .take(index + 1)
-            .map(|o| o.size())
-            .sum();
+        let effective_len: usize = self.stack.iter().rev().take(index + 1).map(|o| o.size()).sum();
         assert!(
             effective_len <= 16,
-            "invalid operand stack index ({}): requires access to more than 16 elements, which is not supported in Miden",
+            "invalid operand stack index ({}): requires access to more than 16 elements, which is \
+             not supported in Miden",
             index
         );
         &self.stack[len - index - 1]
@@ -893,16 +871,11 @@ impl IndexMut<usize> for OperandStack {
             index,
             len
         );
-        let effective_len: usize = self
-            .stack
-            .iter()
-            .rev()
-            .take(index + 1)
-            .map(|o| o.size())
-            .sum();
+        let effective_len: usize = self.stack.iter().rev().take(index + 1).map(|o| o.size()).sum();
         assert!(
             effective_len <= 16,
-            "invalid operand stack index ({}): requires access to more than 16 elements, which is not supported in Miden",
+            "invalid operand stack index ({}): requires access to more than 16 elements, which is \
+             not supported in Miden",
             index
         );
         &mut self.stack[len - index - 1]
@@ -932,8 +905,9 @@ impl fmt::Debug for OperandStack {
 
 #[cfg(test)]
 mod tests {
+    use miden_hir::StructType;
+
     use super::*;
-    use miden_hir::{Immediate, StructType, Type};
 
     #[test]
     fn operand_stack_homogenous_operand_sizes_test() {
@@ -1203,11 +1177,8 @@ mod tests {
         let one = Immediate::U32(1);
         let two = Type::U64;
         let three = Type::U64;
-        let struct_a = Type::Struct(StructType::new([
-            Type::Ptr(Box::new(Type::U8)),
-            Type::U16,
-            Type::U32,
-        ]));
+        let struct_a =
+            Type::Struct(StructType::new([Type::Ptr(Box::new(Type::U8)), Type::U16, Type::U32]));
 
         // push
         stack.push(zero);

@@ -8,7 +8,7 @@ use intrusive_collections::{
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use rustc_hash::FxHashSet;
 
-use super::{pass::AnalysisKey, *};
+use super::*;
 
 /// This error is raised when two modules conflict with the same symbol name
 #[derive(Debug, thiserror::Error)]
@@ -57,7 +57,8 @@ pub struct Module {
     /// modules do not, in exchange for some useful functionality:
     ///
     /// * Functions with external linkage are required to use the `Kernel` calling convention.
-    /// * A kernel module executes in the root context of the Miden VM, allowing one to expose functionality
+    /// * A kernel module executes in the root context of the Miden VM, allowing one to expose
+    ///   functionality
     /// that is protected from tampering by other non-kernel functions in the program.
     /// * Due to the above, you may not reference globals outside the kernel module, from within
     /// kernel functions, as they are not available in the root context.
@@ -65,8 +66,9 @@ pub struct Module {
 }
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use crate::write::DisplayIdent;
         use std::fmt::Write;
+
+        use crate::write::DisplayIdent;
 
         if self.is_kernel {
             writeln!(f, "kernel {}\n", DisplayIdent(&self.name))?;
@@ -115,12 +117,7 @@ impl fmt::Display for Module {
                 )?;
                 match global.init {
                     Some(init) => {
-                        writeln!(
-                            f,
-                            " = ${} {{ id = {} }};",
-                            init.as_u32(),
-                            global.id().as_u32()
-                        )?;
+                        writeln!(f, " = ${} {{ id = {} }};", init.as_u32(), global.id().as_u32())?;
                     }
                     None => {
                         writeln!(f, " {{ id = {} }};", global.id().as_u32())?;
@@ -137,9 +134,7 @@ impl fmt::Display for Module {
                 if import.id.module == self.name {
                     continue;
                 }
-                external_functions
-                    .entry(import.id)
-                    .or_insert_with(|| import.signature.clone());
+                external_functions.entry(import.id).or_insert_with(|| import.signature.clone());
             }
             if i > 0 {
                 writeln!(f)?;
@@ -175,9 +170,11 @@ impl midenc_session::Emit for Module {
     fn name(&self) -> Option<crate::Symbol> {
         Some(self.name.as_symbol())
     }
+
     fn output_type(&self) -> midenc_session::OutputType {
         midenc_session::OutputType::Hir
     }
+
     fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
         writer.write_fmt(format_args!("{}", self))
     }
@@ -235,32 +232,35 @@ macro_rules! assert_valid_function {
         if $function.is_kernel() {
             assert!($module.is_kernel, "cannot add kernel functions to a non-kernel module");
         } else if $module.is_kernel && $function.is_public() {
-            panic!("functions with external linkage in kernel modules must use the kernel calling convention");
+            panic!(
+                "functions with external linkage in kernel modules must use the kernel calling \
+                 convention"
+            );
         }
-    }
+    };
 }
 
 impl Module {
     /// Create a new, empty [Module]
     pub fn new<S: Into<Ident>>(name: S) -> Self {
-        Self::make(name.into(), /*is_kernel=*/ false)
+        Self::make(name.into(), /* is_kernel= */ false)
     }
 
     /// Create a new, empty [Module] with the given source location
     pub fn new_with_span<S: AsRef<str>>(name: S, span: SourceSpan) -> Self {
         let name = Ident::new(Symbol::intern(name.as_ref()), span);
-        Self::make(name, /*is_kernel=*/ false)
+        Self::make(name, /* is_kernel= */ false)
     }
 
     /// Create a new, empty kernel [Module]
     pub fn new_kernel<S: Into<Ident>>(name: S) -> Self {
-        Self::make(name.into(), /*is_kernel=*/ true)
+        Self::make(name.into(), /* is_kernel= */ true)
     }
 
     /// Create a new, empty kernel [Module] with the given source location
     pub fn new_kernel_with_span<S: AsRef<str>>(name: S, span: SourceSpan) -> Self {
         let name = Ident::new(Symbol::intern(name.as_ref()), span);
-        Self::make(name, /*is_kernel=*/ true)
+        Self::make(name, /* is_kernel= */ true)
     }
 
     fn make(name: Ident, is_kernel: bool) -> Self {
@@ -314,7 +314,8 @@ impl Module {
         &self.globals
     }
 
-    /// Declare a new [GlobalVariable] in this module, with the given name, type, linkage, and optional initializer.
+    /// Declare a new [GlobalVariable] in this module, with the given name, type, linkage, and
+    /// optional initializer.
     ///
     /// Returns `Err` if a symbol with the same name but conflicting declaration already exists,
     /// or if the specification of the global variable is invalid in any way.
@@ -333,7 +334,8 @@ impl Module {
 
     /// Set the initializer for a [GlobalVariable] to `init`.
     ///
-    /// Returns `Err` if the initializer conflicts with the current definition of the global in any way.
+    /// Returns `Err` if the initializer conflicts with the current definition of the global in any
+    /// way.
     pub fn set_global_initializer(
         &mut self,
         gv: GlobalVariable,
@@ -382,11 +384,7 @@ impl Module {
     /// are namespace conflicts
     pub fn imports(&self) -> ModuleImportInfo {
         let mut imports = ModuleImportInfo::default();
-        let locals = self
-            .functions
-            .iter()
-            .map(|f| f.id)
-            .collect::<FxHashSet<FunctionIdent>>();
+        let locals = self.functions.iter().map(|f| f.id).collect::<FxHashSet<FunctionIdent>>();
 
         for function in self.functions.iter() {
             for import in function.imports() {
@@ -414,7 +412,8 @@ impl Module {
     ///
     /// NOTE: This function will panic if either of the following rules are violated:
     ///
-    /// * If this module is a kernel module, public functions must use the kernel calling convention,
+    /// * If this module is a kernel module, public functions must use the kernel calling
+    ///   convention,
     /// however private functions can use any convention.
     /// * If this module is not a kernel module, functions may not use the kernel calling convention
     pub fn push(&mut self, function: Box<Function>) -> Result<(), SymbolConflictError> {
@@ -674,8 +673,7 @@ impl ModuleBuilder {
         init: I,
         readonly: bool,
     ) -> Result<(), DataSegmentError> {
-        self.module
-            .declare_data_segment(offset, size, init.into(), readonly)
+        self.module.declare_data_segment(offset, size, init.into(), readonly)
     }
 
     /// Start building a new function in this module
@@ -767,8 +765,7 @@ impl<'m> ModuleFunctionBuilder<'m> {
     }
 
     pub fn append_block_param(&mut self, block: Block, ty: Type, span: SourceSpan) -> Value {
-        self.data_flow_graph_mut()
-            .append_block_param(block, ty, span)
+        self.data_flow_graph_mut().append_block_param(block, ty, span)
     }
 
     pub fn inst_results(&self, inst: Inst) -> &[Value] {
@@ -793,9 +790,7 @@ impl<'m> ModuleFunctionBuilder<'m> {
         M: Into<Ident>,
         F: Into<Ident>,
     {
-        self.function
-            .dfg
-            .import_function(module.into(), function.into(), signature)
+        self.function.dfg.import_function(module.into(), function.into(), signature)
     }
 
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> DefaultInstBuilder<'a> {
@@ -828,24 +823,45 @@ impl<'m> ModuleFunctionBuilder<'m> {
         match sig.cc {
             CallConv::Kernel if is_kernel_module => {
                 if !is_public {
-                    diagnostics.diagnostic(Severity::Error)
-                               .with_message(format!("expected external linkage for kernel function '{}'", &self.function.id))
-                        .with_note("This function is private, but uses the 'kernel' calling convention. It must either be made public, or use a different convention")
+                    diagnostics
+                        .diagnostic(Severity::Error)
+                        .with_message(format!(
+                            "expected external linkage for kernel function '{}'",
+                            &self.function.id
+                        ))
+                        .with_note(
+                            "This function is private, but uses the 'kernel' calling convention. \
+                             It must either be made public, or use a different convention",
+                        )
                         .emit();
                     return Err(InvalidFunctionError);
                 }
             }
             CallConv::Kernel => {
-                diagnostics.diagnostic(Severity::Error)
-                    .with_message(format!("invalid calling convention for function '{}'", &self.function.id))
-                    .with_note("The 'kernel' calling convention is only allowed in kernel modules, on functions with external linkage")
+                diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message(format!(
+                        "invalid calling convention for function '{}'",
+                        &self.function.id
+                    ))
+                    .with_note(
+                        "The 'kernel' calling convention is only allowed in kernel modules, on \
+                         functions with external linkage",
+                    )
                     .emit();
                 return Err(InvalidFunctionError);
             }
             _ if is_kernel_module && is_public => {
-                diagnostics.diagnostic(Severity::Error)
-                    .with_message(format!("invalid calling convention for function '{}'", &self.function.id))
-                    .with_note("Functions with external linkage, must use the 'kernel' calling convention when defined in a kernel module")
+                diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message(format!(
+                        "invalid calling convention for function '{}'",
+                        &self.function.id
+                    ))
+                    .with_note(
+                        "Functions with external linkage, must use the 'kernel' calling \
+                         convention when defined in a kernel module",
+                    )
                     .emit();
                 return Err(InvalidFunctionError);
             }

@@ -1,5 +1,4 @@
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 #[allow(dead_code)]
 pub(crate) fn get_test_path(test_dir_name: &str) -> PathBuf {

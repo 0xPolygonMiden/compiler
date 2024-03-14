@@ -14,7 +14,10 @@ use super::{Alignable, ConstantData, Offset};
 #[derive(Debug, thiserror::Error)]
 pub enum DataSegmentError {
     /// The current segment overlaps with a previously allocated segment
-    #[error("invalid data segment: segment of {size1} bytes at {offset1:#x} overlaps with segment of {size2} bytes at {offset2:#x}")]
+    #[error(
+        "invalid data segment: segment of {size1} bytes at {offset1:#x} overlaps with segment of \
+         {size2} bytes at {offset2:#x}"
+    )]
     OverlappingSegments {
         offset1: Offset,
         size1: u32,
@@ -24,7 +27,10 @@ pub enum DataSegmentError {
     /// The current segment and a previous definition of that segment do
     /// not agree on the data or read/write properties of the memory they
     /// represent.
-    #[error("invalid data segment: segment at {0:#x} conflicts with a previous segment declaration at this address")]
+    #[error(
+        "invalid data segment: segment at {0:#x} conflicts with a previous segment declaration at \
+         this address"
+    )]
     Mismatch(Offset),
     /// The current segment and size do not fall in the boundaries of the heap
     /// which is allocatable to globals and other heap allocations.
@@ -32,13 +38,22 @@ pub enum DataSegmentError {
     /// For example, Miden reserves some amount of memory for procedure locals
     /// at a predetermined address, and we do not permit segments to be allocated
     /// past that point.
-    #[error("invalid data segment: segment of {size} bytes at {offset:#x} would extend beyond the end of the usable heap")]
+    #[error(
+        "invalid data segment: segment of {size} bytes at {offset:#x} would extend beyond the end \
+         of the usable heap"
+    )]
     OutOfBounds { offset: Offset, size: u32 },
     /// The initializer for the current segment has a size greater than `u32::MAX` bytes
-    #[error("invalid data segment: segment at {0:#x} was declared with an initializer larger than 2^32 bytes")]
+    #[error(
+        "invalid data segment: segment at {0:#x} was declared with an initializer larger than \
+         2^32 bytes"
+    )]
     InitTooLarge(Offset),
     /// The initializer for the current segment has a size greater than the declared segment size
-    #[error("invalid data segment: segment of {size} bytes at {offset:#x} has an initializer of {actual} bytes")]
+    #[error(
+        "invalid data segment: segment of {size} bytes at {offset:#x} has an initializer of \
+         {actual} bytes"
+    )]
     InitOutOfBounds {
         offset: Offset,
         size: u32,
@@ -46,7 +61,8 @@ pub enum DataSegmentError {
     },
 }
 
-/// Similar to [GlobalVariableTable], this structure is used to track data segments in a module or program.
+/// Similar to [GlobalVariableTable], this structure is used to track data segments in a module or
+/// program.
 #[derive(Default)]
 pub struct DataSegmentTable {
     segments: LinkedList<DataSegmentAdapter>,
@@ -55,9 +71,7 @@ impl Clone for DataSegmentTable {
     fn clone(&self) -> Self {
         let mut table = Self::default();
         for segment in self.segments.iter() {
-            table
-                .segments
-                .push_back(UnsafeRef::from_box(Box::new(segment.clone())));
+            table.segments.push_back(UnsafeRef::from_box(Box::new(segment.clone())));
         }
         table
     }
@@ -221,10 +235,8 @@ impl DataSegment {
         readonly: bool,
     ) -> Result<Self, DataSegmentError> {
         // Require the initializer data to be no larger than 2^32 bytes
-        let init_size = init
-            .len()
-            .try_into()
-            .map_err(|_| DataSegmentError::InitTooLarge(offset))?;
+        let init_size =
+            init.len().try_into().map_err(|_| DataSegmentError::InitTooLarge(offset))?;
 
         // Require the initializer to fit within the declared bounds
         if size < init_size {
@@ -237,9 +249,7 @@ impl DataSegment {
 
         // Require the entire segment to fit within the linear memory address space
         let size = core::cmp::max(size, init_size);
-        offset
-            .checked_add(size)
-            .ok_or(DataSegmentError::OutOfBounds { offset, size })?;
+        offset.checked_add(size).ok_or(DataSegmentError::OutOfBounds { offset, size })?;
 
         Ok(Self {
             link: Default::default(),

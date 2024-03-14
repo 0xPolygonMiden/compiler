@@ -1,5 +1,4 @@
-use core::borrow::Borrow;
-use core::fmt;
+use core::{borrow::Borrow, fmt};
 
 use smallvec::SmallVec;
 
@@ -180,8 +179,7 @@ where
         T: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        self.items
-            .binary_search_by(|probe| Ord::cmp(probe.borrow(), item))
+        self.items.binary_search_by(|probe| Ord::cmp(probe.borrow(), item))
     }
 
     fn sort_and_dedup(&mut self) {

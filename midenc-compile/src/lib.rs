@@ -2,17 +2,14 @@ mod compiler;
 mod stage;
 mod stages;
 
-pub use self::compiler::Compiler;
-use self::stage::Stage;
-use self::stages::*;
-
 use std::sync::Arc;
 
 use miden_codegen_masm as masm;
 use miden_hir::{pass::AnalysisManager, Symbol};
 use midenc_session::{OutputType, Session};
 
-pub use self::stages::Compiled;
+pub use self::{compiler::Compiler, stages::Compiled};
+use self::{stage::Stage, stages::*};
 
 pub type CompilerResult<T> = Result<T, CompilerError>;
 
@@ -69,48 +66,46 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
     use miden_hir::RewritePassRegistration;
     use midenc_session::CompileFlag;
 
-    let cmd = inventory::iter::<CompileFlag>
-        .into_iter()
-        .fold(cmd, |cmd, flag| {
-            let arg = clap::Arg::new(flag.name)
-                .long(flag.long.unwrap_or(flag.name))
-                .action(clap::ArgAction::from(flag.action));
-            let arg = if let Some(help) = flag.help {
-                arg.help(help)
-            } else {
-                arg
-            };
-            let arg = if let Some(help_heading) = flag.help_heading {
-                arg.help_heading(help_heading)
-            } else {
-                arg
-            };
-            let arg = if let Some(short) = flag.short {
-                arg.short(short)
-            } else {
-                arg
-            };
-            let arg = if let Some(env) = flag.env {
-                arg.env(env)
-            } else {
-                arg
-            };
-            let arg = if let Some(value) = flag.default_missing_value {
-                arg.default_missing_value(value)
-            } else {
-                arg
-            };
-            let arg = if let Some(value) = flag.default_value {
-                arg.default_value(value)
-            } else {
-                arg
-            };
-            cmd.arg(arg)
-        });
+    let cmd = inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
+        let arg = clap::Arg::new(flag.name)
+            .long(flag.long.unwrap_or(flag.name))
+            .action(clap::ArgAction::from(flag.action));
+        let arg = if let Some(help) = flag.help {
+            arg.help(help)
+        } else {
+            arg
+        };
+        let arg = if let Some(help_heading) = flag.help_heading {
+            arg.help_heading(help_heading)
+        } else {
+            arg
+        };
+        let arg = if let Some(short) = flag.short {
+            arg.short(short)
+        } else {
+            arg
+        };
+        let arg = if let Some(env) = flag.env {
+            arg.env(env)
+        } else {
+            arg
+        };
+        let arg = if let Some(value) = flag.default_missing_value {
+            arg.default_missing_value(value)
+        } else {
+            arg
+        };
+        let arg = if let Some(value) = flag.default_value {
+            arg.default_value(value)
+        } else {
+            arg
+        };
+        cmd.arg(arg)
+    });
 
-    inventory::iter::<RewritePassRegistration<miden_hir::Module>>
-        .into_iter()
-        .fold(cmd, |cmd, rewrite| {
+    inventory::iter::<RewritePassRegistration<miden_hir::Module>>.into_iter().fold(
+        cmd,
+        |cmd, rewrite| {
             let name = rewrite.name();
             let arg = clap::Arg::new(name)
                 .long(name)
@@ -118,7 +113,8 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
                 .help(rewrite.summary())
                 .help_heading("Transformations");
             cmd.arg(arg)
-        })
+        },
+    )
 }
 
 /// Run the compiler using the provided [Session]
@@ -140,10 +136,9 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
                 if program.is_executable() {
                     use miden_assembly::LibraryPath;
                     let ast = program.to_program_ast(&session.codemap);
-                    if let Some(path) = session.emit_to(
-                        OutputType::Masm,
-                        Some(Symbol::intern(LibraryPath::EXEC_PATH)),
-                    ) {
+                    if let Some(path) = session
+                        .emit_to(OutputType::Masm, Some(Symbol::intern(LibraryPath::EXEC_PATH)))
+                    {
                         ast.write_to_file(path)?;
                     } else {
                         println!("{ast}");

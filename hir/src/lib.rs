@@ -1,9 +1,11 @@
 #![deny(warnings)]
-// Temporary until 1.76 is released
-#![allow(stable_features)]
-// TODO: Stabilized in 1.76, not yet released
+// TODO: Stabilized in 1.76, then de-stablized before release due to
+// a soundness bug when interacting with #![feature(arbitrary_self_types)]
+// so this got punted to a later release once they come up with a solution.
+//
 // Required for pass infrastructure, can be removed when it gets stabilized
 // in an upcoming release, see https://github.com/rust-lang/rust/issues/65991
+// for details
 #![feature(trait_upcasting)]
 pub mod parser;
 
@@ -75,11 +77,7 @@ macro_rules! diagnostic {
     ($diagnostics:ident, $severity:expr, $msg:literal, $span:expr, $label:expr) => {{
         let span = $span;
         if span.is_unknown() {
-            $diagnostics
-                .diagnostic($severity)
-                .with_message($msg)
-                .with_note($label)
-                .emit();
+            $diagnostics.diagnostic($severity).with_message($msg).with_note($label).emit();
         } else {
             $diagnostics
                 .diagnostic($severity)
@@ -136,9 +134,7 @@ macro_rules! diagnostic {
         if span2.is_unknown() {
             diag.with_note($label2).with_note($note).emit();
         } else {
-            diag.with_secondary_label(span2, $label2)
-                .with_note($note)
-                .emit();
+            diag.with_secondary_label(span2, $label2).with_note($note).emit();
         }
     }};
 }
@@ -170,38 +166,38 @@ mod tests;
 mod value;
 mod write;
 
-pub use self::asm::*;
-pub use self::attribute::{attributes, Attribute, AttributeSet, AttributeValue};
-pub use self::block::{Block, BlockData};
-pub use self::builder::{
-    DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder,
-};
-pub use self::component::*;
-pub use self::constants::{Constant, ConstantData, ConstantPool, IntoBytes};
-pub use self::dataflow::DataFlowGraph;
-pub use self::display::{Decorator, DisplayValues};
-pub use self::function::*;
-pub use self::globals::*;
-pub use self::ident::{FunctionIdent, Ident};
-pub use self::immediates::Immediate;
-pub use self::insert::{Insert, InsertionPoint};
-pub use self::instruction::*;
-pub use self::layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap};
-pub use self::locals::{Local, LocalId};
-pub use self::module::*;
-pub use self::pass::{
-    AnalysisKey, ConversionPassRegistration, ModuleRewritePassAdapter, PassInfo,
-    RewritePassRegistration,
-};
-pub use self::program::{Linker, LinkerError, Program, ProgramAnalysisKey, ProgramBuilder};
-pub use self::segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable};
-pub use self::value::{Value, ValueData, ValueList, ValueListPool};
-pub use self::write::{write_external_function, write_function, write_instruction};
+use core::fmt;
 
 // Re-export cranelift_entity so that users don't have to hunt for the same version
 pub use cranelift_entity;
 
-use core::fmt;
+pub use self::{
+    asm::*,
+    attribute::{attributes, Attribute, AttributeSet, AttributeValue},
+    block::{Block, BlockData},
+    builder::{DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder},
+    component::*,
+    constants::{Constant, ConstantData, ConstantPool, IntoBytes},
+    dataflow::DataFlowGraph,
+    display::{Decorator, DisplayValues},
+    function::*,
+    globals::*,
+    ident::{FunctionIdent, Ident},
+    immediates::Immediate,
+    insert::{Insert, InsertionPoint},
+    instruction::*,
+    layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap},
+    locals::{Local, LocalId},
+    module::*,
+    pass::{
+        AnalysisKey, ConversionPassRegistration, ModuleRewritePassAdapter, PassInfo,
+        RewritePassRegistration,
+    },
+    program::{Linker, LinkerError, Program, ProgramAnalysisKey, ProgramBuilder},
+    segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable},
+    value::{Value, ValueData, ValueList, ValueListPool},
+    write::{write_external_function, write_function, write_instruction},
+};
 
 /// A `ProgramPoint` represents a position in a function where the live range of an SSA value can
 /// begin or end. It can be either:
