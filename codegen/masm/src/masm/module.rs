@@ -255,9 +255,9 @@ impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for import in self.imports.iter() {
             if import.is_aliased() {
-                writeln!(f, "use.{}->{}", import.name, import.alias)?;
+                writeln!(f, "use.{}->{}", import.name.as_str(), import.alias.as_str())?;
             } else {
-                writeln!(f, "use.{}", import.name)?;
+                writeln!(f, "use.{}", import.name.as_str())?;
             }
         }
 

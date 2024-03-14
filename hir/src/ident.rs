@@ -8,7 +8,10 @@ use core::{
 use anyhow::anyhow;
 use miden_diagnostics::{SourceSpan, Spanned};
 
-use super::{symbols, Symbol};
+use super::{
+    formatter::{self, PrettyPrint},
+    symbols, Symbol,
+};
 
 /// Represents a globally-unique module/function name pair, with corresponding source spans.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Spanned)]
@@ -44,7 +47,14 @@ impl fmt::Debug for FunctionIdent {
 }
 impl fmt::Display for FunctionIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}::{}", &self.module, &self.function)
+        self.pretty_print(f)
+    }
+}
+impl PrettyPrint for FunctionIdent {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        flatten(display(self.module) + const_text("::") + display(self.function))
     }
 }
 impl PartialOrd for FunctionIdent {
@@ -107,14 +117,25 @@ impl Ident {
     pub fn as_symbol(self) -> Symbol {
         self.name
     }
+
+    // An identifier can be unquoted if is composed of any sequence of printable
+    // ASCII characters, except whitespace, quotation marks, comma, semicolon, or brackets
+    pub fn requires_quoting(&self) -> bool {
+        self.as_str().contains(|c| match c {
+            c if c.is_ascii_control() => true,
+            ' ' | '\'' | '"' | ',' | ';' | '[' | ']' => true,
+            c if c.is_ascii_graphic() => false,
+            _ => true,
+        })
+    }
 }
-impl std::borrow::Borrow<Symbol> for Ident {
+impl alloc::borrow::Borrow<Symbol> for Ident {
     #[inline]
     fn borrow(&self) -> &Symbol {
         &self.name
     }
 }
-impl std::borrow::Borrow<str> for Ident {
+impl alloc::borrow::Borrow<str> for Ident {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
@@ -156,11 +177,22 @@ impl Hash for Ident {
 }
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Ident<{} {:?}>", self.name, self.span)
+        self.pretty_print(f)
     }
 }
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.name, f)
+        self.pretty_print(f)
+    }
+}
+impl PrettyPrint for Ident {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        if self.requires_quoting() {
+            text(format!("\"{}\"", self.as_str().escape_default()))
+        } else {
+            text(format!("#{}", self.as_str()))
+        }
     }
 }

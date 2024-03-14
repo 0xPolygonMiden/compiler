@@ -165,7 +165,6 @@ pub mod testing;
 #[cfg(test)]
 mod tests;
 mod value;
-mod write;
 
 use core::fmt;
 
@@ -197,7 +196,6 @@ pub use self::{
     program::{Linker, LinkerError, Program, ProgramAnalysisKey, ProgramBuilder},
     segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable},
     value::{Value, ValueData, ValueList, ValueListPool},
-    write::{write_external_function, write_function, write_instruction},
 };
 
 /// A `ProgramPoint` represents a position in a function where the live range of an SSA value can

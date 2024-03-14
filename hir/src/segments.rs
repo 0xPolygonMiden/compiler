@@ -1,4 +1,4 @@
-use std::{
+use core::{
     fmt,
     hash::{Hash, Hasher},
 };
@@ -7,7 +7,7 @@ use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, Unsaf
 
 intrusive_adapter!(pub DataSegmentAdapter = UnsafeRef<DataSegment>: DataSegment { link: LinkedListLink });
 
-use super::{Alignable, ConstantData, Offset};
+use crate::{formatter, Alignable, ConstantData, Offset};
 
 /// This error is raised when attempting to declare a [DataSegment]
 /// that in some way conflicts with previously declared data segments.
@@ -219,6 +219,43 @@ impl fmt::Debug for DataSegment {
             .field("init", &format_args!("{}", &self.init))
             .field("readonly", &self.readonly)
             .finish()
+    }
+}
+impl formatter::PrettyPrint for DataSegment {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let readonly = if self.readonly {
+            const_text("(") + const_text("mut") + const_text(")")
+        } else {
+            Document::Empty
+        };
+
+        let offset = const_text("(")
+            + const_text("offset")
+            + const_text(" ")
+            + display(self.offset)
+            + const_text(")");
+
+        let size = if self.size as usize != self.init.len() {
+            const_text("(")
+                + const_text("size")
+                + const_text(" ")
+                + display(self.size)
+                + const_text(")")
+        } else {
+            Document::Empty
+        };
+
+        let value = text(format!("{:#x}", DisplayHex(self.init.as_slice())));
+
+        let content = vec![readonly, offset, size, value]
+            .into_iter()
+            .filter(|section| !section.is_empty())
+            .reduce(|acc, e| acc + const_text(" ") + e)
+            .expect("expected segment to have at least an offset and data (or size)");
+
+        const_text("(") + const_text("data") + const_text(" ") + content + const_text(")")
     }
 }
 impl DataSegment {

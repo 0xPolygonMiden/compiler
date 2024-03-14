@@ -610,6 +610,50 @@ impl fmt::Debug for GlobalVariableData {
             .finish()
     }
 }
+impl formatter::PrettyPrint for GlobalVariableData {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let name = if matches!(self.linkage, Linkage::Internal) {
+            display(self.name)
+        } else {
+            const_text("(")
+                + const_text("export")
+                + const_text(" ")
+                + display(self.name)
+                + const_text(")")
+        };
+
+        let doc = const_text("(")
+            + const_text("global")
+            + const_text(" ")
+            + name
+            + const_text(" ")
+            + const_text("(")
+            + const_text("id")
+            + const_text(" ")
+            + display(self.id.as_u32())
+            + const_text(")")
+            + const_text(" ")
+            + const_text("(")
+            + const_text("type")
+            + const_text(" ")
+            + text(format!("{}", &self.ty))
+            + const_text(")");
+
+        if let Some(init) = self.init {
+            doc + const_text(" ")
+                + const_text("(")
+                + const_text("const")
+                + const_text(" ")
+                + display(init.as_u32())
+                + const_text(")")
+                + const_text(")")
+        } else {
+            doc + const_text(")")
+        }
+    }
+}
 
 /// A handle to a global variable definition
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -701,6 +745,74 @@ impl GlobalValueData {
             Self::Symbol { .. } => None,
             Self::Load { ref ty, .. } => Some(ty),
             Self::IAddImm { ref ty, .. } => Some(ty),
+        }
+    }
+
+    pub(crate) fn render(&self, dfg: &DataFlowGraph) -> formatter::Document {
+        use crate::formatter::*;
+
+        match self {
+            Self::Symbol { name, offset } => {
+                let offset = *offset;
+                let offset = if offset == 0 {
+                    None
+                } else {
+                    Some(
+                        const_text("(")
+                            + const_text("offset")
+                            + const_text(" ")
+                            + display(offset)
+                            + const_text(")"),
+                    )
+                };
+
+                const_text("(")
+                    + const_text("global.symbol")
+                    + const_text(" ")
+                    + display(*name)
+                    + offset.map(|offset| const_text(" ") + offset).unwrap_or_default()
+                    + const_text(")")
+            }
+            Self::Load { base, offset, ty } => {
+                let offset = *offset;
+                let offset = if offset == 0 {
+                    None
+                } else {
+                    Some(
+                        const_text("(")
+                            + const_text("offset")
+                            + const_text(" ")
+                            + display(offset)
+                            + const_text(")"),
+                    )
+                };
+
+                const_text("(")
+                    + const_text("global.load")
+                    + const_text(" ")
+                    + text(format!("{}", ty))
+                    + offset.map(|offset| const_text(" ") + offset).unwrap_or_default()
+                    + const_text(" ")
+                    + dfg.global_value(*base).render(dfg)
+                    + const_text(")")
+            }
+            Self::IAddImm { base, offset, ty } => {
+                const_text("(")
+                    + const_text("global.iadd")
+                    + const_text(" ")
+                    + const_text("(")
+                    + const_text("offset")
+                    + const_text(" ")
+                    + display(*offset)
+                    + const_text(" ")
+                    + const_text(".")
+                    + const_text(" ")
+                    + text(format!("{}", ty))
+                    + const_text(")")
+                    + const_text(" ")
+                    + dfg.global_value(*base).render(dfg)
+                    + const_text(")")
+            }
         }
     }
 }

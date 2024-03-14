@@ -5,6 +5,7 @@ use intrusive_collections::{intrusive_adapter, LinkedListLink};
 use miden_diagnostics::{Span, Spanned};
 use smallvec::SmallVec;
 
+use self::formatter::PrettyPrint;
 use super::*;
 
 /// A handle to a single instruction
@@ -1027,6 +1028,268 @@ impl<'a> PartialEq for InstructionWithValueListPool<'a> {
                     && l.blocks == r.blocks
             }
             (..) => unreachable!(),
+        }
+    }
+}
+
+#[doc(hidden)]
+pub struct InstPrettyPrinter<'a> {
+    pub current_function: FunctionIdent,
+    pub id: Inst,
+    pub dfg: &'a DataFlowGraph,
+}
+impl<'a> fmt::Display for InstPrettyPrinter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
+    }
+}
+impl<'a> formatter::PrettyPrint for InstPrettyPrinter<'a> {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let inst_data = self.dfg.inst(self.id);
+        let mut results = vec![];
+        for result in self.dfg.inst_results(self.id) {
+            let v = const_text("(") + display(*result) + const_text(" ");
+            let t = text(format!("{}", self.dfg.value_type(*result)));
+            results.push(v + t + const_text(")"));
+        }
+
+        let wrapper = match results.len() {
+            0 => None,
+            1 => Some(
+                const_text("(")
+                    + const_text("let")
+                    + const_text(" ")
+                    + results.pop().unwrap()
+                    + const_text(" "),
+            ),
+            _ => {
+                let open = const_text("(") + const_text("let") + const_text(" ") + const_text("[");
+                let bindings =
+                    results.into_iter().reduce(|acc, doc| acc + const_text(" ") + doc).unwrap();
+                let close = const_text("]") + const_text(" ");
+                Some(open + bindings + close)
+            }
+        };
+
+        let inner = const_text("(") + display(inst_data.opcode());
+
+        let (attrs, operands) = match inst_data {
+            Instruction::BinaryOp(BinaryOp {
+                overflow: None,
+                args,
+                ..
+            }) => {
+                let lhs = display(args[1]);
+                let rhs = display(args[0]);
+                (vec![], vec![lhs, rhs])
+            }
+            Instruction::BinaryOp(BinaryOp {
+                overflow: Some(overflow),
+                args,
+                ..
+            }) => {
+                let lhs = display(args[1]);
+                let rhs = display(args[0]);
+                (vec![display(*overflow)], vec![lhs, rhs])
+            }
+            Instruction::BinaryOpImm(BinaryOpImm {
+                overflow: None,
+                arg,
+                imm,
+                ..
+            }) => {
+                let lhs = display(*arg);
+                let rhs = display(*imm);
+                (vec![], vec![lhs, rhs])
+            }
+            Instruction::BinaryOpImm(BinaryOpImm {
+                overflow: Some(overflow),
+                arg,
+                imm,
+                ..
+            }) => {
+                let lhs = display(*arg);
+                let rhs = display(*imm);
+                (vec![display(*overflow)], vec![lhs, rhs])
+            }
+            Instruction::UnaryOp(UnaryOp {
+                overflow: None,
+                arg,
+                ..
+            }) => (vec![], vec![display(*arg)]),
+            Instruction::UnaryOp(UnaryOp {
+                overflow: Some(overflow),
+                arg,
+                ..
+            }) => (vec![display(*overflow)], vec![display(*arg)]),
+            Instruction::UnaryOpImm(UnaryOpImm {
+                overflow: None,
+                imm,
+                ..
+            }) => (vec![], vec![display(*imm)]),
+            Instruction::UnaryOpImm(UnaryOpImm {
+                overflow: Some(overflow),
+                imm,
+                ..
+            }) => (vec![display(*overflow)], vec![display(*imm)]),
+            Instruction::Ret(Ret { args, .. }) => {
+                let args =
+                    args.as_slice(&self.dfg.value_lists).iter().copied().map(display).collect();
+                (vec![], args)
+            }
+            Instruction::RetImm(RetImm { arg, .. }) => (vec![], vec![display(*arg)]),
+            Instruction::Call(Call { callee, args, .. }) => {
+                let mut operands = if callee.module == self.current_function.module {
+                    vec![display(callee.function)]
+                } else {
+                    vec![
+                        const_text("(")
+                            + display(callee.module)
+                            + const_text(" ")
+                            + display(callee.function)
+                            + const_text(")"),
+                    ]
+                };
+                operands.extend(args.as_slice(&self.dfg.value_lists).iter().copied().map(display));
+                (vec![], operands)
+            }
+            Instruction::CondBr(CondBr {
+                cond,
+                then_dest,
+                else_dest,
+                ..
+            }) => {
+                let then_dest = if then_dest.1.is_empty() {
+                    then_dest.0.render()
+                } else {
+                    let then_args = then_dest
+                        .1
+                        .as_slice(&self.dfg.value_lists)
+                        .iter()
+                        .copied()
+                        .map(display)
+                        .reduce(|acc, arg| acc + const_text(" ") + arg)
+                        .map(|args| const_text(" ") + args)
+                        .unwrap_or_default();
+                    const_text("(")
+                        + const_text("block")
+                        + const_text(" ")
+                        + display(then_dest.0.as_u32())
+                        + then_args
+                        + const_text(")")
+                };
+                let else_dest = if else_dest.1.is_empty() {
+                    else_dest.0.render()
+                } else {
+                    let else_args = else_dest
+                        .1
+                        .as_slice(&self.dfg.value_lists)
+                        .iter()
+                        .copied()
+                        .map(display)
+                        .reduce(|acc, arg| acc + const_text(" ") + arg)
+                        .map(|args| const_text(" ") + args)
+                        .unwrap_or_default();
+                    const_text("(")
+                        + const_text("block")
+                        + const_text(" ")
+                        + display(else_dest.0.as_u32())
+                        + else_args
+                        + const_text(")")
+                };
+                (vec![], vec![display(*cond), then_dest, else_dest])
+            }
+            Instruction::Br(Br {
+                destination, args, ..
+            }) => {
+                if args.is_empty() {
+                    (vec![], vec![destination.render()])
+                } else {
+                    let dest_args = args
+                        .as_slice(&self.dfg.value_lists)
+                        .iter()
+                        .copied()
+                        .map(display)
+                        .reduce(|acc, e| acc + const_text(" ") + e)
+                        .map(|args| const_text(" ") + args)
+                        .unwrap_or_default();
+                    let dest = const_text("(")
+                        + const_text("block")
+                        + const_text(" ")
+                        + display(destination.as_u32())
+                        + dest_args
+                        + const_text(")");
+                    (vec![], vec![dest])
+                }
+            }
+            Instruction::Switch(Switch {
+                arg, arms, default, ..
+            }) => {
+                let default = const_text("(")
+                    + const_text("_")
+                    + const_text(" ")
+                    + const_text(".")
+                    + const_text(" ")
+                    + const_text("(")
+                    + display(*default)
+                    + const_text(")")
+                    + const_text(")");
+                let arms = arms
+                    .iter()
+                    .map(|(value, dest)| {
+                        const_text("(")
+                            + display(*value)
+                            + const_text(" ")
+                            + const_text(".")
+                            + const_text(" ")
+                            + dest.render()
+                            + const_text(")")
+                    })
+                    .chain(core::iter::once(default))
+                    .reduce(|acc, arm| acc + nl() + arm)
+                    .unwrap();
+                return inner + display(*arg) + indent(4, nl() + arms) + const_text(")");
+            }
+            Instruction::Test(Test { arg, ref ty, .. }) => {
+                (vec![text(format!("{}", ty))], vec![display(*arg)])
+            }
+            Instruction::PrimOp(PrimOp { args, .. }) => {
+                let args =
+                    args.as_slice(&self.dfg.value_lists).iter().copied().map(display).collect();
+                (vec![], args)
+            }
+            Instruction::PrimOpImm(PrimOpImm { imm, args, .. }) => {
+                let mut operands = vec![display(*imm)];
+                operands.extend(args.as_slice(&self.dfg.value_lists).iter().copied().map(display));
+                (vec![], operands)
+            }
+            Instruction::Load(LoadOp { addr, .. }) => (vec![], vec![display(*addr)]),
+            Instruction::InlineAsm(ref asm) => {
+                let inner = asm.render(self.current_function, self.dfg);
+                return match wrapper {
+                    None => inner,
+                    Some(wrapper) => wrapper + inner + const_text(")"),
+                };
+            }
+            Instruction::GlobalValue(GlobalValueOp { global, .. }) => {
+                let inner = self.dfg.global_value(*global).render(self.dfg);
+                return match wrapper {
+                    None => inner,
+                    Some(wrapper) => wrapper + inner + const_text(")"),
+                };
+            }
+        };
+
+        let inner = attrs.into_iter().fold(inner, |acc, attr| acc + const_text(".") + attr);
+        let inner =
+            operands.into_iter().fold(inner, |acc, operand| acc + const_text(" ") + operand)
+                + const_text(")");
+
+        match wrapper {
+            None => inner,
+            Some(wrapper) => wrapper + inner + const_text(")"),
         }
     }
 }

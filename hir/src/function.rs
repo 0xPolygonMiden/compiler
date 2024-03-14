@@ -1,9 +1,8 @@
-use std::fmt;
-
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 use miden_diagnostics::Spanned;
 
+use self::formatter::PrettyPrint;
 use super::*;
 
 /// This error is raised when two function declarations conflict with the same symbol name
@@ -140,6 +139,20 @@ impl AbiParam {
         }
     }
 }
+impl formatter::PrettyPrint for AbiParam {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let mut doc = const_text("(") + const_text("param") + const_text(" ");
+        if !matches!(self.purpose, ArgumentPurpose::Default) {
+            doc += const_text("(") + display(self.purpose) + const_text(")") + const_text(" ");
+        }
+        if !matches!(self.extension, ArgumentExtension::None) {
+            doc += const_text("(") + display(self.extension) + const_text(")") + const_text(" ");
+        }
+        doc + text(format!("{}", &self.ty)) + const_text(")")
+    }
+}
 
 /// A [Signature] represents the type, ABI, and linkage of a function.
 ///
@@ -223,6 +236,47 @@ impl PartialEq for Signature {
             && self.results.len() == other.results.len()
     }
 }
+impl formatter::PrettyPrint for Signature {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let cc = if matches!(self.cc, CallConv::SystemV) {
+            None
+        } else {
+            Some(
+                const_text("(")
+                    + const_text("cc")
+                    + const_text(" ")
+                    + display(self.cc)
+                    + const_text(")"),
+            )
+        };
+
+        let params = self.params.iter().fold(cc.unwrap_or(Document::Empty), |acc, param| {
+            if acc.is_empty() {
+                param.render()
+            } else {
+                acc + const_text(" ") + param.render()
+            }
+        });
+
+        if self.results.is_empty() {
+            params
+        } else {
+            let open = const_text("(") + const_text("result");
+            let results = self
+                .results
+                .iter()
+                .fold(open, |acc, e| acc + const_text(" ") + text(format!("{}", &e.ty)))
+                + const_text(")");
+            if matches!(params, Document::Empty) {
+                results
+            } else {
+                params + const_text(" ") + results
+            }
+        }
+    }
+}
 
 /// An [ExternalFunction] represents a function whose name and signature are known,
 /// but which may or may not be compiled as part of the current translation unit.
@@ -248,6 +302,26 @@ impl Ord for ExternalFunction {
 impl PartialOrd for ExternalFunction {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+impl formatter::PrettyPrint for ExternalFunction {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let header = const_text("(")
+            + const_text("func")
+            + const_text(" ")
+            + const_text("(")
+            + const_text("import")
+            + const_text(" ")
+            + display(self.id.module)
+            + const_text(" ")
+            + display(self.id.function)
+            + const_text(")");
+        let signature = (const_text(" ") + self.signature.render() + const_text(")"))
+            | indent(6, nl() + self.signature.render() + const_text(")"));
+
+        header + signature
     }
 }
 
@@ -411,9 +485,87 @@ impl fmt::Debug for Function {
             .finish()
     }
 }
+impl formatter::PrettyPrint for Function {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let name = if self.is_public() {
+            const_text("(")
+                + const_text("export")
+                + const_text(" ")
+                + self.id.function.render()
+                + const_text(")")
+        } else {
+            self.id.function.render()
+        };
+        let header = const_text("(") + const_text("func") + const_text(" ") + name;
+
+        let signature =
+            (const_text(" ") + self.signature.render()) | indent(6, nl() + self.signature.render());
+
+        let body = self.dfg.blocks().fold(nl(), |acc, (_, block_data)| {
+            let open = const_text("(")
+                + const_text("block")
+                + const_text(" ")
+                + display(block_data.id.as_u32());
+            let params = block_data
+                .params(&self.dfg.value_lists)
+                .iter()
+                .map(|value| {
+                    let ty = self.dfg.value_type(*value);
+                    const_text("(")
+                        + const_text("param")
+                        + const_text(" ")
+                        + display(*value)
+                        + const_text(" ")
+                        + text(format!("{ty}"))
+                        + const_text(")")
+                })
+                .collect::<Vec<_>>();
+
+            let params_singleline = params
+                .iter()
+                .cloned()
+                .reduce(|acc, e| acc + const_text(" ") + e)
+                .map(|params| const_text(" ") + params)
+                .unwrap_or(Document::Empty);
+            let params_multiline = params
+                .into_iter()
+                .reduce(|acc, e| acc + nl() + e)
+                .map(|doc| indent(8, nl() + doc))
+                .unwrap_or(Document::Empty);
+            let header = open + (params_singleline | params_multiline);
+
+            let body = indent(
+                4,
+                block_data
+                    .insts()
+                    .map(|inst| {
+                        let inst_printer = crate::instruction::InstPrettyPrinter {
+                            current_function: self.id,
+                            id: inst,
+                            dfg: &self.dfg,
+                        };
+                        inst_printer.render()
+                    })
+                    .reduce(|acc, doc| acc + nl() + doc)
+                    .map(|body| nl() + body)
+                    .unwrap_or_default(),
+            );
+
+            if matches!(acc, Document::Newline) {
+                indent(4, acc + header + body + const_text(")"))
+            } else {
+                acc + nl() + indent(4, nl() + header + body + const_text(")"))
+            }
+        });
+
+        header + signature + body + nl() + const_text(")")
+    }
+}
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        crate::write_function(f, self)
+        self.pretty_print(f)
     }
 }
 impl Eq for Function {}

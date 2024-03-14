@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt};
+use alloc::collections::BTreeMap;
 
 use intrusive_collections::{
     intrusive_adapter,
@@ -8,6 +8,7 @@ use intrusive_collections::{
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use rustc_hash::FxHashSet;
 
+use self::formatter::PrettyPrint;
 use super::*;
 
 /// This error is raised when two modules conflict with the same symbol name
@@ -66,92 +67,96 @@ pub struct Module {
 }
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Write;
+        self.pretty_print(f)
+    }
+}
+impl formatter::PrettyPrint for Module {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
 
-        use crate::write::DisplayIdent;
-
+        let mut header =
+            const_text("(") + const_text("module") + const_text(" ") + display(self.name);
         if self.is_kernel {
-            writeln!(f, "kernel {}\n", DisplayIdent(&self.name))?;
-        } else {
-            writeln!(f, "module {}\n", DisplayIdent(&self.name))?;
+            header += const_text(" ") + const_text("(") + const_text("kernel") + const_text(")");
         }
 
-        let has_segments = !self.segments.is_empty();
-        let has_globals = !self.globals.is_empty();
-        let has_constants = self.globals.has_constants();
+        let segments = self
+            .segments
+            .iter()
+            .map(PrettyPrint::render)
+            .reduce(|acc, doc| acc + nl() + doc)
+            .map(|doc| const_text(";; Data Segments") + nl() + doc)
+            .unwrap_or(Document::Empty);
 
-        if has_segments {
-            f.write_str("memory {\n")?;
-            for segment in self.segments.iter() {
-                writeln!(
-                    f,
-                    "    segment @{:#x} x {} = {};",
-                    segment.offset(),
-                    segment.size(),
-                    segment.init(),
-                )?;
-            }
-            f.write_str("}\n")?;
-        }
+        let constants = self
+            .globals
+            .constants()
+            .map(|(constant, constant_data)| {
+                const_text("(")
+                    + const_text("const")
+                    + const_text(" ")
+                    + const_text("(")
+                    + const_text("id")
+                    + const_text(" ")
+                    + display(constant.as_u32())
+                    + const_text(")")
+                    + const_text(" ")
+                    + text(format!("{:#x}", constant_data))
+                    + const_text(")")
+            })
+            .reduce(|acc, doc| acc + nl() + doc)
+            .map(|doc| const_text(";; Constants") + nl() + doc)
+            .unwrap_or(Document::Empty);
 
-        if has_globals {
-            if has_constants {
-                if has_segments {
-                    f.write_char('\n')?;
-                }
-                for (constant, constant_data) in self.globals.constants() {
-                    let id = constant.as_u32();
-                    writeln!(f, "const ${id} = {constant_data};")?;
-                }
-
-                f.write_char('\n')?;
-            }
-
-            for global in self.globals.iter() {
-                write!(
-                    f,
-                    "global {} @{} : {}",
-                    global.linkage,
-                    DisplayIdent(&global.name),
-                    global.ty
-                )?;
-                match global.init {
-                    Some(init) => {
-                        writeln!(f, " = ${} {{ id = {} }};", init.as_u32(), global.id().as_u32())?;
-                    }
-                    None => {
-                        writeln!(f, " {{ id = {} }};", global.id().as_u32())?;
-                    }
-                }
-            }
-            f.write_char('\n')?;
-        }
+        let globals = self
+            .globals
+            .iter()
+            .map(PrettyPrint::render)
+            .reduce(|acc, doc| acc + nl() + doc)
+            .map(|doc| const_text(";; Global Variables") + nl() + doc)
+            .unwrap_or(Document::Empty);
 
         let mut external_functions = BTreeMap::<FunctionIdent, Signature>::default();
-        for (i, function) in self.functions.iter().enumerate() {
-            for import in function.dfg.imports() {
-                // Don't print declarations for functions in this module
-                if import.id.module == self.name {
-                    continue;
+        let functions = self
+            .functions
+            .iter()
+            .map(|fun| {
+                for import in fun.dfg.imports() {
+                    // Don't print declarations for functions in this module
+                    if import.id.module == self.name {
+                        continue;
+                    }
+                    external_functions.entry(import.id).or_insert_with(|| import.signature.clone());
                 }
-                external_functions.entry(import.id).or_insert_with(|| import.signature.clone());
-            }
-            if i > 0 {
-                writeln!(f)?;
-            }
-            write_function(f, function)?;
+                fun.render()
+            })
+            .reduce(|acc, doc| acc + nl() + nl() + doc)
+            .map(|doc| const_text(";; Functions") + nl() + doc)
+            .unwrap_or(Document::Empty);
+
+        let imports = external_functions
+            .into_iter()
+            .map(|(id, signature)| ExternalFunction { id, signature }.render())
+            .reduce(|acc, doc| acc + nl() + doc)
+            .map(|doc| const_text(";; Imports") + nl() + doc)
+            .unwrap_or(Document::Empty);
+
+        let body = vec![segments, constants, globals, functions, imports]
+            .into_iter()
+            .filter(|section| !section.is_empty())
+            .fold(nl(), |a, b| {
+                if matches!(a, Document::Newline) {
+                    indent(4, a + b)
+                } else {
+                    a + nl() + indent(4, nl() + b)
+                }
+            });
+
+        if body.is_empty() {
+            header + const_text(")") + nl()
+        } else {
+            header + body + nl() + const_text(")") + nl()
         }
-
-        if !external_functions.is_empty() {
-            writeln!(f)?;
-
-            for (id, sig) in external_functions.iter() {
-                writeln!(f)?;
-                write_external_function(f, id, sig)?;
-            }
-        }
-
-        Ok(())
     }
 }
 impl fmt::Debug for Module {
