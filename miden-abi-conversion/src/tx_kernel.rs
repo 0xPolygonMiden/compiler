@@ -8,6 +8,7 @@ use rustc_hash::FxHashMap;
 
 pub const NOTE_GET_INPUTS: &str = "miden:tx_kernel/note.get_inputs";
 pub const ACCOUNT_ADD_ASSET: &str = "miden:tx_kernel/account.add_asset";
+pub const ACCOUNT_GET_ID: &str = "miden:tx_kernel/account.get_id";
 
 fn types() -> &'static FxHashMap<String, MidenAbiFunctionType> {
     static TYPES: OnceLock<FxHashMap<String, MidenAbiFunctionType>> = OnceLock::new();
@@ -21,6 +22,10 @@ fn types() -> &'static FxHashMap<String, MidenAbiFunctionType> {
             ACCOUNT_ADD_ASSET.to_string(),
             // Accepts and returns word
             MidenAbiFunctionType::new([I32, I32, I32, I32], [I32, I32, I32, I32]),
+        );
+        m.insert(
+            ACCOUNT_GET_ID.to_string(),
+            MidenAbiFunctionType::new([], [I32]),
         );
         m
     })

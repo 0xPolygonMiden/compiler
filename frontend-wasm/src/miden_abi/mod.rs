@@ -70,12 +70,14 @@ pub fn adapt_call<'a, 'b, 'c: 'b, 'd>(
 enum TransformStrategy {
     ListReturn,
     ReturnViaPointer,
+    NoTransform,
 }
 
 fn get_transform_strategy(function_id: &str) -> TransformStrategy {
     match function_id {
         tx_kernel::NOTE_GET_INPUTS => TransformStrategy::ListReturn,
         tx_kernel::ACCOUNT_ADD_ASSET => TransformStrategy::ReturnViaPointer,
+        tx_kernel::ACCOUNT_GET_ID => TransformStrategy::NoTransform,
         _ => panic!("No transform strategy found for function {}", function_id),
     }
 }
@@ -92,7 +94,20 @@ pub fn transform_call<'a, 'b, 'c: 'b, 'd>(
     match get_transform_strategy(stable_name) {
         ListReturn => list_return(func_id, args, builder, span, diagnostics),
         ReturnViaPointer => return_via_pointer(func_id, args, builder, span, diagnostics),
+        NoTransform => no_transform(func_id, args, builder, span, diagnostics),
     }
+}
+
+pub fn no_transform<'a, 'b, 'c: 'b, 'd>(
+    func_id: FunctionIdent,
+    args: &[Value],
+    builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
+    span: SourceSpan,
+    diagnostics: &DiagnosticsHandler,
+) -> &'d [Value] {
+    let call = builder.ins().call(func_id, args, span);
+    let results = builder.inst_results(call);
+    results
 }
 
 pub fn list_return<'a, 'b, 'c: 'b, 'd>(

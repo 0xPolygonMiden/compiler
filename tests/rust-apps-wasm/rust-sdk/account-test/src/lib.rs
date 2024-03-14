@@ -2,19 +2,18 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
-
-use miden_sdk::{add_assets, get_account_id, get_inputs, CoreAsset, Felt};
+use miden_sdk::{add_assets, get_id, get_inputs, CoreAsset, Felt};
 
 pub struct Account;
 
 impl Account {
-    // #[no_mangle]
-    // pub fn get_wallet_magic_number() -> Felt {
-    //     let acc_id = get_account_id();
-    //     let magic = Felt::new(42).unwrap();
-    //     magic + acc_id.into()
-    // }
+    #[no_mangle]
+    pub fn get_wallet_magic_number() -> Felt {
+        let acc_id = get_id();
+        let magic = 42;
+        let acc_id: i32 = acc_id.into();
+        magic + acc_id
+    }
 
     #[no_mangle]
     pub fn test_add_asset() {

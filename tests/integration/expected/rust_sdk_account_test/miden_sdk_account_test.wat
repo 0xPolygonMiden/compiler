@@ -1,14 +1,16 @@
 (module
-  (type (;0;) (func (param i32) (result i32)))
-  (type (;1;) (func (param i32 i32 i32 i32 i32)))
-  (type (;2;) (func (param i32)))
-  (type (;3;) (func))
-  (type (;4;) (func (param i32 i32)))
-  (type (;5;) (func (param i32 i32 i32)))
-  (type (;6;) (func (param i32 i32 i32 i32)))
-  (import "env" "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000> (;0;) (type 0)))
-  (import "env" "miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000> (;1;) (type 1)))
-  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;2;) (type 2) (param i32)
+  (type (;0;) (func (result i32)))
+  (type (;1;) (func (param i32) (result i32)))
+  (type (;2;) (func (param i32 i32 i32 i32 i32)))
+  (type (;3;) (func (param i32)))
+  (type (;4;) (func))
+  (type (;5;) (func (param i32 i32)))
+  (type (;6;) (func (param i32 i32 i32)))
+  (type (;7;) (func (param i32 i32 i32 i32)))
+  (import "env" "miden:tx_kernel/account.get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/account.get_id<0x0000000000000000000000000000000000000000000000000000000000000000> (;0;) (type 0)))
+  (import "env" "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000> (;1;) (type 1)))
+  (import "env" "miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000> (;2;) (type 2)))
+  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;3;) (type 3) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -29,7 +31,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;3;) (type 2) (param i32)
+  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;4;) (type 3) (param i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -46,7 +48,7 @@
       call $__rust_dealloc
     end
   )
-  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;4;) (type 2) (param i32)
+  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;5;) (type 3) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -65,7 +67,12 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $test_add_asset (;5;) (type 3)
+  (func $get_wallet_magic_number (;6;) (type 0) (result i32)
+    call $miden:tx_kernel/account.get_id<0x0000000000000000000000000000000000000000000000000000000000000000>
+    i32.const 42
+    i32.add
+  )
+  (func $test_add_asset (;7;) (type 4)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -98,7 +105,7 @@
     unreachable
     unreachable
   )
-  (func $note_script (;6;) (type 3)
+  (func $note_script (;8;) (type 4)
     (local i32 i32 i32 i32 i64)
     global.get $__stack_pointer
     i32.const 2048
@@ -164,7 +171,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_sdk_tx_kernel::add_assets (;7;) (type 4) (param i32 i32)
+  (func $miden_sdk_tx_kernel::add_assets (;9;) (type 5) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -208,14 +215,14 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $__rust_dealloc (;8;) (type 5) (param i32 i32 i32)
+  (func $__rust_dealloc (;10;) (type 6) (param i32 i32 i32)
     i32.const 1048576
     local.get 0
     local.get 2
     local.get 1
     call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc
   )
-  (func $wee_alloc::neighbors::Neighbors<T>::remove (;9;) (type 2) (param i32)
+  (func $wee_alloc::neighbors::Neighbors<T>::remove (;11;) (type 3) (param i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 0
@@ -287,7 +294,7 @@
     i32.and
     i32.store
   )
-  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;10;) (type 6) (param i32 i32 i32 i32)
+  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;12;) (type 7) (param i32 i32 i32 i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 1
@@ -398,6 +405,7 @@
   (memory (;0;) 17)
   (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
   (export "memory" (memory 0))
+  (export "get_wallet_magic_number" (func $get_wallet_magic_number))
   (export "test_add_asset" (func $test_add_asset))
   (export "note_script" (func $note_script))
 )
