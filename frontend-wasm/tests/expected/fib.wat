@@ -1,4 +1,4 @@
-(module
+(module $73529556a38891bec6db2a041967158b0ffe0bca961857830b2fd7fd429d6a23.wasm
   (type (;0;) (func (param i32) (result i32)))
   (type (;1;) (func (result i32)))
   (func $fib (;0;) (type 0) (param i32) (result i32)

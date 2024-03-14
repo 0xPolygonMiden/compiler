@@ -1,4 +1,4 @@
-(module
+(module $d63291a98b435c53f58385d5782fb46f0b0b78bee8e860843e7223106d66f7d6.wasm
   (type (;0;) (func (param i32 i32) (result i32)))
   (type (;1;) (func (result i32)))
   (func $sum_arr (;0;) (type 0) (param i32 i32) (result i32)

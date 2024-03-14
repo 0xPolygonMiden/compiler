@@ -1,18 +1,9 @@
+use core::fmt::Write;
+
 use expect_test::expect;
-use miden_hir::write_instruction;
 use miden_hir::Ident;
 
-use crate::test_utils::test_diagnostics;
-use crate::translate_module;
-use crate::WasmTranslationConfig;
-
-/// Compiles the given Wasm code to Miden IR and checks the IR generated.
-fn check_ir(wat: &str, expected_ir: expect_test::Expect) {
-    let wasm = wat::parse_str(wat).unwrap();
-    let diagnostics = test_diagnostics();
-    let module = translate_module(&wasm, &WasmTranslationConfig::default(), &diagnostics).unwrap();
-    expected_ir.assert_eq(&module.to_string());
-}
+use crate::{test_utils::test_diagnostics, translate_module, WasmTranslationConfig};
 
 /// Check IR generated for a Wasm op(s).
 /// Wrap Wasm ops in a function and check the IR generated for the entry block of that function.
@@ -41,321 +32,14 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
         .insts()
         .take_while(|inst| !func.dfg[*inst].opcode().is_branch())
     {
-        write_instruction(&mut w, func, inst, 0).unwrap();
+        let inst_printer = miden_hir::InstPrettyPrinter {
+            current_function: func.id,
+            id: inst,
+            dfg: &func.dfg,
+        };
+        writeln!(&mut w, "{inst_printer}").unwrap();
     }
     expected_ir.assert_eq(&w);
-}
-
-#[test]
-fn module() {
-    check_ir(
-        r#"
-        (module
-            (func $main
-                i32.const 0
-                drop
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn main() {
-            block0:
-                v0 = const.i32 0 : i32;
-                br block1;
-
-            block1:
-                ret;
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn locals() {
-    check_ir(
-        r#"
-        (module
-            (func $main (local i32)
-                i32.const 1
-                local.set 0
-                local.get 0
-                drop
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn main() {
-            block0:
-                v0 = const.i32 0 : i32;
-                v1 = const.i32 1 : i32;
-                br block1;
-
-            block1:
-                ret;
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn locals_inter_block() {
-    check_ir(
-        r#"
-        (module
-            (func $main (result i32) (local i32)
-                block
-                    i32.const 3
-                    local.set 0
-                end
-                block
-                    local.get 0
-                    i32.const 5
-                    i32.add
-                    local.set 0
-                end
-                i32.const 7
-                local.get 0
-                i32.add
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn main() -> i32 {
-            block0:
-                v1 = const.i32 0 : i32;
-                v2 = const.i32 3 : i32;
-                br block2;
-
-            block1(v0: i32):
-                ret v0;
-
-            block2:
-                v3 = const.i32 5 : i32;
-                v4 = add.wrapping v2, v3 : i32;
-                br block3;
-
-            block3:
-                v5 = const.i32 7 : i32;
-                v6 = add.wrapping v5, v4 : i32;
-                br block1(v6);
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn func_call() {
-    check_ir(
-        r#"
-        (module
-            (func $add (param i32 i32) (result i32)
-                local.get 0
-                local.get 1
-                i32.add
-            )
-            (func $main (result i32)
-                i32.const 3
-                i32.const 5
-                call $add
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn add(i32, i32) -> i32 {
-            block0(v0: i32, v1: i32):
-                v3 = add.wrapping v0, v1 : i32;
-                br block1(v3);
-
-            block1(v2: i32):
-                ret v2;
-            }
-
-            pub fn main() -> i32 {
-            block0:
-                v1 = const.i32 3 : i32;
-                v2 = const.i32 5 : i32;
-                v3 = call noname::add(v1, v2) : i32;
-                br block1(v3);
-
-            block1(v0: i32):
-                ret v0;
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn br() {
-    check_ir(
-        r#"
-        (module
-            (func $main (result i32) (local i32)
-                block
-                    i32.const 3
-                    local.set 0
-                    br 0
-                end
-                local.get 0
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn main() -> i32 {
-            block0:
-                v1 = const.i32 0 : i32;
-                v2 = const.i32 3 : i32;
-                br block2;
-
-            block1(v0: i32):
-                ret v0;
-
-            block2:
-                br block1(v2);
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn loop_br_if() {
-    // sum the decreasing numbers from 2 to 0, i.e. 2 + 1 + 0, then exit the loop
-    check_ir(
-        r#"
-        (module
-            (func $main (result i32) (local i32 i32)
-                i32.const 2
-                local.set 0
-                loop
-                    local.get 0
-                    local.get 1
-                    i32.add
-                    local.set 1
-                    local.get 0
-                    i32.const 1
-                    i32.sub
-                    local.tee 0
-                    br_if 0
-                end
-                local.get 1
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn main() -> i32 {
-            block0:
-                v1 = const.i32 0 : i32;
-                v2 = const.i32 2 : i32;
-                br block2(v2, v1);
-
-            block1(v0: i32):
-                ret v0;
-
-            block2(v3: i32, v4: i32):
-                v5 = add.wrapping v3, v4 : i32;
-                v6 = const.i32 1 : i32;
-                v7 = sub.wrapping v3, v6 : i32;
-                v8 = neq v7, 0 : i1;
-                condbr v8, block2(v7, v5), block4;
-
-            block3:
-                br block1(v5);
-
-            block4:
-                br block3;
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn if_then_else() {
-    check_ir(
-        r#"
-        (module
-            (func $main (result i32)
-                i32.const 2
-                if (result i32)
-                    i32.const 3
-                else
-                    i32.const 5
-                end
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            pub fn main() -> i32 {
-            block0:
-                v1 = const.i32 2 : i32;
-                v2 = neq v1, 0 : i1;
-                condbr v2, block2, block4;
-
-            block1(v0: i32):
-                ret v0;
-
-            block2:
-                v4 = const.i32 3 : i32;
-                br block3(v4);
-
-            block3(v3: i32):
-                br block1(v3);
-
-            block4:
-                v5 = const.i32 5 : i32;
-                br block3(v5);
-            }
-        "#]],
-    );
-}
-
-#[test]
-fn global_var() {
-    check_ir(
-        r#"
-        (module
-            (global $MyGlobalVal (mut i32) i32.const 42)
-            (func $main
-                global.get $MyGlobalVal
-                i32.const 9
-                i32.add
-                global.set $MyGlobalVal
-            )
-        )
-    "#,
-        expect![[r#"
-            module noname
-
-            const $0 = 0x0000002a;
-
-            global external @MyGlobalVal : i32 = $0 { id = 0 };
-
-            pub fn main() {
-            block0:
-                v0 = global.load (@MyGlobalVal) as *mut i8 : i32;
-                v1 = const.i32 9 : i32;
-                v2 = add.wrapping v0, v1 : i32;
-                v3 = global.symbol @MyGlobalVal : *mut i32;
-                store v3, v2;
-                br block1;
-
-            block1:
-                ret;
-            }
-        "#]],
-    );
 }
 
 #[test]
@@ -367,9 +51,9 @@ fn memory_grow() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1 : i32;
-            v1 = cast v0 : u32;
-            v2 = memory.grow v1 : i32;
+            (let (v0 i32) (const.i32 1))
+            (let (v1 u32) (cast v0))
+            (let (v2 i32) (memory.grow v1))
         "#]],
     )
 }
@@ -382,7 +66,7 @@ fn memory_size() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1048575 : i32;
+            (let (v0 i32) (const.i32 1048575))
         "#]],
     )
 }
@@ -397,14 +81,14 @@ fn memory_copy() {
             memory.copy
         "#,
         expect![[r#"
-            v0 = const.i32 20 : i32;
-            v1 = const.i32 10 : i32;
-            v2 = const.i32 1 : i32;
-            v3 = cast v0 : u32;
-            v4 = inttoptr v3 : *mut u8;
-            v5 = cast v1 : u32;
-            v6 = inttoptr v5 : *mut u8;
-            memcpy v6, v4, v2;
+            (let (v0 i32) (const.i32 20))
+            (let (v1 i32) (const.i32 10))
+            (let (v2 i32) (const.i32 1))
+            (let (v3 u32) (cast v0))
+            (let (v4 (ptr u8)) (inttoptr v3))
+            (let (v5 u32) (cast v1))
+            (let (v6 (ptr u8)) (inttoptr v5))
+            (memcpy v6 v4 v2)
         "#]],
     )
 }
@@ -418,11 +102,11 @@ fn i32_load8_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut u8;
-            v3 = load v2 : u8;
-            v4 = zext v3 : i32;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr u8)) (inttoptr v1))
+            (let (v3 u8) (load v2))
+            (let (v4 i32) (zext v3))
         "#]],
     )
 }
@@ -436,11 +120,11 @@ fn i32_load16_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut u16;
-            v3 = load v2 : u16;
-            v4 = zext v3 : i32;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr u16)) (inttoptr v1))
+            (let (v3 u16) (load v2))
+            (let (v4 i32) (zext v3))
         "#]],
     )
 }
@@ -454,11 +138,11 @@ fn i32_load8_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i8;
-            v3 = load v2 : i8;
-            v4 = sext v3 : i32;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i8)) (inttoptr v1))
+            (let (v3 i8) (load v2))
+            (let (v4 i32) (sext v3))
         "#]],
     )
 }
@@ -472,11 +156,11 @@ fn i32_load16_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i16;
-            v3 = load v2 : i16;
-            v4 = sext v3 : i32;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i16)) (inttoptr v1))
+            (let (v3 i16) (load v2))
+            (let (v4 i32) (sext v3))
         "#]],
     )
 }
@@ -490,11 +174,11 @@ fn i64_load8_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut u8;
-            v3 = load v2 : u8;
-            v4 = zext v3 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr u8)) (inttoptr v1))
+            (let (v3 u8) (load v2))
+            (let (v4 i64) (zext v3))
         "#]],
     )
 }
@@ -508,11 +192,11 @@ fn i64_load16_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut u16;
-            v3 = load v2 : u16;
-            v4 = zext v3 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr u16)) (inttoptr v1))
+            (let (v3 u16) (load v2))
+            (let (v4 i64) (zext v3))
         "#]],
     )
 }
@@ -526,11 +210,11 @@ fn i64_load8_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i8;
-            v3 = load v2 : i8;
-            v4 = sext v3 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i8)) (inttoptr v1))
+            (let (v3 i8) (load v2))
+            (let (v4 i64) (sext v3))
         "#]],
     )
 }
@@ -544,11 +228,11 @@ fn i64_load16_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i16;
-            v3 = load v2 : i16;
-            v4 = sext v3 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i16)) (inttoptr v1))
+            (let (v3 i16) (load v2))
+            (let (v4 i64) (sext v3))
         "#]],
     )
 }
@@ -562,11 +246,11 @@ fn i64_load32_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i32;
-            v3 = load v2 : i32;
-            v4 = sext v3 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i32)) (inttoptr v1))
+            (let (v3 i32) (load v2))
+            (let (v4 i64) (sext v3))
         "#]],
     )
 }
@@ -580,11 +264,11 @@ fn i64_load32_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut u32;
-            v3 = load v2 : u32;
-            v4 = zext v3 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr u32)) (inttoptr v1))
+            (let (v3 u32) (load v2))
+            (let (v4 i64) (zext v3))
         "#]],
     )
 }
@@ -598,10 +282,10 @@ fn i32_load() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i32;
-            v3 = load v2 : i32;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i32)) (inttoptr v1))
+            (let (v3 i32) (load v2))
         "#]],
     )
 }
@@ -615,10 +299,10 @@ fn i64_load() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = cast v0 : u32;
-            v2 = inttoptr v1 : *mut i64;
-            v3 = load v2 : i64;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 u32) (cast v0))
+            (let (v2 (ptr i64)) (inttoptr v1))
+            (let (v3 i64) (load v2))
         "#]],
     )
 }
@@ -632,11 +316,11 @@ fn i32_store() {
             i32.store
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = inttoptr v2 : *mut i32;
-            store v3, v1;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 (ptr i32)) (inttoptr v2))
+            (store v3 v1)
         "#]],
     )
 }
@@ -650,11 +334,11 @@ fn i64_store() {
             i64.store
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u32;
-            v3 = inttoptr v2 : *mut i64;
-            store v3, v1;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 (ptr i64)) (inttoptr v2))
+            (store v3 v1)
         "#]],
     )
 }
@@ -668,12 +352,12 @@ fn i32_store8() {
             i32.store8
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = trunc v1 : u8;
-            v3 = cast v0 : u32;
-            v4 = inttoptr v3 : *mut u8;
-            store v4, v2;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u8) (trunc v1))
+            (let (v3 u32) (cast v0))
+            (let (v4 (ptr u8)) (inttoptr v3))
+            (store v4 v2)
         "#]],
     )
 }
@@ -687,12 +371,12 @@ fn i32_store16() {
             i32.store16
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = trunc v1 : u16;
-            v3 = cast v0 : u32;
-            v4 = inttoptr v3 : *mut u16;
-            store v4, v2;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u16) (trunc v1))
+            (let (v3 u32) (cast v0))
+            (let (v4 (ptr u16)) (inttoptr v3))
+            (store v4 v2)
         "#]],
     )
 }
@@ -706,12 +390,12 @@ fn i64_store32() {
             i64.store32
         "#,
         expect![[r#"
-            v0 = const.i32 1024 : i32;
-            v1 = const.i64 1 : i64;
-            v2 = trunc v1 : u32;
-            v3 = cast v0 : u32;
-            v4 = inttoptr v3 : *mut u32;
-            store v4, v2;
+            (let (v0 i32) (const.i32 1024))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u32) (trunc v1))
+            (let (v3 u32) (cast v0))
+            (let (v4 (ptr u32)) (inttoptr v3))
+            (store v4 v2)
         "#]],
     )
 }
@@ -724,7 +408,7 @@ fn i32_const() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1 : i32;
+            (let (v0 i32) (const.i32 1))
         "#]],
     )
 }
@@ -737,7 +421,7 @@ fn i64_const() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 1 : i64;
+            (let (v0 i64) (const.i64 1))
         "#]],
     )
 }
@@ -751,8 +435,8 @@ fn i32_popcnt() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1 : i32;
-            v1 = popcnt v0 : i32;
+            (let (v0 i32) (const.i32 1))
+            (let (v1 i32) (popcnt v0))
         "#]],
     )
 }
@@ -766,8 +450,8 @@ fn i64_extend_i32_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1 : i32;
-            v1 = sext v0 : i64;
+            (let (v0 i32) (const.i32 1))
+            (let (v1 i64) (sext v0))
         "#]],
     )
 }
@@ -781,10 +465,10 @@ fn i64_extend_i32_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 1 : i32;
-            v1 = cast v0 : u32;
-            v2 = zext v1 : u64;
-            v3 = cast v2 : i64;
+            (let (v0 i32) (const.i32 1))
+            (let (v1 u32) (cast v0))
+            (let (v2 u64) (zext v1))
+            (let (v3 i64) (cast v2))
         "#]],
     )
 }
@@ -798,8 +482,8 @@ fn i32_wrap_i64() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 1 : i64;
-            v1 = trunc v0 : i32;
+            (let (v0 i64) (const.i64 1))
+            (let (v1 i32) (trunc v0))
         "#]],
     )
 }
@@ -814,9 +498,9 @@ fn i32_add() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 3 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = add.wrapping v0, v1 : i32;
+            (let (v0 i32) (const.i32 3))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (add.wrapping v0 v1))
         "#]],
     )
 }
@@ -831,9 +515,9 @@ fn i64_add() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 3 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = add.wrapping v0, v1 : i64;
+            (let (v0 i64) (const.i64 3))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (add.wrapping v0 v1))
         "#]],
     )
 }
@@ -848,9 +532,9 @@ fn i32_and() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = band v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (band v0 v1))
         "#]],
     )
 }
@@ -865,9 +549,9 @@ fn i64_and() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = band v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (band v0 v1))
         "#]],
     )
 }
@@ -882,9 +566,9 @@ fn i32_or() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = bor v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (bor v0 v1))
         "#]],
     )
 }
@@ -899,9 +583,9 @@ fn i64_or() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = bor v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (bor v0 v1))
         "#]],
     )
 }
@@ -916,9 +600,9 @@ fn i32_sub() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 3 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = sub.wrapping v0, v1 : i32;
+            (let (v0 i32) (const.i32 3))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (sub.wrapping v0 v1))
         "#]],
     )
 }
@@ -933,9 +617,9 @@ fn i64_sub() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 3 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = sub.wrapping v0, v1 : i64;
+            (let (v0 i64) (const.i64 3))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (sub.wrapping v0 v1))
         "#]],
     )
 }
@@ -950,9 +634,9 @@ fn i32_xor() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = bxor v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (bxor v0 v1))
         "#]],
     )
 }
@@ -967,9 +651,9 @@ fn i64_xor() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = bxor v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (bxor v0 v1))
         "#]],
     )
 }
@@ -984,9 +668,9 @@ fn i32_shl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = shl.wrapping v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (shl.wrapping v0 v1))
         "#]],
     )
 }
@@ -1001,9 +685,9 @@ fn i64_shl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = shl.wrapping v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (shl.wrapping v0 v1))
         "#]],
     )
 }
@@ -1018,12 +702,12 @@ fn i32_shr_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = shr.wrapping v2, v3 : u32;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 u32) (shr.wrapping v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1038,12 +722,12 @@ fn i64_shr_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = shr.wrapping v2, v3 : u64;
-            v5 = cast v4 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 u64) (shr.wrapping v2 v3))
+            (let (v5 i64) (cast v4))
         "#]],
     )
 }
@@ -1058,9 +742,9 @@ fn i32_shr_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = shr.wrapping v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (shr.wrapping v0 v1))
         "#]],
     )
 }
@@ -1075,9 +759,9 @@ fn i64_shr_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = shr.wrapping v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (shr.wrapping v0 v1))
         "#]],
     )
 }
@@ -1092,9 +776,9 @@ fn i32_rotl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = rotl v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (rotl v0 v1))
         "#]],
     )
 }
@@ -1109,9 +793,9 @@ fn i64_rotl() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = rotl v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (rotl v0 v1))
         "#]],
     )
 }
@@ -1126,9 +810,9 @@ fn i32_rotr() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = rotr v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (rotr v0 v1))
         "#]],
     )
 }
@@ -1143,9 +827,9 @@ fn i64_rotr() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = rotr v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (rotr v0 v1))
         "#]],
     )
 }
@@ -1160,9 +844,9 @@ fn i32_mul() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = mul.wrapping v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (mul.wrapping v0 v1))
         "#]],
     )
 }
@@ -1177,9 +861,9 @@ fn i64_mul() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = mul.wrapping v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (mul.wrapping v0 v1))
         "#]],
     )
 }
@@ -1194,12 +878,12 @@ fn i32_div_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = div.checked v2, v3 : u32;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 u32) (div.checked v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1214,12 +898,12 @@ fn i64_div_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = div.checked v2, v3 : u64;
-            v5 = cast v4 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 u64) (div.checked v2 v3))
+            (let (v5 i64) (cast v4))
         "#]],
     )
 }
@@ -1234,9 +918,9 @@ fn i32_div_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = div.checked v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (div.checked v0 v1))
         "#]],
     )
 }
@@ -1251,9 +935,9 @@ fn i64_div_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = div.checked v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (div.checked v0 v1))
         "#]],
     )
 }
@@ -1268,12 +952,12 @@ fn i32_rem_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = mod.checked v2, v3 : u32;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 u32) (mod.checked v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1288,12 +972,12 @@ fn i64_rem_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = mod.checked v2, v3 : u64;
-            v5 = cast v4 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 u64) (mod.checked v2 v3))
+            (let (v5 i64) (cast v4))
         "#]],
     )
 }
@@ -1308,9 +992,9 @@ fn i32_rem_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = mod.checked v0, v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i32) (mod.checked v0 v1))
         "#]],
     )
 }
@@ -1325,9 +1009,9 @@ fn i64_rem_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = mod.checked v0, v1 : i64;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i64) (mod.checked v0 v1))
         "#]],
     )
 }
@@ -1342,12 +1026,12 @@ fn i32_lt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = lt v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 i1) (lt v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1362,12 +1046,12 @@ fn i64_lt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = lt v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 i1) (lt v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1382,10 +1066,10 @@ fn i32_lt_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = lt v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i1) (lt v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1400,10 +1084,10 @@ fn i64_lt_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = lt v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i1) (lt v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1418,12 +1102,12 @@ fn i32_le_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = lte v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 i1) (lte v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1438,12 +1122,12 @@ fn i64_le_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = lte v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 i1) (lte v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1458,10 +1142,10 @@ fn i32_le_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = lte v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i1) (lte v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1476,10 +1160,10 @@ fn i64_le_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = lte v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i1) (lte v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1494,12 +1178,12 @@ fn i32_gt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = gt v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 i1) (gt v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1514,12 +1198,12 @@ fn i64_gt_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = gt v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 i1) (gt v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1534,10 +1218,10 @@ fn i32_gt_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = gt v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i1) (gt v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1552,10 +1236,10 @@ fn i64_gt_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = gt v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i1) (gt v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1570,12 +1254,12 @@ fn i32_ge_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = cast v0 : u32;
-            v3 = cast v1 : u32;
-            v4 = gte v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 u32) (cast v0))
+            (let (v3 u32) (cast v1))
+            (let (v4 i1) (gte v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1590,12 +1274,12 @@ fn i64_ge_u() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = cast v0 : u64;
-            v3 = cast v1 : u64;
-            v4 = gte v2, v3 : i1;
-            v5 = cast v4 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 u64) (cast v0))
+            (let (v3 u64) (cast v1))
+            (let (v4 i1) (gte v2 v3))
+            (let (v5 i32) (cast v4))
         "#]],
     )
 }
@@ -1610,10 +1294,10 @@ fn i32_ge_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = gte v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i1) (gte v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1628,10 +1312,10 @@ fn i64_ge_s() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = gte v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i1) (gte v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1645,9 +1329,9 @@ fn i32_eqz() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = eq v0, 0 : i1;
-            v2 = cast v1 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i1) (eq v0 0))
+            (let (v2 i32) (cast v1))
         "#]],
     )
 }
@@ -1661,9 +1345,9 @@ fn i64_eqz() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = eq v0, 0 : i1;
-            v2 = cast v1 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i1) (eq v0 0))
+            (let (v2 i32) (cast v1))
         "#]],
     )
 }
@@ -1678,10 +1362,10 @@ fn i32_eq() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = eq v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i1) (eq v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1696,10 +1380,10 @@ fn i64_eq() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = eq v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i1) (eq v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1714,10 +1398,10 @@ fn i32_ne() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i32 2 : i32;
-            v1 = const.i32 1 : i32;
-            v2 = neq v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i32) (const.i32 2))
+            (let (v1 i32) (const.i32 1))
+            (let (v2 i1) (neq v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1732,10 +1416,10 @@ fn i64_ne() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 2 : i64;
-            v1 = const.i64 1 : i64;
-            v2 = neq v0, v1 : i1;
-            v3 = cast v2 : i32;
+            (let (v0 i64) (const.i64 2))
+            (let (v1 i64) (const.i64 1))
+            (let (v2 i1) (neq v0 v1))
+            (let (v3 i32) (cast v2))
         "#]],
     )
 }
@@ -1751,11 +1435,11 @@ fn select_i32() {
             drop
         "#,
         expect![[r#"
-            v0 = const.i64 3 : i64;
-            v1 = const.i64 7 : i64;
-            v2 = const.i32 42 : i32;
-            v3 = neq v2, 0 : i1;
-            v4 = select v3, v0, v1 : i64;
+            (let (v0 i64) (const.i64 3))
+            (let (v1 i64) (const.i64 7))
+            (let (v2 i32) (const.i32 42))
+            (let (v3 i1) (neq v2 0))
+            (let (v4 i64) (select v3 v0 v1))
         "#]],
     )
 }
