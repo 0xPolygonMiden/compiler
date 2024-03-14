@@ -655,15 +655,20 @@ fn translate_call(
         func_env,
         diagnostics,
     )?;
-    if !generate_adapter(func_id, module_state, func_state, builder, span, diagnostics)? {
-        let args = func_state.peekn_mut(num_args);
-        // TODO: For imported functions, use their intended invocation method (e.g. `call` or
-        // `exec`)
-        let call = builder.ins().call(func_id, &args, span);
-        let inst_results = builder.inst_results(call);
-        func_state.popn(num_args);
-        func_state.pushn(inst_results);
-    }
+    // TODO: Wasm original signature in FuncEnvironment, but imported above into DataFlowGraph with
+    // the Miden signature
+    let wasm_sig = func_env.signature(function_index);
+    let num_wasm_args = wasm_sig.params().len();
+    let args = func_state.peekn(num_wasm_args);
+    let results = adapt_call(func_id, &args, module_state, builder, span, diagnostics)?;
+    assert_eq!(
+        results.len(),
+        wasm_sig.results().len(),
+        "Adapted function call results are not the same as the original Wasm function results"
+    );
+    // TODO: assert also results types
+    func_state.popn(num_wasm_args);
+    func_state.pushn(results);
     Ok(())
 }
 
