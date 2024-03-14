@@ -148,6 +148,7 @@ mod component;
 mod constants;
 mod dataflow;
 mod display;
+pub mod formatter;
 mod function;
 mod globals;
 mod ident;

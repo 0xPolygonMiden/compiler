@@ -2679,6 +2679,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "typed-arena",
+ "unicode-width",
  "winter-math",
 ]
 
