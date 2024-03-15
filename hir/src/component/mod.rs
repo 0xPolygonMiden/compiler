@@ -69,7 +69,9 @@ impl formatter::PrettyPrint for ComponentImport {
 }
 
 /// The name of a exported function
-#[derive(Debug, Ord, PartialEq, PartialOrd, Eq, Hash, derive_more::From, derive_more::Into)]
+#[derive(
+    Debug, Clone, Ord, PartialEq, PartialOrd, Eq, Hash, derive_more::From, derive_more::Into,
+)]
 pub struct FunctionExportName(Symbol);
 
 /// A component export
