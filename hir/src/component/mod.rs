@@ -38,8 +38,6 @@ pub struct CanonAbiImport {
 /// A Miden (sdklib, tx kernel) function import that is following the Miden ABI.
 #[derive(Debug, Clone)]
 pub struct MidenAbiImport {
-    /// Function name
-    pub function_id: Ident,
     /// The Miden function type as it is defined in the MASM
     pub function_ty: MidenAbiFunctionType,
     /// The MAST root hash of the function to be used in codegen
@@ -86,11 +84,14 @@ impl formatter::PrettyPrint for ComponentImport {
         };
         let name = match self {
             ComponentImport::CanonAbiImport(import) => import.interface_function.to_string(),
-            ComponentImport::MidenAbiImport(import) => import.function_id.to_string(),
+            ComponentImport::MidenAbiImport(_import) => "()".to_string(),
         };
-
+        let import = match self {
+            ComponentImport::CanonAbiImport(_) => const_text("import"),
+            ComponentImport::MidenAbiImport(_) => const_text("import_miden"),
+        };
         const_text("(")
-            + const_text("import")
+            + import
             + const_text(" ")
             + text(name)
             + const_text(" ")
