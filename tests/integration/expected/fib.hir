@@ -1,4 +1,4 @@
-(module #noname
+(module #miden_integration_tests_rust_fib_wasm
     ;; Constants
     (const (id 0) 0x00100000)
 

@@ -14,7 +14,7 @@ use miden_diagnostics::{
     term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
     Emitter, NullEmitter, SourceSpan, Verbosity,
 };
-use miden_frontend_wasm::{translate_module, WasmTranslationConfig};
+use miden_frontend_wasm::{translate_component, translate_module, WasmTranslationConfig};
 use miden_hir::{
     pass::{AnalysisManager, RewritePass, RewriteSet},
     FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Symbol,
@@ -28,8 +28,10 @@ pub enum CompilerTestSource {
         cargo_project_folder_name: String,
         artifact_name: String,
     },
-    // Wasm(String),
-    // Ir(String),
+    RustCargoComponent {
+        cargo_project_folder_name: String,
+        artifact_name: String,
+    },
 }
 
 impl CompilerTestSource {
@@ -39,7 +41,33 @@ impl CompilerTestSource {
                 cargo_project_folder_name: _,
                 artifact_name,
             } => artifact_name.clone(),
+            CompilerTestSource::RustCargoComponent {
+                cargo_project_folder_name: _,
+                artifact_name,
+            } => artifact_name.clone(),
             _ => panic!("Not a Rust Cargo project"),
+        }
+    }
+}
+
+#[derive(derive_more::From)]
+pub enum HirArtifact {
+    Program(Box<miden_hir::Program>),
+    Component(Box<miden_hir::Component>),
+}
+
+impl HirArtifact {
+    pub fn unwrap_program(&self) -> &miden_hir::Program {
+        match self {
+            Self::Program(program) => program,
+            _ => panic!("attempted to unwrap a program, but had a component"),
+        }
+    }
+
+    pub fn unwrap_component(&self) -> &miden_hir::Component {
+        match self {
+            Self::Component(program) => program,
+            _ => panic!("attempted to unwrap a component, but had a program"),
         }
     }
 }
@@ -47,6 +75,8 @@ impl CompilerTestSource {
 /// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected
 /// output
 pub struct CompilerTest {
+    /// The Wasm translation configuration
+    pub config: WasmTranslationConfig,
     /// The compiler session
     pub session: Session,
     /// The source code used to compile the test
@@ -56,14 +86,17 @@ pub struct CompilerTest {
     /// The compiled Wasm component/module
     pub wasm_bytes: Vec<u8>,
     /// The compiled IR
-    pub hir: Option<Box<miden_hir::Program>>,
+    pub hir: Option<HirArtifact>,
     /// The compiled MASM
     pub ir_masm: Option<Arc<miden_codegen_masm::Program>>,
 }
 
 impl CompilerTest {
     /// Compile the Wasm component from a Rust Cargo project using cargo-component
-    pub fn rust_source_cargo_component(cargo_project_folder: &str) -> Self {
+    pub fn rust_source_cargo_component(
+        cargo_project_folder: &str,
+        config: WasmTranslationConfig,
+    ) -> Self {
         let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
         // dbg!(&pwd);
         let mut cargo_build_cmd = Command::new("cargo");
@@ -126,8 +159,9 @@ impl CompilerTest {
         let wasm_comp_path = &wasm_artifacts.first().unwrap();
         let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
         Self {
+            config,
             session: default_session(),
-            source: CompilerTestSource::RustCargo {
+            source: CompilerTestSource::RustCargoComponent {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name,
             },
@@ -185,10 +219,14 @@ impl CompilerTest {
 
         let session = default_session();
         let entrypoint = FunctionIdent {
-            module: Ident::new(Symbol::intern("noname"), SourceSpan::default()),
+            module: Ident::new(Symbol::intern(artifact_name), SourceSpan::default()),
             function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
         };
         CompilerTest {
+            config: WasmTranslationConfig {
+                override_name: Some(artifact_name.to_string().into()),
+                ..Default::default()
+            },
             session,
             source: CompilerTestSource::RustCargo {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
@@ -206,6 +244,10 @@ impl CompilerTest {
         let wasm_bytes = compile_rust_file(rust_source);
         let session = default_session();
         CompilerTest {
+            config: WasmTranslationConfig {
+                override_name: Some("noname".into()),
+                ..Default::default()
+            },
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             wasm_bytes,
@@ -246,6 +288,10 @@ impl CompilerTest {
         };
 
         CompilerTest {
+            config: WasmTranslationConfig {
+                override_name: Some("noname".into()),
+                ..Default::default()
+            },
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             wasm_bytes,
@@ -262,35 +308,74 @@ impl CompilerTest {
         expected_wat_file.assert_eq(&wat);
     }
 
+    fn wasm_to_ir(&self) -> HirArtifact {
+        match &self.source {
+            CompilerTestSource::RustCargoComponent { .. } => {
+                // Wasm component is expected
+                let ir_component =
+                    translate_component(&self.wasm_bytes, &self.config, &self.session.diagnostics)
+                        .expect("Failed to translate Wasm to IR component");
+                Box::new(ir_component).into()
+            }
+            _ => {
+                // Wasm module is expected
+                use miden_hir_transform as transforms;
+                let mut ir_module =
+                    translate_module(&self.wasm_bytes, &self.config, &self.session.diagnostics)
+                        .expect("Failed to translate Wasm to IR module");
+
+                let mut analyses = AnalysisManager::new();
+                let mut rewrites = RewriteSet::default();
+                rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
+                rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
+                rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
+                rewrites
+                    .apply(&mut ir_module, &mut analyses, &self.session)
+                    .expect("Failed to apply rewrites");
+
+                let mut builder = ProgramBuilder::new(&self.session.diagnostics)
+                    .with_module(Box::new(ir_module))
+                    .unwrap();
+                if let Some(entrypoint) = self.entrypoint.as_ref() {
+                    builder = builder.with_entrypoint(entrypoint.clone());
+                }
+                let hir_program = builder.link().expect("Failed to link IR program");
+                hir_program.into()
+            }
+        }
+    }
+
+    /// Get the compiled IR, compiling the Wasm if it has not been compiled yet
+    pub fn hir(&mut self) -> &HirArtifact {
+        if self.hir.is_none() {
+            self.hir = Some(self.wasm_to_ir());
+        }
+        self.hir.as_ref().unwrap()
+    }
+
     /// Compare the compiled IR against the expected output
     pub fn expect_ir(&mut self, expected_hir_file: expect_test::ExpectFile) {
-        let hir_program = if let Some(hir) = self.hir.as_ref() {
-            hir
-        } else {
-            let hir_module = wasm_to_ir(&self.wasm_bytes, &self.session);
-            let mut builder = ProgramBuilder::new(&self.session.diagnostics)
-                .with_module(hir_module.into())
-                .unwrap();
-            if let Some(entrypoint) = self.entrypoint.as_ref() {
-                builder = builder.with_entrypoint(entrypoint.clone());
+        match self.hir() {
+            HirArtifact::Program(hir_program) => {
+                // Program does not implement pretty printer yet, use the first module
+                let ir_module = demangle(
+                    &hir_program
+                        .modules()
+                        .iter()
+                        .take(1)
+                        .collect::<Vec<&miden_hir::Module>>()
+                        .first()
+                        .expect("no module in IR program")
+                        .to_string()
+                        .as_str(),
+                );
+                expected_hir_file.assert_eq(&ir_module);
             }
-            let hir_program = builder.link().expect("Failed to link IR program");
-            self.hir = Some(hir_program);
-            self.hir.as_ref().unwrap()
-        };
-        // Program does not implement pretty printer yet, use the first module
-        let ir_module = demangle(
-            &hir_program
-                .modules()
-                .iter()
-                .take(1)
-                .collect::<Vec<&miden_hir::Module>>()
-                .first()
-                .expect("no module in IR program")
-                .to_string()
-                .as_str(),
-        );
-        expected_hir_file.assert_eq(&ir_module);
+            HirArtifact::Component(hir_component) => {
+                let ir_component = demangle(&hir_component.to_string());
+                expected_hir_file.assert_eq(&ir_component);
+            }
+        }
     }
 
     /// Compare the compiled MASM against the expected output
@@ -333,7 +418,12 @@ impl CompilerTest {
         if self.ir_masm.is_none() {
             let mut compiler = MasmCompiler::new(&self.session);
             let hir = self.hir.take().expect("IR is not compiled");
-            let ir_masm = compiler.compile(hir).unwrap();
+            let ir_masm = match hir {
+                HirArtifact::Program(hir_program) => compiler.compile(hir_program).unwrap(),
+                HirArtifact::Component(_hir_component) => {
+                    todo!("Component to MASM compilation is not implemented yet")
+                }
+            };
             let frozen = ir_masm.freeze();
             self.ir_masm = Some(frozen);
         }
@@ -430,24 +520,4 @@ pub fn default_session() -> Session {
 fn hash_string(inputs: &str) -> String {
     let hash = <sha2::Sha256 as sha2::Digest>::digest(inputs.as_bytes());
     format!("{:x}", hash)
-}
-
-fn wasm_to_ir(wasm_bytes: &[u8], session: &Session) -> miden_hir::Module {
-    use miden_hir_transform as transforms;
-    let config = WasmTranslationConfig {
-        override_name: Some("noname".into()),
-        ..Default::default()
-    };
-    let mut ir_module = translate_module(wasm_bytes, &config, &session.diagnostics)
-        .expect("Failed to translate Wasm to IR module");
-
-    let mut analyses = AnalysisManager::new();
-    let mut rewrites = RewriteSet::default();
-    rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
-    rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
-    rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
-    rewrites
-        .apply(&mut ir_module, &mut analyses, session)
-        .expect("Failed to apply rewrites");
-    ir_module
 }

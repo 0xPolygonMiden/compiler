@@ -1,8 +1,12 @@
+use core::fmt;
+
 use miden_hir_symbol::Symbol;
+
+use crate::formatter::PrettyPrint;
 
 /// A fully-qualified identifier for the interface being imported, e.g.
 /// `namespace::package/interface@version`
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InterfaceIdent {
     /// A fully-qualified identifier for the interface being imported, e.g.
     /// `namespace::package/interface@version`
@@ -19,8 +23,14 @@ impl InterfaceIdent {
     }
 }
 
+impl fmt::Display for InterfaceIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "\"{}\"", self.full_name.as_str().escape_default())
+    }
+}
+
 /// An identifier for a function in an interface
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InterfaceFunctionIdent {
     /// An interface identifier for the interface being imported (e.g.
     /// `namespace::package/interface@version`)
@@ -37,5 +47,24 @@ impl InterfaceFunctionIdent {
             interface: InterfaceIdent::from_full_ident(interface.to_string()),
             function: Symbol::intern(function),
         }
+    }
+}
+
+impl fmt::Display for InterfaceFunctionIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
+    }
+}
+impl PrettyPrint for InterfaceFunctionIdent {
+    fn render(&self) -> crate::formatter::Document {
+        use crate::formatter::*;
+
+        flatten(
+            const_text("(")
+                + display(self.interface)
+                + const_text(" ")
+                + text(format!("#{}", self.function))
+                + const_text(")"),
+        )
     }
 }
