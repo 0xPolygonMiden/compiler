@@ -1,4 +1,4 @@
-(module
+(module $miden_sdk_account_test.wasm
   (type (;0;) (func (result i32)))
   (type (;1;) (func (param i32) (result i32)))
   (type (;2;) (func (param i32 i32 i32 i32 i32)))
@@ -20,8 +20,13 @@
     local.get 1
     local.get 0
     i32.load
-    i64.load align=4
-    i64.store offset=8 align=4
+    local.tee 0
+    i32.load
+    i32.store offset=12
+    local.get 1
+    local.get 0
+    i32.load offset=8
+    i32.store offset=8
     local.get 1
     i32.const 8
     i32.add
@@ -35,12 +40,12 @@
     (local i32)
     block ;; label = @1
       local.get 0
-      i32.load offset=4
+      i32.load
       local.tee 1
       i32.eqz
       br_if 0 (;@1;)
       local.get 0
-      i32.load
+      i32.load offset=4
       local.get 1
       i32.const 3
       i32.shl
@@ -106,7 +111,7 @@
     unreachable
   )
   (func $note_script (;8;) (type 4)
-    (local i32 i32 i32 i32 i64)
+    (local i32 i32 i32 i64 i32)
     global.get $__stack_pointer
     i32.const 2048
     i32.sub
@@ -121,29 +126,32 @@
     i32.shl
     local.tee 2
     i32.add
-    local.tee 3
     i32.store offset=12
     local.get 0
     local.get 1
-    i32.store offset=4
+    i32.store offset=8
     local.get 0
     local.get 0
     i32.store
     i64.const 0
-    local.set 4
+    local.set 3
     local.get 0
-    local.set 1
+    local.set 4
     block ;; label = @1
       loop ;; label = @2
         block ;; label = @3
           local.get 2
           br_if 0 (;@3;)
           local.get 0
-          local.get 3
-          i32.store offset=8
+          local.get 0
+          local.get 1
+          i32.const 3
+          i32.shl
+          i32.add
+          i32.store offset=4
           local.get 0
           call $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop
-          local.get 4
+          local.get 3
           i64.const 42
           i64.eq
           br_if 2 (;@1;)
@@ -154,15 +162,15 @@
         i32.const -8
         i32.add
         local.set 2
-        local.get 1
-        i64.load
         local.get 4
+        i64.load
+        local.get 3
         i64.add
-        local.set 4
-        local.get 1
+        local.set 3
+        local.get 4
         i32.const 8
         i32.add
-        local.set 1
+        local.set 4
         br 0 (;@2;)
       end
     end
@@ -228,17 +236,12 @@
       local.get 0
       i32.load
       local.tee 1
-      i32.const -4
-      i32.and
-      local.tee 2
-      i32.eqz
-      br_if 0 (;@1;)
-      i32.const 0
-      local.get 2
-      local.get 1
       i32.const 2
       i32.and
-      select
+      br_if 0 (;@1;)
+      local.get 1
+      i32.const -4
+      i32.and
       local.tee 2
       i32.eqz
       br_if 0 (;@1;)
@@ -355,17 +358,12 @@
           block ;; label = @4
             block ;; label = @5
               local.get 4
-              i32.const -4
-              i32.and
-              local.tee 6
-              i32.eqz
-              br_if 0 (;@5;)
-              i32.const 0
-              local.get 6
-              local.get 4
               i32.const 2
               i32.and
-              select
+              br_if 0 (;@5;)
+              local.get 4
+              i32.const -4
+              i32.and
               local.tee 4
               i32.eqz
               br_if 0 (;@5;)

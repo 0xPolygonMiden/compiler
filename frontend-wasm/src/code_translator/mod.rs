@@ -25,7 +25,7 @@ use wasmparser::{MemArg, Operator};
 
 use crate::{
     error::{WasmError, WasmResult},
-    miden_abi::generate_adapter,
+    miden_abi::adapt_call,
     module::{
         func_env::FuncEnvironment,
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},

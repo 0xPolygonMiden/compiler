@@ -10,7 +10,6 @@ use crate::{
     error::WasmResult,
     miden_abi::parse_import_function_digest,
     module::{
-        func_env::FuncEnvironment,
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
         types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},

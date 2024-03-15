@@ -72,7 +72,14 @@ impl ComponentImport {
 }
 
 impl fmt::Display for ComponentImport {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
+    }
+}
+
+impl formatter::PrettyPrint for ComponentImport {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
         let function_ty_str = match self {
             ComponentImport::CanonAbiImport(import) => import.function_ty.to_string(),
             ComponentImport::MidenAbiImport(import) => import.function_ty.to_string(),
@@ -81,7 +88,24 @@ impl fmt::Display for ComponentImport {
             ComponentImport::CanonAbiImport(import) => import.interface_function.to_string(),
             ComponentImport::MidenAbiImport(import) => import.function_id.to_string(),
         };
-        write!(f, "{} {}; mast#{}", name, function_ty_str, self.digest())
+
+        const_text("(")
+            + const_text("import")
+            + const_text(" ")
+            + text(name)
+            + const_text(" ")
+            + const_text("(")
+            + const_text("digest")
+            + const_text(" ")
+            + display(self.digest())
+            + const_text(")")
+            + const_text(" ")
+            + const_text("(")
+            + const_text("type")
+            + const_text(" ")
+            + text(function_ty_str)
+            + const_text(")")
+            + const_text(")")
     }
 }
 

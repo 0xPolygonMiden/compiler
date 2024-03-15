@@ -5,23 +5,12 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::{
-    collections::hash_map::Entry::{Occupied, Vacant},
-    vec::Vec,
-};
-
-use miden_abi_conversion::tx_kernel::miden_abi_function_type;
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{Block, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Signature, Value};
+use miden_diagnostics::SourceSpan;
+use miden_hir::{Block, Inst, InstBuilder, Signature, Value};
 use miden_hir_type::Type;
-use rustc_hash::FxHashMap;
 
-use super::{func_env::FuncEnvironment, function_builder_ext::FunctionBuilderExt};
-use crate::{
-    error::{WasmError, WasmResult},
-    miden_abi::parse_import_function_digest,
-    module::types::{BlockType, FuncIndex},
-};
+use super::function_builder_ext::FunctionBuilderExt;
+use crate::module::types::BlockType;
 
 /// Information about the presence of an associated `else` for an `if`, or the
 /// lack thereof.
@@ -430,56 +419,5 @@ impl FuncTranslationState {
             consequent_ends_reachable: None,
             blocktype,
         });
-    }
-}
-
-/// Methods for handling entity references.
-impl FuncTranslationState {
-    /// Get the `FunctionIdent` that should be used to make a direct call to function
-    /// `index`. Also return the number of WebAssembly arguments in the signature.
-    ///
-    /// Import the callee into `func`'s DFG if it is not already present.
-    pub(crate) fn get_direct_func(
-        &mut self,
-        dfg: &mut DataFlowGraph,
-        index: FuncIndex,
-        func_env: &FuncEnvironment,
-        diagnostics: &DiagnosticsHandler,
-    ) -> WasmResult<(FunctionIdent, usize)> {
-        Ok(match self.functions.entry(index) {
-            Occupied(entry) => *entry.get(),
-            Vacant(entry) => {
-                let function_id = func_env.function_id(index);
-                let wasm_sig = func_env.signature(index);
-                // TODO: don't parse on every call. Cache it?
-                let sig = if let Ok((func_name, _)) =
-                    parse_import_function_digest(function_id.function.as_symbol().as_str())
-                {
-                    // TODO: hard fail if the Miden ABI function type is not found
-                    if let Some(miden_abi) = miden_abi_function_type(&func_name) {
-                        miden_abi.into()
-                    } else {
-                        wasm_sig.clone()
-                    }
-                } else {
-                    wasm_sig.clone()
-                };
-                let Ok(func_id) =
-                    dfg.import_function(function_id.module, function_id.function, sig.clone())
-                else {
-                    let message = format!(
-                        "Function with name {} in module {} with signature {sig:?} is already \
-                         imported (function call) with a different signature",
-                        function_id.function, function_id.module
-                    );
-                    diagnostics
-                        .diagnostic(miden_diagnostics::Severity::Error)
-                        .with_message(message.clone())
-                        .emit();
-                    return Err(WasmError::Unexpected(message));
-                };
-                *entry.insert((func_id, sig.params().len()))
-            }
-        })
     }
 }

@@ -10,7 +10,7 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
-use super::{func_env::FuncEnvironment, Module};
+use super::{func_env::FuncEnvironment, module_tratnslation_state::ModuleTranslationState, Module};
 use crate::{
     code_translator::translate_operator,
     error::WasmResult,

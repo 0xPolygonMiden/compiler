@@ -8,6 +8,7 @@ use crate::{
         func_env::FuncEnvironment,
         func_translation_state::FuncTranslationState,
         function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
+        module_tratnslation_state::ModuleTranslationState,
         Module,
     },
     test_utils::test_diagnostics,

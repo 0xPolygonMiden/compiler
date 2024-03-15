@@ -67,8 +67,6 @@ fn wcm_inc() {
         .cloned()
         .unwrap()
         .clone();
-    assert_eq!(function_id.module, module.name);
-    // assert_eq!(function_id.function, interface_function_ident.function);
     let component_import =
         ir_component.imports().get(&function_id).unwrap().unwrap_canon_abi_import();
     assert_eq!(component_import.interface_function, interface_function_ident);

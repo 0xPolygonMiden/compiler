@@ -608,7 +608,11 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         // names are almost always present in the
                         // final compilation artifact.
                         let index = FuncIndex::from_u32(index);
-                        self.result.module.name_section.func_names.insert(index, name.to_string());
+                        self.result
+                            .module
+                            .name_section
+                            .func_names
+                            .insert(index, Symbol::intern(name));
                     }
                 }
                 wasmparser::Name::Module { name, .. } => {

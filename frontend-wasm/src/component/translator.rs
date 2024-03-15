@@ -340,7 +340,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             CoreDef::Export(core_export) => {
                 let module =
                     &self.parsed_modules[self.module_instances_source[core_export.instance]].module;
-                let module_name = module.name();
+                let from = Ident::from(module.name().as_str());
+                let module_name = from;
                 let func_name = match core_export.item {
                     ExportItem::Index(idx) => match idx {
                         EntityIndex::Function(func_idx) => module.func_name(func_idx),

@@ -62,8 +62,12 @@ fn sdk_basic_wallet() {
     };
     let mut test = CompilerTest::rust_source_cargo_component("wit-sdk/basic-wallet", config);
     let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
-    test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
+    test.expect_wasm(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
+    )]);
+    test.expect_ir(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.hir"
+    )]);
     let ir = test.hir().unwrap_component();
     for (_, import) in ir.imports() {
         assert!(import_metadata.contains_key(&import.unwrap_canon_abi_import().interface_function));
@@ -136,8 +140,12 @@ fn sdk_basic_wallet_p2id_note() {
     };
     let mut test = CompilerTest::rust_source_cargo_component("wit-sdk/p2id-note", config);
     let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
-    test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
+    test.expect_wasm(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
+    )]);
+    test.expect_ir(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.hir"
+    )]);
     let ir = test.hir().unwrap_component();
     for (_, import) in ir.imports() {
         let canon_abi_import = import.unwrap_canon_abi_import();

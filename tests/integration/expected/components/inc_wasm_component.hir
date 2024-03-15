@@ -1,6 +1,6 @@
 (component 
     ;; Component Imports
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param u32) (param u32) (result u32)))) (#inc_wasm_component.wasm #inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import)
+    (lower (import ("miden:add-package/add-interface@1.0.0" #add) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param u32) (param u32) (result u32)))) (#miden:add-package/add-interface@1.0.0 #add)
 
     ;; Modules
     (module #inc_wasm_component.wasm
@@ -23,7 +23,7 @@
             (block 0 (param v0 i32)
                 (call #wit_bindgen::rt::run_ctors_once)
                 (let (v2 i32) (const.i32 1))
-                (let (v3 i32) (call #inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import v0 v2))
+                (let (v3 i32) (call (#miden:add-package/add-interface@1.0.0 #add) v0 v2))
                 (br (block 1 v3)))
 
             (block 1 (param v1 i32)
@@ -911,6 +911,10 @@
             (block 7
                 (unreachable))
         )
+
+        ;; Imports
+        (func (import #miden:add-package/add-interface@1.0.0 #add)
+              (param i32) (param i32) (result i32))
     )
 
 )
