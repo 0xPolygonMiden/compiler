@@ -1,15 +1,11 @@
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::cranelift_entity::PrimaryMap;
 use wasmparser::WasmFeatures;
 
 use super::{
     inline, translator::ComponentTranslator, ComponentTypesBuilder, LinearComponentTranslation,
-    ParsedRootComponent, StaticModuleIndex,
+    ParsedRootComponent,
 };
-use crate::{
-    component::ComponentParser, error::WasmResult, module::module_env::ParsedModule,
-    WasmTranslationConfig,
-};
+use crate::{component::ComponentParser, error::WasmResult, WasmTranslationConfig};
 
 /// Translate a Wasm component binary into Miden IR component
 pub fn translate_component(
@@ -35,8 +31,7 @@ fn parse<'data>(
     let mut component_types_builder = Default::default();
     let component_parser =
         ComponentParser::new(config, &mut validator, &mut component_types_builder);
-    let mut parsed_component = component_parser.parse(wasm, diagnostics)?;
-    ensure_module_names(&mut parsed_component.static_modules);
+    let parsed_component = component_parser.parse(wasm, diagnostics)?;
     Ok((component_types_builder, parsed_component))
 }
 
@@ -64,21 +59,15 @@ fn inline(
     Ok(component_dfg.finish())
 }
 
-fn ensure_module_names(modules: &mut PrimaryMap<StaticModuleIndex, ParsedModule<'_>>) {
-    for (idx, parsed_module) in modules.iter_mut() {
-        parsed_module.module.set_name_fallback(format!("module{}", idx.as_u32()).into());
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
     use miden_core::crypto::hash::RpoDigest;
     use miden_hir::{InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol};
     use miden_hir_type::Type;
 
     use super::*;
     use crate::{
+        component::StaticModuleIndex,
         config::{ExportMetadata, ImportMetadata},
         test_utils::test_diagnostics,
     };
