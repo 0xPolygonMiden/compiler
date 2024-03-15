@@ -1,7 +1,7 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{
-    cranelift_entity::PrimaryMap, ComponentBuilder, ComponentExport, FunctionExportName,
-    FunctionIdent, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
+    cranelift_entity::PrimaryMap, ComponentBuilder, ComponentExport, FunctionIdent, Ident,
+    InterfaceFunctionIdent, InterfaceIdent, Symbol,
 };
 use miden_hir_type::LiftedFunctionType;
 use rustc_hash::FxHashMap;
@@ -269,7 +269,6 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         let component_import = miden_hir::ComponentImport {
             function_ty: lifted_func_ty,
             interface_function,
-            invoke_method: import_metadata.invoke_method,
             digest: import_metadata.digest.clone(),
         };
         Ok(component_import)
@@ -285,7 +284,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         match export {
             Export::LiftedFunction { ty, func, options } => {
                 let export_name = Symbol::intern(name).into();
-                let export = self.build_export_lifted_function(&export_name, func, ty, options)?;
+                let export = self.build_export_lifted_function(func, ty, options)?;
                 component_builder.add_export(export_name, export);
                 Ok(())
             }
@@ -303,8 +302,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 "Exporting of an imported module is not supported".to_string(),
             )),
             Export::Type(_) => {
-                // Besides the function exports the individual type are also exported from the component
-                // We can ignore them for now
+                // Besides the function exports the individual type are also exported from the
+                // component We can ignore them for now
                 Ok(())
             }
         }
@@ -313,7 +312,6 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     /// Build an IR Component export from the given lifted Wasm core module function export
     fn build_export_lifted_function(
         &self,
-        function_export_name: &FunctionExportName,
         func: &CoreDef,
         ty: &TypeFuncIndex,
         options: &CanonicalOptions,
@@ -358,16 +356,9 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             }
         };
         let lifted_func_ty = convert_lifted_func_ty(ty, &self.component_types);
-        let Some(export_metadata) = self.config.export_metadata.get(function_export_name) else {
-            return Err(WasmError::MissingExportMetadata(format!(
-                "Export metadata for interface function {:?} not found",
-                function_export_name,
-            )));
-        };
         let export = miden_hir::ComponentExport {
             function: func_ident,
             function_ty: lifted_func_ty,
-            invoke_method: export_metadata.invoke_method,
         };
         Ok(export)
     }

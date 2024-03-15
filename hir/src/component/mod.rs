@@ -11,24 +11,6 @@ mod interface;
 
 pub use interface::*;
 
-/// Represents the method by which a component function should be invoked in Miden VM
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum FunctionInvocationMethod {
-    /// A function should be invoked by a `call` Miden VM instruction
-    Call,
-    /// A function should be invoked by a `exec` Miden VM instruction
-    #[default]
-    Exec,
-}
-impl fmt::Display for FunctionInvocationMethod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Call => f.write_str("call"),
-            Self::Exec => f.write_str("exec"),
-        }
-    }
-}
-
 /// A component import
 #[derive(Debug, Clone)]
 pub struct ComponentImport {
@@ -36,8 +18,6 @@ pub struct ComponentImport {
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
     pub function_ty: LiftedFunctionType,
-    /// The method of calling the function
-    pub invoke_method: FunctionInvocationMethod,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
 }
@@ -54,10 +34,6 @@ impl formatter::PrettyPrint for ComponentImport {
             + const_text("import")
             + const_text(" ")
             + display(self.digest)
-            + const_text(" ")
-            + const_text("(")
-            + display(self.invoke_method)
-            + const_text(")")
             + const_text(" ")
             + const_text("(")
             + const_text("type")
@@ -81,8 +57,6 @@ pub struct ComponentExport {
     pub function: FunctionIdent,
     /// The component(lifted) type of the exported function
     pub function_ty: LiftedFunctionType,
-    /// The method of calling the function
-    pub invoke_method: FunctionInvocationMethod,
 }
 
 /// A [Component] is a collection of [Module]s that are being compiled together as a package and
