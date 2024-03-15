@@ -5,6 +5,7 @@ use wasmparser::{MemArg, Operator, Operator::*};
 use super::translate_operator;
 use crate::{
     module::{
+        func_env::FuncEnvironment,
         func_translation_state::FuncTranslationState,
         function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
         Module,
@@ -25,15 +26,17 @@ fn check_unsupported(op: &Operator) {
     };
     let mut module_func_builder = module_builder.function("func_name", sig.clone()).unwrap();
     let mut fb_ctx = FunctionBuilderContext::new();
+    let mod_types = Default::default();
+    let func_env = FuncEnvironment::new(&module_info, &mod_types, vec![]);
     let mut state = FuncTranslationState::new();
     let mut builder_ext = FunctionBuilderExt::new(&mut module_func_builder, &mut fb_ctx);
-    let mod_types = Default::default();
     let result = translate_operator(
         op,
         &mut builder_ext,
         &mut state,
         &module_info,
         &mod_types,
+        &func_env,
         &diagnostics,
         SourceSpan::default(),
     );

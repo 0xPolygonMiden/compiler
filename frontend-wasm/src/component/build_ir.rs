@@ -20,7 +20,10 @@ use super::{
 use crate::{
     component::{ComponentParser, StringEncoding},
     error::WasmResult,
-    module::{build_ir::build_ir_module, module_env::ParsedModule, types::EntityIndex},
+    module::{
+        build_ir::build_ir_module, func_env::FuncEnvironment, instance::ModuleArgument,
+        module_env::ParsedModule, types::EntityIndex,
+    },
     WasmError, WasmTranslationConfig,
 };
 
@@ -88,27 +91,21 @@ fn build_ir<'data>(
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Component> {
     let mut cb = miden_hir::ComponentBuilder::new(diagnostics);
-
-    //let component_instance_builder =
-    //  ComponentInstanceBuilder::new(linear_component_translation, component_types,
-    // parsed_modules); let mut component_instance = component_instance_builder.build()?;
-
-    let mut modules_instances: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex> =
+    let mut module_instances_source: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex> =
         PrimaryMap::new();
     let mut lower_imports: BTreeMap<LoweredIndex, RuntimeImportIndex> = BTreeMap::default();
-    //let mut imports: BTreeMap<StaticModuleIndex, Vec<ComponentImport>> = BTreeMap::default();
     let component = &linear_component_translation.component;
 
     ensure_module_names(&mut parsed_modules);
 
-    dbg!(&component.initializers);
-    dbg!(&linear_component_translation.trampolines);
+    //dbg!(&component.initializers);
+    //dbg!(&linear_component_translation.trampolines);
     for initializer in &component.initializers {
         match initializer {
             GlobalInitializer::InstantiateModule(m) => {
                 match m {
                     InstantiateModule::Static(static_module_idx, args) => {
-                        if module_instances
+                        if module_instances_source
                             .values()
                             .find(|idx| **idx == *static_module_idx)
                             .is_some()
@@ -119,8 +116,8 @@ fn build_ir<'data>(
                                 static_module_idx.as_u32()
                             )));
                         }
-                        module_instances.push(*static_module_idx);
-                        let mut module_args: Vec<ComponentImport> = Vec::new();
+                        module_instances_source.push(*static_module_idx);
+                        let mut module_args: Vec<ModuleArgument> = Vec::new();
                         for arg in args.iter() {
                             match arg {
                                 CoreDef::Export(export) => {
@@ -128,16 +125,25 @@ fn build_ir<'data>(
                                     match export.item {
                                         ExportItem::Index(entity_idx) => match entity_idx {
                                             EntityIndex::Function(_func_idx) => {
-                                                // Do nothing.
-                                                // The function indent (module ident + function
-                                                // name)
-                                                // will be resolved during the `call` resolution.
-                                                ()
-
-                                                // module_args.push(import);
+                                                let module_id =
+                                                    module_instances_source[export.instance];
+                                                let module = &parsed_modules[module_id].module;
+                                                let func_name = module.func_name(func_idx);
+                                                let module_name = module.name();
+                                                let function_id = FunctionIdent {
+                                                    module: Ident::with_empty_span(Symbol::intern(
+                                                        module_name,
+                                                    )),
+                                                    function: Ident::with_empty_span(
+                                                        Symbol::intern(func_name),
+                                                    ),
+                                                };
+                                                // dbg!(function_id);
+                                                module_args
+                                                    .push(ModuleArgument::Function(function_id));
                                             }
                                             EntityIndex::Table(_) => {
-                                                // Do nothing for now
+                                                module_args.push(ModuleArgument::Table)
                                             }
                                             EntityIndex::Memory(_) => {
                                                 todo!()
@@ -164,7 +170,7 @@ fn build_ir<'data>(
                                                 runtime_import_index: import,
                                                 signature: *lower_ty,
                                             };
-                                            build_import(
+                                            let (func_id, component_import) = build_import(
                                                 &import,
                                                 &parsed_modules,
                                                 &component_types,
@@ -172,7 +178,10 @@ fn build_ir<'data>(
                                                 &mut cb,
                                                 config,
                                             )?;
-                                            module_args.push(import);
+                                            cb.add_import(func_id, component_import.clone());
+                                            module_args.push(ModuleArgument::ComponentImport(
+                                                component_import,
+                                            ));
                                         }
                                         _ => unreachable!(),
                                     }
@@ -180,10 +189,16 @@ fn build_ir<'data>(
                             }
                         }
 
-                        let parsed_module = parsed_modules.get_mut(*static_module_idx).unwrap();
+                        let module_types = component_types.module_types();
+                        let func_env = FuncEnvironment::new(
+                            &parsed_modules[*static_module_idx].module,
+                            module_types,
+                            module_args,
+                        );
                         let module = build_ir_module(
-                            parsed_module,
-                            component_types.module_types(),
+                            parsed_modules.get_mut(*static_module_idx).unwrap(),
+                            module_types,
+                            func_env,
                             config,
                             diagnostics,
                         )?;
@@ -207,40 +222,18 @@ fn build_ir<'data>(
         }
     }
 
-    // component_instance.ensure_module_names();
-
     // build exports
     for (name, export) in &component_instance.component.exports {
         build_export(
             export,
             &parsed_modules,
-            &module_instances,
+            &module_instances_source,
             &component_types,
             name,
             &mut cb,
             config,
         )?;
     }
-
-    // for (static_module_idx, parsed_module) in component_instance.modules {
-    //     let component = &component_instance.component;
-    //     build_import(
-    //         &component_instance.imports[&static_module_idx],
-    //         &component_instance.component_types,
-    //         component,
-    //         &parsed_module,
-    //         &mut cb,
-    //         config,
-    //     )?;
-
-    //     let module = build_ir_module(
-    //         parsed_module,
-    //         component_instance.component_types.module_types(),
-    //         config,
-    //         diagnostics,
-    //     )?;
-    //     cb.add_module(module.into()).expect("module is already added");
-    // }
 
     Ok(cb.build())
 }
@@ -258,7 +251,7 @@ fn build_import(
     component: &LinearComponent,
     cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
-) -> WasmResult<()> {
+) -> WasmResult<(FunctionIdent, miden_hir::ComponentImport)> {
     let (import_idx, import_names) = &component.imports[import.runtime_import_index];
     if import_names.len() != 1 {
         return Err(crate::WasmError::Unsupported("multi-name imports not supported".to_string()));
@@ -286,7 +279,7 @@ fn build_import(
     let function_id =
         find_module_import_function(parsed_modules, full_interface_name, import_func_name)?;
     cb.add_import(function_id, component_import);
-    Ok(())
+    Ok((function_id, component_import))
 }
 
 fn find_module_import_function(

@@ -1,13 +1,14 @@
 use core::mem;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{CallConv, ConstantData, FunctionIdent, Ident, Linkage, ModuleBuilder, Symbol};
+use miden_hir::{CallConv, ConstantData, Linkage, ModuleBuilder};
 use wasmparser::{Validator, WasmFeatures};
 
 use super::Module;
 use crate::{
     error::WasmResult,
     module::{
+        func_env::FuncEnvironment,
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
         types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
@@ -37,57 +38,29 @@ pub fn translate_module(
         parsed_module.module.set_name_override(name_override.clone());
     }
     let module_types = module_types_builder.finish();
-    build_ir_module(&mut parsed_module, &module_types, config, diagnostics)
+
+    let func_env = FuncEnvironment::new(&parsed_module.module, &module_types, vec![]);
+    build_ir_module(&mut parsed_module, &module_types, func_env, config, diagnostics)
 }
 
 pub fn build_ir_module(
     mut parsed_module: &mut ParsedModule,
     module_types: &ModuleTypes,
+    func_env: FuncEnvironment,
     _config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Module> {
     let name = parsed_module.module.name();
     let mut module_builder = ModuleBuilder::new(name.clone().as_str());
-    for import in parsed_module.module.imports.clone() {
-        match import.index {
-            EntityIndex::Function(func_idx) => {
-                let func_name = parsed_module.module.func_name(func_idx);
-                let sig_idx = parsed_module.module.type_of(import.index).unwrap_func();
-                let func = &module_types[sig_idx];
-                let func_type = ir_func_type(&func)?;
-                let sig = ir_func_sig(&func_type, CallConv::SystemV, Linkage::External);
-
-                let function_id: FunctionIdent = FunctionIdent {
-                    module: module_builder.name(),
-                    function: Ident::with_empty_span(Symbol::intern(func_name)),
-                };
-
-                // TODO: extract translated_function_imports from parsed_module so we don't mutate
-                // it here
-                parsed_module
-                    .module
-                    .translated_function_imports
-                    .insert(func_idx, (function_id, sig));
-            }
-            EntityIndex::Table(_) => {
-                // TODO: implement table imports
-            }
-            EntityIndex::Memory(_) => todo!(),
-            EntityIndex::Global(_) => todo!(),
-        }
-    }
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
-    build_data_segments(&parsed_module, &mut module_builder, diagnostics)?;
+    build_data_segments(parsed_module, &mut module_builder, diagnostics)?;
     let mut func_translator = FuncTranslator::new();
-    // debug_assert!(
-    //     !parsed_module.function_body_inputs.is_empty(),
-    //     "No function bodies in a module. Check if it was already translated earlier."
-    // );
-    let function_bodies = mem::take(&mut parsed_module.function_body_inputs);
-    for (defined_func_idx, body_data) in function_bodies {
-        let func_index = parsed_module.module.func_index(defined_func_idx);
-        let func_type = parsed_module.module.functions[func_index];
-        let func_name = parsed_module.module.func_name(func_index);
+    // TODO: Ugly! Find a better way to consume the function body inputs
+    let func_body_inputs = mem::take(&mut parsed_module.function_body_inputs);
+    for (defined_func_idx, body_data) in func_body_inputs {
+        let func_index = &parsed_module.module.func_index(defined_func_idx);
+        let func_type = &parsed_module.module.functions[*func_index];
+        let func_name = &parsed_module.module.func_name(*func_index);
         let wasm_func_type = module_types[func_type.signature].clone();
         let ir_func_type = ir_func_type(&wasm_func_type)?;
         let sig = ir_func_sig(&ir_func_type, CallConv::SystemV, Linkage::External);
@@ -99,6 +72,7 @@ pub fn build_ir_module(
             &mut module_func_builder,
             &parsed_module.module,
             &module_types,
+            &func_env,
             diagnostics,
             &mut func_validator,
         )?;

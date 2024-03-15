@@ -30,7 +30,7 @@ impl fmt::Display for FunctionInvocationMethod {
 }
 
 /// A component import
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentImport {
     /// The interfact function name that is being imported
     pub interface_function: InterfaceFunctionIdent,

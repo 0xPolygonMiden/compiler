@@ -26,6 +26,7 @@ use wasmparser::{MemArg, Operator};
 use crate::{
     error::{WasmError, WasmResult},
     module::{
+        func_env::FuncEnvironment,
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
         types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes},
@@ -48,6 +49,7 @@ pub fn translate_operator(
     state: &mut FuncTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
+    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
@@ -125,6 +127,7 @@ pub fn translate_operator(
                 state,
                 builder,
                 FuncIndex::from_u32(*function_index),
+                func_env,
                 module,
                 mod_types,
                 span,
@@ -638,6 +641,7 @@ fn translate_call(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
+    func_env: &FuncEnvironment,
     module: &Module,
     mod_types: &ModuleTypes,
     span: SourceSpan,
@@ -646,8 +650,7 @@ fn translate_call(
     let (fident, num_args) = state.get_direct_func(
         builder.data_flow_graph_mut(),
         function_index,
-        module,
-        mod_types,
+        func_env,
         diagnostics,
     )?;
     let args = state.peekn_mut(num_args);
