@@ -70,6 +70,12 @@ pub enum Type {
     Struct(StructType),
     /// A vector of fixed size
     Array(Box<Type>, usize),
+    /// A dynamically sized list of values of the given type
+    ///
+    /// NOTE: Currently this only exists to support the Wasm Canonical ABI,
+    /// but it has no defined represenation yet, so in practice cannot be
+    /// used in most places except during initial translation in the Wasm frontend.
+    List(Box<Type>),
 }
 impl Type {
     /// Returns true if this type is a zero-sized type, which includes:
@@ -100,7 +106,8 @@ impl Type {
             | Self::F64
             | Self::Felt
             | Self::Ptr(_)
-            | Self::NativePtr(..) => false,
+            | Self::NativePtr(..)
+            | Self::List(_) => false,
         }
     }
 
@@ -325,6 +332,7 @@ impl fmt::Display for Type {
             }
             Self::Struct(sty) => write!(f, "{sty}"),
             Self::Array(element_ty, arity) => write!(f, "(array {element_ty} {arity})"),
+            Self::List(ty) => write!(f, "(list {ty})"),
         }
     }
 }

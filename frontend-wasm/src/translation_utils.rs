@@ -9,7 +9,8 @@ use crate::{error::WasmResult, module::function_builder_ext::FunctionBuilderExt,
 
 pub type BuildFxHasher = std::hash::BuildHasherDefault<FxHasher>;
 
-/// Represents the possible sizes in bytes of the discriminant of a variant type in the component model
+/// Represents the possible sizes in bytes of the discriminant of a variant type in the component
+/// model
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DiscriminantSize {
     /// 8-bit discriminant
@@ -21,13 +22,14 @@ pub enum DiscriminantSize {
 }
 
 impl DiscriminantSize {
-    /// Calculate the size of discriminant needed to represent a variant with the specified number of cases.
+    /// Calculate the size of discriminant needed to represent a variant with the specified number
+    /// of cases.
     pub const fn from_count(count: usize) -> Option<Self> {
-        if count <= 0xFF {
+        if count <= 0xff {
             Some(Self::Size1)
-        } else if count <= 0xFFFF {
+        } else if count <= 0xffff {
             Some(Self::Size2)
-        } else if count <= 0xFFFF_FFFF {
+        } else if count <= 0xffff_ffff {
             Some(Self::Size4)
         } else {
             None
@@ -116,9 +118,10 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> WasmResult<Valu
         | Type::U128
         | Type::U256
         | Type::Ptr(_)
-        | Type::NativePtr(_, _)
+        | Type::NativePtr(..)
         | Type::Struct(_)
-        | Type::Array(_, _)
+        | Type::Array(..)
+        | Type::List(_)
         | Type::Unknown
         | Type::Unit
         | Type::Never => {
@@ -136,16 +139,8 @@ pub fn sig_from_funct_type(
     linkage: Linkage,
 ) -> Signature {
     Signature {
-        params: func_type
-            .params
-            .iter()
-            .map(|ty| AbiParam::new(ty.clone()))
-            .collect(),
-        results: func_type
-            .results
-            .iter()
-            .map(|ty| AbiParam::new(ty.clone()))
-            .collect(),
+        params: func_type.params.iter().map(|ty| AbiParam::new(ty.clone())).collect(),
+        results: func_type.results.iter().map(|ty| AbiParam::new(ty.clone())).collect(),
         cc: call_conv,
         linkage,
     }

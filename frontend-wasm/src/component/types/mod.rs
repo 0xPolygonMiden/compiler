@@ -6,7 +6,7 @@
 
 pub mod resources;
 
-use std::{hash::Hash, ops::Index};
+use core::{hash::Hash, ops::Index};
 
 use anyhow::{bail, Result};
 use indexmap::IndexSet;
@@ -1751,7 +1751,11 @@ pub fn interface_type_to_ir(
             miden_hir_type::Type::Struct(miden_hir_type::StructType::new(tys))
         }
         InterfaceType::Variant(_) => todo!(),
-        InterfaceType::List(_) => todo!(),
+        InterfaceType::List(idx) => {
+            let element_ty =
+                interface_type_to_ir(&component_types.lists[*idx].element, component_types);
+            miden_hir_type::Type::List(Box::new(element_ty))
+        }
         InterfaceType::Tuple(tuple_idx) => {
             let tys = component_types.tuples[*tuple_idx]
                 .types

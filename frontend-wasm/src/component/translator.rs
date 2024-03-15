@@ -9,8 +9,8 @@ use rustc_hash::FxHashMap;
 use super::{
     interface_type_to_ir, CanonicalOptions, ComponentTypes, CoreDef, CoreExport, Export,
     ExportItem, GlobalInitializer, InstantiateModule, LinearComponent, LinearComponentTranslation,
-    LoweredIndex, RuntimeImportIndex, RuntimeInstanceIndex, StaticModuleIndex, Trampoline,
-    TypeFuncIndex,
+    LoweredIndex, RuntimeImportIndex, RuntimeInstanceIndex, RuntimePostReturnIndex,
+    RuntimeReallocIndex, StaticModuleIndex, Trampoline, TypeFuncIndex,
 };
 use crate::{
     component::StringEncoding,
@@ -38,6 +38,10 @@ pub struct ComponentTranslator<'a, 'data> {
     module_instances_source: PrimaryMap<RuntimeInstanceIndex, StaticModuleIndex>,
     /// The lower imports index mapped to the runtime import index
     lower_imports: FxHashMap<LoweredIndex, RuntimeImportIndex>,
+    /// The realloc functions used in CanonicalOptions in this component
+    reallocs: FxHashMap<RuntimeReallocIndex, FunctionIdent>,
+    /// The post return functions used in CanonicalOptions in this component
+    post_returns: FxHashMap<RuntimePostReturnIndex, FunctionIdent>,
     diagnostics: &'a DiagnosticsHandler,
 }
 
@@ -55,6 +59,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             diagnostics,
             module_instances_source: PrimaryMap::new(),
             lower_imports: FxHashMap::default(),
+            reallocs: FxHashMap::default(),
+            post_returns: FxHashMap::default(),
         }
     }
 
@@ -65,6 +71,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     ) -> WasmResult<miden_hir::Component> {
         let mut component_builder: miden_hir::ComponentBuilder<'a> =
             miden_hir::ComponentBuilder::new(self.diagnostics);
+        dbg!(&wasm_translation.component.initializers);
         for initializer in &wasm_translation.component.initializers {
             match initializer {
                 GlobalInitializer::InstantiateModule(instantiate_module) => {
@@ -80,20 +87,20 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 } => {
                     self.lower_imports.insert(*init_lowered_idx, *import);
                 }
-                GlobalInitializer::ExtractMemory(_) => {
-                    // Do nothing, there is only one memory address space in Miden IR
+                GlobalInitializer::ExtractMemory(mem) => {
+                    if mem.index.as_u32() > 0 {
+                        return Err(WasmError::Unsupported(
+                            "Only one memory is supported in the component".to_string(),
+                        ));
+                    }
                 }
-                GlobalInitializer::ExtractRealloc(_) => {
-                    return Err(WasmError::Unsupported(
-                        "Realloc function pointer global initializer is not yet supported"
-                            .to_string(),
-                    ))
+                GlobalInitializer::ExtractRealloc(realloc) => {
+                    let func_id = self.func_id_from_core_def(&realloc.def)?;
+                    self.reallocs.insert(realloc.index, func_id);
                 }
-                GlobalInitializer::ExtractPostReturn(_) => {
-                    return Err(WasmError::Unsupported(
-                        "Post return function pointer global initializer is not yet supported"
-                            .to_string(),
-                    ))
+                GlobalInitializer::ExtractPostReturn(post_return) => {
+                    let func_id = self.func_id_from_core_def(&post_return.def)?;
+                    self.post_returns.insert(post_return.index, func_id);
                 }
                 GlobalInitializer::Resource(_) => {
                     return Err(WasmError::Unsupported(
@@ -190,13 +197,13 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             Trampoline::LowerImport {
                 index,
                 lower_ty,
-                options: _,
+                options,
             } => {
                 let module_import = module.imports.get(idx).expect("module import not found");
                 let runtime_import_idx = self.lower_imports[index];
                 let function_id = function_id_from_import(module, module_import);
                 let component_import =
-                    self.translate_import(runtime_import_idx, *lower_ty, wasm_component)?;
+                    self.translate_import(runtime_import_idx, *lower_ty, options, wasm_component)?;
                 component_builder.add_import(function_id, component_import.clone());
                 Ok(ModuleArgument::ComponentImport(component_import))
             }
@@ -244,6 +251,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         &self,
         runtime_import_index: RuntimeImportIndex,
         signature: TypeFuncIndex,
+        options: &CanonicalOptions,
         wasm_component: &LinearComponent,
     ) -> WasmResult<miden_hir::ComponentImport> {
         let (import_idx, import_names) = &wasm_component.imports[runtime_import_index];
@@ -270,6 +278,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             function_ty: lifted_func_ty,
             interface_function,
             digest: import_metadata.digest.clone(),
+            options: self.translate_canonical_options(options)?,
         };
         Ok(component_import)
     }
@@ -316,8 +325,18 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         ty: &TypeFuncIndex,
         options: &CanonicalOptions,
     ) -> WasmResult<ComponentExport> {
-        assert_empty_canonical_options(options);
-        let func_ident = match func {
+        let func_ident = self.func_id_from_core_def(func)?;
+        let lifted_func_ty = convert_lifted_func_ty(ty, &self.component_types);
+        let export = miden_hir::ComponentExport {
+            function: func_ident,
+            function_ty: lifted_func_ty,
+            options: self.translate_canonical_options(options)?,
+        };
+        Ok(export)
+    }
+
+    fn func_id_from_core_def(&self, func: &CoreDef) -> WasmResult<FunctionIdent> {
+        Ok(match func {
             CoreDef::Export(core_export) => {
                 let module =
                     &self.parsed_modules[self.module_instances_source[core_export.instance]].module;
@@ -354,13 +373,23 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     "Trampoline core module exports are not supported".to_string(),
                 ))
             }
-        };
-        let lifted_func_ty = convert_lifted_func_ty(ty, &self.component_types);
-        let export = miden_hir::ComponentExport {
-            function: func_ident,
-            function_ty: lifted_func_ty,
-        };
-        Ok(export)
+        })
+    }
+
+    fn translate_canonical_options(
+        &self,
+        options: &CanonicalOptions,
+    ) -> WasmResult<miden_hir::CanonicalOptions> {
+        if options.string_encoding != StringEncoding::Utf8 {
+            return Err(WasmError::Unsupported(
+                "UTF-8 is expected in CanonicalOptions, string transcoding is not yet supported"
+                    .to_string(),
+            ));
+        }
+        Ok(miden_hir::CanonicalOptions {
+            realloc: options.realloc.map(|idx| self.reallocs[&idx]),
+            post_return: options.post_return.map(|idx| self.post_returns[&idx]),
+        })
     }
 }
 
@@ -403,18 +432,4 @@ fn convert_lifted_func_ty(
         .map(|ty| interface_type_to_ir(ty, component_types))
         .collect();
     LiftedFunctionType { params, results }
-}
-
-fn assert_empty_canonical_options(options: &CanonicalOptions) {
-    assert_eq!(
-        options.string_encoding,
-        StringEncoding::Utf8,
-        "UTF-8 is expected in CanonicalOptions, string transcoding is not yet supported"
-    );
-    assert!(options.realloc.is_none(), "realloc in CanonicalOptions is not yet supported");
-    assert!(
-        options.post_return.is_none(),
-        "post_return in CanonicalOptions is not yet supported"
-    );
-    assert!(options.memory.is_none(), "memory in CanonicalOptions is not yet supported");
 }

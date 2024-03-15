@@ -395,6 +395,9 @@ impl Type {
                     _ => (split, Some(remaining.into())),
                 }
             }
+            Type::List(_) => {
+                todo!("invalid type: list has no defined representation yet, so cannot be split")
+            }
             // These types either have no size, or are 1 byte in size, so must have
             // been handled above when checking if the size of the type is <= the
             // requested split size
@@ -425,6 +428,8 @@ impl Type {
             Self::Struct(ref struct_ty) => struct_ty.min_alignment(),
             // Arrays use the minimum alignment of their element type
             Self::Array(ref element_ty, _) => element_ty.min_alignment(),
+            // Lists use the minimum alignment of their element type
+            Self::List(ref element_ty) => element_ty.min_alignment(),
         }
     }
 
@@ -464,6 +469,10 @@ impl Type {
                 let padded_element_size = element_size.align_up(min_align);
                 element_size + (padded_element_size * (n - 1))
             }
+            Type::List(_) => todo!(
+                "invalid type: list has no defined representation yet, so its size cannot be \
+                 determined"
+            ),
         }
     }
 

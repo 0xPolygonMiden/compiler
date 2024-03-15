@@ -73,7 +73,77 @@ fn sdk_basic_wallet() {
 
 #[test]
 fn sdk_basic_wallet_p2id_note() {
-    let test = CompilerTest::rust_source_cargo_component("sdk/p2id-note", Default::default());
+    let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0".to_string());
+    let basic_wallet =
+        InterfaceIdent::from_full_ident("miden:basic-wallet/basic-wallet@1.0.0".to_string());
+    let core_types = InterfaceIdent::from_full_ident("miden:base/core-types@1.0.0".to_string());
+    let note = InterfaceIdent::from_full_ident("miden:base/note@1.0.0".to_string());
+    let import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata> = [
+        (
+            InterfaceFunctionIdent {
+                interface: interface_account.clone(),
+                function: Symbol::intern("get-id"),
+            },
+            ImportMetadata {
+                digest: RpoDigest::default(),
+            },
+        ),
+        (
+            InterfaceFunctionIdent {
+                interface: core_types.clone(),
+                function: Symbol::intern("account-id-from-felt"),
+            },
+            ImportMetadata {
+                digest: RpoDigest::default(),
+            },
+        ),
+        (
+            InterfaceFunctionIdent {
+                interface: basic_wallet.clone(),
+                function: Symbol::intern("receive-asset"),
+            },
+            ImportMetadata {
+                digest: RpoDigest::default(),
+            },
+        ),
+        (
+            InterfaceFunctionIdent {
+                interface: note.clone(),
+                function: Symbol::intern("get-assets"),
+            },
+            ImportMetadata {
+                digest: RpoDigest::default(),
+            },
+        ),
+        (
+            InterfaceFunctionIdent {
+                interface: note.clone(),
+                function: Symbol::intern("get-inputs"),
+            },
+            ImportMetadata {
+                digest: RpoDigest::default(),
+            },
+        ),
+    ]
+    .into_iter()
+    .collect();
+    let expected_exports: Vec<FunctionExportName> = vec![Symbol::intern("note-script").into()];
+    let config = WasmTranslationConfig {
+        import_metadata: import_metadata.clone(),
+        ..Default::default()
+    };
+    let mut test = CompilerTest::rust_source_cargo_component("sdk/p2id-note", config);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
+    test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
+    let ir = test.hir().unwrap_component();
+    for (_, import) in ir.imports() {
+        assert!(import_metadata.contains_key(&import.interface_function));
+        if ["get-assets", "get-inputs"].contains(&import.interface_function.function.as_str()) {
+            assert!(import.options.realloc.is_some());
+        }
+    }
+    for name in expected_exports {
+        assert!(ir.exports().contains_key(&name));
+    }
 }
