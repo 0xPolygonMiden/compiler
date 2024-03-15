@@ -1727,7 +1727,7 @@ impl TypeInformation {
 
 pub fn interface_type_to_ir(
     ty: &InterfaceType,
-    _component_types: &ComponentTypes,
+    component_types: &ComponentTypes,
 ) -> miden_hir_type::Type {
     match ty {
         InterfaceType::Bool => miden_hir_type::Type::I1,
@@ -1743,14 +1743,20 @@ pub fn interface_type_to_ir(
         InterfaceType::Float64 => todo!(),
         InterfaceType::Char => todo!(),
         InterfaceType::String => todo!(),
-        InterfaceType::Record(_) => todo!(),
+        InterfaceType::Record(idx) => {
+            let tys = component_types.records[*idx]
+                .fields
+                .iter()
+                .map(|f| interface_type_to_ir(&f.ty, component_types));
+            miden_hir_type::Type::Struct(miden_hir_type::StructType::new(tys))
+        }
         InterfaceType::Variant(_) => todo!(),
         InterfaceType::List(_) => todo!(),
         InterfaceType::Tuple(tuple_idx) => {
-            let tys = _component_types.tuples[*tuple_idx]
+            let tys = component_types.tuples[*tuple_idx]
                 .types
                 .iter()
-                .map(|t| interface_type_to_ir(t, _component_types));
+                .map(|t| interface_type_to_ir(t, component_types));
             miden_hir_type::Type::Struct(miden_hir_type::StructType::new(tys))
         }
         InterfaceType::Flags(_) => todo!(),

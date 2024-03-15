@@ -1,7 +1,7 @@
 (component
   (type (;0;)
     (instance
-      (type (;0;) (record (field "inner" float64)))
+      (type (;0;) (record (field "inner" u64)))
       (export (;1;) "felt" (type (eq 0)))
       (type (;2;) (record (field "inner" 1)))
       (export (;3;) "account-id" (type (eq 2)))
@@ -53,9 +53,9 @@
   (import "miden:basic-wallet/basic-wallet@1.0.0" (instance (;3;) (type 7)))
   (core module (;0;)
     (type (;0;) (func (param i32)))
-    (type (;1;) (func (param f64) (result f64)))
-    (type (;2;) (func (result f64)))
-    (type (;3;) (func (param f64 f64 f64 f64)))
+    (type (;1;) (func (param i64) (result i64)))
+    (type (;2;) (func (result i64)))
+    (type (;3;) (func (param i64 i64 i64 i64)))
     (type (;4;) (func))
     (type (;5;) (func (param i32 i32) (result i32)))
     (type (;6;) (func (param i32 i32 i32 i32) (result i32)))
@@ -90,10 +90,10 @@
         local.get 0
         i32.load offset=8
         local.tee 2
-        f64.load
+        i64.load
         call $basic_wallet_p2id_note::bindings::miden::base::core_types::account_id_from_felt::wit_import
         call $basic_wallet_p2id_note::bindings::miden::base::account::get_id::wit_import
-        f64.ne
+        i64.ne
         br_if 0 (;@1;)
         local.get 0
         i32.const 8
@@ -119,13 +119,13 @@
           local.set 6
           loop ;; label = @3
             local.get 6
-            f64.load
+            i64.load
             local.get 6
-            f64.load offset=8
+            i64.load offset=8
             local.get 6
-            f64.load offset=16
+            i64.load offset=16
             local.get 6
-            f64.load offset=24
+            i64.load offset=24
             call $basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import
             local.get 6
             i32.const 32

@@ -16,17 +16,18 @@ fn sdk() {
 
 #[test]
 fn sdk_basic_wallet() {
-    let interface = InterfaceIdent::from_full_ident("miden:base/tx-kernel@1.0.0".to_string());
+    let interface_tx = InterfaceIdent::from_full_ident("miden:base/tx@1.0.0".to_string());
     let create_note_ident = InterfaceFunctionIdent {
-        interface: interface.clone(),
+        interface: interface_tx.clone(),
         function: Symbol::intern("create-note"),
     };
+    let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0".to_string());
     let add_asset_ident = InterfaceFunctionIdent {
-        interface: interface.clone(),
+        interface: interface_account.clone(),
         function: Symbol::intern("add-asset"),
     };
     let remove_asset_ident = InterfaceFunctionIdent {
-        interface: interface.clone(),
+        interface: interface_account.clone(),
         function: Symbol::intern("remove-asset"),
     };
     let import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata> = [

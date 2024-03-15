@@ -1,24 +1,24 @@
 (component
   (core module (;0;)
     (type (;0;) (func))
-    (type (;1;) (func (param f64) (result f64)))
-    (type (;2;) (func (param f64 f64 f64 f64) (result i32)))
-    (type (;3;) (func (param i32 f64 i64 f64 f64) (result i32)))
+    (type (;1;) (func (param i64) (result i64)))
+    (type (;2;) (func (param i64 i64 i64 i64) (result i32)))
+    (type (;3;) (func (param i32 i64 i64 i64 i64) (result i32)))
     (type (;4;) (func (param i32 i32) (result i32)))
     (type (;5;) (func (param i32 i32 i32 i32) (result i32)))
     (type (;6;) (func (param i32 i32 i32) (result i32)))
     (type (;7;) (func (param i32 i32 i32 i32)))
     (func $__wasm_call_ctors (;0;) (type 0))
-    (func $miden:base/core-types@1.0.0#account-id-from-felt (;1;) (type 1) (param f64) (result f64)
+    (func $miden:base/core-types@1.0.0#account-id-from-felt (;1;) (type 1) (param i64) (result i64)
       call $wit_bindgen::rt::run_ctors_once
       local.get 0
     )
-    (func $miden:base/types@1.0.0#from-core-asset (;2;) (type 2) (param f64 f64 f64 f64) (result i32)
+    (func $miden:base/types@1.0.0#from-core-asset (;2;) (type 2) (param i64 i64 i64 i64) (result i32)
       call $wit_bindgen::rt::run_ctors_once
       unreachable
       unreachable
     )
-    (func $miden:base/types@1.0.0#to-core-asset (;3;) (type 3) (param i32 f64 i64 f64 f64) (result i32)
+    (func $miden:base/types@1.0.0#to-core-asset (;3;) (type 3) (param i32 i64 i64 i64 i64) (result i32)
       call $wit_bindgen::rt::run_ctors_once
       unreachable
       unreachable
@@ -690,19 +690,19 @@
   (core instance (;0;) (instantiate 0))
   (alias core export 0 "memory" (core memory (;0;)))
   (alias core export 0 "cabi_realloc" (core func (;0;)))
-  (type (;0;) (record (field "inner" float64)))
+  (type (;0;) (record (field "inner" u64)))
   (type (;1;) (record (field "inner" 0)))
   (type (;2;) (func (param "felt" 0) (result 1)))
   (alias core export 0 "miden:base/core-types@1.0.0#account-id-from-felt" (core func (;1;)))
   (func (;0;) (type 2) (canon lift (core func 1)))
   (component (;0;)
-    (type (;0;) (record (field "inner" float64)))
+    (type (;0;) (record (field "inner" u64)))
     (import "import-type-felt" (type (;1;) (eq 0)))
     (type (;2;) (record (field "inner" 1)))
     (import "import-type-account-id" (type (;3;) (eq 2)))
     (type (;4;) (func (param "felt" 1) (result 3)))
     (import "import-func-account-id-from-felt" (func (;0;) (type 4)))
-    (type (;5;) (record (field "inner" float64)))
+    (type (;5;) (record (field "inner" u64)))
     (export (;6;) "felt" (type 5))
     (type (;7;) (tuple 6 6 6 6))
     (export (;8;) "word" (type 7))
@@ -754,7 +754,7 @@
   (func (;2;) (type 10) (canon lift (core func 3) (memory 0)))
   (alias export 1 "felt" (type (;11;)))
   (component (;1;)
-    (type (;0;) (record (field "inner" float64)))
+    (type (;0;) (record (field "inner" u64)))
     (import "import-type-felt" (type (;1;) (eq 0)))
     (type (;2;) (record (field "inner" 1)))
     (import "import-type-account-id" (type (;3;) (eq 2)))

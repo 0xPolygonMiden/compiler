@@ -1,8 +1,7 @@
-use std::borrow::Cow;
+use alloc::{borrow::Cow, collections::BTreeMap};
 
 use miden_core::crypto::hash::RpoDigest;
 use miden_hir::{FunctionExportName, FunctionInvocationMethod, InterfaceFunctionIdent};
-use rustc_hash::FxHashMap;
 
 /// Represents Miden VM codegen metadata for a function import.
 /// This struct will have more fields in the future e.g. where the function
@@ -42,10 +41,10 @@ pub struct WasmTranslationConfig {
     /// Import metadata for MAST hashes, calling convention, of
     /// each imported function. Having it here might be a temporary solution,
     /// later we might want to move it to Wasm custom section.
-    pub import_metadata: FxHashMap<InterfaceFunctionIdent, ImportMetadata>,
+    pub import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata>,
 
     /// Export metadata for calling convention, etc.
-    pub export_metadata: FxHashMap<FunctionExportName, ExportMetadata>,
+    pub export_metadata: BTreeMap<FunctionExportName, ExportMetadata>,
 }
 
 impl Default for WasmTranslationConfig {

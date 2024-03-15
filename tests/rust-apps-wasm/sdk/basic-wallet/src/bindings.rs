@@ -15,9 +15,11 @@ pub mod miden {
       #[repr(C)]
       #[derive(Clone, Copy)]
       pub struct Felt {
-        /// We use f64 as the backing type for the field element. It has the size that we need and
+        /// We plan to use f64 as the backing type for the field element. It has the size that we need and
         /// we don't plan to support floating point arithmetic in programs for Miden VM.
-        pub inner: f64,
+        /// 
+        /// For now its u64
+        pub inner: u64,
       }
       impl ::core::fmt::Debug for Felt {
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
@@ -221,15 +223,15 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/core-types@1.0.0")]
           extern "C" {
             #[link_name = "account-id-from-felt"]
-            fn wit_import(_: f64, ) -> f64;
+            fn wit_import(_: i64, ) -> i64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, ) -> f64{ unreachable!() }
-          let ret = wit_import(wit_bindgen::rt::as_f64(inner0));
+          fn wit_import(_: i64, ) -> i64{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_i64(inner0));
           AccountId{
             inner: Felt{
-              inner: ret,
+              inner: ret as u64,
             },
           }
         }
@@ -265,15 +267,15 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "get-id"]
-            fn wit_import() -> f64;
+            fn wit_import() -> i64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import() -> f64{ unreachable!() }
+          fn wit_import() -> i64{ unreachable!() }
           let ret = wit_import();
           super::super::super::miden::base::core_types::AccountId{
             inner: super::super::super::miden::base::core_types::Felt{
-              inner: ret,
+              inner: ret as u64,
             },
           }
         }
@@ -290,15 +292,15 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "get-nonce"]
-            fn wit_import() -> f64;
+            fn wit_import() -> i64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import() -> f64{ unreachable!() }
+          fn wit_import() -> i64{ unreachable!() }
           let ret = wit_import();
           super::super::super::miden::base::core_types::Nonce{
             inner: super::super::super::miden::base::core_types::Felt{
-              inner: ret,
+              inner: ret as u64,
             },
           }
         }
@@ -325,19 +327,19 @@ pub mod miden {
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, ){ unreachable!() }
           wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const f64);
-          let l2 = *((ptr0 + 8) as *const f64);
-          let l3 = *((ptr0 + 16) as *const f64);
-          let l4 = *((ptr0 + 24) as *const f64);
+          let l1 = *((ptr0 + 0) as *const i64);
+          let l2 = *((ptr0 + 8) as *const i64);
+          let l3 = *((ptr0 + 16) as *const i64);
+          let l4 = *((ptr0 + 24) as *const i64);
           super::super::super::miden::base::core_types::AccountHash{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l1,
+              inner: l1 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l2,
+              inner: l2 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l3,
+              inner: l3 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l4,
+              inner: l4 as u64,
             }),
           }
         }
@@ -364,19 +366,19 @@ pub mod miden {
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, ){ unreachable!() }
           wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const f64);
-          let l2 = *((ptr0 + 8) as *const f64);
-          let l3 = *((ptr0 + 16) as *const f64);
-          let l4 = *((ptr0 + 24) as *const f64);
+          let l1 = *((ptr0 + 0) as *const i64);
+          let l2 = *((ptr0 + 8) as *const i64);
+          let l3 = *((ptr0 + 16) as *const i64);
+          let l4 = *((ptr0 + 24) as *const i64);
           super::super::super::miden::base::core_types::AccountHash{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l1,
+              inner: l1 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l2,
+              inner: l2 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l3,
+              inner: l3 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l4,
+              inner: l4 as u64,
             }),
           }
         }
@@ -395,12 +397,12 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "incr-nonce"]
-            fn wit_import(_: f64, );
+            fn wit_import(_: i64, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, ){ unreachable!() }
-          wit_import(wit_bindgen::rt::as_f64(inner0));
+          fn wit_import(_: i64, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_i64(inner0));
         }
       }
       #[allow(unused_unsafe, clippy::all)]
@@ -420,25 +422,25 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "get-item"]
-            fn wit_import(_: f64, _: i32, );
+            fn wit_import(_: i64, _: i32, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: i32, ){ unreachable!() }
-          wit_import(wit_bindgen::rt::as_f64(inner0), ptr1);
-          let l2 = *((ptr1 + 0) as *const f64);
-          let l3 = *((ptr1 + 8) as *const f64);
-          let l4 = *((ptr1 + 16) as *const f64);
-          let l5 = *((ptr1 + 24) as *const f64);
+          fn wit_import(_: i64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_i64(inner0), ptr1);
+          let l2 = *((ptr1 + 0) as *const i64);
+          let l3 = *((ptr1 + 8) as *const i64);
+          let l4 = *((ptr1 + 16) as *const i64);
+          let l5 = *((ptr1 + 24) as *const i64);
           super::super::super::miden::base::core_types::StorageValue{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l2,
+              inner: l2 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l3,
+              inner: l3 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l4,
+              inner: l4 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l5,
+              inner: l5 as u64,
             }),
           }
         }
@@ -467,39 +469,39 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "set-item"]
-            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: i32, );
+            fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i64, _: i32, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: i32, ){ unreachable!() }
-          wit_import(wit_bindgen::rt::as_f64(inner0), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), wit_bindgen::rt::as_f64(inner6), ptr7);
-          let l8 = *((ptr7 + 0) as *const f64);
-          let l9 = *((ptr7 + 8) as *const f64);
-          let l10 = *((ptr7 + 16) as *const f64);
-          let l11 = *((ptr7 + 24) as *const f64);
-          let l12 = *((ptr7 + 32) as *const f64);
-          let l13 = *((ptr7 + 40) as *const f64);
-          let l14 = *((ptr7 + 48) as *const f64);
-          let l15 = *((ptr7 + 56) as *const f64);
+          fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_i64(inner0), wit_bindgen::rt::as_i64(inner3), wit_bindgen::rt::as_i64(inner4), wit_bindgen::rt::as_i64(inner5), wit_bindgen::rt::as_i64(inner6), ptr7);
+          let l8 = *((ptr7 + 0) as *const i64);
+          let l9 = *((ptr7 + 8) as *const i64);
+          let l10 = *((ptr7 + 16) as *const i64);
+          let l11 = *((ptr7 + 24) as *const i64);
+          let l12 = *((ptr7 + 32) as *const i64);
+          let l13 = *((ptr7 + 40) as *const i64);
+          let l14 = *((ptr7 + 48) as *const i64);
+          let l15 = *((ptr7 + 56) as *const i64);
           (super::super::super::miden::base::core_types::StorageRoot{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l8,
+              inner: l8 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l9,
+              inner: l9 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l10,
+              inner: l10 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l11,
+              inner: l11 as u64,
             }),
           }, super::super::super::miden::base::core_types::StorageValue{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l12,
+              inner: l12 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l13,
+              inner: l13 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l14,
+              inner: l14 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l15,
+              inner: l15 as u64,
             }),
           })
         }
@@ -525,12 +527,12 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "set-code"]
-            fn wit_import(_: f64, _: f64, _: f64, _: f64, );
+            fn wit_import(_: i64, _: i64, _: i64, _: i64, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: f64, _: f64, _: f64, ){ unreachable!() }
-          wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5));
+          fn wit_import(_: i64, _: i64, _: i64, _: i64, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_i64(inner2), wit_bindgen::rt::as_i64(inner3), wit_bindgen::rt::as_i64(inner4), wit_bindgen::rt::as_i64(inner5));
         }
       }
       #[allow(unused_unsafe, clippy::all)]
@@ -550,14 +552,14 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "get-balance"]
-            fn wit_import(_: f64, ) -> f64;
+            fn wit_import(_: i64, ) -> i64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, ) -> f64{ unreachable!() }
-          let ret = wit_import(wit_bindgen::rt::as_f64(inner1));
+          fn wit_import(_: i64, ) -> i64{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_i64(inner1));
           super::super::super::miden::base::core_types::Felt{
-            inner: ret,
+            inner: ret as u64,
           }
         }
       }
@@ -582,12 +584,12 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "has-non-fungible-asset"]
-            fn wit_import(_: f64, _: f64, _: f64, _: f64, ) -> i32;
+            fn wit_import(_: i64, _: i64, _: i64, _: i64, ) -> i32;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: f64, _: f64, _: f64, ) -> i32{ unreachable!() }
-          let ret = wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5));
+          fn wit_import(_: i64, _: i64, _: i64, _: i64, ) -> i32{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_i64(inner2), wit_bindgen::rt::as_i64(inner3), wit_bindgen::rt::as_i64(inner4), wit_bindgen::rt::as_i64(inner5));
           wit_bindgen::rt::bool_lift(ret as u8)
         }
       }
@@ -617,25 +619,25 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "add-asset"]
-            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, );
+            fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i32, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, ){ unreachable!() }
-          wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), ptr6);
-          let l7 = *((ptr6 + 0) as *const f64);
-          let l8 = *((ptr6 + 8) as *const f64);
-          let l9 = *((ptr6 + 16) as *const f64);
-          let l10 = *((ptr6 + 24) as *const f64);
+          fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_i64(inner2), wit_bindgen::rt::as_i64(inner3), wit_bindgen::rt::as_i64(inner4), wit_bindgen::rt::as_i64(inner5), ptr6);
+          let l7 = *((ptr6 + 0) as *const i64);
+          let l8 = *((ptr6 + 8) as *const i64);
+          let l9 = *((ptr6 + 16) as *const i64);
+          let l10 = *((ptr6 + 24) as *const i64);
           super::super::super::miden::base::core_types::CoreAsset{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l7,
+              inner: l7 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l8,
+              inner: l8 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l9,
+              inner: l9 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l10,
+              inner: l10 as u64,
             }),
           }
         }
@@ -662,25 +664,25 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/account@1.0.0")]
           extern "C" {
             #[link_name = "remove-asset"]
-            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, );
+            fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i32, );
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: i32, ){ unreachable!() }
-          wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), ptr6);
-          let l7 = *((ptr6 + 0) as *const f64);
-          let l8 = *((ptr6 + 8) as *const f64);
-          let l9 = *((ptr6 + 16) as *const f64);
-          let l10 = *((ptr6 + 24) as *const f64);
+          fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i32, ){ unreachable!() }
+          wit_import(wit_bindgen::rt::as_i64(inner2), wit_bindgen::rt::as_i64(inner3), wit_bindgen::rt::as_i64(inner4), wit_bindgen::rt::as_i64(inner5), ptr6);
+          let l7 = *((ptr6 + 0) as *const i64);
+          let l8 = *((ptr6 + 8) as *const i64);
+          let l9 = *((ptr6 + 16) as *const i64);
+          let l10 = *((ptr6 + 24) as *const i64);
           super::super::super::miden::base::core_types::CoreAsset{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l7,
+              inner: l7 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l8,
+              inner: l8 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l9,
+              inner: l9 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l10,
+              inner: l10 as u64,
             }),
           }
         }
@@ -707,19 +709,19 @@ pub mod miden {
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, ){ unreachable!() }
           wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const f64);
-          let l2 = *((ptr0 + 8) as *const f64);
-          let l3 = *((ptr0 + 16) as *const f64);
-          let l4 = *((ptr0 + 24) as *const f64);
+          let l1 = *((ptr0 + 0) as *const i64);
+          let l2 = *((ptr0 + 8) as *const i64);
+          let l3 = *((ptr0 + 16) as *const i64);
+          let l4 = *((ptr0 + 24) as *const i64);
           super::super::super::miden::base::core_types::VaultCommitment{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l1,
+              inner: l1 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l2,
+              inner: l2 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l3,
+              inner: l3 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l4,
+              inner: l4 as u64,
             }),
           }
         }
@@ -753,14 +755,14 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/tx@1.0.0")]
           extern "C" {
             #[link_name = "get-block-number"]
-            fn wit_import() -> f64;
+            fn wit_import() -> i64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import() -> f64{ unreachable!() }
+          fn wit_import() -> i64{ unreachable!() }
           let ret = wit_import();
           super::super::super::miden::base::core_types::Felt{
-            inner: ret,
+            inner: ret as u64,
           }
         }
       }
@@ -786,19 +788,19 @@ pub mod miden {
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, ){ unreachable!() }
           wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const f64);
-          let l2 = *((ptr0 + 8) as *const f64);
-          let l3 = *((ptr0 + 16) as *const f64);
-          let l4 = *((ptr0 + 24) as *const f64);
+          let l1 = *((ptr0 + 0) as *const i64);
+          let l2 = *((ptr0 + 8) as *const i64);
+          let l3 = *((ptr0 + 16) as *const i64);
+          let l4 = *((ptr0 + 24) as *const i64);
           super::super::super::miden::base::core_types::BlockHash{
             inner: (super::super::super::miden::base::core_types::Felt{
-              inner: l1,
+              inner: l1 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l2,
+              inner: l2 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l3,
+              inner: l3 as u64,
             }, super::super::super::miden::base::core_types::Felt{
-              inner: l4,
+              inner: l4 as u64,
             }),
           }
         }
@@ -826,18 +828,18 @@ pub mod miden {
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, ){ unreachable!() }
           wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const f64);
-          let l2 = *((ptr0 + 8) as *const f64);
-          let l3 = *((ptr0 + 16) as *const f64);
-          let l4 = *((ptr0 + 24) as *const f64);
+          let l1 = *((ptr0 + 0) as *const i64);
+          let l2 = *((ptr0 + 8) as *const i64);
+          let l3 = *((ptr0 + 16) as *const i64);
+          let l4 = *((ptr0 + 24) as *const i64);
           (super::super::super::miden::base::core_types::Felt{
-            inner: l1,
+            inner: l1 as u64,
           }, super::super::super::miden::base::core_types::Felt{
-            inner: l2,
+            inner: l2 as u64,
           }, super::super::super::miden::base::core_types::Felt{
-            inner: l3,
+            inner: l3 as u64,
           }, super::super::super::miden::base::core_types::Felt{
-            inner: l4,
+            inner: l4 as u64,
           })
         }
       }
@@ -864,18 +866,18 @@ pub mod miden {
           #[cfg(not(target_arch = "wasm32"))]
           fn wit_import(_: i32, ){ unreachable!() }
           wit_import(ptr0);
-          let l1 = *((ptr0 + 0) as *const f64);
-          let l2 = *((ptr0 + 8) as *const f64);
-          let l3 = *((ptr0 + 16) as *const f64);
-          let l4 = *((ptr0 + 24) as *const f64);
+          let l1 = *((ptr0 + 0) as *const i64);
+          let l2 = *((ptr0 + 8) as *const i64);
+          let l3 = *((ptr0 + 16) as *const i64);
+          let l4 = *((ptr0 + 24) as *const i64);
           (super::super::super::miden::base::core_types::Felt{
-            inner: l1,
+            inner: l1 as u64,
           }, super::super::super::miden::base::core_types::Felt{
-            inner: l2,
+            inner: l2 as u64,
           }, super::super::super::miden::base::core_types::Felt{
-            inner: l3,
+            inner: l3 as u64,
           }, super::super::super::miden::base::core_types::Felt{
-            inner: l4,
+            inner: l4 as u64,
           })
         }
       }
@@ -909,15 +911,15 @@ pub mod miden {
           #[link(wasm_import_module = "miden:base/tx@1.0.0")]
           extern "C" {
             #[link_name = "create-note"]
-            fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, ) -> f64;
+            fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, ) -> i64;
           }
           
           #[cfg(not(target_arch = "wasm32"))]
-          fn wit_import(_: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, _: f64, ) -> f64{ unreachable!() }
-          let ret = wit_import(wit_bindgen::rt::as_f64(inner2), wit_bindgen::rt::as_f64(inner3), wit_bindgen::rt::as_f64(inner4), wit_bindgen::rt::as_f64(inner5), wit_bindgen::rt::as_f64(inner7), wit_bindgen::rt::as_f64(inner10), wit_bindgen::rt::as_f64(inner11), wit_bindgen::rt::as_f64(inner12), wit_bindgen::rt::as_f64(inner13));
+          fn wit_import(_: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, _: i64, ) -> i64{ unreachable!() }
+          let ret = wit_import(wit_bindgen::rt::as_i64(inner2), wit_bindgen::rt::as_i64(inner3), wit_bindgen::rt::as_i64(inner4), wit_bindgen::rt::as_i64(inner5), wit_bindgen::rt::as_i64(inner7), wit_bindgen::rt::as_i64(inner10), wit_bindgen::rt::as_i64(inner11), wit_bindgen::rt::as_i64(inner12), wit_bindgen::rt::as_i64(inner13));
           super::super::super::miden::base::core_types::NoteId{
             inner: super::super::super::miden::base::core_types::Felt{
-              inner: ret,
+              inner: ret as u64,
             },
           }
         }
@@ -945,7 +947,7 @@ pub mod exports {
           #[doc(hidden)]
           #[export_name = "miden:basic-wallet/basic-wallet@1.0.0#receive-asset"]
           #[allow(non_snake_case)]
-          unsafe extern "C" fn __export_receive_asset(arg0: f64,arg1: f64,arg2: f64,arg3: f64,) {
+          unsafe extern "C" fn __export_receive_asset(arg0: i64,arg1: i64,arg2: i64,arg3: i64,) {
             #[allow(unused_imports)]
             use wit_bindgen::rt::{alloc, vec::Vec, string::String};
             
@@ -965,13 +967,13 @@ pub mod exports {
             
             <_GuestImpl as Guest>::receive_asset(super::super::super::super::miden::base::core_types::CoreAsset{
               inner: (super::super::super::super::miden::base::core_types::Felt{
-                inner: arg0,
+                inner: arg0 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg1,
+                inner: arg1 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg2,
+                inner: arg2 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg3,
+                inner: arg3 as u64,
               }),
             });
           }
@@ -981,7 +983,7 @@ pub mod exports {
           #[doc(hidden)]
           #[export_name = "miden:basic-wallet/basic-wallet@1.0.0#send-asset"]
           #[allow(non_snake_case)]
-          unsafe extern "C" fn __export_send_asset(arg0: f64,arg1: f64,arg2: f64,arg3: f64,arg4: f64,arg5: f64,arg6: f64,arg7: f64,arg8: f64,) {
+          unsafe extern "C" fn __export_send_asset(arg0: i64,arg1: i64,arg2: i64,arg3: i64,arg4: i64,arg5: i64,arg6: i64,arg7: i64,arg8: i64,) {
             #[allow(unused_imports)]
             use wit_bindgen::rt::{alloc, vec::Vec, string::String};
             
@@ -1001,27 +1003,27 @@ pub mod exports {
             
             <_GuestImpl as Guest>::send_asset(super::super::super::super::miden::base::core_types::CoreAsset{
               inner: (super::super::super::super::miden::base::core_types::Felt{
-                inner: arg0,
+                inner: arg0 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg1,
+                inner: arg1 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg2,
+                inner: arg2 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg3,
+                inner: arg3 as u64,
               }),
             }, super::super::super::super::miden::base::core_types::Tag{
               inner: super::super::super::super::miden::base::core_types::Felt{
-                inner: arg4,
+                inner: arg4 as u64,
               },
             }, super::super::super::super::miden::base::core_types::Recipient{
               inner: (super::super::super::super::miden::base::core_types::Felt{
-                inner: arg5,
+                inner: arg5 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg6,
+                inner: arg6 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg7,
+                inner: arg7 as u64,
               }, super::super::super::super::miden::base::core_types::Felt{
-                inner: arg8,
+                inner: arg8 as u64,
               }),
             });
           }
@@ -1041,7 +1043,7 @@ pub mod exports {
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:basic-wallet-world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2717] = [3, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 0, 97, 115, 109, 13, 0, 1, 0, 7, 227, 4, 1, 65, 7, 1, 66, 28, 1, 114, 1, 5, 105, 110, 110, 101, 114, 117, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 4, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 3, 116, 97, 103, 3, 0, 8, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 10, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 12, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 14, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 16, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 18, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 20, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 22, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 24, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 3, 1, 27, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 99, 111, 114, 101, 45, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 1, 66, 10, 2, 3, 2, 1, 1, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 4, 11, 18, 1, 0, 12, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 3, 0, 0, 7, 143, 15, 1, 65, 2, 1, 65, 22, 1, 66, 30, 1, 114, 1, 5, 105, 110, 110, 101, 114, 117, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 4, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 3, 116, 97, 103, 3, 0, 8, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 10, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 12, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 14, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 16, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 18, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 20, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 22, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 24, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 1, 64, 1, 4, 102, 101, 108, 116, 1, 0, 5, 4, 0, 20, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 45, 102, 114, 111, 109, 45, 102, 101, 108, 116, 1, 28, 3, 1, 27, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 99, 111, 114, 101, 45, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 4, 102, 101, 108, 116, 2, 3, 0, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 2, 3, 0, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 2, 3, 0, 0, 5, 110, 111, 110, 99, 101, 2, 3, 0, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 2, 3, 0, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 2, 3, 0, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 2, 3, 0, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 2, 3, 0, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 1, 66, 47, 2, 3, 2, 1, 1, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 2, 3, 2, 1, 6, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 10, 2, 3, 2, 1, 7, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 12, 2, 3, 2, 1, 8, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 14, 2, 3, 2, 1, 9, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 16, 2, 3, 2, 1, 10, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 18, 2, 3, 2, 1, 11, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 20, 1, 64, 0, 0, 9, 4, 0, 6, 103, 101, 116, 45, 105, 100, 1, 22, 1, 64, 0, 0, 11, 4, 0, 9, 103, 101, 116, 45, 110, 111, 110, 99, 101, 1, 23, 1, 64, 0, 0, 13, 4, 0, 16, 103, 101, 116, 45, 105, 110, 105, 116, 105, 97, 108, 45, 104, 97, 115, 104, 1, 24, 4, 0, 16, 103, 101, 116, 45, 99, 117, 114, 114, 101, 110, 116, 45, 104, 97, 115, 104, 1, 24, 1, 64, 1, 5, 118, 97, 108, 117, 101, 1, 1, 0, 4, 0, 10, 105, 110, 99, 114, 45, 110, 111, 110, 99, 101, 1, 25, 1, 64, 1, 5, 105, 110, 100, 101, 120, 1, 0, 15, 4, 0, 8, 103, 101, 116, 45, 105, 116, 101, 109, 1, 26, 1, 111, 2, 17, 15, 1, 64, 2, 5, 105, 110, 100, 101, 120, 1, 5, 118, 97, 108, 117, 101, 15, 0, 27, 4, 0, 8, 115, 101, 116, 45, 105, 116, 101, 109, 1, 28, 1, 64, 1, 9, 99, 111, 100, 101, 45, 114, 111, 111, 116, 19, 1, 0, 4, 0, 8, 115, 101, 116, 45, 99, 111, 100, 101, 1, 29, 1, 64, 1, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 9, 0, 1, 4, 0, 11, 103, 101, 116, 45, 98, 97, 108, 97, 110, 99, 101, 1, 30, 1, 64, 1, 5, 97, 115, 115, 101, 116, 3, 0, 127, 4, 0, 22, 104, 97, 115, 45, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 1, 31, 1, 64, 1, 5, 97, 115, 115, 101, 116, 3, 0, 3, 4, 0, 9, 97, 100, 100, 45, 97, 115, 115, 101, 116, 1, 32, 4, 0, 12, 114, 101, 109, 111, 118, 101, 45, 97, 115, 115, 101, 116, 1, 32, 1, 64, 0, 0, 21, 4, 0, 20, 103, 101, 116, 45, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 1, 33, 3, 1, 24, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 97, 99, 99, 111, 117, 110, 116, 64, 49, 46, 48, 46, 48, 5, 12, 2, 3, 0, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 2, 3, 0, 0, 4, 119, 111, 114, 100, 2, 3, 0, 0, 7, 110, 111, 116, 101, 45, 105, 100, 1, 66, 37, 2, 3, 2, 1, 1, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 2, 3, 2, 1, 6, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 10, 2, 3, 2, 1, 7, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 12, 2, 3, 2, 1, 8, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 14, 2, 3, 2, 1, 9, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 16, 2, 3, 2, 1, 10, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 18, 2, 3, 2, 1, 11, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 20, 2, 3, 2, 1, 13, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 22, 2, 3, 2, 1, 14, 4, 0, 4, 119, 111, 114, 100, 3, 0, 24, 2, 3, 2, 1, 15, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 1, 64, 0, 0, 1, 4, 0, 16, 103, 101, 116, 45, 98, 108, 111, 99, 107, 45, 110, 117, 109, 98, 101, 114, 1, 28, 1, 64, 0, 0, 23, 4, 0, 14, 103, 101, 116, 45, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 1, 29, 1, 64, 0, 0, 25, 4, 0, 20, 103, 101, 116, 45, 105, 110, 112, 117, 116, 45, 110, 111, 116, 101, 115, 45, 104, 97, 115, 104, 1, 30, 4, 0, 21, 103, 101, 116, 45, 111, 117, 116, 112, 117, 116, 45, 110, 111, 116, 101, 115, 45, 104, 97, 115, 104, 1, 30, 1, 64, 3, 5, 97, 115, 115, 101, 116, 3, 3, 116, 97, 103, 5, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 7, 0, 27, 4, 0, 11, 99, 114, 101, 97, 116, 101, 45, 110, 111, 116, 101, 1, 31, 3, 1, 19, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 120, 64, 49, 46, 48, 46, 48, 5, 16, 1, 66, 10, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 17, 4, 1, 43, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 64, 49, 46, 48, 46, 48, 4, 0, 11, 24, 1, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 3, 2, 0, 0, 16, 12, 112, 97, 99, 107, 97, 103, 101, 45, 100, 111, 99, 115, 0, 123, 125, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 49, 56, 46, 50, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 54, 46, 48];
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 2717] = [3, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 0, 97, 115, 109, 13, 0, 1, 0, 7, 227, 4, 1, 65, 7, 1, 66, 28, 1, 114, 1, 5, 105, 110, 110, 101, 114, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 4, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 3, 116, 97, 103, 3, 0, 8, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 10, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 12, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 14, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 16, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 18, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 20, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 22, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 24, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 3, 1, 27, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 99, 111, 114, 101, 45, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 1, 66, 10, 2, 3, 2, 1, 1, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 4, 11, 18, 1, 0, 12, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 3, 0, 0, 7, 143, 15, 1, 65, 2, 1, 65, 22, 1, 66, 30, 1, 114, 1, 5, 105, 110, 110, 101, 114, 119, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 1, 111, 4, 1, 1, 1, 1, 4, 0, 4, 119, 111, 114, 100, 3, 0, 2, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 4, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 3, 116, 97, 103, 3, 0, 8, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 10, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 12, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 14, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 16, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 18, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 20, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 22, 1, 114, 1, 5, 105, 110, 110, 101, 114, 3, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 24, 1, 114, 1, 5, 105, 110, 110, 101, 114, 1, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 1, 64, 1, 4, 102, 101, 108, 116, 1, 0, 5, 4, 0, 20, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 45, 102, 114, 111, 109, 45, 102, 101, 108, 116, 1, 28, 3, 1, 27, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 99, 111, 114, 101, 45, 116, 121, 112, 101, 115, 64, 49, 46, 48, 46, 48, 5, 0, 2, 3, 0, 0, 4, 102, 101, 108, 116, 2, 3, 0, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 2, 3, 0, 0, 3, 116, 97, 103, 2, 3, 0, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 2, 3, 0, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 2, 3, 0, 0, 5, 110, 111, 110, 99, 101, 2, 3, 0, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 2, 3, 0, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 2, 3, 0, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 2, 3, 0, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 2, 3, 0, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 1, 66, 47, 2, 3, 2, 1, 1, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 2, 3, 2, 1, 6, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 10, 2, 3, 2, 1, 7, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 12, 2, 3, 2, 1, 8, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 14, 2, 3, 2, 1, 9, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 16, 2, 3, 2, 1, 10, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 18, 2, 3, 2, 1, 11, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 20, 1, 64, 0, 0, 9, 4, 0, 6, 103, 101, 116, 45, 105, 100, 1, 22, 1, 64, 0, 0, 11, 4, 0, 9, 103, 101, 116, 45, 110, 111, 110, 99, 101, 1, 23, 1, 64, 0, 0, 13, 4, 0, 16, 103, 101, 116, 45, 105, 110, 105, 116, 105, 97, 108, 45, 104, 97, 115, 104, 1, 24, 4, 0, 16, 103, 101, 116, 45, 99, 117, 114, 114, 101, 110, 116, 45, 104, 97, 115, 104, 1, 24, 1, 64, 1, 5, 118, 97, 108, 117, 101, 1, 1, 0, 4, 0, 10, 105, 110, 99, 114, 45, 110, 111, 110, 99, 101, 1, 25, 1, 64, 1, 5, 105, 110, 100, 101, 120, 1, 0, 15, 4, 0, 8, 103, 101, 116, 45, 105, 116, 101, 109, 1, 26, 1, 111, 2, 17, 15, 1, 64, 2, 5, 105, 110, 100, 101, 120, 1, 5, 118, 97, 108, 117, 101, 15, 0, 27, 4, 0, 8, 115, 101, 116, 45, 105, 116, 101, 109, 1, 28, 1, 64, 1, 9, 99, 111, 100, 101, 45, 114, 111, 111, 116, 19, 1, 0, 4, 0, 8, 115, 101, 116, 45, 99, 111, 100, 101, 1, 29, 1, 64, 1, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 9, 0, 1, 4, 0, 11, 103, 101, 116, 45, 98, 97, 108, 97, 110, 99, 101, 1, 30, 1, 64, 1, 5, 97, 115, 115, 101, 116, 3, 0, 127, 4, 0, 22, 104, 97, 115, 45, 110, 111, 110, 45, 102, 117, 110, 103, 105, 98, 108, 101, 45, 97, 115, 115, 101, 116, 1, 31, 1, 64, 1, 5, 97, 115, 115, 101, 116, 3, 0, 3, 4, 0, 9, 97, 100, 100, 45, 97, 115, 115, 101, 116, 1, 32, 4, 0, 12, 114, 101, 109, 111, 118, 101, 45, 97, 115, 115, 101, 116, 1, 32, 1, 64, 0, 0, 21, 4, 0, 20, 103, 101, 116, 45, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 1, 33, 3, 1, 24, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 97, 99, 99, 111, 117, 110, 116, 64, 49, 46, 48, 46, 48, 5, 12, 2, 3, 0, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 2, 3, 0, 0, 4, 119, 111, 114, 100, 2, 3, 0, 0, 7, 110, 111, 116, 101, 45, 105, 100, 1, 66, 37, 2, 3, 2, 1, 1, 4, 0, 4, 102, 101, 108, 116, 3, 0, 0, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 2, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 4, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 6, 2, 3, 2, 1, 5, 4, 0, 10, 97, 99, 99, 111, 117, 110, 116, 45, 105, 100, 3, 0, 8, 2, 3, 2, 1, 6, 4, 0, 5, 110, 111, 110, 99, 101, 3, 0, 10, 2, 3, 2, 1, 7, 4, 0, 12, 97, 99, 99, 111, 117, 110, 116, 45, 104, 97, 115, 104, 3, 0, 12, 2, 3, 2, 1, 8, 4, 0, 13, 115, 116, 111, 114, 97, 103, 101, 45, 118, 97, 108, 117, 101, 3, 0, 14, 2, 3, 2, 1, 9, 4, 0, 12, 115, 116, 111, 114, 97, 103, 101, 45, 114, 111, 111, 116, 3, 0, 16, 2, 3, 2, 1, 10, 4, 0, 17, 97, 99, 99, 111, 117, 110, 116, 45, 99, 111, 100, 101, 45, 114, 111, 111, 116, 3, 0, 18, 2, 3, 2, 1, 11, 4, 0, 16, 118, 97, 117, 108, 116, 45, 99, 111, 109, 109, 105, 116, 109, 101, 110, 116, 3, 0, 20, 2, 3, 2, 1, 13, 4, 0, 10, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 3, 0, 22, 2, 3, 2, 1, 14, 4, 0, 4, 119, 111, 114, 100, 3, 0, 24, 2, 3, 2, 1, 15, 4, 0, 7, 110, 111, 116, 101, 45, 105, 100, 3, 0, 26, 1, 64, 0, 0, 1, 4, 0, 16, 103, 101, 116, 45, 98, 108, 111, 99, 107, 45, 110, 117, 109, 98, 101, 114, 1, 28, 1, 64, 0, 0, 23, 4, 0, 14, 103, 101, 116, 45, 98, 108, 111, 99, 107, 45, 104, 97, 115, 104, 1, 29, 1, 64, 0, 0, 25, 4, 0, 20, 103, 101, 116, 45, 105, 110, 112, 117, 116, 45, 110, 111, 116, 101, 115, 45, 104, 97, 115, 104, 1, 30, 4, 0, 21, 103, 101, 116, 45, 111, 117, 116, 112, 117, 116, 45, 110, 111, 116, 101, 115, 45, 104, 97, 115, 104, 1, 30, 1, 64, 3, 5, 97, 115, 115, 101, 116, 3, 3, 116, 97, 103, 5, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 7, 0, 27, 4, 0, 11, 99, 114, 101, 97, 116, 101, 45, 110, 111, 116, 101, 1, 31, 3, 1, 19, 109, 105, 100, 101, 110, 58, 98, 97, 115, 101, 47, 116, 120, 64, 49, 46, 48, 46, 48, 5, 16, 1, 66, 10, 2, 3, 2, 1, 2, 4, 0, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 3, 0, 0, 2, 3, 2, 1, 3, 4, 0, 3, 116, 97, 103, 3, 0, 2, 2, 3, 2, 1, 4, 4, 0, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 3, 0, 4, 1, 64, 1, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 1, 0, 4, 0, 13, 114, 101, 99, 101, 105, 118, 101, 45, 97, 115, 115, 101, 116, 1, 6, 1, 64, 3, 10, 99, 111, 114, 101, 45, 97, 115, 115, 101, 116, 1, 3, 116, 97, 103, 3, 9, 114, 101, 99, 105, 112, 105, 101, 110, 116, 5, 1, 0, 4, 0, 10, 115, 101, 110, 100, 45, 97, 115, 115, 101, 116, 1, 7, 4, 1, 37, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 64, 49, 46, 48, 46, 48, 5, 17, 4, 1, 43, 109, 105, 100, 101, 110, 58, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 47, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 64, 49, 46, 48, 46, 48, 4, 0, 11, 24, 1, 0, 18, 98, 97, 115, 105, 99, 45, 119, 97, 108, 108, 101, 116, 45, 119, 111, 114, 108, 100, 3, 2, 0, 0, 16, 12, 112, 97, 99, 107, 97, 103, 101, 45, 100, 111, 99, 115, 0, 123, 125, 0, 70, 9, 112, 114, 111, 100, 117, 99, 101, 114, 115, 1, 12, 112, 114, 111, 99, 101, 115, 115, 101, 100, 45, 98, 121, 2, 13, 119, 105, 116, 45, 99, 111, 109, 112, 111, 110, 101, 110, 116, 6, 48, 46, 49, 56, 46, 50, 16, 119, 105, 116, 45, 98, 105, 110, 100, 103, 101, 110, 45, 114, 117, 115, 116, 6, 48, 46, 49, 54, 46, 48];
 
 #[inline(never)]
 #[doc(hidden)]
