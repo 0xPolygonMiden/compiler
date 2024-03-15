@@ -22,11 +22,12 @@ miden-stdlib.workspace = true
 miden-diagnostics.workspace = true
 midenc-session.workspace = true
 expect-test = "1.4.1"
-miden-integration-tests-rust-fib = {path = "../rust-apps/fib"}
+miden-integration-tests-rust-fib = { path = "../rust-apps/fib" }
 wasmprinter = "0.2.63"
 sha2 = "0.10"
-rustc-demangle = {version = "0.1.19", features = ["std"]}    
+rustc-demangle = { version = "0.1.19", features = ["std"] }
 cargo_metadata = "0.18"
+derive_more.workspace = true
 
 [dev-dependencies]
 miden-core.workspace = true

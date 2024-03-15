@@ -635,6 +635,24 @@ pub struct LiftedFunctionType {
     /// The results returned by this function
     pub results: Vec<Type>,
 }
+impl fmt::Display for LiftedFunctionType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use core::fmt::Write;
+
+        f.write_str("(func")?;
+        for ty in self.params.iter() {
+            write!(f, " (param {ty})")?;
+        }
+        if !self.results.is_empty() {
+            f.write_str(" (result")?;
+            for ty in self.results.iter() {
+                write!(f, " {ty}")?;
+            }
+            f.write_char(')')?;
+        }
+        f.write_char(')')
+    }
+}
 
 /// This error is raised when parsing an [AddressSpace]
 #[derive(Debug)]

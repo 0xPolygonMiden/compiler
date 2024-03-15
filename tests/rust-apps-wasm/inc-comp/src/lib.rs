@@ -10,8 +10,7 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 
 mod bindings;
 
-use crate::bindings::miden::add::add::add;
-use crate::bindings::Guest;
+use crate::bindings::{miden::add_package::add_interface::add, Guest};
 
 struct Component;
 

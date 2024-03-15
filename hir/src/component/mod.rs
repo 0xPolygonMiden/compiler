@@ -1,9 +1,10 @@
+use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
-use std::collections::BTreeMap;
 
 use intrusive_collections::RBTree;
 use miden_core::crypto::hash::RpoDigest;
 
+use self::formatter::PrettyPrint;
 use super::*;
 
 mod interface;
@@ -19,6 +20,14 @@ pub enum FunctionInvocationMethod {
     #[default]
     Exec,
 }
+impl fmt::Display for FunctionInvocationMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Call => f.write_str("call"),
+            Self::Exec => f.write_str("exec"),
+        }
+    }
+}
 
 /// A component import
 #[derive(Debug)]
@@ -31,6 +40,32 @@ pub struct ComponentImport {
     pub invoke_method: FunctionInvocationMethod,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
+}
+impl fmt::Display for ComponentImport {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
+    }
+}
+impl formatter::PrettyPrint for ComponentImport {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        const_text("(")
+            + const_text("import")
+            + const_text(" ")
+            + display(self.digest)
+            + const_text(" ")
+            + const_text("(")
+            + display(self.invoke_method)
+            + const_text(")")
+            + const_text(" ")
+            + const_text("(")
+            + const_text("type")
+            + const_text(" ")
+            + text(format!("{}", &self.function_ty))
+            + const_text(")")
+            + const_text(")")
+    }
 }
 
 /// The name of a exported function
@@ -96,6 +131,61 @@ impl Component {
 
     pub fn exports(&self) -> &BTreeMap<FunctionExportName, ComponentExport> {
         &self.exports
+    }
+}
+
+impl fmt::Display for Component {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
+    }
+}
+
+impl formatter::PrettyPrint for Component {
+    fn render(&self) -> formatter::Document {
+        use crate::formatter::*;
+
+        let imports = self
+            .imports
+            .iter()
+            .map(|(id, import)| {
+                const_text("(")
+                    + const_text("lower")
+                    + const_text(" ")
+                    + import.render()
+                    + const_text(" ")
+                    + id.render()
+                    + const_text(")")
+            })
+            .reduce(|acc, doc| acc + nl() + doc)
+            .map(|doc| const_text(";; Component Imports") + nl() + doc)
+            .unwrap_or(Document::Empty);
+
+        let modules = self
+            .modules
+            .iter()
+            .map(PrettyPrint::render)
+            .reduce(|acc, doc| acc + nl() + doc)
+            .map(|doc| const_text(";; Modules") + nl() + doc)
+            .unwrap_or(Document::Empty);
+
+        let body = vec![imports, modules].into_iter().filter(|section| !section.is_empty()).fold(
+            nl(),
+            |a, b| {
+                if matches!(a, Document::Newline) {
+                    indent(4, a + b)
+                } else {
+                    a + nl() + indent(4, nl() + b)
+                }
+            },
+        );
+
+        let header = const_text("(") + const_text("component") + const_text(" ");
+
+        if body.is_empty() {
+            header + const_text(")") + nl()
+        } else {
+            header + body + nl() + const_text(")") + nl()
+        }
     }
 }
 

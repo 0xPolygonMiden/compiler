@@ -653,7 +653,7 @@ export.load_dw
   end
 end
 
-mod noname
+mod miden_integration_tests_rust_fib_wasm
 
 export.fib
   push.0
@@ -689,8 +689,8 @@ end
 
 program
 
-use noname
+use miden_integration_tests_rust_fib_wasm
 
 begin
-  exec.noname::fib
+  exec.miden_integration_tests_rust_fib_wasm::fib
 end

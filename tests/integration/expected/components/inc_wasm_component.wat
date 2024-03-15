@@ -5,7 +5,7 @@
       (export (;0;) "add" (func (type 0)))
     )
   )
-  (import "miden:add/add@1.0.0" (instance (;0;) (type 0)))
+  (import "miden:add-package/add-interface@1.0.0" (instance (;0;) (type 0)))
   (core module (;0;)
     (type (;0;) (func (param i32 i32) (result i32)))
     (type (;1;) (func))
@@ -13,13 +13,13 @@
     (type (;3;) (func (param i32 i32 i32 i32) (result i32)))
     (type (;4;) (func (param i32 i32 i32) (result i32)))
     (type (;5;) (func (param i32 i32 i32 i32)))
-    (import "miden:add/add@1.0.0" "add" (func $inc_wasm_component::bindings::miden::add::add::add::wit_import (;0;) (type 0)))
+    (import "miden:add-package/add-interface@1.0.0" "add" (func $inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import (;0;) (type 0)))
     (func $__wasm_call_ctors (;1;) (type 1))
     (func $inc (;2;) (type 2) (param i32) (result i32)
       call $wit_bindgen::rt::run_ctors_once
       local.get 0
       i32.const 1
-      call $inc_wasm_component::bindings::miden::add::add::add::wit_import
+      call $inc_wasm_component::bindings::miden::add_package::add_interface::add::wit_import
     )
     (func $__rust_alloc (;3;) (type 0) (param i32 i32) (result i32)
       i32.const 1048576
@@ -689,7 +689,7 @@
     (export "add" (func 0))
   )
   (core instance (;1;) (instantiate 0
-      (with "miden:add/add@1.0.0" (instance 0))
+      (with "miden:add-package/add-interface@1.0.0" (instance 0))
     )
   )
   (alias core export 1 "memory" (core memory (;0;)))

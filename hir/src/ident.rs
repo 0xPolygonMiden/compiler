@@ -54,7 +54,7 @@ impl PrettyPrint for FunctionIdent {
     fn render(&self) -> formatter::Document {
         use crate::formatter::*;
 
-        flatten(display(self.module) + const_text("::") + display(self.function))
+        flatten(const_text("(") + display(self.module) + const_text(" ") + display(self.function))
     }
 }
 impl PartialOrd for FunctionIdent {

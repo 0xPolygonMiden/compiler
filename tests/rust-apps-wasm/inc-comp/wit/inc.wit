@@ -1,8 +1,8 @@
-package miden:inc@1.0.0;
+package miden:inc-package@1.0.0;
 
-use miden:add/add@1.0.0;
+use miden:add-package/add-interface@1.0.0;
 
 world inc {
-    import add;
+    import add-interface;
     export inc: func(a: u32) -> u32;
 }
