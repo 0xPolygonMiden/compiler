@@ -1,29 +1,32 @@
-use crate::component::SignatureIndex;
-use crate::error::WasmResult;
-use crate::module::types::{
-    convert_func_type, convert_global_type, convert_table_type, convert_valtype, DataSegmentOffset,
-    DefinedFuncIndex, ElemIndex, EntityIndex, EntityType, FuncIndex, GlobalIndex, GlobalInit,
-    MemoryIndex, ModuleTypesBuilder, TableIndex, TypeIndex, WasmType,
-};
-use crate::module::{FuncRefIndex, Module, ModuleType, TableSegment};
-use crate::{unsupported_diag, WasmError, WasmTranslationConfig};
+use std::{ops::Range, path::PathBuf, sync::Arc};
 
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::cranelift_entity::packed_option::ReservedValue;
-use miden_hir::cranelift_entity::PrimaryMap;
+use miden_hir::cranelift_entity::{packed_option::ReservedValue, PrimaryMap};
 use rustc_hash::FxHashMap;
-use std::ops::Range;
-use std::path::PathBuf;
-use std::sync::Arc;
-use wasmparser::types::CoreTypeId;
 use wasmparser::{
-    CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind, Encoding,
-    ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator, Parser,
-    Payload, TypeRef, Validator, ValidatorResources,
+    types::CoreTypeId, CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind,
+    Encoding, ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator,
+    Parser, Payload, TypeRef, Validator, ValidatorResources,
 };
 
-use super::types::{DataSegment, DataSegmentIndex};
-use super::{ModuleImport, TableInitialValue};
+use super::{
+    types::{DataSegment, DataSegmentIndex},
+    ModuleImport, TableInitialValue,
+};
+use crate::{
+    component::SignatureIndex,
+    error::WasmResult,
+    module::{
+        types::{
+            convert_func_type, convert_global_type, convert_table_type, convert_valtype,
+            DataSegmentOffset, DefinedFuncIndex, ElemIndex, EntityIndex, EntityType, FuncIndex,
+            GlobalIndex, GlobalInit, MemoryIndex, ModuleTypesBuilder, TableIndex, TypeIndex,
+            WasmType,
+        },
+        FuncRefIndex, Module, ModuleType, TableSegment,
+    },
+    unsupported_diag, WasmError, WasmTranslationConfig,
+};
 
 /// Object containing the standalone environment information.
 pub struct ModuleEnvironment<'a, 'data> {
@@ -329,11 +332,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     }
                 }
             };
-            self.result
-                .module
-                .table_initialization
-                .initial_values
-                .push(init);
+            self.result.module.table_initialization.initial_values.push(init);
         })
     }
 
@@ -403,10 +402,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 // this never gets past validation
                 ExternalKind::Tag => unreachable!(),
             };
-            self.result
-                .module
-                .exports
-                .insert(String::from(name), entity);
+            self.result.module.exports.insert(String::from(name), entity);
         })
     }
 
@@ -488,26 +484,19 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         }
                     };
 
-                    self.result
-                        .module
-                        .table_initialization
-                        .segments
-                        .push(TableSegment {
-                            table_index,
-                            base,
-                            offset,
-                            elements: elements.into(),
-                        });
+                    self.result.module.table_initialization.segments.push(TableSegment {
+                        table_index,
+                        base,
+                        offset,
+                        elements: elements.into(),
+                    });
                 }
 
                 ElementKind::Passive => {
                     let elem_index = ElemIndex::from_u32(index as u32);
                     let index = self.result.module.passive_elements.len();
                     self.result.module.passive_elements.push(elements.into());
-                    self.result
-                        .module
-                        .passive_elements_map
-                        .insert(elem_index, index);
+                    self.result.module.passive_elements_map.insert(elem_index, index);
                 }
 
                 ElementKind::Declared => {}
@@ -536,19 +525,13 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 let ty = convert_valtype(ty);
                 locals.push((cnt, ty));
             }
-            self.result
-                .debuginfo
-                .wasm_file
-                .funcs
-                .push(FunctionMetadata {
-                    locals: locals.into_boxed_slice(),
-                    params: sig.params().into(),
-                });
+            self.result.debuginfo.wasm_file.funcs.push(FunctionMetadata {
+                locals: locals.into_boxed_slice(),
+                params: sig.params().into(),
+            });
         }
         body.allow_memarg64(false);
-        self.result
-            .function_body_inputs
-            .push(FunctionBodyData { validator, body });
+        self.result.function_body_inputs.push(FunctionBodyData { validator, body });
         self.result.code_index += 1;
         Ok(())
     }
@@ -574,7 +557,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 } => {
                     assert_eq!(
                         memory_index, 0,
-                        "data section memory index must be 0 (only one memory per module is supported)"
+                        "data section memory index must be 0 (only one memory per module is \
+                         supported)"
                     );
                     let mut offset_expr_reader = offset_expr.get_binary_reader();
                     let offset = match offset_expr_reader.read_operator()? {
@@ -621,11 +605,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         // names are almost always present in the
                         // final compilation artifact.
                         let index = FuncIndex::from_u32(index);
-                        self.result
-                            .module
-                            .name_section
-                            .func_names
-                            .insert(index, name.to_string());
+                        self.result.module.name_section.func_names.insert(index, name.to_string());
                     }
                 }
                 wasmparser::Name::Module { name, .. } => {
@@ -780,10 +760,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             CompositeType::Func(ty) => {
                 let wasm = convert_func_type(ty);
                 let sig_index = self.types.wasm_func_type(id, wasm);
-                self.result
-                    .module
-                    .types
-                    .push(ModuleType::Function(sig_index));
+                self.result.module.types.push(ModuleType::Function(sig_index));
             }
             CompositeType::Array(_) | CompositeType::Struct(_) => unimplemented!(),
         }

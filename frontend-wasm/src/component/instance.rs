@@ -1,4 +1,4 @@
-// TODO: Delete this file
+// TODO: delete this file
 #![allow(dead_code)]
 
 use miden_hir::cranelift_entity::PrimaryMap;

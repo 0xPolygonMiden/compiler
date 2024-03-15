@@ -12,7 +12,6 @@ use crate::{
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
         types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
-        EntityIndex,
     },
     WasmError, WasmTranslationConfig,
 };
@@ -44,7 +43,7 @@ pub fn translate_module(
 }
 
 pub fn build_ir_module(
-    mut parsed_module: &mut ParsedModule,
+    parsed_module: &mut ParsedModule,
     module_types: &ModuleTypes,
     func_env: FuncEnvironment,
     _config: &WasmTranslationConfig,

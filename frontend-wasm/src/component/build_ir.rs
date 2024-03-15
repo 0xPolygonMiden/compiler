@@ -6,16 +6,13 @@ use miden_hir::{
     Symbol,
 };
 use miden_hir_type::LiftedFunctionType;
-use rustc_hash::FxHashMap;
 use wasmparser::WasmFeatures;
 
 use super::{
-    inline,
-    instance::{ComponentImport, ComponentInstance, ComponentInstanceBuilder},
-    interface_type_to_ir, CanonicalOptions, ComponentTypes, ComponentTypesBuilder, CoreDef, Export,
-    ExportItem, GlobalInitializer, InstantiateModule, LinearComponent, LinearComponentTranslation,
-    LoweredIndex, ParsedRootComponent, RuntimeImportIndex, RuntimeInstanceIndex, StaticModuleIndex,
-    Trampoline, TypeFuncIndex,
+    inline, instance::ComponentImport, interface_type_to_ir, CanonicalOptions, ComponentTypes,
+    ComponentTypesBuilder, CoreDef, Export, ExportItem, GlobalInitializer, InstantiateModule,
+    LinearComponent, LinearComponentTranslation, LoweredIndex, ParsedRootComponent,
+    RuntimeImportIndex, RuntimeInstanceIndex, StaticModuleIndex, Trampoline, TypeFuncIndex,
 };
 use crate::{
     component::{ComponentParser, StringEncoding},
@@ -98,8 +95,8 @@ fn build_ir<'data>(
 
     ensure_module_names(&mut parsed_modules);
 
-    //dbg!(&component.initializers);
-    //dbg!(&linear_component_translation.trampolines);
+    // dbg!(&component.initializers);
+    // dbg!(&linear_component_translation.trampolines);
     for initializer in &component.initializers {
         match initializer {
             GlobalInitializer::InstantiateModule(m) => {
@@ -121,10 +118,9 @@ fn build_ir<'data>(
                         for arg in args.iter() {
                             match arg {
                                 CoreDef::Export(export) => {
-                                    // let static_module_idx = module_instances[export.instance];
                                     match export.item {
                                         ExportItem::Index(entity_idx) => match entity_idx {
-                                            EntityIndex::Function(_func_idx) => {
+                                            EntityIndex::Function(func_idx) => {
                                                 let module_id =
                                                     module_instances_source[export.instance];
                                                 let module = &parsed_modules[module_id].module;
@@ -175,7 +171,6 @@ fn build_ir<'data>(
                                                 &parsed_modules,
                                                 &component_types,
                                                 component,
-                                                &mut cb,
                                                 config,
                                             )?;
                                             cb.add_import(func_id, component_import.clone());
@@ -223,7 +218,7 @@ fn build_ir<'data>(
     }
 
     // build exports
-    for (name, export) in &component_instance.component.exports {
+    for (name, export) in &component.exports {
         build_export(
             export,
             &parsed_modules,
@@ -240,7 +235,7 @@ fn build_ir<'data>(
 
 pub fn ensure_module_names(modules: &mut PrimaryMap<StaticModuleIndex, ParsedModule<'_>>) {
     for (idx, parsed_module) in modules.iter_mut() {
-        parsed_module.module.set_name_fallback(format!("module{}", idx.as_u32()));
+        parsed_module.module.set_name_fallback(format!("module{}", idx.as_u32()).into());
     }
 }
 
@@ -249,7 +244,6 @@ fn build_import(
     parsed_modules: &PrimaryMap<StaticModuleIndex, ParsedModule>,
     component_types: &ComponentTypes,
     component: &LinearComponent,
-    cb: &mut miden_hir::ComponentBuilder<'_>,
     config: &WasmTranslationConfig,
 ) -> WasmResult<(FunctionIdent, miden_hir::ComponentImport)> {
     let (import_idx, import_names) = &component.imports[import.runtime_import_index];
@@ -278,7 +272,6 @@ fn build_import(
     };
     let function_id =
         find_module_import_function(parsed_modules, full_interface_name, import_func_name)?;
-    cb.add_import(function_id, component_import);
     Ok((function_id, component_import))
 }
 
@@ -635,7 +628,7 @@ mod tests {
             results: vec![Type::U32],
         };
         assert_eq!(export.function_ty, expected_export_func_ty);
-        let module = ir.modules().front().get().unwrap();
+        let module = ir.modules().first().unwrap().1;
         // dbg!(&module.imports());
         let import_info = module.imports();
         let function_id = import_info

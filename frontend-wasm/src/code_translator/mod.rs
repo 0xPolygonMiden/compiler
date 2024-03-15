@@ -128,8 +128,6 @@ pub fn translate_operator(
                 builder,
                 FuncIndex::from_u32(*function_index),
                 func_env,
-                module,
-                mod_types,
                 span,
                 diagnostics,
             )?;
@@ -642,8 +640,6 @@ fn translate_call(
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
     func_env: &FuncEnvironment,
-    module: &Module,
-    mod_types: &ModuleTypes,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {

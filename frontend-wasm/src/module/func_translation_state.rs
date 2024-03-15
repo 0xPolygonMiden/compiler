@@ -5,10 +5,7 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::{
-    collections::hash_map::Entry::{Occupied, Vacant},
-    vec::Vec,
-};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{Block, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Signature, Value};
