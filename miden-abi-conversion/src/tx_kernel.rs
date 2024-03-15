@@ -22,23 +22,21 @@ fn types() -> &'static ModuleFunctionTypeMap {
         let mut m: ModuleFunctionTypeMap = Default::default();
         let mut note: FunctionTypeMap = Default::default();
         let mut account: FunctionTypeMap = Default::default();
-        note.insert(
-            NOTE_GET_INPUTS.to_string(),
-            MidenAbiFunctionType::new([I32], [I32, I32]),
-        );
+        note.insert(NOTE_GET_INPUTS.to_string(), MidenAbiFunctionType::new([I32], [I32, I32]));
         account.insert(
             ACCOUNT_ADD_ASSET.to_string(),
             // Accepts and returns word
             MidenAbiFunctionType::new([I32, I32, I32, I32], [I32, I32, I32, I32]),
         );
-        account.insert(
-            ACCOUNT_GET_ID.to_string(),
-            MidenAbiFunctionType::new([], [I32]),
-        );
+        account.insert(ACCOUNT_GET_ID.to_string(), MidenAbiFunctionType::new([], [I32]));
         m.insert(NOTE_MODULE_NAME.to_string(), note);
         m.insert(ACCOUNT_MODULE_NAME.to_string(), account);
         m
     })
+}
+
+pub fn is_miden_sdk_module(module_id: &str) -> bool {
+    types().contains_key(module_id)
 }
 
 /// Get the target tx kernel function type for the given function id

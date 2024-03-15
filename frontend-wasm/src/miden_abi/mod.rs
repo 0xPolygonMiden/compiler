@@ -1,15 +1,10 @@
-use miden_abi_conversion::tx_kernel;
+use miden_abi_conversion::tx_kernel::{self, is_miden_sdk_module};
 use miden_core::crypto::hash::RpoDigest;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
 use thiserror::Error;
 
-use crate::{
-    module::{
-        function_builder_ext::FunctionBuilderExt, module_tratnslation_state::ModuleTranslationState,
-    },
-    WasmError,
-};
+use crate::{module::function_builder_ext::FunctionBuilderExt, WasmError};
 
 /// Parse the stable import function name and the hex encoded digest from the function name
 pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDigest), String> {
@@ -42,23 +37,12 @@ impl From<AdapterError> for WasmError {
 pub fn adapt_call<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
-    module_state: &ModuleTranslationState,
-    // state: &'a FuncTranslationState,
     builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> Result<&'d [Value], AdapterError> {
-    if let Some(stable_import_func_name) =
-        module_state.get_stable_imported_miden_abi_function(&func_id)
-    {
-        Ok(transform_miden_abi_call(
-            func_id,
-            args,
-            &stable_import_func_name,
-            builder,
-            span,
-            diagnostics,
-        ))
+    if is_miden_sdk_module(func_id.module.as_symbol().as_str()) {
+        Ok(transform_miden_abi_call(func_id, args, builder, span, diagnostics))
     } else {
         // no transformation needed
         let call = builder.ins().call(func_id, &args, span);
@@ -92,13 +76,12 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
 pub fn transform_miden_abi_call<'a, 'b, 'c: 'b, 'd>(
     func_id: FunctionIdent,
     args: &[Value],
-    stable_name: &str,
     builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> &'d [Value] {
     use TransformStrategy::*;
-    match get_transform_strategy(stable_name) {
+    match get_transform_strategy(func_id.function.as_symbol().as_str()) {
         ListReturn => list_return(func_id, args, builder, span, diagnostics),
         ReturnViaPointer => return_via_pointer(func_id, args, builder, span, diagnostics),
         NoTransform => no_transform(func_id, args, builder, span, diagnostics),
@@ -129,11 +112,7 @@ pub fn list_return<'a, 'b, 'c: 'b, 'd>(
 ) -> &'d [Value] {
     let call = builder.ins().call(func_id, args, span);
     let results = builder.inst_results(call);
-    assert_eq!(
-        results.len(),
-        2,
-        "List return strategy expects 2 results: length and pointer"
-    );
+    assert_eq!(results.len(), 2, "List return strategy expects 2 results: length and pointer");
     // Return the first result (length) only
     results[0..1].as_ref()
 }
@@ -162,9 +141,7 @@ pub fn return_via_pointer<'a, 'b, 'c: 'b, 'd>(
                 .ins()
                 .add_imm_checked(ptr_u32, miden_hir::Immediate::I32(idx as i32), span)
         };
-        let addr = builder
-            .ins()
-            .inttoptr(eff_ptr, Ptr(ptr_ty.clone().into()), span);
+        let addr = builder.ins().inttoptr(eff_ptr, Ptr(ptr_ty.clone().into()), span);
         builder.ins().store(addr, *value, span);
     }
     &[]

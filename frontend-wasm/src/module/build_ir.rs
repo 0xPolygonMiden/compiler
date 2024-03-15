@@ -5,10 +5,9 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
-use super::{func_env::FuncEnvironment, module_tratnslation_state::ModuleTranslationState, Module};
+use super::{module_tratnslation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
-    miden_abi::parse_import_function_digest,
     module::{
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
@@ -39,11 +38,11 @@ pub fn translate_module(
     }
     let module_types = module_types_builder.finish();
 
-    let func_env = FuncEnvironment::new(&parsed_module.module, &module_types, vec![]);
-    build_ir_module(&mut parsed_module, &module_types, func_env, config, diagnostics)
+    let mut module_state =
+        ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
+    build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)
 }
 
-// TODO: make it IR module -> IR component and move it into hir crate?
 /// Translate a valid Wasm core module binary into Miden IR component building
 /// component imports for well-known Miden ABI functions
 ///
@@ -55,23 +54,40 @@ pub fn translate_module_as_component(
     config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Component> {
-    let module = translate_module(wasm, config, diagnostics)?;
+    let wasm_features = WasmFeatures::default();
+    let mut validator = Validator::new_with_features(wasm_features);
+    let parser = wasmparser::Parser::new(0);
+    let mut module_types_builder = Default::default();
+    let mut parsed_module = ModuleEnvironment::new(
+        config,
+        &mut validator,
+        &mut module_types_builder,
+    )
+    .parse(parser, wasm, diagnostics)?;
+    parsed_module.module.set_name_fallback(config.source_name.clone());
+    if let Some(name_override) = config.override_name.as_ref() {
+        parsed_module.module.set_name_override(name_override.clone());
+    }
+    let module_types = module_types_builder.finish();
+
+    let mut module_state =
+        ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
+    let module =
+        build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)?;
     let mut cb = miden_hir::ComponentBuilder::new(&diagnostics);
     let module_imports = module.imports();
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
             for ext_func in imports {
-                // TODO: Don't parse function digest here, get it from the module translation state
-                let (func_id, digest) = parse_import_function_digest(ext_func.function.as_str())
-                    .expect(
-                        format!(
-                            "failed to parse MAST root hash from function {}",
-                            ext_func.function
-                        )
+                dbg!(&ext_func);
+                let function_ty = miden_abi_function_type(
+                    ext_func.module.as_symbol().as_str(),
+                    ext_func.function.as_symbol().as_str(),
+                );
+                let digest = *module_state.digest(ext_func).expect(
+                    format!("failed to find MAST root hash for function {}", ext_func.function)
                         .as_str(),
-                    );
-                let function_ty =
-                    miden_abi_function_type(ext_func.module.as_symbol().as_str(), &func_id);
+                );
                 let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
                     function_ty,
                     digest,
@@ -87,7 +103,7 @@ pub fn translate_module_as_component(
 pub fn build_ir_module(
     parsed_module: &mut ParsedModule,
     module_types: &ModuleTypes,
-    func_env: FuncEnvironment,
+    module_state: &mut ModuleTranslationState,
     _config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Module> {
@@ -96,7 +112,6 @@ pub fn build_ir_module(
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
     build_data_segments(parsed_module, &mut module_builder, diagnostics)?;
     let mut func_translator = FuncTranslator::new();
-    let mut module_state = ModuleTranslationState::new();
     // Although this renders this parsed module invalid(without functiong
     // bodies), we don't support multiple module instances. Thus, this
     // ParseModule will not be used again to make another module instance.
@@ -114,10 +129,9 @@ pub fn build_ir_module(
         func_translator.translate_body(
             &body,
             &mut module_func_builder,
-            &mut module_state,
+            module_state,
             &parsed_module.module,
             &module_types,
-            &func_env,
             diagnostics,
             &mut func_validator,
         )?;

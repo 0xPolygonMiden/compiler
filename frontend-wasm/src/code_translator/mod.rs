@@ -27,7 +27,6 @@ use crate::{
     error::{WasmError, WasmResult},
     miden_abi::adapt_call,
     module::{
-        func_env::FuncEnvironment,
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
         module_tratnslation_state::ModuleTranslationState,
@@ -52,7 +51,6 @@ pub fn translate_operator(
     module_state: &mut ModuleTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
-    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
@@ -131,7 +129,6 @@ pub fn translate_operator(
                 module_state,
                 builder,
                 FuncIndex::from_u32(*function_index),
-                func_env,
                 span,
                 diagnostics,
             )?;
@@ -644,23 +641,15 @@ fn translate_call(
     module_state: &mut ModuleTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
-    func_env: &FuncEnvironment,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    // TODO: remove num_args
-    let (func_id, _num_args) = module_state.get_direct_func(
-        builder.data_flow_graph_mut(),
-        function_index,
-        func_env,
-        diagnostics,
-    )?;
-    // TODO: Wasm original signature in FuncEnvironment, but imported above into DataFlowGraph with
-    // the Miden signature
-    let wasm_sig = func_env.signature(function_index);
+    let func_id =
+        module_state.get_direct_func(builder.data_flow_graph_mut(), function_index, diagnostics)?;
+    let wasm_sig = module_state.signature(function_index);
     let num_wasm_args = wasm_sig.params().len();
     let args = func_state.peekn(num_wasm_args);
-    let results = adapt_call(func_id, &args, module_state, builder, span, diagnostics)?;
+    let results = adapt_call(func_id, &args, builder, span, diagnostics)?;
     assert_eq!(
         results.len(),
         wasm_sig.results().len(),

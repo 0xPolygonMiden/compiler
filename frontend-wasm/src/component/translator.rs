@@ -17,9 +17,9 @@ use crate::{
     error::WasmResult,
     module::{
         build_ir::build_ir_module,
-        func_env::FuncEnvironment,
         instance::ModuleArgument,
         module_env::ParsedModule,
+        module_tratnslation_state::ModuleTranslationState,
         types::{EntityIndex, FuncIndex},
         Module, ModuleImport,
     },
@@ -165,11 +165,12 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     }
                 }
                 let module_types = self.component_types.module_types();
-                let func_env = FuncEnvironment::new(module, module_types, module_args);
+                let mut module_state =
+                    ModuleTranslationState::new(module, module_types, module_args);
                 let ir_module = build_ir_module(
                     self.parsed_modules.get_mut(*static_module_idx).unwrap(),
                     module_types,
-                    func_env,
+                    &mut module_state,
                     self.config,
                     self.diagnostics,
                 )?;

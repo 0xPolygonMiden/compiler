@@ -17,7 +17,6 @@ use self::types::*;
 use crate::{component::SignatureIndex, error::WasmResult, unsupported_diag};
 
 pub mod build_ir;
-pub mod func_env;
 pub mod func_translation_state;
 pub mod func_translator;
 pub mod function_builder_ext;
