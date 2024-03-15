@@ -7,13 +7,15 @@
 
 pub mod resources;
 
+use std::{hash::Hash, ops::Index};
+
 use anyhow::{bail, Result};
 use indexmap::IndexSet;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use rustc_hash::FxHashMap;
-use std::{hash::Hash, ops::Index};
 use wasmparser::{names::KebabString, types};
 
+use self::resources::ResourcesBuilder;
 use crate::{
     indices,
     module::types::{
@@ -22,8 +24,6 @@ use crate::{
     },
     translation_utils::{DiscriminantSize, FlagsSize},
 };
-
-use self::resources::ResourcesBuilder;
 
 /// Maximum nesting depth of a type allowed
 ///
@@ -355,6 +355,7 @@ where
     ModuleTypes: Index<T>,
 {
     type Output = <ModuleTypes as Index<T>>::Output;
+
     fn index(&self, idx: T) -> &Self::Output {
         self.module_types.index(idx)
     }
@@ -365,6 +366,7 @@ where
     ModuleTypes: Index<T>,
 {
     type Output = <ModuleTypes as Index<T>>::Output;
+
     fn index(&self, idx: T) -> &Self::Output {
         self.module_types.index(idx)
     }
@@ -538,16 +540,14 @@ impl ComponentTypesBuilder {
         let ty = &types[id];
         let mut result = TypeComponent::default();
         for (name, ty) in ty.imports.iter() {
-            result.imports.insert(
-                name.clone(),
-                self.convert_component_entity_type(types, *ty)?,
-            );
+            result
+                .imports
+                .insert(name.clone(), self.convert_component_entity_type(types, *ty)?);
         }
         for (name, ty) in ty.exports.iter() {
-            result.exports.insert(
-                name.clone(),
-                self.convert_component_entity_type(types, *ty)?,
-            );
+            result
+                .exports
+                .insert(name.clone(), self.convert_component_entity_type(types, *ty)?);
         }
         Ok(self.component_types.components.push(result))
     }
@@ -560,10 +560,9 @@ impl ComponentTypesBuilder {
         let ty = &types[id];
         let mut result = TypeComponentInstance::default();
         for (name, ty) in ty.exports.iter() {
-            result.exports.insert(
-                name.clone(),
-                self.convert_component_entity_type(types, *ty)?,
-            );
+            result
+                .exports
+                .insert(name.clone(), self.convert_component_entity_type(types, *ty)?);
         }
         Ok(self.component_types.component_instances.push(result))
     }
@@ -576,15 +575,12 @@ impl ComponentTypesBuilder {
         let ty = &types[id];
         let mut result = TypeModule::default();
         for ((module, field), ty) in ty.imports.iter() {
-            result.imports.insert(
-                (module.clone(), field.clone()),
-                self.entity_type(types, ty)?,
-            );
+            result
+                .imports
+                .insert((module.clone(), field.clone()), self.entity_type(types, ty)?);
         }
         for (name, ty) in ty.exports.iter() {
-            result
-                .exports
-                .insert(name.clone(), self.entity_type(types, ty)?);
+            result.exports.insert(name.clone(), self.entity_type(types, ty)?);
         }
         Ok(self.component_types.modules.push(result))
     }
@@ -673,9 +669,7 @@ impl ComponentTypesBuilder {
             })
             .collect::<Result<Box<[_]>>>()?;
         let abi = CanonicalAbiInfo::record(
-            fields
-                .iter()
-                .map(|field| self.component_types.canonical_abi(&field.ty)),
+            fields.iter().map(|field| self.component_types.canonical_abi(&field.ty)),
         );
         Ok(self.add_record_type(TypeRecord { fields, abi }))
     }
@@ -701,10 +695,11 @@ impl ComponentTypesBuilder {
                 })
             })
             .collect::<Result<Box<[_]>>>()?;
-        let (info, abi) = VariantInfo::new(cases.iter().map(|c| {
-            c.ty.as_ref()
-                .map(|ty| self.component_types.canonical_abi(ty))
-        }));
+        let (info, abi) = VariantInfo::new(
+            cases
+                .iter()
+                .map(|c| c.ty.as_ref().map(|ty| self.component_types.canonical_abi(ty))),
+        );
         Ok(self.add_variant_type(TypeVariant { cases, abi, info }))
     }
 
@@ -722,11 +717,8 @@ impl ComponentTypesBuilder {
     }
 
     fn new_tuple_type(&mut self, types: Box<[InterfaceType]>) -> TypeTupleIndex {
-        let abi = CanonicalAbiInfo::record(
-            types
-                .iter()
-                .map(|ty| self.component_types.canonical_abi(ty)),
-        );
+        let abi =
+            CanonicalAbiInfo::record(types.iter().map(|ty| self.component_types.canonical_abi(ty)));
         self.add_tuple_type(TypeTuple { types, abi })
     }
 
@@ -1087,13 +1079,12 @@ const fn max(a: u32, b: u32) -> u32 {
 }
 
 impl CanonicalAbiInfo {
-    /// ABI information for zero-sized types.
-    const ZERO: CanonicalAbiInfo = CanonicalAbiInfo {
-        size32: 0,
-        align32: 1,
-        flat_count: Some(0),
+    /// ABI information for lists/strings which are "pointer pairs"
+    pub const POINTER_PAIR: CanonicalAbiInfo = CanonicalAbiInfo {
+        size32: 8,
+        align32: 4,
+        flat_count: Some(2),
     };
-
     /// ABI information for one-byte scalars.
     pub const SCALAR1: CanonicalAbiInfo = CanonicalAbiInfo::scalar(1);
     /// ABI information for two-byte scalars.
@@ -1102,6 +1093,12 @@ impl CanonicalAbiInfo {
     pub const SCALAR4: CanonicalAbiInfo = CanonicalAbiInfo::scalar(4);
     /// ABI information for eight-byte scalars.
     pub const SCALAR8: CanonicalAbiInfo = CanonicalAbiInfo::scalar(8);
+    /// ABI information for zero-sized types.
+    const ZERO: CanonicalAbiInfo = CanonicalAbiInfo {
+        size32: 0,
+        align32: 1,
+        flat_count: Some(0),
+    };
 
     const fn scalar(size: u32) -> CanonicalAbiInfo {
         CanonicalAbiInfo {
@@ -1110,13 +1107,6 @@ impl CanonicalAbiInfo {
             flat_count: Some(1),
         }
     }
-
-    /// ABI information for lists/strings which are "pointer pairs"
-    pub const POINTER_PAIR: CanonicalAbiInfo = CanonicalAbiInfo {
-        size32: 8,
-        align32: 4,
-        flat_count: Some(2),
-    };
 
     /// Returns the abi for a record represented by the specified fields.
     pub fn record<'a>(fields: impl Iterator<Item = &'a CanonicalAbiInfo>) -> CanonicalAbiInfo {
@@ -1202,10 +1192,7 @@ impl CanonicalAbiInfo {
             }
         }
         CanonicalAbiInfo {
-            size32: align_to(
-                align_to(discrim_size, max_align32) + max_size32,
-                max_align32,
-            ),
+            size32: align_to(align_to(discrim_size, max_align32) + max_size32, max_align32),
             align32: max_align32,
             flat_count: add_flat(max_case_count, Some(1)),
         }
@@ -1234,10 +1221,7 @@ impl CanonicalAbiInfo {
             i += 1;
         }
         CanonicalAbiInfo {
-            size32: align_to(
-                align_to(discrim_size, max_align32) + max_size32,
-                max_align32,
-            ),
+            size32: align_to(align_to(discrim_size, max_align32) + max_size32, max_align32),
             align32: max_align32,
             flat_count: add_flat(max_case_count, Some(1)),
         }
@@ -1284,6 +1268,7 @@ impl VariantInfo {
             abi,
         )
     }
+
     pub const fn new_static(cases: &[Option<CanonicalAbiInfo>]) -> VariantInfo {
         let size = match DiscriminantSize::from_count(cases.len()) {
             Some(size) => size,
@@ -1627,10 +1612,9 @@ impl TypeInformation {
     /// The iterator item is:
     ///
     /// * `None` - no payload for this case
-    /// * `Some(None)` - this case has a payload but can't be represented with
-    ///   flat types
-    /// * `Some(Some(types))` - this case has a payload and is represented with
-    ///   the types specified in the flat representation.
+    /// * `Some(None)` - this case has a payload but can't be represented with flat types
+    /// * `Some(Some(types))` - this case has a payload and is represented with the types specified
+    ///   in the flat representation.
     fn build_variant<'a, I>(&mut self, cases: I)
     where
         I: IntoIterator<Item = Option<&'a TypeInformation>>,
@@ -1719,9 +1703,7 @@ impl TypeInformation {
 
     fn variants(&mut self, types: &ComponentTypesBuilder, ty: &TypeVariant) {
         self.build_variant(
-            ty.cases
-                .iter()
-                .map(|c| c.ty.as_ref().map(|ty| types.type_information(ty))),
+            ty.cases.iter().map(|c| c.ty.as_ref().map(|ty| types.type_information(ty))),
         )
     }
 
@@ -1765,7 +1747,13 @@ pub fn interface_type_to_ir(
         InterfaceType::Record(_) => todo!(),
         InterfaceType::Variant(_) => todo!(),
         InterfaceType::List(_) => todo!(),
-        InterfaceType::Tuple(_) => todo!(),
+        InterfaceType::Tuple(tuple_idx) => {
+            let tys = _component_types.tuples[*tuple_idx]
+                .types
+                .iter()
+                .map(|t| interface_type_to_ir(t, _component_types));
+            miden_hir_type::Type::Struct(miden_hir_type::StructType::new(tys))
+        }
         InterfaceType::Flags(_) => todo!(),
         InterfaceType::Enum(_) => todo!(),
         InterfaceType::Option(_) => todo!(),

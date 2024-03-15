@@ -1,3 +1,6 @@
+// TODO: Delete this file
+#![allow(dead_code)]
+
 use miden_hir::cranelift_entity::PrimaryMap;
 use rustc_hash::FxHashMap;
 
@@ -7,7 +10,10 @@ use super::{
     StaticModuleIndex, TypeFuncIndex,
 };
 use crate::{
-    component::Trampoline, error::WasmResult, module::module_env::ParsedModule, WasmError,
+    component::{ExportItem, Trampoline},
+    error::WasmResult,
+    module::{module_env::ParsedModule, types::EntityIndex},
+    WasmError,
 };
 
 /// A component import
@@ -62,6 +68,8 @@ impl<'data> ComponentInstanceBuilder<'data> {
         let mut lower_imports: FxHashMap<LoweredIndex, RuntimeImportIndex> = FxHashMap::default();
         let mut imports: FxHashMap<StaticModuleIndex, Vec<ComponentImport>> = FxHashMap::default();
         let component = &self.linear_component_translation.component;
+        dbg!(&component.initializers);
+        dbg!(&self.linear_component_translation.trampolines);
         for initializer in &component.initializers {
             match initializer {
                 GlobalInitializer::InstantiateModule(m) => {
@@ -83,7 +91,28 @@ impl<'data> ComponentInstanceBuilder<'data> {
                             let mut module_args: Vec<ComponentImport> = Vec::new();
                             for arg in args.iter() {
                                 match arg {
-                                    CoreDef::Export(_) => todo!(),
+                                    CoreDef::Export(export) => {
+                                        // let static_module_idx =
+                                        // module_instances[export.instance];
+                                        match export.item {
+                                            ExportItem::Index(entity_idx) => match entity_idx {
+                                                EntityIndex::Function(_func_idx) => {
+                                                    todo!();
+                                                    // module_args.push(import);
+                                                }
+                                                EntityIndex::Table(_) => {
+                                                    todo!()
+                                                }
+                                                EntityIndex::Memory(_) => {
+                                                    todo!()
+                                                }
+                                                EntityIndex::Global(_) => {
+                                                    todo!()
+                                                }
+                                            },
+                                            ExportItem::Name(_) => todo!(),
+                                        }
+                                    }
                                     CoreDef::InstanceFlags(_) => todo!(),
                                     CoreDef::Trampoline(trampoline_idx) => {
                                         let trampoline = &self

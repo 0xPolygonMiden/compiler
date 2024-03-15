@@ -1,19 +1,16 @@
 //! Types for parsed core WebAssembly modules.
 
 use core::fmt;
-use miden_hir::{AbiParam, CallConv, Linkage, Signature};
-use std::collections::HashMap;
-use std::ops::Index;
-use wasmparser::types::CoreTypeId;
+use std::{collections::HashMap, ops::Index};
 
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::cranelift_entity::PrimaryMap;
+use miden_hir::{cranelift_entity::PrimaryMap, AbiParam, CallConv, Linkage, Signature};
 use miden_hir_type as hir;
+use wasmparser::types::CoreTypeId;
 
-use crate::component::SignatureIndex;
-use crate::error::WasmResult;
-use crate::module::Module;
-use crate::{unsupported_diag, WasmError};
+use crate::{
+    component::SignatureIndex, error::WasmResult, module::Module, unsupported_diag, WasmError,
+};
 
 /// Generates a new index type for each entity.
 #[macro_export]
@@ -236,7 +233,7 @@ impl EntityIndex {
     pub fn unwrap_func(&self) -> FuncIndex {
         match self {
             EntityIndex::Function(f) => *f,
-            _ => panic!("not a func"),
+            eidx => panic!("not a func, but {eidx:?}"),
         }
     }
 }
@@ -416,7 +413,8 @@ impl DataSegmentOffset {
                         diagnostics
                             .diagnostic(miden_diagnostics::Severity::Error)
                             .with_message(format!(
-                                "Failed to get data segment offset from global init {:?} with global index {global_idx:?}",
+                                "Failed to get data segment offset from global init {:?} with \
+                                 global index {global_idx:?}",
                                 global_init,
                             ))
                             .emit();
@@ -573,21 +571,13 @@ pub fn ir_type(ty: WasmType) -> WasmResult<hir::Type> {
     Ok(match ty {
         WasmType::I32 => hir::Type::I32,
         WasmType::I64 => hir::Type::I64,
-        WasmType::F32 => {
-            return Err(WasmError::Unsupported(
-                "no f32 type in Miden IR".to_string(),
-            ))
-        }
+        WasmType::F32 => return Err(WasmError::Unsupported("no f32 type in Miden IR".to_string())),
         WasmType::F64 => hir::Type::F64,
         WasmType::V128 => {
-            return Err(WasmError::Unsupported(
-                "V128 type is not supported".to_string(),
-            ));
+            return Err(WasmError::Unsupported("V128 type is not supported".to_string()));
         }
         WasmType::Ref(_) => {
-            return Err(WasmError::Unsupported(
-                "Ref type is not supported".to_string(),
-            ));
+            return Err(WasmError::Unsupported("Ref type is not supported".to_string()));
         }
     })
 }
@@ -599,16 +589,8 @@ pub fn ir_func_sig(
     linkage: Linkage,
 ) -> Signature {
     Signature {
-        params: func_type
-            .params
-            .iter()
-            .map(|ty| AbiParam::new(ty.clone()))
-            .collect(),
-        results: func_type
-            .results
-            .iter()
-            .map(|ty| AbiParam::new(ty.clone()))
-            .collect(),
+        params: func_type.params.iter().map(|ty| AbiParam::new(ty.clone())).collect(),
+        results: func_type.results.iter().map(|ty| AbiParam::new(ty.clone())).collect(),
         cc: call_conv,
         linkage,
     }

@@ -13,23 +13,27 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::hash_map;
-use std::u64;
+use std::{collections::hash_map, u64};
 
-use crate::error::{WasmError, WasmResult};
-use crate::module::func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState};
-use crate::module::function_builder_ext::FunctionBuilderExt;
-use crate::module::types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes};
-use crate::module::Module;
-use crate::ssa::Variable;
-use crate::unsupported_diag;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::cranelift_entity::packed_option::ReservedValue;
-use miden_hir::Type::*;
-use miden_hir::{Block, Inst, InstBuilder, Value};
-use miden_hir::{Immediate, Type};
+use miden_hir::{
+    cranelift_entity::packed_option::ReservedValue, Block, Immediate, Inst, InstBuilder, Type,
+    Type::*, Value,
+};
 use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
+
+use crate::{
+    error::{WasmError, WasmResult},
+    module::{
+        func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
+        function_builder_ext::FunctionBuilderExt,
+        types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes},
+        Module,
+    },
+    ssa::Variable,
+    unsupported_diag,
+};
 
 #[cfg(test)]
 mod tests;
@@ -126,6 +130,9 @@ pub fn translate_operator(
                 span,
                 diagnostics,
             )?;
+        }
+        Operator::CallIndirect { type_index: _, table_index: _, table_byte: _ } => {
+            // TODO:
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
@@ -624,9 +631,7 @@ fn prepare_addr(
                     .add_imm_checked(addr_u32, Immediate::U32(memarg.offset as u32), span);
         }
     };
-    builder
-        .ins()
-        .inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)
+    builder.ins().inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)
 }
 
 fn translate_call(
@@ -718,9 +723,7 @@ fn translate_br_if(
     let else_dest = next_block;
     let else_args = &[];
     let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
-    builder
-        .ins()
-        .cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
+    builder.ins().cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
     builder.seal_block(next_block); // The only predecessor is the current block.
     builder.switch_to_block(next_block);
 }
@@ -791,9 +794,7 @@ fn translate_end(
     }
 
     frame.truncate_value_stack_to_original_size(&mut state.stack);
-    state
-        .stack
-        .extend_from_slice(builder.block_params(next_block));
+    state.stack.extend_from_slice(builder.block_params(next_block));
 }
 
 fn translate_else(
@@ -840,9 +841,7 @@ fn translate_else(
                         else_block
                     }
                     ElseData::WithElse { else_block } => {
-                        builder
-                            .ins()
-                            .br(destination, state.peekn(num_return_values), span);
+                        builder.ins().br(destination, state.peekn(num_return_values), span);
                         state.popn(num_return_values);
                         else_block
                     }
@@ -920,13 +919,7 @@ fn translate_if(
     };
     builder.seal_block(next_block);
     builder.switch_to_block(next_block);
-    state.push_if(
-        destination,
-        else_data,
-        blockty.params.len(),
-        blockty.results.len(),
-        blockty,
-    );
+    state.push_if(destination, else_data, blockty.params.len(), blockty.results.len(), blockty);
     Ok(())
 }
 
@@ -940,14 +933,10 @@ fn translate_loop(
     let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let loop_body = builder.create_block_with_params(blockty.params.clone(), span);
     let next = builder.create_block_with_params(blockty.results.clone(), span);
-    builder
-        .ins()
-        .br(loop_body, state.peekn(blockty.params.len()), span);
+    builder.ins().br(loop_body, state.peekn(blockty.params.len()), span);
     state.push_loop(loop_body, next, blockty.params.len(), blockty.results.len());
     state.popn(blockty.params.len());
-    state
-        .stack
-        .extend_from_slice(builder.block_params(loop_body));
+    state.stack.extend_from_slice(builder.block_params(loop_body));
     builder.switch_to_block(loop_body);
     Ok(())
 }
