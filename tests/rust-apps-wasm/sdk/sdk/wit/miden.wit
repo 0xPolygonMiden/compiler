@@ -7,15 +7,17 @@ interface core-types {
     /// The backing type is `f64` but the internal values are always integer in the range [0, M).
     /// Field modulus M = 2^64 - 2^32 + 1
     record felt {
-        /// We use f64 as the backing type for the field element. It has the size that we need and
+        /// We plan to use f64 as the backing type for the field element. It has the size that we need and
         /// we don't plan to support floating point arithmetic in programs for Miden VM.
-        inner: f64 
+        ///
+        /// For now its u64
+        inner: u64
     }
 
 
     /// A group of four field elements in the Miden base field.
     type word = tuple<felt, felt, felt, felt>;
-    
+
     /// Unique identifier of an account.
     ///
     /// Account ID consists of 1 field element (~64 bits). This field element uniquely identifies a
@@ -32,7 +34,7 @@ interface core-types {
     record account-id {
         inner: felt
     }
-    
+
     /// Creates a new account ID from a field element.
     account-id-from-felt: func(felt: felt) -> account-id;
 
@@ -124,7 +126,7 @@ interface core-types {
         inner: word
     }
 
-    /// An id of the created note 
+    /// An id of the created note
     record note-id {
         inner: felt
     }
@@ -132,7 +134,7 @@ interface core-types {
 }
 
 
-/// Account-related functions 
+/// Account-related functions
 interface account {
     use core-types.{felt,core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment};
 
@@ -144,7 +146,7 @@ interface account {
     get-initial-hash: func() -> account-hash;
     /// Get the current hash of the account data stored in memory
     get-current-hash: func() -> account-hash;
-    /// Increment the account nonce by the specified value. 
+    /// Increment the account nonce by the specified value.
     /// value can be at most 2^32 - 1 otherwise this procedure panics
     incr-nonce: func(value: felt);
     /// Get the value of the specified key in the account storage
@@ -175,17 +177,17 @@ interface account {
     add-asset: func(asset: core-asset) -> core-asset;
     /// Remove the specified asset from the vault
     remove-asset: func(asset: core-asset) -> core-asset;
-    /// Returns the commitment to the account vault. 
+    /// Returns the commitment to the account vault.
     get-vault-commitment: func() -> vault-commitment;
 }
 
-// Note-related functions 
+// Note-related functions
 interface note {
     use core-types.{felt, core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment};
-    
-    /// Get the inputs of the currently executed note 
+
+    /// Get the inputs of the currently executed note
     get-inputs: func() -> list<felt>;
-    /// Get the assets of the currently executing note 
+    /// Get the assets of the currently executing note
     get-assets: func() -> list<core-asset>;
     /// Get the sender of the currently executing note
     get-sender: func() -> account-id;
@@ -204,7 +206,7 @@ interface tx {
     /// (nullifier, script_root) tuples over all input notes.
     get-input-notes-hash: func() -> word;
     /// Returns the output notes hash. This is computed as a sequential hash of
-    /// (note_hash, note_metadata) tuples over all output notes. 
+    /// (note_hash, note_metadata) tuples over all output notes.
     get-output-notes-hash: func() -> word;
     /// Creates a new note.
     /// asset is the asset to be included in the note.
@@ -219,23 +221,23 @@ interface asset {
     use core-types.{felt, core-asset, tag, recipient, account-id, nonce, account-hash, storage-value, storage-root, account-code-root, vault-commitment, block-hash, word};
 
     /// Builds a fungible asset for the specified fungible faucet and amount.
-    /// faucet_id is the faucet to create the asset for. 
+    /// faucet_id is the faucet to create the asset for.
     /// amount is the amount of the asset to create.
     /// Returns the created asset.
     build-fungible-asset: func(faucet-id: account-id, amount: felt) -> core-asset;
     /// Creates a fungible asset for the faucet the transaction is being
-    /// executed against. 
-    /// amount is the amount of the asset to create. 
+    /// executed against.
+    /// amount is the amount of the asset to create.
     /// Returns the created asset.
     create-fungible-asset: func(amount: felt) -> core-asset;
     /// Builds a non-fungible asset for the specified non-fungible faucet and
-    /// data-hash. 
-    /// faucet_id is the faucet to create the asset for. 
-    /// data-hash is the data hash of the non-fungible asset to build. 
+    /// data-hash.
+    /// faucet_id is the faucet to create the asset for.
+    /// data-hash is the data hash of the non-fungible asset to build.
     /// Returns the created asset.
     build-non-fungible-asset: func(faucet-id: account-id, data-hash: word) -> core-asset;
-    /// Creates a non-fungible asset for the faucet the transaction is being executed against. 
-    /// data-hash is the data hash of the non-fungible asset to create. 
+    /// Creates a non-fungible asset for the faucet the transaction is being executed against.
+    /// data-hash is the data hash of the non-fungible asset to create.
     /// Returns the created asset.
     create-non-fungible-asset: func(data-hash: word) -> core-asset;
 }
@@ -253,7 +255,7 @@ interface faucet {
     burn: func(asset: core-asset) -> core-asset;
     /// Returns the total issuance of the fungible faucet the transaction is
     /// being executed against. Panics if the transaction is not being executed
-    /// against a fungible faucet. 
+    /// against a fungible faucet.
     get-total-issuance: func() -> felt;
 
 }
@@ -263,9 +265,9 @@ interface faucet {
 interface types {
     use core-types.{felt, account-id, word, core-asset};
 
-    /// A fungible asset 
+    /// A fungible asset
     record fungible-asset {
-        /// Faucet ID of the faucet which issued the asset as well as the asset amount. 
+        /// Faucet ID of the faucet which issued the asset as well as the asset amount.
         asset: account-id,
         /// Asset amount is guaranteed to be 2^63 - 1 or smaller.
         amount: u64

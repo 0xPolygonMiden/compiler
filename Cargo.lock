@@ -2659,6 +2659,7 @@ dependencies = [
  "cranelift-entity",
  "derive_more",
  "either",
+ "indexmap 2.1.0",
  "intrusive-collections",
  "inventory",
  "lalrpop",

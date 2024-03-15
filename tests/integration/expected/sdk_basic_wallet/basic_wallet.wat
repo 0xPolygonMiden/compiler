@@ -1,7 +1,7 @@
 (component
   (type (;0;)
     (instance
-      (type (;0;) (record (field "inner" float64)))
+      (type (;0;) (record (field "inner" u64)))
       (export (;1;) "felt" (type (eq 0)))
       (type (;2;) (tuple 1 1 1 1))
       (export (;3;) "word" (type (eq 2)))
@@ -47,11 +47,11 @@
   )
   (import "miden:base/tx@1.0.0" (instance (;2;) (type 7)))
   (core module (;0;)
-    (type (;0;) (func (param f64 f64 f64 f64 i32)))
-    (type (;1;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64) (result f64)))
+    (type (;0;) (func (param i64 i64 i64 i64 i32)))
+    (type (;1;) (func (param i64 i64 i64 i64 i64 i64 i64 i64 i64) (result i64)))
     (type (;2;) (func))
-    (type (;3;) (func (param f64 f64 f64 f64)))
-    (type (;4;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64)))
+    (type (;3;) (func (param i64 i64 i64 i64)))
+    (type (;4;) (func (param i64 i64 i64 i64 i64 i64 i64 i64 i64)))
     (type (;5;) (func (param i32 i32) (result i32)))
     (type (;6;) (func (param i32 i32 i32 i32) (result i32)))
     (type (;7;) (func (param i32 i32 i32) (result i32)))
@@ -60,7 +60,7 @@
     (import "miden:base/account@1.0.0" "remove-asset" (func $basic_wallet::bindings::miden::base::account::remove_asset::wit_import (;1;) (type 0)))
     (import "miden:base/tx@1.0.0" "create-note" (func $basic_wallet::bindings::miden::base::tx::create_note::wit_import (;2;) (type 1)))
     (func $__wasm_call_ctors (;3;) (type 2))
-    (func $miden:basic-wallet/basic-wallet@1.0.0#receive-asset (;4;) (type 3) (param f64 f64 f64 f64)
+    (func $miden:basic-wallet/basic-wallet@1.0.0#receive-asset (;4;) (type 3) (param i64 i64 i64 i64)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -79,7 +79,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset (;5;) (type 4) (param f64 f64 f64 f64 f64 f64 f64 f64 f64)
+    (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset (;5;) (type 4) (param i64 i64 i64 i64 i64 i64 i64 i64 i64)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -94,19 +94,19 @@
       local.get 9
       call $basic_wallet::bindings::miden::base::account::remove_asset::wit_import
       local.get 9
-      f64.load
+      i64.load
       local.get 9
       i32.const 8
       i32.add
-      f64.load
+      i64.load
       local.get 9
       i32.const 16
       i32.add
-      f64.load
+      i64.load
       local.get 9
       i32.const 24
       i32.add
-      f64.load
+      i64.load
       local.get 4
       local.get 5
       local.get 6
@@ -783,8 +783,8 @@
     (export "cabi_realloc" (func $cabi_realloc))
   )
   (core module (;1;)
-    (type (;0;) (func (param f64 f64 f64 f64 i32)))
-    (func $indirect-miden:base/account@1.0.0-add-asset (;0;) (type 0) (param f64 f64 f64 f64 i32)
+    (type (;0;) (func (param i64 i64 i64 i64 i32)))
+    (func $indirect-miden:base/account@1.0.0-add-asset (;0;) (type 0) (param i64 i64 i64 i64 i32)
       local.get 0
       local.get 1
       local.get 2
@@ -793,7 +793,7 @@
       i32.const 0
       call_indirect (type 0)
     )
-    (func $indirect-miden:base/account@1.0.0-remove-asset (;1;) (type 0) (param f64 f64 f64 f64 i32)
+    (func $indirect-miden:base/account@1.0.0-remove-asset (;1;) (type 0) (param i64 i64 i64 i64 i32)
       local.get 0
       local.get 1
       local.get 2
@@ -808,7 +808,7 @@
     (export "$imports" (table 0))
   )
   (core module (;2;)
-    (type (;0;) (func (param f64 f64 f64 f64 i32)))
+    (type (;0;) (func (param i64 i64 i64 i64 i32)))
     (import "" "0" (func (;0;) (type 0)))
     (import "" "1" (func (;1;) (type 0)))
     (import "" "$imports" (table (;0;) 2 2 funcref))
@@ -862,7 +862,7 @@
   (alias export 0 "tag" (type (;16;)))
   (alias export 0 "recipient" (type (;17;)))
   (component (;0;)
-    (type (;0;) (record (field "inner" float64)))
+    (type (;0;) (record (field "inner" u64)))
     (import "import-type-felt" (type (;1;) (eq 0)))
     (type (;2;) (tuple 1 1 1 1))
     (import "import-type-word" (type (;3;) (eq 2)))

@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
 
-use intrusive_collections::RBTree;
+use indexmap::IndexMap;
 use miden_core::crypto::hash::RpoDigest;
 
 use self::formatter::PrettyPrint;
@@ -30,7 +30,7 @@ impl fmt::Display for FunctionInvocationMethod {
 }
 
 /// A component import
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentImport {
     /// The interfact function name that is being imported
     pub interface_function: InterfaceFunctionIdent,
@@ -69,7 +69,9 @@ impl formatter::PrettyPrint for ComponentImport {
 }
 
 /// The name of a exported function
-#[derive(Debug, Ord, PartialEq, PartialOrd, Eq, Hash, derive_more::From, derive_more::Into)]
+#[derive(
+    Debug, Clone, Ord, PartialEq, PartialOrd, Eq, Hash, derive_more::From, derive_more::Into,
+)]
 pub struct FunctionExportName(Symbol);
 
 /// A component export
@@ -87,8 +89,9 @@ pub struct ComponentExport {
 /// have exports/imports.
 #[derive(Default)]
 pub struct Component {
-    /// This tree stores all of the modules
-    modules: RBTree<ModuleTreeAdapter>,
+    /// This tree stores all of the modules.
+    /// The modules should be stored in a topological order
+    modules: IndexMap<Ident, Box<Module>>,
 
     /// A list of this component's imports, indexed by function identifier
     imports: BTreeMap<FunctionIdent, ComponentImport>,
@@ -105,23 +108,23 @@ impl Component {
     }
 
     /// Return a reference to the module table for this program
-    pub fn modules(&self) -> &RBTree<ModuleTreeAdapter> {
+    pub fn modules(&self) -> &IndexMap<Ident, Box<Module>> {
         &self.modules
     }
 
     /// Return a mutable reference to the module table for this program
-    pub fn modules_mut(&mut self) -> &mut RBTree<ModuleTreeAdapter> {
+    pub fn modules_mut(&mut self) -> &mut IndexMap<Ident, Box<Module>> {
         &mut self.modules
     }
 
     /// Returns true if `name` is defined in this program.
     pub fn contains(&self, name: Ident) -> bool {
-        !self.modules.find(&name).is_null()
+        !self.modules.contains_key(&name)
     }
 
     /// Look up the signature of a function in this program by `id`
     pub fn signature(&self, id: &FunctionIdent) -> Option<&Signature> {
-        let module = self.modules.find(&id.module).get()?;
+        let module = self.modules.get(&id.module)?;
         module.function(id.function).map(|f| &f.signature)
     }
 
@@ -162,7 +165,7 @@ impl formatter::PrettyPrint for Component {
 
         let modules = self
             .modules
-            .iter()
+            .values()
             .map(PrettyPrint::render)
             .reduce(|acc, doc| acc + nl() + doc)
             .map(|doc| const_text(";; Modules") + nl() + doc)
@@ -194,7 +197,7 @@ impl formatter::PrettyPrint for Component {
 /// Simply create the builder, add/build one or more modules, then call `link` to obtain a
 /// [Component].
 pub struct ComponentBuilder<'a> {
-    modules: BTreeMap<Ident, Box<Module>>,
+    modules: IndexMap<Ident, Box<Module>>,
     imports: BTreeMap<FunctionIdent, ComponentImport>,
     exports: BTreeMap<FunctionExportName, ComponentExport>,
     entry: Option<FunctionIdent>,
@@ -268,9 +271,7 @@ impl<'a> ComponentBuilder<'a> {
 
     pub fn build(self) -> Component {
         let mut c = Component::default();
-        for module in self.modules.into_values() {
-            c.modules.insert(module);
-        }
+        c.modules = self.modules;
         c.exports = self.exports;
         c.imports = self.imports;
         c

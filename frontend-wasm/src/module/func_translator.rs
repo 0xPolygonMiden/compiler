@@ -6,19 +6,22 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use crate::code_translator::translate_operator;
-use crate::error::WasmResult;
-use crate::module::func_translation_state::FuncTranslationState;
-use crate::module::function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt};
-use crate::module::types::{convert_valtype, ir_type, ModuleTypes};
-use crate::ssa::Variable;
-use crate::translation_utils::emit_zero;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::cranelift_entity::EntityRef;
-use miden_hir::{Block, InstBuilder, ModuleFunctionBuilder};
+use miden_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
-use super::Module;
+use super::{func_env::FuncEnvironment, Module};
+use crate::{
+    code_translator::translate_operator,
+    error::WasmResult,
+    module::{
+        func_translation_state::FuncTranslationState,
+        function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
+        types::{convert_valtype, ir_type, ModuleTypes},
+    },
+    ssa::Variable,
+    translation_utils::emit_zero,
+};
 
 /// WebAssembly to Miden IR function translator.
 ///
@@ -46,6 +49,7 @@ impl FuncTranslator {
         mod_func_builder: &mut ModuleFunctionBuilder,
         module: &Module,
         mod_types: &ModuleTypes,
+        func_env: &FuncEnvironment,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
@@ -70,6 +74,7 @@ impl FuncTranslator {
             &mut self.state,
             module,
             mod_types,
+            func_env,
             diagnostics,
             func_validator,
         )?;
@@ -151,6 +156,7 @@ fn parse_function_body(
     state: &mut FuncTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
+    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
@@ -167,6 +173,7 @@ fn parse_function_body(
             state,
             module,
             mod_types,
+            func_env,
             diagnostics,
             SourceSpan::default(),
         )?;
@@ -181,9 +188,7 @@ fn parse_function_body(
     // generate a return instruction that doesn't match the signature.
     if state.reachable {
         if !builder.is_unreachable() {
-            builder
-                .ins()
-                .ret(state.stack.first().cloned(), SourceSpan::default());
+            builder.ins().ret(state.stack.first().cloned(), SourceSpan::default());
         }
     }
 

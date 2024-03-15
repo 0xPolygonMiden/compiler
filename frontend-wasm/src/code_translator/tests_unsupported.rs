@@ -1,20 +1,17 @@
 use miden_diagnostics::SourceSpan;
-use miden_hir::CallConv;
-use miden_hir::Linkage;
-use miden_hir::ModuleBuilder;
-use miden_hir::Signature;
-
-use wasmparser::MemArg;
-use wasmparser::Operator;
-use wasmparser::Operator::*;
-
-use crate::module::func_translation_state::FuncTranslationState;
-use crate::module::function_builder_ext::FunctionBuilderContext;
-use crate::module::function_builder_ext::FunctionBuilderExt;
-use crate::module::Module;
-use crate::test_utils::test_diagnostics;
+use miden_hir::{CallConv, Linkage, ModuleBuilder, Signature};
+use wasmparser::{MemArg, Operator, Operator::*};
 
 use super::translate_operator;
+use crate::{
+    module::{
+        func_env::FuncEnvironment,
+        func_translation_state::FuncTranslationState,
+        function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
+        Module,
+    },
+    test_utils::test_diagnostics,
+};
 
 fn check_unsupported(op: &Operator) {
     let diagnostics = test_diagnostics();
@@ -29,41 +26,31 @@ fn check_unsupported(op: &Operator) {
     };
     let mut module_func_builder = module_builder.function("func_name", sig.clone()).unwrap();
     let mut fb_ctx = FunctionBuilderContext::new();
+    let mod_types = Default::default();
+    let func_env = FuncEnvironment::new(&module_info, &mod_types, vec![]);
     let mut state = FuncTranslationState::new();
     let mut builder_ext = FunctionBuilderExt::new(&mut module_func_builder, &mut fb_ctx);
-    let mod_types = Default::default();
     let result = translate_operator(
         op,
         &mut builder_ext,
         &mut state,
         &module_info,
         &mod_types,
+        &func_env,
         &diagnostics,
         SourceSpan::default(),
     );
-    assert!(
-        result.is_err(),
-        "Expected unsupported op error for {:?}",
-        op
-    );
+    assert!(result.is_err(), "Expected unsupported op error for {:?}", op);
     assert_eq!(
         result.unwrap_err().to_string(),
         format!("Unsupported Wasm: Wasm op {:?} is not supported", op)
     );
-    assert!(
-        diagnostics.has_errors(),
-        "Expected diagnostics to have errors"
-    );
+    assert!(diagnostics.has_errors(), "Expected diagnostics to have errors");
 }
 
 // Wasm Spec v1.0
 const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
-    CallIndirect {
-        type_index: 0,
-        table_index: 0,
-        table_byte: 0,
-    },
-    /****************************** Memory Operators ************************************/
+    /****************************** Memory Operators *********************************** */
     F32Load {
         memarg: MemArg {
             align: 0,
@@ -155,7 +142,7 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     F64ReinterpretI64,
     I32ReinterpretF32,
     I64ReinterpretF64,
-    /****************************** Binary Operators ************************************/
+    /****************************** Binary Operators *********************************** */
     F32Add,
     F32Sub,
     F32Mul,
@@ -169,7 +156,7 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     F64Div,
     F64Min,
     F64Max,
-    /**************************** Comparison Operators **********************************/
+    /**************************** Comparison Operators ********************************* */
     F32Eq,
     F32Ne,
     F32Gt,

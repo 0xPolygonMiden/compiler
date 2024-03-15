@@ -75,7 +75,7 @@ fn wcm_inc() {
         results: vec![Type::U32],
     };
     assert_eq!(export.function_ty, expected_export_func_ty);
-    let module = ir_component.modules().front().get().unwrap();
+    let module = ir_component.modules().first().unwrap().1;
     dbg!(&module.imports());
     let import_info = module.imports();
     let function_id = import_info

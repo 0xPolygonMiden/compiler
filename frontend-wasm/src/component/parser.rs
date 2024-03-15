@@ -3,24 +3,33 @@
 
 // Based on wasmtime v16.0 Wasm component translation
 
-use crate::error::WasmResult;
-use crate::module::module_env::{ModuleEnvironment, ParsedModule};
-use crate::module::types::{
-    convert_func_type, convert_valtype, EntityIndex, FuncIndex, GlobalIndex, MemoryIndex,
-    TableIndex, WasmType,
-};
-use crate::translation_utils::BuildFxHasher;
-use crate::{component::*, unsupported_diag, WasmError, WasmTranslationConfig};
+use std::{collections::HashMap, mem};
+
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::cranelift_entity::PrimaryMap;
 use rustc_hash::FxHashMap;
-use std::collections::HashMap;
-use std::mem;
-use wasmparser::types::{
-    AliasableResourceId, ComponentEntityType, ComponentFuncTypeId, ComponentInstanceTypeId, Types,
+use wasmparser::{
+    types::{
+        AliasableResourceId, ComponentEntityType, ComponentFuncTypeId, ComponentInstanceTypeId,
+        Types,
+    },
+    Chunk, ComponentImportName, Encoding, Parser, Payload, Validator,
 };
-use wasmparser::{Chunk, ComponentImportName, Encoding, Parser, Payload, Validator};
+
+use crate::{
+    component::*,
+    error::WasmResult,
+    module::{
+        module_env::{ModuleEnvironment, ParsedModule},
+        types::{
+            convert_func_type, convert_valtype, EntityIndex, FuncIndex, GlobalIndex, MemoryIndex,
+            TableIndex, WasmType,
+        },
+    },
+    translation_utils::BuildFxHasher,
+    unsupported_diag, WasmError, WasmTranslationConfig,
+};
 
 /// Structure used to parse a Wasm component
 pub struct ComponentParser<'a, 'data> {
@@ -419,13 +428,9 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             match ty? {
                 wasmparser::ComponentType::Resource { rep, dtor } => {
                     let rep = convert_valtype(rep);
-                    let id = types
-                        .component_any_type_at(component_type_index)
-                        .unwrap_resource();
+                    let id = types.component_any_type_at(component_type_index).unwrap_resource();
                     let dtor = dtor.map(FuncIndex::from_u32);
-                    self.result
-                        .initializers
-                        .push(LocalInitializer::Resource(id, rep, dtor));
+                    self.result.initializers.push(LocalInitializer::Resource(id, rep, dtor));
                 }
 
                 // no extra processing needed
@@ -450,12 +455,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         Ok(for import in s {
             let import = import?;
             let types = self.validator.types(0).unwrap();
-            let ty = types
-                .component_entity_type_of_import(import.name.0)
-                .unwrap();
-            self.result
-                .initializers
-                .push(LocalInitializer::Import(import.name, ty));
+            let ty = types.component_entity_type_of_import(import.name.0).unwrap();
+            self.result.initializers.push(LocalInitializer::Import(import.name, ty));
         })
     }
 
@@ -543,9 +544,14 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         )
         .parse(parser, &component[range.start..range.end], diagnostics)?;
         let static_idx = self.static_modules.push(parsed_module);
-        self.result
-            .initializers
-            .push(LocalInitializer::ModuleStatic(static_idx));
+        self.result.initializers.push(LocalInitializer::ModuleStatic(static_idx));
+        // Set a fallback name for the newly added parsed module to be used if
+        // the name section does not define a name for the module.
+        self.static_modules
+            .get_mut(static_idx)
+            .unwrap()
+            .module
+            .set_name_fallback(format!("module{}", static_idx.as_u32()).into());
         Ok(())
     }
 
@@ -635,9 +641,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             let item = self.kind_to_item(export.kind, export.index)?;
             let prev = self.result.exports.insert(export.name.0, item);
             assert!(prev.is_none());
-            self.result
-                .initializers
-                .push(LocalInitializer::Export(item));
+            self.result.initializers.push(LocalInitializer::Export(item));
         })
     }
 
@@ -772,9 +776,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 // it's an alias into our own space. Otherwise it's switched to
                 // an upvar and will index into the upvar space. Either way
                 // it's just plumbed directly into the initializer.
-                self.result
-                    .initializers
-                    .push(LocalInitializer::AliasModule(module));
+                self.result.initializers.push(LocalInitializer::AliasModule(module));
             }
             wasmparser::ComponentOuterAliasKind::Component => {
                 let index = ComponentIndex::from_u32(index);
@@ -785,9 +787,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                         ClosedOverComponent::Upvar(frame.closure_args.components.push(component));
                 }
 
-                self.result
-                    .initializers
-                    .push(LocalInitializer::AliasComponent(component));
+                self.result.initializers.push(LocalInitializer::AliasComponent(component));
             }
         }
     }

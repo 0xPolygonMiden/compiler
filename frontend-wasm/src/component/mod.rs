@@ -7,8 +7,8 @@ pub mod build_ir;
 mod dfg;
 pub mod info;
 mod inline;
-mod instance;
 mod parser;
+mod translator;
 mod types;
 
 pub use self::info::*;
