@@ -71,7 +71,8 @@ pub fn translate_module_as_component(
                         )
                         .as_str(),
                     );
-                let function_ty = miden_abi_function_type(func_id.as_str());
+                let function_ty =
+                    miden_abi_function_type(ext_func.module.as_symbol().as_str(), &func_id);
                 let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
                     function_id: ext_func.function,
                     function_ty,

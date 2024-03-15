@@ -47,16 +47,21 @@ impl ModuleTranslationState {
                 {
                     Occupied(entry) => {
                         let stable_name = entry.get().clone();
-                        miden_abi_function_type(&stable_name).into()
+                        miden_abi_function_type(func_id.module.as_symbol().as_str(), &stable_name)
+                            .into()
                     }
                     Vacant(entry) => {
-                        if let Ok((stable_name, _)) =
+                        if let Ok((func_stable_name, _)) =
                             parse_import_function_digest(func_id.function.as_symbol().as_str())
                         {
-                            entry.insert(stable_name.clone());
-                            miden_abi_function_type(&stable_name).into()
+                            entry.insert(func_stable_name.clone());
+                            miden_abi_function_type(
+                                func_id.module.as_symbol().as_str(),
+                                &func_stable_name,
+                            )
+                            .into()
                         } else {
-                            // This is imported but not a "well-known" Miden ABI function
+                            // This is imported, but not a "well-known" Miden ABI function
                             sig.clone()
                         }
                     }

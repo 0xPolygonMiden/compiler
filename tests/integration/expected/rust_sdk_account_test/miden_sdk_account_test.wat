@@ -7,9 +7,9 @@
   (type (;5;) (func (param i32 i32)))
   (type (;6;) (func (param i32 i32 i32)))
   (type (;7;) (func (param i32 i32 i32 i32)))
-  (import "env" "miden:tx_kernel/account.get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/account.get_id<0x0000000000000000000000000000000000000000000000000000000000000000> (;0;) (type 0)))
-  (import "env" "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000> (;1;) (type 1)))
-  (import "env" "miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000> (;2;) (type 2)))
+  (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
+  (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_note_get_inputs (;1;) (type 1)))
+  (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;2;) (type 2)))
   (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;3;) (type 3) (param i32)
     (local i32)
     global.get $__stack_pointer
@@ -68,7 +68,7 @@
     global.set $__stack_pointer
   )
   (func $get_wallet_magic_number (;6;) (type 0) (result i32)
-    call $miden:tx_kernel/account.get_id<0x0000000000000000000000000000000000000000000000000000000000000000>
+    call $miden_sdk_tx_kernel::extern_account_get_id
     i32.const 42
     i32.add
   )
@@ -115,7 +115,7 @@
     local.get 0
     local.get 0
     local.get 0
-    call $miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>
+    call $miden_sdk_tx_kernel::extern_note_get_inputs
     local.tee 1
     i32.const 3
     i32.shl
@@ -187,7 +187,7 @@
     local.get 1
     i32.load offset=12
     local.get 2
-    call $miden:tx_kernel/account.add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>
+    call $miden_sdk_tx_kernel::extern_account_add_asset
     local.get 0
     local.get 2
     i32.const 24
