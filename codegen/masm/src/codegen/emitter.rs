@@ -496,10 +496,15 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             hir::Opcode::Neg => emitter.neg(),
             hir::Opcode::Inv => emitter.inv(),
             hir::Opcode::Incr => emitter.incr(),
+            hir::Opcode::Ilog2 => emitter.ilog2(),
             hir::Opcode::Pow2 => emitter.pow2(),
             hir::Opcode::Not => emitter.not(),
             hir::Opcode::Bnot => emitter.bnot(),
             hir::Opcode::Popcnt => emitter.popcnt(),
+            hir::Opcode::Clz => emitter.clz(),
+            hir::Opcode::Ctz => emitter.ctz(),
+            hir::Opcode::Clo => emitter.clo(),
+            hir::Opcode::Cto => emitter.cto(),
             // This opcode is a no-op
             hir::Opcode::PtrToInt => {
                 let result_ty = emitter.value_type(result).clone();

@@ -1856,6 +1856,7 @@ fn apply_op_stack_effects(
         | MasmOp::DivImm(_)
         | MasmOp::Neg
         | MasmOp::Inv
+        | MasmOp::Ilog2
         | MasmOp::Pow2
         | MasmOp::ExpImm(_) => {
             let ty = stack.peek().expect("operand stack is empty");
@@ -1970,6 +1971,10 @@ fn apply_op_stack_effects(
         | MasmOp::U32RotlImm(_)
         | MasmOp::U32RotrImm(_)
         | MasmOp::U32Popcnt
+        | MasmOp::U32Clz
+        | MasmOp::U32Ctz
+        | MasmOp::U32Clo
+        | MasmOp::U32Cto
         | MasmOp::U32WrappingAddImm(_)
         | MasmOp::U32WrappingSubImm(_)
         | MasmOp::U32WrappingMulImm(_)

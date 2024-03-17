@@ -394,6 +394,7 @@ pub enum Opcode {
     Neg,
     Inv,
     Incr,
+    Ilog2,
     Pow2,
     Exp,
     Not,
@@ -511,6 +512,7 @@ impl Opcode {
             | Self::Neg
             | Self::Inv
             | Self::Incr
+            | Self::Ilog2
             | Self::Pow2
             | Self::Exp
             | Self::Not
@@ -598,6 +600,7 @@ impl Opcode {
             | Self::Neg
             | Self::Inv
             | Self::Incr
+            | Self::Ilog2
             | Self::Pow2
             | Self::Popcnt
             | Self::Clz
@@ -681,11 +684,6 @@ impl Opcode {
             | Self::Neg
             | Self::Inv
             | Self::Pow2
-            | Self::Popcnt
-            | Self::Clz
-            | Self::Ctz
-            | Self::Clo
-            | Self::Cto
             | Self::Mod
             | Self::DivMod
             | Self::Exp
@@ -697,6 +695,10 @@ impl Opcode {
             | Self::Rotr
             | Self::MemGrow => {
                 smallvec![ctrl_ty]
+            }
+            // These ops always return a usize/u32 type
+            Self::Ilog2 | Self::Popcnt | Self::Clz | Self::Clo | Self::Ctz | Self::Cto => {
+                smallvec![Type::U32]
             }
             // These ops have overflowing variants which returns an additional result in that case
             Self::Add | Self::Sub | Self::Mul | Self::Incr | Self::Shl | Self::Shr => {
@@ -761,6 +763,7 @@ impl fmt::Display for Opcode {
             Self::Neg => f.write_str("neg"),
             Self::Inv => f.write_str("inv"),
             Self::Incr => f.write_str("incr"),
+            Self::Ilog2 => f.write_str("ilog2"),
             Self::Pow2 => f.write_str("pow2"),
             Self::Not => f.write_str("not"),
             Self::Bnot => f.write_str("bnot"),
@@ -775,10 +778,10 @@ impl fmt::Display for Opcode {
             Self::Rotl => f.write_str("rotl"),
             Self::Rotr => f.write_str("rotr"),
             Self::Popcnt => f.write_str("popcnt"),
-            Self::Clz => f.write_str("leading_zeros"),
-            Self::Ctz => f.write_str("trailing_zeros"),
-            Self::Clo => f.write_str("leading_ones"),
-            Self::Cto => f.write_str("trailing_ones"),
+            Self::Clz => f.write_str("clz"),
+            Self::Ctz => f.write_str("ctz"),
+            Self::Clo => f.write_str("clo"),
+            Self::Cto => f.write_str("cto"),
             Self::Eq => f.write_str("eq"),
             Self::Neq => f.write_str("neq"),
             Self::Gt => f.write_str("gt"),

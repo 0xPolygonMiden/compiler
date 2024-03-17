@@ -1025,10 +1025,15 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     unary_int_op!(neg, Opcode::Neg);
     unary_int_op!(inv, Opcode::Inv);
     unary_int_op_with_overflow!(incr, Opcode::Incr);
+    unary_int_op!(ilog2, Opcode::Ilog2);
     unary_int_op!(pow2, Opcode::Pow2);
     unary_boolean_op!(not, Opcode::Not);
     unary_int_op!(bnot, Opcode::Bnot);
     unary_int_op!(popcnt, Opcode::Popcnt);
+    unary_int_op!(clz, Opcode::Clz);
+    unary_int_op!(ctz, Opcode::Ctz);
+    unary_int_op!(clo, Opcode::Clo);
+    unary_int_op!(cto, Opcode::Cto);
 
     fn eq(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
         into_first_result!(self.Binary(Opcode::Eq, Type::I1, lhs, rhs, span))

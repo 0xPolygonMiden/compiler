@@ -253,7 +253,11 @@ pub enum MasmOp {
     ///
     /// [C, B, A, a] <- [*a, *(a + 1), A, a + 2]
     AdvPipe,
-    /// TODO
+    /// Pops `n` elements from the advice stack, and pushes them on the operand stack
+    ///
+    /// Fails if less than `n` elements are available.
+    ///
+    /// Valid values of `n` fall in the range 1..=16
     AdvPush(u8),
     /// TODO
     AdvLoadw,
@@ -311,6 +315,8 @@ pub enum MasmOp {
     Inv,
     /// Pops `a` off the stack, and places the result of incrementing it by 1 back on the stack
     Incr,
+    /// Computes the base 2 logarithm of `a`, rounded down, and places it on the advice stack.
+    Ilog2,
     /// Pops `a` off the stack, and places the result of `2^a` on the stack
     ///
     /// NOTE: `a` must not be > 63
@@ -553,6 +559,22 @@ pub enum MasmOp {
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Popcnt,
+    /// Computes the number of leading zero bits in `a`, and places it on the advice stack
+    ///
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Clz,
+    /// Computes the number of trailing zero bits in `a`, and places it on the advice stack
+    ///
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Ctz,
+    /// Computes the number of leading one bits in `a`, and places it on the advice stack
+    ///
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Clo,
+    /// Computes the number of trailing one bits in `a`, and places it on the advice stack
+    ///
+    /// This operation is unchecked, so the result is undefined if the operands are not valid u32
+    U32Cto,
     /// Pops `b, a` from the stack, and places 1 on the stack if `a < b`, else 0
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
@@ -612,6 +634,7 @@ impl MasmOp {
             Instruction::Neg => Self::Neg,
             Instruction::Inv => Self::Inv,
             Instruction::Incr => Self::Incr,
+            //Instruction::Ilog2 => Self::ILog2,
             Instruction::Pow2 => Self::Pow2,
             Instruction::Exp => Self::Exp,
             Instruction::ExpImm(imm) => {
@@ -683,6 +706,10 @@ impl MasmOp {
             Instruction::U32Rotl => Self::U32Rotl,
             Instruction::U32RotlImm(imm) => Self::U32RotlImm(imm as u32),
             Instruction::U32Popcnt => Self::U32Popcnt,
+            //Instruction::U32Clz => Self::U32Clz,
+            //Instruction::U32Ctz => Self::U32Ctz,
+            //Instruction::U32Clo => Self::U32Clo,
+            //Instruction::U32Cto => Self::U32Cto,
             Instruction::U32Lt => Self::U32Lt,
             Instruction::U32Lte => Self::U32Lte,
             Instruction::U32Gt => Self::U32Gt,
@@ -1102,6 +1129,7 @@ impl MasmOp {
             Self::Neg => Instruction::Neg,
             Self::Inv => Instruction::Inv,
             Self::Incr => Instruction::Incr,
+            Self::Ilog2 => todo!("Instruction::ILog2"),
             Self::Pow2 => Instruction::Pow2,
             Self::Exp => Instruction::Exp,
             Self::ExpImm(imm) => Instruction::ExpBitLength(imm),
@@ -1216,6 +1244,10 @@ impl MasmOp {
                 Instruction::U32RotrImm(imm.try_into().expect("invalid rotation"))
             }
             Self::U32Popcnt => Instruction::U32Popcnt,
+            Self::U32Clz => todo!("Instruction::U32Clz"),
+            Self::U32Ctz => todo!("Instruction::U32Ctz"),
+            Self::U32Clo => todo!("Instruction::U32Clo"),
+            Self::U32Cto => todo!("Instruction::U32Cto"),
             Self::U32Lt => Instruction::U32Lt,
             Self::U32Lte => Instruction::U32Lte,
             Self::U32Gt => Instruction::U32Gt,
@@ -1292,6 +1324,7 @@ impl fmt::Display for MasmOp {
             Self::Neg => f.write_str("neg"),
             Self::Inv => f.write_str("inv"),
             Self::Incr => f.write_str("add.1"),
+            Self::Ilog2 => f.write_str("ilog2"),
             Self::Pow2 => f.write_str("pow2"),
             Self::Exp => f.write_str("exp"),
             Self::ExpImm(imm) => write!(f, "exp.u{imm}"),
@@ -1347,6 +1380,10 @@ impl fmt::Display for MasmOp {
             Self::U32Rotl | Self::U32RotlImm(_) => f.write_str("u32rotl"),
             Self::U32Rotr | Self::U32RotrImm(_) => f.write_str("u32rotr"),
             Self::U32Popcnt => f.write_str("u32popcnt"),
+            Self::U32Clz => f.write_str("u32clz"),
+            Self::U32Ctz => f.write_str("u32ctz"),
+            Self::U32Clo => f.write_str("u32clo"),
+            Self::U32Cto => f.write_str("u32cto"),
             Self::U32Lt => f.write_str("u32lt"),
             Self::U32Lte => f.write_str("u32lte"),
             Self::U32Gt => f.write_str("u32gt"),

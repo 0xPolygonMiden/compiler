@@ -436,7 +436,67 @@ fn i32_popcnt() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1))
-            (let (v1 i32) (popcnt v0))
+            (let (v1 u32) (popcnt v0))
+        "#]],
+    )
+}
+
+#[test]
+fn i32_clz() {
+    check_op(
+        r#"
+            i32.const 1
+            i32.clz
+            drop
+        "#,
+        expect![[r#"
+            (let (v0 i32) (const.i32 1))
+            (let (v1 u32) (clz v0))
+        "#]],
+    )
+}
+
+#[test]
+fn i64_clz() {
+    check_op(
+        r#"
+            i64.const 1
+            i64.clz
+            drop
+        "#,
+        expect![[r#"
+            (let (v0 i64) (const.i64 1))
+            (let (v1 u32) (clz v0))
+        "#]],
+    )
+}
+
+#[test]
+fn i32_ctz() {
+    check_op(
+        r#"
+            i32.const 1
+            i32.ctz
+            drop
+        "#,
+        expect![[r#"
+            (let (v0 i32) (const.i32 1))
+            (let (v1 u32) (ctz v0))
+        "#]],
+    )
+}
+
+#[test]
+fn i64_ctz() {
+    check_op(
+        r#"
+            i64.const 1
+            i64.ctz
+            drop
+        "#,
+        expect![[r#"
+            (let (v0 i64) (const.i64 1))
+            (let (v1 u32) (ctz v0))
         "#]],
     )
 }

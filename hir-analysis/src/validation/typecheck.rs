@@ -1057,6 +1057,7 @@ impl<'a> InstTypeChecker<'a> {
             Opcode::Neg
             | Opcode::Inv
             | Opcode::Incr
+            | Opcode::Ilog2
             | Opcode::Pow2
             | Opcode::Bnot
             | Opcode::Popcnt
