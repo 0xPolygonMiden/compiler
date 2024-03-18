@@ -1,4 +1,3 @@
-use miden_abi_conversion::tx_kernel::{is_miden_sdk_module, miden_abi_function_type};
 use miden_core::crypto::hash::RpoDigest;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature};
@@ -6,8 +5,10 @@ use rustc_hash::FxHashMap;
 
 use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Module, ModuleTypes};
 use crate::{
-    error::WasmResult, miden_abi::parse_import_function_digest,
-    translation_utils::sig_from_funct_type, WasmError,
+    error::WasmResult,
+    miden_abi::{is_miden_sdk_module, miden_sdk_function_type, parse_import_function_digest},
+    translation_utils::sig_from_funct_type,
+    WasmError,
 };
 
 pub struct ModuleTranslationState {
@@ -113,12 +114,8 @@ impl ModuleTranslationState {
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<FunctionIdent> {
         let (func_id, wasm_sig) = self.functions[&index].clone();
-        let sig: Signature = if is_miden_sdk_module(func_id.module.as_symbol().as_str()) {
-            miden_abi_function_type(
-                func_id.module.as_symbol().as_str(),
-                func_id.function.as_symbol().as_str(),
-            )
-            .into()
+        let sig: Signature = if is_miden_sdk_module(func_id.module.as_symbol()) {
+            miden_sdk_function_type(func_id.module.as_symbol(), func_id.function.as_symbol()).into()
         } else {
             wasm_sig.clone()
         };

@@ -2536,15 +2536,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-abi-conversion"
-version = "0.1.0"
-dependencies = [
- "miden-diagnostics",
- "miden-hir-type",
- "rustc-hash",
-]
-
-[[package]]
 name = "miden-air"
 version = "0.8.0"
 source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=211152c631d16a943aae503466b198b93c61150f#211152c631d16a943aae503466b198b93c61150f"
@@ -2648,7 +2639,6 @@ dependencies = [
  "gimli",
  "indexmap 2.1.0",
  "log",
- "miden-abi-conversion",
  "miden-core",
  "miden-diagnostics",
  "miden-hir",

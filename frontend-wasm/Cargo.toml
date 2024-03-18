@@ -16,7 +16,6 @@ miden-core.workspace = true
 miden-hir.workspace = true
 miden-hir-type.workspace = true
 miden-diagnostics.workspace = true
-miden-abi-conversion.workspace = true
 thiserror.workspace = true
 smallvec.workspace = true
 log.workspace = true

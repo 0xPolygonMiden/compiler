@@ -1,6 +1,5 @@
 use core::mem;
 
-use miden_abi_conversion::tx_kernel::miden_abi_function_type;
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
@@ -8,6 +7,7 @@ use wasmparser::{Validator, WasmFeatures};
 use super::{module_tratnslation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
+    miden_abi::miden_sdk_function_type,
     module::{
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
@@ -79,10 +79,9 @@ pub fn translate_module_as_component(
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
             for ext_func in imports {
-                dbg!(&ext_func);
-                let function_ty = miden_abi_function_type(
-                    ext_func.module.as_symbol().as_str(),
-                    ext_func.function.as_symbol().as_str(),
+                let function_ty = miden_sdk_function_type(
+                    ext_func.module.as_symbol(),
+                    ext_func.function.as_symbol(),
                 );
                 let digest = *module_state.digest(ext_func).expect(
                     format!("failed to find MAST root hash for function {}", ext_func.function)

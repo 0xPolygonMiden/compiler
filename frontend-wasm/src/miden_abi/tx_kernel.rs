@@ -16,7 +16,7 @@ pub const ACCOUNT_GET_ID: &str = "get_id";
 type FunctionTypeMap = FxHashMap<String, MidenAbiFunctionType>;
 type ModuleFunctionTypeMap = FxHashMap<String, FunctionTypeMap>;
 
-fn types() -> &'static ModuleFunctionTypeMap {
+pub(crate) fn types() -> &'static ModuleFunctionTypeMap {
     static TYPES: OnceLock<ModuleFunctionTypeMap> = OnceLock::new();
     TYPES.get_or_init(|| {
         let mut m: ModuleFunctionTypeMap = Default::default();
@@ -33,23 +33,4 @@ fn types() -> &'static ModuleFunctionTypeMap {
         m.insert(ACCOUNT_MODULE_NAME.to_string(), account);
         m
     })
-}
-
-pub fn is_miden_sdk_module(module_id: &str) -> bool {
-    types().contains_key(module_id)
-}
-
-/// Get the target tx kernel function type for the given function id
-#[inline(always)]
-pub fn miden_abi_function_type(module_id: &str, function_id: &str) -> MidenAbiFunctionType {
-    let funcs = types()
-        .get(module_id)
-        .expect(format!("No Miden ABI function types found for module {}", module_id).as_str());
-    funcs.get(function_id).cloned().expect(
-        format!(
-            "No Miden ABI function type found for function {} in module {}",
-            function_id, module_id
-        )
-        .as_str(),
-    )
 }

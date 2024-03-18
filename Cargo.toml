@@ -14,7 +14,6 @@ members = [
   "midenc-session",
   "tools/*",
   "frontend-wasm",
-  "miden-abi-conversion",
   "tests/rust-apps/*",
   "tests/integration",
 ]
@@ -83,7 +82,6 @@ midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
-miden-abi-conversion = { path = "miden-abi-conversion" }
 wat = "1.0.69"
 
 [profile.dev]
