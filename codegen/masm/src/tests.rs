@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use std::{cell::RefCell, sync::Arc};
 
 use miden_hir::{
     pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
-    AbiParam, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, OperandStack,
-    ProgramBuilder, Signature, SourceSpan, Stack, StarkField, Type,
+    AbiParam, CallConv, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, Linkage,
+    OperandStack, ProgramBuilder, Signature, SourceSpan, Stack, StarkField, Type,
 };
 use proptest::prelude::*;
+use smallvec::{smallvec, SmallVec};
 
 use super::*;
 
@@ -444,6 +445,248 @@ fn i32_checked_neg() {
     let neg = "intrinsics::i32::checked_neg".parse().unwrap();
     // i32::MIN
     harness.invoke(neg, &[min]).expect("execution failed");
+}
+
+macro_rules! proptest_unary_numeric_op {
+    ($ty_name:ident :: $op:ident, $ty:ty => $ret:ty, $rust_op:ident) => {
+        proptest_unary_numeric_op_impl!($ty_name :: $op, $ty => $ret, $rust_op, 0..$ty_name::MAX);
+    };
+
+    ($ty_name:ident :: $op:ident, $ty:ty => $ret:ty, $rust_op:ident, $strategy:expr) => {
+        proptest_unary_numeric_op_impl!($ty_name :: $op, $ty => $ret, $rust_op, $strategy);
+    };
+}
+
+macro_rules! proptest_unary_numeric_op_impl {
+    ($ty_name:ident :: $op:ident, $ty:ty => $ret:ty, $rust_op:ident, $strategy:expr) => {
+        paste::paste! {
+            #[test]
+            fn [<$ty_name _ $op>]() {
+                let mut harness = TestByEmulationHarness::default();
+
+                // Build a simple program that invokes the clz instruction
+                let mut builder = ProgramBuilder::new(&harness.context.session.diagnostics);
+
+                let mut mb = builder.module("test");
+                let sig = Signature {
+                    params: vec![AbiParam::new(<$ty as ToCanonicalRepr>::ir_type())],
+                    results: vec![AbiParam::new(<$ret as ToCanonicalRepr>::ir_type())],
+                    cc: CallConv::SystemV,
+                    linkage: Linkage::External,
+                };
+                let mut fb = mb.function(stringify!([<$ty_name _ $op>]), sig).expect("unexpected symbol conflict");
+
+                let entry = fb.current_block();
+                // Get the value for `v0`
+                let v0 = {
+                    let args = fb.block_params(entry);
+                    args[0]
+                };
+
+                let v1 = fb.ins().$op(v0, harness.context.current_span());
+                fb.ins().ret(Some(v1), harness.context.current_span());
+
+                let entrypoint = fb.build().expect("unexpected validation error, see diagnostics output");
+                mb.build().expect("unexpected error constructing test module");
+
+                // Link the program
+                let program = builder.with_entrypoint(entrypoint).link().expect("failed to link program");
+
+                // Compile
+                let mut compiler = MasmCompiler::new(&harness.context.session);
+                let program = compiler.compile(program).expect("compilation failed");
+
+                harness
+                    .emulator
+                    .load_program(program.freeze())
+                    .expect("failed to load test program");
+
+                let harness = RefCell::new(harness);
+
+                proptest!(ProptestConfig { cases: 1000, failure_persistence: None, ..Default::default() }, |(n in ($strategy))| {
+                    let mut harness = harness.borrow_mut();
+                    harness.emulator.stop();
+
+                    // Convert to canonical Miden representation, N field elements, each containing a
+                    // 32-bit chunk, highest bits closest to top of stack.
+                    let elems = n.canonicalize();
+
+                    let mut stack = harness.invoke(entrypoint, &elems).expect("execution failed");
+                    harness.emulator.stop();
+                    prop_assert_eq!(stack.len(), <$ret as ToCanonicalRepr>::ir_type().size_in_felts());
+
+                    // Obtain the count of leading zeroes from stack and check that it matches the expected
+                    // count
+                    let result = <$ret as ToCanonicalRepr>::from_stack(&mut stack);
+                    prop_assert_eq!(result, n.$rust_op());
+                });
+            }
+        }
+    };
+}
+
+proptest_unary_numeric_op!(u64::clz, u64 => u32, leading_zeros);
+proptest_unary_numeric_op!(i128::clz, i128 => u32, leading_zeros);
+proptest_unary_numeric_op!(u64::ctz, u64 => u32, trailing_zeros);
+proptest_unary_numeric_op!(i128::ctz, i128 => u32, trailing_zeros);
+proptest_unary_numeric_op!(u64::clo, u64 => u32, leading_ones);
+proptest_unary_numeric_op!(i128::clo, i128 => u32, leading_ones);
+proptest_unary_numeric_op!(u64::cto, u64 => u32, trailing_ones);
+proptest_unary_numeric_op!(i128::cto, i128 => u32, trailing_ones);
+proptest_unary_numeric_op!(u64::ilog2, u64 => u32, ilog2, 1..u64::MAX);
+proptest_unary_numeric_op!(i128::ilog2, i128 => u32, ilog2, 1..i128::MAX);
+
+trait ToCanonicalRepr {
+    fn ir_type() -> Type;
+    fn canonicalize(self) -> SmallVec<[Felt; 4]>;
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self;
+}
+
+impl ToCanonicalRepr for u8 {
+    fn ir_type() -> Type {
+        Type::U8
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![Felt::new(self as u64)]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        let raw = stack.pop().unwrap().as_int();
+        u8::try_from(raw).unwrap_or_else(|_| {
+            panic!("invalid result: expected valid u8, but value is out of range: {raw}")
+        })
+    }
+}
+
+impl ToCanonicalRepr for i8 {
+    fn ir_type() -> Type {
+        Type::I8
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![Felt::new(self as u8 as u64)]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        <u8 as ToCanonicalRepr>::from_stack(stack) as i8
+    }
+}
+
+impl ToCanonicalRepr for u16 {
+    fn ir_type() -> Type {
+        Type::U16
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![Felt::new(self as u64)]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        let raw = stack.pop().unwrap().as_int();
+        u16::try_from(raw).unwrap_or_else(|_| {
+            panic!("invalid result: expected valid u16, but value is out of range: {raw}")
+        })
+    }
+}
+
+impl ToCanonicalRepr for i16 {
+    fn ir_type() -> Type {
+        Type::I16
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![Felt::new(self as u16 as u64)]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        <u16 as ToCanonicalRepr>::from_stack(stack) as i16
+    }
+}
+
+impl ToCanonicalRepr for u32 {
+    fn ir_type() -> Type {
+        Type::U32
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![Felt::new(self as u64)]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        let raw = stack.pop().unwrap().as_int();
+        u32::try_from(raw).unwrap_or_else(|_| {
+            panic!("invalid result: expected valid u32, but value is out of range: {raw}")
+        })
+    }
+}
+
+impl ToCanonicalRepr for i32 {
+    fn ir_type() -> Type {
+        Type::I32
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![Felt::new(self as u32 as u64)]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        <u32 as ToCanonicalRepr>::from_stack(stack) as i32
+    }
+}
+
+impl ToCanonicalRepr for u64 {
+    fn ir_type() -> Type {
+        Type::U64
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        let bytes = self.to_be_bytes();
+        let a = Felt::new(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64);
+        let b = Felt::new(u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as u64);
+        smallvec![a, b]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        let hi = <u32 as ToCanonicalRepr>::from_stack(stack) as u64;
+        let lo = <u32 as ToCanonicalRepr>::from_stack(stack) as u64;
+        (hi << 32) | lo
+    }
+}
+
+impl ToCanonicalRepr for i64 {
+    fn ir_type() -> Type {
+        Type::I64
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        (self as u64).canonicalize()
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        <u64 as ToCanonicalRepr>::from_stack(stack) as i64
+    }
+}
+
+impl ToCanonicalRepr for i128 {
+    fn ir_type() -> Type {
+        Type::I128
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        let bytes = self.to_be_bytes();
+        let a = Felt::new(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64);
+        let b = Felt::new(u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as u64);
+        let c = Felt::new(u32::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]) as u64);
+        let d = Felt::new(u32::from_be_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]) as u64);
+        smallvec![a, b, c, d]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        let hi = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
+        let lo = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
+        (hi << 64) | lo
+    }
 }
 
 proptest! {

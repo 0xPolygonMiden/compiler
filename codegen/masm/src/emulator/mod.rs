@@ -121,6 +121,7 @@ pub struct Emulator {
     modules_pending: FxHashSet<Ident>,
     memory: Vec<[Felt; 4]>,
     stack: OperandStack<Felt>,
+    advice_stack: OperandStack<Felt>,
     callstack: Vec<Activation>,
     hp_start: u32,
     hp: u32,
@@ -158,6 +159,7 @@ impl Emulator {
             modules_pending: Default::default(),
             memory,
             stack: Default::default(),
+            advice_stack: Default::default(),
             callstack: vec![],
             hp_start: hp,
             hp,
@@ -770,6 +772,42 @@ impl Emulator {
     }
 }
 
+/// Pops the top element off the advice stack
+macro_rules! adv_pop {
+    ($emu:ident) => {
+        $emu.advice_stack.pop().expect("advice stack is empty")
+    };
+
+    ($emu:ident, $msg:literal) => {
+        $emu.advice_stack.pop().expect($msg)
+    };
+
+    ($emu:ident, $msg:literal, $($arg:expr),+) => {
+        match $emu.advice_stack.pop() {
+            Some(value) => value,
+            None => panic!($msg, $($arg),*),
+        }
+    }
+}
+
+/// Pops the top word off the advice stack
+macro_rules! adv_popw {
+    ($emu:ident) => {
+        $emu.advice_stack.popw().expect("advice stack does not contain a full word")
+    };
+
+    ($emu:ident, $msg:literal) => {
+        $emu.advice_stack.popw().expect($msg)
+    };
+
+    ($emu:ident, $msg:literal, $($arg:expr),+) => {{
+        match $emu.advice_stack.popw() {
+            Some(value) => value,
+            None => panic!($msg, $($arg),*),
+        }
+    }}
+}
+
 /// Pops the top element off the stack
 macro_rules! pop {
     ($emu:ident) => {
@@ -782,6 +820,24 @@ macro_rules! pop {
 
     ($emu:ident, $msg:literal, $($arg:expr),+) => {
         match $emu.stack.pop() {
+            Some(value) => value,
+            None => panic!($msg, $($arg),*),
+        }
+    }
+}
+
+/// Peeks the top element of the stack
+macro_rules! peek {
+    ($emu:ident) => {
+        $emu.stack.peek().expect("operand stack is empty")
+    };
+
+    ($emu:ident, $msg:literal) => {
+        $emu.stack.peek().expect($msg)
+    };
+
+    ($emu:ident, $msg:literal, $($arg:expr),+) => {
+        match $emu.stack.peek() {
             Some(value) => value,
             None => panic!($msg, $($arg),*),
         }
@@ -825,6 +881,21 @@ macro_rules! pop_u32 {
 
     ($emu:ident, $format:literal $(, $args:expr)*) => {{
         let value = pop!($emu).as_int();
+        assert!(value < 2u64.pow(32), $format, value, $($args),*);
+        value as u32
+    }}
+}
+
+/// Peeks a u32 value from the top of the stack, and asserts if it is out of range
+macro_rules! peek_u32 {
+    ($emu:ident) => {{
+        let value = peek!($emu).as_int();
+        assert!(value < 2u64.pow(32), "assertion failed: {value} is not a valid u32, value is out of range");
+        value as u32
+    }};
+
+    ($emu:ident, $format:literal $(, $args:expr)*) => {{
+        let value = peek!($emu).as_int();
         assert!(value < 2u64.pow(32), $format, value, $($args),*);
         value as u32
     }}
@@ -1272,6 +1343,48 @@ impl Emulator {
                         self.stack.pushw(a);
                     }
                 }
+                Op::AdvPush(n) => {
+                    assert!(
+                        n > 0 && n <= 16,
+                        "invalid adv_push operand: must be a value in the range 1..=16, got {n}"
+                    );
+                    for _ in 0..n {
+                        let value = adv_pop!(self);
+                        self.stack.push(value);
+                    }
+                }
+                Op::AdvLoadw => {
+                    let word = adv_popw!(self);
+                    self.stack.dropw();
+                    self.stack.pushw(word);
+                }
+                Op::AdvPipe => {
+                    // We're overwriting the first two words, C and B, so drop them
+                    self.stack.dropw();
+                    self.stack.dropw();
+                    // The third word, A, is saved, but unused
+                    let a = popw!(self);
+                    // The memory address to write to is the first element of the fourth word
+                    let addr = pop_addr!(self);
+                    // We update the original address += 2, and restore A
+                    self.stack.push_u32(addr as u32 + 2);
+                    self.stack.pushw(a);
+                    // We then move words D and E from the advice stack to the operand stack,
+                    // while also writing those words to memory starting at `addr`
+                    let d = adv_popw!(self);
+                    self.stack.pushw(d);
+                    self.memory[addr] = d;
+                    let e = adv_popw!(self);
+                    self.stack.pushw(e);
+                    self.memory[addr + 1] = e;
+                    // Lastly, since we performed a memory write here, suspend like we do for other
+                    // memory-modifying ops
+                    self.callstack.push(state);
+                    return Ok(EmulatorEvent::MemoryWrite {
+                        addr: addr as u32,
+                        size: 16,
+                    });
+                }
                 Op::Assert => {
                     let cond = pop_bool!(self);
                     assert!(cond, "assertion failed: expected true, got false");
@@ -1481,6 +1594,11 @@ impl Emulator {
                     self.stack.push(a.inv());
                 }
                 Op::Incr => binop!(self, add, Felt::ONE),
+                Op::Ilog2 => {
+                    let a = peek!(self).as_int();
+                    assert!(a > 0, "invalid ilog2 argument: expected {a} to be > 0");
+                    self.advice_stack.push_u32(a.ilog2());
+                }
                 Op::Pow2 => {
                     let a = pop!(self).as_int();
                     assert!(
@@ -1669,25 +1787,41 @@ impl Emulator {
                 Op::U32ShrImm(imm) => binop_wrapping_u32!(self, shr, imm),
                 Op::U32Rotl => {
                     let b = pop_u32!(self);
-                    let a = pop!(self).as_int();
-                    self.stack.push(Felt::new(a.rotate_left(b)));
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.rotate_left(b));
                 }
                 Op::U32RotlImm(imm) => {
-                    let a = pop!(self).as_int();
-                    self.stack.push(Felt::new(a.rotate_left(imm)));
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.rotate_left(imm));
                 }
                 Op::U32Rotr => {
                     let b = pop_u32!(self);
-                    let a = pop!(self).as_int();
-                    self.stack.push(Felt::new(a.rotate_right(b)));
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.rotate_right(b));
                 }
                 Op::U32RotrImm(imm) => {
-                    let a = pop!(self).as_int();
-                    self.stack.push(Felt::new(a.rotate_right(imm)));
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.rotate_right(imm));
                 }
                 Op::U32Popcnt => {
-                    let a = pop!(self).as_int();
+                    let a = pop_u32!(self);
                     self.stack.push_u32(a.count_ones());
+                }
+                Op::U32Clz => {
+                    let a = peek_u32!(self);
+                    self.advice_stack.push_u32(a.leading_zeros());
+                }
+                Op::U32Clo => {
+                    let a = peek_u32!(self);
+                    self.advice_stack.push_u32(a.leading_ones());
+                }
+                Op::U32Ctz => {
+                    let a = peek_u32!(self);
+                    self.advice_stack.push_u32(a.trailing_zeros());
+                }
+                Op::U32Cto => {
+                    let a = peek_u32!(self);
+                    self.advice_stack.push_u32(a.trailing_ones());
                 }
                 Op::U32Gt => comparison!(self, gt),
                 Op::U32Gte => comparison!(self, ge),
