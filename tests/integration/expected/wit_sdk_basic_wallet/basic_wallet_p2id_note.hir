@@ -1,10 +1,10 @@
 (component 
     ;; Component Imports
-    (lower (import ("miden:base/note@1.0.0" #get-inputs) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (list (struct u64)))))) (# #0)
-    (lower (import ("miden:base/note@1.0.0" #get-assets) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (# #1)
-    (lower (import ("miden:base/account@1.0.0" #get-id) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get-id)
-    (lower (import ("miden:base/core-types@1.0.0" #account-id-from-felt) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account-id-from-felt)
-    (lower (import ("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive-asset)
+    (lower (import (abi canon) ("miden:base/note@1.0.0" #get-inputs) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (list (struct u64)))))) (# #0)
+    (lower (import (abi canon) ("miden:base/note@1.0.0" #get-assets) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (# #1)
+    (lower (import (abi canon) ("miden:base/account@1.0.0" #get-id) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get-id)
+    (lower (import (abi canon) ("miden:base/core-types@1.0.0" #account-id-from-felt) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account-id-from-felt)
+    (lower (import (abi canon) ("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive-asset)
 
     ;; Modules
     (module #wit-component:shim

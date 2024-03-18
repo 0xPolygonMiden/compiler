@@ -1,6 +1,6 @@
 (component 
     ;; Component Imports
-    (lower (import ("miden:add-package/add-interface@1.0.0" #add) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param u32) (param u32) (result u32)))) (#miden:add-package/add-interface@1.0.0 #add)
+    (lower (import (abi canon) ("miden:add-package/add-interface@1.0.0" #add) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param u32) (param u32) (result u32)))) (#miden:add-package/add-interface@1.0.0 #add)
 
     ;; Modules
     (module #inc_wasm_component.wasm

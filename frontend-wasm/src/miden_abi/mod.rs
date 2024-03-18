@@ -10,7 +10,7 @@ use crate::{module::function_builder_ext::FunctionBuilderExt, WasmError};
 pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDigest), String> {
     // parse the hex encoded digest from the function name in the angle brackets
     // and the function name (before the angle brackets) example:
-    // "miden:tx_kernel/note.get_inputs<0x0000000000000000000000000000>"
+    // "miden:tx_kernel/note.get_inputs"
     let mut parts = import_name.split('<');
     let function_name = parts.next().unwrap();
     let digest = parts
