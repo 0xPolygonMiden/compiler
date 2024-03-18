@@ -649,15 +649,24 @@ fn translate_call(
     let wasm_sig = module_state.signature(function_index);
     let num_wasm_args = wasm_sig.params().len();
     let args = func_state.peekn(num_wasm_args);
-    let results = adapt_call(func_id, &args, builder, span, diagnostics)?;
+    let results = adapt_call(func_id, &args, builder, span, diagnostics);
     assert_eq!(
         results.len(),
         wasm_sig.results().len(),
-        "Adapted function call results are not the same as the original Wasm function results"
+        "Adapted function call results quantity are not the same as the original Wasm function \
+         results quantity"
     );
-    // TODO: assert also results types
+    assert_eq!(
+        wasm_sig.results().iter().map(|p| &p.ty).collect::<Vec<&Type>>(),
+        results
+            .iter()
+            .map(|r| builder.data_flow_graph().value_type(*r))
+            .collect::<Vec<&Type>>(),
+        "Adapted function call result types are not the same as the original Wasm function result \
+         types"
+    );
     func_state.popn(num_wasm_args);
-    func_state.pushn(results);
+    func_state.pushn(&results);
     Ok(())
 }
 

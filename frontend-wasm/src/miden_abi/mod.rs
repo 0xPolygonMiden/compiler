@@ -2,9 +2,8 @@ use miden_abi_conversion::tx_kernel::{self, is_miden_sdk_module};
 use miden_core::crypto::hash::RpoDigest;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
-use thiserror::Error;
 
-use crate::{module::function_builder_ext::FunctionBuilderExt, WasmError};
+use crate::module::function_builder_ext::FunctionBuilderExt;
 
 /// Parse the stable import function name and the hex encoded digest from the function name
 pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDigest), String> {
@@ -23,31 +22,21 @@ pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDig
     ))
 }
 
-#[derive(Error, Debug)]
-pub enum AdapterError {}
-
-impl From<AdapterError> for WasmError {
-    fn from(value: AdapterError) -> Self {
-        WasmError::Unexpected(format!("Adapter generation error: {}", value))
-    }
-}
-
-// TODO: never fails?
 /// Adapt a call to a Miden ABI function (if needed)
-pub fn adapt_call<'a, 'b, 'c: 'b, 'd>(
+pub fn adapt_call(
     func_id: FunctionIdent,
     args: &[Value],
-    builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
-) -> Result<&'d [Value], AdapterError> {
+) -> Vec<Value> {
     if is_miden_sdk_module(func_id.module.as_symbol().as_str()) {
-        Ok(transform_miden_abi_call(func_id, args, builder, span, diagnostics))
+        transform_miden_abi_call(func_id, args, builder, span, diagnostics)
     } else {
         // no transformation needed
         let call = builder.ins().call(func_id, &args, span);
         let inst_results = builder.inst_results(call);
-        Ok(inst_results)
+        inst_results.to_vec()
     }
 }
 
@@ -71,15 +60,14 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
     }
 }
 
-// TODO: remove lifetimes and return `Vec<Value>` instead of `&[Value]
 /// Transform a function call based on the transformation strategy
-pub fn transform_miden_abi_call<'a, 'b, 'c: 'b, 'd>(
+pub fn transform_miden_abi_call(
     func_id: FunctionIdent,
     args: &[Value],
-    builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
-) -> &'d [Value] {
+) -> Vec<Value> {
     use TransformStrategy::*;
     match get_transform_strategy(func_id.function.as_symbol().as_str()) {
         ListReturn => list_return(func_id, args, builder, span, diagnostics),
@@ -90,41 +78,41 @@ pub fn transform_miden_abi_call<'a, 'b, 'c: 'b, 'd>(
 
 /// No transformation needed
 #[inline(always)]
-pub fn no_transform<'a, 'b, 'c: 'b, 'd>(
+pub fn no_transform(
     func_id: FunctionIdent,
     args: &[Value],
-    builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
     _diagnostics: &DiagnosticsHandler,
-) -> &'d [Value] {
+) -> Vec<Value> {
     let call = builder.ins().call(func_id, args, span);
     let results = builder.inst_results(call);
-    results
+    results.to_vec()
 }
 
 /// The Miden ABI function returns a length and a pointer and we only want the length
-pub fn list_return<'a, 'b, 'c: 'b, 'd>(
+pub fn list_return(
     func_id: FunctionIdent,
     args: &[Value],
-    builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
     _diagnostics: &DiagnosticsHandler,
-) -> &'d [Value] {
+) -> Vec<Value> {
     let call = builder.ins().call(func_id, args, span);
     let results = builder.inst_results(call);
     assert_eq!(results.len(), 2, "List return strategy expects 2 results: length and pointer");
     // Return the first result (length) only
-    results[0..1].as_ref()
+    results[0..1].to_vec()
 }
 
 /// The Miden ABI function returns on the stack and we want to return via a pointer argument
-pub fn return_via_pointer<'a, 'b, 'c: 'b, 'd>(
+pub fn return_via_pointer(
     func_id: FunctionIdent,
     args: &[Value],
-    builder: &'d mut FunctionBuilderExt<'a, 'b, 'c>,
+    builder: &mut FunctionBuilderExt,
     span: SourceSpan,
     _diagnostics: &DiagnosticsHandler,
-) -> &'d [Value] {
+) -> Vec<Value> {
     // Omit the last argument (pointer)
     let args_wo_pointer = &args[0..args.len() - 1];
     let call = builder.ins().call(func_id, args_wo_pointer, span);
@@ -144,5 +132,5 @@ pub fn return_via_pointer<'a, 'b, 'c: 'b, 'd>(
         let addr = builder.ins().inttoptr(eff_ptr, Ptr(ptr_ty.clone().into()), span);
         builder.ins().store(addr, *value, span);
     }
-    &[]
+    Vec::new()
 }
