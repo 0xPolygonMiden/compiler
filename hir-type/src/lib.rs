@@ -698,24 +698,20 @@ impl MidenAbiFunctionType {
 
 impl fmt::Display for MidenAbiFunctionType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "fn(")?;
-        for (i, param) in self.params.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-            write!(f, "{}", param)?;
+        use core::fmt::Write;
+
+        f.write_str("(func")?;
+        for ty in self.params.iter() {
+            write!(f, " (param {ty})")?;
         }
-        write!(f, ")")?;
         if !self.results.is_empty() {
-            write!(f, " -> ")?;
-            for (i, result) in self.results.iter().enumerate() {
-                if i > 0 {
-                    write!(f, ", ")?;
-                }
-                write!(f, "{}", result)?;
+            f.write_str(" (result")?;
+            for ty in self.results.iter() {
+                write!(f, " {ty}")?;
             }
+            f.write_char(')')?;
         }
-        Ok(())
+        f.write_char(')')
     }
 }
 

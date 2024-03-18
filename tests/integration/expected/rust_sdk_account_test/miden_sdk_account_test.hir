@@ -1,8 +1,8 @@
 (component 
     ;; Component Imports
-    (lower (import (abi miden) () (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type fn(i32, i32, i32, i32) -> i32, i32, i32, i32)) (#miden:tx_kernel/account #add_asset)
-    (lower (import (abi miden) () (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type fn() -> i32)) (#miden:tx_kernel/account #get_id)
-    (lower (import (abi miden) () (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type fn(i32) -> i32, i32)) (#miden:tx_kernel/note #get_inputs)
+    (lower (import (abi miden) () (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32)))) (#miden:tx_kernel/account #add_asset)
+    (lower (import (abi miden) () (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result i32)))) (#miden:tx_kernel/account #get_id)
+    (lower (import (abi miden) () (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param i32) (result i32 i32)))) (#miden:tx_kernel/note #get_inputs)
 
     ;; Modules
     (module #miden_sdk_account_test.wasm
