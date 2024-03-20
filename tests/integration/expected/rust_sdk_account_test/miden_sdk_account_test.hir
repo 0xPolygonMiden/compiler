@@ -151,6 +151,54 @@
                 (ret v0))
         )
 
+        (func (export #test_felt_ops_smoke)
+              (param felt) (param felt) (result felt)
+            (block 0 (param v0 felt) (param v1 felt)
+                (let (v3 i1) (gt v0 v1))
+                (let (v4 i1) (neq v3 false))
+                (condbr v4 (block 4) (block 5)))
+
+            (block 1 (param v2 felt)
+                (ret v2))
+
+            (block 2
+                (let (v18 felt) (mul.unchecked v0 v1))
+                (br (block 1 v18)))
+
+            (block 3
+                (let (v17 felt) (sub.unchecked v1 v0))
+                (ret v17))
+
+            (block 4
+                (let (v16 felt) (add.unchecked v0 v1))
+                (ret v16))
+
+            (block 5
+                (let (v5 i1) (lt v1 v0))
+                (let (v6 i1) (neq v5 false))
+                (condbr v6 (block 3) (block 6)))
+
+            (block 6
+                (let (v7 i1) (lte v1 v0))
+                (let (v8 i1) (neq v7 false))
+                (condbr v8 (block 2) (block 7)))
+
+            (block 7
+                (let (v9 i1) (gte v0 v1))
+                (let (v10 i32) (cast v9))
+                (let (v11 i1) (eq v10 0))
+                (let (v12 i32) (cast v11))
+                (let (v13 i1) (neq v12 0))
+                (condbr v13 (block 8 v0) (block 9)))
+
+            (block 8 (param v15 felt)
+                (ret v15))
+
+            (block 9
+                (let (v14 felt) (div.unchecked v1 v0))
+                (br (block 8 v14)))
+        )
+
         (func (export #note_script) (result felt)
             (block 0
                 (let (v1 i32) (const.i32 0))
@@ -165,8 +213,8 @@
                 (let (v9 i64) (const.i64 0))
                 (let (v10 felt) (cast v9))
                 (let [(v11 felt) (v12 felt)] (call (#miden:tx_kernel/note #get_inputs) v7))
-                (let (v13 i64) (call #miden_sdk_types::felt::Felt::as_u64 v11))
-                (let (v14 i64) (call #miden_sdk_types::felt::Felt::as_u64 v11))
+                (let (v13 i64) (cast v11))
+                (let (v14 i64) (cast v11))
                 (let (v15 i32) (trunc v13))
                 (let (v16 i32) (const.i32 3))
                 (let (v17 i32) (shl.wrapping v15 v16))
@@ -595,16 +643,6 @@
 
             (block 15
                 (br (block 12 v78 v80 v100 v91)))
-        )
-
-        (func (export #miden_sdk_types::felt::Felt::as_u64)
-              (param felt) (result i64)
-            (block 0 (param v0 felt)
-                (let (v2 u64) (cast v0))
-                (br (block 1 v2)))
-
-            (block 1 (param v1 i64)
-                (ret v1))
         )
 
         (func (export #miden_sdk_types::word::Word::from_u64_unchecked)

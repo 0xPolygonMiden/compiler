@@ -35,6 +35,7 @@ use crate::{
         Module,
     },
     ssa::Variable,
+    translation_utils::imm_zero,
     unsupported_diag,
 };
 
@@ -103,7 +104,9 @@ pub fn translate_operator(
             let (arg1, arg2, cond) = state.pop3();
             // if cond is not 0, return arg1, else return arg2
             // https://www.w3.org/TR/wasm-core-1/#-hrefsyntax-instr-parametricmathsfselect%E2%91%A0
-            let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
+            let cond_ty = builder.data_flow_graph().value_type(cond);
+            let imm = imm_zero(cond_ty)?;
+            let cond_i1 = builder.ins().neq_imm(cond, imm, span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
         Operator::Unreachable => {
@@ -120,7 +123,7 @@ pub fn translate_operator(
 
         /**************************** Branch instructions *********************************/
         Operator::Br { relative_depth } => translate_br(state, relative_depth, builder, span),
-        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span),
+        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span)?,
         Operator::BrTable { targets } => translate_br_table(targets, state, builder, span)?,
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /************************************ Calls ****************************************/
@@ -743,7 +746,7 @@ fn translate_br_if(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     span: SourceSpan,
-) {
+) -> WasmResult<()> {
     let cond = state.pop1();
     let (br_destination, inputs) = translate_br_if_args(relative_depth, state);
     let next_block = builder.create_block();
@@ -751,10 +754,13 @@ fn translate_br_if(
     let then_args = inputs;
     let else_dest = next_block;
     let else_args = &[];
-    let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
+    let cond_ty = builder.data_flow_graph().value_type(cond);
+    let imm = imm_zero(cond_ty)?;
+    let cond_i1 = builder.ins().neq_imm(cond, imm, span);
     builder.ins().cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
     builder.seal_block(next_block); // The only predecessor is the current block.
     builder.switch_to_block(next_block);
+    Ok(())
 }
 
 fn translate_br_if_args(
@@ -905,7 +911,9 @@ fn translate_if(
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let cond = state.pop1();
-    let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
+    let cond_ty = builder.data_flow_graph().value_type(cond);
+    let imm = imm_zero(cond_ty)?;
+    let cond_i1 = builder.ins().neq_imm(cond, imm, span);
     let next_block = builder.create_block();
     let (destination, else_data) = if blockty.params.eq(&blockty.results) {
         // It is possible there is no `else` block, so we will only

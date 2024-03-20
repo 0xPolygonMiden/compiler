@@ -36,7 +36,22 @@ extern "C" {
     fn extern_not(a: Felt) -> Felt;
 
     #[link_name = "eq"]
-    fn extern_eq(a: Felt, b: Felt) -> bool;
+    fn extern_eq(a: Felt, b: Felt) -> i32;
+
+    // #[link_name = "cmp"]
+    // fn extern_cmp(a: Felt, b: Felt) -> core::cmp::Ordering;
+
+    #[link_name = "gt"]
+    fn extern_gt(a: Felt, b: Felt) -> i32;
+
+    #[link_name = "lt"]
+    fn extern_lt(a: Felt, b: Felt) -> i32;
+
+    #[link_name = "ge"]
+    fn extern_ge(a: Felt, b: Felt) -> i32;
+
+    #[link_name = "le"]
+    fn extern_le(a: Felt, b: Felt) -> i32;
 }
 
 #[derive(Debug)]
@@ -66,6 +81,7 @@ impl Felt {
         }
     }
 
+    #[inline(always)]
     pub fn as_u64(self) -> u64 {
         unsafe { extern_as_u64(self) }
     }
@@ -154,8 +170,48 @@ impl Not for Felt {
 impl PartialEq for Felt {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
-        unsafe { extern_eq(*self, *other) }
+        unsafe { extern_eq(*self, *other) == 1 }
     }
 }
 
 impl Eq for Felt {}
+
+impl PartialOrd for Felt {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+
+    #[inline(always)]
+    fn gt(&self, other: &Self) -> bool {
+        unsafe { extern_gt(*self, *other) != 0 }
+    }
+
+    #[inline(always)]
+    fn ge(&self, other: &Self) -> bool {
+        unsafe { extern_ge(*self, *other) != 0 }
+    }
+
+    #[inline(always)]
+    fn lt(&self, other: &Self) -> bool {
+        unsafe { extern_lt(*other, *self) != 0 }
+    }
+
+    #[inline(always)]
+    fn le(&self, other: &Self) -> bool {
+        unsafe { extern_le(*other, *self) != 0 }
+    }
+}
+
+impl Ord for Felt {
+    #[inline(always)]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        if self.gt(other) {
+            core::cmp::Ordering::Greater
+        } else if self.eq(other) {
+            core::cmp::Ordering::Equal
+        } else {
+            core::cmp::Ordering::Less
+        }
+    }
+}

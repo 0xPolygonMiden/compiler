@@ -22,7 +22,9 @@ pub(crate) fn convert_felt_intrinsics(
         }
         "as_u64" => {
             assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
-            let inst = builder.ins().cast(args[0], U64, span);
+            // we're casting to i64 instead of u64 because Wasm doesn't have u64
+            // and this value will be used in Wasm ops or local vars that expect i64
+            let inst = builder.ins().cast(args[0], I64, span);
             vec![inst]
         }
         // Arithmetic operations
@@ -75,6 +77,28 @@ pub(crate) fn convert_felt_intrinsics(
         "eq" => {
             assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
             let inst = builder.ins().eq(args[0], args[1], span);
+            vec![inst]
+        }
+        "gt" => {
+            assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
+            let inst = builder.ins().gt(args[0], args[1], span);
+            vec![inst]
+        }
+        "ge" => {
+            assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
+            let inst = builder.ins().gte(args[0], args[1], span);
+            // TODO: cast all comparison intrinsics to i32
+            let cast = builder.ins().cast(inst, I32, span);
+            vec![cast]
+        }
+        "lt" => {
+            assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
+            let inst = builder.ins().lt(args[0], args[1], span);
+            vec![inst]
+        }
+        "le" => {
+            assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
+            let inst = builder.ins().lte(args[0], args[1], span);
             vec![inst]
         }
         _ => panic!("No felt op intrinsics found for {}", func_id),

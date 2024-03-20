@@ -25,6 +25,21 @@ impl Account {
         let asset_out = add_assets(asset_in);
         asset_out.as_word().as_tuple().0
     }
+
+    #[no_mangle]
+    pub fn test_felt_ops_smoke(a: Felt, b: Felt) -> Felt {
+        if a > b {
+            a + b
+        } else if a < b {
+            b - a
+        } else if a <= b {
+            a * b
+        } else if a >= b {
+            b / a
+        } else {
+            a
+        }
+    }
 }
 
 pub struct Note;
