@@ -159,81 +159,89 @@
                 (let (v5 i1) (gt v0 v1))
                 (let (v6 i32) (cast v5))
                 (let (v7 i1) (neq v6 0))
-                (condbr v7 (block 6) (block 7)))
+                (condbr v7 (block 7) (block 8)))
 
             (block 1 (param v2 felt)
                 (ret v2))
 
             (block 2
-                (let (v41 felt) (cast v4))
-                (let (v42 felt) (add.unchecked v0 v41))
-                (br (block 1 v42)))
+                (let (v41 felt) (neg v0))
+                (br (block 1 v41)))
 
             (block 3
-                (let (v40 felt) (div.unchecked v1 v0))
+                (assert.eq v1 v0)
+                (let (v39 felt) (cast v4))
+                (let (v40 felt) (add.unchecked v0 v39))
                 (ret v40))
 
             (block 4
-                (let (v38 felt) (pow2 v0))
-                (let (v39 felt) (mul.unchecked v38 v1))
-                (ret v39))
+                (let (v38 felt) (div.unchecked v1 v0))
+                (ret v38))
 
             (block 5
-                (let (v36 felt) (exp v0 v1))
-                (let (v37 felt) (sub.unchecked v36 v1))
+                (let (v36 felt) (pow2 v0))
+                (let (v37 felt) (mul.unchecked v36 v1))
                 (ret v37))
 
             (block 6
-                (let (v34 felt) (inv v0))
-                (let (v35 felt) (add.unchecked v34 v1))
+                (let (v34 felt) (exp v0 v1))
+                (let (v35 felt) (sub.unchecked v34 v1))
                 (ret v35))
 
             (block 7
+                (let (v32 felt) (inv v0))
+                (let (v33 felt) (add.unchecked v32 v1))
+                (ret v33))
+
+            (block 8
                 (let (v8 i1) (lt v1 v0))
                 (let (v9 i32) (cast v8))
                 (let (v10 i1) (neq v9 0))
-                (condbr v10 (block 5) (block 8)))
+                (condbr v10 (block 6) (block 9)))
 
-            (block 8
+            (block 9
                 (let (v11 i1) (lte v1 v0))
                 (let (v12 i32) (cast v11))
                 (let (v13 i1) (neq v12 0))
-                (condbr v13 (block 4) (block 9)))
+                (condbr v13 (block 5) (block 10)))
 
-            (block 9
+            (block 10
                 (let (v14 i1) (gte v0 v1))
                 (let (v15 i32) (cast v14))
                 (let (v16 i1) (neq v15 0))
-                (condbr v16 (block 3) (block 10)))
+                (condbr v16 (block 4) (block 11)))
 
-            (block 10
+            (block 11
                 (let (v17 i1) (eq v0 v1))
                 (let (v18 i32) (cast v17))
                 (let (v19 i32) (const.i32 1))
                 (let (v20 i1) (eq v18 v19))
                 (let (v21 i32) (cast v20))
                 (let (v22 i1) (neq v21 0))
-                (condbr v22 (block 2) (block 11)))
+                (condbr v22 (block 3) (block 12)))
 
-            (block 11
+            (block 12
                 (let (v23 i1) (eq v0 v1))
                 (let (v24 i32) (cast v23))
                 (let (v25 i32) (const.i32 1))
                 (let (v26 i1) (neq v24 v25))
                 (let (v27 i32) (cast v26))
                 (let (v28 i1) (neq v27 0))
-                (condbr v28 (block 12) (block 13)))
-
-            (block 12
-                (let (v33 felt) (neg v0))
-                (ret v33))
+                (condbr v28 (block 2) (block 13)))
 
             (block 13
                 (let (v29 i1) (is_odd v1))
                 (let (v30 i32) (cast v29))
                 (let (v31 i1) (neq v30 0))
-                (let (v32 felt) (select v31 v1 v0))
-                (ret v32))
+                (condbr v31 (block 14) (block 15)))
+
+            (block 14
+                (assert.eq 1 v0)
+                (ret v1))
+
+            (block 15
+                (assert.eq 0 v1)
+                (ret v0))
         )
 
         (func (export #note_script) (result felt)

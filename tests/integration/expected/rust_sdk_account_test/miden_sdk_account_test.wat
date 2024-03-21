@@ -5,14 +5,16 @@
   (type (;3;) (func (param f64) (result i64)))
   (type (;4;) (func (param f64 f64) (result i32)))
   (type (;5;) (func (param f64) (result i32)))
-  (type (;6;) (func (param f64) (result f64)))
-  (type (;7;) (func (param i32) (result f64)))
-  (type (;8;) (func (param f64 f64 f64 f64 i32)))
-  (type (;9;) (func (param i32)))
-  (type (;10;) (func (param i32 i32)))
-  (type (;11;) (func (param i32 i32 i32)))
-  (type (;12;) (func (param i32 i32 i32 i32)))
-  (type (;13;) (func (param i32 i64 i64 i64 i64)))
+  (type (;6;) (func (param f64)))
+  (type (;7;) (func (param f64) (result f64)))
+  (type (;8;) (func (param f64 f64)))
+  (type (;9;) (func (param i32) (result f64)))
+  (type (;10;) (func (param f64 f64 f64 f64 i32)))
+  (type (;11;) (func (param i32)))
+  (type (;12;) (func (param i32 i32)))
+  (type (;13;) (func (param i32 i32 i32)))
+  (type (;14;) (func (param i32 i32 i32 i32)))
+  (type (;15;) (func (param i32 i64 i64 i64 i64)))
   (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
   (import "miden:types/felt" "from_u64_unchecked" (func $miden_sdk_types::felt::extern_from_u64_unchecked (;1;) (type 1)))
   (import "miden:types/felt" "add" (func $miden_sdk_types::felt::extern_add (;2;) (type 2)))
@@ -23,16 +25,19 @@
   (import "miden:types/felt" "ge" (func $miden_sdk_types::felt::extern_ge (;7;) (type 4)))
   (import "miden:types/felt" "eq" (func $miden_sdk_types::felt::extern_eq (;8;) (type 4)))
   (import "miden:types/felt" "is_odd" (func $miden_sdk_types::felt::extern_is_odd (;9;) (type 5)))
-  (import "miden:types/felt" "neg" (func $miden_sdk_types::felt::extern_neg (;10;) (type 6)))
-  (import "miden:types/felt" "inv" (func $miden_sdk_types::felt::extern_inv (;11;) (type 6)))
-  (import "miden:types/felt" "exp" (func $miden_sdk_types::felt::extern_exp (;12;) (type 2)))
-  (import "miden:types/felt" "sub" (func $miden_sdk_types::felt::extern_sub (;13;) (type 2)))
-  (import "miden:types/felt" "pow2" (func $miden_sdk_types::felt::extern_pow2 (;14;) (type 6)))
-  (import "miden:types/felt" "mul" (func $miden_sdk_types::felt::extern_mul (;15;) (type 2)))
-  (import "miden:types/felt" "div" (func $miden_sdk_types::felt::extern_div (;16;) (type 2)))
-  (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_note_get_inputs (;17;) (type 7)))
-  (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;18;) (type 8)))
-  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;19;) (type 9) (param i32)
+  (import "miden:types/felt" "assertz" (func $miden_sdk_types::felt::extern_assertz (;10;) (type 6)))
+  (import "miden:types/felt" "assert" (func $miden_sdk_types::felt::extern_assert (;11;) (type 6)))
+  (import "miden:types/felt" "inv" (func $miden_sdk_types::felt::extern_inv (;12;) (type 7)))
+  (import "miden:types/felt" "exp" (func $miden_sdk_types::felt::extern_exp (;13;) (type 2)))
+  (import "miden:types/felt" "sub" (func $miden_sdk_types::felt::extern_sub (;14;) (type 2)))
+  (import "miden:types/felt" "pow2" (func $miden_sdk_types::felt::extern_pow2 (;15;) (type 7)))
+  (import "miden:types/felt" "mul" (func $miden_sdk_types::felt::extern_mul (;16;) (type 2)))
+  (import "miden:types/felt" "div" (func $miden_sdk_types::felt::extern_div (;17;) (type 2)))
+  (import "miden:types/felt" "assert_eq" (func $miden_sdk_types::felt::extern_assert_eq (;18;) (type 8)))
+  (import "miden:types/felt" "neg" (func $miden_sdk_types::felt::extern_neg (;19;) (type 7)))
+  (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_note_get_inputs (;20;) (type 9)))
+  (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;21;) (type 10)))
+  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;22;) (type 11) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -58,7 +63,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;20;) (type 9) (param i32)
+  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;23;) (type 11) (param i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -75,7 +80,7 @@
       call $__rust_dealloc
     end
   )
-  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;21;) (type 9) (param i32)
+  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;24;) (type 11) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -94,7 +99,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $get_wallet_magic_number (;22;) (type 0) (result f64)
+  (func $get_wallet_magic_number (;25;) (type 0) (result f64)
     (local f64)
     call $miden_sdk_tx_kernel::extern_account_get_id
     local.set 0
@@ -103,7 +108,7 @@
     local.get 0
     call $miden_sdk_types::felt::extern_add
   )
-  (func $test_add_asset (;23;) (type 0) (result f64)
+  (func $test_add_asset (;26;) (type 0) (result f64)
     (local i32 f64)
     global.get $__stack_pointer
     i32.const 64
@@ -130,7 +135,7 @@
     global.set $__stack_pointer
     local.get 1
   )
-  (func $test_felt_ops_smoke (;24;) (type 2) (param f64 f64) (result f64)
+  (func $test_felt_ops_smoke (;27;) (type 2) (param f64 f64) (result f64)
     (local i64)
     local.get 0
     call $miden_sdk_types::felt::extern_as_u64
@@ -140,76 +145,86 @@
         block ;; label = @3
           block ;; label = @4
             block ;; label = @5
-              local.get 0
-              local.get 1
-              call $miden_sdk_types::felt::extern_gt
-              br_if 0 (;@5;)
-              local.get 1
-              local.get 0
-              call $miden_sdk_types::felt::extern_lt
-              br_if 1 (;@4;)
-              local.get 1
-              local.get 0
-              call $miden_sdk_types::felt::extern_le
-              br_if 2 (;@3;)
-              local.get 0
-              local.get 1
-              call $miden_sdk_types::felt::extern_ge
-              br_if 3 (;@2;)
-              local.get 0
-              local.get 1
-              call $miden_sdk_types::felt::extern_eq
-              i32.const 1
-              i32.eq
-              br_if 4 (;@1;)
               block ;; label = @6
+                local.get 0
+                local.get 1
+                call $miden_sdk_types::felt::extern_gt
+                br_if 0 (;@6;)
+                local.get 1
+                local.get 0
+                call $miden_sdk_types::felt::extern_lt
+                br_if 1 (;@5;)
+                local.get 1
+                local.get 0
+                call $miden_sdk_types::felt::extern_le
+                br_if 2 (;@4;)
+                local.get 0
+                local.get 1
+                call $miden_sdk_types::felt::extern_ge
+                br_if 3 (;@3;)
+                local.get 0
+                local.get 1
+                call $miden_sdk_types::felt::extern_eq
+                i32.const 1
+                i32.eq
+                br_if 4 (;@2;)
                 local.get 0
                 local.get 1
                 call $miden_sdk_types::felt::extern_eq
                 i32.const 1
                 i32.ne
-                br_if 0 (;@6;)
-                local.get 1
+                br_if 5 (;@1;)
+                block ;; label = @7
+                  local.get 1
+                  call $miden_sdk_types::felt::extern_is_odd
+                  br_if 0 (;@7;)
+                  local.get 1
+                  call $miden_sdk_types::felt::extern_assertz
+                  local.get 0
+                  return
+                end
                 local.get 0
+                call $miden_sdk_types::felt::extern_assert
                 local.get 1
-                call $miden_sdk_types::felt::extern_is_odd
-                select
                 return
               end
               local.get 0
-              call $miden_sdk_types::felt::extern_neg
+              call $miden_sdk_types::felt::extern_inv
+              local.get 1
+              call $miden_sdk_types::felt::extern_add
               return
             end
             local.get 0
-            call $miden_sdk_types::felt::extern_inv
             local.get 1
-            call $miden_sdk_types::felt::extern_add
+            call $miden_sdk_types::felt::extern_exp
+            local.get 1
+            call $miden_sdk_types::felt::extern_sub
             return
           end
           local.get 0
+          call $miden_sdk_types::felt::extern_pow2
           local.get 1
-          call $miden_sdk_types::felt::extern_exp
-          local.get 1
-          call $miden_sdk_types::felt::extern_sub
+          call $miden_sdk_types::felt::extern_mul
           return
         end
-        local.get 0
-        call $miden_sdk_types::felt::extern_pow2
         local.get 1
-        call $miden_sdk_types::felt::extern_mul
+        local.get 0
+        call $miden_sdk_types::felt::extern_div
         return
       end
-      local.get 1
       local.get 0
-      call $miden_sdk_types::felt::extern_div
+      local.get 1
+      call $miden_sdk_types::felt::extern_assert_eq
+      local.get 0
+      local.get 2
+      call $miden_sdk_types::felt::extern_from_u64_unchecked
+      call $miden_sdk_types::felt::extern_add
       return
     end
     local.get 0
-    local.get 2
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
-    call $miden_sdk_types::felt::extern_add
+    call $miden_sdk_types::felt::extern_neg
   )
-  (func $note_script (;25;) (type 0) (result f64)
+  (func $note_script (;28;) (type 0) (result f64)
     (local i32 f64 f64 i64 i64 i32 i32 i32)
     global.get $__stack_pointer
     i32.const 2048
@@ -280,7 +295,7 @@
       br 0 (;@1;)
     end
   )
-  (func $miden_sdk_tx_kernel::add_assets (;26;) (type 10) (param i32 i32)
+  (func $miden_sdk_tx_kernel::add_assets (;29;) (type 12) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 64
@@ -354,14 +369,14 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $__rust_dealloc (;27;) (type 11) (param i32 i32 i32)
+  (func $__rust_dealloc (;30;) (type 13) (param i32 i32 i32)
     i32.const 1048576
     local.get 0
     local.get 2
     local.get 1
     call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc
   )
-  (func $wee_alloc::neighbors::Neighbors<T>::remove (;28;) (type 9) (param i32)
+  (func $wee_alloc::neighbors::Neighbors<T>::remove (;31;) (type 11) (param i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 0
@@ -428,7 +443,7 @@
     i32.and
     i32.store
   )
-  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;29;) (type 12) (param i32 i32 i32 i32)
+  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;32;) (type 14) (param i32 i32 i32 i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 1
@@ -530,7 +545,7 @@
       i32.store
     end
   )
-  (func $miden_sdk_types::word::Word::from_u64_unchecked (;30;) (type 13) (param i32 i64 i64 i64 i64)
+  (func $miden_sdk_types::word::Word::from_u64_unchecked (;33;) (type 15) (param i32 i64 i64 i64 i64)
     (local f64 f64 f64)
     local.get 1
     call $miden_sdk_types::felt::extern_from_u64_unchecked

@@ -7,7 +7,7 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 
 extern crate alloc;
 
-use miden_sdk::{add_assets, get_id, get_inputs, CoreAsset, Felt, Word};
+use miden_sdk::*;
 
 pub struct Account;
 
@@ -38,12 +38,15 @@ impl Account {
         } else if a >= b {
             b / a
         } else if a == b {
+            assert_eq(a, b);
             a + Felt::from_u64_unchecked(d)
         } else if a != b {
             -a
         } else if b.is_odd() {
+            assert(a);
             b
         } else {
+            assertz(b);
             a
         }
     }

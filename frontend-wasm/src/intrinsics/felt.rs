@@ -1,6 +1,6 @@
 use std::vec;
 
-use miden_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
+use miden_hir::{Felt, FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
 
@@ -104,6 +104,22 @@ pub(crate) fn convert_felt_intrinsics(
             let inst = builder.ins().is_odd(args[0], span);
             let cast = builder.ins().cast(inst, I32, span);
             vec![cast]
+        }
+        // Assert operations
+        "assert" => {
+            assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
+            builder.ins().assert_eq_imm(Immediate::Felt(Felt::new(1)), args[0], span);
+            vec![]
+        }
+        "assertz" => {
+            assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
+            builder.ins().assert_eq_imm(Immediate::Felt(Felt::new(0)), args[0], span);
+            vec![]
+        }
+        "assert_eq" => {
+            assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
+            builder.ins().assert_eq(args[0], args[1], span);
+            vec![]
         }
         _ => panic!("No felt op intrinsics found for {}", func_id),
     }

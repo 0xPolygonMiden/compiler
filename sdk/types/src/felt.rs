@@ -49,6 +49,15 @@ extern "C" {
 
     #[link_name = "is_odd"]
     fn extern_is_odd(a: Felt) -> i32;
+
+    #[link_name = "assert"]
+    fn extern_assert(a: Felt);
+
+    #[link_name = "assertz"]
+    fn extern_assertz(a: Felt);
+
+    #[link_name = "assert_eq"]
+    fn extern_assert_eq(a: Felt, b: Felt);
 }
 
 #[derive(Debug)]
@@ -207,5 +216,29 @@ impl Ord for Felt {
         } else {
             core::cmp::Ordering::Equal
         }
+    }
+}
+
+/// If `a` == 1, removes it from the stack.  Fails if `a` != 1
+#[inline(always)]
+pub fn assert(a: Felt) {
+    unsafe {
+        extern_assert(a);
+    }
+}
+
+/// If `a` == 0, removes it from the stack.  Fails if `a` != 0
+#[inline(always)]
+pub fn assertz(a: Felt) {
+    unsafe {
+        extern_assertz(a);
+    }
+}
+
+/// If `a` == `b`, removes them from the stack.  Fails if `a` != `b`
+#[inline(always)]
+pub fn assert_eq(a: Felt, b: Felt) {
+    unsafe {
+        extern_assert_eq(a, b);
     }
 }
