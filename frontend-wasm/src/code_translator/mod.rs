@@ -35,7 +35,6 @@ use crate::{
         Module,
     },
     ssa::Variable,
-    translation_utils::imm_zero,
     unsupported_diag,
 };
 
@@ -104,9 +103,8 @@ pub fn translate_operator(
             let (arg1, arg2, cond) = state.pop3();
             // if cond is not 0, return arg1, else return arg2
             // https://www.w3.org/TR/wasm-core-1/#-hrefsyntax-instr-parametricmathsfselect%E2%91%A0
-            let cond_ty = builder.data_flow_graph().value_type(cond);
-            let imm = imm_zero(cond_ty)?;
-            let cond_i1 = builder.ins().neq_imm(cond, imm, span);
+            // cond is expected to be an i32
+            let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
         Operator::Unreachable => {
@@ -754,9 +752,8 @@ fn translate_br_if(
     let then_args = inputs;
     let else_dest = next_block;
     let else_args = &[];
-    let cond_ty = builder.data_flow_graph().value_type(cond);
-    let imm = imm_zero(cond_ty)?;
-    let cond_i1 = builder.ins().neq_imm(cond, imm, span);
+    // cond is expected to be a i32 value
+    let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     builder.ins().cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
     builder.seal_block(next_block); // The only predecessor is the current block.
     builder.switch_to_block(next_block);
@@ -911,9 +908,8 @@ fn translate_if(
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let cond = state.pop1();
-    let cond_ty = builder.data_flow_graph().value_type(cond);
-    let imm = imm_zero(cond_ty)?;
-    let cond_i1 = builder.ins().neq_imm(cond, imm, span);
+    // cond is expected to be a i32 value
+    let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     let next_block = builder.create_block();
     let (destination, else_data) = if blockty.params.eq(&blockty.results) {
         // It is possible there is no `else` block, so we will only

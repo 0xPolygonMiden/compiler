@@ -1,7 +1,7 @@
 //! Helper functions and structures for the translation.
 
 use miden_diagnostics::SourceSpan;
-use miden_hir::{AbiParam, CallConv, Immediate, InstBuilder, Linkage, Signature, Value};
+use miden_hir::{AbiParam, CallConv, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
 use rustc_hash::FxHasher;
 
@@ -98,39 +98,6 @@ impl FlagsSize {
 /// Divide `n` by `d`, rounding up in the case of a non-zero remainder.
 const fn ceiling_divide(n: usize, d: usize) -> usize {
     (n + d - 1) / d
-}
-
-/// Return `Immediate` representing zero value for the given type.
-pub fn imm_zero(ty: &Type) -> WasmResult<Immediate> {
-    Ok(match ty {
-        Type::I1 => Immediate::I1(false),
-        Type::I8 => Immediate::I8(0),
-        Type::I16 => Immediate::I16(0),
-        Type::I32 => Immediate::I32(0),
-        Type::I64 => Immediate::I64(0),
-        Type::U8 => Immediate::U8(0),
-        Type::U16 => Immediate::U16(0),
-        Type::U32 => Immediate::U32(0),
-        Type::U64 => Immediate::U64(0),
-        Type::F64 => Immediate::F64(0.0),
-        Type::Felt => Immediate::Felt(0u64.into()),
-        Type::I128
-        | Type::U128
-        | Type::U256
-        | Type::Ptr(_)
-        | Type::NativePtr(..)
-        | Type::Struct(_)
-        | Type::Array(..)
-        | Type::List(_)
-        | Type::Unknown
-        | Type::Unit
-        | Type::Never => {
-            return Err(WasmError::Unsupported(format!(
-                "cannot emit zero value for type: {:?}",
-                ty
-            )));
-        }
-    })
 }
 
 /// Emit instructions to produce a zero value in the given type.

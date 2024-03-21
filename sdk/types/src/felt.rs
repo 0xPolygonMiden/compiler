@@ -1,4 +1,4 @@
-use core::ops::{Add, Div, Mul, Neg, Not, Sub};
+use core::ops::{Add, Div, Mul, Neg, Sub};
 
 #[link(wasm_import_module = "miden:types/felt")]
 extern "C" {
@@ -31,9 +31,6 @@ extern "C" {
 
     #[link_name = "exp"]
     fn extern_exp(a: Felt, b: Felt) -> Felt;
-
-    #[link_name = "not"]
-    fn extern_not(a: Felt) -> Felt;
 
     #[link_name = "eq"]
     fn extern_eq(a: Felt, b: Felt) -> i32;
@@ -158,15 +155,6 @@ pub fn exp(a: Felt, b: Felt) -> Felt {
     unsafe { extern_exp(a, b) }
 }
 
-impl Not for Felt {
-    type Output = Self;
-
-    #[inline(always)]
-    fn not(self) -> Self {
-        unsafe { extern_not(self) }
-    }
-}
-
 impl PartialEq for Felt {
     #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
@@ -206,12 +194,12 @@ impl PartialOrd for Felt {
 impl Ord for Felt {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        if self.gt(other) {
-            core::cmp::Ordering::Greater
-        } else if self.eq(other) {
-            core::cmp::Ordering::Equal
-        } else {
+        if self.lt(other) {
             core::cmp::Ordering::Less
+        } else if self.gt(other) {
+            core::cmp::Ordering::Greater
+        } else {
+            core::cmp::Ordering::Equal
         }
     }
 }

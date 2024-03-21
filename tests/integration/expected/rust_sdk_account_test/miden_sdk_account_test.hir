@@ -154,49 +154,83 @@
         (func (export #test_felt_ops_smoke)
               (param felt) (param felt) (result felt)
             (block 0 (param v0 felt) (param v1 felt)
-                (let (v3 i1) (gt v0 v1))
-                (let (v4 i1) (neq v3 false))
-                (condbr v4 (block 4) (block 5)))
+                (let (v3 i64) (const.i64 0))
+                (let (v4 i64) (cast v0))
+                (let (v5 i1) (gt v0 v1))
+                (let (v6 i32) (cast v5))
+                (let (v7 i1) (neq v6 0))
+                (condbr v7 (block 6) (block 7)))
 
             (block 1 (param v2 felt)
                 (ret v2))
 
             (block 2
-                (let (v18 felt) (mul.unchecked v0 v1))
-                (br (block 1 v18)))
+                (let (v38 felt) (cast v4))
+                (let (v39 felt) (add.unchecked v0 v38))
+                (br (block 1 v39)))
 
             (block 3
-                (let (v17 felt) (sub.unchecked v1 v0))
-                (ret v17))
+                (let (v37 felt) (div.unchecked v1 v0))
+                (ret v37))
 
             (block 4
-                (let (v16 felt) (add.unchecked v0 v1))
-                (ret v16))
+                (let (v35 felt) (mul.unchecked v0 v1))
+                (let (v36 felt) (pow2 v35))
+                (ret v36))
 
             (block 5
-                (let (v5 i1) (lt v1 v0))
-                (let (v6 i1) (neq v5 false))
-                (condbr v6 (block 3) (block 6)))
+                (let (v33 felt) (sub.unchecked v1 v0))
+                (let (v34 felt) (exp v33 v1))
+                (ret v34))
 
             (block 6
-                (let (v7 i1) (lte v1 v0))
-                (let (v8 i1) (neq v7 false))
-                (condbr v8 (block 2) (block 7)))
+                (let (v31 felt) (add.unchecked v0 v1))
+                (let (v32 felt) (inv v31))
+                (ret v32))
 
             (block 7
-                (let (v9 i1) (gte v0 v1))
-                (let (v10 i32) (cast v9))
-                (let (v11 i1) (eq v10 0))
+                (let (v8 i1) (lt v1 v0))
+                (let (v9 i32) (cast v8))
+                (let (v10 i1) (neq v9 0))
+                (condbr v10 (block 5) (block 8)))
+
+            (block 8
+                (let (v11 i1) (lte v1 v0))
                 (let (v12 i32) (cast v11))
                 (let (v13 i1) (neq v12 0))
-                (condbr v13 (block 8 v0) (block 9)))
-
-            (block 8 (param v15 felt)
-                (ret v15))
+                (condbr v13 (block 4) (block 9)))
 
             (block 9
-                (let (v14 felt) (div.unchecked v1 v0))
-                (br (block 8 v14)))
+                (let (v14 i1) (gte v0 v1))
+                (let (v15 i32) (cast v14))
+                (let (v16 i1) (neq v15 0))
+                (condbr v16 (block 3) (block 10)))
+
+            (block 10
+                (let (v17 i1) (eq v0 v1))
+                (let (v18 i32) (cast v17))
+                (let (v19 i32) (const.i32 1))
+                (let (v20 i1) (eq v18 v19))
+                (let (v21 i32) (cast v20))
+                (let (v22 i1) (neq v21 0))
+                (condbr v22 (block 2) (block 11)))
+
+            (block 11
+                (let (v23 i1) (eq v0 v1))
+                (let (v24 i32) (cast v23))
+                (let (v25 i32) (const.i32 1))
+                (let (v26 i1) (neq v24 v25))
+                (let (v27 i32) (cast v26))
+                (let (v28 i1) (neq v27 0))
+                (condbr v28 (block 12) (block 13)))
+
+            (block 12
+                (let (v30 felt) (neg v0))
+                (ret v30))
+
+            (block 13
+                (let (v29 felt) (neg v1))
+                (ret v29))
         )
 
         (func (export #note_script) (result felt)

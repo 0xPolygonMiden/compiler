@@ -68,38 +68,36 @@ pub(crate) fn convert_felt_intrinsics(
             let inst = builder.ins().exp(args[0], args[1], span);
             vec![inst]
         }
-        "not" => {
-            assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
-            let inst = builder.ins().not(args[0], span);
-            vec![inst]
-        }
         // Comparison operations
         "eq" => {
             assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
             let inst = builder.ins().eq(args[0], args[1], span);
-            vec![inst]
+            let cast = builder.ins().cast(inst, I32, span);
+            vec![cast]
         }
         "gt" => {
             assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
             let inst = builder.ins().gt(args[0], args[1], span);
-            vec![inst]
+            let cast = builder.ins().cast(inst, I32, span);
+            vec![cast]
         }
         "ge" => {
             assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
             let inst = builder.ins().gte(args[0], args[1], span);
-            // TODO: cast all comparison intrinsics to i32
             let cast = builder.ins().cast(inst, I32, span);
             vec![cast]
         }
         "lt" => {
             assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
             let inst = builder.ins().lt(args[0], args[1], span);
-            vec![inst]
+            let cast = builder.ins().cast(inst, I32, span);
+            vec![cast]
         }
         "le" => {
             assert_eq!(args.len(), 2, "{} takes exactly two arguments", func_id);
             let inst = builder.ins().lte(args[0], args[1], span);
-            vec![inst]
+            let cast = builder.ins().cast(inst, I32, span);
+            vec![cast]
         }
         _ => panic!("No felt op intrinsics found for {}", func_id),
     }
