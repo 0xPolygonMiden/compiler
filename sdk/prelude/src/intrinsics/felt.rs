@@ -1,6 +1,6 @@
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
-#[link(wasm_import_module = "miden:types/felt")]
+#[link(wasm_import_module = "miden:prelude/intrinsics_felt")]
 extern "C" {
     #[link_name = "from_u64_unchecked"]
     fn extern_from_u64_unchecked(value: u64) -> Felt;

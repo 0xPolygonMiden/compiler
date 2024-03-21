@@ -16,25 +16,25 @@
   (type (;14;) (func (param i32 i32 i32 i32)))
   (type (;15;) (func (param i32 i64 i64 i64 i64)))
   (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
-  (import "miden:types/felt" "from_u64_unchecked" (func $miden_sdk_types::felt::extern_from_u64_unchecked (;1;) (type 1)))
-  (import "miden:types/felt" "add" (func $miden_sdk_types::felt::extern_add (;2;) (type 2)))
-  (import "miden:types/felt" "as_u64" (func $miden_sdk_types::felt::extern_as_u64 (;3;) (type 3)))
-  (import "miden:types/felt" "gt" (func $miden_sdk_types::felt::extern_gt (;4;) (type 4)))
-  (import "miden:types/felt" "lt" (func $miden_sdk_types::felt::extern_lt (;5;) (type 4)))
-  (import "miden:types/felt" "le" (func $miden_sdk_types::felt::extern_le (;6;) (type 4)))
-  (import "miden:types/felt" "ge" (func $miden_sdk_types::felt::extern_ge (;7;) (type 4)))
-  (import "miden:types/felt" "eq" (func $miden_sdk_types::felt::extern_eq (;8;) (type 4)))
-  (import "miden:types/felt" "is_odd" (func $miden_sdk_types::felt::extern_is_odd (;9;) (type 5)))
-  (import "miden:types/felt" "assertz" (func $miden_sdk_types::felt::extern_assertz (;10;) (type 6)))
-  (import "miden:types/felt" "assert" (func $miden_sdk_types::felt::extern_assert (;11;) (type 6)))
-  (import "miden:types/felt" "inv" (func $miden_sdk_types::felt::extern_inv (;12;) (type 7)))
-  (import "miden:types/felt" "exp" (func $miden_sdk_types::felt::extern_exp (;13;) (type 2)))
-  (import "miden:types/felt" "sub" (func $miden_sdk_types::felt::extern_sub (;14;) (type 2)))
-  (import "miden:types/felt" "pow2" (func $miden_sdk_types::felt::extern_pow2 (;15;) (type 7)))
-  (import "miden:types/felt" "mul" (func $miden_sdk_types::felt::extern_mul (;16;) (type 2)))
-  (import "miden:types/felt" "div" (func $miden_sdk_types::felt::extern_div (;17;) (type 2)))
-  (import "miden:types/felt" "assert_eq" (func $miden_sdk_types::felt::extern_assert_eq (;18;) (type 8)))
-  (import "miden:types/felt" "neg" (func $miden_sdk_types::felt::extern_neg (;19;) (type 7)))
+  (import "miden:prelude/intrinsics_felt" "from_u64_unchecked" (func $miden_prelude::intrinsics::felt::extern_from_u64_unchecked (;1;) (type 1)))
+  (import "miden:prelude/intrinsics_felt" "add" (func $miden_prelude::intrinsics::felt::extern_add (;2;) (type 2)))
+  (import "miden:prelude/intrinsics_felt" "as_u64" (func $miden_prelude::intrinsics::felt::extern_as_u64 (;3;) (type 3)))
+  (import "miden:prelude/intrinsics_felt" "gt" (func $miden_prelude::intrinsics::felt::extern_gt (;4;) (type 4)))
+  (import "miden:prelude/intrinsics_felt" "lt" (func $miden_prelude::intrinsics::felt::extern_lt (;5;) (type 4)))
+  (import "miden:prelude/intrinsics_felt" "le" (func $miden_prelude::intrinsics::felt::extern_le (;6;) (type 4)))
+  (import "miden:prelude/intrinsics_felt" "ge" (func $miden_prelude::intrinsics::felt::extern_ge (;7;) (type 4)))
+  (import "miden:prelude/intrinsics_felt" "eq" (func $miden_prelude::intrinsics::felt::extern_eq (;8;) (type 4)))
+  (import "miden:prelude/intrinsics_felt" "is_odd" (func $miden_prelude::intrinsics::felt::extern_is_odd (;9;) (type 5)))
+  (import "miden:prelude/intrinsics_felt" "assertz" (func $miden_prelude::intrinsics::felt::extern_assertz (;10;) (type 6)))
+  (import "miden:prelude/intrinsics_felt" "assert" (func $miden_prelude::intrinsics::felt::extern_assert (;11;) (type 6)))
+  (import "miden:prelude/intrinsics_felt" "inv" (func $miden_prelude::intrinsics::felt::extern_inv (;12;) (type 7)))
+  (import "miden:prelude/intrinsics_felt" "exp" (func $miden_prelude::intrinsics::felt::extern_exp (;13;) (type 2)))
+  (import "miden:prelude/intrinsics_felt" "sub" (func $miden_prelude::intrinsics::felt::extern_sub (;14;) (type 2)))
+  (import "miden:prelude/intrinsics_felt" "pow2" (func $miden_prelude::intrinsics::felt::extern_pow2 (;15;) (type 7)))
+  (import "miden:prelude/intrinsics_felt" "mul" (func $miden_prelude::intrinsics::felt::extern_mul (;16;) (type 2)))
+  (import "miden:prelude/intrinsics_felt" "div" (func $miden_prelude::intrinsics::felt::extern_div (;17;) (type 2)))
+  (import "miden:prelude/intrinsics_felt" "assert_eq" (func $miden_prelude::intrinsics::felt::extern_assert_eq (;18;) (type 8)))
+  (import "miden:prelude/intrinsics_felt" "neg" (func $miden_prelude::intrinsics::felt::extern_neg (;19;) (type 7)))
   (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_note_get_inputs (;20;) (type 9)))
   (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;21;) (type 10)))
   (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;22;) (type 11) (param i32)
@@ -104,9 +104,9 @@
     call $miden_sdk_tx_kernel::extern_account_get_id
     local.set 0
     i64.const 42
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.get 0
-    call $miden_sdk_types::felt::extern_add
+    call $miden_prelude::intrinsics::felt::extern_add
   )
   (func $test_add_asset (;26;) (type 0) (result f64)
     (local i32 f64)
@@ -120,7 +120,7 @@
     i64.const 2
     i64.const 3
     i64.const 4
-    call $miden_sdk_types::word::Word::from_u64_unchecked
+    call $miden_prelude::intrinsics::word::Word::from_u64_unchecked
     local.get 0
     i32.const 32
     i32.add
@@ -138,7 +138,7 @@
   (func $test_felt_ops_smoke (;27;) (type 2) (param f64 f64) (result f64)
     (local i64)
     local.get 0
-    call $miden_sdk_types::felt::extern_as_u64
+    call $miden_prelude::intrinsics::felt::extern_as_u64
     local.set 2
     block ;; label = @1
       block ;; label = @2
@@ -148,81 +148,81 @@
               block ;; label = @6
                 local.get 0
                 local.get 1
-                call $miden_sdk_types::felt::extern_gt
+                call $miden_prelude::intrinsics::felt::extern_gt
                 br_if 0 (;@6;)
                 local.get 1
                 local.get 0
-                call $miden_sdk_types::felt::extern_lt
+                call $miden_prelude::intrinsics::felt::extern_lt
                 br_if 1 (;@5;)
                 local.get 1
                 local.get 0
-                call $miden_sdk_types::felt::extern_le
+                call $miden_prelude::intrinsics::felt::extern_le
                 br_if 2 (;@4;)
                 local.get 0
                 local.get 1
-                call $miden_sdk_types::felt::extern_ge
+                call $miden_prelude::intrinsics::felt::extern_ge
                 br_if 3 (;@3;)
                 local.get 0
                 local.get 1
-                call $miden_sdk_types::felt::extern_eq
+                call $miden_prelude::intrinsics::felt::extern_eq
                 i32.const 1
                 i32.eq
                 br_if 4 (;@2;)
                 local.get 0
                 local.get 1
-                call $miden_sdk_types::felt::extern_eq
+                call $miden_prelude::intrinsics::felt::extern_eq
                 i32.const 1
                 i32.ne
                 br_if 5 (;@1;)
                 block ;; label = @7
                   local.get 1
-                  call $miden_sdk_types::felt::extern_is_odd
+                  call $miden_prelude::intrinsics::felt::extern_is_odd
                   br_if 0 (;@7;)
                   local.get 1
-                  call $miden_sdk_types::felt::extern_assertz
+                  call $miden_prelude::intrinsics::felt::extern_assertz
                   local.get 0
                   return
                 end
                 local.get 0
-                call $miden_sdk_types::felt::extern_assert
+                call $miden_prelude::intrinsics::felt::extern_assert
                 local.get 1
                 return
               end
               local.get 0
-              call $miden_sdk_types::felt::extern_inv
+              call $miden_prelude::intrinsics::felt::extern_inv
               local.get 1
-              call $miden_sdk_types::felt::extern_add
+              call $miden_prelude::intrinsics::felt::extern_add
               return
             end
             local.get 0
             local.get 1
-            call $miden_sdk_types::felt::extern_exp
+            call $miden_prelude::intrinsics::felt::extern_exp
             local.get 1
-            call $miden_sdk_types::felt::extern_sub
+            call $miden_prelude::intrinsics::felt::extern_sub
             return
           end
           local.get 0
-          call $miden_sdk_types::felt::extern_pow2
+          call $miden_prelude::intrinsics::felt::extern_pow2
           local.get 1
-          call $miden_sdk_types::felt::extern_mul
+          call $miden_prelude::intrinsics::felt::extern_mul
           return
         end
         local.get 1
         local.get 0
-        call $miden_sdk_types::felt::extern_div
+        call $miden_prelude::intrinsics::felt::extern_div
         return
       end
       local.get 0
       local.get 1
-      call $miden_sdk_types::felt::extern_assert_eq
+      call $miden_prelude::intrinsics::felt::extern_assert_eq
       local.get 0
       local.get 2
-      call $miden_sdk_types::felt::extern_from_u64_unchecked
-      call $miden_sdk_types::felt::extern_add
+      call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+      call $miden_prelude::intrinsics::felt::extern_add
       return
     end
     local.get 0
-    call $miden_sdk_types::felt::extern_neg
+    call $miden_prelude::intrinsics::felt::extern_neg
   )
   (func $note_script (;28;) (type 0) (result f64)
     (local i32 f64 f64 i64 i64 i32 i32 i32)
@@ -232,15 +232,15 @@
     local.tee 0
     global.set $__stack_pointer
     i64.const 0
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.set 1
     local.get 0
     call $miden_sdk_tx_kernel::extern_note_get_inputs
     local.tee 2
-    call $miden_sdk_types::felt::extern_as_u64
+    call $miden_prelude::intrinsics::felt::extern_as_u64
     local.set 3
     local.get 2
-    call $miden_sdk_types::felt::extern_as_u64
+    call $miden_prelude::intrinsics::felt::extern_as_u64
     local.set 4
     local.get 0
     local.get 0
@@ -288,7 +288,7 @@
       local.get 1
       local.get 6
       f64.load
-      call $miden_sdk_types::felt::extern_add
+      call $miden_prelude::intrinsics::felt::extern_add
       local.set 1
       local.get 7
       local.set 6
@@ -329,7 +329,7 @@
     i32.const 24
     i32.add
     i64.load
-    call $miden_sdk_types::word::Word::from_u64_unchecked
+    call $miden_prelude::intrinsics::word::Word::from_u64_unchecked
     local.get 0
     i32.const 24
     i32.add
@@ -545,20 +545,20 @@
       i32.store
     end
   )
-  (func $miden_sdk_types::word::Word::from_u64_unchecked (;33;) (type 15) (param i32 i64 i64 i64 i64)
+  (func $miden_prelude::intrinsics::word::Word::from_u64_unchecked (;33;) (type 15) (param i32 i64 i64 i64 i64)
     (local f64 f64 f64)
     local.get 1
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.set 5
     local.get 2
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.set 6
     local.get 3
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.set 7
     local.get 0
     local.get 4
-    call $miden_sdk_types::felt::extern_from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     f64.store offset=24
     local.get 0
     local.get 7

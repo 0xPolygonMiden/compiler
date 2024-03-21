@@ -5,8 +5,6 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-mod felt;
-mod word;
+mod intrinsics;
 
-pub use felt::*;
-pub use word::*;
+pub use intrinsics::{felt::*, word::*};

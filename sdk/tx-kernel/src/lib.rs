@@ -8,7 +8,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 
-use miden_sdk_types::{Felt, Word};
+use miden_prelude::{Felt, Word};
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]
