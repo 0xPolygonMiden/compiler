@@ -35,9 +35,6 @@ extern "C" {
     #[link_name = "eq"]
     fn extern_eq(a: Felt, b: Felt) -> i32;
 
-    // #[link_name = "cmp"]
-    // fn extern_cmp(a: Felt, b: Felt) -> core::cmp::Ordering;
-
     #[link_name = "gt"]
     fn extern_gt(a: Felt, b: Felt) -> i32;
 
@@ -49,6 +46,9 @@ extern "C" {
 
     #[link_name = "le"]
     fn extern_le(a: Felt, b: Felt) -> i32;
+
+    #[link_name = "is_odd"]
+    fn extern_is_odd(a: Felt) -> i32;
 }
 
 #[derive(Debug)]
@@ -81,6 +81,32 @@ impl Felt {
     #[inline(always)]
     pub fn as_u64(self) -> u64 {
         unsafe { extern_as_u64(self) }
+    }
+
+    /// Returns true if x is odd and false if x is even
+    #[inline(always)]
+    pub fn is_odd(self) -> bool {
+        unsafe { extern_is_odd(self) != 0 }
+    }
+
+    /// Returns x^-1
+    /// Fails if a=0
+    #[inline(always)]
+    pub fn inv(self) -> Felt {
+        unsafe { extern_inv(self) }
+    }
+
+    /// Returns 2^x
+    /// Fails if x > 63
+    #[inline(always)]
+    pub fn pow2(self) -> Felt {
+        unsafe { extern_pow2(self) }
+    }
+
+    /// Returns a^b
+    #[inline(always)]
+    pub fn exp(self, other: Felt) -> Felt {
+        unsafe { extern_exp(self, other) }
     }
 }
 
@@ -133,26 +159,6 @@ impl Neg for Felt {
     fn neg(self) -> Self {
         unsafe { extern_neg(self) }
     }
-}
-
-/// Returns x^-1
-/// Fails if a=0
-#[inline(always)]
-pub fn inv(x: Felt) -> Felt {
-    unsafe { extern_inv(x) }
-}
-
-/// Returns 2^x
-/// Fails if x > 63
-#[inline(always)]
-pub fn pow2(x: Felt) -> Felt {
-    unsafe { extern_pow2(x) }
-}
-
-/// Returns a^b
-#[inline(always)]
-pub fn exp(a: Felt, b: Felt) -> Felt {
-    unsafe { extern_exp(a, b) }
 }
 
 impl PartialEq for Felt {

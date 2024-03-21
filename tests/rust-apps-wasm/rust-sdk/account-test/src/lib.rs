@@ -7,7 +7,7 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 
 extern crate alloc;
 
-use miden_sdk::{add_assets, exp, get_id, get_inputs, inv, pow2, CoreAsset, Felt, Word};
+use miden_sdk::{add_assets, get_id, get_inputs, CoreAsset, Felt, Word};
 
 pub struct Account;
 
@@ -30,19 +30,21 @@ impl Account {
     pub fn test_felt_ops_smoke(a: Felt, b: Felt) -> Felt {
         let d = a.as_u64();
         if a > b {
-            inv(a + b)
+            a.inv() + b
         } else if a < b {
-            exp(b - a, b)
+            a.exp(b) - b
         } else if a <= b {
-            pow2(a * b)
+            a.pow2() * b
         } else if a >= b {
             b / a
         } else if a == b {
             a + Felt::from_u64_unchecked(d)
         } else if a != b {
             -a
+        } else if b.is_odd() {
+            b
         } else {
-            -b
+            a
         }
     }
 }

@@ -99,6 +99,12 @@ pub(crate) fn convert_felt_intrinsics(
             let cast = builder.ins().cast(inst, I32, span);
             vec![cast]
         }
+        "is_odd" => {
+            assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
+            let inst = builder.ins().is_odd(args[0], span);
+            let cast = builder.ins().cast(inst, I32, span);
+            vec![cast]
+        }
         _ => panic!("No felt op intrinsics found for {}", func_id),
     }
 }

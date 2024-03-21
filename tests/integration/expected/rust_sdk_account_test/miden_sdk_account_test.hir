@@ -165,28 +165,28 @@
                 (ret v2))
 
             (block 2
-                (let (v38 felt) (cast v4))
-                (let (v39 felt) (add.unchecked v0 v38))
-                (br (block 1 v39)))
+                (let (v41 felt) (cast v4))
+                (let (v42 felt) (add.unchecked v0 v41))
+                (br (block 1 v42)))
 
             (block 3
-                (let (v37 felt) (div.unchecked v1 v0))
-                (ret v37))
+                (let (v40 felt) (div.unchecked v1 v0))
+                (ret v40))
 
             (block 4
-                (let (v35 felt) (mul.unchecked v0 v1))
-                (let (v36 felt) (pow2 v35))
-                (ret v36))
+                (let (v38 felt) (pow2 v0))
+                (let (v39 felt) (mul.unchecked v38 v1))
+                (ret v39))
 
             (block 5
-                (let (v33 felt) (sub.unchecked v1 v0))
-                (let (v34 felt) (exp v33 v1))
-                (ret v34))
+                (let (v36 felt) (exp v0 v1))
+                (let (v37 felt) (sub.unchecked v36 v1))
+                (ret v37))
 
             (block 6
-                (let (v31 felt) (add.unchecked v0 v1))
-                (let (v32 felt) (inv v31))
-                (ret v32))
+                (let (v34 felt) (inv v0))
+                (let (v35 felt) (add.unchecked v34 v1))
+                (ret v35))
 
             (block 7
                 (let (v8 i1) (lt v1 v0))
@@ -225,12 +225,15 @@
                 (condbr v28 (block 12) (block 13)))
 
             (block 12
-                (let (v30 felt) (neg v0))
-                (ret v30))
+                (let (v33 felt) (neg v0))
+                (ret v33))
 
             (block 13
-                (let (v29 felt) (neg v1))
-                (ret v29))
+                (let (v29 i1) (is_odd v1))
+                (let (v30 i32) (cast v29))
+                (let (v31 i1) (neq v30 0))
+                (let (v32 felt) (select v31 v1 v0))
+                (ret v32))
         )
 
         (func (export #note_script) (result felt)
