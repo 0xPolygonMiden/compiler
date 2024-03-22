@@ -83,8 +83,10 @@ impl formatter::PrettyPrint for ComponentImport {
             ComponentImport::MidenAbiImport(import) => import.function_ty.to_string(),
         };
         let name = match self {
-            ComponentImport::CanonAbiImport(import) => import.interface_function.to_string(),
-            ComponentImport::MidenAbiImport(_import) => "()".to_string(),
+            ComponentImport::CanonAbiImport(import) => {
+                format!(" {} ", import.interface_function)
+            }
+            ComponentImport::MidenAbiImport(_import) => " ".to_string(),
         };
         let import = match self {
             ComponentImport::CanonAbiImport(_) => const_text("import (abi canon)"),
@@ -92,9 +94,7 @@ impl formatter::PrettyPrint for ComponentImport {
         };
         const_text("(")
             + import
-            + const_text(" ")
             + text(name)
-            + const_text(" ")
             + const_text("(")
             + const_text("digest")
             + const_text(" ")
