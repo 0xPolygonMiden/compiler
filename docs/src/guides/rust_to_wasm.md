@@ -96,7 +96,7 @@ Next, edit `src/lib.rs` as shown below:
 
 // Required for no-std crates
 #[panic_handler]
-fn panic(info: core::panic::PanicInfo) -> ! {
+fn panic(_info: &core::panic::PanicInfo) -> ! {
     core::intrinsics::abort()
 }
 

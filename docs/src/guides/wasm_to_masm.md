@@ -92,14 +92,16 @@ it is not a program, but a library module:
     begin
         exec.wasm_fib::fib
     end
+    EOF
 
 We will also need a `.inputs` file to pass arguments to the program:
 
     cat <<EOF > wasm_fib.inputs
     {
         "operand_stack": ["10"],
-        "advice_stack": ["0"],
+        "advice_stack": ["0"]
     }
+    EOF
 
 Next, we need to build a MASL library (normally `midenc` would do this, but there is a bug
 blocking it at the moment, this example will be updated accordingly soon):
