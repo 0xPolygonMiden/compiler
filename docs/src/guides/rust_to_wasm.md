@@ -7,7 +7,7 @@ modules and compile them on to Miden Assembly, which will be covered in the next
 ## Setup
 
 First, let's set up a simple Rust project that contains an implementation of the Fibonacci
-function (I know, its overdone, but we're trying to keep things as simple as possible to 
+function (I know, its overdone, but we're trying to keep things as simple as possible to
 make it easier to show the results at each step, so bear with me):
 
 Start by creating a new library crate:
@@ -57,17 +57,17 @@ panic = "abort"
 opt-level = "z"
 ```
 
-Most of these things are done to keep the generated code size as small as possible. Miden is a target 
-where the conventional wisdom about performance should be treated very carefully: we're almost always 
-going to benefit from less code, even if conventionally that code would be less efficient, simply due 
-to the difference in proving time accumulated due to extra instructions. That said, there are no hard 
+Most of these things are done to keep the generated code size as small as possible. Miden is a target
+where the conventional wisdom about performance should be treated very carefully: we're almost always
+going to benefit from less code, even if conventionally that code would be less efficient, simply due
+to the difference in proving time accumulated due to extra instructions. That said, there are no hard
 and fast rules, but these defaults are good ones to start with.
 
-> [!TIP] 
+> [!TIP]
 > We recommended `wee_alloc` here, but any simple allocator will do, including a hand-written
 > bump allocator. The trade offs made by these small allocators are not generally suitable for long-
 > running, or allocation-heavy applications, as they "leak" memory (generally because they make little
-> to no attempt to recover freed allocations), however they are very useful for one-shot programs that 
+> to no attempt to recover freed allocations), however they are very useful for one-shot programs that
 > do minimal allocation, which is going to be the typical case for Miden programs.
 
 Next, edit `src/lib.rs` as shown below:
@@ -82,7 +82,7 @@ Next, edit `src/lib.rs` as shown below:
 // Do not link against libstd (i.e. anything defined in `std::`)
 #![no_std]
 
-// However, we could still use some standard library types while 
+// However, we could still use some standard library types while
 // remaining no-std compatible, if we uncommented the following lines:
 //
 // extern crate alloc;
@@ -131,7 +131,7 @@ This places a `wasm_fib.wasm` file under the `target/wasm32-unknown-unknown/rele
 we can then examine with [wasm2wat](https://github.com/WebAssembly/wabt) to set the code we generated:
 
     wasm2wat target/wasm32-unknown-unknown/release/wasm_fib.wasm
-    
+
 Which dumps the following output (may differ slightly on your machine, depending on the specific compiler version):
 
 ```wat
