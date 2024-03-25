@@ -15,7 +15,7 @@ impl Account {
     #[no_mangle]
     pub fn get_wallet_magic_number() -> Felt {
         let acc_id = get_id();
-        let magic = Felt::new(42).unwrap();
+        let magic = felt!(42);
         magic + acc_id.into()
     }
 

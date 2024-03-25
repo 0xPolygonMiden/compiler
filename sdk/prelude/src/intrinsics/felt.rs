@@ -60,6 +60,21 @@ extern "C" {
     fn extern_assert_eq(a: Felt, b: Felt);
 }
 
+/// Creates a `Felt` from an integer constant checking that it is within the valid range at compile
+/// time.
+#[macro_export]
+macro_rules! felt {
+    ($value:expr) => {{
+        // Trigger a compile-time error if the value is not a constant
+        const VALUE: u64 = $value as u64;
+        const _: () = {
+            // Check that the value is within the valid range
+            assert!(VALUE <= Felt::M, "Invalid Felt value, must be >= 0 and <= 2^64 - 2^32 + 1");
+        };
+        Felt::from_u64_unchecked(VALUE)
+    }};
+}
+
 #[derive(Debug)]
 pub enum FeltError {
     InvalidValue,
@@ -71,7 +86,7 @@ pub struct Felt(f64);
 
 impl Felt {
     /// Field modulus = 2^64 - 2^32 + 1
-    const M: u64 = 0xffffffff00000001;
+    pub const M: u64 = 0xffffffff00000001;
 
     #[inline(always)]
     pub fn from_u64_unchecked(value: u64) -> Self {

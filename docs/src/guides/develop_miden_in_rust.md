@@ -14,10 +14,16 @@ use miden_prelude::*;
 
 The `Felt` type is a field element type that is used to represent the field element values of the Miden VM. 
 
-To initialize a `Felt` value, use the `Felt::new` constructor:
+To initialize a `Felt` value from an integer constant checking the range at compile time, use the `felt!` macro:
 
 ```rust
-let a = Felt::new(5).unwrap();
+let a = felt!(42);
+```
+
+Otherwise, use the `Felt::new` constructor:
+
+```rust
+let a = Felt::new(some_integer_var).unwrap();
 ```
 
 The constructor returns an error if the value is not a valid field element, e.g. if it is not in the range `0..=M` where `M` is the modulus of the field (2^64 - 2^32 + 1).
