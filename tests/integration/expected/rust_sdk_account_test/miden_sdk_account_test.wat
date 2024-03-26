@@ -409,7 +409,7 @@
                 i32.const 232
                 i32.add
                 i32.const 4
-                i32.const 1048648
+                i32.const 1048620
                 call $core::slice::<impl [T]>::copy_from_slice
                 local.get 3
                 i32.const 4
@@ -613,7 +613,7 @@
                 i32.const 424
                 i32.add
                 i32.const 4
-                i32.const 1048664
+                i32.const 1048636
                 call $core::slice::<impl [T]>::copy_from_slice
                 local.get 3
                 i32.const 4
@@ -751,7 +751,7 @@
     global.set $__stack_pointer
   )
   (func $__rust_dealloc (;34;) (type 15) (param i32 i32 i32)
-    i32.const 1048680
+    i32.const 1048652
     local.get 0
     local.get 2
     local.get 1
@@ -958,5 +958,5 @@
   (export "note_script" (func $note_script))
   (export "test_blake3_hash_1to1" (func $test_blake3_hash_1to1))
   (export "test_blake3_hash_2to1" (func $test_blake3_hash_2to1))
-  (data $.rodata (;0;) (i32.const 1048576) "/Users/dzadorozhnyi/src/miden-ir/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\10\00H\00\00\00E\00\00\00(\00\00\00\00\00\10\00H\00\00\00o\00\00\00(\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00E\00\00\00(\00\00\00\00\00\10\00)\00\00\00o\00\00\00(\00\00\00")
 )

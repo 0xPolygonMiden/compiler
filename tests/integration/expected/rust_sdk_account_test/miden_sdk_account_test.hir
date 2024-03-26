@@ -9,7 +9,7 @@
     ;; Modules
     (module #miden_sdk_account_test.wasm
         ;; Data Segments
-        (data (mut) (offset 1048576) 0x2f55736572732f647a61646f726f7a686e79692f7372632f6d6964656e2d69722f73646b2f7072656c7564652f7372632f7374646c69622f63727970746f2f6861736865732e72730000100048000000450000002800000000001000480000006f00000028000000)
+        (data (mut) (offset 1048576) 0x7e2f73646b2f7072656c7564652f7372632f7374646c69622f63727970746f2f6861736865732e72730000000000100029000000450000002800000000001000290000006f00000028000000)
 
         ;; Constants
         (const (id 0) 0x00100000)
@@ -593,7 +593,7 @@
                 (let (v132 i32) (const.i32 232))
                 (let (v133 i32) (add.wrapping v119 v132))
                 (let (v134 i32) (const.i32 4))
-                (let (v135 i32) (const.i32 1048648))
+                (let (v135 i32) (const.i32 1048620))
                 (call #core::slice::<impl [T]>::copy_from_slice v130 v131 v133 v134 v135)
                 (let (v136 i32) (const.i32 4))
                 (let (v137 i32) (add.wrapping v114 v136))
@@ -889,7 +889,7 @@
                 (let (v164 i32) (const.i32 424))
                 (let (v165 i32) (add.wrapping v151 v164))
                 (let (v166 i32) (const.i32 4))
-                (let (v167 i32) (const.i32 1048664))
+                (let (v167 i32) (const.i32 1048636))
                 (call #core::slice::<impl [T]>::copy_from_slice v162 v163 v165 v166 v167)
                 (let (v168 i32) (const.i32 4))
                 (let (v169 i32) (add.wrapping v146 v168))
@@ -983,7 +983,7 @@
 
         (func (export #__rust_dealloc) (param i32) (param i32) (param i32)
             (block 0 (param v0 i32) (param v1 i32) (param v2 i32)
-                (let (v3 i32) (const.i32 1048680))
+                (let (v3 i32) (const.i32 1048652))
                 (call #<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc v3 v0 v2 v1)
                 (br (block 1)))
 
