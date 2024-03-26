@@ -1011,5 +1011,5 @@
   (export "note_script" (func $note_script))
   (export "test_blake3_hash_1to1" (func $test_blake3_hash_1to1))
   (export "test_blake3_hash_2to1" (func $test_blake3_hash_2to1))
-  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00E\00\00\00(\00\00\00\00\00\10\00)\00\00\00v\00\00\00(\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00j\00\00\00(\00\00\00\00\00\10\00)\00\00\00\b1\00\00\00(\00\00\00")
 )
