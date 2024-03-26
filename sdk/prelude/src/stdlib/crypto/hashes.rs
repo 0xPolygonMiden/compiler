@@ -35,11 +35,48 @@ extern "C" {
         e16: Felt,
         ptr: i32,
     );
+
+    #[link_name = "sha256_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    fn extern_sha256_hash_1to1(
+        e1: Felt,
+        e2: Felt,
+        e3: Felt,
+        e4: Felt,
+        e5: Felt,
+        e6: Felt,
+        e7: Felt,
+        e8: Felt,
+        ptr: i32,
+    );
+
+    #[link_name = "sha256_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    fn extern_sha256_hash_2to1(
+        e1: Felt,
+        e2: Felt,
+        e3: Felt,
+        e4: Felt,
+        e5: Felt,
+        e6: Felt,
+        e7: Felt,
+        e8: Felt,
+        e9: Felt,
+        e10: Felt,
+        e11: Felt,
+        e12: Felt,
+        e13: Felt,
+        e14: Felt,
+        e15: Felt,
+        e16: Felt,
+        ptr: i32,
+    );
 }
 
-/// Hashes a 32-byte input to a 32-byte output using the BLAKE3 hash function.
+/// Hashes a 32-byte input to a 32-byte output using the given hash function.
 #[inline(always)]
-pub fn blake3_hash_1to1(input: [u8; 32]) -> [u8; 32] {
+fn hash_1to1(
+    input: [u8; 32],
+    extern_hash_1to1: unsafe extern "C" fn(Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, i32),
+) -> [u8; 32] {
     unsafe {
         struct RetArea([Felt; 8]);
         let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
@@ -50,7 +87,7 @@ pub fn blake3_hash_1to1(input: [u8; 32]) -> [u8; 32] {
                 input[i * 4..(i + 1) * 4].try_into().unwrap(),
             ) as u64);
         }
-        extern_blake3_hash_1to1(
+        extern_hash_1to1(
             felts_input[0],
             felts_input[1],
             felts_input[2],
@@ -72,9 +109,31 @@ pub fn blake3_hash_1to1(input: [u8; 32]) -> [u8; 32] {
     }
 }
 
-/// Hashes a 64-byte input to a 32-byte output using the BLAKE3 hash function.
+/// Hashes a 64-byte input to a 32-byte output using the given hash function.
 #[inline(always)]
-pub fn blake3_hash_2to1(input1: [u8; 32], input2: [u8; 32]) -> [u8; 32] {
+fn hash_2to1(
+    input1: [u8; 32],
+    input2: [u8; 32],
+    extern_hash_2to1: unsafe extern "C" fn(
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        i32,
+    ),
+) -> [u8; 32] {
     unsafe {
         struct RetArea([Felt; 16]);
         let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
@@ -91,7 +150,7 @@ pub fn blake3_hash_2to1(input1: [u8; 32], input2: [u8; 32]) -> [u8; 32] {
                 input2[i * 4..(i + 1) * 4].try_into().unwrap(),
             ) as u64);
         }
-        extern_blake3_hash_2to1(
+        extern_hash_2to1(
             felts_input1[0],
             felts_input1[1],
             felts_input1[2],
@@ -119,4 +178,28 @@ pub fn blake3_hash_2to1(input1: [u8; 32], input2: [u8; 32]) -> [u8; 32] {
         }
         result
     }
+}
+
+/// Hashes a 32-byte input to a 32-byte output using the BLAKE3 hash function.
+#[inline(always)]
+pub fn blake3_hash_1to1(input: [u8; 32]) -> [u8; 32] {
+    hash_1to1(input, extern_blake3_hash_1to1)
+}
+
+/// Hashes a 64-byte input (two 32-byte arrays) to a 32-byte output using the BLAKE3 hash function.
+#[inline(always)]
+pub fn blake3_hash_2to1(input1: [u8; 32], input2: [u8; 32]) -> [u8; 32] {
+    hash_2to1(input1, input2, extern_blake3_hash_2to1)
+}
+
+/// Hashes a 32-byte input to a 32-byte output using the SHA256 hash function.
+#[inline(always)]
+pub fn sha256_hash_1to1(input: [u8; 32]) -> [u8; 32] {
+    hash_1to1(input, extern_sha256_hash_1to1)
+}
+
+/// Hashes a 64-byte input(two 32-byte arrays) to a 32-byte output using the SHA256 hash function.
+#[inline(always)]
+pub fn sha256_hash_2to1(input1: [u8; 32], input2: [u8; 32]) -> [u8; 32] {
+    hash_2to1(input1, input2, extern_sha256_hash_2to1)
 }
