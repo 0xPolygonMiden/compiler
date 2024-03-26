@@ -9,7 +9,7 @@ use miden_hir_type::Type::*;
 use super::ModuleFunctionTypeMap;
 use crate::miden_abi::FunctionTypeMap;
 
-pub const CRYPTO_HASHES_MODULE_NAME: &str = "miden:stdlib/crypto_hashes";
+pub const CRYPTO_HASHES_MODULE_NAME: &str = "miden:prelude/std_crypto_hashes";
 pub const BLAKE3_HASH_1TO1: &str = "blake3_hash_1to1";
 pub const BLAKE3_HASH_2TO1: &str = "blake3_hash_2to1";
 

@@ -1,1 +1,3 @@
-pub mod crypto;
+mod crypto;
+
+pub use crypto::*;

@@ -38,8 +38,8 @@
   (import "miden:prelude/intrinsics_felt" "assert_eq" (func $miden_prelude::intrinsics::felt::extern_assert_eq (;18;) (type 8)))
   (import "miden:prelude/intrinsics_felt" "neg" (func $miden_prelude::intrinsics::felt::extern_neg (;19;) (type 7)))
   (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_note_get_inputs (;20;) (type 9)))
-  (import "miden:stdlib/crypto_hashes" "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;21;) (type 10)))
-  (import "miden:stdlib/crypto_hashes" "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;22;) (type 11)))
+  (import "miden:prelude/std_crypto_hashes" "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;21;) (type 10)))
+  (import "miden:prelude/std_crypto_hashes" "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;22;) (type 11)))
   (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;23;) (type 12)))
   (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;24;) (type 13) (param i32)
     (local i32)
@@ -496,207 +496,260 @@
       br 0 (;@1;)
     end
   )
-  (func $test_blake3_hash_2to1 (;32;) (type 14) (param i32 i32)
+  (func $test_blake3_hash_2to1 (;32;) (type 15) (param i32 i32 i32)
     (local i32 i32 f64)
     global.get $__stack_pointer
     i32.const 432
     i32.sub
-    local.tee 2
+    local.tee 3
     global.set $__stack_pointer
     i32.const 0
-    local.set 3
+    local.set 4
     i64.const 0
     call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-    local.set 4
+    local.set 5
     loop ;; label = @1
       block ;; label = @2
-        local.get 3
-        i32.const 128
+        local.get 4
+        i32.const 64
         i32.ne
         br_if 0 (;@2;)
         i32.const 0
-        local.set 3
-        block ;; label = @3
-          loop ;; label = @4
-            block ;; label = @5
-              local.get 3
-              i32.const 128
-              i32.ne
-              br_if 0 (;@5;)
-              local.get 2
-              f64.load offset=136
-              local.get 2
-              f64.load offset=144
-              local.get 2
-              f64.load offset=152
-              local.get 2
-              f64.load offset=160
-              local.get 2
-              f64.load offset=168
-              local.get 2
-              f64.load offset=176
-              local.get 2
-              f64.load offset=184
-              local.get 2
-              f64.load offset=192
-              local.get 2
-              f64.load offset=200
-              local.get 2
-              f64.load offset=208
-              local.get 2
-              f64.load offset=216
-              local.get 2
-              f64.load offset=224
-              local.get 2
-              f64.load offset=232
-              local.get 2
-              f64.load offset=240
-              local.get 2
-              f64.load offset=248
-              local.get 2
-              f64.load offset=256
-              local.get 2
-              i32.const 8
-              i32.add
-              call $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1
-              local.get 2
-              i32.const 264
-              i32.add
-              local.get 2
-              i32.const 8
-              i32.add
-              i32.const 128
-              memory.copy
-              local.get 2
-              i32.const 416
-              i32.add
-              i64.const 0
-              i64.store
-              local.get 2
-              i32.const 408
-              i32.add
-              i64.const 0
-              i64.store
-              local.get 2
-              i32.const 392
-              i32.add
-              i32.const 8
-              i32.add
-              i64.const 0
-              i64.store
-              local.get 2
-              i64.const 0
-              i64.store offset=392
-              local.get 2
-              i32.const 264
-              i32.add
-              local.set 1
-              i32.const 0
-              local.set 3
-              loop ;; label = @6
+        local.set 4
+        loop ;; label = @3
+          block ;; label = @4
+            local.get 4
+            i32.const 64
+            i32.ne
+            br_if 0 (;@4;)
+            i32.const 0
+            local.set 4
+            i64.const 0
+            call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+            local.set 5
+            loop ;; label = @5
+              block ;; label = @6
+                local.get 4
+                i32.const 64
+                i32.ne
+                br_if 0 (;@6;)
+                i32.const 0
+                local.set 4
+                block ;; label = @7
+                  loop ;; label = @8
+                    block ;; label = @9
+                      local.get 4
+                      i32.const 64
+                      i32.ne
+                      br_if 0 (;@9;)
+                      local.get 3
+                      f64.load offset=136
+                      local.get 3
+                      f64.load offset=144
+                      local.get 3
+                      f64.load offset=152
+                      local.get 3
+                      f64.load offset=160
+                      local.get 3
+                      f64.load offset=168
+                      local.get 3
+                      f64.load offset=176
+                      local.get 3
+                      f64.load offset=184
+                      local.get 3
+                      f64.load offset=192
+                      local.get 3
+                      f64.load offset=200
+                      local.get 3
+                      f64.load offset=208
+                      local.get 3
+                      f64.load offset=216
+                      local.get 3
+                      f64.load offset=224
+                      local.get 3
+                      f64.load offset=232
+                      local.get 3
+                      f64.load offset=240
+                      local.get 3
+                      f64.load offset=248
+                      local.get 3
+                      f64.load offset=256
+                      local.get 3
+                      i32.const 8
+                      i32.add
+                      call $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1
+                      local.get 3
+                      i32.const 264
+                      i32.add
+                      local.get 3
+                      i32.const 8
+                      i32.add
+                      i32.const 128
+                      memory.copy
+                      local.get 3
+                      i32.const 416
+                      i32.add
+                      i64.const 0
+                      i64.store
+                      local.get 3
+                      i32.const 408
+                      i32.add
+                      i64.const 0
+                      i64.store
+                      local.get 3
+                      i32.const 392
+                      i32.add
+                      i32.const 8
+                      i32.add
+                      i64.const 0
+                      i64.store
+                      local.get 3
+                      i64.const 0
+                      i64.store offset=392
+                      local.get 3
+                      i32.const 264
+                      i32.add
+                      local.set 2
+                      i32.const 0
+                      local.set 4
+                      loop ;; label = @10
+                        local.get 4
+                        i32.const 32
+                        i32.eq
+                        br_if 3 (;@7;)
+                        local.get 3
+                        local.get 2
+                        f64.load
+                        call $miden_prelude::intrinsics::felt::extern_as_u64
+                        i64.store offset=424
+                        local.get 3
+                        i32.const 392
+                        i32.add
+                        local.get 4
+                        i32.add
+                        i32.const 4
+                        local.get 3
+                        i32.const 424
+                        i32.add
+                        i32.const 4
+                        i32.const 1048636
+                        call $core::slice::<impl [T]>::copy_from_slice
+                        local.get 4
+                        i32.const 4
+                        i32.add
+                        local.set 4
+                        local.get 2
+                        i32.const 8
+                        i32.add
+                        local.set 2
+                        br 0 (;@10;)
+                      end
+                    end
+                    local.get 3
+                    i32.const 200
+                    i32.add
+                    local.get 4
+                    i32.add
+                    local.get 2
+                    i64.load32_u align=1
+                    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+                    f64.store
+                    local.get 4
+                    i32.const 8
+                    i32.add
+                    local.set 4
+                    local.get 2
+                    i32.const 4
+                    i32.add
+                    local.set 2
+                    br 0 (;@8;)
+                  end
+                end
+                local.get 0
                 local.get 3
-                i32.const 32
-                i32.eq
-                br_if 3 (;@3;)
-                local.get 2
-                local.get 1
-                f64.load
-                call $miden_prelude::intrinsics::felt::extern_as_u64
-                i64.store offset=424
-                local.get 2
+                i64.load offset=392
+                i64.store align=1
+                local.get 0
+                i32.const 24
+                i32.add
+                local.get 3
                 i32.const 392
                 i32.add
+                i32.const 24
+                i32.add
+                i64.load
+                i64.store align=1
+                local.get 0
+                i32.const 16
+                i32.add
                 local.get 3
+                i32.const 392
                 i32.add
-                i32.const 4
-                local.get 2
-                i32.const 424
+                i32.const 16
                 i32.add
-                i32.const 4
-                i32.const 1048636
-                call $core::slice::<impl [T]>::copy_from_slice
-                local.get 3
-                i32.const 4
-                i32.add
-                local.set 3
-                local.get 1
+                i64.load
+                i64.store align=1
+                local.get 0
                 i32.const 8
                 i32.add
-                local.set 1
-                br 0 (;@6;)
+                local.get 3
+                i32.const 392
+                i32.add
+                i32.const 8
+                i32.add
+                i64.load
+                i64.store align=1
+                local.get 3
+                i32.const 432
+                i32.add
+                global.set $__stack_pointer
+                return
               end
+              local.get 3
+              i32.const 200
+              i32.add
+              local.get 4
+              i32.add
+              local.get 5
+              f64.store
+              local.get 4
+              i32.const 8
+              i32.add
+              local.set 4
+              br 0 (;@5;)
             end
-            local.get 2
-            i32.const 136
-            i32.add
-            local.get 3
-            i32.add
-            local.get 1
-            i64.load32_u align=1
-            call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-            f64.store
-            local.get 3
-            i32.const 8
-            i32.add
-            local.set 3
-            local.get 1
-            i32.const 4
-            i32.add
-            local.set 1
-            br 0 (;@4;)
           end
+          local.get 3
+          i32.const 136
+          i32.add
+          local.get 4
+          i32.add
+          local.get 1
+          i64.load32_u align=1
+          call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+          f64.store
+          local.get 4
+          i32.const 8
+          i32.add
+          local.set 4
+          local.get 1
+          i32.const 4
+          i32.add
+          local.set 1
+          br 0 (;@3;)
         end
-        local.get 0
-        local.get 2
-        i64.load offset=392
-        i64.store align=1
-        local.get 0
-        i32.const 24
-        i32.add
-        local.get 2
-        i32.const 392
-        i32.add
-        i32.const 24
-        i32.add
-        i64.load
-        i64.store align=1
-        local.get 0
-        i32.const 16
-        i32.add
-        local.get 2
-        i32.const 392
-        i32.add
-        i32.const 16
-        i32.add
-        i64.load
-        i64.store align=1
-        local.get 0
-        i32.const 8
-        i32.add
-        local.get 2
-        i32.const 392
-        i32.add
-        i32.const 8
-        i32.add
-        i64.load
-        i64.store align=1
-        local.get 2
-        i32.const 432
-        i32.add
-        global.set $__stack_pointer
-        return
       end
-      local.get 2
+      local.get 3
       i32.const 136
       i32.add
-      local.get 3
-      i32.add
       local.get 4
+      i32.add
+      local.get 5
       f64.store
-      local.get 3
+      local.get 4
       i32.const 8
       i32.add
-      local.set 3
+      local.set 4
       br 0 (;@1;)
     end
   )
@@ -958,5 +1011,5 @@
   (export "note_script" (func $note_script))
   (export "test_blake3_hash_1to1" (func $test_blake3_hash_1to1))
   (export "test_blake3_hash_2to1" (func $test_blake3_hash_2to1))
-  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00E\00\00\00(\00\00\00\00\00\10\00)\00\00\00o\00\00\00(\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00E\00\00\00(\00\00\00\00\00\10\00)\00\00\00v\00\00\00(\00\00\00")
 )
