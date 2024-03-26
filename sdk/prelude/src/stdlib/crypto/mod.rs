@@ -1,1 +1,3 @@
-pub mod hashes;
+mod hashes;
+
+pub use hashes::*;
