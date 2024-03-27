@@ -4,7 +4,7 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
-use super::{module_tratnslation_state::ModuleTranslationState, Module};
+use super::{module_translation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
     miden_abi::miden_sdk_function_type,

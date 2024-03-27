@@ -22,7 +22,7 @@ pub mod func_translator;
 pub mod function_builder_ext;
 pub mod instance;
 pub mod module_env;
-pub mod module_tratnslation_state;
+pub mod module_translation_state;
 pub mod types;
 
 /// Table initialization data for all tables in the module.

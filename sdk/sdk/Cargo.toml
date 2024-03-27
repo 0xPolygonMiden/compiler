@@ -12,7 +12,7 @@ readme.workspace = true
 edition.workspace = true
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 miden-sdk-types = { path = "../types" }

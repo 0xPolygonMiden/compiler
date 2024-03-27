@@ -29,7 +29,7 @@ use crate::{
     module::{
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
-        module_tratnslation_state::ModuleTranslationState,
+        module_translation_state::ModuleTranslationState,
         types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes},
         Module,
     },

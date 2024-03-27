@@ -19,7 +19,7 @@ use crate::{
         build_ir::build_ir_module,
         instance::ModuleArgument,
         module_env::ParsedModule,
-        module_tratnslation_state::ModuleTranslationState,
+        module_translation_state::ModuleTranslationState,
         types::{EntityIndex, FuncIndex},
         Module, ModuleImport,
     },

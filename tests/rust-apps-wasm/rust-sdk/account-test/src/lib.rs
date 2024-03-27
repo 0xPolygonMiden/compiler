@@ -1,5 +1,10 @@
 #![no_std]
 
+#[panic_handler]
+fn my_panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
 extern crate alloc;
 
 use miden_sdk::{add_assets, get_id, get_inputs, CoreAsset, Felt};

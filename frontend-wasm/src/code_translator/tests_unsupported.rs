@@ -7,7 +7,7 @@ use crate::{
     module::{
         func_translation_state::FuncTranslationState,
         function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
-        module_tratnslation_state::ModuleTranslationState,
+        module_translation_state::ModuleTranslationState,
         Module,
     },
     test_utils::test_diagnostics,
