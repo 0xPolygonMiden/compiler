@@ -23,7 +23,7 @@ pub(crate) fn types() -> &'static ModuleFunctionTypeMap {
         let mut m: ModuleFunctionTypeMap = Default::default();
 
         let mut note: FunctionTypeMap = Default::default();
-        note.insert(NOTE_GET_INPUTS, FunctionType::new_miden([Felt], [Felt, Felt]));
+        note.insert(NOTE_GET_INPUTS, FunctionType::new_miden([Felt], [I32, Felt]));
         m.insert(NOTE_MODULE_NAME, note);
 
         let mut account: FunctionTypeMap = Default::default();

@@ -21,9 +21,9 @@ impl Account {
 
     #[no_mangle]
     pub fn test_add_asset() -> Felt {
-        let asset_in = CoreAsset::new(Word::from_u64_unchecked(1, 2, 3, 4));
+        let asset_in = CoreAsset::new([felt!(1), felt!(2), felt!(3), felt!(4)]);
         let asset_out = add_assets(asset_in);
-        asset_out.as_word().as_tuple().0
+        asset_out.as_word()[0]
     }
 
     #[no_mangle]

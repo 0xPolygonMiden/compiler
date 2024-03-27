@@ -8,13 +8,12 @@
   (type (;6;) (func (param f64)))
   (type (;7;) (func (param f64) (result f64)))
   (type (;8;) (func (param f64 f64)))
-  (type (;9;) (func (param i32) (result f64)))
+  (type (;9;) (func (param i32) (result i32)))
   (type (;10;) (func (param f64 f64 f64 f64 i32)))
   (type (;11;) (func (param i32)))
   (type (;12;) (func (param i32 i32)))
   (type (;13;) (func (param i32 i32 i32)))
   (type (;14;) (func (param i32 i32 i32 i32)))
-  (type (;15;) (func (param i32 i64 i64 i64 i64)))
   (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
   (import "miden:prelude/intrinsics_felt" "from_u64_unchecked" (func $miden_prelude::intrinsics::felt::extern_from_u64_unchecked (;1;) (type 1)))
   (import "miden:prelude/intrinsics_felt" "add" (func $miden_prelude::intrinsics::felt::extern_add (;2;) (type 2)))
@@ -109,18 +108,34 @@
     call $miden_prelude::intrinsics::felt::extern_add
   )
   (func $test_add_asset (;26;) (type 0) (result f64)
-    (local i32 f64)
+    (local i32 f64 f64 f64)
     global.get $__stack_pointer
     i32.const 64
     i32.sub
     local.tee 0
     global.set $__stack_pointer
-    local.get 0
     i64.const 1
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    local.set 1
     i64.const 2
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    local.set 2
     i64.const 3
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    local.set 3
+    local.get 0
     i64.const 4
-    call $miden_prelude::intrinsics::word::Word::from_u64_unchecked
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    f64.store offset=24
+    local.get 0
+    local.get 3
+    f64.store offset=16
+    local.get 0
+    local.get 2
+    f64.store offset=8
+    local.get 0
+    local.get 1
+    f64.store
     local.get 0
     i32.const 32
     i32.add
@@ -225,7 +240,7 @@
     call $miden_prelude::intrinsics::felt::extern_neg
   )
   (func $note_script (;28;) (type 0) (result f64)
-    (local i32 f64 f64 i64 i64 i32 i32 i32)
+    (local i32 f64 i32 i32 i32)
     global.get $__stack_pointer
     i32.const 2048
     i32.sub
@@ -235,25 +250,18 @@
     call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.set 1
     local.get 0
+    local.get 0
+    local.get 0
     call $miden_sdk_tx_kernel::extern_note_get_inputs
     local.tee 2
-    call $miden_prelude::intrinsics::felt::extern_as_u64
-    local.set 3
-    local.get 2
-    call $miden_prelude::intrinsics::felt::extern_as_u64
-    local.set 4
-    local.get 0
-    local.get 0
-    local.get 3
-    i32.wrap_i64
     i32.const 3
     i32.shl
-    local.tee 5
+    local.tee 3
     i32.add
     i32.store offset=12
     local.get 0
-    local.get 4
-    i64.store32 offset=8
+    local.get 2
+    i32.store offset=8
     local.get 0
     local.get 0
     i32.store offset=4
@@ -261,10 +269,10 @@
     local.get 0
     i32.store
     local.get 0
-    local.set 6
+    local.set 2
     loop (result f64) ;; label = @1
       block ;; label = @2
-        local.get 5
+        local.get 3
         br_if 0 (;@2;)
         local.get 0
         call $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop
@@ -276,29 +284,29 @@
         return
       end
       local.get 0
-      local.get 6
+      local.get 2
       i32.const 8
       i32.add
-      local.tee 7
+      local.tee 4
       i32.store offset=4
-      local.get 5
+      local.get 3
       i32.const -8
       i32.add
-      local.set 5
+      local.set 3
       local.get 1
-      local.get 6
+      local.get 2
       f64.load
       call $miden_prelude::intrinsics::felt::extern_add
       local.set 1
-      local.get 7
-      local.set 6
+      local.get 4
+      local.set 2
       br 0 (;@1;)
     end
   )
   (func $miden_sdk_tx_kernel::add_assets (;29;) (type 12) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 32
     i32.sub
     local.tee 2
     global.set $__stack_pointer
@@ -312,30 +320,10 @@
     f64.load offset=24
     local.get 2
     call $miden_sdk_tx_kernel::extern_account_add_asset
-    local.get 2
-    i32.const 32
-    i32.add
-    local.get 2
-    i64.load
-    local.get 2
-    i32.const 8
-    i32.add
-    i64.load
-    local.get 2
-    i32.const 16
-    i32.add
-    i64.load
-    local.get 2
-    i32.const 24
-    i32.add
-    i64.load
-    call $miden_prelude::intrinsics::word::Word::from_u64_unchecked
     local.get 0
     i32.const 24
     i32.add
     local.get 2
-    i32.const 32
-    i32.add
     i32.const 24
     i32.add
     i64.load
@@ -344,8 +332,6 @@
     i32.const 16
     i32.add
     local.get 2
-    i32.const 32
-    i32.add
     i32.const 16
     i32.add
     i64.load
@@ -354,18 +340,16 @@
     i32.const 8
     i32.add
     local.get 2
-    i32.const 32
-    i32.add
     i32.const 8
     i32.add
     i64.load
     i64.store
     local.get 0
     local.get 2
-    i64.load offset=32
+    i64.load
     i64.store
     local.get 2
-    i32.const 64
+    i32.const 32
     i32.add
     global.set $__stack_pointer
   )
@@ -544,31 +528,6 @@
       local.get 3
       i32.store
     end
-  )
-  (func $miden_prelude::intrinsics::word::Word::from_u64_unchecked (;33;) (type 15) (param i32 i64 i64 i64 i64)
-    (local f64 f64 f64)
-    local.get 1
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-    local.set 5
-    local.get 2
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-    local.set 6
-    local.get 3
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-    local.set 7
-    local.get 0
-    local.get 4
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-    f64.store offset=24
-    local.get 0
-    local.get 7
-    f64.store offset=16
-    local.get 0
-    local.get 6
-    f64.store offset=8
-    local.get 0
-    local.get 5
-    f64.store
   )
   (table (;0;) 1 1 funcref)
   (memory (;0;) 17)
