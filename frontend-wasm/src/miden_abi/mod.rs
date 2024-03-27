@@ -39,12 +39,12 @@ pub fn miden_abi_function_type(module_id: Symbol, function_id: Symbol) -> Functi
 }
 
 fn is_miden_sdk_module(module_id: Symbol) -> bool {
-    tx_kernel::types().contains_key(module_id.as_str())
+    tx_kernel::signatures().contains_key(module_id.as_str())
 }
 
 /// Get the target Miden ABI tx kernel function type for the given module and function id
 pub fn miden_sdk_function_type(module_id: Symbol, function_id: Symbol) -> FunctionType {
-    let funcs = tx_kernel::types()
+    let funcs = tx_kernel::signatures()
         .get(module_id.as_str())
         .expect(format!("No Miden ABI function types found for module {}", module_id).as_str());
     funcs.get(function_id.as_str()).cloned().expect(
@@ -57,13 +57,13 @@ pub fn miden_sdk_function_type(module_id: Symbol, function_id: Symbol) -> Functi
 }
 
 fn is_miden_stdlib_module(module_id: Symbol) -> bool {
-    stdlib::types().contains_key(module_id.as_str())
+    stdlib::signatures().contains_key(module_id.as_str())
 }
 
 /// Get the target Miden ABI stdlib function type for the given module and function id
 #[inline(always)]
 fn miden_stdlib_function_type(module_id: Symbol, function_id: Symbol) -> FunctionType {
-    let funcs = stdlib::types()
+    let funcs = stdlib::signatures()
         .get(module_id.as_str())
         .expect(format!("No Miden ABI function types found for module {}", module_id).as_str());
     funcs.get(function_id.as_str()).cloned().expect(

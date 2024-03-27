@@ -16,7 +16,7 @@ pub const ACCOUNT_MODULE_NAME: &str = "miden:tx_kernel/account";
 pub const ACCOUNT_ADD_ASSET: &str = "add_asset";
 pub const ACCOUNT_GET_ID: &str = "get_id";
 
-pub(crate) fn types() -> &'static ModuleFunctionTypeMap {
+pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
     static TYPES: OnceLock<ModuleFunctionTypeMap> = OnceLock::new();
     TYPES.get_or_init(|| {
         let mut m: ModuleFunctionTypeMap = Default::default();

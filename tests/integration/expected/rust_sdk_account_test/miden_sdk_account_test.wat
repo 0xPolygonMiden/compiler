@@ -12,11 +12,13 @@
   (type (;10;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 i32)))
   (type (;11;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 i32)))
   (type (;12;) (func (param f64 f64 f64 f64 i32)))
-  (type (;13;) (func (param i32)))
-  (type (;14;) (func (param i32 i32)))
-  (type (;15;) (func (param i32 i32 i32)))
-  (type (;16;) (func (param i32 i32 i32 i32)))
-  (type (;17;) (func (param i32 i32 i32 i32 i32)))
+  (type (;13;) (func (param f64 f64 f64 f64 f64 f64 f64 f64)))
+  (type (;14;) (func (param i32)))
+  (type (;15;) (func (param i32 i32)))
+  (type (;16;) (func (param i32 i32 i32)))
+  (type (;17;) (func (param i32 i32 i32 i32)))
+  (type (;18;) (func (param i32 i64 i64 i64 i64)))
+  (type (;19;) (func (param i32 i32 i32 i32 i32)))
   (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
   (import "miden:prelude/intrinsics_felt" "from_u64_unchecked" (func $miden_prelude::intrinsics::felt::extern_from_u64_unchecked (;1;) (type 1)))
   (import "miden:prelude/intrinsics_felt" "add" (func $miden_prelude::intrinsics::felt::extern_add (;2;) (type 2)))
@@ -41,7 +43,8 @@
   (import "miden:prelude/std_crypto_hashes" "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;21;) (type 10)))
   (import "miden:prelude/std_crypto_hashes" "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;22;) (type 11)))
   (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;23;) (type 12)))
-  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;24;) (type 13) (param i32)
+  (import "miden:prelude/std_crypto_dsa" "rpo_falcon512_verify<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::dsa::extern_rpo_falcon512_verify (;24;) (type 13)))
+  (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;25;) (type 14) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -67,7 +70,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;25;) (type 13) (param i32)
+  (func $<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop (;26;) (type 14) (param i32)
     (local i32)
     block ;; label = @1
       local.get 0
@@ -84,7 +87,7 @@
       call $__rust_dealloc
     end
   )
-  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;26;) (type 13) (param i32)
+  (func $<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop (;27;) (type 14) (param i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 16
@@ -103,7 +106,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $get_wallet_magic_number (;27;) (type 0) (result f64)
+  (func $get_wallet_magic_number (;28;) (type 0) (result f64)
     (local f64)
     call $miden_sdk_tx_kernel::extern_account_get_id
     local.set 0
@@ -112,8 +115,8 @@
     local.get 0
     call $miden_prelude::intrinsics::felt::extern_add
   )
-  (func $test_add_asset (;28;) (type 0) (result f64)
-    (local i32 f64 f64 f64)
+  (func $test_add_asset (;29;) (type 0) (result f64)
+    (local i32 f64)
     global.get $__stack_pointer
     i32.const 64
     i32.sub
@@ -155,7 +158,7 @@
     global.set $__stack_pointer
     local.get 1
   )
-  (func $test_felt_ops_smoke (;29;) (type 2) (param f64 f64) (result f64)
+  (func $test_felt_ops_smoke (;30;) (type 2) (param f64 f64) (result f64)
     (local i64)
     local.get 0
     call $miden_prelude::intrinsics::felt::extern_as_u64
@@ -244,8 +247,8 @@
     local.get 0
     call $miden_prelude::intrinsics::felt::extern_neg
   )
-  (func $note_script (;30;) (type 0) (result f64)
-    (local i32 f64 i32 i32 i32)
+  (func $note_script (;31;) (type 0) (result f64)
+    (local i32 f64 f64 i64 i64 i32 i32 i32)
     global.get $__stack_pointer
     i32.const 2048
     i32.sub
@@ -308,7 +311,7 @@
       br 0 (;@1;)
     end
   )
-  (func $test_blake3_hash_1to1 (;31;) (type 14) (param i32 i32)
+  (func $test_blake3_hash_1to1 (;32;) (type 15) (param i32 i32)
     (local i32 i32 f64)
     global.get $__stack_pointer
     i32.const 240
@@ -496,7 +499,7 @@
       br 0 (;@1;)
     end
   )
-  (func $test_blake3_hash_2to1 (;32;) (type 15) (param i32 i32 i32)
+  (func $test_blake3_hash_2to1 (;33;) (type 16) (param i32 i32 i32)
     (local i32 i32 f64)
     global.get $__stack_pointer
     i32.const 432
@@ -753,7 +756,12 @@
       br 0 (;@1;)
     end
   )
-  (func $miden_sdk_tx_kernel::add_assets (;33;) (type 14) (param i32 i32)
+  (func $test_rpo_falcon512_verify (;34;) (type 15) (param i32 i32)
+    local.get 0
+    local.get 1
+    call $miden_prelude::stdlib::crypto::dsa::rpo_falcon512_verify
+  )
+  (func $miden_sdk_tx_kernel::add_assets (;35;) (type 15) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -803,14 +811,14 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $__rust_dealloc (;34;) (type 15) (param i32 i32 i32)
+  (func $__rust_dealloc (;36;) (type 16) (param i32 i32 i32)
     i32.const 1048652
     local.get 0
     local.get 2
     local.get 1
     call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc
   )
-  (func $wee_alloc::neighbors::Neighbors<T>::remove (;35;) (type 13) (param i32)
+  (func $wee_alloc::neighbors::Neighbors<T>::remove (;37;) (type 14) (param i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 0
@@ -877,7 +885,7 @@
     i32.and
     i32.store
   )
-  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;36;) (type 16) (param i32 i32 i32 i32)
+  (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;38;) (type 17) (param i32 i32 i32 i32)
     (local i32 i32 i32)
     block ;; label = @1
       local.get 1
@@ -979,11 +987,55 @@
       i32.store
     end
   )
-  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;37;) (type 15) (param i32 i32 i32)
+  (func $miden_prelude::intrinsics::word::Word::from_u64_unchecked (;39;) (type 18) (param i32 i64 i64 i64 i64)
+    (local f64 f64 f64)
+    local.get 1
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    local.set 5
+    local.get 2
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    local.set 6
+    local.get 3
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    local.set 7
+    local.get 0
+    local.get 4
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    f64.store offset=24
+    local.get 0
+    local.get 7
+    f64.store offset=16
+    local.get 0
+    local.get 6
+    f64.store offset=8
+    local.get 0
+    local.get 5
+    f64.store
+  )
+  (func $miden_prelude::stdlib::crypto::dsa::rpo_falcon512_verify (;40;) (type 15) (param i32 i32)
+    local.get 0
+    f64.load
+    local.get 0
+    f64.load offset=8
+    local.get 0
+    f64.load offset=16
+    local.get 0
+    f64.load offset=24
+    local.get 1
+    f64.load
+    local.get 1
+    f64.load offset=8
+    local.get 1
+    f64.load offset=16
+    local.get 1
+    f64.load offset=24
+    call $miden_prelude::stdlib::crypto::dsa::extern_rpo_falcon512_verify
+  )
+  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;41;) (type 16) (param i32 i32 i32)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice (;38;) (type 17) (param i32 i32 i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice (;42;) (type 19) (param i32 i32 i32 i32 i32)
     block ;; label = @1
       local.get 1
       local.get 3
@@ -1011,5 +1063,6 @@
   (export "note_script" (func $note_script))
   (export "test_blake3_hash_1to1" (func $test_blake3_hash_1to1))
   (export "test_blake3_hash_2to1" (func $test_blake3_hash_2to1))
+  (export "test_rpo_falcon512_verify" (func $test_rpo_falcon512_verify))
   (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00j\00\00\00(\00\00\00\00\00\10\00)\00\00\00\b1\00\00\00(\00\00\00")
 )
