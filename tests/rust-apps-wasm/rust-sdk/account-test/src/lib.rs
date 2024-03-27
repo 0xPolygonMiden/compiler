@@ -27,15 +27,15 @@ impl Account {
     }
 }
 
-// pub struct Note;
+pub struct Note;
 
-// impl Note {
-//     #[no_mangle]
-//     pub fn note_script() -> Felt {
-//         let mut sum = Felt::new(0).unwrap();
-//         for input in get_inputs() {
-//             sum = sum + input;
-//         }
-//         sum
-//     }
-// }
+impl Note {
+    #[no_mangle]
+    pub fn note_script() -> Felt {
+        let mut sum = Felt::new(0).unwrap();
+        for input in get_inputs() {
+            sum = sum + input;
+        }
+        sum
+    }
+}

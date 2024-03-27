@@ -31,7 +31,7 @@ extern "C" {
 #[link(wasm_import_module = "miden:tx_kernel/note")]
 extern "C" {
     #[link_name = "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>"]
-    fn extern_note_get_inputs(ptr: *mut Felt) -> usize;
+    fn extern_note_get_inputs(ptr: *mut Felt) -> Felt;
 }
 
 #[inline(always)]
