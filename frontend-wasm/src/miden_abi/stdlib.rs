@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 use super::ModuleFunctionTypeMap;
 
 pub(crate) mod crypto;
+pub(crate) mod mem;
 
 pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
     static TYPES: OnceLock<ModuleFunctionTypeMap> = OnceLock::new();
@@ -12,6 +13,7 @@ pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
         let mut m: ModuleFunctionTypeMap = Default::default();
         m.extend(crypto::hashes::signatures());
         m.extend(crypto::dsa::signatures());
+        m.extend(mem::signatures());
         m
     })
 }

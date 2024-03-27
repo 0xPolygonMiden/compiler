@@ -1,9 +1,6 @@
 #![no_std]
 #![allow(dead_code)]
 
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 extern crate alloc;
 
 use alloc::vec::Vec;
