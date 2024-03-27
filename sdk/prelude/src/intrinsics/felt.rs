@@ -140,6 +140,31 @@ impl From<Felt> for u64 {
     }
 }
 
+impl From<u32> for Felt {
+    fn from(value: u32) -> Self {
+        Self::from_u64_unchecked(value as u64)
+    }
+}
+
+impl From<u16> for Felt {
+    fn from(value: u16) -> Self {
+        Self::from_u64_unchecked(value as u64)
+    }
+}
+
+impl From<u8> for Felt {
+    fn from(value: u8) -> Self {
+        Self::from_u64_unchecked(value as u64)
+    }
+}
+
+#[cfg(target_pointer_width = "32")]
+impl From<usize> for Felt {
+    fn from(value: usize) -> Self {
+        Self::from_u64_unchecked(value as u64)
+    }
+}
+
 impl Add for Felt {
     type Output = Self;
 
