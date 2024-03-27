@@ -30,7 +30,7 @@ pub fn pipe_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
         let f2 = *((out_ptr + 16) as *const Felt);
         let f3 = *((out_ptr + 24) as *const Felt);
         // ignore the last element, it's the new ptr
-        let rpo_hash = Word::new(f0, f1, f2, f3);
+        let rpo_hash = [f0, f1, f2, f3];
         (rpo_hash, words_vec)
     }
 }
