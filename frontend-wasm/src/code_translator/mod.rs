@@ -161,6 +161,25 @@ pub fn translate_operator(
                 unsupported_diag!(diagnostics, "MemoryCopy: only single memory is supported");
             }
         }
+        Operator::MemoryFill { mem } => {
+            // See semantics at https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-fill
+
+            // This is a temporary workaround until we have this instruction
+            // properly implemented in IR. I encountered the Wasm `memory.fill`
+            // instruction in the `GlobalAlloc::alloc_zeroed` function, which is
+            // used to zero out the memory allocated by `GlobalAlloc::alloc`, but
+            // since the memory in Miden VM is guaranteed to be initialized to
+            // zeros we can ignore this instruction in this case for now
+            // see https://github.com/0xPolygonMiden/compiler/issues/156
+            if *mem != 0 {
+                unsupported_diag!(diagnostics, "MemoryFill: only single memory is supported");
+            }
+            let _num_bytes = state.pop1();
+            let val = state.pop1();
+            let _dst_i32 = state.pop1();
+            // Fail if the value is not zero, i.e. the memory is not zeroed
+            builder.ins().assert_eq_imm(Immediate::I32(0), val, span);
+        }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
             translate_load_zext(U8, I32, memarg, state, builder, span)

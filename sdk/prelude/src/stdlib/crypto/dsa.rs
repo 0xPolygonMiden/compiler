@@ -28,6 +28,7 @@ extern "C" {
 /// advice provider, and uses it to generate the signature. However, for production grade
 /// implementations, this functionality should be overridden to ensure more secure handling of
 /// private keys.
+#[inline(always)]
 pub fn rpo_falcon512_verify(pk: Word, msg: Word) {
     unsafe {
         extern_rpo_falcon512_verify(pk.0, pk.1, pk.2, pk.3, msg.0, msg.1, msg.2, msg.3);

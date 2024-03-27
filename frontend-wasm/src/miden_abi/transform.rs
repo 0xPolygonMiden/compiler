@@ -23,6 +23,7 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
         stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => TransformStrategy::ReturnViaPointer,
         stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
         stdlib::crypto::dsa::RPO_FALCON512_VERIFY => TransformStrategy::NoTransform,
+        stdlib::mem::PIPE_WORDS_TO_MEMORY => TransformStrategy::ReturnViaPointer,
         _ => panic!("No transform strategy found for function {}", function_id),
     }
 }

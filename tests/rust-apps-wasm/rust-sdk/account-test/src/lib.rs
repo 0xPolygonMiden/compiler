@@ -6,6 +6,7 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 extern crate alloc;
+use alloc::vec::Vec;
 
 use miden_sdk::*;
 
@@ -78,4 +79,9 @@ pub fn test_blake3_hash_2to1(input1: [u8; 32], input2: [u8; 32]) -> [u8; 32] {
 #[no_mangle]
 pub fn test_rpo_falcon512_verify(pk: Word, msg: Word) {
     rpo_falcon512_verify(pk, msg)
+}
+
+#[no_mangle]
+pub fn test_pipe_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
+    pipe_words_to_memory(num_words)
 }
