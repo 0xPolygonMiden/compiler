@@ -11,6 +11,7 @@ mod code_translator;
 mod component;
 mod config;
 mod error;
+mod intrinsics;
 mod miden_abi;
 mod module;
 mod ssa;

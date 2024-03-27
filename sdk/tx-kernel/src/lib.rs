@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(dead_code)]
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -64,7 +65,17 @@ pub fn get_inputs() -> Vec<Felt> {
 
 #[repr(transparent)]
 pub struct CoreAsset {
-    pub inner: Word,
+    inner: Word,
+}
+
+impl CoreAsset {
+    pub fn new(word: Word) -> Self {
+        CoreAsset { inner: word }
+    }
+
+    pub fn as_word(&self) -> Word {
+        self.inner
+    }
 }
 
 pub fn add_assets(asset: CoreAsset) -> CoreAsset {

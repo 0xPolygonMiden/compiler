@@ -25,6 +25,7 @@ use wasmparser::{MemArg, Operator};
 
 use crate::{
     error::{WasmError, WasmResult},
+    intrinsics::{convert_intrinsics_call, is_miden_intrinsics_module},
     miden_abi::{is_miden_sdk_module, transform::transform_miden_abi_call},
     module::{
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
@@ -192,6 +193,7 @@ pub fn translate_operator(
         }
         Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
         Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
+        Operator::F64Load { memarg } => translate_load(Felt, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
@@ -649,14 +651,19 @@ fn translate_call(
     let wasm_sig = module_state.signature(function_index);
     let num_wasm_args = wasm_sig.params().len();
     let args = func_state.peekn(num_wasm_args);
-    if is_miden_sdk_module(func_id.module.as_symbol()) {
+    if is_miden_intrinsics_module(func_id.module.as_symbol()) {
+        let results = convert_intrinsics_call(func_id, args, builder, span);
+        func_state.popn(num_wasm_args);
+        func_state.pushn(&results);
+    } else if is_miden_sdk_module(func_id.module.as_symbol()) {
         // Miden SDK function call, transform the call to the Miden ABI if needed
         let results = transform_miden_abi_call(func_id, args, builder, span, diagnostics);
         assert_eq!(
             wasm_sig.results().len(),
             results.len(),
             "Adapted function call results quantity are not the same as the original Wasm \
-             function results quantity"
+             function results quantity for function {}",
+            func_id
         );
         assert_eq!(
             wasm_sig.results().iter().map(|p| &p.ty).collect::<Vec<&Type>>(),
@@ -665,7 +672,8 @@ fn translate_call(
                 .map(|r| builder.data_flow_graph().value_type(*r))
                 .collect::<Vec<&Type>>(),
             "Adapted function call result types are not the same as the original Wasm function \
-             result types"
+             result types for function {}",
+            func_id
         );
         func_state.popn(num_wasm_args);
         func_state.pushn(&results);
