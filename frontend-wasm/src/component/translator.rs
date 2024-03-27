@@ -1,9 +1,9 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{
     cranelift_entity::PrimaryMap, CanonAbiImport, ComponentBuilder, ComponentExport, FunctionIdent,
-    Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
+    FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
 };
-use miden_hir_type::LiftedFunctionType;
+use miden_hir_type::Abi;
 use rustc_hash::FxHashMap;
 
 use super::{
@@ -414,10 +414,7 @@ fn function_id_from_export(exporting_module: &Module, func_idx: FuncIndex) -> Fu
 }
 
 /// Convert the given Wasm component function type to the Miden IR lifted function type
-fn convert_lifted_func_ty(
-    ty: &TypeFuncIndex,
-    component_types: &ComponentTypes,
-) -> LiftedFunctionType {
+fn convert_lifted_func_ty(ty: &TypeFuncIndex, component_types: &ComponentTypes) -> FunctionType {
     let type_func = component_types[*ty].clone();
     let params_types = component_types[type_func.params].clone().types;
     let results_types = component_types[type_func.results].clone().types;
@@ -429,5 +426,9 @@ fn convert_lifted_func_ty(
         .into_iter()
         .map(|ty| interface_type_to_ir(ty, component_types))
         .collect();
-    LiftedFunctionType { params, results }
+    FunctionType {
+        params,
+        results,
+        abi: Abi::Wasm,
+    }
 }

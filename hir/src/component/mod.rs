@@ -3,7 +3,6 @@ use core::ops::{Deref, DerefMut};
 
 use indexmap::IndexMap;
 use miden_core::crypto::hash::RpoDigest;
-use miden_hir_type::MidenAbiFunctionType;
 
 use self::formatter::PrettyPrint;
 use super::*;
@@ -28,7 +27,7 @@ pub struct CanonAbiImport {
     /// The interfact function name that is being imported
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
-    pub function_ty: LiftedFunctionType,
+    pub function_ty: FunctionType,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
     /// Any options associated with this import
@@ -39,7 +38,7 @@ pub struct CanonAbiImport {
 #[derive(Debug, Clone)]
 pub struct MidenAbiImport {
     /// The Miden function type as it is defined in the MASM
-    pub function_ty: MidenAbiFunctionType,
+    pub function_ty: FunctionType,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
 }
@@ -122,7 +121,7 @@ pub struct ComponentExport {
     /// The module function that is being exported
     pub function: FunctionIdent,
     /// The component(lifted) type of the exported function
-    pub function_ty: LiftedFunctionType,
+    pub function_ty: FunctionType,
     /// Any options associated with this export
     pub options: CanonicalOptions,
 }

@@ -1,6 +1,6 @@
 use miden_core::crypto::hash::RpoDigest;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature};
+use miden_hir::{AbiParam, CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature};
 use rustc_hash::FxHashMap;
 
 use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Module, ModuleTypes};
@@ -115,7 +115,12 @@ impl ModuleTranslationState {
     ) -> WasmResult<FunctionIdent> {
         let (func_id, wasm_sig) = self.functions[&index].clone();
         let sig: Signature = if is_miden_sdk_module(func_id.module.as_symbol()) {
-            miden_sdk_function_type(func_id.module.as_symbol(), func_id.function.as_symbol()).into()
+            let ft =
+                miden_sdk_function_type(func_id.module.as_symbol(), func_id.function.as_symbol());
+            Signature::new(
+                ft.params.into_iter().map(AbiParam::new),
+                ft.results.into_iter().map(AbiParam::new),
+            )
         } else {
             wasm_sig.clone()
         };

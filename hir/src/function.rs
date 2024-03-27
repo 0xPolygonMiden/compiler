@@ -1,7 +1,6 @@
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 use miden_diagnostics::Spanned;
-use miden_hir_type::MidenAbiFunctionType;
 
 use self::formatter::PrettyPrint;
 use super::*;
@@ -238,18 +237,6 @@ impl PartialEq for Signature {
             && self.cc == other.cc
             && self.params.len() == other.params.len()
             && self.results.len() == other.results.len()
-    }
-}
-impl From<MidenAbiFunctionType> for Signature {
-    fn from(miden_func_ty: MidenAbiFunctionType) -> Self {
-        let cc = CallConv::SystemV;
-        let linkage = Linkage::External;
-        Self {
-            params: miden_func_ty.params.into_iter().map(AbiParam::new).collect(),
-            results: miden_func_ty.results.into_iter().map(AbiParam::new).collect(),
-            cc,
-            linkage,
-        }
     }
 }
 impl formatter::PrettyPrint for Signature {

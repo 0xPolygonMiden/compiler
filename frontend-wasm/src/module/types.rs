@@ -3,6 +3,7 @@
 use core::fmt;
 use std::{collections::HashMap, ops::Index};
 
+use hir::Abi;
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{cranelift_entity::PrimaryMap, AbiParam, CallConv, Linkage, Signature};
 use miden_hir_type as hir;
@@ -564,7 +565,11 @@ pub fn ir_func_type(ty: &WasmFuncType) -> WasmResult<hir::FunctionType> {
         .iter()
         .map(|t| ir_type(*t))
         .collect::<WasmResult<Vec<hir::Type>>>()?;
-    Ok(hir::FunctionType { results, params })
+    Ok(hir::FunctionType {
+        abi: Abi::Canonical,
+        results,
+        params,
+    })
 }
 
 /// Converts a Wasm type into a Miden IR type

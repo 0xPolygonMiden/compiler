@@ -62,7 +62,7 @@ fn inline(
 #[cfg(test)]
 mod tests {
     use miden_core::crypto::hash::RpoDigest;
-    use miden_hir::{Ident, InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol};
+    use miden_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol};
     use miden_hir_type::Type;
 
     use super::*;
@@ -130,7 +130,7 @@ mod tests {
         let export_name_sym = Symbol::intern("add");
         let export = ir.exports().get(&export_name_sym.into()).unwrap();
         assert_eq!(export.function.function.as_symbol(), export_name_sym);
-        let expected_export_func_ty = LiftedFunctionType::new([Type::U32, Type::U32], [Type::U32]);
+        let expected_export_func_ty = FunctionType::new_wasm([Type::U32, Type::U32], [Type::U32]);
         assert_eq!(export.function_ty, expected_export_func_ty);
     }
 
@@ -238,10 +238,7 @@ mod tests {
         let export_name_sym = Symbol::intern("inc");
         let export = ir.exports().get(&export_name_sym.into()).unwrap();
         assert_eq!(export.function.function.as_symbol(), export_name_sym);
-        let expected_export_func_ty = LiftedFunctionType {
-            params: vec![Type::U32],
-            results: vec![Type::U32],
-        };
+        let expected_export_func_ty = FunctionType::new_wasm(vec![Type::U32], vec![Type::U32]);
         assert_eq!(export.function_ty, expected_export_func_ty);
         let module = ir.modules().first().unwrap().1;
         // dbg!(&module.imports());
@@ -261,10 +258,8 @@ mod tests {
         let component_import = ir.imports().get(&function_id).unwrap().unwrap_canon_abi_import();
         assert_eq!(component_import.interface_function, interface_function_ident);
         assert!(!component_import.function_ty.params.is_empty());
-        let expected_import_func_ty = LiftedFunctionType {
-            params: vec![Type::U32, Type::U32],
-            results: vec![Type::U32],
-        };
+        let expected_import_func_ty =
+            FunctionType::new_wasm(vec![Type::U32, Type::U32], vec![Type::U32]);
         assert_eq!(component_import.function_ty, expected_import_func_ty);
     }
 }

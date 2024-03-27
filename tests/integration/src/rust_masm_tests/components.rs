@@ -1,7 +1,7 @@
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
 use miden_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
-use miden_hir::{Ident, InterfaceFunctionIdent, InterfaceIdent, LiftedFunctionType, Symbol, Type};
+use miden_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol, Type};
 
 use crate::CompilerTest;
 
@@ -50,10 +50,8 @@ fn wcm_inc() {
     let export_name_sym = Symbol::intern("inc");
     let export = ir_component.exports().get(&export_name_sym.into()).unwrap();
     assert_eq!(export.function.function.as_symbol(), export_name_sym);
-    let expected_export_func_ty = LiftedFunctionType {
-        params: vec![Type::U32],
-        results: vec![Type::U32],
-    };
+
+    let expected_export_func_ty = FunctionType::new_wasm(vec![Type::U32], vec![Type::U32]);
     assert_eq!(export.function_ty, expected_export_func_ty);
     let module = ir_component.modules().first().unwrap().1;
     dbg!(&module.imports());
@@ -71,9 +69,7 @@ fn wcm_inc() {
         ir_component.imports().get(&function_id).unwrap().unwrap_canon_abi_import();
     assert_eq!(component_import.interface_function, interface_function_ident);
     assert!(!component_import.function_ty.params.is_empty());
-    let expected_import_func_ty = LiftedFunctionType {
-        params: vec![Type::U32, Type::U32],
-        results: vec![Type::U32],
-    };
+    let expected_import_func_ty =
+        FunctionType::new_wasm(vec![Type::U32, Type::U32], vec![Type::U32]);
     assert_eq!(component_import.function_ty, expected_import_func_ty);
 }
