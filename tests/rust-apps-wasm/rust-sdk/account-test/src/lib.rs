@@ -19,12 +19,12 @@ impl Account {
         magic + acc_id.into()
     }
 
-    // #[no_mangle]
-    // pub fn test_add_asset() -> Felt {
-    //     let asset_in = CoreAsset::new(Word::from_u64_unchecked(1, 2, 3, 4));
-    //     let asset_out = add_assets(asset_in);
-    //     asset_out.as_word().as_tuple().0
-    // }
+    #[no_mangle]
+    pub fn test_add_asset() -> Felt {
+        let asset_in = CoreAsset::new(Word::from_u64_unchecked(1, 2, 3, 4));
+        let asset_out = add_assets(asset_in);
+        asset_out.as_word().as_tuple().0
+    }
 }
 
 // pub struct Note;

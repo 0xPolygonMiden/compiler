@@ -197,6 +197,7 @@ pub fn translate_operator(
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
+        Operator::F64Store { memarg } => translate_store(Felt, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
             translate_store(U8, memarg, state, builder, span);
         }
