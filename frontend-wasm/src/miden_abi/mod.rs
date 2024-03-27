@@ -26,7 +26,6 @@ pub fn is_miden_sdk_module(module_id: Symbol) -> bool {
 }
 
 /// Get the target Miden ABI tx kernel function type for the given module and function id
-#[inline(always)]
 pub fn miden_sdk_function_type(module_id: Symbol, function_id: Symbol) -> FunctionType {
     let funcs = tx_kernel::types()
         .get(module_id.as_str())
