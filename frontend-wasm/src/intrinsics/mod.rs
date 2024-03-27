@@ -1,13 +1,10 @@
-use std::{collections::HashSet, sync::OnceLock, vec};
+mod felt;
 
-use miden_hir::{FunctionIdent, InstBuilder, SourceSpan, Symbol, Type::*, Value};
+use std::{collections::HashSet, sync::OnceLock};
+
+use miden_hir::{FunctionIdent, SourceSpan, Symbol, Value};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
-
-pub const TYPES_FELT_MODULE_NAME: &str = "miden:types/felt";
-pub const TYPES_FELT_ADD: &str = "add";
-pub const TYPES_FELT_FROM_U64_UNCHECKED: &str = "from_u64_unchecked";
-pub const TYPES_FELT_AS_U64: &str = "as_u64";
 
 /// Check if the given module is a Miden module that contains intrinsics
 pub fn is_miden_intrinsics_module(module_id: Symbol) -> bool {
@@ -18,7 +15,7 @@ fn modules() -> &'static HashSet<&'static str> {
     static MODULES: OnceLock<HashSet<&'static str>> = OnceLock::new();
     MODULES.get_or_init(|| {
         let mut s = HashSet::default();
-        s.insert(TYPES_FELT_MODULE_NAME);
+        s.insert(felt::TYPES_FELT_MODULE_NAME);
         s
     })
 }
@@ -31,24 +28,7 @@ pub fn convert_intrinsics_call(
     span: SourceSpan,
 ) -> Vec<Value> {
     match func_id.module.as_symbol().as_str() {
-        TYPES_FELT_MODULE_NAME => match func_id.function.as_symbol().as_str() {
-            TYPES_FELT_ADD => {
-                assert_eq!(args.len(), 2, "add takes exactly two arguments");
-                let inst = builder.ins().add_unchecked(args[0], args[1], span);
-                vec![inst]
-            }
-            TYPES_FELT_FROM_U64_UNCHECKED => {
-                assert_eq!(args.len(), 1, "from_u64_unchecked takes exactly one argument");
-                let inst = builder.ins().cast(args[0], Felt, span);
-                vec![inst]
-            }
-            TYPES_FELT_AS_U64 => {
-                assert_eq!(args.len(), 1, "as_u64 takes exactly one argument");
-                let inst = builder.ins().cast(args[0], U64, span);
-                vec![inst]
-            }
-            _ => panic!("No intrinsics found for {}", func_id),
-        },
+        felt::TYPES_FELT_MODULE_NAME => felt::convert_felt_intrinsics(func_id, args, builder, span),
         _ => panic!("No intrinsics found for {}", func_id),
     }
 }
