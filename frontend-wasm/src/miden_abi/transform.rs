@@ -20,8 +20,9 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
         tx_kernel::NOTE_GET_INPUTS => TransformStrategy::ListReturn,
         tx_kernel::ACCOUNT_ADD_ASSET => TransformStrategy::ReturnViaPointer,
         tx_kernel::ACCOUNT_GET_ID => TransformStrategy::NoTransform,
-        stdlib::BLAKE3_HASH_1TO1 => TransformStrategy::ReturnViaPointer,
-        stdlib::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
+        stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => TransformStrategy::ReturnViaPointer,
+        stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
+        stdlib::crypto::dsa::RPO_FALCON512_VERIFY => TransformStrategy::NoTransform,
         _ => panic!("No transform strategy found for function {}", function_id),
     }
 }
