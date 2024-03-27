@@ -8,7 +8,7 @@ use super::{module_translation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
     intrinsics::is_miden_intrinsics_module,
-    miden_abi::miden_sdk_function_type,
+    miden_abi::miden_abi_function_type,
     module::{
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
@@ -84,7 +84,7 @@ pub fn translate_module_as_component(
                     // ignore intrinsics imports
                     continue;
                 }
-                let function_ty = miden_sdk_function_type(
+                let function_ty = miden_abi_function_type(
                     ext_func.module.as_symbol(),
                     ext_func.function.as_symbol(),
                 );

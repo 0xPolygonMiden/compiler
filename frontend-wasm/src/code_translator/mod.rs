@@ -26,7 +26,7 @@ use wasmparser::{MemArg, Operator};
 use crate::{
     error::{WasmError, WasmResult},
     intrinsics::{convert_intrinsics_call, is_miden_intrinsics_module},
-    miden_abi::{is_miden_sdk_module, transform::transform_miden_abi_call},
+    miden_abi::{is_miden_abi_module, transform::transform_miden_abi_call},
     module::{
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
@@ -658,7 +658,7 @@ fn translate_call(
         let results = convert_intrinsics_call(func_id, args, builder, span);
         func_state.popn(num_wasm_args);
         func_state.pushn(&results);
-    } else if is_miden_sdk_module(func_id.module.as_symbol()) {
+    } else if is_miden_abi_module(func_id.module.as_symbol()) {
         // Miden SDK function call, transform the call to the Miden ABI if needed
         let results = transform_miden_abi_call(func_id, args, builder, span, diagnostics);
         assert_eq!(

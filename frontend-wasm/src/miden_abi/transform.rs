@@ -1,7 +1,7 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
 
-use super::tx_kernel;
+use super::{stdlib, tx_kernel};
 use crate::module::function_builder_ext::FunctionBuilderExt;
 
 /// The strategy to use for transforming a function call
@@ -20,6 +20,8 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
         tx_kernel::NOTE_GET_INPUTS => TransformStrategy::ListReturn,
         tx_kernel::ACCOUNT_ADD_ASSET => TransformStrategy::ReturnViaPointer,
         tx_kernel::ACCOUNT_GET_ID => TransformStrategy::NoTransform,
+        stdlib::BLAKE3_HASH_1TO1 => TransformStrategy::ReturnViaPointer,
+        stdlib::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
         _ => panic!("No transform strategy found for function {}", function_id),
     }
 }

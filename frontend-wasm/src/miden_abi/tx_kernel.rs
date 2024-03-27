@@ -5,7 +5,9 @@ use std::sync::OnceLock;
 
 use miden_hir::FunctionType;
 use miden_hir_type::Type::*;
-use rustc_hash::FxHashMap;
+
+use super::ModuleFunctionTypeMap;
+use crate::miden_abi::FunctionTypeMap;
 
 pub const NOTE_MODULE_NAME: &str = "miden:tx_kernel/note";
 pub const NOTE_GET_INPUTS: &str = "get_inputs";
@@ -13,9 +15,6 @@ pub const NOTE_GET_INPUTS: &str = "get_inputs";
 pub const ACCOUNT_MODULE_NAME: &str = "miden:tx_kernel/account";
 pub const ACCOUNT_ADD_ASSET: &str = "add_asset";
 pub const ACCOUNT_GET_ID: &str = "get_id";
-
-type FunctionTypeMap = FxHashMap<&'static str, FunctionType>;
-type ModuleFunctionTypeMap = FxHashMap<&'static str, FunctionTypeMap>;
 
 pub(crate) fn types() -> &'static ModuleFunctionTypeMap {
     static TYPES: OnceLock<ModuleFunctionTypeMap> = OnceLock::new();

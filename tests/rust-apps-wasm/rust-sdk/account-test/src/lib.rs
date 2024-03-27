@@ -7,7 +7,7 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 
 extern crate alloc;
 
-use miden_sdk::*;
+use miden_sdk::{crypto::hashes::*, *};
 
 pub struct Account;
 
@@ -63,4 +63,14 @@ impl Note {
         }
         sum
     }
+}
+
+#[no_mangle]
+pub fn test_blake3_hash_1to1(input: [u8; 32]) -> [u8; 32] {
+    blake3_hash_1to1(input)
+}
+
+#[no_mangle]
+pub fn test_blake3_hash_2to1(input: [u8; 64]) -> [u8; 32] {
+    blake3_hash_2to1(input)
 }
