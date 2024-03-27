@@ -10,18 +10,18 @@ impl Account {
     #[no_mangle]
     pub fn get_wallet_magic_number() -> Felt {
         let acc_id = get_id();
-        let magic = 42;
-        let acc_id: i32 = acc_id.into();
+        let magic: Felt = 42;
+        let acc_id: Felt = acc_id.into();
         magic + acc_id
     }
 
     #[no_mangle]
     pub fn test_add_asset() {
         let asset_in = CoreAsset {
-            inner: (1, 1, 1, 1),
+            inner: [1, 1, 1, 1],
         };
         let asset_out = add_assets(asset_in);
-        assert_eq!(asset_out.inner.0, 42);
+        assert_eq!(asset_out.inner[0], 42);
     }
 }
 

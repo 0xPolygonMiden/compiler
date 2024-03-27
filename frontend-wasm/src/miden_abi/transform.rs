@@ -81,10 +81,10 @@ pub fn return_via_pointer(
     let args_wo_pointer = &args[0..args.len() - 1];
     let call = builder.ins().call(func_id, args_wo_pointer, span);
     let results = builder.inst_results(call).to_vec();
-    let ptr = *args.last().unwrap();
-    let ptr_ty = builder.data_flow_graph().value_type(ptr).clone();
-    assert_eq!(ptr_ty, I32, "Expected pointer type to be i32");
-    let ptr_u32 = builder.ins().cast(ptr, U32, span);
+    let ptr_arg = *args.last().unwrap();
+    let ptr_arg_ty = builder.data_flow_graph().value_type(ptr_arg).clone();
+    assert_eq!(ptr_arg_ty, I32);
+    let ptr_u32 = builder.ins().cast(ptr_arg, U32, span);
     for (idx, value) in results.iter().enumerate() {
         let eff_ptr = if idx == 0 {
             ptr_u32
@@ -93,7 +93,8 @@ pub fn return_via_pointer(
                 .ins()
                 .add_imm_checked(ptr_u32, miden_hir::Immediate::I32(idx as i32), span)
         };
-        let addr = builder.ins().inttoptr(eff_ptr, Ptr(ptr_ty.clone().into()), span);
+        let value_ty = builder.data_flow_graph().value_type(*value).clone();
+        let addr = builder.ins().inttoptr(eff_ptr, Ptr(value_ty.into()), span);
         builder.ins().store(addr, *value, span);
     }
     Vec::new()

@@ -26,9 +26,9 @@ pub(crate) fn types() -> &'static ModuleFunctionTypeMap {
         account.insert(
             ACCOUNT_ADD_ASSET.to_string(),
             // Accepts and returns word
-            MidenAbiFunctionType::new([I32, I32, I32, I32], [I32, I32, I32, I32]),
+            MidenAbiFunctionType::new([I64, I64, I64, I64], [I64, I64, I64, I64]),
         );
-        account.insert(ACCOUNT_GET_ID.to_string(), MidenAbiFunctionType::new([], [I32]));
+        account.insert(ACCOUNT_GET_ID.to_string(), MidenAbiFunctionType::new([], [I64]));
         m.insert(NOTE_MODULE_NAME.to_string(), note);
         m.insert(ACCOUNT_MODULE_NAME.to_string(), account);
         m
