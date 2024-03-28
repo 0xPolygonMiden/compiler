@@ -59,23 +59,7 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
             memory: 0,
         },
     },
-    F64Load {
-        memarg: MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: 0,
-        },
-    },
     F32Store {
-        memarg: MemArg {
-            align: 0,
-            max_align: 0,
-            offset: 0,
-            memory: 0,
-        },
-    },
-    F64Store {
         memarg: MemArg {
             align: 0,
             max_align: 0,

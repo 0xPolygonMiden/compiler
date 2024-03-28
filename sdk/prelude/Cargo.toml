@@ -1,6 +1,6 @@
 [package]
-name = "miden-sdk-types"
-description = "Miden SDK types"
+name = "miden-prelude"
+description = "Miden Prelude: intrinsics and standard library for Miden"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
