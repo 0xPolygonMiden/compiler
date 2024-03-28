@@ -12,7 +12,7 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     crypto.insert(
         BLAKE3_HASH_1TO1,
         //Accepts and returns a 8 Felt elements
-        FunctionType::new_miden(
+        FunctionType::new(
             [Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt],
             [Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt],
         ),
@@ -20,7 +20,7 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     crypto.insert(
         BLAKE3_HASH_2TO1,
         // Accepts 16 and returns a 8 Felt elements
-        FunctionType::new_miden(
+        FunctionType::new(
             [
                 Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt,
                 Felt, Felt,
