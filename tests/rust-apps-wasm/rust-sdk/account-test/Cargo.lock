@@ -37,6 +37,7 @@ name = "miden-sdk-account-test"
 version = "0.0.0"
 dependencies = [
  "miden-sdk",
+ "wee_alloc",
 ]
 
 [[package]]
@@ -44,7 +45,6 @@ name = "miden-sdk-tx-kernel"
 version = "0.1.0"
 dependencies = [
  "miden-prelude",
- "wee_alloc",
 ]
 
 [[package]]
