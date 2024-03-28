@@ -22,16 +22,16 @@ pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
         let mut m: ModuleFunctionTypeMap = Default::default();
 
         let mut note: FunctionTypeMap = Default::default();
-        note.insert(NOTE_GET_INPUTS, FunctionType::new_miden([Felt], [I32, Felt]));
+        note.insert(NOTE_GET_INPUTS, FunctionType::new([Felt], [I32, Felt]));
         m.insert(NOTE_MODULE_NAME, note);
 
         let mut account: FunctionTypeMap = Default::default();
         account.insert(
             ACCOUNT_ADD_ASSET,
             // Accepts and returns word
-            FunctionType::new_miden([Felt, Felt, Felt, Felt], [Felt, Felt, Felt, Felt]),
+            FunctionType::new([Felt, Felt, Felt, Felt], [Felt, Felt, Felt, Felt]),
         );
-        account.insert(ACCOUNT_GET_ID, FunctionType::new_miden([], [Felt]));
+        account.insert(ACCOUNT_GET_ID, FunctionType::new([], [Felt]));
         m.insert(ACCOUNT_MODULE_NAME, account);
 
         m

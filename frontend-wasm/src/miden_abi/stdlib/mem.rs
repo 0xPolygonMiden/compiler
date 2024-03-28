@@ -10,7 +10,7 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     let mut funcs: FunctionTypeMap = Default::default();
     funcs.insert(
         PIPE_WORDS_TO_MEMORY,
-        FunctionType::new_miden(
+        FunctionType::new(
             [
                 Felt, // num_words
                 Felt, // write_ptr
