@@ -14,7 +14,9 @@ use miden_diagnostics::{
     term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
     Emitter, NullEmitter, SourceSpan, Verbosity,
 };
-use miden_frontend_wasm::{translate_component, translate_module, WasmTranslationConfig};
+use miden_frontend_wasm::{
+    translate_component, translate_module, translate_module_as_component, WasmTranslationConfig,
+};
 use miden_hir::{
     pass::{AnalysisManager, RewritePass, RewriteSet},
     FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Symbol,
@@ -25,6 +27,10 @@ use midenc_session::{InputFile, Session};
 pub enum CompilerTestSource {
     Rust(String),
     RustCargo {
+        cargo_project_folder_name: String,
+        artifact_name: String,
+    },
+    RustCargoLib {
         cargo_project_folder_name: String,
         artifact_name: String,
     },
@@ -41,6 +47,10 @@ impl CompilerTestSource {
                 cargo_project_folder_name: _,
                 artifact_name,
             } => artifact_name.clone(),
+            CompilerTestSource::RustCargoLib {
+                cargo_project_folder_name: _,
+                artifact_name,
+            } => artifact_name.clone(),
             CompilerTestSource::RustCargoComponent {
                 cargo_project_folder_name: _,
                 artifact_name,
@@ -53,10 +63,18 @@ impl CompilerTestSource {
 #[derive(derive_more::From)]
 pub enum HirArtifact {
     Program(Box<miden_hir::Program>),
+    Module(Box<miden_hir::Module>),
     Component(Box<miden_hir::Component>),
 }
 
 impl HirArtifact {
+    pub fn unwrap_module(&self) -> &miden_hir::Module {
+        match self {
+            HirArtifact::Module(module) => module,
+            _ => panic!("Expected a Module"),
+        }
+    }
+
     pub fn unwrap_program(&self) -> &miden_hir::Program {
         match self {
             Self::Program(program) => program,
@@ -130,29 +148,10 @@ impl CompilerTest {
                 )
                 .as_str(),
             );
-        let reader = std::io::BufReader::new(child.stdout.take().unwrap());
-        let mut wasm_artifacts = Vec::new();
-        for message in cargo_metadata::Message::parse_stream(reader) {
-            match message.expect("Failed to parse cargo metadata") {
-                cargo_metadata::Message::CompilerArtifact(artifact) => {
-                    // find the Wasm artifact in artifact.filenames
-                    for filename in artifact.filenames {
-                        if filename.as_str().ends_with(".wasm") {
-                            wasm_artifacts.push(filename.into_std_path_buf());
-                        }
-                    }
-                }
-                _ => (),
-            }
-        }
+        let wasm_artifacts = find_wasm_artifacts(&mut child);
         let output = child.wait().expect("Couldn't get cargo's exit status");
         if !output.success() {
-            eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
-            let mut stderr = Vec::new();
-            child.stderr.unwrap().read(&mut stderr).expect("Failed to read stderr");
-            let stderr = String::from_utf8(stderr).expect("Failed to parse stderr");
-            eprintln!("stderr: {}", stderr);
-            panic!("Rust to Wasm compilation failed!");
+            report_cargo_error(child);
         }
         assert!(output.success());
         assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
@@ -162,6 +161,72 @@ impl CompilerTest {
             config,
             session: default_session(),
             source: CompilerTestSource::RustCargoComponent {
+                cargo_project_folder_name: cargo_project_folder.to_string(),
+                artifact_name,
+            },
+            entrypoint: None,
+            wasm_bytes: fs::read(wasm_artifacts.first().unwrap()).unwrap(),
+            hir: None,
+            ir_masm: None,
+        }
+    }
+
+    /// Set the Rust source code to compile a library Cargo project to Wasm module
+    pub fn rust_source_cargo_lib(cargo_project_folder: &str) -> Self {
+        let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
+        // dbg!(&pwd);
+        let mut cargo_build_cmd = Command::new("cargo");
+        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
+        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
+        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
+        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
+        cargo_build_cmd
+            .arg("build")
+            .arg("--manifest-path")
+            .arg(manifest_path)
+            .arg("--release")
+            .arg("--target=wasm32-wasi")
+            // compile std as part of crate graph compilation
+            // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+            .arg("-Z")
+            .arg("build-std=std,core,alloc,panic_abort")
+            .arg("-Z")
+            // abort on panic without message formatting (core::fmt uses call_indirect)
+            .arg("build-std-features=panic_immediate_abort");
+        let mut child = cargo_build_cmd
+            .arg("--message-format=json-render-diagnostics")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect(
+                format!(
+                    "Failed to execute cargo build {}.",
+                    cargo_build_cmd
+                        .get_args()
+                        .map(|arg| format!("'{}'", arg.to_str().unwrap()))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                )
+                .as_str(),
+            );
+        let mut wasm_artifacts = find_wasm_artifacts(&mut child);
+        let output = child.wait().expect("Couldn't get cargo's exit status");
+        if !output.success() {
+            report_cargo_error(child);
+        }
+        assert!(output.success());
+        // filter out dependencies
+        wasm_artifacts.retain(|path| {
+            let path_str = path.to_str().unwrap();
+            !path_str.contains("release/deps")
+        });
+        dbg!(&wasm_artifacts);
+        assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
+        let wasm_comp_path = &wasm_artifacts.first().unwrap();
+        let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
+        Self {
+            config: Default::default(),
+            session: default_session(),
+            source: CompilerTestSource::RustCargoLib {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name,
             },
@@ -309,17 +374,27 @@ impl CompilerTest {
     }
 
     fn wasm_to_ir(&self) -> HirArtifact {
+        use miden_hir_transform as transforms;
         match &self.source {
             CompilerTestSource::RustCargoComponent { .. } => {
-                // Wasm component is expected
+                // Wasm component is expectedAA
                 let ir_component =
                     translate_component(&self.wasm_bytes, &self.config, &self.session.diagnostics)
                         .expect("Failed to translate Wasm to IR component");
                 Box::new(ir_component).into()
             }
+            CompilerTestSource::RustCargoLib { .. } => {
+                // Wasm module compiled as a module
+                let ir_component = translate_module_as_component(
+                    &self.wasm_bytes,
+                    &self.config,
+                    &self.session.diagnostics,
+                )
+                .expect("Failed to translate Wasm module to IR component");
+                Box::new(ir_component).into()
+            }
             _ => {
-                // Wasm module is expected
-                use miden_hir_transform as transforms;
+                // Wasm module compiled as a program
                 let mut ir_module =
                     translate_module(&self.wasm_bytes, &self.config, &self.session.diagnostics)
                         .expect("Failed to translate Wasm to IR module");
@@ -375,6 +450,10 @@ impl CompilerTest {
                 let ir_component = demangle(&hir_component.to_string());
                 expected_hir_file.assert_eq(&ir_component);
             }
+            HirArtifact::Module(_) => {
+                let ir_module = demangle(&self.hir().unwrap_module().to_string());
+                expected_hir_file.assert_eq(&ir_module);
+            }
         }
     }
 
@@ -423,12 +502,43 @@ impl CompilerTest {
                 HirArtifact::Component(_hir_component) => {
                     todo!("Component to MASM compilation is not implemented yet")
                 }
+                HirArtifact::Module(_) => {
+                    todo!("Module to MASM compilation is not implemented yet")
+                }
             };
             let frozen = ir_masm.freeze();
             self.ir_masm = Some(frozen);
         }
         self.ir_masm.clone().unwrap()
     }
+}
+
+fn report_cargo_error(child: std::process::Child) {
+    eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
+    let mut stderr = Vec::new();
+    child.stderr.unwrap().read(&mut stderr).expect("Failed to read stderr");
+    let stderr = String::from_utf8(stderr).expect("Failed to parse stderr");
+    eprintln!("stderr: {}", stderr);
+    panic!("Rust to Wasm compilation failed!");
+}
+
+fn find_wasm_artifacts(child: &mut std::process::Child) -> Vec<std::path::PathBuf> {
+    let mut wasm_artifacts = Vec::new();
+    let reader = std::io::BufReader::new(child.stdout.take().unwrap());
+    for message in cargo_metadata::Message::parse_stream(reader) {
+        match message.expect("Failed to parse cargo metadata") {
+            cargo_metadata::Message::CompilerArtifact(artifact) => {
+                // find the Wasm artifact in artifact.filenames
+                for filename in artifact.filenames {
+                    if filename.as_str().ends_with(".wasm") {
+                        wasm_artifacts.push(filename.into_std_path_buf());
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
+    wasm_artifacts
 }
 
 pub(crate) fn demangle(name: &str) -> String {

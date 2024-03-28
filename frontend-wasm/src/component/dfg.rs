@@ -32,13 +32,16 @@
 // TODO: remove this once Wasm CM support is complete
 #![allow(dead_code)]
 
-use crate::component::*;
-use crate::module::types::{EntityIndex, MemoryIndex, WasmType};
+use std::{hash::Hash, ops::Index};
+
 use indexmap::IndexMap;
 use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use rustc_hash::FxHashMap;
-use std::hash::Hash;
-use std::ops::Index;
+
+use crate::{
+    component::*,
+    module::types::{EntityIndex, MemoryIndex, WasmType},
+};
 
 #[derive(Default)]
 pub struct ComponentDfg {
@@ -166,10 +169,7 @@ id! {
 #[allow(missing_docs)]
 pub enum Instance {
     Static(StaticModuleIndex, Box<[CoreDef]>),
-    Import(
-        RuntimeImportIndex,
-        IndexMap<String, IndexMap<String, CoreDef>>,
-    ),
+    Import(RuntimeImportIndex, IndexMap<String, IndexMap<String, CoreDef>>),
 }
 
 /// Same as `info::Export`
@@ -287,10 +287,7 @@ where
     where
         V: Hash + Eq + Clone,
     {
-        *self
-            .intern_map
-            .entry(value.clone())
-            .or_insert_with(|| self.key_map.push(value))
+        *self.intern_map.entry(value.clone()).or_insert_with(|| self.key_map.push(value))
     }
 
     /// Returns an iterator of all the values contained within this set.
@@ -301,6 +298,7 @@ where
 
 impl<K: EntityRef, V> Index<K> for Intern<K, V> {
     type Output = V;
+
     fn index(&self, key: K) -> &V {
         &self.key_map[key]
     }
@@ -436,23 +434,19 @@ impl LinearizeDfg<'_> {
             ),
         };
         let index = RuntimeInstanceIndex::new(self.runtime_instances.len());
-        self.initializers
-            .push(GlobalInitializer::InstantiateModule(instantiation));
-        let prev = self
-            .runtime_instances
-            .insert(RuntimeInstance::Normal(instance), index);
+        self.initializers.push(GlobalInitializer::InstantiateModule(instantiation));
+        let prev = self.runtime_instances.insert(RuntimeInstance::Normal(instance), index);
         assert!(prev.is_none());
     }
 
     fn resource(&mut self, index: DefinedResourceIndex, resource: &Resource) {
         let dtor = resource.dtor.as_ref().map(|dtor| self.core_def(dtor));
-        self.initializers
-            .push(GlobalInitializer::Resource(info::Resource {
-                dtor,
-                index,
-                rep: resource.rep,
-                instance: resource.instance,
-            }));
+        self.initializers.push(GlobalInitializer::Resource(info::Resource {
+            dtor,
+            index,
+            rep: resource.rep,
+            instance: resource.instance,
+        }));
     }
 
     fn export(&mut self, export: &Export) -> info::Export {
@@ -469,9 +463,7 @@ impl LinearizeDfg<'_> {
             Export::ModuleStatic(i) => info::Export::ModuleStatic(*i),
             Export::ModuleImport(i) => info::Export::ModuleImport(*i),
             Export::Instance(map) => info::Export::Instance(
-                map.iter()
-                    .map(|(name, export)| (name.clone(), self.export(export)))
-                    .collect(),
+                map.iter().map(|(name, export)| (name.clone(), self.export(export))).collect(),
             ),
             Export::Type(def) => info::Export::Type(*def),
         }
@@ -581,11 +573,11 @@ impl LinearizeDfg<'_> {
     ///
     /// * `key` - the key being referenced which is used to deduplicate.
     /// * `map` - a closure to access the interning map on `Self`
-    /// * `gen` - a closure to generate an intermediate value with `Self` from
-    ///   `K`. This is only used if `key` hasn't previously been seen. This
-    ///   closure can recursively intern other values possibly.
-    /// * `init` - a closure to use the result of `gen` to create the final
-    ///   initializer now that the index `V` of the runtime item is known.
+    /// * `gen` - a closure to generate an intermediate value with `Self` from `K`. This is only
+    ///   used if `key` hasn't previously been seen. This closure can recursively intern other
+    ///   values possibly.
+    /// * `init` - a closure to use the result of `gen` to create the final initializer now that the
+    ///   index `V` of the runtime item is known.
     ///
     /// This is used by all the other interning methods above to lazily append
     /// initializers on-demand and avoid pushing more than one initializer at a

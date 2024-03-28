@@ -130,6 +130,11 @@ impl ModuleImportInfo {
     pub fn iter(&self) -> impl Iterator<Item = &MasmImport> {
         self.modules.values()
     }
+
+    /// Get an iterator over the aliased module names in this table
+    pub fn iter_module_names(&self) -> impl Iterator<Item = &Ident> {
+        self.modules.keys()
+    }
 }
 
 /// This represents an import statement in Miden Assembly

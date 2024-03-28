@@ -20,36 +20,90 @@ pub struct CanonicalOptions {
     pub post_return: Option<FunctionIdent>,
 }
 
-/// A component import
+/// A component import translated from a Wasm component import that is following
+/// the Wasm Component Model Canonical ABI.
 #[derive(Debug, Clone)]
-pub struct ComponentImport {
+pub struct CanonAbiImport {
     /// The interfact function name that is being imported
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
-    pub function_ty: LiftedFunctionType,
+    pub function_ty: FunctionType,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
     /// Any options associated with this import
     pub options: CanonicalOptions,
 }
+
+/// A Miden (sdklib, tx kernel) function import that is following the Miden ABI.
+#[derive(Debug, Clone)]
+pub struct MidenAbiImport {
+    /// The Miden function type as it is defined in the MASM
+    pub function_ty: FunctionType,
+    /// The MAST root hash of the function to be used in codegen
+    pub digest: RpoDigest,
+}
+
+/// A component import
+#[derive(Debug, Clone)]
+pub enum ComponentImport {
+    /// A Wasm import that is following the Wasm Component Model Canonical ABI
+    CanonAbiImport(CanonAbiImport),
+    /// A Miden import that is following the Miden ABI
+    MidenAbiImport(MidenAbiImport),
+}
+
+impl ComponentImport {
+    pub fn digest(&self) -> RpoDigest {
+        match self {
+            ComponentImport::CanonAbiImport(import) => import.digest,
+            ComponentImport::MidenAbiImport(import) => import.digest,
+        }
+    }
+
+    pub fn unwrap_canon_abi_import(&self) -> &CanonAbiImport {
+        match self {
+            ComponentImport::CanonAbiImport(import) => import,
+            _ => panic!("Expected CanonAbiImport"),
+        }
+    }
+}
+
 impl fmt::Display for ComponentImport {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.pretty_print(f)
     }
 }
+
 impl formatter::PrettyPrint for ComponentImport {
     fn render(&self) -> formatter::Document {
         use crate::formatter::*;
-
+        let function_ty_str = match self {
+            ComponentImport::CanonAbiImport(import) => import.function_ty.to_string(),
+            ComponentImport::MidenAbiImport(import) => import.function_ty.to_string(),
+        };
+        let name = match self {
+            ComponentImport::CanonAbiImport(import) => {
+                format!(" {} ", import.interface_function)
+            }
+            ComponentImport::MidenAbiImport(_import) => " ".to_string(),
+        };
+        let import = match self {
+            ComponentImport::CanonAbiImport(_) => const_text("import (abi canon)"),
+            ComponentImport::MidenAbiImport(_) => const_text("import (abi miden)"),
+        };
         const_text("(")
-            + const_text("import")
+            + import
+            + text(name)
+            + const_text("(")
+            + const_text("digest")
             + const_text(" ")
-            + display(self.digest)
+            + display(self.digest())
+            + const_text(")")
             + const_text(" ")
             + const_text("(")
             + const_text("type")
             + const_text(" ")
-            + text(format!("{}", &self.function_ty))
+            + text(function_ty_str)
             + const_text(")")
             + const_text(")")
     }
@@ -67,7 +121,7 @@ pub struct ComponentExport {
     /// The module function that is being exported
     pub function: FunctionIdent,
     /// The component(lifted) type of the exported function
-    pub function_ty: LiftedFunctionType,
+    pub function_ty: FunctionType,
     /// Any options associated with this export
     pub options: CanonicalOptions,
 }

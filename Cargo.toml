@@ -1,21 +1,21 @@
 [workspace]
 resolver = "2"
 members = [
-    "codegen/*",
-    "hir",
-    "hir-analysis",
-    "hir-macros",
-    "hir-symbol",
-    "hir-transform",
-    "hir-type",
-    "midenc",
-    "midenc-compile",
-    "midenc-driver",
-    "midenc-session",
-    "tools/*",
-    "frontend-wasm",
-    "tests/rust-apps/*",
-    "tests/integration",
+  "codegen/*",
+  "hir",
+  "hir-analysis",
+  "hir-macros",
+  "hir-symbol",
+  "hir-transform",
+  "hir-type",
+  "midenc",
+  "midenc-compile",
+  "midenc-driver",
+  "midenc-session",
+  "tools/*",
+  "frontend-wasm",
+  "tests/rust-apps/*",
+  "tests/integration",
 ]
 exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 

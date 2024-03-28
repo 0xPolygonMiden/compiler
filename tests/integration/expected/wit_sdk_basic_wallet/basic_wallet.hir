@@ -1,8 +1,8 @@
 (component 
     ;; Component Imports
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#basic_wallet.wasm #basic_wallet::bindings::miden::base::tx::create_note::wit_import)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#wit-component:fixups #func0)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#wit-component:fixups #func1)
+    (lower (import (abi canon) ("miden:base/account@1.0.0" #add-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #0)
+    (lower (import (abi canon) ("miden:base/account@1.0.0" #remove-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #1)
+    (lower (import (abi canon) ("miden:base/tx@1.0.0" #create-note) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#miden:base/tx@1.0.0 #create-note)
 
     ;; Modules
     (module #wit-component:shim
@@ -113,7 +113,7 @@
                 (let (v29 u32) (cast v28))
                 (let (v30 (ptr i64)) (inttoptr v29))
                 (let (v31 i64) (load v30))
-                (let (v32 i64) (call #basic_wallet::bindings::miden::base::tx::create_note::wit_import v16 v21 v26 v31 v4 v5 v6 v7 v8))
+                (let (v32 i64) (call (#miden:base/tx@1.0.0 #create-note) v16 v21 v26 v31 v4 v5 v6 v7 v8))
                 (let (v33 i32) (const.i32 32))
                 (let (v34 i32) (add.wrapping v12 v33))
                 (let (v35 (ptr i32)) (global.symbol #__stack_pointer))
@@ -1007,6 +1007,8 @@
         )
 
         ;; Imports
+        (func (import #miden:base/tx@1.0.0 #create-note)
+              (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (result i64))
         (func (import #wit-component:shim #indirect-miden:base/account@1.0.0-add-asset)
               (param i64) (param i64) (param i64) (param i64) (param i32))
         (func (import #wit-component:shim #indirect-miden:base/account@1.0.0-remove-asset)

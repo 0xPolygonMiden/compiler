@@ -1,9 +1,9 @@
 use miden_diagnostics::DiagnosticsHandler;
 use miden_hir::{
-    cranelift_entity::PrimaryMap, ComponentBuilder, ComponentExport, FunctionIdent, Ident,
-    InterfaceFunctionIdent, InterfaceIdent, Symbol,
+    cranelift_entity::PrimaryMap, CanonAbiImport, ComponentBuilder, ComponentExport, FunctionIdent,
+    FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
 };
-use miden_hir_type::LiftedFunctionType;
+use miden_hir_type::Abi;
 use rustc_hash::FxHashMap;
 
 use super::{
@@ -17,9 +17,9 @@ use crate::{
     error::WasmResult,
     module::{
         build_ir::build_ir_module,
-        func_env::FuncEnvironment,
         instance::ModuleArgument,
         module_env::ParsedModule,
+        module_translation_state::ModuleTranslationState,
         types::{EntityIndex, FuncIndex},
         Module, ModuleImport,
     },
@@ -165,11 +165,12 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     }
                 }
                 let module_types = self.component_types.module_types();
-                let func_env = FuncEnvironment::new(module, module_types, module_args);
+                let mut module_state =
+                    ModuleTranslationState::new(module, module_types, module_args);
                 let ir_module = build_ir_module(
                     self.parsed_modules.get_mut(*static_module_idx).unwrap(),
                     module_types,
-                    func_env,
+                    &mut module_state,
                     self.config,
                     self.diagnostics,
                 )?;
@@ -274,12 +275,12 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         };
         let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
 
-        let component_import = miden_hir::ComponentImport {
+        let component_import = miden_hir::ComponentImport::CanonAbiImport(CanonAbiImport {
             function_ty: lifted_func_ty,
             interface_function,
             digest: import_metadata.digest.clone(),
             options: self.translate_canonical_options(options)?,
-        };
+        });
         Ok(component_import)
     }
 
@@ -340,8 +341,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             CoreDef::Export(core_export) => {
                 let module =
                     &self.parsed_modules[self.module_instances_source[core_export.instance]].module;
-                let module_name = module.name();
-                let module_ident = miden_hir::Ident::with_empty_span(Symbol::intern(module_name));
+                let from = Ident::from(module.name().as_str());
+                let module_name = from;
                 let func_name = match core_export.item {
                     ExportItem::Index(idx) => match idx {
                         EntityIndex::Function(func_idx) => module.func_name(func_idx),
@@ -358,8 +359,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     }
                 };
                 let func_ident = miden_hir::FunctionIdent {
-                    module: module_ident,
-                    function: miden_hir::Ident::with_empty_span(Symbol::intern(func_name)),
+                    module: module_name,
+                    function: miden_hir::Ident::with_empty_span(func_name),
                 };
                 func_ident
             }
@@ -394,12 +395,10 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
 }
 
 /// Get the function id from the given Wasm core module import
-fn function_id_from_import(module: &Module, module_import: &ModuleImport) -> FunctionIdent {
-    let func_name = module.func_name(module_import.index.unwrap_func());
-    let module_name = module.name();
+fn function_id_from_import(_module: &Module, module_import: &ModuleImport) -> FunctionIdent {
     let function_id = FunctionIdent {
-        module: Ident::with_empty_span(Symbol::intern(module_name)),
-        function: Ident::with_empty_span(Symbol::intern(func_name)),
+        module: Ident::from(module_import.module.as_str()),
+        function: Ident::from(module_import.field.as_str()),
     };
     function_id
 }
@@ -407,19 +406,15 @@ fn function_id_from_import(module: &Module, module_import: &ModuleImport) -> Fun
 /// Get the function id from the given Wasm func_idx in the given Wasm core exporting_module
 fn function_id_from_export(exporting_module: &Module, func_idx: FuncIndex) -> FunctionIdent {
     let func_name = exporting_module.func_name(func_idx);
-    let module_name = exporting_module.name();
     let function_id = FunctionIdent {
-        module: Ident::with_empty_span(Symbol::intern(module_name)),
-        function: Ident::with_empty_span(Symbol::intern(func_name)),
+        module: exporting_module.name(),
+        function: Ident::with_empty_span(func_name),
     };
     function_id
 }
 
 /// Convert the given Wasm component function type to the Miden IR lifted function type
-fn convert_lifted_func_ty(
-    ty: &TypeFuncIndex,
-    component_types: &ComponentTypes,
-) -> LiftedFunctionType {
+fn convert_lifted_func_ty(ty: &TypeFuncIndex, component_types: &ComponentTypes) -> FunctionType {
     let type_func = component_types[*ty].clone();
     let params_types = component_types[type_func.params].clone().types;
     let results_types = component_types[type_func.results].clone().types;
@@ -431,5 +426,9 @@ fn convert_lifted_func_ty(
         .into_iter()
         .map(|ty| interface_type_to_ir(ty, component_types))
         .collect();
-    LiftedFunctionType { params, results }
+    FunctionType {
+        params,
+        results,
+        abi: Abi::Wasm,
+    }
 }

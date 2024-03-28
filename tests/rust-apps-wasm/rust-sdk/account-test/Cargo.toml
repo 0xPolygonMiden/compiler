@@ -1,0 +1,16 @@
+[package]
+name = "miden-sdk-account-test"
+rust-version = "1.71"
+license = "MIT"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+miden-sdk = { path = "../../../../sdk/sdk" }
+
+[profile.release]
+panic = "abort"
+# optimize for size
+opt-level = "z"

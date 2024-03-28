@@ -1,14 +1,14 @@
 use core::mem;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{CallConv, ConstantData, Linkage, ModuleBuilder};
+use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
-use super::Module;
+use super::{module_translation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
+    miden_abi::miden_sdk_function_type,
     module::{
-        func_env::FuncEnvironment,
         func_translator::FuncTranslator,
         module_env::{FunctionBodyData, ModuleEnvironment, ParsedModule},
         types::{ir_func_sig, ir_func_type, ir_type, ModuleTypes},
@@ -38,14 +38,71 @@ pub fn translate_module(
     }
     let module_types = module_types_builder.finish();
 
-    let func_env = FuncEnvironment::new(&parsed_module.module, &module_types, vec![]);
-    build_ir_module(&mut parsed_module, &module_types, func_env, config, diagnostics)
+    let mut module_state =
+        ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
+    build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)
+}
+
+/// Translate a valid Wasm core module binary into Miden IR component building
+/// component imports for well-known Miden ABI functions
+///
+/// This is a temporary solution until we compile an account code as Wasm
+/// component. To be able to do it we need wit-bindgen type re-mapping implemented first (see
+/// https://github.com/0xPolygonMiden/compiler/issues/116)
+pub fn translate_module_as_component(
+    wasm: &[u8],
+    config: &WasmTranslationConfig,
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<miden_hir::Component> {
+    let wasm_features = WasmFeatures::default();
+    let mut validator = Validator::new_with_features(wasm_features);
+    let parser = wasmparser::Parser::new(0);
+    let mut module_types_builder = Default::default();
+    let mut parsed_module = ModuleEnvironment::new(
+        config,
+        &mut validator,
+        &mut module_types_builder,
+    )
+    .parse(parser, wasm, diagnostics)?;
+    parsed_module.module.set_name_fallback(config.source_name.clone());
+    if let Some(name_override) = config.override_name.as_ref() {
+        parsed_module.module.set_name_override(name_override.clone());
+    }
+    let module_types = module_types_builder.finish();
+
+    let mut module_state =
+        ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
+    let module =
+        build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)?;
+    let mut cb = miden_hir::ComponentBuilder::new(&diagnostics);
+    let module_imports = module.imports();
+    for import_module_id in module_imports.iter_module_names() {
+        if let Some(imports) = module_imports.imported(import_module_id) {
+            for ext_func in imports {
+                let function_ty = miden_sdk_function_type(
+                    ext_func.module.as_symbol(),
+                    ext_func.function.as_symbol(),
+                );
+                let digest = *module_state.digest(ext_func).expect(
+                    format!("failed to find MAST root hash for function {}", ext_func.function)
+                        .as_str(),
+                );
+                let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
+                    function_ty,
+                    digest,
+                });
+                cb.add_import(*ext_func, component_import);
+            }
+        }
+    }
+    cb.add_module(module.into()).expect("module is already added");
+    Ok(cb.build())
 }
 
 pub fn build_ir_module(
     parsed_module: &mut ParsedModule,
     module_types: &ModuleTypes,
-    func_env: FuncEnvironment,
+    module_state: &mut ModuleTranslationState,
     _config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Module> {
@@ -71,9 +128,9 @@ pub fn build_ir_module(
         func_translator.translate_body(
             &body,
             &mut module_func_builder,
+            module_state,
             &parsed_module.module,
             &module_types,
-            &func_env,
             diagnostics,
             &mut func_validator,
         )?;
@@ -96,11 +153,11 @@ fn build_globals(
             .globals_names
             .get(&global_idx)
             .cloned()
-            .unwrap_or(format!("gv{}", global_idx.as_u32()));
+            .unwrap_or(Symbol::intern(format!("gv{}", global_idx.as_u32())));
         let global_init = wasm_module.try_global_initializer(global_idx, diagnostics)?;
         let init = ConstantData::from(global_init.to_le_bytes(&wasm_module, diagnostics)?);
         if let Err(e) = module_builder.declare_global_variable(
-            &global_name,
+            global_name.as_str(),
             ir_type(global.ty.clone())?,
             Linkage::External,
             Some(init.clone()),
@@ -128,7 +185,7 @@ fn build_data_segments(
     for (data_segment_idx, data_segment) in &translation.data_segments {
         let data_segment_name =
             translation.module.name_section.data_segment_names[&data_segment_idx].clone();
-        let readonly = data_segment_name.contains(".rodata");
+        let readonly = data_segment_name.as_str().contains(".rodata");
         let init = ConstantData::from(data_segment.data);
         let offset = data_segment.offset.as_i32(&translation.module, diagnostics)? as u32;
         let size = init.len() as u32;
