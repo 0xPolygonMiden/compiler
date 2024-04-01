@@ -88,3 +88,8 @@ pub fn test_rpo_falcon512_verify(pk: Word, msg: Word) {
 pub fn test_pipe_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
     pipe_words_to_memory(num_words)
 }
+
+#[no_mangle]
+pub fn test_pipe_double_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
+    pipe_double_words_to_memory(num_words)
+}

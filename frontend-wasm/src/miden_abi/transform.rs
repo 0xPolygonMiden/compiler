@@ -24,6 +24,7 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
         stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
         stdlib::crypto::dsa::RPO_FALCON512_VERIFY => TransformStrategy::NoTransform,
         stdlib::mem::PIPE_WORDS_TO_MEMORY => TransformStrategy::ReturnViaPointer,
+        stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => TransformStrategy::ReturnViaPointer,
         _ => panic!("No transform strategy found for function {}", function_id),
     }
 }
@@ -95,7 +96,7 @@ pub fn return_via_pointer(
         } else {
             builder
                 .ins()
-                .add_imm_checked(ptr_u32, miden_hir::Immediate::I32(idx as i32), span)
+                .add_imm_checked(ptr_u32, miden_hir::Immediate::I32(idx as i32 * 8), span)
         };
         let value_ty = builder.data_flow_graph().value_type(*value).clone();
         let addr = builder.ins().inttoptr(eff_ptr, Ptr(value_ty.into()), span);
