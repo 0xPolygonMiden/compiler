@@ -13,8 +13,8 @@
   (type (;11;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 i32)))
   (type (;12;) (func (param f64 f64 f64 f64 f64 f64 f64 f64)))
   (type (;13;) (func (param f64 f64 f64 f64 i32)))
-  (type (;14;) (func (param f64 i32 i32)))
-  (type (;15;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 i32 i32 i32)))
+  (type (;14;) (func (param f64 f64 i32)))
+  (type (;15;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 i32)))
   (type (;16;) (func (param i32)))
   (type (;17;) (func (param i32 i32 i32) (result i32)))
   (type (;18;) (func (param i32 i32 i32)))
@@ -22,8 +22,9 @@
   (type (;20;) (func (param i32 f64)))
   (type (;21;) (func (param i32 i32) (result i32)))
   (type (;22;) (func (param i32 i32 i32 i32)))
-  (type (;23;) (func))
-  (type (;24;) (func (param i32 i32 i32 i32 i32)))
+  (type (;23;) (func (param i32) (result f64)))
+  (type (;24;) (func))
+  (type (;25;) (func (param i32 i32 i32 i32 i32)))
   (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
   (import "miden:prelude/intrinsics_felt" "from_u64_unchecked" (func $miden_prelude::intrinsics::felt::extern_from_u64_unchecked (;1;) (type 1)))
   (import "miden:prelude/intrinsics_felt" "add" (func $miden_prelude::intrinsics::felt::extern_add (;2;) (type 2)))
@@ -1555,7 +1556,12 @@
     local.get 1
     i32.store
   )
-  (func $miden_prelude::stdlib::mem::pipe_words_to_memory (;51;) (type 20) (param i32 f64)
+  (func $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from (;51;) (type 23) (param i32) (result f64)
+    local.get 0
+    i64.extend_i32_u
+    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+  )
+  (func $miden_prelude::stdlib::mem::pipe_words_to_memory (;52;) (type 20) (param i32 f64)
     (local i32)
     global.get $__stack_pointer
     i32.const 64
@@ -1574,29 +1580,22 @@
     local.get 1
     local.get 2
     i32.load offset=56
+    call $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from
     local.get 2
     i32.const 8
     i32.add
     call $miden_prelude::stdlib::mem::extern_pipe_words_to_memory
     local.get 0
     local.get 2
-    i32.const 32
-    i32.add
-    f64.load
+    f64.load offset=32
     f64.store offset=24
     local.get 0
     local.get 2
-    i32.const 24
-    i32.add
-    f64.load
+    f64.load offset=24
     f64.store offset=16
     local.get 0
     local.get 2
-    i32.const 8
-    i32.add
-    i32.const 8
-    i32.add
-    f64.load
+    f64.load offset=16
     f64.store offset=8
     local.get 0
     local.get 2
@@ -1610,9 +1609,7 @@
     i32.const 40
     i32.add
     local.get 2
-    i32.const 52
-    i32.add
-    i32.const 8
+    i32.const 60
     i32.add
     i32.load
     i32.store
@@ -1621,8 +1618,8 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_prelude::stdlib::mem::pipe_double_words_to_memory (;52;) (type 20) (param i32 f64)
-    (local i32 i32 i32)
+  (func $miden_prelude::stdlib::mem::pipe_double_words_to_memory (;53;) (type 20) (param i32 f64)
+    (local i32 i32 f64 f64)
     global.get $__stack_pointer
     i32.const 128
     i32.sub
@@ -1640,7 +1637,12 @@
     call $alloc::vec::Vec<T>::with_capacity
     local.get 2
     i32.load offset=16
-    local.set 4
+    call $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from
+    local.tee 4
+    local.get 3
+    call $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from
+    call $miden_prelude::intrinsics::felt::extern_add
+    local.set 5
     i64.const 0
     call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
     local.tee 1
@@ -1656,38 +1658,26 @@
     local.get 1
     local.get 1
     local.get 4
-    local.get 3
-    local.get 4
-    i32.add
+    local.get 5
     local.get 2
     i32.const 24
     i32.add
     call $miden_prelude::stdlib::mem::extern_pipe_double_words_to_memory
     local.get 0
     local.get 2
-    i32.const 80
-    i32.add
-    f64.load
+    f64.load offset=80
     f64.store offset=24
     local.get 0
     local.get 2
-    i32.const 72
-    i32.add
-    f64.load
+    f64.load offset=72
     f64.store offset=16
     local.get 0
     local.get 2
-    i32.const 24
-    i32.add
-    i32.const 40
-    i32.add
-    f64.load
+    f64.load offset=64
     f64.store offset=8
     local.get 0
     local.get 2
-    i32.const 56
-    i32.add
-    f64.load
+    f64.load offset=56
     f64.store
     local.get 0
     local.get 2
@@ -1706,19 +1696,19 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $alloc::alloc::handle_alloc_error (;53;) (type 19) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error (;54;) (type 19) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $alloc::raw_vec::capacity_overflow (;54;) (type 23)
+  (func $alloc::raw_vec::capacity_overflow (;55;) (type 24)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;55;) (type 18) (param i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;56;) (type 18) (param i32 i32 i32)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice (;56;) (type 24) (param i32 i32 i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice (;57;) (type 25) (param i32 i32 i32 i32 i32)
     block ;; label = @1
       local.get 1
       local.get 3
@@ -1749,5 +1739,5 @@
   (export "test_rpo_falcon512_verify" (func $test_rpo_falcon512_verify))
   (export "test_pipe_words_to_memory" (func $test_pipe_words_to_memory))
   (export "test_pipe_double_words_to_memory" (func $test_pipe_double_words_to_memory))
-  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00\80\00\00\00(\00\00\00\00\00\10\00)\00\00\00\c6\00\00\00(\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00\8a\00\00\00(\00\00\00\00\00\10\00)\00\00\00\d0\00\00\00(\00\00\00")
 )

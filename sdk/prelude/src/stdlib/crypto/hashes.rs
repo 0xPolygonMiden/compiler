@@ -20,7 +20,7 @@ extern "C" {
         e6: Felt,
         e7: Felt,
         e8: Felt,
-        ptr: i32,
+        ptr: *mut Felt,
     );
 
     /// Computes BLAKE3 2-to-1 hash.
@@ -46,7 +46,7 @@ extern "C" {
         e14: Felt,
         e15: Felt,
         e16: Felt,
-        ptr: i32,
+        ptr: *mut Felt,
     );
 
     /// Computes SHA256 1-to-1 hash.
@@ -64,7 +64,7 @@ extern "C" {
         e6: Felt,
         e7: Felt,
         e8: Felt,
-        ptr: i32,
+        ptr: *mut Felt,
     );
 
     /// Computes SHA256 2-to-1 hash.
@@ -90,7 +90,7 @@ extern "C" {
         e14: Felt,
         e15: Felt,
         e16: Felt,
-        ptr: i32,
+        ptr: *mut Felt,
     );
 }
 
@@ -98,7 +98,17 @@ extern "C" {
 #[inline(always)]
 fn hash_1to1(
     input: [u8; 32],
-    extern_hash_1to1: unsafe extern "C" fn(Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, i32),
+    extern_hash_1to1: unsafe extern "C" fn(
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        Felt,
+        *mut Felt,
+    ),
 ) -> [u8; 32] {
     let mut felts_input = [Felt::from_u64_unchecked(0); 8];
     for i in 0..8 {
@@ -108,7 +118,7 @@ fn hash_1to1(
     }
     unsafe {
         let mut ret_area = ::core::mem::MaybeUninit::<[Felt; 8]>::uninit();
-        let ptr = ret_area.as_mut_ptr() as i32;
+        let ptr = ret_area.as_mut_ptr() as *mut Felt;
         extern_hash_1to1(
             felts_input[0],
             felts_input[1],
@@ -153,7 +163,7 @@ fn hash_2to1(
         Felt,
         Felt,
         Felt,
-        i32,
+        *mut Felt,
     ),
 ) -> [u8; 32] {
     let mut felts_input1 = [Felt::from_u64_unchecked(0); 8];
@@ -170,7 +180,7 @@ fn hash_2to1(
     }
     unsafe {
         let mut ret_area = ::core::mem::MaybeUninit::<[Felt; 16]>::uninit();
-        let ptr = ret_area.as_mut_ptr() as i32;
+        let ptr = ret_area.as_mut_ptr() as *mut Felt;
         extern_hash_2to1(
             felts_input1[0],
             felts_input1[1],

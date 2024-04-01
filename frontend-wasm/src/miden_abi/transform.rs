@@ -1,5 +1,5 @@
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
+use miden_hir::{FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
 
 use super::{stdlib, tx_kernel};
 use crate::module::function_builder_ext::FunctionBuilderExt;
@@ -74,7 +74,7 @@ pub fn list_return(
     results[0..1].to_vec()
 }
 
-/// The Miden ABI function returns on the stack and we want to return via a pointer argument
+/// The Miden ABI function returns felts on the stack and we want to return via a pointer argument
 pub fn return_via_pointer(
     func_id: FunctionIdent,
     args: &[Value],
@@ -91,12 +91,19 @@ pub fn return_via_pointer(
     assert_eq!(ptr_arg_ty, I32);
     let ptr_u32 = builder.ins().cast(ptr_arg, U32, span);
     for (idx, value) in results.iter().enumerate() {
+        let value_ty = builder.data_flow_graph().value_type(*value);
+        assert_eq!(value_ty, &Felt, "In return_via_pointer, expected only Felt value type returns");
         let eff_ptr = if idx == 0 {
             ptr_u32
         } else {
-            builder
-                .ins()
-                .add_imm_checked(ptr_u32, miden_hir::Immediate::I32(idx as i32 * 8), span)
+            // We're storing the stack-returned felts(64-bit) values in the
+            // memory that from the Rust "side" point of view is byte-addressed,
+            // meaning that for example in array of felts the second felt is
+            // expected to be +8 from the first and so on. So we need to
+            // multiply the index by 8 so that the subsequent Rust code finds
+            // the values in the expected locations.
+            let imm = Immediate::I32(idx as i32 * 8);
+            builder.ins().add_imm_checked(ptr_u32, imm, span)
         };
         let value_ty = builder.data_flow_graph().value_type(*value).clone();
         let addr = builder.ins().inttoptr(eff_ptr, Ptr(value_ty.into()), span);
