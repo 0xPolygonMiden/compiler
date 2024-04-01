@@ -1,7 +1,15 @@
+//! Contains procedures for computing hashes using BLAKE3 and SHA256 hash
+//! functions. The input and output elements are assumed to contain one 32-bit
+//! value per element.
 use crate::Felt;
 
 #[link(wasm_import_module = "miden:prelude/std_crypto_hashes")]
 extern "C" {
+    /// Computes BLAKE3 1-to-1 hash.
+    ///
+    /// Input: 32-bytes stored in the first 8 elements of the stack (32 bits per element).
+    /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element).
+    /// The output is passed back to the caller via a pointer.
     #[link_name = "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
     fn extern_blake3_hash_1to1(
         e1: Felt,
@@ -15,6 +23,11 @@ extern "C" {
         ptr: i32,
     );
 
+    /// Computes BLAKE3 2-to-1 hash.
+    ///
+    /// Input: 64-bytes stored in the first 16 elements of the stack (32 bits per element).
+    /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element)
+    /// The output is passed back to the caller via a pointer.
     #[link_name = "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
     fn extern_blake3_hash_2to1(
         e1: Felt,
@@ -36,6 +49,11 @@ extern "C" {
         ptr: i32,
     );
 
+    /// Computes SHA256 1-to-1 hash.
+    ///
+    /// Input: 32-bytes stored in the first 8 elements of the stack (32 bits per element).
+    /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element).
+    /// The output is passed back to the caller via a pointer.
     #[link_name = "sha256_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
     fn extern_sha256_hash_1to1(
         e1: Felt,
@@ -49,6 +67,11 @@ extern "C" {
         ptr: i32,
     );
 
+    /// Computes SHA256 2-to-1 hash.
+    ///
+    /// Input: 64-bytes stored in the first 16 elements of the stack (32 bits per element).
+    /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element).
+    /// The output is passed back to the caller via a pointer.
     #[link_name = "sha256_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
     fn extern_sha256_hash_2to1(
         e1: Felt,
@@ -77,16 +100,15 @@ fn hash_1to1(
     input: [u8; 32],
     extern_hash_1to1: unsafe extern "C" fn(Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, i32),
 ) -> [u8; 32] {
+    let mut felts_input = [Felt::from_u64_unchecked(0); 8];
+    for i in 0..8 {
+        felts_input[i] = Felt::from_u64_unchecked(u32::from_le_bytes(
+            input[i * 4..(i + 1) * 4].try_into().unwrap(),
+        ) as u64);
+    }
     unsafe {
-        struct RetArea([Felt; 8]);
-        let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+        let mut ret_area = ::core::mem::MaybeUninit::<[Felt; 8]>::uninit();
         let ptr = ret_area.as_mut_ptr() as i32;
-        let mut felts_input = [Felt::from_u64_unchecked(0); 8];
-        for i in 0..8 {
-            felts_input[i] = Felt::from_u64_unchecked(u32::from_le_bytes(
-                input[i * 4..(i + 1) * 4].try_into().unwrap(),
-            ) as u64);
-        }
         extern_hash_1to1(
             felts_input[0],
             felts_input[1],
@@ -98,11 +120,11 @@ fn hash_1to1(
             felts_input[7],
             ptr,
         );
-        // make an array from the ptr (points fo 8 Felts)
-        let felts_out = ret_area.assume_init().0;
+        let felts_out = ret_area.assume_init();
         let mut result = [0u8; 32];
         for i in 0..8 {
             let bytes = felts_out[i].as_u64().to_le_bytes();
+            // Copy only 4 bytes since output felt values contain u32 value per felt
             result[i * 4..(i + 1) * 4].copy_from_slice(&bytes[0..4]);
         }
         result
@@ -134,22 +156,21 @@ fn hash_2to1(
         i32,
     ),
 ) -> [u8; 32] {
+    let mut felts_input1 = [Felt::from_u64_unchecked(0); 8];
+    for i in 0..8 {
+        felts_input1[i] = Felt::from_u64_unchecked(u32::from_le_bytes(
+            input1[i * 4..(i + 1) * 4].try_into().unwrap(),
+        ) as u64);
+    }
+    let mut felts_input2 = [Felt::from_u64_unchecked(0); 8];
+    for i in 0..8 {
+        felts_input2[i] = Felt::from_u64_unchecked(u32::from_le_bytes(
+            input2[i * 4..(i + 1) * 4].try_into().unwrap(),
+        ) as u64);
+    }
     unsafe {
-        struct RetArea([Felt; 16]);
-        let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
+        let mut ret_area = ::core::mem::MaybeUninit::<[Felt; 16]>::uninit();
         let ptr = ret_area.as_mut_ptr() as i32;
-        let mut felts_input1 = [Felt::from_u64_unchecked(0); 8];
-        for i in 0..8 {
-            felts_input1[i] = Felt::from_u64_unchecked(u32::from_le_bytes(
-                input1[i * 4..(i + 1) * 4].try_into().unwrap(),
-            ) as u64);
-        }
-        let mut felts_input2 = [Felt::from_u64_unchecked(0); 8];
-        for i in 0..8 {
-            felts_input2[i] = Felt::from_u64_unchecked(u32::from_le_bytes(
-                input2[i * 4..(i + 1) * 4].try_into().unwrap(),
-            ) as u64);
-        }
         extern_hash_2to1(
             felts_input1[0],
             felts_input1[1],
@@ -169,11 +190,11 @@ fn hash_2to1(
             felts_input2[7],
             ptr,
         );
-        // make an array from the ptr (points fo 8 Felts)
-        let felts_out = ret_area.assume_init().0;
+        let felts_out = ret_area.assume_init();
         let mut result = [0u8; 32];
         for i in 0..8 {
             let bytes = felts_out[i].as_u64().to_le_bytes();
+            // Copy only 4 bytes since output felt values contain u32 value per felt
             result[i * 4..(i + 1) * 4].copy_from_slice(&bytes[0..4]);
         }
         result

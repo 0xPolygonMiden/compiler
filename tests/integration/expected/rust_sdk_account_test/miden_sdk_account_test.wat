@@ -369,30 +369,30 @@
               i32.ne
               br_if 0 (;@5;)
               local.get 2
-              f64.load offset=72
+              f64.load offset=8
               local.get 2
-              f64.load offset=80
+              f64.load offset=16
               local.get 2
-              f64.load offset=88
+              f64.load offset=24
               local.get 2
-              f64.load offset=96
+              f64.load offset=32
               local.get 2
-              f64.load offset=104
+              f64.load offset=40
               local.get 2
-              f64.load offset=112
+              f64.load offset=48
               local.get 2
-              f64.load offset=120
+              f64.load offset=56
               local.get 2
-              f64.load offset=128
+              f64.load offset=64
               local.get 2
-              i32.const 8
+              i32.const 72
               i32.add
               call $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1
               local.get 2
               i32.const 136
               i32.add
               local.get 2
-              i32.const 8
+              i32.const 72
               i32.add
               i32.const 64
               memory.copy
@@ -456,7 +456,7 @@
               end
             end
             local.get 2
-            i32.const 72
+            i32.const 8
             i32.add
             local.get 3
             i32.add
@@ -516,7 +516,7 @@
         return
       end
       local.get 2
-      i32.const 72
+      i32.const 8
       i32.add
       local.get 3
       i32.add
@@ -576,46 +576,46 @@
                       i32.ne
                       br_if 0 (;@9;)
                       local.get 3
-                      f64.load offset=136
+                      f64.load offset=8
                       local.get 3
-                      f64.load offset=144
+                      f64.load offset=16
                       local.get 3
-                      f64.load offset=152
+                      f64.load offset=24
                       local.get 3
-                      f64.load offset=160
+                      f64.load offset=32
                       local.get 3
-                      f64.load offset=168
+                      f64.load offset=40
                       local.get 3
-                      f64.load offset=176
+                      f64.load offset=48
                       local.get 3
-                      f64.load offset=184
+                      f64.load offset=56
                       local.get 3
-                      f64.load offset=192
+                      f64.load offset=64
                       local.get 3
-                      f64.load offset=200
+                      f64.load offset=72
                       local.get 3
-                      f64.load offset=208
+                      f64.load offset=80
                       local.get 3
-                      f64.load offset=216
+                      f64.load offset=88
                       local.get 3
-                      f64.load offset=224
+                      f64.load offset=96
                       local.get 3
-                      f64.load offset=232
+                      f64.load offset=104
                       local.get 3
-                      f64.load offset=240
+                      f64.load offset=112
                       local.get 3
-                      f64.load offset=248
+                      f64.load offset=120
                       local.get 3
-                      f64.load offset=256
+                      f64.load offset=128
                       local.get 3
-                      i32.const 8
+                      i32.const 136
                       i32.add
                       call $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1
                       local.get 3
                       i32.const 264
                       i32.add
                       local.get 3
-                      i32.const 8
+                      i32.const 136
                       i32.add
                       i32.const 128
                       memory.copy
@@ -679,7 +679,7 @@
                       end
                     end
                     local.get 3
-                    i32.const 200
+                    i32.const 72
                     i32.add
                     local.get 4
                     i32.add
@@ -739,7 +739,7 @@
                 return
               end
               local.get 3
-              i32.const 200
+              i32.const 72
               i32.add
               local.get 4
               i32.add
@@ -753,7 +753,7 @@
             end
           end
           local.get 3
-          i32.const 136
+          i32.const 8
           i32.add
           local.get 4
           i32.add
@@ -773,7 +773,7 @@
         end
       end
       local.get 3
-      i32.const 136
+      i32.const 8
       i32.add
       local.get 4
       i32.add
@@ -1749,5 +1749,5 @@
   (export "test_rpo_falcon512_verify" (func $test_rpo_falcon512_verify))
   (export "test_pipe_words_to_memory" (func $test_pipe_words_to_memory))
   (export "test_pipe_double_words_to_memory" (func $test_pipe_double_words_to_memory))
-  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00j\00\00\00(\00\00\00\00\00\10\00)\00\00\00\b1\00\00\00(\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00\80\00\00\00(\00\00\00\00\00\10\00)\00\00\00\c6\00\00\00(\00\00\00")
 )
