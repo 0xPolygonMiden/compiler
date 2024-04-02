@@ -56,6 +56,15 @@ pub fn run_cargo_command(
         }
     }
 
+    cmd.arg("-Z")
+        // compile std as part of crate graph compilation
+        // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+        // to abort on panic below
+        .arg("build-std=std,core,alloc,panic_abort")
+        .arg("-Z")
+        // abort on panic without message formatting (core::fmt uses call_indirect)
+        .arg("build-std-features=panic_immediate_abort");
+
     match cmd.status() {
         Ok(status) => {
             if !status.success() {
