@@ -10,7 +10,7 @@ use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use miden_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
-use super::{func_env::FuncEnvironment, Module};
+use super::{module_translation_state::ModuleTranslationState, Module};
 use crate::{
     code_translator::translate_operator,
     error::WasmResult,
@@ -47,9 +47,9 @@ impl FuncTranslator {
         &mut self,
         body: &FunctionBody<'_>,
         mod_func_builder: &mut ModuleFunctionBuilder,
+        module_state: &mut ModuleTranslationState,
         module: &Module,
         mod_types: &ModuleTypes,
-        func_env: &FuncEnvironment,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
@@ -72,9 +72,9 @@ impl FuncTranslator {
             reader,
             &mut builder,
             &mut self.state,
+            module_state,
             module,
             mod_types,
-            func_env,
             diagnostics,
             func_validator,
         )?;
@@ -154,9 +154,9 @@ fn parse_function_body(
     mut reader: BinaryReader,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
+    module_state: &mut ModuleTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
-    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
@@ -171,9 +171,9 @@ fn parse_function_body(
             &op,
             builder,
             state,
+            module_state,
             module,
             mod_types,
-            func_env,
             diagnostics,
             SourceSpan::default(),
         )?;

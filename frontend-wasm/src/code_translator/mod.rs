@@ -25,10 +25,11 @@ use wasmparser::{MemArg, Operator};
 
 use crate::{
     error::{WasmError, WasmResult},
+    miden_abi::{is_miden_sdk_module, transform::transform_miden_abi_call},
     module::{
-        func_env::FuncEnvironment,
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
+        module_translation_state::ModuleTranslationState,
         types::{ir_type, BlockType, FuncIndex, GlobalIndex, ModuleTypes},
         Module,
     },
@@ -47,9 +48,9 @@ pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
+    module_state: &mut ModuleTranslationState,
     module: &Module,
     mod_types: &ModuleTypes,
-    func_env: &FuncEnvironment,
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
@@ -83,7 +84,7 @@ pub fn translate_operator(
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
             let ty = ir_type(module.globals[global_index].ty)?;
-            state.push1(builder.ins().load_symbol(name, ty, span));
+            state.push1(builder.ins().load_symbol(name.as_str(), ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
@@ -91,7 +92,7 @@ pub fn translate_operator(
             let ty = ir_type(module.globals[global_index].ty)?;
             let ptr = builder
                 .ins()
-                .symbol_addr(name, Ptr(ty.clone().into()), span);
+                .symbol_addr(name.as_str(), Ptr(ty.clone().into()), span);
             let val = state.pop1();
             builder.ins().store(ptr, val, span);
         }
@@ -125,9 +126,9 @@ pub fn translate_operator(
         Operator::Call { function_index } => {
             translate_call(
                 state,
+                module_state,
                 builder,
                 FuncIndex::from_u32(*function_index),
-                func_env,
                 span,
                 diagnostics,
             )?;
@@ -637,25 +638,45 @@ fn prepare_addr(
 }
 
 fn translate_call(
-    state: &mut FuncTranslationState,
+    func_state: &mut FuncTranslationState,
+    module_state: &mut ModuleTranslationState,
     builder: &mut FunctionBuilderExt,
     function_index: FuncIndex,
-    func_env: &FuncEnvironment,
     span: SourceSpan,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let (fident, num_args) = state.get_direct_func(
-        builder.data_flow_graph_mut(),
-        function_index,
-        func_env,
-        diagnostics,
-    )?;
-    let args = state.peekn_mut(num_args);
-    // TODO: For imported functions, use their intended invocation method (e.g. `call` or `exec`)
-    let call = builder.ins().call(fident, &args, span);
-    let inst_results = builder.inst_results(call);
-    state.popn(num_args);
-    state.pushn(inst_results);
+    let func_id =
+        module_state.get_direct_func(builder.data_flow_graph_mut(), function_index, diagnostics)?;
+    let wasm_sig = module_state.signature(function_index);
+    let num_wasm_args = wasm_sig.params().len();
+    let args = func_state.peekn(num_wasm_args);
+    if is_miden_sdk_module(func_id.module.as_symbol()) {
+        // Miden SDK function call, transform the call to the Miden ABI if needed
+        let results = transform_miden_abi_call(func_id, args, builder, span, diagnostics);
+        assert_eq!(
+            wasm_sig.results().len(),
+            results.len(),
+            "Adapted function call results quantity are not the same as the original Wasm \
+             function results quantity"
+        );
+        assert_eq!(
+            wasm_sig.results().iter().map(|p| &p.ty).collect::<Vec<&Type>>(),
+            results
+                .iter()
+                .map(|r| builder.data_flow_graph().value_type(*r))
+                .collect::<Vec<&Type>>(),
+            "Adapted function call result types are not the same as the original Wasm function \
+             result types"
+        );
+        func_state.popn(num_wasm_args);
+        func_state.pushn(&results);
+    } else {
+        // no transformation needed
+        let call = builder.ins().call(func_id, &args, span);
+        let results = builder.inst_results(call);
+        func_state.popn(num_wasm_args);
+        func_state.pushn(results);
+    };
     Ok(())
 }
 

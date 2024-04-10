@@ -1,7 +1,10 @@
 use std::{ops::Range, path::PathBuf, sync::Arc};
 
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::cranelift_entity::{packed_option::ReservedValue, PrimaryMap};
+use miden_hir::{
+    cranelift_entity::{packed_option::ReservedValue, PrimaryMap},
+    Ident, Symbol,
+};
 use rustc_hash::FxHashMap;
 use wasmparser::{
     types::CoreTypeId, CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind,
@@ -605,11 +608,15 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         // names are almost always present in the
                         // final compilation artifact.
                         let index = FuncIndex::from_u32(index);
-                        self.result.module.name_section.func_names.insert(index, name.to_string());
+                        self.result
+                            .module
+                            .name_section
+                            .func_names
+                            .insert(index, Symbol::intern(name));
                     }
                 }
                 wasmparser::Name::Module { name, .. } => {
-                    self.result.module.name_section.module_name = Some(name.to_string());
+                    self.result.module.name_section.module_name = Some(Ident::from(name));
                 }
                 wasmparser::Name::Local(reader) => {
                     if !self.config.generate_native_debuginfo {
@@ -631,7 +638,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 .locals_names
                                 .entry(FuncIndex::from_u32(f.index))
                                 .or_insert(FxHashMap::default())
-                                .insert(index, name.to_string());
+                                .insert(index, Symbol::intern(name));
                         }
                     }
                 }
@@ -643,7 +650,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 .module
                                 .name_section
                                 .globals_names
-                                .insert(GlobalIndex::from_u32(index), name.to_string());
+                                .insert(GlobalIndex::from_u32(index), Symbol::intern(name));
                         }
                     }
                 }
@@ -655,7 +662,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 .module
                                 .name_section
                                 .data_segment_names
-                                .insert(DataSegmentIndex::from_u32(index), name.to_string());
+                                .insert(DataSegmentIndex::from_u32(index), Symbol::intern(name));
                         }
                     }
                 }

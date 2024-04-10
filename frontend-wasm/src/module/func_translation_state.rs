@@ -5,18 +5,12 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{Block, DataFlowGraph, FunctionIdent, Inst, InstBuilder, Signature, Value};
+use miden_diagnostics::SourceSpan;
+use miden_hir::{Block, Inst, InstBuilder, Signature, Value};
 use miden_hir_type::Type;
-use rustc_hash::FxHashMap;
 
-use super::{func_env::FuncEnvironment, function_builder_ext::FunctionBuilderExt};
-use crate::{
-    error::{WasmError, WasmResult},
-    module::types::{BlockType, FuncIndex},
-};
+use super::function_builder_ext::FunctionBuilderExt;
+use crate::module::types::BlockType;
 
 /// Information about the presence of an associated `else` for an `if`, or the
 /// lack thereof.
@@ -236,11 +230,6 @@ pub struct FuncTranslationState {
     /// Is the current translation state still reachable? This is false when translating operators
     /// like End, Return, or Unreachable.
     pub(crate) reachable: bool,
-
-    // Imported and local functions that have been created by
-    // `FuncEnvironment::make_direct_func()`.
-    // Stores both the function reference and the number of WebAssembly arguments
-    functions: FxHashMap<FuncIndex, (FunctionIdent, usize)>,
 }
 
 impl FuncTranslationState {
@@ -250,7 +239,6 @@ impl FuncTranslationState {
             stack: Vec::new(),
             control_stack: Vec::new(),
             reachable: true,
-            functions: FxHashMap::default(),
         }
     }
 
@@ -258,7 +246,6 @@ impl FuncTranslationState {
         debug_assert!(self.stack.is_empty());
         debug_assert!(self.control_stack.is_empty());
         self.reachable = true;
-        self.functions.clear();
     }
 
     /// Initialize the state for compiling a function with the given signature.
@@ -432,43 +419,5 @@ impl FuncTranslationState {
             consequent_ends_reachable: None,
             blocktype,
         });
-    }
-}
-
-/// Methods for handling entity references.
-impl FuncTranslationState {
-    /// Get the `FunctionIdent` that should be used to make a direct call to function
-    /// `index`. Also return the number of WebAssembly arguments in the signature.
-    ///
-    /// Import the callee into `func`'s DFG if it is not already present.
-    pub(crate) fn get_direct_func(
-        &mut self,
-        dfg: &mut DataFlowGraph,
-        index: FuncIndex,
-        func_env: &FuncEnvironment,
-        diagnostics: &DiagnosticsHandler,
-    ) -> WasmResult<(FunctionIdent, usize)> {
-        Ok(match self.functions.entry(index) {
-            Occupied(entry) => *entry.get(),
-            Vacant(entry) => {
-                let function_id = func_env.function_id(index);
-                let sig = func_env.signature(index);
-                let Ok(func_id) =
-                    dfg.import_function(function_id.module, function_id.function, sig.clone())
-                else {
-                    let message = format!(
-                        "Function with name {} in module {} with signature {sig:?} is already \
-                         imported (function call) with a different signature",
-                        function_id.function, function_id.module
-                    );
-                    diagnostics
-                        .diagnostic(miden_diagnostics::Severity::Error)
-                        .with_message(message.clone())
-                        .emit();
-                    return Err(WasmError::Unexpected(message));
-                };
-                *entry.insert((func_id, sig.params().len()))
-            }
-        })
     }
 }

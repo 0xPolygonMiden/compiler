@@ -1,10 +1,10 @@
 (component 
     ;; Component Imports
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#basic_wallet_p2id_note.wasm #basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (param (struct u64)) (result (struct (struct u64)))))) (#basic_wallet_p2id_note.wasm #basic_wallet_p2id_note::bindings::miden::base::core_types::account_id_from_felt::wit_import)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (result (struct (struct u64)))))) (#basic_wallet_p2id_note.wasm #basic_wallet_p2id_note::bindings::miden::base::account::get_id::wit_import)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (result (list (struct u64)))))) (#wit-component:fixups #func0)
-    (lower (import 0x0000000000000000000000000000000000000000000000000000000000000000 (type (func (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (#wit-component:fixups #func1)
+    (lower (import (abi canon) ("miden:base/note@1.0.0" #get-inputs) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (list (struct u64)))))) (# #0)
+    (lower (import (abi canon) ("miden:base/note@1.0.0" #get-assets) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (# #1)
+    (lower (import (abi canon) ("miden:base/account@1.0.0" #get-id) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get-id)
+    (lower (import (abi canon) ("miden:base/core-types@1.0.0" #account-id-from-felt) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account-id-from-felt)
+    (lower (import (abi canon) ("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive-asset)
 
     ;; Modules
     (module #wit-component:shim
@@ -79,8 +79,8 @@
                 (let (v19 u32) (cast v18))
                 (let (v20 (ptr i64)) (inttoptr v19))
                 (let (v21 i64) (load v20))
-                (let (v22 i64) (call #basic_wallet_p2id_note::bindings::miden::base::core_types::account_id_from_felt::wit_import v21))
-                (let (v23 i64) (call #basic_wallet_p2id_note::bindings::miden::base::account::get_id::wit_import))
+                (let (v22 i64) (call (#miden:base/core-types@1.0.0 #account-id-from-felt) v21))
+                (let (v23 i64) (call (#miden:base/account@1.0.0 #get-id)))
                 (let (v24 i1) (neq v22 v23))
                 (let (v25 i32) (cast v24))
                 (let (v26 i1) (neq v25 0))
@@ -145,7 +145,7 @@
                 (let (v57 u32) (add.checked v56 24))
                 (let (v58 (ptr i64)) (inttoptr v57))
                 (let (v59 i64) (load v58))
-                (call #basic_wallet_p2id_note::bindings::miden::basic_wallet::basic_wallet::receive_asset::wit_import v47 v51 v55 v59)
+                (call (#miden:basic-wallet/basic-wallet@1.0.0 #receive-asset) v47 v51 v55 v59)
                 (let (v60 i32) (const.i32 32))
                 (let (v61 i32) (add.wrapping v44 v60))
                 (let (v63 i1) (neq v61 v62))
@@ -1048,6 +1048,11 @@
         )
 
         ;; Imports
+        (func (import #miden:base/account@1.0.0 #get-id) (result i64))
+        (func (import #miden:base/core-types@1.0.0 #account-id-from-felt)
+              (param i64) (result i64))
+        (func (import #miden:basic-wallet/basic-wallet@1.0.0 #receive-asset)
+              (param i64) (param i64) (param i64) (param i64))
         (func (import #wit-component:shim #indirect-miden:base/note@1.0.0-get-assets)
               (param i32))
         (func (import #wit-component:shim #indirect-miden:base/note@1.0.0-get-inputs)

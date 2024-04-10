@@ -9,9 +9,11 @@ use crate::CompilerTest;
 
 #[test]
 fn sdk() {
-    let test = CompilerTest::rust_source_cargo_component("sdk/sdk", Default::default());
+    let test = CompilerTest::rust_source_cargo_component("wit-sdk/sdk", Default::default());
     let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
+    test.expect_wasm(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
+    )]);
 }
 
 #[test]
@@ -58,13 +60,17 @@ fn sdk_basic_wallet() {
         import_metadata: import_metadata.clone(),
         ..Default::default()
     };
-    let mut test = CompilerTest::rust_source_cargo_component("sdk/basic-wallet", config);
+    let mut test = CompilerTest::rust_source_cargo_component("wit-sdk/basic-wallet", config);
     let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
-    test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
+    test.expect_wasm(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
+    )]);
+    test.expect_ir(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.hir"
+    )]);
     let ir = test.hir().unwrap_component();
     for (_, import) in ir.imports() {
-        assert!(import_metadata.contains_key(&import.interface_function));
+        assert!(import_metadata.contains_key(&import.unwrap_canon_abi_import().interface_function));
     }
     for name in expected_exports {
         assert!(ir.exports().contains_key(&name));
@@ -132,15 +138,22 @@ fn sdk_basic_wallet_p2id_note() {
         import_metadata: import_metadata.clone(),
         ..Default::default()
     };
-    let mut test = CompilerTest::rust_source_cargo_component("sdk/p2id-note", config);
+    let mut test = CompilerTest::rust_source_cargo_component("wit-sdk/p2id-note", config);
     let artifact_name = test.source.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.wat")]);
-    test.expect_ir(expect_file![format!("../../expected/sdk_basic_wallet/{artifact_name}.hir")]);
+    test.expect_wasm(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
+    )]);
+    test.expect_ir(expect_file![format!(
+        "../../expected/wit_sdk_basic_wallet/{artifact_name}.hir"
+    )]);
     let ir = test.hir().unwrap_component();
     for (_, import) in ir.imports() {
-        assert!(import_metadata.contains_key(&import.interface_function));
-        if ["get-assets", "get-inputs"].contains(&import.interface_function.function.as_str()) {
-            assert!(import.options.realloc.is_some());
+        let canon_abi_import = import.unwrap_canon_abi_import();
+        assert!(import_metadata.contains_key(&canon_abi_import.interface_function));
+        if ["get-assets", "get-inputs"]
+            .contains(&canon_abi_import.interface_function.function.as_str())
+        {
+            assert!(canon_abi_import.options.realloc.is_some());
         }
     }
     for name in expected_exports {

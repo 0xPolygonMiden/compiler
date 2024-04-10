@@ -594,14 +594,74 @@ impl fmt::Display for StructType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+pub enum Abi {
+    /// The type signature of a function in canonical form. Canonical in this context means that
+    /// no special lowering is required between caller and callee - all the compiler needs to
+    /// deal with are the details of the specific calling convention.
+    #[default]
+    Canonical,
+    /// The type signature of a function expressed in terms of the Canonical ABI of the Wasm
+    /// Component Model. This indicates that additional lowering/lifting code is required between
+    /// caller and callee. It also dictates the calling convention for the callee.
+    Wasm,
+    /// The type signature of a procedure in Miden Assembly. Similarly to Wasm, this ABI indicates
+    /// that the additional lifting/lowering code is required between caller and callee, and
+    /// dictates the calling convention for the callee.
+    Miden,
+}
+
+/// This represents the type of a function, including the ABI, result types, and parameter types
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionType {
+    /// The ABI of this function type
+    pub abi: Abi,
+    /// The result types of this function
     pub results: Vec<Type>,
+    /// The parameter types of this function
     pub params: Vec<Type>,
 }
 impl FunctionType {
-    pub fn new(params: Vec<Type>, results: Vec<Type>) -> Self {
-        Self { results, params }
+    /// Create a new function type with the canonical ABI
+    pub fn new<P: IntoIterator<Item = Type>, R: IntoIterator<Item = Type>>(
+        params: P,
+        results: R,
+    ) -> Self {
+        Self {
+            abi: Abi::Canonical,
+            results: results.into_iter().collect(),
+            params: params.into_iter().collect(),
+        }
+    }
+
+    /// Create a new function type with the Miden ABI
+    pub fn new_miden<P: IntoIterator<Item = Type>, R: IntoIterator<Item = Type>>(
+        params: P,
+        results: R,
+    ) -> Self {
+        Self {
+            abi: Abi::Miden,
+            results: results.into_iter().collect(),
+            params: params.into_iter().collect(),
+        }
+    }
+
+    /// Create a new function type with the Wasm Component Model ABI
+    pub fn new_wasm<P: IntoIterator<Item = Type>, R: IntoIterator<Item = Type>>(
+        params: P,
+        results: R,
+    ) -> Self {
+        Self {
+            abi: Abi::Wasm,
+            results: results.into_iter().collect(),
+            params: params.into_iter().collect(),
+        }
+    }
+
+    /// Set the ABI for this function type
+    pub fn with_abi(mut self, abi: Abi) -> Self {
+        self.abi = abi;
+        self
     }
 
     pub fn arity(&self) -> usize {
@@ -615,35 +675,12 @@ impl FunctionType {
     pub fn params(&self) -> &[Type] {
         self.params.as_slice()
     }
-}
-impl fmt::Display for FunctionType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use core::fmt::Write;
 
-        f.write_str("(func")?;
-        for ty in self.params.iter() {
-            write!(f, " (param {ty})")?;
-        }
-        if !self.results.is_empty() {
-            f.write_str(" (result")?;
-            for ty in self.results.iter() {
-                write!(f, " {ty}")?;
-            }
-            f.write_char(')')?;
-        }
-        f.write_char(')')
+    pub fn abi(&self) -> Abi {
+        self.abi
     }
 }
-
-/// Represents the lifted(component) type of a component imported/exported function
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LiftedFunctionType {
-    /// The arguments expected by this function
-    pub params: Vec<Type>,
-    /// The results returned by this function
-    pub results: Vec<Type>,
-}
-impl fmt::Display for LiftedFunctionType {
+impl fmt::Display for FunctionType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use core::fmt::Write;
 

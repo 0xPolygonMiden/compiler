@@ -7,19 +7,22 @@ use std::{borrow::Cow, collections::BTreeMap, ops::Range};
 
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::cranelift_entity::{packed_option::ReservedValue, EntityRef, PrimaryMap};
+use miden_hir::{
+    cranelift_entity::{packed_option::ReservedValue, EntityRef, PrimaryMap},
+    Ident, Symbol,
+};
 use rustc_hash::FxHashMap;
 
 use self::types::*;
 use crate::{component::SignatureIndex, error::WasmResult, unsupported_diag};
 
 pub mod build_ir;
-pub mod func_env;
 pub mod func_translation_state;
 pub mod func_translator;
 pub mod function_builder_ext;
 pub mod instance;
 pub mod module_env;
+pub mod module_translation_state;
 pub mod types;
 
 /// Table initialization data for all tables in the module.
@@ -157,10 +160,10 @@ pub struct Module {
 
     /// The fallback name of this module, used if there is no module name in the name section,
     /// and there is no override specified
-    name_fallback: Option<Cow<'static, str>>,
+    name_fallback: Option<Ident>,
 
     /// If specified, overrides the name of the module regardless of what is in the name section
-    name_override: Option<Cow<'static, str>>,
+    name_override: Option<Ident>,
 }
 
 /// Module imports
@@ -273,12 +276,12 @@ impl Module {
         index.index() < self.num_imported_globals
     }
 
-    pub fn global_name(&self, index: GlobalIndex) -> String {
+    pub fn global_name(&self, index: GlobalIndex) -> Symbol {
         self.name_section
             .globals_names
             .get(&index)
             .cloned()
-            .unwrap_or(format!("global{}", index.as_u32()))
+            .unwrap_or(Symbol::intern(format!("global{}", index.as_u32()).as_str()))
     }
 
     /// Returns the type of an item based on its index
@@ -328,32 +331,30 @@ impl Module {
     }
 
     /// Returns the name of this module
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> Ident {
         self.name_override
-            .as_ref()
-            .map(|name| name.to_string())
-            .or_else(|| self.name_section.module_name.clone())
-            .or_else(|| self.name_fallback.as_ref().map(|name| name.to_string()))
+            .or_else(|| self.name_section.module_name)
+            .or_else(|| self.name_fallback)
             .expect("No module name in the name section and no fallback name is set")
     }
 
     /// Returns the name of the given function
-    pub fn func_name(&self, index: FuncIndex) -> String {
+    pub fn func_name(&self, index: FuncIndex) -> Symbol {
         self.name_section
             .func_names
             .get(&index)
             .cloned()
-            .unwrap_or(format!("func{}", index.as_u32()))
+            .unwrap_or(Symbol::intern(format!("func{}", index.as_u32())))
     }
 
     /// Sets the fallback name of this module, used if there is no module name in the name section
     pub fn set_name_fallback(&mut self, name_fallback: Cow<'static, str>) {
-        self.name_fallback = Some(name_fallback);
+        self.name_fallback = Some(Ident::from(name_fallback.as_ref()));
     }
 
     /// Sets the name of this module, discarding whatever is in the name section
     pub fn set_name_override(&mut self, name_override: Cow<'static, str>) {
-        self.name_override = Some(name_override);
+        self.name_override = Some(Ident::from(name_override.as_ref()));
     }
 }
 
@@ -384,9 +385,9 @@ miden_hir::cranelift_entity::entity_impl!(FuncRefIndex);
 
 #[derive(Debug, Default)]
 pub struct NameSection {
-    pub module_name: Option<String>,
-    pub func_names: FxHashMap<FuncIndex, String>,
-    pub locals_names: FxHashMap<FuncIndex, FxHashMap<u32, String>>,
-    pub globals_names: FxHashMap<GlobalIndex, String>,
-    pub data_segment_names: FxHashMap<DataSegmentIndex, String>,
+    pub module_name: Option<Ident>,
+    pub func_names: FxHashMap<FuncIndex, Symbol>,
+    pub locals_names: FxHashMap<FuncIndex, FxHashMap<u32, Symbol>>,
+    pub globals_names: FxHashMap<GlobalIndex, Symbol>,
+    pub data_segment_names: FxHashMap<DataSegmentIndex, Symbol>,
 }
