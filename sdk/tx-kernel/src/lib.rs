@@ -38,25 +38,22 @@ pub fn get_id() -> AccountId {
 
 const MAX_INPUTS: usize = 256;
 
-#[inline(always)]
 pub fn get_inputs() -> Vec<Felt> {
-    // The MASM for this function is here:
-    // https://github.com/0xPolygonMiden/miden-base/blob/3cbe8d59dcf4ccc9c380b7c8417ac6178fc6b86a/miden-lib/asm/miden/note.masm#L69-L102
-    // #! Writes the inputs of the currently execute note into memory starting at the specified
-    // address. #!
-    // #! Inputs: [dest_ptr]
-    // #! Outputs: [num_inputs, dest_ptr]
-    // #!
-    // #! - dest_ptr is the memory address to write the inputs.
     unsafe {
-        #[repr(transparent)]
-        struct RetArea([Felt; MAX_INPUTS]);
-        let mut ret_area = ::core::mem::MaybeUninit::<RetArea>::uninit();
-        let ptr = ret_area.as_mut_ptr();
-        let num_inputs = extern_note_get_inputs(ptr as *mut Felt);
-        // Compiler generated adapter function will drop the returned dest_ptr
+        let mut inputs: Vec<Felt> = Vec::with_capacity(MAX_INPUTS);
+        // The MASM for this function is here:
+        // https://github.com/0xPolygonMiden/miden-base/blob/3cbe8d59dcf4ccc9c380b7c8417ac6178fc6b86a/miden-lib/asm/miden/note.masm#L69-L102
+        // #! Writes the inputs of the currently execute note into memory starting at the specified
+        // address. #!
+        // #! Inputs: [dest_ptr]
+        // #! Outputs: [num_inputs, dest_ptr]
+        // #!
+        // #! - dest_ptr is the memory address to write the inputs.
+        // Compiler generated adapter code at call site will drop the returned dest_ptr
         // and return the number of inputs
-        Vec::from_raw_parts(ptr as *mut Felt, num_inputs, num_inputs)
+        let num_inputs = extern_note_get_inputs(inputs.as_mut_ptr());
+        inputs.truncate(num_inputs);
+        inputs
     }
 }
 
