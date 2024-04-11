@@ -331,7 +331,7 @@ do minimal allocation, which is going to be the typical case for Miden programs.
 // Do not link against libstd (i.e. anything defined in `std::`)
 #![no_std]
 
-// However, we could still use some standard library types while 
+// However, we could still use some standard library types while
 // remaining no-std compatible, if we uncommented the following lines:
 //
 // extern crate alloc;
@@ -345,7 +345,7 @@ do minimal allocation, which is going to be the typical case for Miden programs.
 
 // Required for no-std crates
 #[panic_handler]
-fn panic(info: core::panic::PanicInfo) -&gt; ! {
+fn panic(_info: &amp;core::panic::PanicInfo) -&gt; ! {
     core::intrinsics::abort()
 }
 
@@ -501,13 +501,15 @@ use.wasm_fib::wasm_fib
 begin
     exec.wasm_fib::fib
 end
+EOF
 </code></pre>
 <p>We will also need a <code>.inputs</code> file to pass arguments to the program:</p>
 <pre><code>cat &lt;&lt;EOF &gt; wasm_fib.inputs
 {
     "operand_stack": ["10"],
-    "advice_stack": ["0"],
+    "advice_stack": ["0"]
 }
+EOF
 </code></pre>
 <p>Next, we need to build a MASL library (normally <code>midenc</code> would do this, but there is a bug
 blocking it at the moment, this example will be updated accordingly soon):</p>

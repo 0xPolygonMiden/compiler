@@ -258,13 +258,15 @@ use.wasm_fib::wasm_fib
 begin
     exec.wasm_fib::fib
 end
+EOF
 </code></pre>
 <p>We will also need a <code>.inputs</code> file to pass arguments to the program:</p>
 <pre><code>cat &lt;&lt;EOF &gt; wasm_fib.inputs
 {
     "operand_stack": ["10"],
-    "advice_stack": ["0"],
+    "advice_stack": ["0"]
 }
+EOF
 </code></pre>
 <p>Next, we need to build a MASL library (normally <code>midenc</code> would do this, but there is a bug
 blocking it at the moment, this example will be updated accordingly soon):</p>
