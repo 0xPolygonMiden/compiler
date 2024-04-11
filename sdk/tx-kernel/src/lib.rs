@@ -72,7 +72,7 @@ impl CoreAsset {
     }
 }
 
-pub fn add_assets(asset: CoreAsset) -> CoreAsset {
+pub fn add_asset(asset: CoreAsset) -> CoreAsset {
     unsafe {
         let mut ret_area = ::core::mem::MaybeUninit::<CoreAsset>::uninit();
         extern_account_add_asset(

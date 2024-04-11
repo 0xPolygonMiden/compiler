@@ -26,7 +26,7 @@ impl Account {
     #[no_mangle]
     pub fn test_add_asset() -> Felt {
         let asset_in = CoreAsset::new([felt!(1), felt!(2), felt!(3), felt!(4)]);
-        let asset_out = add_assets(asset_in);
+        let asset_out = add_asset(asset_in);
         asset_out.as_word()[0]
     }
 

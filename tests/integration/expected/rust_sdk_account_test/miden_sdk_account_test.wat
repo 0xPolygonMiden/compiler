@@ -179,7 +179,7 @@
     i32.const 32
     i32.add
     local.get 0
-    call $miden_sdk_tx_kernel::add_assets
+    call $miden_sdk_tx_kernel::add_asset
     local.get 0
     f64.load offset=32
     local.set 1
@@ -1436,7 +1436,7 @@
     call $alloc::raw_vec::capacity_overflow
     unreachable
   )
-  (func $miden_sdk_tx_kernel::add_assets (;49;) (type 19) (param i32 i32)
+  (func $miden_sdk_tx_kernel::add_asset (;49;) (type 19) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32

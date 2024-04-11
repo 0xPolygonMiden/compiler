@@ -195,7 +195,7 @@
                 (store v25 v8)
                 (let (v26 i32) (const.i32 32))
                 (let (v27 i32) (add.wrapping v5 v26))
-                (call #miden_sdk_tx_kernel::add_assets v27 v5)
+                (call #miden_sdk_tx_kernel::add_asset v27 v5)
                 (let (v28 u32) (cast v5))
                 (let (v29 u32) (add.checked v28 32))
                 (let (v30 (ptr felt)) (inttoptr v29))
@@ -1900,7 +1900,7 @@
                 (unreachable))
         )
 
-        (func (export #miden_sdk_tx_kernel::add_assets)
+        (func (export #miden_sdk_tx_kernel::add_asset)
               (param i32) (param i32)
             (block 0 (param v0 i32) (param v1 i32)
                 (let (v2 i32) (const.i32 0))
