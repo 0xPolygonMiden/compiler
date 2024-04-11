@@ -60,17 +60,14 @@ extern "C" {
     fn extern_assert_eq(a: Felt, b: Felt);
 }
 
-/// Creates a `Felt` from an integer constant checking that it is within the valid range at compile
-/// time.
+/// Creates a `Felt` from an integer constant checking that it is within the
+/// valid range at compile time.
 #[macro_export]
 macro_rules! felt {
-    ($value:expr) => {{
-        // Trigger a compile-time error if the value is not a constant
+    // Trigger a compile-time error if the value is not a constant
+    ($value:literal) => {{
         const VALUE: u64 = $value as u64;
-        const _: () = {
-            // Check that the value is within the valid range
-            assert!(VALUE <= Felt::M, "Invalid Felt value, must be >= 0 and <= 2^64 - 2^32 + 1");
-        };
+        assert!(VALUE <= Felt::M, "Invalid Felt value, must be >= 0 and <= 2^64 - 2^32 + 1");
         Felt::from_u64_unchecked(VALUE)
     }};
 }
@@ -280,5 +277,15 @@ pub fn assertz(a: Felt) {
 pub fn assert_eq(a: Felt, b: Felt) {
     unsafe {
         extern_assert_eq(a, b);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn felt_macro_smoke_test() {
+        let _ = felt!(1);
     }
 }
