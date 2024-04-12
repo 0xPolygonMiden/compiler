@@ -93,3 +93,9 @@ pub fn test_pipe_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
 pub fn test_pipe_double_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
     pipe_double_words_to_memory(num_words)
 }
+
+#[no_mangle]
+pub fn test_remove_asset(asset: CoreAsset) -> Felt {
+    let asset_out = remove_asset(asset);
+    asset_out.as_word()[0]
+}

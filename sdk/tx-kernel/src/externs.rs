@@ -8,6 +8,8 @@ extern "C" {
     pub fn extern_account_get_id() -> AccountId;
     #[link_name = "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>"]
     pub fn extern_account_add_asset(_: Felt, _: Felt, _: Felt, _: Felt, ptr: *mut CoreAsset);
+    #[link_name = "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    pub fn extern_account_remove_asset(_: Felt, _: Felt, _: Felt, _: Felt, ptr: *mut CoreAsset);
 }
 
 #[link(wasm_import_module = "miden:tx_kernel/note")]
