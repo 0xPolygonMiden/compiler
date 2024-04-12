@@ -99,3 +99,13 @@ pub fn test_remove_asset(asset: CoreAsset) -> Felt {
     let asset_out = remove_asset(asset);
     asset_out.as_word()[0]
 }
+
+#[no_mangle]
+pub fn test_create_note(
+    asset: CoreAsset,
+    tag: Tag,
+    note_type: NoteType,
+    recipient: Recipient,
+) -> NoteId {
+    create_note(asset, tag, note_type, recipient)
+}

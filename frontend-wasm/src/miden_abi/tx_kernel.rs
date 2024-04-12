@@ -2,6 +2,7 @@
 
 pub(crate) mod account;
 pub(crate) mod note;
+pub(crate) mod tx;
 
 use std::sync::OnceLock;
 
@@ -13,6 +14,7 @@ pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
         let mut m: ModuleFunctionTypeMap = Default::default();
         m.extend(account::signatures());
         m.extend(note::signatures());
+        m.extend(tx::signatures());
         m
     })
 }

@@ -21,6 +21,7 @@ fn get_transform_strategy(function_id: &str) -> TransformStrategy {
         tx_kernel::account::ADD_ASSET => TransformStrategy::ReturnViaPointer,
         tx_kernel::account::REMOVE_ASSET => TransformStrategy::ReturnViaPointer,
         tx_kernel::account::GET_ID => TransformStrategy::NoTransform,
+        tx_kernel::tx::CREATE_NOTE => TransformStrategy::NoTransform,
         stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => TransformStrategy::ReturnViaPointer,
         stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
         stdlib::crypto::dsa::RPO_FALCON512_VERIFY => TransformStrategy::NoTransform,

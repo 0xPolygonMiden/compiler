@@ -24,3 +24,15 @@ impl CoreAsset {
         self.inner
     }
 }
+
+#[repr(transparent)]
+pub struct Recipient(pub(crate) Word);
+
+#[repr(transparent)]
+pub struct Tag(pub(crate) Felt);
+
+#[repr(transparent)]
+pub struct NoteId(pub(crate) Felt);
+
+#[repr(transparent)]
+pub struct NoteType(pub(crate) Felt);

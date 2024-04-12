@@ -81,3 +81,28 @@ pub fn remove_asset(asset: CoreAsset) -> CoreAsset {
         ret_area.assume_init()
     }
 }
+
+/// Creates a new note.  asset is the asset to be included in the note.  tag is
+/// the tag to be included in the note.  recipient is the recipient of the note.
+/// Returns the id of the created note.
+pub fn create_note(
+    asset: CoreAsset,
+    tag: Tag,
+    note_type: NoteType,
+    recipient: Recipient,
+) -> NoteId {
+    unsafe {
+        extern_tx_create_note(
+            asset.inner[0],
+            asset.inner[1],
+            asset.inner[2],
+            asset.inner[3],
+            tag,
+            note_type,
+            recipient.0[0],
+            recipient.0[1],
+            recipient.0[2],
+            recipient.0[3],
+        )
+    }
+}
