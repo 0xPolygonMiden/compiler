@@ -25,7 +25,7 @@
   (type (;23;) (func (param i32) (result f64)))
   (type (;24;) (func))
   (type (;25;) (func (param i32 i32 i32 i32 i32)))
-  (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_get_id (;0;) (type 0)))
+  (import "miden:tx_kernel/account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_get_id (;0;) (type 0)))
   (import "miden:prelude/intrinsics_felt" "from_u64_unchecked" (func $miden_prelude::intrinsics::felt::extern_from_u64_unchecked (;1;) (type 1)))
   (import "miden:prelude/intrinsics_felt" "add" (func $miden_prelude::intrinsics::felt::extern_add (;2;) (type 2)))
   (import "miden:prelude/intrinsics_felt" "as_u64" (func $miden_prelude::intrinsics::felt::extern_as_u64 (;3;) (type 3)))
@@ -48,8 +48,8 @@
   (import "miden:prelude/std_crypto_hashes" "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;20;) (type 9)))
   (import "miden:prelude/std_crypto_hashes" "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;21;) (type 10)))
   (import "miden:prelude/std_crypto_dsa" "rpo_falcon512_verify<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::dsa::extern_rpo_falcon512_verify (;22;) (type 11)))
-  (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_note_get_inputs (;23;) (type 12)))
-  (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::extern_account_add_asset (;24;) (type 13)))
+  (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_note_get_inputs (;23;) (type 12)))
+  (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_add_asset (;24;) (type 13)))
   (import "miden:prelude/std_mem" "pipe_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::mem::extern_pipe_words_to_memory (;25;) (type 14)))
   (import "miden:prelude/std_mem" "pipe_double_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::mem::extern_pipe_double_words_to_memory (;26;) (type 15)))
   (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;27;) (type 16) (param i32)
@@ -139,7 +139,7 @@
   )
   (func $get_wallet_magic_number (;32;) (type 0) (result f64)
     (local f64)
-    call $miden_sdk_tx_kernel::extern_account_get_id
+    call $miden_sdk_tx_kernel::externs::extern_account_get_id
     local.set 0
     i64.const 42
     call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
@@ -1416,7 +1416,7 @@
         unreachable
       end
       local.get 2
-      call $miden_sdk_tx_kernel::extern_note_get_inputs
+      call $miden_sdk_tx_kernel::externs::extern_note_get_inputs
       drop
       local.get 0
       i32.const 0
@@ -1452,7 +1452,7 @@
     local.get 1
     f64.load offset=24
     local.get 2
-    call $miden_sdk_tx_kernel::extern_account_add_asset
+    call $miden_sdk_tx_kernel::externs::extern_account_add_asset
     local.get 0
     i32.const 24
     i32.add

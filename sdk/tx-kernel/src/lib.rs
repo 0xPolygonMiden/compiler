@@ -1,46 +1,26 @@
 #![no_std]
-#![allow(dead_code)]
+
+mod externs;
+use externs::*;
+
+mod types;
+pub use types::*;
 
 extern crate alloc;
 
 use alloc::vec::Vec;
 
-use miden_prelude::{Felt, Word};
-
-#[repr(transparent)]
-#[derive(Copy, Clone)]
-pub struct AccountId(Felt);
-
-impl From<AccountId> for Felt {
-    fn from(account_id: AccountId) -> Felt {
-        account_id.0
-    }
-}
-
-#[link(wasm_import_module = "miden:tx_kernel/account")]
-extern "C" {
-    #[link_name = "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>"]
-    fn extern_account_get_id() -> AccountId;
-    #[link_name = "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>"]
-    fn extern_account_add_asset(_: Felt, _: Felt, _: Felt, _: Felt, ptr: *mut CoreAsset);
-}
-
-#[link(wasm_import_module = "miden:tx_kernel/note")]
-extern "C" {
-    #[link_name = "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>"]
-    fn extern_note_get_inputs(ptr: *mut Felt) -> usize;
-}
+use miden_prelude::Felt;
 
 #[inline(always)]
 pub fn get_id() -> AccountId {
     unsafe { extern_account_get_id() }
 }
 
-const MAX_INPUTS: usize = 256;
-
 pub fn get_inputs() -> Vec<Felt> {
-    unsafe {
-        let mut inputs: Vec<Felt> = Vec::with_capacity(MAX_INPUTS);
+    const MAX_INPUTS: usize = 256;
+    let mut inputs: Vec<Felt> = Vec::with_capacity(MAX_INPUTS);
+    let num_inputs = unsafe {
         // The MASM for this function is here:
         // https://github.com/0xPolygonMiden/miden-base/blob/3cbe8d59dcf4ccc9c380b7c8417ac6178fc6b86a/miden-lib/asm/miden/note.masm#L69-L102
         // #! Writes the inputs of the currently execute note into memory starting at the specified
@@ -51,25 +31,10 @@ pub fn get_inputs() -> Vec<Felt> {
         // #! - dest_ptr is the memory address to write the inputs.
         // Compiler generated adapter code at call site will drop the returned dest_ptr
         // and return the number of inputs
-        let num_inputs = extern_note_get_inputs(inputs.as_mut_ptr());
-        inputs.truncate(num_inputs);
-        inputs
-    }
-}
-
-#[repr(transparent)]
-pub struct CoreAsset {
-    inner: Word,
-}
-
-impl CoreAsset {
-    pub fn new(word: Word) -> Self {
-        CoreAsset { inner: word }
-    }
-
-    pub fn as_word(&self) -> Word {
-        self.inner
-    }
+        extern_note_get_inputs(inputs.as_mut_ptr())
+    };
+    inputs.truncate(num_inputs);
+    inputs
 }
 
 pub fn add_asset(asset: CoreAsset) -> CoreAsset {
