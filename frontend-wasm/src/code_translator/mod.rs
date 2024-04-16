@@ -25,6 +25,7 @@ use wasmparser::{MemArg, Operator};
 
 use crate::{
     error::{WasmError, WasmResult},
+    intrinsics::{convert_intrinsics_call, is_miden_intrinsics_module},
     miden_abi::{is_miden_sdk_module, transform::transform_miden_abi_call},
     module::{
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
@@ -102,6 +103,7 @@ pub fn translate_operator(
             let (arg1, arg2, cond) = state.pop3();
             // if cond is not 0, return arg1, else return arg2
             // https://www.w3.org/TR/wasm-core-1/#-hrefsyntax-instr-parametricmathsfselect%E2%91%A0
+            // cond is expected to be an i32
             let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
@@ -119,7 +121,7 @@ pub fn translate_operator(
 
         /**************************** Branch instructions *********************************/
         Operator::Br { relative_depth } => translate_br(state, relative_depth, builder, span),
-        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span),
+        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span)?,
         Operator::BrTable { targets } => translate_br_table(targets, state, builder, span)?,
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /************************************ Calls ****************************************/
@@ -192,9 +194,11 @@ pub fn translate_operator(
         }
         Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
         Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
+        Operator::F64Load { memarg } => translate_load(Felt, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
+        Operator::F64Store { memarg } => translate_store(Felt, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
             translate_store(U8, memarg, state, builder, span);
         }
@@ -650,14 +654,19 @@ fn translate_call(
     let wasm_sig = module_state.signature(function_index);
     let num_wasm_args = wasm_sig.params().len();
     let args = func_state.peekn(num_wasm_args);
-    if is_miden_sdk_module(func_id.module.as_symbol()) {
+    if is_miden_intrinsics_module(func_id.module.as_symbol()) {
+        let results = convert_intrinsics_call(func_id, args, builder, span);
+        func_state.popn(num_wasm_args);
+        func_state.pushn(&results);
+    } else if is_miden_sdk_module(func_id.module.as_symbol()) {
         // Miden SDK function call, transform the call to the Miden ABI if needed
         let results = transform_miden_abi_call(func_id, args, builder, span, diagnostics);
         assert_eq!(
             wasm_sig.results().len(),
             results.len(),
             "Adapted function call results quantity are not the same as the original Wasm \
-             function results quantity"
+             function results quantity for function {}",
+            func_id
         );
         assert_eq!(
             wasm_sig.results().iter().map(|p| &p.ty).collect::<Vec<&Type>>(),
@@ -666,7 +675,8 @@ fn translate_call(
                 .map(|r| builder.data_flow_graph().value_type(*r))
                 .collect::<Vec<&Type>>(),
             "Adapted function call result types are not the same as the original Wasm function \
-             result types"
+             result types for function {}",
+            func_id
         );
         func_state.popn(num_wasm_args);
         func_state.pushn(&results);
@@ -735,7 +745,7 @@ fn translate_br_if(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     span: SourceSpan,
-) {
+) -> WasmResult<()> {
     let cond = state.pop1();
     let (br_destination, inputs) = translate_br_if_args(relative_depth, state);
     let next_block = builder.create_block();
@@ -743,10 +753,12 @@ fn translate_br_if(
     let then_args = inputs;
     let else_dest = next_block;
     let else_args = &[];
+    // cond is expected to be a i32 value
     let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     builder.ins().cond_br(cond_i1, then_dest, then_args, else_dest, else_args, span);
     builder.seal_block(next_block); // The only predecessor is the current block.
     builder.switch_to_block(next_block);
+    Ok(())
 }
 
 fn translate_br_if_args(
@@ -897,6 +909,7 @@ fn translate_if(
 ) -> WasmResult<()> {
     let blockty = BlockType::from_wasm(blockty, mod_types)?;
     let cond = state.pop1();
+    // cond is expected to be a i32 value
     let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
     let next_block = builder.create_block();
     let (destination, else_data) = if blockty.params.eq(&blockty.results) {

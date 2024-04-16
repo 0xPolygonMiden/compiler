@@ -578,7 +578,7 @@ pub fn ir_type(ty: WasmType) -> WasmResult<hir::Type> {
         WasmType::I32 => hir::Type::I32,
         WasmType::I64 => hir::Type::I64,
         WasmType::F32 => return Err(WasmError::Unsupported("no f32 type in Miden IR".to_string())),
-        WasmType::F64 => hir::Type::F64,
+        WasmType::F64 => hir::Type::Felt,
         WasmType::V128 => {
             return Err(WasmError::Unsupported("V128 type is not supported".to_string()));
         }

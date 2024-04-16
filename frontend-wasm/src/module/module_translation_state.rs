@@ -6,6 +6,7 @@ use rustc_hash::FxHashMap;
 use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Module, ModuleTypes};
 use crate::{
     error::WasmResult,
+    intrinsics::is_miden_intrinsics_module,
     miden_abi::{is_miden_sdk_module, miden_sdk_function_type, parse_import_function_digest},
     translation_utils::sig_from_funct_type,
     WasmError,
@@ -124,6 +125,11 @@ impl ModuleTranslationState {
         } else {
             wasm_sig.clone()
         };
+
+        if is_miden_intrinsics_module(func_id.module.as_symbol()) {
+            // Exit and do not import intrinsics functions into the DFG
+            return Ok(func_id);
+        }
 
         if dfg.get_import(&func_id).is_none() {
             dfg.import_function(func_id.module, func_id.function, sig.clone())

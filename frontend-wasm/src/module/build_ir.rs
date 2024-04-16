@@ -7,6 +7,7 @@ use wasmparser::{Validator, WasmFeatures};
 use super::{module_translation_state::ModuleTranslationState, Module};
 use crate::{
     error::WasmResult,
+    intrinsics::is_miden_intrinsics_module,
     miden_abi::miden_sdk_function_type,
     module::{
         func_translator::FuncTranslator,
@@ -79,6 +80,10 @@ pub fn translate_module_as_component(
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
             for ext_func in imports {
+                if is_miden_intrinsics_module(ext_func.module.as_symbol()) {
+                    // ignore intrinsics imports
+                    continue;
+                }
                 let function_ty = miden_sdk_function_type(
                     ext_func.module.as_symbol(),
                     ext_func.function.as_symbol(),

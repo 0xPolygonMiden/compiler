@@ -1490,14 +1490,14 @@ fn select_i32() {
         r#"
             i64.const 3
             i64.const 7
-            i32.const 42
+            i32.const 1
             select
             drop
         "#,
         expect![[r#"
             (let (v0 i64) (const.i64 3))
             (let (v1 i64) (const.i64 7))
-            (let (v2 i32) (const.i32 42))
+            (let (v2 i32) (const.i32 1))
             (let (v3 i1) (neq v2 0))
             (let (v4 i64) (select v3 v0 v1))
         "#]],
