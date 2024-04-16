@@ -3,20 +3,87 @@ use miden_core::crypto::hash::RpoDigest;
 use miden_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
 use miden_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol, Type};
 
-use crate::CompilerTest;
+use crate::{cargo_proj::project, CompilerTest};
 
 #[test]
-fn wcm_add() {
-    // Has no imports
+fn wcm_no_imports() {
     let config = Default::default();
-    let mut test = CompilerTest::rust_source_cargo_component("add-comp", config);
+
+    let proj = project("wcm_no_imports")
+        .file(
+            "Cargo.toml",
+            r#"
+            [package]
+            name = "add-wasm-component"
+            version = "0.0.1"
+            edition = "2015"
+            authors = []
+
+            [dependencies]
+            wit-bindgen = { version = "0.17.0", default-features = false, features = ["realloc"] }
+            wee_alloc = { version = "0.4.5", default-features = false}
+
+            [lib]
+            crate-type = ["cdylib"]
+
+            [package.metadata.component]
+            package = "miden:add"
+
+            [profile.release]
+            panic = "abort"
+        "#,
+        )
+        .file(
+            "src/lib.rs",
+            r#"
+            #![no_std]
+
+            #[global_allocator]
+            static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+            #[panic_handler]
+            fn my_panic(_info: &core::panic::PanicInfo) -> ! {
+                loop {}
+            }
+
+            extern crate wit_bindgen;
+
+            mod bindings;
+
+            use crate::bindings::exports::miden::add_package::add_interface::Guest;
+
+            struct Component;
+
+            impl Guest for Component {
+                fn add(a: u32, b: u32) -> u32 {
+                    a + b
+                }
+            }
+        "#,
+        )
+        .file(
+            "wit/add.wit",
+            r#"
+            package miden:add-package@1.0.0;
+
+            interface add-interface {
+                add: func(a: u32, b: u32) -> u32;
+            }
+
+            world add-world {
+                export add-interface;
+            }
+        "#,
+        )
+        .build();
+    let mut test = CompilerTest::rust_source_cargo_component(proj.root(), config);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/components/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/components/{artifact_name}.hir")]);
 }
 
 #[test]
-fn wcm_inc() {
+fn wcm_import() {
     // Imports an add component used in the above test
 
     let interface_function_ident = InterfaceFunctionIdent {
@@ -38,7 +105,97 @@ fn wcm_inc() {
         import_metadata,
         ..Default::default()
     };
-    let mut test = CompilerTest::rust_source_cargo_component("inc-comp", config);
+
+    // Create the add component that will be imported in the wcm_import project
+    let _add_proj_dep = project("wcm_import_add")
+        .file(
+            "wit/add.wit",
+            r#"
+            package miden:add-package@1.0.0;
+
+            interface add-interface {
+                add: func(a: u32, b: u32) -> u32;
+            }
+
+            world add-world {
+                export add-interface;
+            }
+        "#,
+        )
+        .no_manifest()
+        .build();
+
+    let proj = project("wcm_import")
+        .file(
+            "Cargo.toml",
+            r#"
+            [package]
+            name = "inc-wasm-component"
+            version = "0.0.1"
+            edition = "2015"
+            authors = []
+
+            [dependencies]
+            wit-bindgen = { version = "0.17.0", default-features = false, features = ["realloc"] }
+            wee_alloc = { version = "0.4.5", default-features = false}
+
+            [lib]
+            crate-type = ["cdylib"]
+
+            [package.metadata.component]
+            package = "miden:inc"
+
+            [package.metadata.component.target.dependencies]
+            "miden:add" = { path = "../wcm_import_add/wit" }
+
+            [profile.release]
+            panic = "abort"
+        "#,
+        )
+        .file(
+            "src/lib.rs",
+            r#"
+            #![no_std]
+
+            #[global_allocator]
+            static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+            #[panic_handler]
+            fn my_panic(_info: &core::panic::PanicInfo) -> ! {
+                loop {}
+            }
+
+            extern crate wit_bindgen;
+
+            mod bindings;
+
+            use crate::bindings::{miden::add_package::add_interface::add, Guest};
+
+            struct Component;
+
+            impl Guest for Component {
+                fn inc(a: u32) -> u32 {
+                    add(a, 1)
+                }
+            }
+        "#,
+        )
+        .file(
+            "wit/inc.wit",
+            r#"
+            package miden:inc-package@1.0.0;
+
+            use miden:add-package/add-interface@1.0.0;
+
+            world inc {
+                import add-interface;
+                export inc: func(a: u32) -> u32;
+            }
+        "#,
+        )
+        .build();
+
+    let mut test = CompilerTest::rust_source_cargo_component(proj.root(), config);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/components/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/components/{artifact_name}.hir")]);
