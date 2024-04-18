@@ -1,14 +1,15 @@
-use miden_core::Program;
-use miden_core::StackInputs;
+use miden_core::{Program, StackInputs};
 use miden_hir::Felt;
-use miden_processor::DefaultHost;
-use miden_processor::ExecutionOptions;
+use miden_processor::{DefaultHost, ExecutionOptions};
 
 use crate::felt_conversion::TestFelt;
 
 /// Execute the module using the VM with the given arguments
+/// Arguments are expected to be in the order they are passed to the entrypoint function
 pub fn execute_vm(program: &Program, args: &[Felt]) -> Vec<TestFelt> {
-    let stack_inputs = StackInputs::new(args.to_vec());
+    // Reverse the arguments to counteract the StackInputs::new() reversing them into a stack
+    let args_reversed = args.into_iter().copied().rev().collect();
+    let stack_inputs = StackInputs::new(args_reversed);
     let trace = miden_processor::execute(
         program,
         stack_inputs,
