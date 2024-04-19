@@ -1,7 +1,7 @@
-use miden_core::Felt;
-use miden_core::StarkField;
+use miden_core::{Felt, StarkField};
 
-/// Wrapper around `Felt` that implements `From` for a bunch of types that are want to support in tests
+/// Wrapper around `Felt` that implements `From` for a bunch of types that are want to support in
+/// tests
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TestFelt(pub Felt);
 

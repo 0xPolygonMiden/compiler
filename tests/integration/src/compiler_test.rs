@@ -25,6 +25,8 @@ use miden_hir::{
 use miden_stdlib::StdLibrary;
 use midenc_session::{InputFile, Session};
 
+use crate::cargo_proj::project;
+
 pub enum CompilerTestSource {
     Rust(String),
     RustCargo {
@@ -32,7 +34,6 @@ pub enum CompilerTestSource {
         artifact_name: String,
     },
     RustCargoLib {
-        cargo_project_folder_name: String,
         artifact_name: String,
     },
     RustCargoComponent {
@@ -47,10 +48,7 @@ impl CompilerTestSource {
                 cargo_project_folder_name: _,
                 artifact_name,
             } => artifact_name.clone(),
-            CompilerTestSource::RustCargoLib {
-                cargo_project_folder_name: _,
-                artifact_name,
-            } => artifact_name.clone(),
+            CompilerTestSource::RustCargoLib { artifact_name } => artifact_name.clone(),
             CompilerTestSource::RustCargoComponent { artifact_name } => artifact_name.clone(),
             _ => panic!("Not a Rust Cargo project"),
         }
@@ -113,7 +111,6 @@ impl CompilerTest {
         config: WasmTranslationConfig,
     ) -> Self {
         let manifest_path = cargo_project_folder.join("Cargo.toml");
-        // dbg!(&pwd);
         let mut cargo_build_cmd = Command::new("cargo");
         let compiler_workspace_dir = get_workspace_dir();
         // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
@@ -174,9 +171,12 @@ impl CompilerTest {
     }
 
     /// Set the Rust source code to compile a library Cargo project to Wasm module
-    pub fn rust_source_cargo_lib(cargo_project_folder: &str) -> Self {
-        let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
-        // dbg!(&pwd);
+    pub fn rust_source_cargo_lib(
+        cargo_project_folder: PathBuf,
+        is_build_std: bool,
+        entry_func_name: Option<String>,
+    ) -> Self {
+        let manifest_path = cargo_project_folder.join("Cargo.toml");
         let mut cargo_build_cmd = Command::new("cargo");
         let compiler_workspace_dir = get_workspace_dir();
         // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
@@ -193,14 +193,16 @@ impl CompilerTest {
             .arg("--manifest-path")
             .arg(manifest_path)
             .arg("--release")
-            .arg("--target=wasm32-wasi")
+            .arg("--target=wasm32-wasi");
+        if is_build_std {
             // compile std as part of crate graph compilation
             // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-            .arg("-Z")
+            cargo_build_cmd.arg("-Z")
             .arg("build-std=std,core,alloc,panic_abort")
             .arg("-Z")
             // abort on panic without message formatting (core::fmt uses call_indirect)
             .arg("build-std-features=panic_immediate_abort");
+        }
         let mut child = cargo_build_cmd
             .arg("--message-format=json-render-diagnostics")
             .stdout(Stdio::piped())
@@ -227,18 +229,23 @@ impl CompilerTest {
             let path_str = path.to_str().unwrap();
             !path_str.contains("release/deps")
         });
-        dbg!(&wasm_artifacts);
+        // dbg!(&wasm_artifacts);
         assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
         let wasm_comp_path = &wasm_artifacts.first().unwrap();
         let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
+        // dbg!(&artifact_name);
+        let entrypoint = entry_func_name.map(|func_name| FunctionIdent {
+            module: Ident::new(Symbol::intern(artifact_name.clone()), SourceSpan::default()),
+            function: Ident::new(Symbol::intern(func_name.to_string()), SourceSpan::default()),
+        });
         Self {
-            config: Default::default(),
-            session: default_session(),
-            source: CompilerTestSource::RustCargoLib {
-                cargo_project_folder_name: cargo_project_folder.to_string(),
-                artifact_name,
+            config: WasmTranslationConfig {
+                override_name: Some(artifact_name.to_string().into()),
+                ..Default::default()
             },
-            entrypoint: None,
+            session: default_session(),
+            source: CompilerTestSource::RustCargoLib { artifact_name },
+            entrypoint,
             wasm_bytes: fs::read(wasm_artifacts.first().unwrap()).unwrap(),
             hir: None,
             ir_masm: None,
@@ -374,6 +381,70 @@ impl CompilerTest {
         }
     }
 
+    /// Set the Rust source code to compile with `miden-prelude` (stdlib + intrinsics)
+    pub fn rust_fn_body_with_prelude(name: &str, rust_source: &str) -> Self {
+        let cwd = std::env::current_dir().unwrap();
+        let miden_prelude_path =
+            cwd.parent().unwrap().parent().unwrap().join("sdk").join("prelude");
+        let miden_prelude_path_str = miden_prelude_path.to_str().unwrap();
+        // dbg!(&miden_prelude_path);
+        let proj = project(&name)
+            .file(
+                "Cargo.toml",
+                format!(
+                    r#"
+                [package]
+                name = "{name}"
+                version = "0.0.1"
+                edition = "2015"
+                authors = []
+    
+                [dependencies]
+                wee_alloc = {{ version = "0.4.5", default-features = false}}
+                miden-prelude = {{ path = "{miden_prelude_path_str}" }}
+    
+                [lib]
+                crate-type = ["cdylib"]
+    
+                [profile.release]
+                panic = "abort"
+                # optimize for size
+                opt-level = "z"
+            "#
+                )
+                .as_str(),
+            )
+            .file(
+                "src/lib.rs",
+                format!(
+                    r#"
+                #![no_std]
+                #![no_main]
+
+                #[panic_handler]
+                fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
+                    loop {{}}
+                }}
+
+
+                #[global_allocator]
+                static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+                extern crate miden_prelude;
+                use miden_prelude::*;
+
+                #[no_mangle]
+                pub extern "C" fn entrypoint{}
+            "#,
+                    rust_source
+                )
+                .as_str(),
+            )
+            .build();
+        let test = Self::rust_source_cargo_lib(proj.root(), false, Some("entrypoint".to_string()));
+        test
+    }
+
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&self, expected_wat_file: expect_test::ExpectFile) {
         let wasm_bytes = self.wasm_bytes.as_ref();
@@ -507,8 +578,16 @@ impl CompilerTest {
             let hir = self.hir.take().expect("IR is not compiled");
             let ir_masm = match hir {
                 HirArtifact::Program(hir_program) => compiler.compile(hir_program).unwrap(),
-                HirArtifact::Component(_hir_component) => {
-                    todo!("Component to MASM compilation is not implemented yet")
+                HirArtifact::Component(hir_component) => {
+                    let ir_module = hir_component.to_modules().drain(..).next().unwrap().1;
+                    let mut builder = ProgramBuilder::new(&self.session.diagnostics)
+                        .with_module(ir_module)
+                        .unwrap();
+                    if let Some(entrypoint) = self.entrypoint.as_ref() {
+                        builder = builder.with_entrypoint(entrypoint.clone());
+                    }
+                    let hir_program = builder.link().expect("Failed to link IR program");
+                    compiler.compile(hir_program).unwrap()
                 }
                 HirArtifact::Module(_) => {
                     todo!("Module to MASM compilation is not implemented yet")
