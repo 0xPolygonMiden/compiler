@@ -1,13 +1,11 @@
-use std::sync::Arc;
-
 use expect_test::expect_file;
-use miden_core::Felt;
 use proptest::{
     prelude::*,
     test_runner::{TestError, TestRunner},
 };
 
-use crate::{execute_emulator, execute_vm, felt_conversion::TestFelt, CompilerTest};
+use super::run_masm_vs_rust;
+use crate::{felt_conversion::TestFelt, CompilerTest};
 
 macro_rules! test_bin_op {
     ($name:ident, $op:tt, $op_ty:tt, $res_ty:tt, $a_range:expr, $b_range:expr) => {
@@ -124,21 +122,6 @@ macro_rules! test_func_two_arg {
             }
         });
     };
-}
-fn run_masm<T>(
-    rust_out: T,
-    vm_program: &miden_core::Program,
-    ir_masm: Arc<miden_codegen_masm::Program>,
-    args: &[Felt],
-) -> Result<(), TestCaseError>
-where
-    T: Clone + From<TestFelt> + std::cmp::PartialEq + std::fmt::Debug,
-{
-    let vm_out: T = execute_vm(&vm_program, &args).first().unwrap().clone().into();
-    prop_assert_eq!(rust_out.clone(), vm_out, "VM output mismatch");
-    let emul_out: T = execute_emulator(ir_masm.clone(), &args).first().unwrap().clone().into();
-    prop_assert_eq!(rust_out, emul_out, "Emulator output mismatch");
-    Ok(())
 }
 
 macro_rules! test_bool_op_total {
