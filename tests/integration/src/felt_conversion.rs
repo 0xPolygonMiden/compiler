@@ -1,9 +1,19 @@
 use miden_core::{Felt, StarkField};
+use proptest::{
+    arbitrary::Arbitrary,
+    strategy::{BoxedStrategy, Strategy},
+};
 
 /// Wrapper around `Felt` that implements `From` for a bunch of types that are want to support in
 /// tests
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TestFelt(pub Felt);
+
+impl From<TestFelt> for Felt {
+    fn from(f: TestFelt) -> Self {
+        f.0
+    }
+}
 
 impl From<bool> for TestFelt {
     fn from(b: bool) -> Self {
@@ -112,5 +122,14 @@ impl From<TestFelt> for u64 {
 impl From<TestFelt> for i64 {
     fn from(f: TestFelt) -> Self {
         f.0.as_int() as i64
+    }
+}
+
+impl Arbitrary for TestFelt {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+        (0u64..u64::MAX).prop_map(|v| TestFelt(Felt::from(v))).boxed()
     }
 }
