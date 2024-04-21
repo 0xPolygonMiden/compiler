@@ -17,7 +17,7 @@ There are four calling conventions represented in the compiler:
   possible to call a function via `syscall` if the callee is not defined with this convention. Because of
   the semantics of `syscall`, this convention is highly restrictive. In particular, it is not permitted to 
   pass pointer arguments, or aggregates containing pointers, as `syscall` involves a context switch, and
-  thus memory in the the caller is not accessible to the callee, and vice versa.
+  thus memory in the caller is not accessible to the callee, and vice versa.
 - `Contract`, this is a special calling convention that is used when defining smart contract functions, i.e.
   functions that can be `call`'d. The compiler will not permit you to `call` a function if the callee is not
   defined with this convention, and functions with this convention cannot be called via `exec`. Like `syscall`, 

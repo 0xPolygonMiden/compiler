@@ -690,7 +690,7 @@ mod test {
     fn it_parses_counting_flag() {
         let mut args = Args::default().counting("--flag", Some('f'));
 
-        // Test not the the flag
+        // Test not the flag
         args.parse("--not-flag", &mut empty::<String>()).unwrap();
         let arg = args.get("--flag").unwrap();
         assert_eq!(arg.count(), 0);

@@ -420,7 +420,7 @@ impl Emulator {
     /// Load `function` into this emulator, with the given identifier
     ///
     /// Because we don't know the set of [FuncId] that have already been allocated,
-    /// we leave the the choice up to the caller. We assert that functions do
+    /// we leave the choice up to the caller. We assert that functions do
     /// not get defined twice to catch conflicts, just in case.
     pub fn load_nif(
         &mut self,
