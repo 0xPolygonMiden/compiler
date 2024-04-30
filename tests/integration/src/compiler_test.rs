@@ -355,7 +355,7 @@ impl CompilerTest {
     }
 
     /// Set the Rust source code to compile with `miden-prelude` (stdlib + intrinsics)
-    pub fn rust_fn_body_with_prelude(name: &str, rust_source: &str) -> Self {
+    pub fn rust_fn_body_with_prelude(name: &str, rust_source: &str, is_build_std: bool) -> Self {
         let cwd = std::env::current_dir().unwrap();
         let miden_prelude_path =
             cwd.parent().unwrap().parent().unwrap().join("sdk").join("prelude");
@@ -414,8 +414,9 @@ impl CompilerTest {
                 .as_str(),
             )
             .build();
-
-        Self::rust_source_cargo_lib(proj.root(), false, Some("entrypoint".to_string()))
+        let test =
+            Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()));
+        test
     }
 
     /// Compare the compiled Wasm against the expected output
