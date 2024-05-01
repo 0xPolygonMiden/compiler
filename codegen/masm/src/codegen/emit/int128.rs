@@ -131,7 +131,7 @@ impl<'a> OpEmitter<'a> {
     /// Truncate this i128 value to N bits, where N is <= 64
     ///
     /// This consumes the input value, and leaves an N-bit value on the stack,
-    /// where the the value is assumed to be represented using 32-bit limbs.
+    /// where the value is assumed to be represented using 32-bit limbs.
     /// For example, a 64-bit value will consist of two 32-bit values on the
     /// stack.
     ///
