@@ -4,7 +4,7 @@ use core::panic;
 use std::{
     fs,
     io::Read,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::Arc,
 };
@@ -36,7 +36,6 @@ pub enum CompilerTestSource {
         artifact_name: String,
     },
     RustCargoComponent {
-        cargo_project_folder_name: String,
         artifact_name: String,
     },
 }
@@ -52,10 +51,7 @@ impl CompilerTestSource {
                 cargo_project_folder_name: _,
                 artifact_name,
             } => artifact_name.clone(),
-            CompilerTestSource::RustCargoComponent {
-                cargo_project_folder_name: _,
-                artifact_name,
-            } => artifact_name.clone(),
+            CompilerTestSource::RustCargoComponent { artifact_name } => artifact_name.clone(),
             _ => panic!("Not a Rust Cargo project"),
         }
     }
@@ -113,10 +109,10 @@ pub struct CompilerTest {
 impl CompilerTest {
     /// Compile the Wasm component from a Rust Cargo project using cargo-component
     pub fn rust_source_cargo_component(
-        cargo_project_folder: &str,
+        cargo_project_folder: PathBuf,
         config: WasmTranslationConfig,
     ) -> Self {
-        let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
+        let manifest_path = cargo_project_folder.join("Cargo.toml");
         // dbg!(&pwd);
         let mut cargo_build_cmd = Command::new("cargo");
         let compiler_workspace_dir = get_workspace_dir();
@@ -169,10 +165,7 @@ impl CompilerTest {
         Self {
             config,
             session: default_session(),
-            source: CompilerTestSource::RustCargoComponent {
-                cargo_project_folder_name: cargo_project_folder.to_string(),
-                artifact_name,
-            },
+            source: CompilerTestSource::RustCargoComponent { artifact_name },
             entrypoint: None,
             wasm_bytes: fs::read(wasm_artifacts.first().unwrap()).unwrap(),
             hir: None,

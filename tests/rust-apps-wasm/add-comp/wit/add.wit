@@ -1,9 +1,0 @@
-package miden:add-package@1.0.0;
-
-interface add-interface {
-    add: func(a: u32, b: u32) -> u32;
-}
-
-world add-world {
-    export add-interface;
-}
