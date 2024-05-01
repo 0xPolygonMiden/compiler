@@ -46,3 +46,29 @@ jobs:
       with:
         command: make
         args: test
+
+  cargo_miden_test_clean_env:
+    # Run cargo-miden test in the clean env to simulate user's first run.
+    # To test the installation of the required dependencies (e.g. rust-src, wasm target, etc.)
+    name: cargo-miden tests 
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+        override: true
+    - name: Cache Cargo
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+    - name: Test
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: -p cargo-miden --test integration 

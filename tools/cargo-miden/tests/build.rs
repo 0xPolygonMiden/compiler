@@ -28,8 +28,10 @@ fn build_new_project_from_template() {
     let outputs = run(args, &terminal).expect("Failed to compile");
     let expected_masm_path = outputs.first().unwrap();
     dbg!(&expected_masm_path);
+    // eprintln!("{}", String::from_utf8(fs::read(expected_masm_path).unwrap()).unwrap());
     assert!(expected_masm_path.exists());
     assert!(expected_masm_path.metadata().unwrap().len() > 0);
+
     env::set_current_dir(restore_dir).unwrap();
     fs::remove_dir_all(new_project_path).unwrap();
 }
