@@ -596,7 +596,7 @@ Functions which are part of the kernel's public API are required to use this con
 possible to call a function via <code>syscall</code> if the callee is not defined with this convention. Because of
 the semantics of <code>syscall</code>, this convention is highly restrictive. In particular, it is not permitted to
 pass pointer arguments, or aggregates containing pointers, as <code>syscall</code> involves a context switch, and
-thus memory in the the caller is not accessible to the callee, and vice versa.</li>
+thus memory in the caller is not accessible to the callee, and vice versa.</li>
 <li><code>Contract</code>, this is a special calling convention that is used when defining smart contract functions, i.e.
 functions that can be <code>call</code>'d. The compiler will not permit you to <code>call</code> a function if the callee is not
 defined with this convention, and functions with this convention cannot be called via <code>exec</code>. Like <code>syscall</code>,
