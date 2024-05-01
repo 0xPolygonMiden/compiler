@@ -26,7 +26,7 @@ impl Account {
     #[no_mangle]
     pub fn test_add_asset() -> Felt {
         let asset_in = CoreAsset::new([felt!(1), felt!(2), felt!(3), felt!(4)]);
-        let asset_out = add_assets(asset_in);
+        let asset_out = add_asset(asset_in);
         asset_out.as_word()[0]
     }
 
@@ -92,4 +92,20 @@ pub fn test_pipe_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
 #[no_mangle]
 pub fn test_pipe_double_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
     pipe_double_words_to_memory(num_words)
+}
+
+#[no_mangle]
+pub fn test_remove_asset(asset: CoreAsset) -> Felt {
+    let asset_out = remove_asset(asset);
+    asset_out.as_word()[0]
+}
+
+#[no_mangle]
+pub fn test_create_note(
+    asset: CoreAsset,
+    tag: Tag,
+    note_type: NoteType,
+    recipient: Recipient,
+) -> NoteId {
+    create_note(asset, tag, note_type, recipient)
 }
