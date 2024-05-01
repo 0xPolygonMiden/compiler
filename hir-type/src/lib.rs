@@ -605,10 +605,15 @@ pub enum Abi {
     /// Component Model. This indicates that additional lowering/lifting code is required between
     /// caller and callee. It also dictates the calling convention for the callee.
     Wasm,
-    /// The type signature of a procedure in Miden Assembly. Similarly to Wasm, this ABI indicates
-    /// that the additional lifting/lowering code is required between caller and callee, and
-    /// dictates the calling convention for the callee.
-    Miden,
+}
+
+impl fmt::Display for Abi {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Canonical => f.write_str("canon"),
+            Self::Wasm => f.write_str("wasm"),
+        }
+    }
 }
 
 /// This represents the type of a function, including the ABI, result types, and parameter types
@@ -629,18 +634,6 @@ impl FunctionType {
     ) -> Self {
         Self {
             abi: Abi::Canonical,
-            results: results.into_iter().collect(),
-            params: params.into_iter().collect(),
-        }
-    }
-
-    /// Create a new function type with the Miden ABI
-    pub fn new_miden<P: IntoIterator<Item = Type>, R: IntoIterator<Item = Type>>(
-        params: P,
-        results: R,
-    ) -> Self {
-        Self {
-            abi: Abi::Miden,
             results: results.into_iter().collect(),
             params: params.into_iter().collect(),
         }
@@ -685,6 +678,7 @@ impl fmt::Display for FunctionType {
         use core::fmt::Write;
 
         f.write_str("(func")?;
+        f.write_fmt(format_args!(" (abi {abi}) ", abi = self.abi))?;
         for ty in self.params.iter() {
             write!(f, " (param {ty})")?;
         }

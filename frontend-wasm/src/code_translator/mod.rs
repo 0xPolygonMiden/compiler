@@ -26,7 +26,7 @@ use wasmparser::{MemArg, Operator};
 use crate::{
     error::{WasmError, WasmResult},
     intrinsics::{convert_intrinsics_call, is_miden_intrinsics_module},
-    miden_abi::{is_miden_sdk_module, transform::transform_miden_abi_call},
+    miden_abi::{is_miden_abi_module, transform::transform_miden_abi_call},
     module::{
         func_translation_state::{ControlStackFrame, ElseData, FuncTranslationState},
         function_builder_ext::FunctionBuilderExt,
@@ -160,6 +160,25 @@ pub fn translate_operator(
             } else {
                 unsupported_diag!(diagnostics, "MemoryCopy: only single memory is supported");
             }
+        }
+        Operator::MemoryFill { mem } => {
+            // See semantics at https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-fill
+
+            // This is a temporary workaround until we have this instruction
+            // properly implemented in IR. I encountered the Wasm `memory.fill`
+            // instruction in the `GlobalAlloc::alloc_zeroed` function, which is
+            // used to zero out the memory allocated by `GlobalAlloc::alloc`, but
+            // since the memory in Miden VM is guaranteed to be initialized to
+            // zeros we can ignore this instruction in this case for now
+            // see https://github.com/0xPolygonMiden/compiler/issues/156
+            if *mem != 0 {
+                unsupported_diag!(diagnostics, "MemoryFill: only single memory is supported");
+            }
+            let _num_bytes = state.pop1();
+            let val = state.pop1();
+            let _dst_i32 = state.pop1();
+            // Fail if the value is not zero, i.e. the memory is not zeroed
+            builder.ins().assert_eq_imm(Immediate::I32(0), val, span);
         }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
@@ -658,7 +677,7 @@ fn translate_call(
         let results = convert_intrinsics_call(func_id, args, builder, span);
         func_state.popn(num_wasm_args);
         func_state.pushn(&results);
-    } else if is_miden_sdk_module(func_id.module.as_symbol()) {
+    } else if is_miden_abi_module(func_id.module.as_symbol()) {
         // Miden SDK function call, transform the call to the Miden ABI if needed
         let results = transform_miden_abi_call(func_id, args, builder, span, diagnostics);
         assert_eq!(

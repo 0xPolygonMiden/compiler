@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use core::panic;
 use std::{
     fs,
     io::Read,
@@ -118,8 +119,16 @@ impl CompilerTest {
         let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
         // dbg!(&pwd);
         let mut cargo_build_cmd = Command::new("cargo");
+        let compiler_workspace_dir = get_workspace_dir();
         // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
-        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
+        // Remap the compiler workspace directory to `~` to have a reproducible build that does not
+        // have the absolute local path baked into the Wasm binary
+        cargo_build_cmd.env(
+            "RUSTFLAGS",
+            format!(
+                "-C target-feature=+bulk-memory --remap-path-prefix {compiler_workspace_dir}=~"
+            ),
+        );
         cargo_build_cmd
             .arg("component")
             .arg("build")
@@ -176,10 +185,16 @@ impl CompilerTest {
         let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
         // dbg!(&pwd);
         let mut cargo_build_cmd = Command::new("cargo");
+        let compiler_workspace_dir = get_workspace_dir();
         // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
-        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
-        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
-        cargo_build_cmd.env("RUSTFLAGS", "-C target-feature=+bulk-memory");
+        // Remap the compiler workspace directory to `~` to have a reproducible build that does not
+        // have the absolute local path baked into the Wasm binary
+        cargo_build_cmd.env(
+            "RUSTFLAGS",
+            format!(
+                "-C target-feature=+bulk-memory --remap-path-prefix {compiler_workspace_dir}=~"
+            ),
+        );
         cargo_build_cmd
             .arg("build")
             .arg("--manifest-path")
@@ -450,8 +465,8 @@ impl CompilerTest {
                 let ir_component = demangle(&hir_component.to_string());
                 expected_hir_file.assert_eq(&ir_component);
             }
-            HirArtifact::Module(_) => {
-                let ir_module = demangle(&self.hir().unwrap_module().to_string());
+            HirArtifact::Module(hir_module) => {
+                let ir_module = demangle(&hir_module.to_string());
                 expected_hir_file.assert_eq(&ir_module);
             }
         }
@@ -513,6 +528,18 @@ impl CompilerTest {
     }
 }
 
+/// Get the directory for the top-level workspace
+fn get_workspace_dir() -> String {
+    // Get the directory for the integration test suite project
+    let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let cargo_manifest_dir_path = Path::new(&cargo_manifest_dir);
+    // "Exit" the integration test suite project directory to the compiler workspace directory
+    // i.e. out of the `tests/integration` directory
+    let compiler_workspace_dir =
+        cargo_manifest_dir_path.parent().unwrap().parent().unwrap().to_str().unwrap();
+    compiler_workspace_dir.to_string()
+}
+
 fn report_cargo_error(child: std::process::Child) {
     eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
     let mut stderr = Vec::new();
@@ -549,7 +576,7 @@ pub(crate) fn demangle(name: &str) -> String {
     String::from_utf8(demangled).unwrap()
 }
 
-pub(crate) fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
+fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
     let mut wasm_printer = wasmprinter::Printer::new();
     // disable printing of the "producers" section because it contains a rustc version
     // to not brake tests when rustc is updated

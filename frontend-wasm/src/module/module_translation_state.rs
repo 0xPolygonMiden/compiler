@@ -7,7 +7,7 @@ use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Modu
 use crate::{
     error::WasmResult,
     intrinsics::is_miden_intrinsics_module,
-    miden_abi::{is_miden_sdk_module, miden_sdk_function_type, parse_import_function_digest},
+    miden_abi::{is_miden_abi_module, miden_abi_function_type, parse_import_function_digest},
     translation_utils::sig_from_funct_type,
     WasmError,
 };
@@ -115,9 +115,9 @@ impl ModuleTranslationState {
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<FunctionIdent> {
         let (func_id, wasm_sig) = self.functions[&index].clone();
-        let sig: Signature = if is_miden_sdk_module(func_id.module.as_symbol()) {
+        let sig: Signature = if is_miden_abi_module(func_id.module.as_symbol()) {
             let ft =
-                miden_sdk_function_type(func_id.module.as_symbol(), func_id.function.as_symbol());
+                miden_abi_function_type(func_id.module.as_symbol(), func_id.function.as_symbol());
             Signature::new(
                 ft.params.into_iter().map(AbiParam::new),
                 ft.results.into_iter().map(AbiParam::new),
