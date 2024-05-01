@@ -1,4 +1,4 @@
-use core::ops::{Add, Div, Mul, Neg, Sub};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[link(wasm_import_module = "miden:prelude/intrinsics_felt")]
 extern "C" {
@@ -171,12 +171,26 @@ impl Add for Felt {
     }
 }
 
+impl AddAssign for Felt {
+    #[inline(always)]
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+
 impl Sub for Felt {
     type Output = Self;
 
     #[inline(always)]
     fn sub(self, other: Self) -> Self {
         unsafe { extern_sub(self, other) }
+    }
+}
+
+impl SubAssign for Felt {
+    #[inline(always)]
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
     }
 }
 
@@ -189,12 +203,26 @@ impl Mul for Felt {
     }
 }
 
+impl MulAssign for Felt {
+    #[inline(always)]
+    fn mul_assign(&mut self, other: Self) {
+        *self = *self * other;
+    }
+}
+
 impl Div for Felt {
     type Output = Self;
 
     #[inline(always)]
     fn div(self, other: Self) -> Self {
         unsafe { extern_div(self, other) }
+    }
+}
+
+impl DivAssign for Felt {
+    #[inline(always)]
+    fn div_assign(&mut self, other: Self) {
+        *self = *self / other;
     }
 }
 

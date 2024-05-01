@@ -148,6 +148,10 @@ impl Component {
         &self.modules
     }
 
+    pub fn to_modules(mut self) -> Vec<(Ident, Box<Module>)> {
+        self.modules.drain(..).collect()
+    }
+
     /// Return a mutable reference to the module table for this program
     pub fn modules_mut(&mut self) -> &mut IndexMap<Ident, Box<Module>> {
         &mut self.modules

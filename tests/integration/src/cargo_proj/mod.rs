@@ -341,7 +341,7 @@ pub fn project(proj_folder_name: &str) -> ProjectBuilder {
     let temp_dir = &std::env::temp_dir();
     let cargo_projects_root = temp_dir.join("miden_test_cargo_projects");
     let cargo_proj_path = cargo_projects_root.join(proj_folder_name);
-    dbg!(&cargo_proj_path);
+    // dbg!(&cargo_proj_path);
     ProjectBuilder::new(cargo_proj_path)
 }
 
