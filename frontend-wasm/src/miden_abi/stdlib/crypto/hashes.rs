@@ -28,6 +28,6 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
             [Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt],
         ),
     );
-    m.insert("miden:prelude/std_crypto_hashes", crypto);
+    m.insert("std::crypto_hashes", crypto);
     m
 }
