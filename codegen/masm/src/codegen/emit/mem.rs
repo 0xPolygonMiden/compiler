@@ -825,12 +825,12 @@ impl<'a> OpEmitter<'a> {
         let ptr = self.stack.pop().expect("operand stack is empty");
         let value = self.stack.pop().expect("operand stack is empty");
         let ptr_ty = ptr.ty();
-        assert!(ptr_ty.is_pointer(), "expected load operand to be a pointer, got {ptr_ty}");
+        assert!(ptr_ty.is_pointer(), "expected store operand to be a pointer, got {ptr_ty}");
         let value_ty = value.ty();
         assert!(!value_ty.is_zst(), "cannot store a zero-sized type in memory");
         match ptr_ty {
             Type::Ptr(_) => {
-                // Converet the pointer to a native pointer representation
+                // Convert the pointer to a native pointer representation
                 self.emit_native_ptr();
                 match value_ty {
                     Type::I128 => self.store_quad_word(None),
