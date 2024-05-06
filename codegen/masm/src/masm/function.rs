@@ -2,7 +2,10 @@ use std::{collections::BTreeSet, fmt, sync::Arc};
 
 use cranelift_entity::EntityRef;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListAtomicLink};
-use miden_assembly::ast;
+use miden_assembly::{
+    ast::{self, ProcedureName},
+    LibraryNamespace, LibraryPath,
+};
 use miden_diagnostics::{SourceSpan, Spanned};
 use miden_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
 use smallvec::SmallVec;
@@ -138,8 +141,7 @@ impl Function {
         kind: ast::InvokeKind,
         target: FunctionIdent,
     ) {
-        let path = miden_assembly::LibraryPath::new(target.module.as_str())
-            .expect("invalid procedure path");
+        let path = LibraryPath::new(target.module.as_str()).expect("invalid procedure path");
         let name_span = miden_assembly::SourceSpan::new(
             target.function.span.start_index().0..target.function.span.end_index().0,
         );
@@ -253,6 +255,16 @@ pub struct DisplayMasmFunction<'a> {
 impl<'a> miden_hir::formatter::PrettyPrint for DisplayMasmFunction<'a> {
     fn render(&self) -> miden_hir::formatter::Document {
         use miden_hir::formatter::*;
+
+        if self.function.name.module.as_str() == LibraryNamespace::EXEC_PATH
+            && self.function.name.function.as_str() == ProcedureName::MAIN_PROC_NAME
+        {
+            let body = self.function.body.display(Some(self.function.name), self.imports);
+            return indent(4, const_text("begin") + nl() + body.render())
+                + nl()
+                + const_text("end")
+                + nl();
+        }
 
         let visibility = if self.function.signature.is_kernel() {
             ast::Visibility::Syscall

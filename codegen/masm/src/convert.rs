@@ -1,4 +1,4 @@
-use miden_assembly::{LibraryNamespace, LibraryPath};
+use miden_assembly::LibraryPath;
 use miden_hir::{
     self as hir,
     pass::{AnalysisManager, ConversionPass, ConversionResult},
@@ -110,24 +110,10 @@ impl ConversionPass for ConvertHirToMasm<hir::Module> {
 
         let kind = if module.is_kernel() {
             ModuleKind::Kernel
-        } else if module.entrypoint().is_some() {
-            ModuleKind::Executable
         } else {
             ModuleKind::Library
         };
-
-        let name = if module.name.as_str() == LibraryNamespace::EXEC_PATH {
-            assert_eq!(
-                kind,
-                ModuleKind::Executable,
-                "invalid module name '{}': only valid for executable modules",
-                module.name
-            );
-            LibraryPath::from(LibraryNamespace::Exec)
-        } else {
-            LibraryPath::new(&module.name).expect("invalid module name")
-        };
-
+        let name = LibraryPath::new(&module.name).expect("invalid module name");
         let mut masm_module = Box::new(masm::Module::new(name, kind));
 
         // Compute import information for this module

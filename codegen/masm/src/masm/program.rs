@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{fmt, path::Path, sync::Arc};
 
 use hir::{Signature, Symbol};
 use miden_assembly::{
@@ -140,6 +140,25 @@ impl Program {
 
         for module in self.modules.iter() {
             module.write_to_directory(codemap, path)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for module in self.modules.iter() {
+            if module.name.is_exec_path() {
+                continue;
+            }
+            writeln!(f, "mod {}\n", &module.name)?;
+            writeln!(f, "{}", module)?;
+        }
+
+        if let Some(module) = self.modules.iter().find(|m| m.name.is_exec_path()) {
+            writeln!(f, "program\n")?;
+            writeln!(f, "{}", module)?;
         }
 
         Ok(())

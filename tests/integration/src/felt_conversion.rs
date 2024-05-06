@@ -1,4 +1,4 @@
-use miden_core::{Felt, StarkField};
+use miden_core::Felt;
 use proptest::{
     arbitrary::Arbitrary,
     strategy::{BoxedStrategy, Strategy},
@@ -59,13 +59,13 @@ impl From<u32> for TestFelt {
 
 impl From<u64> for TestFelt {
     fn from(t: u64) -> Self {
-        Self(t.into())
+        Self(Felt::new(t))
     }
 }
 
 impl From<i64> for TestFelt {
     fn from(t: i64) -> Self {
-        Self((t as u64).into())
+        Self(Felt::new(t as u64))
     }
 }
 
@@ -130,6 +130,6 @@ impl Arbitrary for TestFelt {
     type Strategy = BoxedStrategy<Self>;
 
     fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
-        (0u64..u64::MAX).prop_map(|v| TestFelt(Felt::from(v))).boxed()
+        (0u64..u64::MAX).prop_map(|v| TestFelt(Felt::new(v))).boxed()
     }
 }

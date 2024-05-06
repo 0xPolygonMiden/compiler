@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use miden_assembly::{Assembler, AssemblyContext};
+use miden_assembly::Assembler;
 use miden_codegen_masm::MasmCompiler;
 use miden_diagnostics::{
     term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
@@ -398,14 +398,14 @@ impl CompilerTest {
                 version = "0.0.1"
                 edition = "2015"
                 authors = []
-    
+
                 [dependencies]
                 wee_alloc = {{ version = "0.4.5", default-features = false}}
                 miden-prelude = {{ path = "{miden_prelude_path_str}" }}
-    
+
                 [lib]
                 crate-type = ["cdylib"]
-    
+
                 [profile.release]
                 panic = "abort"
                 # optimize for size
@@ -544,31 +544,30 @@ impl CompilerTest {
 
     /// Get the compiled MASM as [`miden_assembly::Program`]
     pub fn vm_masm_program(&mut self) -> miden_core::Program {
-        let assembler = Assembler::default()
+        let mut assembler = Assembler::default()
             .with_library(&StdLibrary::default())
             .expect("Failed to load stdlib");
         let program = self.ir_masm_program();
         // TODO: get code map from the self.diagnostics
         let codemap = CodeMap::new();
-        let program_ast = program.to_program_ast(&codemap);
         for module in program.modules() {
-            let core_module = module.to_module_ast(&codemap);
-            let _ = assembler
-                .compile_module(
-                    &core_module.ast,
-                    Some(&core_module.path),
-                    &mut AssemblyContext::for_module(false),
-                )
-                .expect(
-                    format!(
-                        "VM Assembler failed to compile module:\n{:?}\n with error",
-                        core_module.ast
-                    )
-                    .as_str(),
-                );
+            if !module.kind.is_library() {
+                continue;
+            }
+            let core_module = module.to_ast(&codemap).expect("failed to translate MASM IR module");
+            assembler
+                .add_module(core_module)
+                .unwrap_or_else(|err| panic!("VM assembler failed to validate module:\n{}", err));
         }
-        let core_program = assembler.compile_ast(&program_ast).unwrap();
-        core_program
+        let exe = program
+            .modules()
+            .find(|m| m.name.is_exec_path())
+            .expect("expected executable module")
+            .to_ast(&codemap)
+            .expect("failed to translate MASM IR module");
+        assembler
+            .assemble(exe)
+            .unwrap_or_else(|err| panic!("VM assembler failed to compile program:\n{}", err))
     }
 
     /// Get the compiled MASM as [`miden_codegen_masm::Program`]
