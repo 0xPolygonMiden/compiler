@@ -28,7 +28,7 @@
         )
     )
 
-    (module #basic_wallet_p2id_note.wasm
+    (module #basic_wallet_p2id_note
         ;; Constants
         (const (id 0) 0x00100000)
 

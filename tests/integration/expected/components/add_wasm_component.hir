@@ -1,6 +1,6 @@
 (component 
     ;; Modules
-    (module #add_wasm_component.wasm
+    (module #add_wasm_component
         ;; Constants
         (const (id 0) 0x00100000)
 

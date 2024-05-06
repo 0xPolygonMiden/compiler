@@ -38,7 +38,7 @@
         )
     )
 
-    (module #basic_wallet.wasm
+    (module #basic_wallet
         ;; Constants
         (const (id 0) 0x00100000)
 
