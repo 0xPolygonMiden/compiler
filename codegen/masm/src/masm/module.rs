@@ -329,7 +329,7 @@ impl miden_hir::formatter::PrettyPrint for Module {
         }
 
         if !self.imports.is_empty() {
-            doc += nl();
+            doc += nl() + nl();
         }
 
         for (i, export) in self.reexports.iter().enumerate() {
@@ -340,7 +340,7 @@ impl miden_hir::formatter::PrettyPrint for Module {
         }
 
         if !self.reexports.is_empty() {
-            doc += nl();
+            doc += nl() + nl();
         }
 
         for (i, func) in self.functions.iter().enumerate() {

@@ -273,7 +273,12 @@ impl<'a> miden_hir::formatter::PrettyPrint for DisplayMasmFunction<'a> {
         } else {
             ast::Visibility::Private
         };
-        let mut doc = display(visibility) + const_text(".") + display(self.function.name);
+        let name = if ast::Ident::validate(self.function.name.function).is_ok() {
+            text(self.function.name.function.as_str())
+        } else {
+            text(format!("\"{}\"", self.function.name.function.as_str()))
+        };
+        let mut doc = display(visibility) + const_text(".") + name;
         if self.function.locals.len() > 0 {
             doc += const_text(".") + display(self.function.locals.len());
         }

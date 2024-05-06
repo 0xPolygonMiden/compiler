@@ -249,15 +249,20 @@ impl<'a> PrettyPrint for DisplayOp<'a> {
             | MasmOp::Syscall(id)
             | MasmOp::ProcRef(id)) => {
                 let FunctionIdent { module, function } = id;
+                let function = if miden_assembly::ast::Ident::validate(function.as_str()).is_ok() {
+                    text(function.as_str())
+                } else {
+                    text(format!("\"{}\"", function.as_str()))
+                };
                 if self.is_local_module(module) {
-                    text(format!("{op}")) + const_text(".") + display(function)
+                    text(format!("{op}")) + const_text(".") + function
                 } else {
                     let alias = self.get_module_alias(*module);
                     text(format!("{op}"))
                         + const_text(".")
                         + display(alias)
                         + const_text("::")
-                        + display(function)
+                        + function
                 }
             }
             op @ (MasmOp::AndImm(imm) | MasmOp::OrImm(imm) | MasmOp::XorImm(imm)) => {
