@@ -113,7 +113,9 @@ impl ConversionPass for ConvertHirToMasm<hir::Module> {
         } else {
             ModuleKind::Library
         };
-        let name = LibraryPath::new(&module.name).expect("invalid module name");
+        let name = LibraryPath::new(&module.name).unwrap_or_else(|err| {
+            panic!("invalid module name '{}': {}", module.name.as_str(), err)
+        });
         let mut masm_module = Box::new(masm::Module::new(name, kind));
 
         // Compute import information for this module

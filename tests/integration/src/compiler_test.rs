@@ -574,7 +574,8 @@ impl CompilerTest {
     pub fn ir_masm_program(&mut self) -> Arc<miden_codegen_masm::Program> {
         if self.ir_masm.is_none() {
             let mut compiler = MasmCompiler::new(&self.session);
-            let hir = self.hir.take().expect("IR is not compiled");
+            let hir =
+                self.hir.take().or_else(|| Some(self.wasm_to_ir())).expect("IR is not compiled");
             let ir_masm = match hir {
                 HirArtifact::Program(hir_program) => compiler.compile(hir_program).unwrap(),
                 HirArtifact::Component(hir_component) => {

@@ -395,7 +395,7 @@ pub enum MasmOp {
     /// * Increments layer pointer (`cptr`) by 2
     /// * Shifts the stack left to move an item from the overflow table to bottom of stack
     ///
-    /// ```
+    /// ```text,ignore
     /// [v7, v6, v5, v4, v3, v2, v1, v0, f_pos, d_seg, poe, pe1, pe0, a1, a0, cptr]
     /// => [t1, t0, s1, s0, df3, df2, df1, df0, poe^2, f_tau, cptr+2, poe^4, f_pos, ne1, ne0, eptr]
     /// ```
@@ -406,7 +406,7 @@ pub enum MasmOp {
     /// Perform a single step of a random linear combination defining the DEEP composition
     /// polynomial, i.e. the input to the FRI protocol.
     ///
-    /// ```
+    /// ```text,ignore
     /// [t7, t6, t5, t4, t3, t2, t1, t0, p1, p0, r1, r0, x_addr, z_addr, a_addr]
     /// => [t0, t7, t6, t5, t4, t3, t2, t1, p1', p0', r1', r0', x_addr, z_addr+1, a_addr+1]
     /// ```
