@@ -208,6 +208,11 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::Swapw(n as u8));
     }
 
+    /// Swaps the top 2 and bottom 2 words on the stack
+    pub fn swapdw(mut self) {
+        self.build(self.ip, MasmOp::Swapdw);
+    }
+
     /// Moves the `n`th element to the top of the stack
     ///
     /// The valid range for `n` is 2..=15
@@ -303,23 +308,6 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::MemLoadImm(addr));
     }
 
-    /// Pops an element containing a memory address + element offset from the top of the stack,
-    /// and loads the element of the word at that address + offset to the top of the stack.
-    ///
-    /// NOTE: This is an experimental instruction which is not implemented in Miden VM yet.
-    pub fn load_offset(mut self) {
-        self.build(self.ip, MasmOp::MemLoadOffset);
-    }
-
-    /// Loads the element of the word at the given address and element offset to the top of the
-    /// stack.
-    ///
-    /// NOTE: This is an experimental instruction which is not implemented in Miden VM yet.
-    pub fn load_offset_imm(mut self, addr: u32, offset: u8) {
-        assert!(offset < 4, "invalid element offset, must be in the range 0..=3, got {}", offset);
-        self.build(self.ip, MasmOp::MemLoadOffsetImm(addr, offset));
-    }
-
     /// Pops an element containing a memory address from the top of the stack,
     /// and loads the word at that address to the top of the stack.
     pub fn loadw(mut self) {
@@ -341,20 +329,6 @@ impl<'a> MasmOpBuilder<'a> {
     /// the word at the given address.
     pub fn store_imm(mut self, addr: u32) {
         self.build(self.ip, MasmOp::MemStoreImm(addr));
-    }
-
-    /// Pops two elements, the first containing a memory address + element offset from the
-    /// top of the stack, the second the value to be stored to the word at that address,
-    /// using the offset to determine which element will be written to.
-    pub fn store_offset(mut self) {
-        self.build(self.ip, MasmOp::MemStoreOffset);
-    }
-
-    /// Pops an element from the top of the stack, and stores it at the given offset of
-    /// the word at the given address.
-    pub fn store_offset_imm(mut self, addr: u32, offset: u8) {
-        assert!(offset < 4, "invalid element offset, must be in the range 0..=3, got {}", offset);
-        self.build(self.ip, MasmOp::MemStoreOffsetImm(addr, offset));
     }
 
     /// Pops an element containing a memory address from the top of the stack,
@@ -465,6 +439,18 @@ impl<'a> MasmOpBuilder<'a> {
         self.build(self.ip, MasmOp::DynExec)
     }
 
+    /// Call a procedure indirectly.
+    ///
+    /// Expects the hash of a function's MAST root on the stack, see `procref`
+    pub fn dyncall(mut self) {
+        self.build(self.ip, MasmOp::DynCall)
+    }
+
+    /// Executes the named procedure as a call.
+    pub fn call(mut self, id: FunctionIdent) {
+        self.build(self.ip, MasmOp::Call(id));
+    }
+
     /// Executes the named procedure as a syscall.
     pub fn syscall(mut self, id: FunctionIdent) {
         self.build(self.ip, MasmOp::Syscall(id));
@@ -535,6 +521,14 @@ impl<'a> MasmOpBuilder<'a> {
     /// Increments the field element on top of the stack
     pub fn incr(mut self) {
         self.build(self.ip, MasmOp::Incr);
+    }
+
+    /// Pops an element, `a`, from the top of the stack, and places the integral base 2 logarithm
+    /// of that value on the stack.
+    ///
+    /// Traps if `a` is 0.
+    pub fn ilog2(mut self) {
+        self.build(self.ip, MasmOp::Ilog2);
     }
 
     /// Pops an element, `a`, from the top of the stack, and places the result of `2^a` on the
@@ -703,6 +697,11 @@ impl<'a> MasmOpBuilder<'a> {
     /// Pushes the hash of the caller on the stack
     pub fn caller(mut self) {
         self.build(self.ip, MasmOp::Caller);
+    }
+
+    /// Pushes the current stack depth on the stack
+    pub fn current_stack_depth(mut self) {
+        self.build(self.ip, MasmOp::Sdepth);
     }
 
     /// Pushes 1 on the stack if the element on top of the stack is less than 2^32, else 0.
@@ -1011,6 +1010,38 @@ impl<'a> MasmOpBuilder<'a> {
     /// The result is undefined if the input value is not a valid u32.
     pub fn popcnt_u32(mut self) {
         self.build(self.ip, MasmOp::U32Popcnt);
+    }
+
+    /// Pops an element off the stack, and computes the number of leading zeros in its binary
+    /// representation, and places the result on the stack.
+    ///
+    /// The result is undefined if the input value is not a valid u32.
+    pub fn clz_u32(mut self) {
+        self.build(self.ip, MasmOp::U32Clz);
+    }
+
+    /// Pops an element off the stack, and computes the number of trailing zeros in its binary
+    /// representation, and places the result on the stack.
+    ///
+    /// The result is undefined if the input value is not a valid u32.
+    pub fn ctz_u32(mut self) {
+        self.build(self.ip, MasmOp::U32Ctz);
+    }
+
+    /// Pops an element off the stack, and computes the number of leading ones in its binary
+    /// representation, and places the result on the stack.
+    ///
+    /// The result is undefined if the input value is not a valid u32.
+    pub fn clo_u32(mut self) {
+        self.build(self.ip, MasmOp::U32Clo);
+    }
+
+    /// Pops an element off the stack, and computes the number of trailing ones in its binary
+    /// representation, and places the result on the stack.
+    ///
+    /// The result is undefined if the input value is not a valid u32.
+    pub fn cto_u32(mut self) {
+        self.build(self.ip, MasmOp::U32Cto);
     }
 
     /// Pushes a boolean on the stack by computing `a < b` for `[b, a]`
@@ -1661,6 +1692,9 @@ fn apply_op_stack_effects(
         MasmOp::Swapw(idx) => {
             stack.swapw(*idx as usize);
         }
+        MasmOp::Swapdw => {
+            stack.swapdw();
+        }
         MasmOp::Movup(idx) => {
             stack.movup(*idx as usize);
         }
@@ -1699,8 +1733,12 @@ fn apply_op_stack_effects(
         MasmOp::AssertEqw | MasmOp::AssertEqwWithError(_) => {
             stack.dropn(8);
         }
-        MasmOp::LocAddr(_id) | MasmOp::LocStore(_id) | MasmOp::LocStorew(_id) => unreachable!(),
-        MasmOp::MemLoad | MasmOp::MemLoadOffset => {
+        MasmOp::LocAddr(_id)
+        | MasmOp::LocLoad(_id)
+        | MasmOp::LocLoadw(_id)
+        | MasmOp::LocStore(_id)
+        | MasmOp::LocStorew(_id) => unreachable!(),
+        MasmOp::MemLoad => {
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(
                 ty,
@@ -1709,7 +1747,7 @@ fn apply_op_stack_effects(
             );
             stack.push(ty.pointee().unwrap().clone());
         }
-        MasmOp::MemLoadImm(_) | MasmOp::MemLoadOffsetImm(..) => {
+        MasmOp::MemLoadImm(_) => {
             // We don't know what we're loading, so fall back to the default type of field element
             stack.push(Type::Felt);
         }
@@ -1727,7 +1765,7 @@ fn apply_op_stack_effects(
             // We're always loading a raw word with this op
             stack.padw();
         }
-        MasmOp::MemStore | MasmOp::MemStoreOffset => {
+        MasmOp::MemStore => {
             let ty = stack.pop().expect("operand stack is empty");
             assert_matches!(
                 ty,
@@ -1736,7 +1774,7 @@ fn apply_op_stack_effects(
             );
             stack.drop();
         }
-        MasmOp::MemStoreImm(_) | MasmOp::MemStoreOffsetImm(..) => {
+        MasmOp::MemStoreImm(_) => {
             stack.drop();
         }
         MasmOp::MemStorew => {
@@ -1783,6 +1821,55 @@ fn apply_op_stack_effects(
             stack.dropw();
             stack.padw();
         }
+        MasmOp::AdvInjectInsertMem
+        | MasmOp::AdvInjectInsertHperm
+        | MasmOp::AdvInjectInsertHdword
+        | MasmOp::AdvInjectInsertHdwordImm(_)
+        | MasmOp::AdvInjectPushMapVal
+        | MasmOp::AdvInjectPushMapValImm(_)
+        | MasmOp::AdvInjectPushMapValN
+        | MasmOp::AdvInjectPushMapValNImm(_)
+        | MasmOp::AdvInjectPushU64Div
+        | MasmOp::AdvInjectPushMTreeNode => (),
+        MasmOp::Hash => {
+            assert!(stack.len() > 3, "expected at least 4 elements on the stack for hash");
+        }
+        MasmOp::Hperm => {
+            assert!(stack.len() >= 12, "expected at least 12 elements on the stack for hperm");
+        }
+        MasmOp::Hmerge => {
+            assert!(stack.len() >= 8, "expected at least 8 elements on the stack for hmerge");
+            stack.dropw();
+        }
+        MasmOp::MtreeGet => {
+            assert!(stack.len() >= 6, "expected at least 6 elements on the stack for mtree_get");
+            stack.dropn(2);
+            stack.pushw([Type::Felt, Type::Felt, Type::Felt, Type::Felt]);
+        }
+        MasmOp::MtreeSet => {
+            assert!(stack.len() >= 10, "expected at least 10 elements on the stack for mtree_set");
+            stack.dropn(2);
+            stack.swapw(1);
+        }
+        MasmOp::MtreeMerge => {
+            assert!(stack.len() >= 8, "expected at least 8 elements on the stack for mtree_merge");
+            stack.dropw();
+        }
+        MasmOp::MtreeVerify => {
+            assert!(
+                stack.len() >= 10,
+                "expected at least 10 elements on the stack for mtree_verify"
+            );
+        }
+        MasmOp::RCombBase => {
+            assert!(stack.len() >= 15, "expected at least 15 elements on the stack for rcomb_base");
+        }
+        MasmOp::FriExt2Fold4 => {
+            assert!(
+                stack.len() >= 16,
+                "expected at least 16 elements on the stack for fri_ext2fold4"
+            );
+        }
         // This function is not called from [MasmOpBuilder] when building an `if.true` instruction,
         // instead, the only time we are evaluating this is when traversing the body of a `repeat.n`
         // instruction and applying the stack effects of instructions which have already been
@@ -1824,8 +1911,11 @@ fn apply_op_stack_effects(
         MasmOp::Exec(ref id) => {
             execute_call(id, false, stack, dfg);
         }
-        MasmOp::Syscall(ref id) => {
+        MasmOp::Call(ref id) => {
             execute_call(id, false, stack, dfg);
+        }
+        MasmOp::Syscall(ref id) => {
+            execute_call(id, true, stack, dfg);
         }
         MasmOp::DynExec | MasmOp::DynCall => {
             assert!(
@@ -1858,7 +1948,8 @@ fn apply_op_stack_effects(
         | MasmOp::Inv
         | MasmOp::Ilog2
         | MasmOp::Pow2
-        | MasmOp::ExpImm(_) => {
+        | MasmOp::ExpImm(_)
+        | MasmOp::ExpBitLength(_) => {
             let ty = stack.peek().expect("operand stack is empty");
             assert_compatible_felt_operand!(ty, op);
         }
@@ -1901,7 +1992,14 @@ fn apply_op_stack_effects(
             stack.dropn(8);
             stack.push(Type::I1);
         }
-        MasmOp::Clk => {
+        op @ (MasmOp::Ext2add | MasmOp::Ext2sub | MasmOp::Ext2mul | MasmOp::Ext2div) => {
+            assert!(stack.len() > 3, "expected at least 4 elements on the operand stack for {op}");
+            stack.dropn(2);
+        }
+        op @ (MasmOp::Ext2neg | MasmOp::Ext2inv) => {
+            assert!(stack.len() > 1, "expected at least 2 elements on the operand stack for {op}");
+        }
+        MasmOp::Clk | MasmOp::Sdepth => {
             stack.push(Type::Felt);
         }
         MasmOp::Caller => {
@@ -2032,6 +2130,15 @@ fn apply_op_stack_effects(
             assert_compatible_u32_operands!(aty, cty);
             stack.push(aty);
         }
+        MasmOp::Emit(_) | MasmOp::Trace(_) | MasmOp::Breakpoint => (),
+        MasmOp::DebugStack
+        | MasmOp::DebugStackN(_)
+        | MasmOp::DebugMemory
+        | MasmOp::DebugMemoryAt(_)
+        | MasmOp::DebugMemoryRange(..)
+        | MasmOp::DebugFrame
+        | MasmOp::DebugFrameAt(_)
+        | MasmOp::DebugFrameRange(..) => (),
     }
 }
 

@@ -5,7 +5,7 @@ mod stages;
 use std::sync::Arc;
 
 use miden_codegen_masm as masm;
-use miden_hir::{pass::AnalysisManager, Symbol};
+use miden_hir::pass::AnalysisManager;
 use midenc_session::{OutputType, Session};
 
 pub use self::{compiler::Compiler, stages::Compiled};
@@ -45,9 +45,6 @@ pub enum CompilerError {
     /// An error occurred while linking a program
     #[error(transparent)]
     Linker(#[from] miden_hir::LinkerError),
-    /// An error occurred while emitting a MASL library
-    #[error(transparent)]
-    Masl(#[from] miden_assembly::LibraryError),
     /// An error occurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -126,39 +123,28 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
     let mut analyses = AnalysisManager::new();
     match compile_inputs(inputs, &mut analyses, &session) {
         Ok(Compiled::Program(ref program)) => {
-            if let Some(path) = session.emit_to(OutputType::Masl, None) {
-                use miden_assembly::utils::Serializable;
-                let masl = program.to_masl_library(session.name(), &session.codemap)?;
-                let bytes = masl.to_bytes();
-                std::fs::write(&path, bytes)?;
+            if let Some(path) = session.emit_to(OutputType::Mast, None) {
+                log::warn!(
+                    "skipping emission of MAST to {} as output type is not fully supported yet",
+                    path.display()
+                );
             }
             if session.should_emit(OutputType::Masm) {
                 for module in program.modules() {
                     session.emit(module)?;
                 }
-                if program.is_executable() {
-                    use miden_assembly::LibraryPath;
-                    let ast = program.to_program_ast(&session.codemap);
-                    if let Some(path) = session
-                        .emit_to(OutputType::Masm, Some(Symbol::intern(LibraryPath::EXEC_PATH)))
-                    {
-                        ast.write_to_file(path)?;
-                    } else {
-                        println!("{ast}");
-                    }
-                }
             }
         }
         Ok(Compiled::Modules(modules)) => {
-            let mut program = masm::Program::new();
+            let mut program = masm::Program::empty();
             for module in modules.into_iter() {
                 program.insert(module);
             }
-            if let Some(path) = session.emit_to(OutputType::Masl, None) {
-                use miden_assembly::utils::Serializable;
-                let masl = program.to_masl_library(session.name(), &session.codemap)?;
-                let bytes = masl.to_bytes();
-                std::fs::write(&path, bytes)?;
+            if let Some(path) = session.emit_to(OutputType::Mast, None) {
+                log::warn!(
+                    "skipping emission of MAST to {} as output type is not fully supported yet",
+                    path.display()
+                );
             }
             if session.should_emit(OutputType::Masm) {
                 for module in program.modules() {

@@ -627,8 +627,20 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_primop_imm(&mut self, inst_info: &InstInfo, op: &hir::PrimOpImm) {
+        let args = op.args.as_slice(&self.function.f.dfg.value_lists);
         let mut emitter = self.inst_emitter(inst_info.inst);
         match op.op {
+            hir::Opcode::Assert => {
+                assert_eq!(args.len(), 1);
+                emitter
+                    .assert(Some(op.imm.as_u32().expect("invalid assertion error code immediate")));
+            }
+            hir::Opcode::Assertz => {
+                assert_eq!(args.len(), 1);
+                emitter.assertz(Some(
+                    op.imm.as_u32().expect("invalid assertion error code immediate"),
+                ));
+            }
             hir::Opcode::AssertEq => {
                 emitter.assert_eq_imm(op.imm);
             }
@@ -648,12 +660,12 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             // Pop a value of the given type off the stack and assert it's value is one
             hir::Opcode::Assert => {
                 assert_eq!(args.len(), 1);
-                emitter.assert();
+                emitter.assert(None);
             }
             // Pop a value of the given type off the stack and assert it's value is zero
             hir::Opcode::Assertz => {
                 assert_eq!(args.len(), 1);
-                emitter.assertz();
+                emitter.assertz(None);
             }
             // Pop two values of the given type off the stack and assert equality
             hir::Opcode::AssertEq => {
@@ -756,7 +768,29 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                         *body_blk = mapped_blocks[prev_body_blk];
                         rewrites.push((prev_body_blk, *body_blk));
                     }
-                    Op::LocAddr(_) | Op::LocStore(_) | Op::LocStorew(_) => {
+                    Op::Exec(id) => {
+                        self.function.f_prime.register_absolute_invocation_target(
+                            miden_assembly::ast::InvokeKind::Exec,
+                            id,
+                        );
+                    }
+                    Op::Call(id) => {
+                        self.function.f_prime.register_absolute_invocation_target(
+                            miden_assembly::ast::InvokeKind::Call,
+                            id,
+                        );
+                    }
+                    Op::Syscall(id) => {
+                        self.function.f_prime.register_absolute_invocation_target(
+                            miden_assembly::ast::InvokeKind::SysCall,
+                            id,
+                        );
+                    }
+                    Op::LocAddr(_)
+                    | Op::LocLoad(_)
+                    | Op::LocLoadw(_)
+                    | Op::LocStore(_)
+                    | Op::LocStorew(_) => {
                         unimplemented!(
                             "locals are not currently supported in inline assembly blocks"
                         )

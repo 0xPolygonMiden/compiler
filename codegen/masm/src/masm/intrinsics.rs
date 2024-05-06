@@ -1,3 +1,4 @@
+use miden_assembly::{ast::ModuleKind, LibraryPath};
 use miden_diagnostics::{CodeMap, FileName};
 
 use super::Module;
@@ -21,7 +22,8 @@ pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
     let (name, source, filename) = INTRINSICS.iter().copied().find(|(n, ..)| *n == name)?;
     let id = codemap.add(FileName::Virtual(filename.into()), source.to_string());
     let source_file = codemap.get(id).unwrap();
-    match Module::parse_source_file(source_file, name, codemap) {
+    let path = LibraryPath::new(name).expect("invalid module name");
+    match Module::parse_source_file(path, ModuleKind::Library, source_file, codemap) {
         Ok(module) => Some(module),
         Err(err) => {
             panic!("unexpected syntax error in intrinsic module: {err}");

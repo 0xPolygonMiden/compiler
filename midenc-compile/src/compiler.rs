@@ -132,7 +132,7 @@ impl Compiler {
         };
         let mut output_types = OutputTypes::new(self.output_types);
         if output_types.is_empty() {
-            output_types.insert(OutputType::Masl, None);
+            output_types.insert(OutputType::Mast, None);
         }
         let mut options = Options::new(cwd)
             .with_color(color)

@@ -4,7 +4,7 @@ use miden_hir::{
     pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
     AbiParam, CallConv, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, Linkage,
-    OperandStack, ProgramBuilder, Signature, SourceSpan, Stack, StarkField, Type,
+    OperandStack, ProgramBuilder, Signature, SourceSpan, Stack, Type,
 };
 use proptest::prelude::*;
 use smallvec::{smallvec, SmallVec};

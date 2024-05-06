@@ -1,31 +1,12 @@
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::PrimaryMap;
 use miden_assembly::ast;
-use miden_hir::FunctionIdent;
-use rustc_hash::FxHashMap;
+use miden_hir::{formatter::PrettyPrint, FunctionIdent, Ident};
 use smallvec::smallvec;
 
 use super::*;
 use crate::InstructionPointer;
-
-/// This struct represents the top-level initialization code for a [Program]
-#[derive(Default)]
-pub struct Begin {
-    /// The imports available in `body`
-    pub imports: ModuleImportInfo,
-    /// The body of the `begin` block
-    pub body: Region,
-}
-impl fmt::Display for Begin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("begin\n")?;
-
-        writeln!(f, "{}", self.body.display(None, &self.imports, 1))?;
-
-        f.write_str("end")
-    }
-}
 
 /// This struct represents a region of code in Miden Assembly.
 ///
@@ -92,40 +73,33 @@ impl Region {
         &'b self,
         function: Option<FunctionIdent>,
         imports: &'b ModuleImportInfo,
-        indent: usize,
-    ) -> impl fmt::Display + 'a {
+    ) -> DisplayRegion<'a> {
         DisplayRegion {
             region: self,
             function,
             imports,
-            indent,
         }
     }
 
-    /// Convert this [Region] to a [miden_assembly::ast::CodeBody] using the provided
+    /// Convert this [Region] to a [miden_assembly::ast::Block] using the provided
     /// local/external function maps to handle calls present in the body of the region.
-    pub fn to_code_body(
+    pub fn to_block(
         &self,
         codemap: &miden_diagnostics::CodeMap,
         imports: &ModuleImportInfo,
-        local_ids: &FxHashMap<FunctionIdent, u16>,
-        proc_ids: &FxHashMap<FunctionIdent, miden_assembly::ProcedureId>,
-    ) -> ast::CodeBody {
-        emit_block(self.body, &self.blocks, codemap, imports, local_ids, proc_ids)
+        locals: &BTreeSet<FunctionIdent>,
+    ) -> ast::Block {
+        emit_block(self.body, &self.blocks, codemap, imports, locals)
     }
 
     /// Create a [Region] from a [miden_assembly::ast::CodeBody] and the set of imports
     /// and local procedures which will be used to map references to procedures to their
     /// fully-qualified names.
-    pub fn from_code_body(
-        code: &ast::CodeBody,
-        locals: &[FunctionIdent],
-        imported: &ast::ModuleImports,
-    ) -> Self {
+    pub fn from_block(current_module: Ident, code: &ast::Block) -> Self {
         let mut region = Self::default();
 
         let body = region.body;
-        import_code_body(&mut region, body, code, locals, imported);
+        import_block(current_module, &mut region, body, code);
 
         region
     }
@@ -144,61 +118,64 @@ pub struct DisplayRegion<'a> {
     region: &'a Region,
     function: Option<FunctionIdent>,
     imports: &'a ModuleImportInfo,
-    indent: usize,
+}
+impl<'a> miden_hir::formatter::PrettyPrint for DisplayRegion<'a> {
+    fn render(&self) -> miden_hir::formatter::Document {
+        use miden_hir::DisplayMasmBlock;
+
+        let block = DisplayMasmBlock::new(
+            self.function,
+            Some(self.imports),
+            &self.region.blocks,
+            self.region.body,
+        );
+
+        block.render()
+    }
 }
 impl<'a> fmt::Display for DisplayRegion<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use miden_hir::DisplayMasmBlock;
-
-        write!(
-            f,
-            "{}",
-            DisplayMasmBlock::new(
-                self.function,
-                Some(self.imports),
-                &self.region.blocks,
-                self.region.body,
-                self.indent
-            )
-        )
+        self.pretty_print(f)
     }
 }
 
-/// Import code from a [miden_assembly::ast::CodeBody] into the specified [Block] in `region`.
-fn import_code_body(
+/// Import code from a [miden_assembly::ast::Block] into the specified [Block] in `region`.
+fn import_block(
+    current_module: Ident,
     region: &mut Region,
     current_block_id: BlockId,
-    code: &ast::CodeBody,
-    locals: &[FunctionIdent],
-    imported: &ast::ModuleImports,
+    block: &ast::Block,
 ) {
-    for node in code.nodes() {
-        match node {
-            ast::Node::Instruction(ix) => {
+    for op in block.iter() {
+        match op {
+            ast::Op::Inst(ix) => {
                 let current_block = region.block_mut(current_block_id);
-                let mut ops = Op::from_masm(ix.clone(), locals, imported);
+                let mut ops = Op::from_masm(current_module, (&**ix).clone());
                 current_block.append(&mut ops);
             }
-            ast::Node::IfElse {
-                ref true_case,
-                ref false_case,
+            ast::Op::If {
+                ref then_blk,
+                ref else_blk,
+                ..
             } => {
-                let then_blk = region.create_block();
-                let else_blk = region.create_block();
-                import_code_body(region, then_blk, true_case, locals, imported);
-                import_code_body(region, else_blk, false_case, locals, imported);
-                region.block_mut(current_block_id).push(Op::If(then_blk, else_blk));
+                let then_blk_id = region.create_block();
+                let else_blk_id = region.create_block();
+                import_block(current_module, region, then_blk_id, then_blk);
+                import_block(current_module, region, else_blk_id, else_blk);
+                region.block_mut(current_block_id).push(Op::If(then_blk_id, else_blk_id));
             }
-            ast::Node::Repeat { times, ref body } => {
+            ast::Op::Repeat {
+                count, ref body, ..
+            } => {
                 let body_blk = region.create_block();
-                import_code_body(region, body_blk, body, locals, imported);
+                import_block(current_module, region, body_blk, body);
                 region
                     .block_mut(current_block_id)
-                    .push(Op::Repeat((*times).try_into().expect("too many repetitions"), body_blk));
+                    .push(Op::Repeat((*count).try_into().expect("too many repetitions"), body_blk));
             }
-            ast::Node::While { ref body } => {
+            ast::Op::While { ref body, .. } => {
                 let body_blk = region.create_block();
-                import_code_body(region, body_blk, body, locals, imported);
+                import_block(current_module, region, body_blk, body);
                 region.block_mut(current_block_id).push(Op::While(body_blk));
             }
         }
@@ -212,38 +189,45 @@ fn emit_block(
     blocks: &PrimaryMap<BlockId, Block>,
     codemap: &miden_diagnostics::CodeMap,
     imports: &ModuleImportInfo,
-    local_ids: &FxHashMap<FunctionIdent, u16>,
-    proc_ids: &FxHashMap<FunctionIdent, miden_assembly::ProcedureId>,
-) -> ast::CodeBody {
+    locals: &BTreeSet<FunctionIdent>,
+) -> ast::Block {
     let current_block = &blocks[block_id];
     let mut ops = Vec::with_capacity(current_block.ops.len());
     for op in current_block.ops.iter().copied() {
         match op {
             Op::If(then_blk, else_blk) => {
-                let true_case = emit_block(then_blk, blocks, codemap, imports, local_ids, proc_ids);
-                let false_case =
-                    emit_block(else_blk, blocks, codemap, imports, local_ids, proc_ids);
-                ops.push(ast::Node::IfElse {
-                    true_case,
-                    false_case,
+                let then_blk = emit_block(then_blk, blocks, codemap, imports, locals);
+                let else_blk = emit_block(else_blk, blocks, codemap, imports, locals);
+                ops.push(ast::Op::If {
+                    span: Default::default(),
+                    then_blk,
+                    else_blk,
                 });
             }
             Op::While(blk) => {
-                let body = emit_block(blk, blocks, codemap, imports, local_ids, proc_ids);
-                ops.push(ast::Node::While { body });
+                let body = emit_block(blk, blocks, codemap, imports, locals);
+                ops.push(ast::Op::While {
+                    span: Default::default(),
+                    body,
+                });
             }
             Op::Repeat(n, blk) => {
-                let body = emit_block(blk, blocks, codemap, imports, local_ids, proc_ids);
-                ops.push(ast::Node::Repeat {
-                    times: n as u32,
+                let body = emit_block(blk, blocks, codemap, imports, locals);
+                ops.push(ast::Op::Repeat {
+                    span: Default::default(),
+                    count: n as u32,
                     body,
                 });
             }
             op => {
-                ops.extend(op.into_node(codemap, imports, local_ids, proc_ids));
+                ops.extend(
+                    op.into_masm(imports, locals)
+                        .into_iter()
+                        .map(|inst| ast::Op::Inst(miden_assembly::Span::unknown(inst))),
+                );
             }
         }
     }
 
-    ast::CodeBody::new(ops)
+    ast::Block::new(Default::default(), ops)
 }

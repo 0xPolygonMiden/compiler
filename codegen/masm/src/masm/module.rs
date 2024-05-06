@@ -1,15 +1,18 @@
 use std::{
-    collections::BTreeMap,
+    collections::BTreeSet,
     fmt,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 use intrusive_collections::{intrusive_adapter, RBTree, RBTreeAtomicLink};
-use miden_assembly::ast::ModuleAst;
-use miden_diagnostics::{CodeMap, SourceFile, SourceSpan};
-use miden_hir::{FunctionIdent, Ident, Symbol};
-use rustc_hash::FxHashMap;
+use miden_assembly::{
+    ast::{self, ModuleKind},
+    diagnostics::{RelatedError, Report, SourceFile as MasmSourceFile},
+    LibraryNamespace, LibraryPath,
+};
+use miden_diagnostics::{CodeMap, SourceFile, SourceIndex, SourceSpan};
+use miden_hir::{formatter::PrettyPrint, FunctionIdent, Ident, Symbol};
 
 use super::{function::Functions, FrozenFunctionList, Function, ModuleImportInfo};
 
@@ -20,43 +23,75 @@ pub enum LoadModuleError {
     #[error("invalid path to module: '{}' is not a file", .0.display())]
     InvalidPath(PathBuf),
     #[error(transparent)]
+    InvalidIdent(#[from] miden_assembly::ast::IdentError),
+    #[error(transparent)]
     InvalidModulePath(#[from] miden_assembly::PathError),
     #[error(transparent)]
-    ParseFailed(#[from] miden_assembly::ParsingError),
+    InvalidNamespace(#[from] miden_assembly::library::LibraryNamespaceError),
+    #[error(transparent)]
+    Report(#[from] RelatedError),
+}
+impl From<Report> for LoadModuleError {
+    fn from(report: Report) -> Self {
+        Self::Report(RelatedError::new(report))
+    }
 }
 
 /// This represents a single compiled Miden Assembly module in a form that is
 /// designed to integrate well with the rest of our IR. You can think of this
 /// as an intermediate representation corresponding to the Miden Assembly AST,
-/// i.e. [miden_assembly::ast::ModuleAst].
+/// i.e. [miden_assembly::ast::Module].
 pub struct Module {
     link: RBTreeAtomicLink,
     pub span: SourceSpan,
+    /// The kind of this module, e.g. kernel or library
+    pub kind: ModuleKind,
     /// The name of this module, e.g. `std::math::u64`
-    pub name: Ident,
+    pub id: Ident,
+    pub name: LibraryPath,
     /// The module-scoped documentation for this module
     pub docs: Option<String>,
     /// The modules to import, along with their local aliases
     pub imports: ModuleImportInfo,
     /// The functions defined in this module
     functions: Functions,
+    /// The set of re-exported functions declared in this module
+    reexports: Vec<ast::ProcedureAlias>,
 }
 impl Module {
-    /// Create a new, empty [Module] with the given name.
-    pub fn new(name: Ident) -> Self {
+    /// Create a new, empty [Module] with the given name and kind.
+    pub fn new(name: LibraryPath, kind: ModuleKind) -> Self {
+        let id = Ident::with_empty_span(Symbol::intern(name.path()));
         Self {
             link: Default::default(),
+            kind,
             span: SourceSpan::UNKNOWN,
+            id,
             name,
             docs: None,
             imports: Default::default(),
             functions: Default::default(),
+            reexports: Default::default(),
         }
+    }
+
+    /// Returns true if this module is a kernel module
+    pub fn is_kernel(&self) -> bool {
+        self.kind.is_kernel()
+    }
+
+    /// Returns true if this module is an executable module
+    pub fn is_executable(&self) -> bool {
+        self.kind.is_executable()
     }
 
     /// If this module contains a function marked with the `entrypoint` attribute,
     /// return the fully-qualified name of that function
     pub fn entrypoint(&self) -> Option<FunctionIdent> {
+        if !self.is_executable() {
+            return None;
+        }
+
         self.functions.iter().find_map(|f| {
             if f.is_entrypoint() {
                 Some(f.name)
@@ -72,72 +107,77 @@ impl Module {
     }
 
     /// Parse a [Module] from the given string
-    pub fn parse_source_file<N: Into<Ident>>(
+    pub fn parse_source_file(
+        name: LibraryPath,
+        kind: ModuleKind,
         source_file: Arc<SourceFile>,
-        name: N,
         codemap: &CodeMap,
     ) -> Result<Self, LoadModuleError> {
-        use miden_assembly::LibraryPath;
-
-        let name = name.into();
-        let module = miden_assembly::Module {
-            path: LibraryPath::new(name.as_str())?,
-            ast: ModuleAst::parse(source_file.source())?,
-        };
+        let filename = source_file.name().as_str().expect("invalid source file name");
+        let module = ast::Module::parse(
+            name,
+            kind,
+            Arc::new(MasmSourceFile::new(filename, source_file.source().to_string())),
+        )?;
         let span = source_file.source_span();
-        Ok(Self::from_module(&module, span, codemap))
+        Ok(Self::from_ast(&module, span, codemap))
     }
 
     /// Parse a [Module] from the given file path
     pub fn parse_file<P: AsRef<Path>>(
+        ns: Option<LibraryNamespace>,
+        kind: ModuleKind,
         path: P,
-        root_ns: Option<miden_assembly::LibraryNamespace>,
         codemap: &CodeMap,
     ) -> Result<Self, LoadModuleError> {
+        let path = path.as_ref();
         let id = codemap.add_file(path)?;
         let source_file = codemap.get(id).unwrap();
-        let basename = source_file.name().as_ref().file_name().unwrap().to_str().unwrap();
-        let name = match root_ns {
-            None => basename.to_string(),
-            Some(root_ns) => format!("{}::{basename}", root_ns.as_str()),
+        let fallback_ns = match path.parent().and_then(|p| p.to_str()) {
+            None => LibraryNamespace::Anon,
+            Some(parent_dirname) => parent_dirname.parse::<LibraryNamespace>()?,
         };
-        Self::parse_source_file(source_file, name.as_str(), codemap)
+        let ns = ns.unwrap_or(fallback_ns);
+        let name = ast::Ident::new(path.file_stem().unwrap().to_str().unwrap())?;
+        let module_path = LibraryPath::new_from_components(ns, [name]);
+        let module = ast::Module::parse_file(module_path, kind, path)?;
+        let span = source_file.source_span();
+        Ok(Self::from_ast(&module, span, codemap))
     }
 
-    pub fn from_module(
-        module: &miden_assembly::Module,
-        span: SourceSpan,
-        codemap: &CodeMap,
-    ) -> Self {
-        let name = Ident::with_empty_span(Symbol::intern(module.path.as_str()));
-        Self::from_module_ast_with_name(&module.ast, name, span, codemap)
-    }
+    pub fn from_ast(ast: &ast::Module, span: SourceSpan, _codemap: &CodeMap) -> Self {
+        use miden_assembly::Spanned as MasmSpanned;
 
-    /// Convert a [miden_assembly::ast::ModuleAst] to a [Module]
-    pub fn from_module_ast_with_name<N: Into<Ident>>(
-        ast: &ModuleAst,
-        name: N,
-        span: SourceSpan,
-        _codemap: &CodeMap,
-    ) -> Self {
-        let module_name = name.into();
-        let mut module = Self::new(module_name);
+        let source_id = span.source_id();
+        let mut module = Self::new(ast.path().clone(), ast.kind());
         module.span = span;
-        module.docs = ast.docs().cloned();
+        module.docs = ast.docs().map(|s| s.to_string());
 
-        let imported = ast.import_info().clone();
-        let locals = ast
-            .procs()
-            .iter()
-            .map(|p| FunctionIdent {
-                module: module_name,
-                function: Ident::with_empty_span(Symbol::intern(p.name.as_ref())),
-            })
-            .collect::<Vec<_>>();
+        let mut imports = ModuleImportInfo::default();
+        for import in ast.imports() {
+            let span = import.name.span();
+            let start = SourceIndex::new(source_id, (span.start() as u32).into());
+            let end = SourceIndex::new(source_id, (span.end() as u32).into());
+            let span = SourceSpan::new(start, end);
+            let alias = Symbol::intern(import.name.as_str());
+            let name = if import.is_aliased() {
+                Symbol::intern(import.path.last())
+            } else {
+                alias.clone()
+            };
+            imports.insert(miden_hir::MasmImport { span, name, alias });
+        }
 
-        for proc in ast.procs() {
-            let function = Function::from_procedure_ast(module_name, proc, &locals, &imported);
-            module.functions.push_back(function);
+        for export in ast.procedures() {
+            match export {
+                ast::Export::Alias(ref alias) => {
+                    module.reexports.push(alias.clone());
+                }
+                ast::Export::Procedure(ref proc) => {
+                    let function = Function::from_ast(module.id, proc);
+                    module.functions.push_back(function);
+                }
+            }
         }
 
         module
@@ -169,53 +209,58 @@ impl Module {
         self.functions.push_back(function);
     }
 
-    /// Convert this module into its [miden_assembly::Module] representation.
-    pub fn to_module_ast(&self, codemap: &miden_diagnostics::CodeMap) -> miden_assembly::Module {
-        use miden_assembly::{self as masm, ast::ModuleImports};
+    /// Convert this module into its [miden_assembly::ast::Module] representation.
+    pub fn to_ast(&self, codemap: &miden_diagnostics::CodeMap) -> Result<ast::Module, Report> {
+        let source_id = self.span.source_id();
+        let source_file = if let Ok(source_file) = codemap.get(source_id) {
+            let file = miden_assembly::diagnostics::SourceFile::new(
+                source_file.name().as_str().unwrap(),
+                source_file.source().to_string(),
+            );
+            Some(Arc::new(file))
+        } else {
+            None
+        };
+        let span =
+            miden_assembly::SourceSpan::new(self.span.start_index().0..self.span.end_index().0);
+        let mut ast = ast::Module::new(self.kind, self.name.clone())
+            .with_source_file(source_file)
+            .with_span(span);
+        ast.set_docs(self.docs.clone().map(miden_assembly::Span::unknown));
 
         // Create module import table
-        let mut imported = BTreeMap::<String, masm::LibraryPath>::default();
-        let mut invoked = BTreeMap::<masm::ProcedureId, _>::default();
-        let mut proc_ids = FxHashMap::<FunctionIdent, masm::ProcedureId>::default();
-        for import in self.imports.iter() {
-            let path = masm::LibraryPath::new(import.name.as_str()).expect("invalid module name");
-            imported.insert(import.alias.to_string(), path.clone());
-            if let Some(imported_fns) = self.imports.imported(&import.alias) {
-                for import_fn in imported_fns.iter().copied() {
-                    let fname = import_fn.to_string();
-                    let name = masm::ProcedureName::try_from(fname.as_str())
-                        .expect("invalid function name");
-                    let id = masm::ProcedureId::from_name(fname.as_str(), &path);
-                    invoked.insert(id, (name, path.clone()));
-                    proc_ids.insert(import_fn, id);
-                }
-            }
+        for ir_import in self.imports.iter() {
+            let ir_span = ir_import.span;
+            let span =
+                miden_assembly::SourceSpan::new(ir_span.start_index().0..ir_span.end_index().0);
+            let name = ast::Ident::new_with_span(span, ir_import.alias.as_str())
+                .map_err(|err| Report::msg(err))?;
+            let path = LibraryPath::new(ir_import.name.as_str()).expect("invalid import path");
+            let import = ast::Import {
+                span,
+                name,
+                path,
+                uses: 1,
+            };
+            let _ = ast.define_import(import);
         }
-        let imports = ModuleImports::new(imported, invoked);
 
         // Translate functions
-        let mut local_ids = FxHashMap::default();
-        for (id, function) in self.functions.iter().enumerate() {
-            local_ids.insert(function.name, id as u16);
+        let locals = BTreeSet::from_iter(self.functions.iter().map(|f| f.name));
+
+        for reexport in self.reexports.iter() {
+            ast.define_procedure(ast::Export::Alias(reexport.clone()))?;
         }
-        let mut procs = Vec::with_capacity(self.num_imported_functions());
+
         for function in self.functions.iter() {
-            procs.push(function.to_function_ast(codemap, &self.imports, &local_ids, &proc_ids));
+            ast.define_procedure(ast::Export::Procedure(function.to_ast(
+                codemap,
+                &self.imports,
+                &locals,
+            )))?;
         }
 
-        // Construct module
-        let path = masm::LibraryPath::new(self.name.as_str()).expect("invalid module name");
-        let ast = ModuleAst::new(procs, vec![], self.docs.clone())
-            .expect("invalid module body")
-            .with_import_info(imports);
-        masm::Module { path, ast }
-    }
-
-    fn num_imported_functions(&self) -> usize {
-        self.imports
-            .iter()
-            .map(|i| self.imports.imported(&i.alias).map(|imported| imported.len()).unwrap_or(0))
-            .sum()
+        Ok(ast)
     }
 
     /// Write this module to a new file under `dir`, assuming `dir` is the root directory for a
@@ -232,8 +277,8 @@ impl Module {
 
         let mut path = dir.as_ref().to_path_buf();
         assert!(path.is_dir());
-        for component in self.name.as_str().split("::") {
-            path.push(component);
+        for component in self.name.components() {
+            path.push(component.as_ref());
         }
         assert!(path.set_extension("masm"));
 
@@ -247,38 +292,76 @@ impl Module {
         codemap: &miden_diagnostics::CodeMap,
         out: &mut dyn std::io::Write,
     ) -> std::io::Result<()> {
-        let ast = self.to_module_ast(codemap);
-        out.write_fmt(format_args!("{}", &ast.ast))
+        let ast = self.to_ast(codemap).map_err(|err| std::io::Error::other(err))?;
+        out.write_fmt(format_args!("{}", &ast))
     }
 }
-impl fmt::Display for Module {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for import in self.imports.iter() {
+impl miden_hir::formatter::PrettyPrint for Module {
+    fn render(&self) -> miden_hir::formatter::Document {
+        use miden_hir::formatter::*;
+
+        let mut doc = Document::Empty;
+        if let Some(docs) = self.docs.as_ref() {
+            let fragment =
+                docs.lines().map(text).reduce(|acc, line| acc + nl() + text("#! ") + line);
+
+            if let Some(fragment) = fragment {
+                doc += fragment;
+            }
+        }
+
+        for (i, import) in self.imports.iter().enumerate() {
+            if i > 0 {
+                doc += nl();
+            }
             if import.is_aliased() {
-                writeln!(f, "use.{}->{}", import.name.as_str(), import.alias.as_str())?;
+                doc += flatten(
+                    const_text("use")
+                        + const_text(".")
+                        + text(format!("{}", import.name))
+                        + const_text("->")
+                        + text(format!("{}", import.alias)),
+                );
             } else {
-                writeln!(f, "use.{}", import.name.as_str())?;
+                doc +=
+                    flatten(const_text("use") + const_text(".") + text(format!("{}", import.name)));
             }
         }
 
         if !self.imports.is_empty() {
-            writeln!(f)?;
+            doc += nl();
         }
 
-        for (i, function) in self.functions.iter().enumerate() {
+        for (i, export) in self.reexports.iter().enumerate() {
             if i > 0 {
-                writeln!(f, "\n{}", function.display(&self.imports))?;
-            } else {
-                writeln!(f, "{}", function.display(&self.imports))?;
+                doc += nl();
             }
+            doc += export.render();
         }
 
-        Ok(())
+        if !self.reexports.is_empty() {
+            doc += nl();
+        }
+
+        for (i, func) in self.functions.iter().enumerate() {
+            if i > 0 {
+                doc += nl();
+            }
+            let func = func.display(&self.imports);
+            doc += func.render();
+        }
+
+        doc
+    }
+}
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
     }
 }
 impl midenc_session::Emit for Module {
     fn name(&self) -> Option<Symbol> {
-        Some(self.name.as_symbol())
+        Some(self.id.as_symbol())
     }
 
     fn output_type(&self) -> midenc_session::OutputType {
@@ -297,7 +380,7 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
 
     #[inline]
     fn get_key(&self, module: &'a Module) -> Ident {
-        module.name
+        module.id
     }
 }
 impl<'a> intrusive_collections::KeyAdapter<'a> for FrozenModuleTreeAdapter {
@@ -305,7 +388,7 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for FrozenModuleTreeAdapter {
 
     #[inline]
     fn get_key(&self, module: &'a Module) -> Ident {
-        module.name
+        module.id
     }
 }
 

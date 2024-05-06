@@ -41,7 +41,6 @@ smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"
 unicode-width = { version = "0.1", features = ["no_std"] }
-winter-math = { version = "0.7", default-features = false }
 derive_more.workspace = true
 indexmap.workspace = true
 

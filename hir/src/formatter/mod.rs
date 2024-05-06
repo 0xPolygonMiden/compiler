@@ -2,7 +2,7 @@ use core::fmt;
 
 pub use miden_core::{
     prettier::*,
-    utils::{write_hex_bytes, DisplayHex},
+    utils::{DisplayHex, ToHex},
 };
 
 pub struct DisplayIndent(pub usize);

@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::entity_impl;
-use rustc_hash::FxHashMap;
+pub use miden_assembly::ast::{AdviceInjectorNode, DebugOptions};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{Felt, FunctionIdent, Ident, LocalId};
@@ -129,6 +129,8 @@ pub enum MasmOp {
     /// in other words, the 3 words which make up the last 12 elements
     /// of the stack.
     Swapw(u8),
+    // Swaps the two words on top of the stack, with the two words at the bottom of the stack
+    Swapdw,
     /// Moves the `n`th stack item to top of stack
     ///
     /// * `Movup(1)` is equivalent to `Swap(1)`
@@ -189,6 +191,11 @@ pub enum MasmOp {
     LocStore(LocalId),
     /// Writes a word to the address corresponding to the given local index
     LocStorew(LocalId),
+    /// Reads a value from the first element of the word at the address corresponding to the given
+    /// local index
+    LocLoad(LocalId),
+    /// Reads a word from the address corresponding to the given local index
+    LocLoadw(LocalId),
     /// Pops `a`, representing a memory address, from the top of the stack, then loads the
     /// first element of the word starting at that address, placing it on top of the stack.
     ///
@@ -196,18 +203,6 @@ pub enum MasmOp {
     MemLoad,
     /// Same as above, but the address is given as an immediate
     MemLoadImm(u32),
-    /// Pops `a`, representing a memory address + offset pair, from the top of the stack, then
-    /// loads the element at the given offset from the base of the word starting at that
-    /// address, placing it on top of the stack.
-    ///
-    /// Traps if `a` >= 2^32
-    ///
-    /// NOTE: This instruction doesn't actually exist in Miden Assembly yet, it is a proposed
-    /// extension of `MemLoad` which allows addressing all field elements of a word
-    /// individually. It is here for testing.
-    MemLoadOffset,
-    /// Same as above, but the address and offset are given as a immediates
-    MemLoadOffsetImm(u32, u8),
     /// Pops `a`, representing a memory address, from the top of the stack, then overwrites
     /// the top word of the stack with the word starting at that address.
     ///
@@ -223,19 +218,6 @@ pub enum MasmOp {
     MemStore,
     /// Same as above, but the address is given as an immediate
     MemStoreImm(u32),
-    /// Pops `a, v` from the stack, where `a` represents a memory address + offset pair, and `v`
-    /// the value to be stored, and stores `v` as the element at the given offset from the base
-    /// of the word starting at that address. The remaining elements of the word are not
-    /// modified.
-    ///
-    /// Traps if `a` >= 2^32
-    ///
-    /// NOTE: This instruction doesn't actually exist in Miden Assembly yet, it is a proposed
-    /// extension of `MemStore` which allows addressing all field elements of a word
-    /// individually. It is here for testing.
-    MemStoreOffset,
-    /// Same as above, but the address and offset are given as a immediates
-    MemStoreOffsetImm(u32, u8),
     /// Pops `a, V` from the stack, where `a` represents a memory address, and `V` is a word to be
     /// stored at that location, and overwrites the word located at `a`.
     ///
@@ -259,8 +241,222 @@ pub enum MasmOp {
     ///
     /// Valid values of `n` fall in the range 1..=16
     AdvPush(u8),
-    /// TODO
+    /// Pop the next word from the advice stack and overwrite the word on top of the operand stack
+    /// with it.
+    ///
+    /// Fails if the advice stack does not have at least one word.
     AdvLoadw,
+    /// Push the result of u64 division on the advice stack
+    ///
+    /// ```ignore
+    /// [b_hi, b_lo, a_hi, a_lo]
+    /// ```
+    AdvInjectPushU64Div,
+    /// Pushes a list of field elements on the advice stack.
+    ///
+    /// The list is looked up in the advice map using the word on top of the operand stack.
+    ///
+    /// ```ignore
+    /// [K]
+    /// ```
+    AdvInjectPushMapVal,
+    /// Pushes a list of field elements on the advice stack.
+    ///
+    /// The list is looked up in the advice map using the word starting at `index` on the operand
+    /// stack.
+    ///
+    /// ```ignore
+    /// [K]
+    /// ```
+    AdvInjectPushMapValImm(u8),
+    /// Pushes a list of field elements, along with the number of elements on the advice stack.
+    ///
+    /// The list is looked up in the advice map using the word on top of the operand stack.
+    ///
+    /// ```ignore
+    /// [K]
+    /// ```
+    AdvInjectPushMapValN,
+    /// Pushes a list of field elements, along with the number of elements on the advice stack.
+    ///
+    /// The list is looked up in the advice map using the word starting at `index` on the operand
+    /// stack.
+    ///
+    /// ```ignore
+    /// [K]
+    /// ```
+    AdvInjectPushMapValNImm(u8),
+    /// Pushes a node of a Merkle tree with root `R` at depth `d` and index `i` from the Merkle
+    /// store onto the advice stack
+    ///
+    /// ```ignore
+    /// [d, i, R]
+    /// ```
+    AdvInjectPushMTreeNode,
+    /// Reads words `mem[a]..mem[b]` from memory, and saves the data into the advice map under `K`
+    ///
+    /// ```ignore
+    /// [K, a, b]
+    /// ```
+    AdvInjectInsertMem,
+    /// Reads the top two words from the stack, and computes a key `K` as `hash(A || B, 0)`.
+    ///
+    /// The two words that were hashed are then saved into the advice map under `K`.
+    ///
+    /// ```ignore
+    /// [B, A]
+    /// ```
+    AdvInjectInsertHdword,
+    /// Reads the top two words from the stack, and computes a key `K` as `hash(A || B, d)`.
+    ///
+    /// `d` is a domain value which can be in the range 0..=255
+    ///
+    /// The two words that were hashed are then saved into the advice map under `K` as `[A, B]`.
+    ///
+    /// ```ignore
+    /// [B, A]
+    /// ```
+    AdvInjectInsertHdwordImm(u8),
+    /// Reads the top three words from the stack, and computes a key `K` as `permute(C, A,
+    /// B).digest`.
+    ///
+    /// The words `A` and `B` are saved into the advice map under `K` as `[A, B]`
+    ///
+    /// ```ignore
+    /// [B, A, C]
+    /// ```
+    AdvInjectInsertHperm,
+    /// Compute the Rescue Prime Optimized (RPO) hash of the word on top of the operand stack.
+    ///
+    /// The resulting hash of one word is placed on the operand stack.
+    ///
+    /// The input operand is consumed.
+    Hash,
+    /// Computes a 2-to-1 RPO hash of the two words on top of the operand stack.
+    ///
+    /// The resulting hash of one word is placed on the operand stack.
+    ///
+    /// The input operands are consumed.
+    Hmerge,
+    /// Compute an RPO permutation on the top 3 words of the operand stack, where the top 2 words
+    /// (C and B) are the rate, and the last word (A) is the capacity.
+    ///
+    /// The digest output is the word E.
+    ///
+    /// ```ignore
+    /// [C, B, A] => [F, E, D]
+    /// ```
+    Hperm,
+    /// Fetches the value `V` of the Merkle tree with root `R`, at depth `d`, and index `i` from
+    /// the advice provider, and runs a verification equivalent to `mtree_verify`, returning
+    /// the value if successful.
+    ///
+    /// ```ignore
+    /// [d, i, R] => [V, R]
+    /// ```
+    MtreeGet,
+    /// Sets the value to `V'` of the Merkle tree with root `R`, at depth `d`, and index `i`.
+    ///
+    /// `R'` is the Merkle root of the new tree, and `V` is the old value of the node.
+    ///
+    /// Requires that a Merkle tree with root `R` is present in the advice provider, otherwise it
+    /// fails.
+    ///
+    /// Both trees are in the advice provider upon return.
+    ///
+    /// ```ignore
+    /// [d, i, R, V'] => [V, R']
+    /// ```
+    MtreeSet,
+    /// Create a new Merkle tree root `M`, that joins two other Merkle trees, `R` and `L`.
+    ///
+    /// Both the new tree and the input trees are in the advice provider upon return.
+    ///
+    /// ```ignore
+    /// [R, L] => [M]
+    /// ```
+    MtreeMerge,
+    /// Verifies that a Merkle tree with root `R` opens to node `V` at depth `d` and index `i`.
+    ///
+    /// The Merkle tree with root `R` must be present in the advice provider or the operation
+    /// fails.
+    ///
+    /// ```ignore
+    /// [V, d, i, R] => [V, d, i, R]
+    /// ```
+    MtreeVerify,
+    /// Performs FRI layer folding by a factor of 4 for FRI protocol executed in a degree 2
+    /// extension of the base field. Additionally, performs several computations which simplify
+    /// FRI verification procedure.
+    ///
+    /// * Folds 4 query values: `(v0, v1)`, `(v2, v3)`, `(v4, v5)`, and `(v6, v7)` into a single
+    ///   value `(ne0, ne1)`
+    /// * Computes new value of the domain generator power: `poe' = poe^4`
+    /// * Increments layer pointer (`cptr`) by 2
+    /// * Shifts the stack left to move an item from the overflow table to bottom of stack
+    ///
+    /// ```
+    /// [v7, v6, v5, v4, v3, v2, v1, v0, f_pos, d_seg, poe, pe1, pe0, a1, a0, cptr]
+    /// => [t1, t0, s1, s0, df3, df2, df1, df0, poe^2, f_tau, cptr+2, poe^4, f_pos, ne1, ne0, eptr]
+    /// ```
+    ///
+    /// Above, `eptr` is moved from the overflow table and is expected to be the address of the
+    /// final FRI layer.
+    FriExt2Fold4,
+    /// Perform a single step of a random linear combination defining the DEEP composition
+    /// polynomial, i.e. the input to the FRI protocol.
+    ///
+    /// ```
+    /// [t7, t6, t5, t4, t3, t2, t1, t0, p1, p0, r1, r0, x_addr, z_addr, a_addr]
+    /// => [t0, t7, t6, t5, t4, t3, t2, t1, p1', p0', r1', r0', x_addr, z_addr+1, a_addr+1]
+    /// ```
+    ///
+    /// Where:
+    ///
+    /// * `tN` stands for the value of the `N`th trace polynomial for the current query, i.e.
+    ///   `tN(x)`
+    /// * `p0` and `p1` stand for an extension field element accumulating the values for the
+    ///   quotients with common denominator `x - z`
+    /// * `r0` and `r1` stand for an extension field element accumulating the values for the
+    ///   quotients with common denominator `x - gz`
+    /// * `x_addr` is the memory address from which we are loading the `tN`s using the `mem_stream`
+    ///   instruction
+    /// * `z_addr` is the memory address to the `N`th OOD evaluations at `z` and `gz`
+    /// * `a_addr` is the memory address of the `N`th random element `alpha_i` used in batching the
+    ///   trace polynomial quotients
+    RCombBase,
+    /// [b1, b0, a1, a0] => [c1, c0]
+    ///
+    /// c1 = (a1 + b1) mod p
+    /// c0 = (a0 + b0) mod p
+    Ext2add,
+    /// [b1, b0, a1, a0] => [c1, c0]
+    ///
+    /// c1 = (a1 - b1) mod p
+    /// c0 = (a0 - b0) mod p
+    Ext2sub,
+    /// [b1, b0, a1, a0] => [c1, c0]
+    ///
+    /// c1 = ((a0 + a1) * (b0 + b1)) mod p
+    /// c0 = ((a0 * b0) - 2(a1 * b1)) mod p
+    Ext2mul,
+    /// [a1, a0] => [a1', a0']
+    ///
+    /// a1' = -a1
+    /// a0' = -a0
+    Ext2neg,
+    /// [a1, a0] => [a1', a0']
+    ///
+    /// a' = a^-1 mod q (where `q` is the extension field prime)
+    ///
+    /// Fails if `a` = 0.
+    Ext2inv,
+    /// [b1, b0, a1, a0] => [c1, c0]
+    ///
+    /// c = a * b^-1
+    ///
+    /// Fails if `b` is 0. Multiplication and inversion are defined by the ops above.
+    Ext2div,
     /// Pops the top of the stack, and evaluates the ops in
     /// the block of code corresponding to the branch taken.
     ///
@@ -281,6 +477,9 @@ pub enum MasmOp {
     /// Pops `N` args off the stack, executes the procedure in the root context, results will be
     /// placed on the stack
     Syscall(FunctionIdent),
+    /// Pops `N` args off the stack, executes the procedure in a new context, results will be
+    /// placed on the stack
+    Call(FunctionIdent),
     /// Pops the address (MAST root hash) of a callee off the stack, and dynamically `exec` the
     /// function
     DynExec,
@@ -329,6 +528,7 @@ pub enum MasmOp {
     ///
     /// NOTE: `imm` must not be > 63
     ExpImm(u8),
+    ExpBitLength(u8),
     /// Pops `a` off the stack, and places the result of `1 - a` on the stack
     ///
     /// NOTE: `a` must be boolean
@@ -388,7 +588,10 @@ pub enum MasmOp {
     ///
     /// The comparison works by comparing pairs of elements from each word
     Eqw,
-    /// When called via `syscall`, this pushes the hash of the caller's MAST root on the stack
+    /// Pushes the current depth of the operand stack, on the stack
+    Sdepth,
+    /// When the current procedure is called via `syscall`, this pushes the hash of the caller's
+    /// MAST root on the stack
     Caller,
     /// Pushes the current value of the cycle counter (clock) on the stack
     Clk,
@@ -599,117 +802,420 @@ pub enum MasmOp {
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Max,
+    /// Trigger a breakpoint when this instruction is reached
+    Breakpoint,
+    /// Print out the contents of the stack
+    DebugStack,
+    /// Print out the top `n` contents of the stack
+    DebugStackN(u8),
+    /// Print out the entire contents of RAM
+    DebugMemory,
+    /// Print out the contents of RAM starting at address `n`
+    DebugMemoryAt(u32),
+    /// Print out the contents of RAM in the range `n..=m`
+    DebugMemoryRange(u32, u32),
+    /// Print out the local memory for the current procedure
+    DebugFrame,
+    /// Print out the local memory for the current procedure starting at index `n`
+    DebugFrameAt(u16),
+    /// Print out the local memory for the current procedure for indices in the range `n..=m`
+    DebugFrameRange(u16, u16),
+    /// Emit an event with the given event code
+    Emit(u32),
+    /// Emit a trace event with the given code
+    Trace(u32),
 }
+
+macro_rules! unwrap_imm {
+    ($imm:ident) => {{
+        match $imm {
+            miden_assembly::ast::Immediate::Value(imm) => imm.into_inner(),
+            miden_assembly::ast::Immediate::Constant(id) => {
+                panic!("invalid reference to constant definition: '{id}'")
+            }
+        }
+    }};
+}
+
+macro_rules! unwrap_u32 {
+    ($imm:ident) => {{
+        match $imm {
+            miden_assembly::ast::Immediate::Value(imm) => imm.into_inner(),
+            miden_assembly::ast::Immediate::Constant(id) => {
+                panic!("invalid reference to constant definition: '{id}'")
+            }
+        }
+    }};
+}
+
+macro_rules! unwrap_u16 {
+    ($imm:ident) => {{
+        match $imm {
+            miden_assembly::ast::Immediate::Value(imm) => imm.into_inner(),
+            miden_assembly::ast::Immediate::Constant(id) => {
+                panic!("invalid reference to constant definition: '{id}'")
+            }
+        }
+    }};
+}
+
+macro_rules! unwrap_u8 {
+    ($imm:ident) => {{
+        match $imm {
+            miden_assembly::ast::Immediate::Value(imm) => imm.into_inner(),
+            miden_assembly::ast::Immediate::Constant(id) => {
+                panic!("invalid reference to constant definition: '{id}'")
+            }
+        }
+    }};
+}
+
 impl MasmOp {
     pub fn has_regions(&self) -> bool {
         matches!(self, Self::If(_, _) | Self::While(_) | Self::Repeat(_, _))
     }
 
-    pub fn from_masm(
-        ix: miden_assembly::ast::Instruction,
-        locals: &[FunctionIdent],
-        imported: &miden_assembly::ast::ModuleImports,
-    ) -> SmallVec<[Self; 2]> {
-        use miden_assembly::ast::Instruction;
+    /// The cost of this instruction in cycles
+    pub fn cost(&self) -> usize {
+        match self {
+            Self::Padw => 4,
+            Self::Push(_) | Self::PushU8(_) | Self::PushU16(_) | Self::PushU32(_) => 1,
+            Self::Push2(_) => 2,
+            Self::Pushw(_) => 4,
+            Self::Drop => 1,
+            Self::Dropw => 4,
+            Self::Dup(8) | Self::Dup(10) | Self::Dup(12) | Self::Dup(14) => 3,
+            Self::Dup(_) => 1,
+            Self::Dupw(_) => 4,
+            Self::Swap(1) => 1,
+            Self::Swap(2..=8) => 2,
+            Self::Swap(_) => 6,
+            Self::Swapw(_) | Self::Swapdw => 1,
+            Self::Movup(2..=8) => 1,
+            Self::Movup(_) => 4,
+            Self::Movupw(2) => 2,
+            Self::Movupw(_) => 3,
+            Self::Movdn(2..=8) => 1,
+            Self::Movdn(_) => 4,
+            Self::Movdnw(2) => 2,
+            Self::Movdnw(_) => 3,
+            Self::Cswap => 1,
+            Self::Cswapw => 1,
+            Self::Cdrop => 2,
+            Self::Cdropw => 5,
+            Self::Assert | Self::AssertWithError(_) => 1,
+            Self::Assertz | Self::AssertzWithError(_) => 2,
+            Self::AssertEq | Self::AssertEqWithError(_) => 2,
+            Self::AssertEqw | Self::AssertEqwWithError(_) => 11,
+            Self::LocAddr(_) => 2,
+            Self::LocStore(id) if id.as_usize() == 1 => 5,
+            Self::LocStore(_) => 4,
+            Self::LocStorew(id) if id.as_usize() == 1 => 4,
+            Self::LocStorew(_) => 3,
+            Self::LocLoad(id) | Self::LocLoadw(id) if id.as_usize() == 1 => 4,
+            Self::LocLoad(_) | Self::LocLoadw(_) => 3,
+            Self::MemLoad | Self::MemLoadw => 1,
+            Self::MemLoadImm(_) | Self::MemLoadwImm(_) => 2,
+            Self::MemStore => 2,
+            Self::MemStoreImm(1) => 4,
+            Self::MemStoreImm(_) => 3,
+            Self::MemStorew => 1,
+            Self::MemStorewImm(1) => 3,
+            Self::MemStorewImm(_) => 2,
+            Self::MemStream => 1,
+            Self::AdvPipe => 1,
+            Self::AdvPush(n) => *n as usize,
+            Self::AdvLoadw => 1,
+            // This is based on cycle counts gathered from a simple program that compares a
+            // cdrop-based conditional select to an if-based one, where the only
+            // difference is the `cdrop` and `if` instructions. The `cdrop` solution
+            // was 39 cycles, the `if` solution was 49, with `cdrop` taking 2 cycles,
+            // this gives us a difference of 10 cycles, hence 12 for our cost.
+            Self::If(..) => 12,
+            // The cost for `while` appears to be the same as `if`, however comparisons are tricky
+            // as we can only really compare to `repeat`, which has no apparent cost
+            Self::While(_) => 12,
+            // Comparing a small program with `repeat.1` vs without the `repeat.1` (simply using the
+            // body of the `repeat` instead), there is no apparent cycle cost. We give
+            // it a cost of 0 to reflect that using `repeat` is no different than
+            // copying its body `N` times.
+            Self::Repeat(..) => 0,
+            Self::ProcRef(_) => 4,
+            Self::Exec(_) => 2,
+            // A `call` appears to have the same overhead as `if` and `while`
+            Self::Call(_) | Self::Syscall(_) => 12,
+            // A `dynexec` appears to be 8 cycles, based on comparisons against `exec`, with an
+            // extra `dropw` in the callee that we deduct from the cycle count
+            Self::DynExec => 8,
+            // A `dyncall` requires an additional 8 cycles compared to `dynexec`
+            Self::DynCall => 16,
+            Self::Add | Self::Sub | Self::Mul => 1,
+            Self::AddImm(imm) => match imm.as_int() {
+                0 => 0,
+                1 => 1,
+                _ => 2,
+            },
+            Self::SubImm(imm) | Self::MulImm(imm) => match imm.as_int() {
+                0 => 0,
+                _ => 2,
+            },
+            Self::Div => 2,
+            Self::DivImm(imm) => match imm.as_int() {
+                1 => 0,
+                _ => 2,
+            },
+            Self::Neg | Self::Inv | Self::Incr => 1,
+            Self::Ilog2 => 44,
+            Self::Pow2 => 16,
+            // The cost of this instruction is 9 + log2(b), but we don't know `b`, so we use a value
+            // of 32 to estimate average cost
+            Self::Exp => 9 + 32usize.ilog2() as usize,
+            Self::ExpImm(0) => 3,
+            Self::ExpImm(1) => 1,
+            Self::ExpImm(2) => 2,
+            Self::ExpImm(3) => 4,
+            Self::ExpImm(4) => 6,
+            Self::ExpImm(5) => 8,
+            Self::ExpImm(6) => 10,
+            Self::ExpImm(7) => 12,
+            Self::ExpImm(imm) | Self::ExpBitLength(imm) => {
+                9 + unsafe { f64::from(*imm).log2().ceil().to_int_unchecked::<usize>() }
+            }
+            Self::Not | Self::And | Self::Or => 1,
+            Self::AndImm(_) | Self::OrImm(_) => 2,
+            Self::Xor => 7,
+            Self::XorImm(_) => 8,
+            Self::Eq => 1,
+            Self::EqImm(imm) => match imm.as_int() {
+                0 => 1,
+                _ => 2,
+            },
+            Self::Neq => 2,
+            Self::NeqImm(imm) => match imm.as_int() {
+                0 => 1,
+                _ => 3,
+            },
+            Self::Gt => 15,
+            Self::GtImm(_) => 16,
+            Self::Gte => 16,
+            Self::GteImm(_) => 17,
+            Self::Lt => 14,
+            Self::LtImm(_) => 15,
+            Self::Lte => 15,
+            Self::LteImm(_) => 16,
+            Self::IsOdd => 5,
+            Self::Eqw => 15,
+            Self::Hash => 20,
+            Self::Hmerge => 16,
+            Self::Hperm => 1,
+            Self::MtreeGet => 9,
+            Self::MtreeSet => 29,
+            Self::MtreeMerge => 16,
+            Self::MtreeVerify => 1,
+            // This hasn't been measured, just a random guess due to the complexity
+            Self::FriExt2Fold4 | Self::RCombBase => 50,
+            Self::Ext2add => 5,
+            Self::Ext2sub => 7,
+            Self::Ext2mul => 3,
+            Self::Ext2neg => 4,
+            Self::Ext2inv => 8,
+            Self::Ext2div => 11,
+            Self::Clk | Self::Caller | Self::Sdepth => 1,
+            Self::U32Test => 5,
+            Self::U32Testw => 23,
+            Self::U32Assert | Self::U32AssertWithError(_) => 3,
+            Self::U32Assert2 | Self::U32Assert2WithError(_) => 1,
+            Self::U32Assertw | Self::U32AssertwWithError(_) => 6,
+            Self::U32Cast => 2,
+            Self::U32Split => 1,
+            Self::U32OverflowingAdd => 1,
+            Self::U32OverflowingAddImm(_) => 2,
+            Self::U32WrappingAdd => 2,
+            Self::U32WrappingAddImm(_) => 3,
+            Self::U32OverflowingAdd3 => 1,
+            Self::U32WrappingAdd3 => 2,
+            Self::U32OverflowingSub => 1,
+            Self::U32OverflowingSubImm(_) => 2,
+            Self::U32WrappingSub => 2,
+            Self::U32WrappingSubImm(_) => 3,
+            Self::U32OverflowingMul => 1,
+            Self::U32OverflowingMulImm(_) => 2,
+            Self::U32WrappingMul => 2,
+            Self::U32WrappingMulImm(_) => 3,
+            Self::U32OverflowingMadd => 1,
+            Self::U32WrappingMadd => 2,
+            Self::U32Div => 2,
+            Self::U32DivImm(_) => 3,
+            Self::U32Mod => 3,
+            Self::U32ModImm(_) => 4,
+            Self::U32DivMod => 1,
+            Self::U32DivModImm(_) => 2,
+            Self::U32And => 1,
+            Self::U32Or => 6,
+            Self::U32Xor => 1,
+            Self::U32Not => 5,
+            Self::U32Shl => 18,
+            Self::U32ShlImm(0) => 0,
+            Self::U32ShlImm(_) => 3,
+            Self::U32Shr => 18,
+            Self::U32ShrImm(0) => 0,
+            Self::U32ShrImm(_) => 3,
+            Self::U32Rotl => 18,
+            Self::U32RotlImm(0) => 0,
+            Self::U32RotlImm(_) => 3,
+            Self::U32Rotr => 22,
+            Self::U32RotrImm(0) => 0,
+            Self::U32RotrImm(_) => 3,
+            Self::U32Popcnt => 33,
+            Self::U32Clz => 37,
+            Self::U32Ctz => 34,
+            Self::U32Clo => 36,
+            Self::U32Cto => 33,
+            Self::U32Lt => 3,
+            Self::U32Lte => 5,
+            Self::U32Gt => 4,
+            Self::U32Gte => 4,
+            Self::U32Min => 8,
+            Self::U32Max => 9,
+            // These instructions do not modify the VM state, so we place set their cost at 0 for
+            // now
+            Self::Emit(_)
+            | Self::Trace(_)
+            | Self::AdvInjectPushU64Div
+            | Self::AdvInjectPushMapVal
+            | Self::AdvInjectPushMapValImm(_)
+            | Self::AdvInjectPushMapValN
+            | Self::AdvInjectPushMapValNImm(_)
+            | Self::AdvInjectPushMTreeNode
+            | Self::AdvInjectInsertMem
+            | Self::AdvInjectInsertHdword
+            | Self::AdvInjectInsertHdwordImm(_)
+            | Self::AdvInjectInsertHperm
+            | Self::DebugStack
+            | Self::DebugStackN(_)
+            | Self::DebugMemory
+            | Self::DebugMemoryAt(_)
+            | Self::DebugMemoryRange(..)
+            | Self::DebugFrame
+            | Self::DebugFrameAt(_)
+            | Self::DebugFrameRange(..)
+            | Self::Breakpoint => 0,
+        }
+    }
 
-        use crate::{StarkField, Symbol};
+    pub fn from_masm(
+        current_module: Ident,
+        ix: miden_assembly::ast::Instruction,
+    ) -> SmallVec<[Self; 2]> {
+        use miden_assembly::ast::{Instruction, InvocationTarget};
+
+        use crate::Symbol;
 
         let op = match ix {
             Instruction::Assert => Self::Assert,
-            Instruction::AssertWithError(code) => Self::AssertWithError(code),
+            Instruction::AssertWithError(code) => Self::AssertWithError(unwrap_u32!(code)),
             Instruction::AssertEq => Self::AssertEq,
-            Instruction::AssertEqWithError(code) => Self::AssertEqWithError(code),
+            Instruction::AssertEqWithError(code) => Self::AssertEqWithError(unwrap_u32!(code)),
             Instruction::AssertEqw => Self::AssertEqw,
-            Instruction::AssertEqwWithError(code) => Self::AssertEqwWithError(code),
+            Instruction::AssertEqwWithError(code) => Self::AssertEqwWithError(unwrap_u32!(code)),
             Instruction::Assertz => Self::Assertz,
-            Instruction::AssertzWithError(code) => Self::AssertzWithError(code),
+            Instruction::AssertzWithError(code) => Self::AssertzWithError(unwrap_u32!(code)),
             Instruction::Add => Self::Add,
-            Instruction::AddImm(imm) => Self::AddImm(imm),
+            Instruction::AddImm(imm) => Self::AddImm(unwrap_imm!(imm)),
             Instruction::Sub => Self::Sub,
-            Instruction::SubImm(imm) => Self::SubImm(imm),
+            Instruction::SubImm(imm) => Self::SubImm(unwrap_imm!(imm)),
             Instruction::Mul => Self::Mul,
-            Instruction::MulImm(imm) => Self::MulImm(imm),
+            Instruction::MulImm(imm) => Self::MulImm(unwrap_imm!(imm)),
             Instruction::Div => Self::Div,
-            Instruction::DivImm(imm) => Self::DivImm(imm),
+            Instruction::DivImm(imm) => Self::DivImm(unwrap_imm!(imm)),
             Instruction::Neg => Self::Neg,
             Instruction::Inv => Self::Inv,
             Instruction::Incr => Self::Incr,
-            //Instruction::Ilog2 => Self::ILog2,
+            Instruction::ILog2 => Self::Ilog2,
             Instruction::Pow2 => Self::Pow2,
             Instruction::Exp => Self::Exp,
             Instruction::ExpImm(imm) => {
-                Self::ExpImm(imm.as_int().try_into().expect("invalid exponent"))
+                Self::ExpImm(unwrap_imm!(imm).as_int().try_into().expect("invalid exponent"))
             }
-            Instruction::ExpBitLength(imm) => Self::ExpImm(imm),
+            Instruction::ExpBitLength(imm) => Self::ExpBitLength(imm),
             Instruction::Not => Self::Not,
             Instruction::And => Self::And,
             Instruction::Or => Self::Or,
             Instruction::Xor => Self::Xor,
             Instruction::Eq => Self::Eq,
-            Instruction::EqImm(imm) => Self::EqImm(imm),
+            Instruction::EqImm(imm) => Self::EqImm(unwrap_imm!(imm)),
             Instruction::Neq => Self::Neq,
-            Instruction::NeqImm(imm) => Self::NeqImm(imm),
+            Instruction::NeqImm(imm) => Self::NeqImm(unwrap_imm!(imm)),
             Instruction::Eqw => Self::Eqw,
             Instruction::Lt => Self::Lt,
             Instruction::Lte => Self::Lte,
             Instruction::Gt => Self::Gt,
             Instruction::Gte => Self::Gte,
             Instruction::IsOdd => Self::IsOdd,
-            Instruction::Ext2Add
-            | Instruction::Ext2Sub
-            | Instruction::Ext2Mul
-            | Instruction::Ext2Div
-            | Instruction::Ext2Neg
-            | Instruction::Ext2Inv => unimplemented!(),
+            Instruction::Hash => Self::Hash,
+            Instruction::HMerge => Self::Hmerge,
+            Instruction::HPerm => Self::Hperm,
+            Instruction::MTreeGet => Self::MtreeGet,
+            Instruction::MTreeSet => Self::MtreeSet,
+            Instruction::MTreeMerge => Self::MtreeMerge,
+            Instruction::MTreeVerify => Self::MtreeVerify,
+            Instruction::Ext2Add => Self::Ext2add,
+            Instruction::Ext2Sub => Self::Ext2sub,
+            Instruction::Ext2Mul => Self::Ext2mul,
+            Instruction::Ext2Div => Self::Ext2div,
+            Instruction::Ext2Neg => Self::Ext2neg,
+            Instruction::Ext2Inv => Self::Ext2inv,
+            Instruction::FriExt2Fold4 => Self::FriExt2Fold4,
+            Instruction::RCombBase => Self::RCombBase,
             Instruction::U32Test => Self::U32Test,
             Instruction::U32TestW => Self::U32Testw,
             Instruction::U32Assert => Self::U32Assert,
-            Instruction::U32AssertWithError(code) => Self::U32AssertWithError(code),
+            Instruction::U32AssertWithError(code) => Self::U32AssertWithError(unwrap_u32!(code)),
             Instruction::U32Assert2 => Self::U32Assert2,
-            Instruction::U32Assert2WithError(code) => Self::U32Assert2WithError(code),
+            Instruction::U32Assert2WithError(code) => Self::U32Assert2WithError(unwrap_u32!(code)),
             Instruction::U32AssertW => Self::U32Assertw,
-            Instruction::U32AssertWWithError(code) => Self::U32AssertwWithError(code),
+            Instruction::U32AssertWWithError(code) => Self::U32AssertwWithError(unwrap_u32!(code)),
             Instruction::U32Split => Self::U32Split,
             Instruction::U32Cast => Self::U32Cast,
             Instruction::U32WrappingAdd => Self::U32WrappingAdd,
-            Instruction::U32WrappingAddImm(imm) => Self::U32WrappingAddImm(imm),
+            Instruction::U32WrappingAddImm(imm) => Self::U32WrappingAddImm(unwrap_u32!(imm)),
             Instruction::U32OverflowingAdd => Self::U32OverflowingAdd,
-            Instruction::U32OverflowingAddImm(imm) => Self::U32OverflowingAddImm(imm),
+            Instruction::U32OverflowingAddImm(imm) => Self::U32OverflowingAddImm(unwrap_u32!(imm)),
             Instruction::U32OverflowingAdd3 => Self::U32OverflowingAdd3,
             Instruction::U32WrappingAdd3 => Self::U32WrappingAdd3,
             Instruction::U32WrappingSub => Self::U32WrappingSub,
-            Instruction::U32WrappingSubImm(imm) => Self::U32WrappingSubImm(imm),
+            Instruction::U32WrappingSubImm(imm) => Self::U32WrappingSubImm(unwrap_u32!(imm)),
             Instruction::U32OverflowingSub => Self::U32OverflowingSub,
-            Instruction::U32OverflowingSubImm(imm) => Self::U32OverflowingSubImm(imm),
+            Instruction::U32OverflowingSubImm(imm) => Self::U32OverflowingSubImm(unwrap_u32!(imm)),
             Instruction::U32WrappingMul => Self::U32WrappingMul,
-            Instruction::U32WrappingMulImm(imm) => Self::U32WrappingMulImm(imm),
+            Instruction::U32WrappingMulImm(imm) => Self::U32WrappingMulImm(unwrap_u32!(imm)),
             Instruction::U32OverflowingMul => Self::U32OverflowingMul,
-            Instruction::U32OverflowingMulImm(imm) => Self::U32OverflowingMulImm(imm),
+            Instruction::U32OverflowingMulImm(imm) => Self::U32OverflowingMulImm(unwrap_u32!(imm)),
             Instruction::U32OverflowingMadd => Self::U32OverflowingMadd,
             Instruction::U32WrappingMadd => Self::U32WrappingMadd,
             Instruction::U32Div => Self::U32Div,
-            Instruction::U32DivImm(imm) => Self::U32DivImm(imm),
+            Instruction::U32DivImm(imm) => Self::U32DivImm(unwrap_u32!(imm)),
             Instruction::U32Mod => Self::U32Mod,
-            Instruction::U32ModImm(imm) => Self::U32ModImm(imm),
+            Instruction::U32ModImm(imm) => Self::U32ModImm(unwrap_u32!(imm)),
             Instruction::U32DivMod => Self::U32DivMod,
-            Instruction::U32DivModImm(imm) => Self::U32DivModImm(imm),
+            Instruction::U32DivModImm(imm) => Self::U32DivModImm(unwrap_u32!(imm)),
             Instruction::U32And => Self::U32And,
             Instruction::U32Or => Self::U32Or,
             Instruction::U32Xor => Self::U32Xor,
             Instruction::U32Not => Self::U32Not,
             Instruction::U32Shr => Self::U32Shr,
-            Instruction::U32ShrImm(imm) => Self::U32ShrImm(imm as u32),
+            Instruction::U32ShrImm(imm) => Self::U32ShrImm(unwrap_u8!(imm) as u32),
             Instruction::U32Shl => Self::U32Shl,
-            Instruction::U32ShlImm(imm) => Self::U32ShlImm(imm as u32),
+            Instruction::U32ShlImm(imm) => Self::U32ShlImm(unwrap_u8!(imm) as u32),
             Instruction::U32Rotr => Self::U32Rotr,
-            Instruction::U32RotrImm(imm) => Self::U32RotrImm(imm as u32),
+            Instruction::U32RotrImm(imm) => Self::U32RotrImm(unwrap_u8!(imm) as u32),
             Instruction::U32Rotl => Self::U32Rotl,
-            Instruction::U32RotlImm(imm) => Self::U32RotlImm(imm as u32),
+            Instruction::U32RotlImm(imm) => Self::U32RotlImm(unwrap_u8!(imm) as u32),
             Instruction::U32Popcnt => Self::U32Popcnt,
-            //Instruction::U32Clz => Self::U32Clz,
-            //Instruction::U32Ctz => Self::U32Ctz,
-            //Instruction::U32Clo => Self::U32Clo,
-            //Instruction::U32Cto => Self::U32Cto,
+            Instruction::U32Clz => Self::U32Clz,
+            Instruction::U32Ctz => Self::U32Ctz,
+            Instruction::U32Clo => Self::U32Clo,
+            Instruction::U32Cto => Self::U32Cto,
             Instruction::U32Lt => Self::U32Lt,
             Instruction::U32Lte => Self::U32Lte,
             Instruction::U32Gt => Self::U32Gt,
@@ -757,7 +1263,7 @@ impl MasmOp {
             Instruction::SwapW1 => Self::Swapw(1),
             Instruction::SwapW2 => Self::Swapw(2),
             Instruction::SwapW3 => Self::Swapw(3),
-            Instruction::SwapDw => unimplemented!("swap double-word"),
+            Instruction::SwapDw => Self::Swapdw,
             Instruction::MovUp2 => Self::Movup(2),
             Instruction::MovUp3 => Self::Movup(3),
             Instruction::MovUp4 => Self::Movup(4),
@@ -794,128 +1300,134 @@ impl MasmOp {
             Instruction::CSwapW => Self::Cswapw,
             Instruction::CDrop => Self::Cdrop,
             Instruction::CDropW => Self::Cdropw,
+            Instruction::Push(elem) => Self::Push(unwrap_imm!(elem)),
             Instruction::PushU8(elem) => Self::PushU8(elem),
-            Instruction::PushU16(elem) => Self::PushU32(elem as u32),
+            Instruction::PushU16(elem) => Self::PushU16(elem),
             Instruction::PushU32(elem) => Self::PushU32(elem),
             Instruction::PushFelt(elem) => Self::Push(elem),
             Instruction::PushWord(word) => Self::Pushw(word),
             Instruction::PushU8List(u8s) => return u8s.into_iter().map(Self::PushU8).collect(),
             Instruction::PushU16List(u16s) => {
-                return u16s.into_iter().map(|i| Self::PushU32(i as u32)).collect()
+                return u16s.into_iter().map(|i| Self::PushU16(i as u16)).collect()
             }
             Instruction::PushU32List(u32s) => return u32s.into_iter().map(Self::PushU32).collect(),
             Instruction::PushFeltList(felts) => return felts.into_iter().map(Self::Push).collect(),
-            Instruction::Locaddr(id) => {
-                Self::LocAddr(LocalId::from_u8(id.try_into().expect("invalid local id")))
-            }
-            Instruction::LocStore(id) => {
-                Self::LocStore(LocalId::from_u8(id.try_into().expect("invalid local id")))
-            }
-            Instruction::LocStoreW(id) => {
-                Self::LocStorew(LocalId::from_u8(id.try_into().expect("invalid local id")))
-            }
+            Instruction::Locaddr(id) => Self::LocAddr(LocalId::from_u16(unwrap_u16!(id))),
+            Instruction::LocStore(id) => Self::LocStore(LocalId::from_u16(unwrap_u16!(id))),
+            Instruction::LocStoreW(id) => Self::LocStorew(LocalId::from_u16(unwrap_u16!(id))),
             Instruction::Clk => Self::Clk,
             Instruction::MemLoad => Self::MemLoad,
-            Instruction::MemLoadImm(addr) => Self::MemLoadImm(addr),
+            Instruction::MemLoadImm(addr) => Self::MemLoadImm(unwrap_u32!(addr)),
             Instruction::MemLoadW => Self::MemLoadw,
-            Instruction::MemLoadWImm(addr) => Self::MemLoadwImm(addr),
+            Instruction::MemLoadWImm(addr) => Self::MemLoadwImm(unwrap_u32!(addr)),
             Instruction::MemStore => Self::MemStore,
-            Instruction::MemStoreImm(addr) => Self::MemStoreImm(addr),
+            Instruction::MemStoreImm(addr) => Self::MemStoreImm(unwrap_u32!(addr)),
             Instruction::MemStoreW => Self::MemStorew,
-            Instruction::MemStoreWImm(addr) => Self::MemStorewImm(addr),
-            Instruction::LocLoad(_) | Instruction::LocLoadW(_) => {
-                unimplemented!("load by local id")
-            }
+            Instruction::MemStoreWImm(addr) => Self::MemStorewImm(unwrap_u32!(addr)),
+            Instruction::LocLoad(imm) => Self::LocLoad(LocalId::from_u16(unwrap_u16!(imm))),
+            Instruction::LocLoadW(imm) => Self::LocLoadw(LocalId::from_u16(unwrap_u16!(imm))),
             Instruction::MemStream => Self::MemStream,
             Instruction::AdvPipe => Self::AdvPipe,
-            Instruction::AdvPush(byte) => Self::AdvPush(byte),
+            Instruction::AdvPush(byte) => Self::AdvPush(unwrap_u8!(byte)),
             Instruction::AdvLoadW => Self::AdvLoadw,
-            Instruction::AdvInject(_) => unimplemented!("adv_inject"),
-            Instruction::Hash
-            | Instruction::HMerge
-            | Instruction::HPerm
-            | Instruction::MTreeGet
-            | Instruction::MTreeSet
-            | Instruction::MTreeMerge
-            | Instruction::MTreeVerify => unimplemented!("cryptographic operations"),
-            Instruction::ExecLocal(local_index) => Self::Exec(locals[local_index as usize]),
-            Instruction::ExecImported(ref proc_id) => {
-                let module = imported
-                    .get_procedure_path(proc_id)
-                    .expect("reference to import that doesn't exist")
-                    .last();
-                let name = imported
-                    .get_procedure_name(proc_id)
-                    .expect("reference to import that doesn't exist");
-                Self::Exec(FunctionIdent {
-                    module: Ident::with_empty_span(Symbol::intern(module)),
-                    function: Ident::with_empty_span(Symbol::intern(name.as_ref())),
-                })
+            Instruction::AdvInject(AdviceInjectorNode::InsertMem) => Self::AdvInjectInsertMem,
+            Instruction::AdvInject(AdviceInjectorNode::InsertHperm) => Self::AdvInjectInsertHperm,
+            Instruction::AdvInject(AdviceInjectorNode::InsertHdword) => Self::AdvInjectInsertHdword,
+            Instruction::AdvInject(AdviceInjectorNode::InsertHdwordImm { domain }) => {
+                Self::AdvInjectInsertHdwordImm(unwrap_u8!(domain))
             }
-            Instruction::CallLocal(_)
-            | Instruction::CallMastRoot(_)
-            | Instruction::CallImported(_) => unimplemented!("contract calls"),
-            Instruction::SysCall(ref proc_id) => {
-                let module = imported
-                    .get_procedure_path(proc_id)
-                    .expect("reference to import that doesn't exist")
-                    .last();
-                let name = imported
-                    .get_procedure_name(proc_id)
-                    .expect("reference to import that doesn't exist");
-                Self::Syscall(FunctionIdent {
-                    module: Ident::with_empty_span(Symbol::intern(module)),
-                    function: Ident::with_empty_span(Symbol::intern(name.as_ref())),
-                })
+            Instruction::AdvInject(AdviceInjectorNode::PushU64Div) => Self::AdvInjectPushU64Div,
+            Instruction::AdvInject(AdviceInjectorNode::PushMtNode) => Self::AdvInjectPushMTreeNode,
+            Instruction::AdvInject(AdviceInjectorNode::PushMapVal) => Self::AdvInjectPushMapVal,
+            Instruction::AdvInject(AdviceInjectorNode::PushMapValImm { offset }) => {
+                Self::AdvInjectPushMapValImm(unwrap_u8!(offset))
+            }
+            Instruction::AdvInject(AdviceInjectorNode::PushMapValN) => Self::AdvInjectPushMapValN,
+            Instruction::AdvInject(AdviceInjectorNode::PushMapValNImm { offset }) => {
+                Self::AdvInjectPushMapValNImm(unwrap_u8!(offset))
+            }
+            Instruction::AdvInject(injector) => {
+                unimplemented!("unsupported advice injector: {injector:?}")
+            }
+            ref ix @ (Instruction::Exec(ref target)
+            | Instruction::SysCall(ref target)
+            | Instruction::Call(ref target)
+            | Instruction::ProcRef(ref target)) => {
+                let id = match target {
+                    InvocationTarget::AbsoluteProcedurePath { name, path } => {
+                        let name: &str = name.as_ref();
+                        let function = Ident::with_empty_span(Symbol::intern(name));
+                        let module = Ident::with_empty_span(Symbol::intern(path.to_string()));
+                        FunctionIdent { module, function }
+                    }
+                    InvocationTarget::ProcedurePath { name, module } => {
+                        let name: &str = name.as_ref();
+                        let function = Ident::with_empty_span(Symbol::intern(name));
+                        let module = Ident::with_empty_span(Symbol::intern(module.as_str()));
+                        FunctionIdent { module, function }
+                    }
+                    InvocationTarget::ProcedureName(name) => {
+                        let name: &str = name.as_ref();
+                        let function = Ident::with_empty_span(Symbol::intern(name));
+                        FunctionIdent {
+                            module: current_module,
+                            function,
+                        }
+                    }
+                    InvocationTarget::MastRoot(_root) => {
+                        todo!("support for referencing mast roots is not yet implemented")
+                    }
+                };
+                match ix {
+                    Instruction::Exec(_) => Self::Exec(id),
+                    Instruction::SysCall(_) => Self::Syscall(id),
+                    Instruction::Call(_) => Self::Call(id),
+                    Instruction::ProcRef(_) => Self::ProcRef(id),
+                    _ => unreachable!(),
+                }
             }
             Instruction::DynExec => Self::DynExec,
             Instruction::DynCall => Self::DynCall,
-            Instruction::ProcRefLocal(local_index) => Self::ProcRef(locals[local_index as usize]),
-            Instruction::ProcRefImported(ref proc_id) => {
-                let module = imported
-                    .get_procedure_path(proc_id)
-                    .expect("reference to import that doesn't exist")
-                    .last();
-                let name = imported
-                    .get_procedure_name(proc_id)
-                    .expect("reference to import that doesn't exist");
-                Self::ProcRef(FunctionIdent {
-                    module: Ident::with_empty_span(Symbol::intern(module)),
-                    function: Ident::with_empty_span(Symbol::intern(name.as_ref())),
-                })
-            }
             Instruction::Caller => Self::Caller,
-            Instruction::Sdepth
-            | Instruction::FriExt2Fold4
-            | Instruction::Breakpoint
-            | Instruction::Emit(_)
-            | Instruction::Debug(_)
-            | Instruction::Trace(_) => unimplemented!("miscellaneous instructions"),
+            Instruction::Sdepth => Self::Sdepth,
+            Instruction::Breakpoint => Self::Breakpoint,
+            Instruction::Emit(event) => Self::Emit(unwrap_u32!(event)),
+            Instruction::Trace(event) => Self::Trace(unwrap_u32!(event)),
+            Instruction::Debug(DebugOptions::StackAll) => Self::DebugStack,
+            Instruction::Debug(DebugOptions::StackTop(n)) => Self::DebugStackN(unwrap_u8!(n)),
+            Instruction::Debug(DebugOptions::MemAll) => Self::DebugMemory,
+            Instruction::Debug(DebugOptions::MemInterval(start, end)) => {
+                Self::DebugMemoryRange(unwrap_u32!(start), unwrap_u32!(end))
+            }
+            Instruction::Debug(DebugOptions::LocalAll) => Self::DebugFrame,
+            Instruction::Debug(DebugOptions::LocalRangeFrom(start)) => {
+                Self::DebugFrameAt(unwrap_u16!(start))
+            }
+            Instruction::Debug(DebugOptions::LocalInterval(start, end)) => {
+                Self::DebugFrameRange(unwrap_u16!(start), unwrap_u16!(end))
+            }
         };
         smallvec![op]
     }
 
-    pub fn into_node(
+    pub fn into_masm(
         self,
-        _codemap: &miden_diagnostics::CodeMap,
         imports: &super::ModuleImportInfo,
-        local_ids: &FxHashMap<FunctionIdent, u16>,
-        proc_ids: &FxHashMap<FunctionIdent, miden_assembly::ProcedureId>,
-    ) -> SmallVec<[miden_assembly::ast::Node; 2]> {
-        use miden_assembly::ast::{Instruction, Node};
-        let node = match self {
+        locals: &BTreeSet<FunctionIdent>,
+    ) -> SmallVec<[miden_assembly::ast::Instruction; 2]> {
+        use miden_assembly::{
+            self as masm,
+            ast::{Instruction, InvocationTarget, ProcedureName},
+            LibraryPath,
+        };
+        let inst = match self {
             Self::Padw => Instruction::PadW,
             Self::Push(v) => Instruction::PushFelt(v),
-            Self::Push2([a, b]) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(a)),
-                    Node::Instruction(Instruction::PushFelt(b))
-                ]
-            }
+            Self::Push2([a, b]) => Instruction::PushFeltList(vec![a, b]),
             Self::Pushw(word) => Instruction::PushWord(word),
-            Self::PushU8(v) => Instruction::PushFelt(Felt::new(v as u64)),
-            Self::PushU16(v) => Instruction::PushFelt(Felt::new(v as u64)),
-            Self::PushU32(v) => Instruction::PushFelt(Felt::new(v as u64)),
+            Self::PushU8(v) => Instruction::PushU8(v),
+            Self::PushU16(v) => Instruction::PushU16(v),
+            Self::PushU32(v) => Instruction::PushU32(v),
             Self::Drop => Instruction::Drop,
             Self::Dropw => Instruction::DropW,
             Self::Dup(0) => Instruction::Dup0,
@@ -968,6 +1480,7 @@ impl MasmOp {
             Self::Swapw(n) => {
                 panic!("invalid swapw instruction, valid index range is 1..=3, got {n}")
             }
+            Self::Swapdw => Instruction::SwapDw,
             Self::Movup(2) => Instruction::MovUp2,
             Self::Movup(3) => Instruction::MovUp3,
             Self::Movup(4) => Instruction::MovUp4,
@@ -1017,245 +1530,233 @@ impl MasmOp {
             Self::Cdrop => Instruction::CDrop,
             Self::Cdropw => Instruction::CDropW,
             Self::Assert => Instruction::Assert,
-            Self::AssertWithError(code) => Instruction::AssertWithError(code),
+            Self::AssertWithError(code) => Instruction::AssertWithError(code.into()),
             Self::Assertz => Instruction::Assertz,
-            Self::AssertzWithError(code) => Instruction::AssertzWithError(code),
+            Self::AssertzWithError(code) => Instruction::AssertzWithError(code.into()),
             Self::AssertEq => Instruction::AssertEq,
-            Self::AssertEqWithError(code) => Instruction::AssertEqWithError(code),
+            Self::AssertEqWithError(code) => Instruction::AssertEqWithError(code.into()),
             Self::AssertEqw => Instruction::AssertEqw,
-            Self::AssertEqwWithError(code) => Instruction::AssertEqwWithError(code),
-            Self::LocAddr(id) => Instruction::Locaddr(id.as_usize() as u16),
-            Self::LocStore(id) => Instruction::LocStore(id.as_usize() as u16),
-            Self::LocStorew(id) => Instruction::LocStoreW(id.as_usize() as u16),
+            Self::AssertEqwWithError(code) => Instruction::AssertEqwWithError(code.into()),
+            Self::LocAddr(id) => Instruction::Locaddr(id.into()),
+            Self::LocLoad(id) => Instruction::LocLoad(id.into()),
+            Self::LocLoadw(id) => Instruction::LocLoadW(id.into()),
+            Self::LocStore(id) => Instruction::LocStore(id.into()),
+            Self::LocStorew(id) => Instruction::LocStoreW(id.into()),
             Self::MemLoad => Instruction::MemLoad,
-            Self::MemLoadImm(addr) => Instruction::MemLoadImm(addr),
+            Self::MemLoadImm(addr) => Instruction::MemLoadImm(addr.into()),
             Self::MemLoadw => Instruction::MemLoadW,
-            Self::MemLoadwImm(addr) => Instruction::MemLoadWImm(addr),
+            Self::MemLoadwImm(addr) => Instruction::MemLoadWImm(addr.into()),
             Self::MemStore => Instruction::MemStore,
-            Self::MemStoreImm(addr) => Instruction::MemStoreImm(addr),
+            Self::MemStoreImm(addr) => Instruction::MemStoreImm(addr.into()),
             Self::MemStorew => Instruction::MemStoreW,
-            Self::MemStorewImm(addr) => Instruction::MemStoreWImm(addr),
-            Self::MemLoadOffset
-            | Self::MemLoadOffsetImm(..)
-            | Self::MemStoreOffset
-            | Self::MemStoreOffsetImm(..) => unimplemented!(
-                "this is an experimental instruction that is not supported by the Miden VM"
-            ),
+            Self::MemStorewImm(addr) => Instruction::MemStoreWImm(addr.into()),
             Self::MemStream => Instruction::MemStream,
             Self::AdvPipe => Instruction::AdvPipe,
-            Self::AdvPush(n) => Instruction::AdvPush(n),
+            Self::AdvPush(n) => Instruction::AdvPush(n.into()),
             Self::AdvLoadw => Instruction::AdvLoadW,
+            Self::AdvInjectPushU64Div => Instruction::AdvInject(AdviceInjectorNode::PushU64Div),
+            Self::AdvInjectPushMTreeNode => Instruction::AdvInject(AdviceInjectorNode::PushMtNode),
+            Self::AdvInjectPushMapVal => Instruction::AdvInject(AdviceInjectorNode::PushMapVal),
+            Self::AdvInjectPushMapValImm(n) => {
+                Instruction::AdvInject(AdviceInjectorNode::PushMapValImm { offset: n.into() })
+            }
+            Self::AdvInjectPushMapValN => Instruction::AdvInject(AdviceInjectorNode::PushMapValN),
+            Self::AdvInjectPushMapValNImm(n) => {
+                Instruction::AdvInject(AdviceInjectorNode::PushMapValNImm { offset: n.into() })
+            }
+            Self::AdvInjectInsertMem => Instruction::AdvInject(AdviceInjectorNode::InsertMem),
+            Self::AdvInjectInsertHperm => Instruction::AdvInject(AdviceInjectorNode::InsertHperm),
+            Self::AdvInjectInsertHdword => Instruction::AdvInject(AdviceInjectorNode::InsertHdword),
+            Self::AdvInjectInsertHdwordImm(domain) => {
+                Instruction::AdvInject(AdviceInjectorNode::InsertHdwordImm {
+                    domain: domain.into(),
+                })
+            }
             Self::If(..) | Self::While(_) | Self::Repeat(..) => {
                 panic!("control flow instructions are meant to be handled specially by the caller")
             }
-            Self::Exec(ref callee) => {
-                if let Some(idx) = local_ids.get(callee).copied() {
-                    Instruction::ExecLocal(idx)
+            op @ (Self::Exec(ref callee)
+            | Self::Call(ref callee)
+            | Self::Syscall(ref callee)
+            | Self::ProcRef(ref callee)) => {
+                let target = if locals.contains(callee) {
+                    let callee = ProcedureName::new(callee.function.as_str())
+                        .expect("invalid procedure name");
+                    InvocationTarget::ProcedureName(callee)
                 } else {
-                    let aliased = if let Some(alias) = imports.alias(&callee.module) {
-                        FunctionIdent {
-                            module: alias,
-                            function: callee.function,
+                    if let Some(alias) = imports.alias(&callee.module) {
+                        let name = ProcedureName::new(callee.function.as_str())
+                            .expect("invalid procedure name");
+                        InvocationTarget::ProcedurePath {
+                            name,
+                            module: masm::ast::Ident::new(alias.as_str())
+                                .expect("invalid module path"),
                         }
                     } else {
-                        let module_as_import = super::MasmImport::try_from(callee.module)
-                            .expect("invalid module name");
-                        FunctionIdent {
-                            module: Ident::with_empty_span(module_as_import.alias),
-                            function: callee.function,
-                        }
-                    };
-                    let id = proc_ids
-                        .get(&aliased)
-                        .copied()
-                        .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
-                    Instruction::ExecImported(id)
-                }
-            }
-            Self::Syscall(ref callee) => {
-                let aliased = if let Some(alias) = imports.alias(&callee.module) {
-                    FunctionIdent {
-                        module: alias,
-                        function: callee.function,
-                    }
-                } else {
-                    let module_as_import =
-                        super::MasmImport::try_from(callee.module).expect("invalid module name");
-                    FunctionIdent {
-                        module: Ident::with_empty_span(module_as_import.alias),
-                        function: callee.function,
+                        let name = ProcedureName::new(callee.function.as_str())
+                            .expect("invalid procedure name");
+                        let path = LibraryPath::new(callee.module.as_str())
+                            .expect("invalid procedure path");
+                        InvocationTarget::AbsoluteProcedurePath { name, path }
                     }
                 };
-                let id = proc_ids
-                    .get(&aliased)
-                    .copied()
-                    .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
-                Instruction::SysCall(id)
+                match op {
+                    Self::Exec(_) => Instruction::Exec(target),
+                    Self::Call(_) => Instruction::Call(target),
+                    Self::Syscall(_) => Instruction::SysCall(target),
+                    Self::ProcRef(_) => Instruction::ProcRef(target),
+                    _ => unreachable!(),
+                }
             }
             Self::DynExec => Instruction::DynExec,
             Self::DynCall => Instruction::DynCall,
-            Self::ProcRef(ref callee) => {
-                if let Some(idx) = local_ids.get(callee).copied() {
-                    Instruction::ProcRefLocal(idx)
-                } else {
-                    let aliased = if let Some(alias) = imports.alias(&callee.module) {
-                        FunctionIdent {
-                            module: alias,
-                            function: callee.function,
-                        }
-                    } else {
-                        let module_as_import = super::MasmImport::try_from(callee.module)
-                            .expect("invalid module name");
-                        FunctionIdent {
-                            module: Ident::with_empty_span(module_as_import.alias),
-                            function: callee.function,
-                        }
-                    };
-                    let id = proc_ids
-                        .get(&aliased)
-                        .copied()
-                        .unwrap_or_else(|| miden_assembly::ProcedureId::new(aliased.to_string()));
-                    Instruction::ProcRefImported(id)
-                }
-            }
             Self::Add => Instruction::Add,
-            Self::AddImm(imm) => Instruction::AddImm(imm),
+            Self::AddImm(imm) => Instruction::AddImm(imm.into()),
             Self::Sub => Instruction::Sub,
-            Self::SubImm(imm) => Instruction::SubImm(imm),
+            Self::SubImm(imm) => Instruction::SubImm(imm.into()),
             Self::Mul => Instruction::Mul,
-            Self::MulImm(imm) => Instruction::MulImm(imm),
+            Self::MulImm(imm) => Instruction::MulImm(imm.into()),
             Self::Div => Instruction::Div,
-            Self::DivImm(imm) => Instruction::DivImm(imm),
+            Self::DivImm(imm) => Instruction::DivImm(imm.into()),
             Self::Neg => Instruction::Neg,
             Self::Inv => Instruction::Inv,
             Self::Incr => Instruction::Incr,
-            Self::Ilog2 => todo!("Instruction::ILog2"),
+            Self::Ilog2 => Instruction::ILog2,
             Self::Pow2 => Instruction::Pow2,
             Self::Exp => Instruction::Exp,
-            Self::ExpImm(imm) => Instruction::ExpBitLength(imm),
+            Self::ExpImm(imm) => Instruction::ExpImm(Felt::new(imm as u64).into()),
+            Self::ExpBitLength(imm) => Instruction::ExpBitLength(imm),
             Self::Not => Instruction::Not,
             Self::And => Instruction::And,
             Self::AndImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(Felt::new(imm as u64))),
-                    Node::Instruction(Instruction::And)
-                ]
+                return smallvec![Instruction::PushU8(imm as u8), Instruction::And]
             }
             Self::Or => Instruction::Or,
-            Self::OrImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(Felt::new(imm as u64))),
-                    Node::Instruction(Instruction::Or)
-                ]
-            }
+            Self::OrImm(imm) => return smallvec![Instruction::PushU8(imm as u8), Instruction::Or],
             Self::Xor => Instruction::Xor,
             Self::XorImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(Felt::new(imm as u64))),
-                    Node::Instruction(Instruction::Xor)
-                ]
+                return smallvec![Instruction::PushU8(imm as u8), Instruction::Xor]
             }
             Self::Eq => Instruction::Eq,
-            Self::EqImm(imm) => Instruction::EqImm(imm),
+            Self::EqImm(imm) => Instruction::EqImm(imm.into()),
             Self::Neq => Instruction::Neq,
-            Self::NeqImm(imm) => Instruction::NeqImm(imm),
+            Self::NeqImm(imm) => Instruction::NeqImm(imm.into()),
             Self::Gt => Instruction::Gt,
-            Self::GtImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(imm)),
-                    Node::Instruction(Instruction::Gt)
-                ]
-            }
+            Self::GtImm(imm) => return smallvec![Instruction::PushFelt(imm), Instruction::Gt],
             Self::Gte => Instruction::Gte,
-            Self::GteImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(imm)),
-                    Node::Instruction(Instruction::Gte)
-                ]
-            }
+            Self::GteImm(imm) => return smallvec![Instruction::PushFelt(imm), Instruction::Gte],
             Self::Lt => Instruction::Lt,
-            Self::LtImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(imm)),
-                    Node::Instruction(Instruction::Lt)
-                ]
-            }
+            Self::LtImm(imm) => return smallvec![Instruction::PushFelt(imm), Instruction::Lt],
             Self::Lte => Instruction::Lte,
-            Self::LteImm(imm) => {
-                return smallvec![
-                    Node::Instruction(Instruction::PushFelt(imm)),
-                    Node::Instruction(Instruction::Lte)
-                ]
-            }
+            Self::LteImm(imm) => return smallvec![Instruction::PushFelt(imm), Instruction::Lte],
             Self::IsOdd => Instruction::IsOdd,
             Self::Eqw => Instruction::Eqw,
+            Self::Ext2add => Instruction::Ext2Add,
+            Self::Ext2sub => Instruction::Ext2Sub,
+            Self::Ext2mul => Instruction::Ext2Mul,
+            Self::Ext2div => Instruction::Ext2Div,
+            Self::Ext2neg => Instruction::Ext2Neg,
+            Self::Ext2inv => Instruction::Ext2Inv,
             Self::Clk => Instruction::Clk,
             Self::Caller => Instruction::Caller,
+            Self::Sdepth => Instruction::Sdepth,
+            Self::Hash => Instruction::Hash,
+            Self::Hperm => Instruction::HPerm,
+            Self::Hmerge => Instruction::HMerge,
+            Self::MtreeGet => Instruction::MTreeGet,
+            Self::MtreeSet => Instruction::MTreeSet,
+            Self::MtreeMerge => Instruction::MTreeMerge,
+            Self::MtreeVerify => Instruction::MTreeVerify,
+            Self::FriExt2Fold4 => Instruction::FriExt2Fold4,
+            Self::RCombBase => Instruction::RCombBase,
             Self::U32Test => Instruction::U32Test,
             Self::U32Testw => Instruction::U32TestW,
             Self::U32Assert => Instruction::U32Assert,
-            Self::U32AssertWithError(code) => Instruction::U32AssertWithError(code),
+            Self::U32AssertWithError(code) => Instruction::U32AssertWithError(code.into()),
             Self::U32Assert2 => Instruction::U32Assert2,
-            Self::U32Assert2WithError(code) => Instruction::U32Assert2WithError(code),
+            Self::U32Assert2WithError(code) => Instruction::U32Assert2WithError(code.into()),
             Self::U32Assertw => Instruction::U32AssertW,
-            Self::U32AssertwWithError(code) => Instruction::U32AssertWWithError(code),
+            Self::U32AssertwWithError(code) => Instruction::U32AssertWWithError(code.into()),
             Self::U32Cast => Instruction::U32Cast,
             Self::U32Split => Instruction::U32Split,
             Self::U32OverflowingAdd => Instruction::U32OverflowingAdd,
-            Self::U32OverflowingAddImm(imm) => Instruction::U32OverflowingAddImm(imm),
+            Self::U32OverflowingAddImm(imm) => Instruction::U32OverflowingAddImm(imm.into()),
             Self::U32WrappingAdd => Instruction::U32WrappingAdd,
-            Self::U32WrappingAddImm(imm) => Instruction::U32WrappingAddImm(imm),
+            Self::U32WrappingAddImm(imm) => Instruction::U32WrappingAddImm(imm.into()),
             Self::U32OverflowingAdd3 => Instruction::U32OverflowingAdd3,
             Self::U32WrappingAdd3 => Instruction::U32WrappingAdd3,
             Self::U32OverflowingSub => Instruction::U32OverflowingSub,
-            Self::U32OverflowingSubImm(imm) => Instruction::U32OverflowingSubImm(imm),
+            Self::U32OverflowingSubImm(imm) => Instruction::U32OverflowingSubImm(imm.into()),
             Self::U32WrappingSub => Instruction::U32WrappingSub,
-            Self::U32WrappingSubImm(imm) => Instruction::U32WrappingSubImm(imm),
+            Self::U32WrappingSubImm(imm) => Instruction::U32WrappingSubImm(imm.into()),
             Self::U32OverflowingMul => Instruction::U32OverflowingMul,
-            Self::U32OverflowingMulImm(imm) => Instruction::U32OverflowingMulImm(imm),
+            Self::U32OverflowingMulImm(imm) => Instruction::U32OverflowingMulImm(imm.into()),
             Self::U32WrappingMul => Instruction::U32WrappingMul,
-            Self::U32WrappingMulImm(imm) => Instruction::U32WrappingMulImm(imm),
+            Self::U32WrappingMulImm(imm) => Instruction::U32WrappingMulImm(imm.into()),
             Self::U32OverflowingMadd => Instruction::U32OverflowingMadd,
             Self::U32WrappingMadd => Instruction::U32WrappingMadd,
             Self::U32Div => Instruction::U32Div,
-            Self::U32DivImm(imm) => Instruction::U32DivImm(imm),
+            Self::U32DivImm(imm) => Instruction::U32DivImm(imm.into()),
             Self::U32Mod => Instruction::U32Mod,
-            Self::U32ModImm(imm) => Instruction::U32ModImm(imm),
+            Self::U32ModImm(imm) => Instruction::U32ModImm(imm.into()),
             Self::U32DivMod => Instruction::U32DivMod,
-            Self::U32DivModImm(imm) => Instruction::U32DivModImm(imm),
+            Self::U32DivModImm(imm) => Instruction::U32DivModImm(imm.into()),
             Self::U32And => Instruction::U32And,
             Self::U32Or => Instruction::U32Or,
             Self::U32Xor => Instruction::U32Xor,
             Self::U32Not => Instruction::U32Not,
             Self::U32Shl => Instruction::U32Shl,
             Self::U32ShlImm(imm) => {
-                Instruction::U32ShlImm(imm.try_into().expect("invalid rotation"))
+                let shift = u8::try_from(imm).expect("invalid shift");
+                Instruction::U32ShlImm(shift.into())
             }
             Self::U32Shr => Instruction::U32Shr,
             Self::U32ShrImm(imm) => {
-                Instruction::U32ShrImm(imm.try_into().expect("invalid rotation"))
+                let shift = u8::try_from(imm).expect("invalid shift");
+                Instruction::U32ShrImm(shift.into())
             }
             Self::U32Rotl => Instruction::U32Rotl,
             Self::U32RotlImm(imm) => {
-                Instruction::U32RotlImm(imm.try_into().expect("invalid rotation"))
+                let rotate = u8::try_from(imm).expect("invalid rotation");
+                Instruction::U32RotlImm(rotate.into())
             }
             Self::U32Rotr => Instruction::U32Rotr,
             Self::U32RotrImm(imm) => {
-                Instruction::U32RotrImm(imm.try_into().expect("invalid rotation"))
+                let rotate = u8::try_from(imm).expect("invalid rotation");
+                Instruction::U32RotrImm(rotate.into())
             }
             Self::U32Popcnt => Instruction::U32Popcnt,
-            Self::U32Clz => todo!("Instruction::U32Clz"),
-            Self::U32Ctz => todo!("Instruction::U32Ctz"),
-            Self::U32Clo => todo!("Instruction::U32Clo"),
-            Self::U32Cto => todo!("Instruction::U32Cto"),
+            Self::U32Clz => Instruction::U32Clz,
+            Self::U32Ctz => Instruction::U32Ctz,
+            Self::U32Clo => Instruction::U32Clo,
+            Self::U32Cto => Instruction::U32Cto,
             Self::U32Lt => Instruction::U32Lt,
             Self::U32Lte => Instruction::U32Lte,
             Self::U32Gt => Instruction::U32Gt,
             Self::U32Gte => Instruction::U32Gte,
             Self::U32Min => Instruction::U32Min,
             Self::U32Max => Instruction::U32Max,
+            Self::Breakpoint => Instruction::Breakpoint,
+            Self::DebugStack => Instruction::Debug(DebugOptions::StackAll),
+            Self::DebugStackN(n) => Instruction::Debug(DebugOptions::StackTop(n.into())),
+            Self::DebugMemory => Instruction::Debug(DebugOptions::MemAll),
+            Self::DebugMemoryAt(start) => {
+                Instruction::Debug(DebugOptions::MemInterval(start.into(), u32::MAX.into()))
+            }
+            Self::DebugMemoryRange(start, end) => {
+                Instruction::Debug(DebugOptions::MemInterval(start.into(), end.into()))
+            }
+            Self::DebugFrame => Instruction::Debug(DebugOptions::LocalAll),
+            Self::DebugFrameAt(start) => {
+                Instruction::Debug(DebugOptions::LocalRangeFrom(start.into()))
+            }
+            Self::DebugFrameRange(start, end) => {
+                Instruction::Debug(DebugOptions::LocalInterval(start.into(), end.into()))
+            }
+            Self::Emit(ev) => Instruction::Emit(ev.into()),
+            Self::Trace(ev) => Instruction::Trace(ev.into()),
         };
-        smallvec![Node::Instruction(node)]
+        smallvec![inst]
     }
 }
 
@@ -1276,6 +1777,7 @@ impl fmt::Display for MasmOp {
             Self::Dupw(_) => f.write_str("dupw"),
             Self::Swap(_) => f.write_str("swap"),
             Self::Swapw(_) => f.write_str("swapw"),
+            Self::Swapdw => f.write_str("swapdw"),
             Self::Movup(_) => f.write_str("movup"),
             Self::Movupw(_) => f.write_str("movupw"),
             Self::Movdn(_) => f.write_str("movdn"),
@@ -1293,27 +1795,37 @@ impl fmt::Display for MasmOp {
             Self::AssertEqw => f.write_str("assert_eqw"),
             Self::AssertEqwWithError(code) => write!(f, "assert_eqw.err={code}"),
             Self::LocAddr(_) => f.write_str("locaddr"),
+            Self::LocLoad(_) => f.write_str("loc_load"),
+            Self::LocLoadw(_) => f.write_str("loc_loadw"),
             Self::LocStore(_) => f.write_str("loc_store"),
             Self::LocStorew(_) => f.write_str("loc_storew"),
-            Self::MemLoad
-            | Self::MemLoadOffset
-            | Self::MemLoadImm(_)
-            | Self::MemLoadOffsetImm(..) => f.write_str("mem_load"),
+            Self::MemLoad | Self::MemLoadImm(_) => f.write_str("mem_load"),
             Self::MemLoadw | Self::MemLoadwImm(_) => f.write_str("mem_loadw"),
-            Self::MemStore
-            | Self::MemStoreOffset
-            | Self::MemStoreImm(_)
-            | Self::MemStoreOffsetImm(..) => f.write_str("mem_store"),
+            Self::MemStore | Self::MemStoreImm(_) => f.write_str("mem_store"),
             Self::MemStorew | Self::MemStorewImm(_) => f.write_str("mem_storew"),
             Self::MemStream => f.write_str("mem_stream"),
             Self::AdvPipe => f.write_str("adv_pipe"),
             Self::AdvPush(_) => f.write_str("adv_push"),
             Self::AdvLoadw => f.write_str("adv_loadw"),
+            Self::AdvInjectPushU64Div => f.write_str("adv.push_u64div"),
+            Self::AdvInjectPushMTreeNode => f.write_str("adv.push_mtnode"),
+            Self::AdvInjectPushMapVal | Self::AdvInjectPushMapValImm(_) => {
+                f.write_str("adv.push_mapval")
+            }
+            Self::AdvInjectPushMapValN | Self::AdvInjectPushMapValNImm(_) => {
+                f.write_str("adv.push_mapvaln")
+            }
+            Self::AdvInjectInsertMem => f.write_str("adv.insert_mem"),
+            Self::AdvInjectInsertHperm => f.write_str("adv.insert_hperm"),
+            Self::AdvInjectInsertHdword | Self::AdvInjectInsertHdwordImm(_) => {
+                f.write_str("adv.insert_hdword")
+            }
             Self::If(..) => f.write_str("if.true"),
             Self::While(_) => f.write_str("while.true"),
             Self::Repeat(..) => f.write_str("repeat"),
             Self::Exec(_) => f.write_str("exec"),
             Self::Syscall(_) => f.write_str("syscall"),
+            Self::Call(_) => f.write_str("call"),
             Self::DynExec => f.write_str("dynexec"),
             Self::DynCall => f.write_str("dyncall"),
             Self::ProcRef(_) => f.write_str("procref"),
@@ -1327,7 +1839,8 @@ impl fmt::Display for MasmOp {
             Self::Ilog2 => f.write_str("ilog2"),
             Self::Pow2 => f.write_str("pow2"),
             Self::Exp => f.write_str("exp"),
-            Self::ExpImm(imm) => write!(f, "exp.u{imm}"),
+            Self::ExpImm(imm) => write!(f, "exp.{imm}"),
+            Self::ExpBitLength(imm) => write!(f, "exp.u{imm}"),
             Self::Not => f.write_str("not"),
             Self::And | Self::AndImm(_) => f.write_str("and"),
             Self::Or | Self::OrImm(_) => f.write_str("or"),
@@ -1340,8 +1853,24 @@ impl fmt::Display for MasmOp {
             Self::Lte | Self::LteImm(_) => f.write_str("lte"),
             Self::IsOdd => f.write_str("is_odd"),
             Self::Eqw => f.write_str("eqw"),
+            Self::Ext2add => f.write_str("ext2add"),
+            Self::Ext2sub => f.write_str("ext2sub"),
+            Self::Ext2mul => f.write_str("ext2mul"),
+            Self::Ext2div => f.write_str("ext2div"),
+            Self::Ext2neg => f.write_str("ext2neg"),
+            Self::Ext2inv => f.write_str("ext2inv"),
             Self::Clk => f.write_str("clk"),
             Self::Caller => f.write_str("caller"),
+            Self::Sdepth => f.write_str("sdepth"),
+            Self::Hash => f.write_str("hash"),
+            Self::Hperm => f.write_str("hperm"),
+            Self::Hmerge => f.write_str("hmerge"),
+            Self::MtreeGet => f.write_str("mtree_get"),
+            Self::MtreeSet => f.write_str("mtree_set"),
+            Self::MtreeMerge => f.write_str("mtree_merge"),
+            Self::MtreeVerify => f.write_str("mtree_verify"),
+            Self::FriExt2Fold4 => f.write_str("fri_ext2fold4"),
+            Self::RCombBase => f.write_str("rcomb_base"),
             Self::U32Test => f.write_str("u32test"),
             Self::U32Testw => f.write_str("u32testw"),
             Self::U32Assert => f.write_str("u32assert"),
@@ -1390,6 +1919,16 @@ impl fmt::Display for MasmOp {
             Self::U32Gte => f.write_str("u32gte"),
             Self::U32Min => f.write_str("u32min"),
             Self::U32Max => f.write_str("u32max"),
+            Self::Breakpoint => f.write_str("breakpoint"),
+            Self::DebugStack | Self::DebugStackN(_) => f.write_str("debug.stack"),
+            Self::DebugMemory | Self::DebugMemoryAt(_) | Self::DebugMemoryRange(..) => {
+                f.write_str("debug.mem")
+            }
+            Self::DebugFrame | Self::DebugFrameAt(_) | Self::DebugFrameRange(..) => {
+                f.write_str("debug.local")
+            }
+            Self::Emit(_) => f.write_str("emit"),
+            Self::Trace(_) => f.write_str("trace"),
         }
     }
 }

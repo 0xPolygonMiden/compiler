@@ -1,3 +1,4 @@
+use miden_assembly::{LibraryNamespace, LibraryPath};
 use miden_hir::{
     self as hir,
     pass::{AnalysisManager, ConversionPass, ConversionResult},
@@ -55,7 +56,7 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
-        let mut masm_program = Box::new(masm::Program::from(program.as_ref()));
+        let mut masm_program = Box::new(masm::Program::from_hir(&program));
 
         // Remove the set of modules to compile from the program
         let modules = program.modules_mut().take();
@@ -104,9 +105,30 @@ impl ConversionPass for ConvertHirToMasm<hir::Module> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
+        use miden_assembly::ast::ModuleKind;
         use miden_hir::ProgramAnalysisKey;
 
-        let mut masm_module = Box::new(masm::Module::new(module.name));
+        let kind = if module.is_kernel() {
+            ModuleKind::Kernel
+        } else if module.entrypoint().is_some() {
+            ModuleKind::Executable
+        } else {
+            ModuleKind::Library
+        };
+
+        let name = if module.name.as_str() == LibraryNamespace::EXEC_PATH {
+            assert_eq!(
+                kind,
+                ModuleKind::Executable,
+                "invalid module name '{}': only valid for executable modules",
+                module.name
+            );
+            LibraryPath::from(LibraryNamespace::Exec)
+        } else {
+            LibraryPath::new(&module.name).expect("invalid module name")
+        };
+
+        let mut masm_module = Box::new(masm::Module::new(name, kind));
 
         // Compute import information for this module
         masm_module.imports = module.imports();

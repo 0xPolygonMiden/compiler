@@ -1,7 +1,7 @@
 //! Helper functions and structures for the translation.
 
 use miden_diagnostics::SourceSpan;
-use miden_hir::{AbiParam, CallConv, InstBuilder, Linkage, Signature, Value};
+use miden_hir::{AbiParam, CallConv, Felt, FieldElement, InstBuilder, Linkage, Signature, Value};
 use miden_hir_type::{FunctionType, Type};
 use rustc_hash::FxHasher;
 
@@ -113,7 +113,7 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> WasmResult<Valu
         Type::U32 => builder.ins().u32(0, SourceSpan::default()),
         Type::U64 => builder.ins().u64(0, SourceSpan::default()),
         Type::F64 => builder.ins().f64(0.0, SourceSpan::default()),
-        Type::Felt => builder.ins().felt(0u64.into(), SourceSpan::default()),
+        Type::Felt => builder.ins().felt(Felt::ZERO, SourceSpan::default()),
         Type::I128
         | Type::U128
         | Type::U256

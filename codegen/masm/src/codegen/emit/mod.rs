@@ -87,6 +87,7 @@ pub mod unary;
 
 use core::ops::{Deref, DerefMut};
 
+use miden_assembly::ast::InvokeKind;
 use miden_hir::{self as hir, Immediate, Type};
 
 use super::{Operand, OperandStack};
@@ -199,27 +200,51 @@ impl<'a> OpEmitter<'a> {
         self.stack
     }
 
+    #[inline]
+    fn maybe_register_invoke(&mut self, op: &masm::Op) {
+        match op {
+            Op::Exec(id) => {
+                self.function.register_absolute_invocation_target(InvokeKind::Exec, *id)
+            }
+            Op::Call(id) => {
+                self.function.register_absolute_invocation_target(InvokeKind::Call, *id)
+            }
+            Op::Syscall(id) => {
+                self.function.register_absolute_invocation_target(InvokeKind::SysCall, *id)
+            }
+            _ => (),
+        }
+    }
+
     /// Emit `op` to the current block
     #[inline(always)]
     pub fn emit(&mut self, op: masm::Op) {
+        self.maybe_register_invoke(&op);
         self.current_block().push(op)
     }
 
     /// Emit `n` copies of `op` to the current block
     #[inline(always)]
     pub fn emit_n(&mut self, count: usize, op: masm::Op) {
+        self.maybe_register_invoke(&op);
         self.current_block().push_n(count, op);
     }
 
     /// Emit `ops` to the current block
     #[inline(always)]
     pub fn emit_all(&mut self, ops: &[masm::Op]) {
+        for op in ops {
+            self.maybe_register_invoke(op);
+        }
         self.current_block().extend_from_slice(ops);
     }
 
     /// Emit `n` copies of the sequence `ops` to the current block
     #[inline(always)]
     pub fn emit_repeat(&mut self, count: usize, ops: &[masm::Op]) {
+        for op in ops {
+            self.maybe_register_invoke(op);
+        }
         self.current_block().push_repeat(ops, count);
     }
 
@@ -229,9 +254,14 @@ impl<'a> OpEmitter<'a> {
     where
         F: Fn(usize) -> [Op; N],
     {
+        for op in template(0) {
+            self.maybe_register_invoke(&op);
+        }
+
         let block = self.current_block();
         for n in 0..count {
-            block.extend_from_slice(&template(n));
+            let ops = template(n);
+            block.extend_from_slice(&ops);
         }
     }
 
@@ -952,7 +982,7 @@ mod tests {
         assert_eq!(emitter.stack()[0], Type::I1);
         assert_eq!(emitter.stack()[1], one);
 
-        emitter.assert();
+        emitter.assert(None);
         assert_eq!(emitter.stack_len(), 1);
         assert_eq!(emitter.stack()[0], one);
 
@@ -980,7 +1010,7 @@ mod tests {
         assert_eq!(emitter.stack()[0], Type::I1);
         assert_eq!(emitter.stack()[1], one);
 
-        emitter.assertz();
+        emitter.assertz(None);
         assert_eq!(emitter.stack_len(), 1);
         assert_eq!(emitter.stack()[0], one);
 
@@ -1754,7 +1784,7 @@ mod tests {
         emitter.literal(ten);
         assert_eq!(emitter.stack_len(), 1);
 
-        emitter.assert();
+        emitter.assert(None);
         assert_eq!(emitter.stack_len(), 0);
     }
 
@@ -1770,7 +1800,7 @@ mod tests {
         emitter.literal(ten);
         assert_eq!(emitter.stack_len(), 1);
 
-        emitter.assertz();
+        emitter.assertz(None);
         assert_eq!(emitter.stack_len(), 0);
     }
 

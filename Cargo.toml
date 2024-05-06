@@ -46,6 +46,7 @@ Inflector = "0.11"
 intrusive-collections = "0.9"
 inventory = "0.3"
 log = "0.4"
+miette = { version = "7.1.0", git = "https://github.com/bitwalker/miette", branch = "no-std" }
 paste = "1.0"
 parking_lot = "0.12"
 parking_lot_core = "0.9"
@@ -59,15 +60,15 @@ smallvec = { version = "1.9", features = [
     "const_new",
 ] }
 smallstr = { version = "0.3", features = ["union"] }
-thiserror = "1.0"
+thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
 toml = { version = "0.5", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.1"
-# 211152c631d16a943aae503466b198b93c61150f is latest (as of Jan 25th) commit in the next branch
-miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
-miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
-miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
-miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "211152c631d16a943aae503466b198b93c61150f" }
+# 356ba87d is the latest commit in 'next' that includes the assembler refactoring
+miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0797c307205b6f090cb52e8b5fd7623316ecde40" }
+miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0797c307205b6f090cb52e8b5fd7623316ecde40" }
+miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0797c307205b6f090cb52e8b5fd7623316ecde40" }
+miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0797c307205b6f090cb52e8b5fd7623316ecde40" }
 miden-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 miden-hir = { path = "hir" }
@@ -83,6 +84,10 @@ midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
 wat = "1.0.69"
+
+[patch.crates-io]
+thiserror = { git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
+miette = { git = "https://github.com/bitwalker/miette", branch = "no-std" }
 
 [profile.dev]
 lto = false

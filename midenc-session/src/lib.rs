@@ -191,7 +191,7 @@ impl Session {
         let default_filename = self.filename_for_input(outputs, progname);
         let out_filename = outputs
             .outputs
-            .get(&OutputType::Masl)
+            .get(&OutputType::Mast)
             .and_then(|s| s.to_owned())
             .or_else(|| outputs.out_file.clone())
             .unwrap_or(default_filename);
@@ -206,15 +206,15 @@ impl Session {
     pub fn filename_for_input(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
         match self.project_type {
             ProjectType::Program => {
-                let out_filename = outputs.path(OutputType::Masl);
+                let out_filename = outputs.path(OutputType::Mast);
                 if let OutputFile::Real(ref path) = out_filename {
-                    OutputFile::Real(path.with_extension(OutputType::Masl.extension()))
+                    OutputFile::Real(path.with_extension(OutputType::Mast.extension()))
                 } else {
                     out_filename
                 }
             }
             ProjectType::Library => OutputFile::Real(
-                outputs.out_dir.join(format!("{progname}.{}", OutputType::Masl.extension())),
+                outputs.out_dir.join(format!("{progname}.{}", OutputType::Mast.extension())),
             ),
         }
     }

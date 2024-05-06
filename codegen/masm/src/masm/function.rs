@@ -1,10 +1,10 @@
-use std::{fmt, sync::Arc};
+use std::{collections::BTreeSet, fmt, sync::Arc};
 
 use cranelift_entity::EntityRef;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListAtomicLink};
+use miden_assembly::ast;
 use miden_diagnostics::{SourceSpan, Spanned};
-use miden_hir::{AttributeSet, FunctionIdent, Ident, Signature, Type};
-use rustc_hash::FxHashMap;
+use miden_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
 use smallvec::SmallVec;
 
 use super::*;
@@ -26,6 +26,8 @@ pub struct Function {
     pub signature: Signature,
     /// The [Region] which forms the body of this function
     pub body: Region,
+    /// The set of procedures invoked from the body of this function
+    invoked: BTreeSet<ast::Invoke>,
     /// Locals allocated for this function
     locals: SmallVec<[Local; 1]>,
     /// The next available local index
@@ -40,6 +42,7 @@ impl Function {
             name,
             signature,
             body: Default::default(),
+            invoked: Default::default(),
             locals: Default::default(),
             next_local_id: 0,
         }
@@ -93,6 +96,16 @@ impl Function {
         self.locals.as_slice()
     }
 
+    /// Get a reference to the entry block for this function
+    pub fn body(&self) -> &Block {
+        self.body.block(self.body.body)
+    }
+
+    /// Get a mutable reference to the entry block for this function
+    pub fn body_mut(&mut self) -> &mut Block {
+        self.body.block_mut(self.body.body)
+    }
+
     /// Allocate a new code block in this function
     #[inline(always)]
     pub fn create_block(&mut self) -> BlockId {
@@ -111,6 +124,33 @@ impl Function {
         self.body.block_mut(id)
     }
 
+    pub fn invoked(&self) -> impl Iterator<Item = &ast::Invoke> + '_ {
+        self.invoked.iter()
+    }
+
+    pub fn register_invoked(&mut self, kind: ast::InvokeKind, target: ast::InvocationTarget) {
+        self.invoked.insert(ast::Invoke { kind, target });
+    }
+
+    #[inline(never)]
+    pub fn register_absolute_invocation_target(
+        &mut self,
+        kind: ast::InvokeKind,
+        target: FunctionIdent,
+    ) {
+        let path = miden_assembly::LibraryPath::new(target.module.as_str())
+            .expect("invalid procedure path");
+        let name_span = miden_assembly::SourceSpan::new(
+            target.function.span.start_index().0..target.function.span.end_index().0,
+        );
+        let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+            name_span,
+            Arc::from(target.function.as_str().to_string().into_boxed_str()),
+        ));
+        let name = ast::ProcedureName::new_unchecked(id);
+        self.register_invoked(kind, ast::InvocationTarget::AbsoluteProcedurePath { name, path });
+    }
+
     /// Return an implementation of [std::fmt::Display] for this function
     pub fn display<'a, 'b: 'a>(&'b self, imports: &'b ModuleImportInfo) -> DisplayMasmFunction<'a> {
         DisplayMasmFunction {
@@ -119,66 +159,77 @@ impl Function {
         }
     }
 
-    pub fn from_procedure_ast(
-        module: Ident,
-        proc: &miden_assembly::ast::ProcedureAst,
-        locals: &[FunctionIdent],
-        imported: &miden_assembly::ast::ModuleImports,
-    ) -> Box<Self> {
+    pub fn from_ast(module: Ident, proc: &ast::Procedure) -> Box<Self> {
         use miden_hir::{Linkage, Symbol};
+
         let id = FunctionIdent {
             module,
-            function: Ident::with_empty_span(Symbol::intern(proc.name.as_ref())),
+            function: Ident::with_empty_span(Symbol::intern(AsRef::<str>::as_ref(proc.name()))),
         };
+
         let mut signature = Signature::new(vec![], vec![]);
-        if !proc.is_export {
+        let visibility = proc.visibility();
+        if !visibility.is_exported() {
             signature.linkage = Linkage::Internal;
+        } else if visibility.is_syscall() {
+            signature.cc = miden_hir::CallConv::Kernel;
         }
+
         let mut function = Box::new(Self::new(id, signature));
-        if proc.name.is_main() {
+        if proc.is_entrypoint() {
             function.attrs.set(miden_hir::attributes::ENTRYPOINT);
         }
-        for _ in 0..proc.num_locals {
+
+        for _ in 0..proc.num_locals() {
             function.alloc_local(Type::Felt);
         }
 
-        function.body = Region::from_code_body(&proc.body, locals, imported);
+        function.invoked.extend(proc.invoked().cloned());
+        function.body = Region::from_block(module, &proc.body());
 
         function
     }
 
-    pub fn to_function_ast(
+    pub fn to_ast(
         &self,
         codemap: &miden_diagnostics::CodeMap,
         imports: &miden_hir::ModuleImportInfo,
-        local_ids: &FxHashMap<FunctionIdent, u16>,
-        proc_ids: &FxHashMap<FunctionIdent, miden_assembly::ProcedureId>,
-    ) -> miden_assembly::ast::ProcedureAst {
-        use miden_assembly::{
-            self as masm,
-            ast::{ProcedureAst, SourceLocation},
+        locals: &BTreeSet<FunctionIdent>,
+    ) -> ast::Procedure {
+        let visibility = if self.signature.is_kernel() {
+            ast::Visibility::Syscall
+        } else if self.signature.is_public() {
+            ast::Visibility::Public
+        } else {
+            ast::Visibility::Private
         };
+        let source_id = self.span.source_id();
+        let span =
+            miden_assembly::SourceSpan::new(self.span.start_index().0..self.span.end_index().0);
+        let source_file = codemap.get(source_id).ok().map(|sf| {
+            let nf = miden_assembly::diagnostics::SourceFile::new(
+                sf.name().as_str().unwrap(),
+                sf.source().to_string(),
+            );
+            Arc::new(nf)
+        });
 
-        let name = masm::ProcedureName::try_from(self.name.function.as_str())
-            .expect("invalid function name");
+        let name_span = miden_assembly::SourceSpan::new(
+            self.name.function.span.start_index().0..self.name.function.span.end_index().0,
+        );
+        let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+            name_span,
+            Arc::from(self.name.function.as_str().to_string().into_boxed_str()),
+        ));
+        let name = ast::ProcedureName::new_unchecked(id);
+
+        let body = self.body.to_block(codemap, imports, locals);
+
         let num_locals = u16::try_from(self.locals.len()).expect("too many locals");
-        let start = codemap
-            .location(self)
-            .ok()
-            .map(|loc| {
-                SourceLocation::new(loc.line.to_usize() as u32, loc.column.to_usize() as u32)
-            })
-            .unwrap_or_default();
-        let body = self.body.to_code_body(codemap, imports, local_ids, proc_ids);
-
-        ProcedureAst {
-            name,
-            docs: None,
-            num_locals,
-            body,
-            start,
-            is_export: self.signature.is_public(),
-        }
+        let mut proc = ast::Procedure::new(span, visibility, name, num_locals, body)
+            .with_source_file(source_file);
+        proc.extend_invoked(self.invoked().cloned());
+        proc
     }
 }
 
@@ -199,26 +250,29 @@ pub struct DisplayMasmFunction<'a> {
     function: &'a Function,
     imports: &'a ModuleImportInfo,
 }
-impl<'a> fmt::Display for DisplayMasmFunction<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let visibility = if self.function.signature.is_public() {
-            "export"
+impl<'a> miden_hir::formatter::PrettyPrint for DisplayMasmFunction<'a> {
+    fn render(&self) -> miden_hir::formatter::Document {
+        use miden_hir::formatter::*;
+
+        let visibility = if self.function.signature.is_kernel() {
+            ast::Visibility::Syscall
+        } else if self.function.signature.is_public() {
+            ast::Visibility::Public
         } else {
-            "proc"
+            ast::Visibility::Private
         };
-        let name = self.function.name;
-        match self.function.locals.len() {
-            0 => {
-                writeln!(f, "{visibility}.{}", &name.function.as_str())?;
-            }
-            n => {
-                writeln!(f, "{visibility}.{}.{}", &name.function.as_str(), n)?;
-            }
+        let mut doc = display(visibility) + const_text(".") + display(self.function.name);
+        if self.function.locals.len() > 0 {
+            doc += const_text(".") + display(self.function.locals.len());
         }
 
-        writeln!(f, "{}", self.function.body.display(Some(self.function.name), self.imports, 1))?;
-
-        f.write_str("end")
+        let body = self.function.body.display(Some(self.function.name), self.imports);
+        doc + indent(4, nl() + body.render()) + nl() + const_text("end") + nl() + nl()
+    }
+}
+impl<'a> fmt::Display for DisplayMasmFunction<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.pretty_print(f)
     }
 }
 
