@@ -9,21 +9,21 @@ use std::{
     sync::Arc,
 };
 
-use miden_assembly::Assembler;
-use miden_codegen_masm::MasmCompiler;
+use miden_assembly::{ast::ModuleKind, Assembler, LibraryPath};
+use miden_codegen_masm::{Function, MasmCompiler, Module};
 use miden_diagnostics::{
     term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
     Emitter, NullEmitter, SourceSpan, Verbosity,
 };
-use miden_frontend_wasm::{
-    translate_component, translate_module, translate_module_as_component, WasmTranslationConfig,
-};
+use miden_frontend_wasm::{translate, WasmTranslationConfig};
 use miden_hir::{
     pass::{AnalysisManager, RewritePass, RewriteSet},
-    FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Symbol,
+    FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Signature, Symbol,
 };
 use miden_stdlib::StdLibrary;
-use midenc_session::{InputFile, Session};
+use midenc_session::{
+    InputFile, InputType, Options, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session,
+};
 
 use crate::cargo_proj::project;
 
@@ -91,13 +91,11 @@ pub struct CompilerTest {
     /// The Wasm translation configuration
     pub config: WasmTranslationConfig,
     /// The compiler session
-    pub session: Session,
+    pub session: Arc<Session>,
     /// The source code used to compile the test
     pub source: CompilerTestSource,
     /// The entrypoint function to use when building the IR
     entrypoint: Option<FunctionIdent>,
-    /// The compiled Wasm component/module
-    pub wasm_bytes: Vec<u8>,
     /// The compiled IR
     pub hir: Option<HirArtifact>,
     /// The compiled MASM
@@ -159,12 +157,12 @@ impl CompilerTest {
         assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
         let wasm_comp_path = &wasm_artifacts.first().unwrap();
         let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
+        let input_file = InputFile::from_path(wasm_comp_path).unwrap();
         Self {
             config,
-            session: default_session(),
+            session: default_session(input_file),
             source: CompilerTestSource::RustCargoComponent { artifact_name },
             entrypoint: None,
-            wasm_bytes: fs::read(wasm_artifacts.first().unwrap()).unwrap(),
             hir: None,
             ir_masm: None,
         }
@@ -233,20 +231,20 @@ impl CompilerTest {
         assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
         let wasm_comp_path = &wasm_artifacts.first().unwrap();
         let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
-        // dbg!(&artifact_name);
+        dbg!(&artifact_name);
         let entrypoint = entry_func_name.map(|func_name| FunctionIdent {
             module: Ident::new(Symbol::intern(artifact_name.clone()), SourceSpan::default()),
             function: Ident::new(Symbol::intern(func_name.to_string()), SourceSpan::default()),
         });
+        let input_file = InputFile::from_path(wasm_artifacts.first().unwrap()).unwrap();
         Self {
             config: WasmTranslationConfig {
                 override_name: Some(artifact_name.to_string().into()),
                 ..Default::default()
             },
-            session: default_session(),
+            session: default_session(input_file),
             source: CompilerTestSource::RustCargoLib { artifact_name },
             entrypoint,
-            wasm_bytes: fs::read(wasm_artifacts.first().unwrap()).unwrap(),
             hir: None,
             ir_masm: None,
         }
@@ -292,12 +290,13 @@ impl CompilerTest {
             .join(artifact_name)
             .with_extension("wasm");
         // dbg!(&target_bin_file_path);
-        let mut target_bin_file = fs::File::open(target_bin_file_path).unwrap();
-        let mut wasm_bytes = vec![];
-        Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
-        fs::remove_dir_all(target_dir).unwrap();
+        // let mut target_bin_file = fs::File::open(target_bin_file_path).unwrap();
+        // let mut wasm_bytes = vec![];
+        // Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
+        // fs::remove_dir_all(target_dir).unwrap();
 
-        let session = default_session();
+        let input_file = InputFile::from_path(target_bin_file_path).unwrap();
+        let session = default_session(input_file);
         let entrypoint = FunctionIdent {
             module: Ident::new(Symbol::intern(artifact_name), SourceSpan::default()),
             function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
@@ -312,7 +311,6 @@ impl CompilerTest {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name: artifact_name.to_string(),
             },
-            wasm_bytes,
             entrypoint: Some(entrypoint),
             hir: None,
             ir_masm: None,
@@ -321,8 +319,8 @@ impl CompilerTest {
 
     /// Set the Rust source code to compile
     pub fn rust_source_program(rust_source: &str) -> Self {
-        let wasm_bytes = compile_rust_file(rust_source);
-        let session = default_session();
+        let wasm_file = compile_rust_file(rust_source);
+        let session = default_session(wasm_file);
         CompilerTest {
             config: WasmTranslationConfig {
                 override_name: Some("noname".into()),
@@ -330,7 +328,6 @@ impl CompilerTest {
             },
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
-            wasm_bytes,
             entrypoint: None,
             hir: None,
             ir_masm: None,
@@ -354,8 +351,8 @@ impl CompilerTest {
             "#,
             rust_source
         );
-        let wasm_bytes = compile_rust_file(&rust_source);
-        let session = default_session();
+        let wasm_file = compile_rust_file(&rust_source);
+        let session = default_session(wasm_file);
         let entrypoint = FunctionIdent {
             module: Ident {
                 name: Symbol::intern("noname"),
@@ -374,7 +371,6 @@ impl CompilerTest {
             },
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
-            wasm_bytes,
             entrypoint: Some(entrypoint),
             hir: None,
             ir_masm: None,
@@ -447,8 +443,8 @@ impl CompilerTest {
 
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&self, expected_wat_file: expect_test::ExpectFile) {
-        let wasm_bytes = self.wasm_bytes.as_ref();
-        let wat = demangle(&wasm_to_wat(wasm_bytes));
+        let wasm_bytes = self.wasm_bytes();
+        let wat = demangle(&wasm_to_wat(&wasm_bytes));
         expected_wat_file.assert_eq(&wat);
     }
 
@@ -456,27 +452,25 @@ impl CompilerTest {
         use miden_hir_transform as transforms;
         match &self.source {
             CompilerTestSource::RustCargoComponent { .. } => {
-                // Wasm component is expectedAA
+                // Wasm component is expected
                 let ir_component =
-                    translate_component(&self.wasm_bytes, &self.config, &self.session.diagnostics)
+                    translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
                         .expect("Failed to translate Wasm to IR component");
                 Box::new(ir_component).into()
             }
             CompilerTestSource::RustCargoLib { .. } => {
                 // Wasm module compiled as a module
-                let ir_component = translate_module_as_component(
-                    &self.wasm_bytes,
-                    &self.config,
-                    &self.session.diagnostics,
-                )
-                .expect("Failed to translate Wasm module to IR component");
+                let ir_component =
+                    translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
+                        .expect("Failed to translate Wasm module to IR component");
                 Box::new(ir_component).into()
             }
             _ => {
                 // Wasm module compiled as a program
                 let mut ir_module =
-                    translate_module(&self.wasm_bytes, &self.config, &self.session.diagnostics)
-                        .expect("Failed to translate Wasm to IR module");
+                    translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
+                        .expect("Failed to translate Wasm to IR module")
+                        .unwrap_one_module();
 
                 let mut analyses = AnalysisManager::new();
                 let mut rewrites = RewriteSet::default();
@@ -487,9 +481,8 @@ impl CompilerTest {
                     .apply(&mut ir_module, &mut analyses, &self.session)
                     .expect("Failed to apply rewrites");
 
-                let mut builder = ProgramBuilder::new(&self.session.diagnostics)
-                    .with_module(Box::new(ir_module))
-                    .unwrap();
+                let mut builder =
+                    ProgramBuilder::new(&self.session.diagnostics).with_module(ir_module).unwrap();
                 if let Some(entrypoint) = self.entrypoint.as_ref() {
                     builder = builder.with_entrypoint(entrypoint.clone());
                 }
@@ -578,17 +571,7 @@ impl CompilerTest {
                 self.hir.take().or_else(|| Some(self.wasm_to_ir())).expect("IR is not compiled");
             let ir_masm = match hir {
                 HirArtifact::Program(hir_program) => compiler.compile(hir_program).unwrap(),
-                HirArtifact::Component(hir_component) => {
-                    let ir_module = hir_component.to_modules().drain(..).next().unwrap().1;
-                    let mut builder = ProgramBuilder::new(&self.session.diagnostics)
-                        .with_module(ir_module)
-                        .unwrap();
-                    if let Some(entrypoint) = self.entrypoint.as_ref() {
-                        builder = builder.with_entrypoint(entrypoint.clone());
-                    }
-                    let hir_program = builder.link().expect("Failed to link IR program");
-                    compiler.compile(hir_program).unwrap()
-                }
+                HirArtifact::Component(_) => self.compile_wasm_to_masm_program(),
                 HirArtifact::Module(_) => {
                     todo!("Module to MASM compilation is not implemented yet")
                 }
@@ -597,6 +580,44 @@ impl CompilerTest {
             self.ir_masm = Some(frozen);
         }
         self.ir_masm.clone().unwrap()
+    }
+
+    /// The compiled Wasm component/module
+    fn wasm_bytes(&self) -> Vec<u8> {
+        match &self.session.input.file {
+            InputType::Real(file_path) => fs::read(file_path).unwrap(),
+            InputType::Stdin { name: _, input } => input.clone(),
+        }
+    }
+
+    fn compile_wasm_to_masm_program(&self) -> Box<miden_codegen_masm::Program> {
+        match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
+            midenc_compile::Compiled::Program(p) => p,
+            midenc_compile::Compiled::Modules(modules) => {
+                assert_eq!(modules.len(), 1, "Expected one module");
+                let mut program = miden_codegen_masm::Program::empty();
+                for module in modules.into_iter() {
+                    program.insert(module);
+                }
+                if let Some(entrypoint) = self.entrypoint {
+                    // Start module name with "zzz_" to ensure it is the last module in the program
+                    // due to the RBTree ordering (used to store modules of a program)
+                    let module_name = "zzz_entrypoint_module";
+                    let func_name = format!("{module_name}::entrypoint_wrapper");
+                    let mut entrypoint_function =
+                        Function::new(func_name.parse().unwrap(), Signature::new(vec![], vec![]));
+                    entrypoint_function.attrs.set(miden_hir::attributes::ENTRYPOINT);
+                    let body = entrypoint_function.block_mut(entrypoint_function.body.id());
+                    body.push(miden_hir::MasmOp::Exec(entrypoint));
+                    let mut module =
+                        Module::new(LibraryPath::new(&module_name).unwrap(), ModuleKind::Library);
+                    module.push_back(Box::new(entrypoint_function));
+                    module.imports.add(entrypoint);
+                    program.insert(Box::new(module));
+                }
+                program.into()
+            }
+        }
     }
 }
 
@@ -656,7 +677,7 @@ fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
     let wat = wasm_printer.print(wasm_bytes.as_ref()).unwrap();
     wat
 }
-fn compile_rust_file(rust_source: &str) -> Vec<u8> {
+fn compile_rust_file(rust_source: &str) -> InputFile {
     let rustc_opts = [
         "-C",
         "opt-level=z", // optimize for size
@@ -685,9 +706,7 @@ fn compile_rust_file(rust_source: &str) -> Vec<u8> {
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         panic!("Rust to Wasm compilation failed!");
     }
-    let wasm = fs::read(&output_file).unwrap();
-    fs::remove_dir_all(proj_dir).unwrap();
-    return wasm;
+    InputFile::from_path(output_file).unwrap()
 }
 
 fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
@@ -713,17 +732,16 @@ fn make_diagnostics() -> DiagnosticsHandler {
 }
 
 /// Create a default session for testing
-pub fn default_session() -> Session {
-    let session = Session::new(
-        Default::default(),
-        InputFile::from_path("test.hir").unwrap(),
-        None,
-        None,
-        None,
-        Default::default(),
-        None,
-    );
-    session
+pub fn default_session(input_file: InputFile) -> Arc<Session> {
+    let output_type = OutputType::Masm;
+    let output_types = OutputTypes::new(vec![OutputTypeSpec {
+        output_type,
+        path: None,
+    }]);
+    let options = Options::default().with_output_types(output_types);
+    let session = Session::new(Default::default(), input_file, None, None, None, options, None)
+        .with_project_type(ProjectType::Library);
+    Arc::new(session)
 }
 
 fn hash_string(inputs: &str) -> String {

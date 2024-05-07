@@ -175,6 +175,12 @@ impl Component {
     pub fn exports(&self) -> &BTreeMap<FunctionExportName, ComponentExport> {
         &self.exports
     }
+
+    /// Extracts the single module from this component, panicking if there is not exactly one.
+    pub fn unwrap_one_module(self) -> Box<Module> {
+        assert_eq!(self.modules.len(), 1, "Expected exactly one module in the component");
+        self.to_modules().drain(..).next().unwrap().1
+    }
 }
 
 impl fmt::Display for Component {

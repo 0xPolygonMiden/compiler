@@ -3,7 +3,7 @@ use core::fmt::Write;
 use expect_test::expect;
 use miden_hir::Ident;
 
-use crate::{test_utils::test_diagnostics, translate_module, WasmTranslationConfig};
+use crate::{test_utils::test_diagnostics, translate, WasmTranslationConfig};
 
 /// Check IR generated for a Wasm op(s).
 /// Wrap Wasm ops in a function and check the IR generated for the entry block of that function.
@@ -19,7 +19,9 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
     );
     let wasm = wat::parse_str(wat).unwrap();
     let diagnostics = test_diagnostics();
-    let module = translate_module(&wasm, &WasmTranslationConfig::default(), &diagnostics).unwrap();
+    let module = translate(&wasm, &WasmTranslationConfig::default(), &diagnostics)
+        .unwrap()
+        .unwrap_one_module();
     let func = module.function(Ident::from("test_wrapper")).unwrap();
     // let fref = module.get_funcref_by_name("test_wrapper").unwrap();
     // let func = module.get_function(fref).unwrap();

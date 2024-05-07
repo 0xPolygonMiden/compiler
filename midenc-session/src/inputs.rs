@@ -53,10 +53,14 @@ impl InputFile {
 
         let mut input = Vec::with_capacity(1024);
         std::io::stdin().read_to_end(&mut input)?;
-        let file_type = FileType::detect(&input)?;
+        Self::from_bytes(input, name)
+    }
+
+    pub fn from_bytes(bytes: Vec<u8>, name: FileName) -> Result<Self, InvalidInputError> {
+        let file_type = FileType::detect(&bytes)?;
         match file_type {
             FileType::Hir | FileType::Wasm | FileType::Wat => Ok(Self {
-                file: InputType::Stdin { name, input },
+                file: InputType::Stdin { name, input: bytes },
                 file_type,
             }),
             // We do not yet have frontends for these file types
