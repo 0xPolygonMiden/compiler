@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use cranelift_entity::SecondaryMap;
+use hir::Type;
 use miden_hir::{self as hir, adt::SparseMap, assert_matches};
 use miden_hir_analysis::{
     DominatorTree, GlobalVariableLayout, LivenessAnalysis, Loop, LoopAnalysis,
@@ -431,6 +432,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             hir::GlobalValueData::IAddImm { .. } | hir::GlobalValueData::Symbol { .. } => {
                 let mut emitter = self.inst_emitter(inst_info.inst);
                 emitter.stack_mut().push(addr);
+                emitter.inttoptr(&Type::Ptr(Type::U8.into()));
             }
         }
     }
