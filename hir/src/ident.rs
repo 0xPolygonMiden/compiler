@@ -129,6 +129,12 @@ impl Ident {
         })
     }
 }
+impl AsRef<str> for Ident {
+    #[inline(always)]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
 impl alloc::borrow::Borrow<Symbol> for Ident {
     #[inline]
     fn borrow(&self) -> &Symbol {

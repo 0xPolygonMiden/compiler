@@ -3,7 +3,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use crate::{Felt, FieldElement, StarkField, Type};
+use crate::{Felt, FieldElement, Type};
 
 /// This trait is used to represent the basic plumbing of the operand stack in
 /// Miden Assembly.
@@ -35,7 +35,7 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
 
     /// Display this stack using its debugging representation
     fn debug(&self) -> DebugStack<Self> {
-        DebugStack(self)
+        DebugStack::new(self)
     }
 
     /// Returns true if the operand stack is empty
@@ -217,6 +217,12 @@ pub trait Stack: IndexMut<usize, Output = <Self as Stack>::Element> {
             let b = end - offset - index;
             stack.swap(a, b);
         }
+    }
+
+    /// Swaps the top two and bottom two words on the stack.
+    fn swapdw(&mut self) {
+        let stack = self.stack_mut();
+        stack.rotate_left(8);
     }
 
     /// Moves the `n`th value to the top of the stack
@@ -439,7 +445,20 @@ impl<T: StackElement> IndexMut<usize> for OperandStack<T> {
 }
 
 #[doc(hidden)]
-pub struct DebugStack<'a, T: ?Sized + Stack>(&'a T);
+pub struct DebugStack<'a, T: ?Sized + Stack> {
+    stack: &'a T,
+    limit: Option<usize>,
+}
+impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> DebugStack<'a, T> {
+    pub fn new(stack: &'a T) -> Self {
+        Self { stack, limit: None }
+    }
+
+    pub fn take(mut self, n: usize) -> Self {
+        self.limit = Some(n);
+        self
+    }
+}
 impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> fmt::Debug for DebugStack<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         #[allow(unused)]
@@ -458,11 +477,12 @@ impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> fmt::Debug for DebugSt
 
         f.debug_list()
             .entries(
-                self.0
+                self.stack
                     .stack()
                     .iter()
                     .rev()
                     .enumerate()
+                    .take(self.limit.unwrap_or(self.stack.len()))
                     .map(|(index, value)| StackEntry { index, value }),
             )
             .finish()

@@ -11,15 +11,15 @@ use clap::ValueEnum;
 /// This enum represents the type of outputs the compiler can produce
 #[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum OutputType {
-    /// The compiler will emit the abstract syntax tree of the input, if applicable
+    /// The compiler will emit the parse tree of the input, if applicable
     Ast,
     /// The compiler will emit Miden IR
     Hir,
     /// The compiler will emit Miden Assembly
     Masm,
-    /// The compiler will emit a Miden Assembly program or library
+    /// The compiler will emit binary MAST (Miden Abstract Syntax Tree)
     #[default]
-    Masl,
+    Mast,
 }
 impl OutputType {
     pub fn extension(&self) -> &'static str {
@@ -27,12 +27,12 @@ impl OutputType {
             Self::Ast => "ast",
             Self::Hir => "hir",
             Self::Masm => "masm",
-            Self::Masl => "masl",
+            Self::Mast => "mast",
         }
     }
 
     pub fn shorthand_display() -> String {
-        format!("`{}`, `{}`, `{}`, `{}`", Self::Ast, Self::Hir, Self::Masm, Self::Masl,)
+        format!("`{}`, `{}`, `{}`, `{}`", Self::Ast, Self::Hir, Self::Masm, Self::Mast,)
     }
 }
 impl fmt::Display for OutputType {
@@ -41,7 +41,7 @@ impl fmt::Display for OutputType {
             Self::Ast => f.write_str("ast"),
             Self::Hir => f.write_str("hir"),
             Self::Masm => f.write_str("masm"),
-            Self::Masl => f.write_str("masl"),
+            Self::Mast => f.write_str("mast"),
         }
     }
 }
@@ -53,7 +53,7 @@ impl FromStr for OutputType {
             "ast" => Ok(Self::Ast),
             "hir" => Ok(Self::Hir),
             "masm" => Ok(Self::Masm),
-            "masl" => Ok(Self::Masl),
+            "mast" => Ok(Self::Mast),
             _ => Err(()),
         }
     }
@@ -244,11 +244,11 @@ impl OutputTypes {
     }
 
     pub fn should_codegen(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
+        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Mast))
     }
 
     pub fn should_link(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Masl))
+        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Mast))
     }
 }
 

@@ -4,12 +4,12 @@ use super::Type;
 
 /// A strongly typed identifier for referencing locals associated with a function
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LocalId(u8);
+pub struct LocalId(u16);
 impl LocalId {
-    /// Create a new instance from a `u32`.
+    /// Create a new instance from a `u16`.
     #[inline]
-    pub fn from_u8(x: u8) -> Self {
-        debug_assert!(x < u8::MAX, "invalid raw local id");
+    pub fn from_u16(x: u16) -> Self {
+        debug_assert!(x < u16::MAX, "invalid raw local id");
         Self(x)
     }
 
@@ -22,8 +22,8 @@ impl LocalId {
 impl cranelift_entity::EntityRef for LocalId {
     #[inline]
     fn new(index: usize) -> Self {
-        debug_assert!(index < (u8::MAX as usize));
-        Self(index as u8)
+        debug_assert!(index < (u16::MAX as usize));
+        Self(index as u16)
     }
 
     #[inline]
@@ -34,12 +34,12 @@ impl cranelift_entity::EntityRef for LocalId {
 impl cranelift_entity::packed_option::ReservedValue for LocalId {
     #[inline]
     fn reserved_value() -> LocalId {
-        Self(u8::MAX)
+        Self(u16::MAX)
     }
 
     #[inline]
     fn is_reserved_value(&self) -> bool {
-        self.0 == u8::MAX
+        self.0 == u16::MAX
     }
 }
 impl fmt::Display for LocalId {
@@ -50,6 +50,18 @@ impl fmt::Display for LocalId {
 impl fmt::Debug for LocalId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
+    }
+}
+impl From<LocalId> for u16 {
+    #[inline(always)]
+    fn from(id: LocalId) -> Self {
+        id.0
+    }
+}
+impl From<LocalId> for miden_assembly::ast::Immediate<u16> {
+    #[inline(always)]
+    fn from(id: LocalId) -> Self {
+        miden_assembly::ast::Immediate::Value(miden_assembly::Span::unknown(id.0))
     }
 }
 

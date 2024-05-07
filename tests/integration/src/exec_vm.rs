@@ -9,7 +9,7 @@ use crate::felt_conversion::TestFelt;
 pub fn execute_vm(program: &Program, args: &[Felt]) -> Vec<TestFelt> {
     // Reverse the arguments to counteract the StackInputs::new() reversing them into a stack
     let args_reversed = args.into_iter().copied().rev().collect();
-    let stack_inputs = StackInputs::new(args_reversed);
+    let stack_inputs = StackInputs::new(args_reversed).expect("invalid stack inputs");
     let trace = miden_processor::execute(
         program,
         stack_inputs,

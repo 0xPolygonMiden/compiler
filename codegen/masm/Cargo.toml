@@ -17,6 +17,7 @@ intrusive-collections.workspace = true
 inventory.workspace = true
 log.workspace = true
 miden-assembly.workspace = true
+miden-core.workspace = true
 miden-diagnostics.workspace = true
 miden-hir.workspace = true
 miden-hir-analysis.workspace = true

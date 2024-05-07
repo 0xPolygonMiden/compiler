@@ -13,7 +13,7 @@ pub use self::{
     function::{FrozenFunctionList, Function, FunctionList},
     module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree},
     program::Program,
-    region::{Begin, Region},
+    region::Region,
 };
 
 /// This represents a descriptor for a pointer translated from the IR into a form suitable for

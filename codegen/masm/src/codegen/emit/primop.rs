@@ -7,8 +7,9 @@ impl<'a> OpEmitter<'a> {
     /// Assert that an integer value on the stack has the value 1
     ///
     /// This operation consumes the input value.
-    pub fn assert(&mut self) {
+    pub fn assert(&mut self, code: Option<u32>) {
         let arg = self.stack.pop().expect("operand stack is empty");
+        let code = code.unwrap_or_default();
         match arg.ty() {
             Type::Felt
             | Type::U32
@@ -18,13 +19,18 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => {
-                self.emit(Op::Assert);
+                self.emit(Op::AssertWithError(code));
             }
             Type::I128 => {
-                self.emit_all(&[Op::Assertz, Op::Assertz, Op::Assertz, Op::Assert]);
+                self.emit_all(&[
+                    Op::AssertzWithError(code),
+                    Op::AssertzWithError(code),
+                    Op::AssertzWithError(code),
+                    Op::AssertWithError(code),
+                ]);
             }
             Type::U64 | Type::I64 => {
-                self.emit_all(&[Op::Assertz, Op::Assert]);
+                self.emit_all(&[Op::AssertzWithError(code), Op::AssertWithError(code)]);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assert: expected integer, got {ty}")
@@ -36,8 +42,9 @@ impl<'a> OpEmitter<'a> {
     /// Assert that an integer value on the stack has the value 0
     ///
     /// This operation consumes the input value.
-    pub fn assertz(&mut self) {
+    pub fn assertz(&mut self, code: Option<u32>) {
         let arg = self.stack.pop().expect("operand stack is empty");
+        let code = code.unwrap_or_default();
         match arg.ty() {
             Type::Felt
             | Type::U32
@@ -47,10 +54,10 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => {
-                self.emit(Op::Assertz);
+                self.emit(Op::AssertzWithError(code));
             }
             ty @ (Type::I128 | Type::U64 | Type::I64) => {
-                self.emit_n(ty.size_in_bits() / 32, Op::Assertz);
+                self.emit_n(ty.size_in_bits() / 32, Op::AssertzWithError(code));
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assertz: expected integer, got {ty}")

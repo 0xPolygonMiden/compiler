@@ -616,6 +616,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     }
                 }
                 wasmparser::Name::Module { name, .. } => {
+                    let name = name.strip_suffix(".wasm").unwrap_or(name);
                     self.result.module.name_section.module_name = Some(Ident::from(name));
                 }
                 wasmparser::Name::Local(reader) => {

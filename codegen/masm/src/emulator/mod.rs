@@ -5,9 +5,8 @@ mod functions;
 
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
-use miden_hir::{
-    assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack, StarkField,
-};
+use miden_assembly::{ast::ProcedureName, LibraryNamespace};
+use miden_hir::{assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use self::functions::{Activation, Stub};
@@ -17,7 +16,7 @@ pub use self::{
     events::{BreakpointEvent, ControlEffect, EmulatorEvent},
     functions::{Instruction, InstructionWithOp, NativeFn},
 };
-use crate::{Begin, BlockId, Function, Module, Op, Program};
+use crate::{BlockId, Function, Module, Op, Program};
 
 /// This type represents the various sorts of errors which can occur when
 /// running the emulator on a MASM program. Some errors may result in panics,
@@ -294,10 +293,6 @@ impl Emulator {
 
         // TODO: Load data segments
 
-        if let Some(begin) = program.body.as_ref() {
-            self.load_init(begin)?;
-        }
-
         self.status = Status::Loaded;
 
         Ok(())
@@ -316,8 +311,8 @@ impl Emulator {
              first"
         );
 
-        match self.modules_loaded.entry(module.name) {
-            Entry::Occupied(_) => return Err(EmulationError::AlreadyLoaded(module.name)),
+        match self.modules_loaded.entry(module.id) {
+            Entry::Occupied(_) => return Err(EmulationError::AlreadyLoaded(module.id)),
             Entry::Vacant(entry) => {
                 entry.insert(module.clone());
             }
@@ -331,7 +326,7 @@ impl Emulator {
             }
             self.modules_pending.insert(name);
         }
-        self.modules_pending.remove(&module.name);
+        self.modules_pending.remove(&module.id);
 
         // Load functions from this module
         let functions = module.unwrap_frozen_functions();
@@ -350,7 +345,7 @@ impl Emulator {
     ///
     /// This function will panic if the named module is not currently loaded.
     pub fn reload_module(&mut self, module: Arc<Module>) -> Result<(), EmulationError> {
-        self.unload_module(module.name);
+        self.unload_module(module.id);
         self.load_module(module)
     }
 
@@ -384,23 +379,6 @@ impl Emulator {
                 break;
             }
         }
-    }
-
-    /// Load the `begin` block which constitutes the initialization region for a [Program]
-    fn load_init(&mut self, init: &Begin) -> Result<(), EmulationError> {
-        use miden_hir::{attributes, Signature};
-
-        let main_fn = FunctionIdent {
-            module: miden_assembly::LibraryPath::EXEC_PATH.into(),
-            function: miden_assembly::ProcedureName::MAIN_PROC_NAME.into(),
-        };
-        let mut main = Function::new(main_fn, Signature::new([], []));
-        main.attrs.set(attributes::ENTRYPOINT);
-        main.body = init.body.clone();
-
-        self.load_function(Arc::new(main))?;
-
-        Ok(())
     }
 
     /// Load `function` into this emulator
@@ -529,8 +507,8 @@ impl Emulator {
         }
 
         let main_fn = FunctionIdent {
-            module: miden_assembly::LibraryPath::EXEC_PATH.into(),
-            function: miden_assembly::ProcedureName::MAIN_PROC_NAME.into(),
+            module: LibraryNamespace::EXEC_PATH.into(),
+            function: ProcedureName::MAIN_PROC_NAME.into(),
         };
 
         // Run to completion
@@ -569,8 +547,8 @@ impl Emulator {
         }
 
         let main_fn = FunctionIdent {
-            module: miden_assembly::LibraryPath::EXEC_PATH.into(),
-            function: miden_assembly::ProcedureName::MAIN_PROC_NAME.into(),
+            module: LibraryNamespace::EXEC_PATH.into(),
+            function: ProcedureName::MAIN_PROC_NAME.into(),
         };
 
         // Step into the entrypoint
@@ -1300,6 +1278,9 @@ impl Emulator {
                 Op::Swapw(pos) => {
                     self.stack.swapw(pos as usize);
                 }
+                Op::Swapdw => {
+                    self.stack.swapdw();
+                }
                 Op::Movup(pos) => {
                     self.stack.movup(pos as usize);
                 }
@@ -1385,6 +1366,40 @@ impl Emulator {
                         size: 16,
                     });
                 }
+                Op::AdvInjectPushU64Div => {
+                    const HI_MASK: u64 = u64::MAX << 32;
+                    const LO_MASK: u64 = u32::MAX as u64;
+                    let b_hi = pop_u32!(self) as u64;
+                    let b_lo = pop_u32!(self) as u64;
+                    let b = (b_hi << 32) | b_lo;
+                    assert!(b > 0, "assertion failed: division by zero");
+                    let a_hi = pop_u32!(self) as u64;
+                    let a_lo = pop_u32!(self) as u64;
+                    let a = (a_hi << 32) | a_lo;
+                    let q = a / b;
+                    let q_hi = (q & HI_MASK) >> 32;
+                    let q_lo = q & LO_MASK;
+                    let r = a % b;
+                    let r_hi = (r & HI_MASK) >> 32;
+                    let r_lo = r & LO_MASK;
+                    self.advice_stack.push_u32(r_hi as u32);
+                    self.advice_stack.push_u32(r_lo as u32);
+                    self.advice_stack.push_u32(q_hi as u32);
+                    self.advice_stack.push_u32(q_lo as u32);
+                    self.stack.push_u32(a_lo as u32);
+                    self.stack.push_u32(a_hi as u32);
+                    self.stack.push_u32(b_lo as u32);
+                    self.stack.push_u32(b_hi as u32);
+                }
+                Op::AdvInjectInsertMem
+                | Op::AdvInjectInsertHperm
+                | Op::AdvInjectInsertHdword
+                | Op::AdvInjectInsertHdwordImm(_)
+                | Op::AdvInjectPushMTreeNode
+                | Op::AdvInjectPushMapVal
+                | Op::AdvInjectPushMapValImm(_)
+                | Op::AdvInjectPushMapValN
+                | Op::AdvInjectPushMapValNImm(_) => unimplemented!(),
                 Op::Assert => {
                     let cond = pop_bool!(self);
                     assert!(cond, "assertion failed: expected true, got false");
@@ -1428,26 +1443,25 @@ impl Emulator {
                         size: 16,
                     });
                 }
+                Op::LocLoad(id) => {
+                    let addr = (state.fp() + id.as_usize() as u32) as usize;
+                    debug_assert!(addr < self.memory.len());
+                    self.stack.push(self.memory[addr][0]);
+                }
+                Op::LocLoadw(id) => {
+                    let addr = (state.fp() + id.as_usize() as u32) as usize;
+                    debug_assert!(addr < self.memory.len());
+                    self.stack.dropw();
+                    self.stack.pushw(self.memory[addr]);
+                }
                 Op::MemLoad => {
                     let addr = pop_addr!(self);
                     self.stack.push(self.memory[addr][0]);
-                }
-                Op::MemLoadOffset => {
-                    let offset = pop_u32!(self) as usize;
-                    assert!(offset < 4, "expected valid element offset, got {offset}");
-                    let addr = pop_addr!(self);
-                    self.stack.push(self.memory[addr][offset]);
                 }
                 Op::MemLoadImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     self.stack.push(self.memory[addr][0]);
-                }
-                Op::MemLoadOffsetImm(addr, offset) => {
-                    let addr = addr as usize;
-                    let offset = offset as usize;
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
-                    self.stack.push(self.memory[addr][offset]);
                 }
                 Op::MemLoadw => {
                     let addr = pop_addr!(self);
@@ -1470,36 +1484,11 @@ impl Emulator {
                         size: 4,
                     });
                 }
-                Op::MemStoreOffset => {
-                    let offset = pop_u32!(self);
-                    assert!(offset < 4, "expected valid element offset, got {offset}");
-                    let addr = pop_addr!(self);
-                    let value = pop!(self);
-                    let offset = offset as usize;
-                    self.memory[addr][offset] = value;
-                    self.callstack.push(state);
-                    return Ok(EmulatorEvent::MemoryWrite {
-                        addr: addr as u32,
-                        size: 4,
-                    });
-                }
                 Op::MemStoreImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len(), "out of bounds memory access");
                     let value = self.stack.pop().expect("operand stack is empty");
                     self.memory[addr][0] = value;
-                    self.callstack.push(state);
-                    return Ok(EmulatorEvent::MemoryWrite {
-                        addr: addr as u32,
-                        size: 4,
-                    });
-                }
-                Op::MemStoreOffsetImm(addr, offset) => {
-                    let addr = addr as usize;
-                    let offset = offset as usize;
-                    assert!(addr < self.memory.len(), "out of bounds memory access");
-                    let value = self.stack.pop().expect("operand stack is empty");
-                    self.memory[addr][offset] = value;
                     self.callstack.push(state);
                     return Ok(EmulatorEvent::MemoryWrite {
                         addr: addr as u32,
@@ -1576,7 +1565,7 @@ impl Emulator {
                         Stub::Native(_function) => unimplemented!(),
                     }
                 }
-                Op::Syscall(_callee) => unimplemented!(),
+                Op::Call(_callee) | Op::Syscall(_callee) => unimplemented!(),
                 Op::Add => binop!(self, add),
                 Op::AddImm(imm) => binop!(self, add, imm),
                 Op::Sub => binop!(self, sub),
@@ -1617,7 +1606,7 @@ impl Emulator {
                     );
                     self.stack.push(a.exp(b));
                 }
-                Op::ExpImm(pow) => {
+                Op::ExpImm(pow) | Op::ExpBitLength(pow) => {
                     let pow = pow as u64;
                     let a = pop!(self);
                     assert!(
@@ -1680,6 +1669,9 @@ impl Emulator {
                 }
                 Op::Clk => {
                     self.stack.push(Felt::new(self.clk as u64));
+                }
+                Op::Sdepth => {
+                    self.stack.push(Felt::new(self.stack.len() as u64));
                 }
                 Op::U32Test => {
                     let top = self.stack.peek().expect("operand stack is empty").as_int();
@@ -1837,6 +1829,23 @@ impl Emulator {
                     let a = pop!(self).as_int();
                     self.stack.push(Felt::new(cmp::max(a, b)));
                 }
+                Op::Breakpoint => {
+                    self.callstack.push(state);
+                    return Ok(EmulatorEvent::Breakpoint(BreakpointEvent::Step));
+                }
+                Op::DebugStack => {
+                    dbg!(self.stack.debug());
+                }
+                Op::DebugStackN(n) => {
+                    dbg!(self.stack.debug().take(n as usize));
+                }
+                Op::DebugMemory
+                | Op::DebugMemoryAt(_)
+                | Op::DebugMemoryRange(..)
+                | Op::DebugFrame
+                | Op::DebugFrameAt(_)
+                | Op::DebugFrameRange(..) => (),
+                Op::Emit(_) | Op::Trace(_) => (),
                 op => unimplemented!("missing opcode implementation for {op:?}"),
             }
 

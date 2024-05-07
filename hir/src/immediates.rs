@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use super::{Felt, FieldElement, StarkField, Type};
+use super::{Felt, FieldElement, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Immediate {

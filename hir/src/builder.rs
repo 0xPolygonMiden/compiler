@@ -561,6 +561,16 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.PrimOp(Opcode::Assert, Type::Unit, vlist, span).0
     }
 
+    fn assert_with_error(mut self, value: Value, code: u32, span: SourceSpan) -> Inst {
+        require_integer!(self, value, Type::I1);
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.push(value, pool);
+        }
+        self.PrimOpImm(Opcode::Assert, Type::Unit, Immediate::U32(code), vlist, span).0
+    }
+
     fn assertz(mut self, value: Value, span: SourceSpan) -> Inst {
         require_integer!(self, value, Type::I1);
         let mut vlist = ValueList::default();
@@ -569,6 +579,16 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             vlist.push(value, pool);
         }
         self.PrimOp(Opcode::Assertz, Type::Unit, vlist, span).0
+    }
+
+    fn assertz_with_error(mut self, value: Value, code: u32, span: SourceSpan) -> Inst {
+        require_integer!(self, value, Type::I1);
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.push(value, pool);
+        }
+        self.PrimOpImm(Opcode::Assertz, Type::Unit, Immediate::U32(code), vlist, span).0
     }
 
     fn assert_eq(mut self, lhs: Value, rhs: Value, span: SourceSpan) -> Inst {

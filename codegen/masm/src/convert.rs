@@ -1,3 +1,4 @@
+use miden_assembly::LibraryPath;
 use miden_hir::{
     self as hir,
     pass::{AnalysisManager, ConversionPass, ConversionResult},
@@ -55,7 +56,7 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
-        let mut masm_program = Box::new(masm::Program::from(program.as_ref()));
+        let mut masm_program = Box::new(masm::Program::from_hir(&program));
 
         // Remove the set of modules to compile from the program
         let modules = program.modules_mut().take();
@@ -104,9 +105,18 @@ impl ConversionPass for ConvertHirToMasm<hir::Module> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
+        use miden_assembly::ast::ModuleKind;
         use miden_hir::ProgramAnalysisKey;
 
-        let mut masm_module = Box::new(masm::Module::new(module.name));
+        let kind = if module.is_kernel() {
+            ModuleKind::Kernel
+        } else {
+            ModuleKind::Library
+        };
+        let name = LibraryPath::new(&module.name).unwrap_or_else(|err| {
+            panic!("invalid module name '{}': {}", module.name.as_str(), err)
+        });
+        let mut masm_module = Box::new(masm::Module::new(name, kind));
 
         // Compute import information for this module
         masm_module.imports = module.imports();

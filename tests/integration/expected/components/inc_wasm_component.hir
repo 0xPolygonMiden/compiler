@@ -3,7 +3,7 @@
     (lower (("miden:add-package/add-interface@1.0.0" #add) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param u32) (param u32) (result u32)))) (#miden:add-package/add-interface@1.0.0 #add)
 
     ;; Modules
-    (module #inc_wasm_component.wasm
+    (module #inc_wasm_component
         ;; Constants
         (const (id 0) 0x00100000)
 
