@@ -41,6 +41,11 @@ impl From<Report> for LoadModuleError {
 /// designed to integrate well with the rest of our IR. You can think of this
 /// as an intermediate representation corresponding to the Miden Assembly AST,
 /// i.e. [miden_assembly::ast::Module].
+///
+/// Functions are stored in a [Module] in a linked list, so as to allow precise
+/// ordering of functions in the module body. We typically access all of the
+/// functions in a given module, so O(1) access to a specific function is not
+/// of primary importance.
 pub struct Module {
     link: RBTreeAtomicLink,
     pub span: SourceSpan,

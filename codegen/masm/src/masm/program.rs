@@ -12,6 +12,10 @@ use super::{module::Modules, *};
 /// A [Program] represents a complete set of modules which are intended to
 /// be shipped together as an artifact, either as an executable, or as a library
 /// to be integrated into a larger executable.
+///
+/// Modules are stored in a [Program] in a b-tree map, keyed by the module name.
+/// This is done to make accessing modules by name efficient, and to ensure a
+/// stable ordering for compiled programs when emitted as text.
 #[derive(Default)]
 pub struct Program {
     /// The set of modules which belong to this program
@@ -95,7 +99,9 @@ impl Program {
         }
     }
 
-    /// Insert a module into this program
+    /// Insert a module into this program.
+    ///
+    /// The insertion order is not preserved - modules are ordered by name.
     ///
     /// NOTE: This function will panic if the program has been frozen
     pub fn insert(&mut self, module: Box<Module>) {
