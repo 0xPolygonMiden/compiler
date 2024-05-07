@@ -21,6 +21,7 @@ miden-processor.workspace = true
 miden-stdlib.workspace = true
 miden-diagnostics.workspace = true
 midenc-session.workspace = true
+midenc-compile.workspace = true
 expect-test = "1.4.1"
 miden-integration-tests-rust-fib = { path = "../rust-apps/fib" }
 wasmprinter = "0.2.63"

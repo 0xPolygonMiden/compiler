@@ -17,33 +17,6 @@ use crate::{
     WasmError, WasmTranslationConfig,
 };
 
-/// Translate a valid Wasm core module binary into Miden IR module
-pub fn translate_module(
-    wasm: &[u8],
-    config: &WasmTranslationConfig,
-    diagnostics: &DiagnosticsHandler,
-) -> WasmResult<miden_hir::Module> {
-    let wasm_features = WasmFeatures::default();
-    let mut validator = Validator::new_with_features(wasm_features);
-    let parser = wasmparser::Parser::new(0);
-    let mut module_types_builder = Default::default();
-    let mut parsed_module = ModuleEnvironment::new(
-        config,
-        &mut validator,
-        &mut module_types_builder,
-    )
-    .parse(parser, wasm, diagnostics)?;
-    parsed_module.module.set_name_fallback(config.source_name.clone());
-    if let Some(name_override) = config.override_name.as_ref() {
-        parsed_module.module.set_name_override(name_override.clone());
-    }
-    let module_types = module_types_builder.finish();
-
-    let mut module_state =
-        ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
-    build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)
-}
-
 /// Translate a valid Wasm core module binary into Miden IR component building
 /// component imports for well-known Miden ABI functions
 ///

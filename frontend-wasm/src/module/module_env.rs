@@ -616,7 +616,9 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     }
                 }
                 wasmparser::Name::Module { name, .. } => {
-                    let name = name.strip_suffix(".wasm").unwrap_or(name);
+                    // Module name ends with `.wasm`,
+                    // remove it if its there since MASM doesn't yet allow dots in the module name
+                    let name = name.trim_end_matches(".wasm");
                     self.result.module.name_section.module_name = Some(Ident::from(name));
                 }
                 wasmparser::Name::Local(reader) => {

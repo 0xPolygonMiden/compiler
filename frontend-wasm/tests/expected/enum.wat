@@ -1,4 +1,4 @@
-(module $f0bb65319ffababec660ada9dd2dd5f137503f60cf9c37332d6f7e171f275824.wasm
+(module $test_rust_f0bb65319ffababec660ada9dd2dd5f137503f60cf9c37332d6f7e171f275824.wasm
   (type (;0;) (func (param i32 i32 i32) (result i32)))
   (type (;1;) (func (result i32)))
   (func $match_enum (;0;) (type 0) (param i32 i32 i32) (result i32)

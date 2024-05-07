@@ -2864,6 +2864,7 @@ dependencies = [
  "miden-integration-tests-rust-fib",
  "miden-processor",
  "miden-stdlib",
+ "midenc-compile",
  "midenc-session",
  "proptest",
  "rustc-demangle",
