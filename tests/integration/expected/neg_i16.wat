@@ -1,4 +1,4 @@
-(module $8885ff83d4718aec39ee91baf1b6d9155897ac6940d8acb4ee8af80ac24d7630.wasm
+(module $test_rust_8885ff83d4718aec39ee91baf1b6d9155897ac6940d8acb4ee8af80ac24d7630.wasm
   (type (;0;) (func (param i32) (result i32)))
   (func $entrypoint (;0;) (type 0) (param i32) (result i32)
     i32.const 0

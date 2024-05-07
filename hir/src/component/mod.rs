@@ -176,7 +176,15 @@ impl Component {
         &self.exports
     }
 
-    /// Extracts the single module from this component, panicking if there is not exactly one.
+    /// Get the first module in this component
+    pub fn first_module(&self) -> &Module {
+        self.modules
+            .values()
+            .next()
+            .expect("Expected at least one module in the component")
+    }
+
+    /// Extracts the single module consuming this component, panicking if there is not exactly one.
     pub fn unwrap_one_module(self) -> Box<Module> {
         assert_eq!(self.modules.len(), 1, "Expected exactly one module in the component");
         self.to_modules().drain(..).next().unwrap().1
@@ -316,6 +324,7 @@ impl<'a> ComponentBuilder<'a> {
     }
 
     pub fn build(self) -> Component {
+        assert!(!self.modules.is_empty(), "Cannot build a component with no modules");
         let mut c = Component::default();
         c.modules = self.modules;
         c.exports = self.exports;

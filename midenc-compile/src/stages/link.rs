@@ -23,6 +23,8 @@ impl Stage for LinkerStage {
         _analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
+        // Temporary workaround for the issue that backend builds only Program for all
+        // OutputType::Masm output types. In case we need a library, we should not link the modules.
         match session.project_type {
             ProjectType::Program => {
                 if session.should_link() {

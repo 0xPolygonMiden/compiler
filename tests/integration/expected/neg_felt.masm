@@ -5,11 +5,11 @@ export.entrypoint
 end
 
 
-mod zzz_entrypoint_module
+program
 
 use.neg_felt
 
-export.entrypoint_wrapper
+export."#main"
     exec.neg_felt::entrypoint
 end
 

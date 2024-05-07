@@ -28,7 +28,13 @@ fn rust_array() {
     test.expect_wasm(expect_file!["./expected/array.wat"]);
     test.expect_ir(expect_file!["./expected/array.hir"]);
     assert!(
-        test.hir.unwrap().unwrap_program().segments().last().unwrap().is_readonly(),
+        test.hir()
+            .unwrap_component()
+            .first_module()
+            .segments()
+            .last()
+            .unwrap()
+            .is_readonly(),
         "data segment should be readonly"
     );
 }
@@ -39,7 +45,14 @@ fn rust_static_mut() {
     test.expect_wasm(expect_file!["./expected/static_mut.wat"]);
     test.expect_ir(expect_file!["./expected/static_mut.hir"]);
     assert!(
-        !test.hir.unwrap().unwrap_program().segments().last().unwrap().is_readonly(),
+        !test
+            .hir()
+            .unwrap_component()
+            .first_module()
+            .segments()
+            .last()
+            .unwrap()
+            .is_readonly(),
         "data segment should be mutable"
     );
 }

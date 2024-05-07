@@ -1,4 +1,4 @@
-(module $e6d553fb1c80aef6e5d6f2891701197bedac471cf510bd2495f99889d9543cd4.wasm
+(module $test_rust_e6d553fb1c80aef6e5d6f2891701197bedac471cf510bd2495f99889d9543cd4.wasm
   (type (;0;) (func))
   (type (;1;) (func (result i32)))
   (func $global_var_update (;0;) (type 0)

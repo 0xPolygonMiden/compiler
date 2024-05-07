@@ -1,4 +1,4 @@
-(module $239a60d2cc893c838f4427eafefdb541ab7c907f4b97a510f3e3eef268518bea.wasm
+(module $test_rust_239a60d2cc893c838f4427eafefdb541ab7c907f4b97a510f3e3eef268518bea.wasm
   (type (;0;) (func (param i32 i32) (result i32)))
   (type (;1;) (func (result i32)))
   (func $add (;0;) (type 0) (param i32 i32) (result i32)

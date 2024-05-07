@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use core::panic;
 use std::{
     fs,
@@ -9,17 +7,14 @@ use std::{
     sync::Arc,
 };
 
-use miden_assembly::{ast::ModuleKind, Assembler, LibraryPath};
-use miden_codegen_masm::{Function, MasmCompiler, Module};
-use miden_diagnostics::{
-    term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsConfig, DiagnosticsHandler,
-    Emitter, NullEmitter, SourceSpan, Verbosity,
+use miden_assembly::{
+    ast::{ModuleKind, ProcedureName},
+    Assembler, LibraryPath,
 };
+use miden_codegen_masm::{Function, Module};
+use miden_diagnostics::{CodeMap, SourceSpan};
 use miden_frontend_wasm::{translate, WasmTranslationConfig};
-use miden_hir::{
-    pass::{AnalysisManager, RewritePass, RewriteSet},
-    FunctionIdent, Ident, ModuleRewritePassAdapter, ProgramBuilder, Signature, Symbol,
-};
+use miden_hir::{FunctionIdent, Ident, Signature, Symbol};
 use miden_stdlib::StdLibrary;
 use midenc_session::{
     InputFile, InputType, Options, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session,
@@ -238,10 +233,7 @@ impl CompilerTest {
         });
         let input_file = InputFile::from_path(wasm_artifacts.first().unwrap()).unwrap();
         Self {
-            config: WasmTranslationConfig {
-                override_name: Some(artifact_name.to_string().into()),
-                ..Default::default()
-            },
+            config: WasmTranslationConfig::default(),
             session: default_session(input_file),
             source: CompilerTestSource::RustCargoLib { artifact_name },
             entrypoint,
@@ -289,11 +281,6 @@ impl CompilerTest {
             .join("release")
             .join(artifact_name)
             .with_extension("wasm");
-        // dbg!(&target_bin_file_path);
-        // let mut target_bin_file = fs::File::open(target_bin_file_path).unwrap();
-        // let mut wasm_bytes = vec![];
-        // Read::read_to_end(&mut target_bin_file, &mut wasm_bytes).unwrap();
-        // fs::remove_dir_all(target_dir).unwrap();
 
         let input_file = InputFile::from_path(target_bin_file_path).unwrap();
         let session = default_session(input_file);
@@ -302,10 +289,7 @@ impl CompilerTest {
             function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
         };
         CompilerTest {
-            config: WasmTranslationConfig {
-                override_name: Some(artifact_name.to_string().into()),
-                ..Default::default()
-            },
+            config: WasmTranslationConfig::default(),
             session,
             source: CompilerTestSource::RustCargo {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
@@ -322,10 +306,7 @@ impl CompilerTest {
         let wasm_file = compile_rust_file(rust_source);
         let session = default_session(wasm_file);
         CompilerTest {
-            config: WasmTranslationConfig {
-                override_name: Some("noname".into()),
-                ..Default::default()
-            },
+            config: WasmTranslationConfig::default(),
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             entrypoint: None,
@@ -352,10 +333,11 @@ impl CompilerTest {
             rust_source
         );
         let wasm_file = compile_rust_file(&rust_source);
+        let wasm_filestem = wasm_file.filestem().to_string();
         let session = default_session(wasm_file);
         let entrypoint = FunctionIdent {
             module: Ident {
-                name: Symbol::intern("noname"),
+                name: Symbol::intern(wasm_filestem),
                 span: SourceSpan::default(),
             },
             function: Ident {
@@ -365,10 +347,7 @@ impl CompilerTest {
         };
 
         CompilerTest {
-            config: WasmTranslationConfig {
-                override_name: Some("noname".into()),
-                ..Default::default()
-            },
+            config: WasmTranslationConfig::default(),
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             entrypoint: Some(entrypoint),
@@ -449,47 +428,9 @@ impl CompilerTest {
     }
 
     fn wasm_to_ir(&self) -> HirArtifact {
-        use miden_hir_transform as transforms;
-        match &self.source {
-            CompilerTestSource::RustCargoComponent { .. } => {
-                // Wasm component is expected
-                let ir_component =
-                    translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
-                        .expect("Failed to translate Wasm to IR component");
-                Box::new(ir_component).into()
-            }
-            CompilerTestSource::RustCargoLib { .. } => {
-                // Wasm module compiled as a module
-                let ir_component =
-                    translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
-                        .expect("Failed to translate Wasm module to IR component");
-                Box::new(ir_component).into()
-            }
-            _ => {
-                // Wasm module compiled as a program
-                let mut ir_module =
-                    translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
-                        .expect("Failed to translate Wasm to IR module")
-                        .unwrap_one_module();
-
-                let mut analyses = AnalysisManager::new();
-                let mut rewrites = RewriteSet::default();
-                rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
-                rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
-                rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
-                rewrites
-                    .apply(&mut ir_module, &mut analyses, &self.session)
-                    .expect("Failed to apply rewrites");
-
-                let mut builder =
-                    ProgramBuilder::new(&self.session.diagnostics).with_module(ir_module).unwrap();
-                if let Some(entrypoint) = self.entrypoint.as_ref() {
-                    builder = builder.with_entrypoint(entrypoint.clone());
-                }
-                let hir_program = builder.link().expect("Failed to link IR program");
-                hir_program.into()
-            }
-        }
+        let ir_component = translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
+            .expect("Failed to translate Wasm binary to IR component");
+        Box::new(ir_component).into()
     }
 
     /// Get the compiled IR, compiling the Wasm if it has not been compiled yet
@@ -566,16 +507,7 @@ impl CompilerTest {
     /// Get the compiled MASM as [`miden_codegen_masm::Program`]
     pub fn ir_masm_program(&mut self) -> Arc<miden_codegen_masm::Program> {
         if self.ir_masm.is_none() {
-            let mut compiler = MasmCompiler::new(&self.session);
-            let hir =
-                self.hir.take().or_else(|| Some(self.wasm_to_ir())).expect("IR is not compiled");
-            let ir_masm = match hir {
-                HirArtifact::Program(hir_program) => compiler.compile(hir_program).unwrap(),
-                HirArtifact::Component(_) => self.compile_wasm_to_masm_program(),
-                HirArtifact::Module(_) => {
-                    todo!("Module to MASM compilation is not implemented yet")
-                }
-            };
+            let ir_masm = self.compile_wasm_to_masm_program();
             let frozen = ir_masm.freeze();
             self.ir_masm = Some(frozen);
         }
@@ -603,14 +535,15 @@ impl CompilerTest {
                     // Start module name with "zzz_" to ensure it is the last module in the program
                     // due to the RBTree ordering (used to store modules of a program)
                     let module_name = "zzz_entrypoint_module";
-                    let func_name = format!("{module_name}::entrypoint_wrapper");
+                    let func_name = format!("{module_name}::{}", ProcedureName::MAIN_PROC_NAME);
                     let mut entrypoint_function =
                         Function::new(func_name.parse().unwrap(), Signature::new(vec![], vec![]));
                     entrypoint_function.attrs.set(miden_hir::attributes::ENTRYPOINT);
                     let body = entrypoint_function.block_mut(entrypoint_function.body.id());
                     body.push(miden_hir::MasmOp::Exec(entrypoint));
-                    let mut module =
-                        Module::new(LibraryPath::new(&module_name).unwrap(), ModuleKind::Library);
+                    let mut name = LibraryPath::new(&module_name).unwrap();
+                    name.set_namespace(miden_assembly::LibraryNamespace::Exec);
+                    let mut module = Module::new(name, ModuleKind::Executable);
                     module.push_back(Box::new(entrypoint_function));
                     module.imports.add(entrypoint);
                     program.insert(Box::new(module));
@@ -684,7 +617,7 @@ fn compile_rust_file(rust_source: &str) -> InputFile {
         "--target",
         "wasm32-unknown-unknown",
     ];
-    let file_name = hash_string(rust_source);
+    let file_name = format!("test_rust_{}", hash_string(rust_source));
     let proj_dir = std::env::temp_dir().join(&file_name);
     if proj_dir.exists() {
         fs::remove_dir_all(&proj_dir).unwrap();
@@ -707,28 +640,6 @@ fn compile_rust_file(rust_source: &str) -> InputFile {
         panic!("Rust to Wasm compilation failed!");
     }
     InputFile::from_path(output_file).unwrap()
-}
-
-fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
-    match verbosity {
-        Verbosity::Silent => Arc::new(NullEmitter::new(color)),
-        _ => Arc::new(DefaultEmitter::new(color)),
-    }
-}
-
-fn make_diagnostics() -> DiagnosticsHandler {
-    let codemap = Arc::new(CodeMap::new());
-    let diagnostics = DiagnosticsHandler::new(
-        DiagnosticsConfig {
-            verbosity: Verbosity::Debug,
-            warnings_as_errors: false,
-            no_warn: false,
-            display: Default::default(),
-        },
-        codemap,
-        default_emitter(Verbosity::Debug, ColorChoice::Auto),
-    );
-    diagnostics
 }
 
 /// Create a default session for testing

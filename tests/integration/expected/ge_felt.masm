@@ -5,11 +5,11 @@ export.entrypoint
 end
 
 
-mod zzz_entrypoint_module
+program
 
 use.ge_felt
 
-export.entrypoint_wrapper
+export."#main"
     exec.ge_felt::entrypoint
 end
 

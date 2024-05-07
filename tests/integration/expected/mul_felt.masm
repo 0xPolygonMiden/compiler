@@ -5,11 +5,11 @@ export.entrypoint
 end
 
 
-mod zzz_entrypoint_module
+program
 
 use.mul_felt
 
-export.entrypoint_wrapper
+export."#main"
     exec.mul_felt::entrypoint
 end
 

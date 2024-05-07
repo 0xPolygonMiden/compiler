@@ -1,17 +1,24 @@
-(module #noname
-    ;; Constants
-    (const (id 0) 0x00100000)
+(component 
+    ;; Modules
+    (module #test_rust_8885ff83d4718aec39ee91baf1b6d9155897ac6940d8acb4ee8af80ac24d7630
+        ;; Constants
+        (const (id 0) 0x00100000)
 
-    ;; Global Variables
-    (global (export #__stack_pointer) (id 0) (type i32) (const 0))
-    (global (export #gv1) (id 1) (type i32) (const 0))
-    (global (export #gv2) (id 2) (type i32) (const 0))
+        ;; Global Variables
+        (global (export #__stack_pointer) (id 0) (type i32) (const 0))
+        (global (export #gv1) (id 1) (type i32) (const 0))
+        (global (export #gv2) (id 2) (type i32) (const 0))
 
-    ;; Functions
-    (func (export #entrypoint) (param i32) (result i32)
-        (block 0 (param v0 i32)
-            (let (v2 i32) (const.i32 0))
-            (let (v3 i32) (sub.wrapping v2 v0))
-            (ret v3))
+        ;; Functions
+        (func (export #entrypoint) (param i32) (result i32)
+            (block 0 (param v0 i32)
+                (let (v2 i32) (const.i32 0))
+                (let (v3 i32) (sub.wrapping v2 v0))
+                (br (block 1 v3)))
+
+            (block 1 (param v1 i32)
+                (ret v1))
+        )
     )
+
 )
