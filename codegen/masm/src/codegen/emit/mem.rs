@@ -903,20 +903,321 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
-    fn store_quad_word(&mut self, _ptr: Option<NativePtr>) {
-        todo!()
+    /// Store a quartet of machine words (32-bit elements) to the operand stack
+    fn store_quad_word(&mut self, ptr: Option<NativePtr>) {
+        if let Some(imm) = ptr {
+            return self.store_quad_word_imm(imm);
+        }
+        self.emit(Op::Exec("intrinsics::mem::store_qw".parse().unwrap()));
     }
 
-    fn store_double_word(&mut self, _ptr: Option<NativePtr>) {
-        todo!()
+    fn store_quad_word_imm(&mut self, ptr: NativePtr) {
+        // For all other cases, more complicated loads are required
+        let aligned = ptr.is_element_aligned();
+        match ptr.index {
+            // Naturally-aligned
+            0 if aligned => self.emit_all(&[Op::Padw, Op::MemLoadwImm(ptr.waddr)]),
+            _ => {
+                todo!()
+            }
+        }
     }
 
-    fn store_word(&mut self, _ptr: Option<NativePtr>) {
-        todo!()
+    /// Store a pair of machine words (32-bit elements) to the operand stack
+    fn store_double_word(&mut self, ptr: Option<NativePtr>) {
+        if let Some(imm) = ptr {
+            return self.store_double_word_imm(imm);
+        }
+
+        self.emit(Op::Exec("intrinsics::mem::store_dw".parse().unwrap()));
     }
 
-    fn store_felt(&mut self, _ptr: Option<NativePtr>) {
-        todo!()
+    fn store_double_word_imm(&mut self, ptr: NativePtr) {
+        // For all other cases, more complicated stores are required
+        let aligned = ptr.is_element_aligned();
+        match ptr.index {
+            // Naturally-aligned
+            0 if aligned => self.emit_all(&[Op::Padw, Op::MemLoadwImm(ptr.waddr)]),
+            _ => {
+                todo!()
+            }
+        }
+    }
+
+    /// Stores a single 32-bit machine word, i.e. a single field element, not the Miden notion of a
+    /// word
+    ///
+    /// Expects a native pointer triplet on the stack if an immediate address is not given.
+    fn store_word(&mut self, ptr: Option<NativePtr>) {
+        if let Some(imm) = ptr {
+            return self.store_word_imm(imm);
+        }
+
+        self.emit(Op::Exec("intrinsics::mem::store_sw".parse().unwrap()));
+    }
+
+    /// Stores a single 32-bit machine word to the given immediate address.
+    fn store_word_imm(&mut self, ptr: NativePtr) {
+        let is_aligned = ptr.is_element_aligned();
+        let rshift = 32 - ptr.offset as u32;
+        match ptr.index {
+            0 if is_aligned => self.emit(Op::MemStoreImm(ptr.waddr)),
+            0 => {
+                let mask_hi = u32::MAX << rshift;
+                let mask_lo = u32::MAX >> (ptr.offset as u32);
+                self.emit_all(&[
+                    // Load the full quad-word on to the operand stack
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    // Manipulate the bits of the first two elements, such that the 32-bit
+                    // word we're storing is placed at the correct offset from the start
+                    // of the memory cell when viewing the cell as a set of 4 32-bit chunks
+                    //
+                    // First, mask out the bits we plan to overwrite with the store op from the
+                    // first two elements
+                    Op::Swap(1),
+                    Op::PushU32(mask_lo),
+                    Op::U32And,
+                    Op::Swap(1),
+                    Op::PushU32(mask_hi),
+                    Op::U32And,
+                    // Now, we need to shift/mask/split the 32-bit value into two elements, then
+                    // combine them with the preserved bits of the original
+                    // contents of the cell
+                    //
+                    // We start with the bits belonging to the first element in the cell
+                    Op::Dup(4),
+                    Op::U32ShrImm(ptr.offset as u32),
+                    Op::U32Or,
+                    // Then the bits belonging to the second element in the cell
+                    Op::Movup(4),
+                    Op::U32ShlImm(rshift),
+                    Op::Movup(2),
+                    Op::U32Or,
+                    // Make sure the elements of the cell are in order
+                    Op::Swap(1),
+                    // Write the word back to the cell
+                    Op::MemStorewImm(ptr.waddr),
+                    // Clean up the operand stack
+                    Op::Dropw,
+                ]);
+            }
+            1 if is_aligned => self.emit_all(&[
+                // Load a quad-word
+                Op::Padw,
+                Op::MemLoadwImm(ptr.waddr),
+                // Replace the stored element
+                Op::Movup(4),
+                Op::Swap(2),
+                Op::Drop,
+                // Write the word back to the cell
+                Op::MemStorewImm(ptr.waddr),
+                // Clean up the operand stack
+                Op::Dropw,
+            ]),
+            1 => {
+                let mask_hi = u32::MAX << rshift;
+                let mask_lo = u32::MAX >> (ptr.offset as u32);
+                self.emit_all(&[
+                    // Load the full quad-word on to the operand stack
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    // Manipulate the bits of the middle two elements, such that the 32-bit
+                    // word we're storing is placed at the correct offset from the start
+                    // of the memory cell when viewing the cell as a set of 4 32-bit chunks
+                    //
+                    // First, mask out the bits we plan to overwrite with the store op from the
+                    // first two elements
+                    Op::Swap(2), // [elem3, elem2, elem1, elem4, value]
+                    Op::PushU32(mask_lo),
+                    Op::U32And,
+                    Op::Swap(1), // [elem2, elem3, elem1, elem4, value]
+                    Op::PushU32(mask_hi),
+                    Op::U32And,
+                    // Now, we need to shift/mask/split the 32-bit value into two elements, then
+                    // combine them with the preserved bits of the original
+                    // contents of the cell
+                    //
+                    // We start with the bits belonging to the second element in the cell
+                    Op::Dup(4), // [value, elem2, elem3, elem1, elem4, value]
+                    Op::U32ShrImm(ptr.offset as u32),
+                    Op::U32Or,
+                    // Then the bits belonging to the third element in the cell
+                    Op::Movup(4),
+                    Op::U32ShlImm(rshift),
+                    Op::Movup(2),
+                    Op::U32Or, // [elem3, elem2, elem1, elem4]
+                    // Make sure the elements of the cell are in order
+                    Op::Swap(1),
+                    Op::Movup(2), // [elem1, elem2, elem3, elem4]
+                    // Write the word back to the cell
+                    Op::MemStorewImm(ptr.waddr),
+                    // Clean up the operand stack
+                    Op::Dropw,
+                ]);
+            }
+            2 if is_aligned => self.emit_all(&[
+                // Load a quad-word
+                Op::Padw,
+                Op::MemLoadwImm(ptr.waddr),
+                // Replace the stored element
+                Op::Movup(5),
+                Op::Swap(3),
+                Op::Drop,
+                // Write the word back to the cell
+                Op::MemStorewImm(ptr.waddr),
+                // Clean up the operand stack
+                Op::Dropw,
+            ]),
+            2 => {
+                let mask_hi = u32::MAX << rshift;
+                let mask_lo = u32::MAX >> (ptr.offset as u32);
+                self.emit_all(&[
+                    // Load the full quad-word on to the operand stack
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    // Manipulate the bits of the last two elements, such that the 32-bit
+                    // word we're storing is placed at the correct offset from the start
+                    // of the memory cell when viewing the cell as a set of 4 32-bit chunks
+                    //
+                    // First, mask out the bits we plan to overwrite with the store op from the
+                    // first two elements
+                    Op::Swap(3), // [elem4, elem2, elem3, elem1, value]
+                    Op::PushU32(mask_lo),
+                    Op::U32And,
+                    Op::Movup(2), // [elem3, elem4, elem2, elem1, value]
+                    Op::PushU32(mask_hi),
+                    Op::U32And,
+                    // Now, we need to shift/mask/split the 32-bit value into two elements, then
+                    // combine them with the preserved bits of the original
+                    // contents of the cell
+                    //
+                    // We start with the bits belonging to the third element in the cell
+                    Op::Dup(4), // [value, elem3, elem4, elem2, elem1, value]
+                    Op::U32ShrImm(ptr.offset as u32),
+                    Op::U32Or,
+                    // Then the bits belonging to the fourth element in the cell
+                    Op::Movup(4),
+                    Op::U32ShlImm(rshift),
+                    Op::Movup(2),
+                    Op::U32Or, // [elem4, elem3, elem2, elem1]
+                    // Make sure the elements of the cell are in order
+                    Op::Swap(2),  // [elem2, elem3, elem4, elem1]
+                    Op::Movup(3), // [elem1, elem2, elem3, elem4]
+                    // Write the word back to the cell
+                    Op::MemStorewImm(ptr.waddr),
+                    // Clean up the operand stack
+                    Op::Dropw,
+                ]);
+            }
+            3 if is_aligned => self.emit_all(&[
+                // Load a quad-word
+                Op::Padw,
+                Op::MemLoadwImm(ptr.waddr),
+                // Replace the stored element
+                Op::Movup(4),
+                Op::Drop,
+                // Write the word back to the cell
+                Op::MemStorewImm(ptr.waddr),
+                // Clean up the operand stack
+                Op::Dropw,
+            ]),
+            3 => {
+                // This is a rather annoying edge case, as it requires us to store bits
+                // across two different words. We start with the "hi" bits that go at
+                // the end of the first word, and then handle the "lo" bits in a simpler
+                // fashion
+                let mask_hi = u32::MAX << rshift;
+                let mask_lo = u32::MAX >> (ptr.offset as u32);
+                self.emit_all(&[
+                    // Load the full quad-word on to the operand stack
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    // Manipulate the bits of the last element, such that the "high" bits
+                    // of the 32-bit word we're storing is placed at the correct offset from the
+                    // start of the memory cell when viewing the cell as a set
+                    // of 4 32-bit chunks
+                    //
+                    // First, mask out the bits we plan to overwrite with the store op from the
+                    // last element
+                    Op::Swap(3), // [elem4, elem2, elem3, elem1, value]
+                    Op::PushU32(mask_lo),
+                    Op::U32And,
+                    // Now, we need to shift/mask/split the 32-bit value into the bits that will be
+                    // merged with this word
+                    Op::Dup(4), // [value, elem4, elem2, elem3, elem1, value]
+                    Op::U32ShrImm(ptr.offset as u32),
+                    Op::U32Or,
+                    // Move the fourth element back into place
+                    Op::Swap(3), // [elem1, elem2, elem3, elem4, value]
+                    // Write the first word and clear the operand stack
+                    Op::MemStorewImm(ptr.waddr),
+                    Op::Dropw,
+                    // Compute the bits of the value that we'll merge into the second word
+                    Op::U32ShlImm(rshift),
+                    // Load the first element of the second word
+                    Op::MemLoadImm(ptr.waddr + 1),
+                    // Mask out the bits we plan to overwrite
+                    Op::PushU32(mask_hi),
+                    Op::U32And,
+                    // Merge the bits and write back the second word
+                    Op::U32Or,
+                    Op::MemStoreImm(ptr.waddr + 1),
+                ]);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Store a field element to a naturally aligned address, either immediate or dynamic
+    ///
+    /// A native pointer triplet is expected on the stack if an immediate is not given.
+    fn store_felt(&mut self, ptr: Option<NativePtr>) {
+        if let Some(imm) = ptr {
+            return self.store_felt_imm(imm);
+        }
+
+        self.emit(Op::Exec("intrinsics::mem::store_felt".parse().unwrap()));
+    }
+
+    fn store_felt_imm(&mut self, ptr: NativePtr) {
+        assert!(ptr.is_element_aligned(), "felt values must be naturally aligned");
+        match ptr.index {
+            0 => self.emit(Op::MemStoreImm(ptr.waddr)),
+            1 => {
+                self.emit_all(&[
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    Op::Movup(4),
+                    Op::Swap(2),
+                    Op::Drop,
+                    Op::MemStorewImm(ptr.waddr),
+                    Op::Dropw,
+                ]);
+            }
+            2 => {
+                self.emit_all(&[
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    Op::Movup(4),
+                    Op::Swap(3),
+                    Op::Drop,
+                    Op::MemStorewImm(ptr.waddr),
+                    Op::Dropw,
+                ]);
+            }
+            3 => {
+                self.emit_all(&[
+                    Op::Padw,
+                    Op::MemLoadwImm(ptr.waddr),
+                    Op::Movup(3),
+                    Op::Drop,
+                    Op::MemStorewImm(ptr.waddr),
+                    Op::Dropw,
+                ]);
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn store_small(&mut self, _ty: &Type, _ptr: Option<NativePtr>) {
