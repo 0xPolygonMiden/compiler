@@ -48,7 +48,7 @@ pub fn translate_module_as_component(
         ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
     let module =
         build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)?;
-    let mut cb = miden_hir::ComponentBuilder::new(&diagnostics);
+    let mut cb = miden_hir::ComponentBuilder::new(diagnostics);
     let module_imports = module.imports();
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
@@ -61,10 +61,7 @@ pub fn translate_module_as_component(
                     ext_func.module.as_symbol(),
                     ext_func.function.as_symbol(),
                 );
-                let digest = *module_state.digest(ext_func).expect(
-                    format!("failed to find MAST root hash for function {}", ext_func.function)
-                        .as_str(),
-                );
+                let digest = *module_state.digest(ext_func).unwrap_or_else(|| panic!("failed to find MAST root hash for function {}", ext_func.function));
                 let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
                     function_ty,
                     digest,
@@ -85,7 +82,7 @@ pub fn build_ir_module(
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<miden_hir::Module> {
     let name = parsed_module.module.name();
-    let mut module_builder = ModuleBuilder::new(name.clone().as_str());
+    let mut module_builder = ModuleBuilder::new(name.as_str());
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
     build_data_segments(parsed_module, &mut module_builder, diagnostics)?;
     let mut func_translator = FuncTranslator::new();
@@ -108,7 +105,7 @@ pub fn build_ir_module(
             &mut module_func_builder,
             module_state,
             &parsed_module.module,
-            &module_types,
+            module_types,
             diagnostics,
             &mut func_validator,
         )?;
@@ -125,7 +122,7 @@ fn build_globals(
     module_builder: &mut ModuleBuilder,
     diagnostics: &DiagnosticsHandler,
 ) -> Result<(), WasmError> {
-    Ok(for (global_idx, global) in &wasm_module.globals {
+    for (global_idx, global) in &wasm_module.globals {
         let global_name = wasm_module
             .name_section
             .globals_names
@@ -133,10 +130,10 @@ fn build_globals(
             .cloned()
             .unwrap_or(Symbol::intern(format!("gv{}", global_idx.as_u32())));
         let global_init = wasm_module.try_global_initializer(global_idx, diagnostics)?;
-        let init = ConstantData::from(global_init.to_le_bytes(&wasm_module, diagnostics)?);
+        let init = ConstantData::from(global_init.to_le_bytes(wasm_module, diagnostics)?);
         if let Err(e) = module_builder.declare_global_variable(
             global_name.as_str(),
-            ir_type(global.ty.clone())?,
+            ir_type(global.ty)?,
             Linkage::External,
             Some(init.clone()),
             SourceSpan::default(),
@@ -152,7 +149,8 @@ fn build_globals(
                 .emit();
             return Err(WasmError::Unexpected(message));
         }
-    })
+    };
+    Ok(())
 }
 
 fn build_data_segments(
@@ -162,7 +160,7 @@ fn build_data_segments(
 ) -> Result<(), WasmError> {
     for (data_segment_idx, data_segment) in &translation.data_segments {
         let data_segment_name =
-            translation.module.name_section.data_segment_names[&data_segment_idx].clone();
+            translation.module.name_section.data_segment_names[&data_segment_idx];
         let readonly = data_segment_name.as_str().contains(".rodata");
         let init = ConstantData::from(data_segment.data);
         let offset = data_segment.offset.as_i32(&translation.module, diagnostics)? as u32;

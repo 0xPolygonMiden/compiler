@@ -127,8 +127,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 if self
                     .module_instances_source
                     .values()
-                    .find(|idx| **idx == *static_module_idx)
-                    .is_some()
+                    .any(|idx| *idx == *static_module_idx)
                 {
                     return Err(WasmError::Unsupported(format!(
                         "A module with a static index {} is already instantiated. We don't \
@@ -278,7 +277,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         let component_import = miden_hir::ComponentImport::CanonAbiImport(CanonAbiImport {
             function_ty: lifted_func_ty,
             interface_function,
-            digest: import_metadata.digest.clone(),
+            digest: import_metadata.digest,
             options: self.translate_canonical_options(options)?,
         });
         Ok(component_import)
@@ -358,11 +357,11 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                         ))
                     }
                 };
-                let func_ident = miden_hir::FunctionIdent {
+                
+                miden_hir::FunctionIdent {
                     module: module_name,
                     function: miden_hir::Ident::with_empty_span(func_name),
-                };
-                func_ident
+                }
             }
             CoreDef::InstanceFlags(_) => {
                 return Err(WasmError::Unsupported(
@@ -406,11 +405,11 @@ fn function_id_from_import(_module: &Module, module_import: &ModuleImport) -> Fu
 /// Get the function id from the given Wasm func_idx in the given Wasm core exporting_module
 fn function_id_from_export(exporting_module: &Module, func_idx: FuncIndex) -> FunctionIdent {
     let func_name = exporting_module.func_name(func_idx);
-    let function_id = FunctionIdent {
+    
+    FunctionIdent {
         module: exporting_module.name(),
         function: Ident::with_empty_span(func_name),
-    };
-    function_id
+    }
 }
 
 /// Convert the given Wasm component function type to the Miden IR lifted function type
@@ -419,11 +418,11 @@ fn convert_lifted_func_ty(ty: &TypeFuncIndex, component_types: &ComponentTypes) 
     let params_types = component_types[type_func.params].clone().types;
     let results_types = component_types[type_func.results].clone().types;
     let params = params_types
-        .into_iter()
+        .iter()
         .map(|ty| interface_type_to_ir(ty, component_types))
         .collect();
     let results = results_types
-        .into_iter()
+        .iter()
         .map(|ty| interface_type_to_ir(ty, component_types))
         .collect();
     FunctionType {

@@ -526,7 +526,7 @@ impl ModuleTypesBuilder {
 
         let idx = self.types.wasm_signatures.push(sig.clone());
         self.interned_func_types.insert(sig, idx);
-        return idx;
+        idx
     }
 
     /// Returns the result [`ModuleTypes`] of this builder.

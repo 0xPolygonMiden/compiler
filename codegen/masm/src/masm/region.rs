@@ -150,7 +150,7 @@ fn import_block(
         match op {
             ast::Op::Inst(ix) => {
                 let current_block = region.block_mut(current_block_id);
-                let mut ops = Op::from_masm(current_module, (&**ix).clone());
+                let mut ops = Op::from_masm(current_module, (**ix).clone());
                 current_block.append(&mut ops);
             }
             ast::Op::If {
@@ -184,6 +184,7 @@ fn import_block(
 
 /// Emit a [miden_assembly::ast::CodeBlock] by recursively visiting a tree of blocks
 /// starting with `block_id`, using the provided imports and local/external procedure maps.
+#[allow(clippy::only_used_in_recursion)]
 fn emit_block(
     block_id: BlockId,
     blocks: &PrimaryMap<BlockId, Block>,

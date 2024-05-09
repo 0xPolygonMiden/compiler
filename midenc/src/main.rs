@@ -4,10 +4,8 @@ use anyhow::anyhow;
 use midenc_driver::{self as driver, DriverError};
 
 pub fn main() -> Result<(), DriverError> {
-    if cfg!(not(debug_assertions)) {
-        if env::var_os("MIDENC_TRACE").is_none() {
-            human_panic::setup_panic!();
-        }
+    if cfg!(not(debug_assertions)) && env::var_os("MIDENC_TRACE").is_none() {
+        human_panic::setup_panic!();
     }
 
     // Initialize logger

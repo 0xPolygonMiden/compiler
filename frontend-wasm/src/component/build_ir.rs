@@ -72,8 +72,7 @@ mod tests {
 
     #[test]
     fn translate_simple() {
-        let wat = format!(
-            r#"
+        let wat = r#"
             (component
             (core module (;0;)
                 (type (;0;) (func))
@@ -95,8 +94,7 @@ mod tests {
             (func (;0;) (type 0) (canon lift (core func 0)))
             (export (;1;) "add" (func 0))
             )
-        "#,
-        );
+        "#.to_string();
         let wasm = wat::parse_str(wat).unwrap();
         let diagnostics = test_diagnostics();
         let config = Default::default();
@@ -136,8 +134,7 @@ mod tests {
 
     #[test]
     fn translate_simple_import() {
-        let wat = format!(
-            r#"
+        let wat = r#"
             (component
             (type (;0;)
                 (instance
@@ -176,8 +173,7 @@ mod tests {
             (func (;1;) (type 1) (canon lift (core func 1)))
             (export (;1;) "inc" (func 1))
             )
-        "#,
-        );
+        "#.to_string();
         let wasm = wat::parse_str(wat).unwrap();
         let diagnostics = test_diagnostics();
         let interface_function_ident = InterfaceFunctionIdent {
@@ -185,7 +181,7 @@ mod tests {
             function: Symbol::intern("add"),
         };
         let import_metadata = [(
-            interface_function_ident.clone(),
+            interface_function_ident,
             ImportMetadata {
                 digest: RpoDigest::default(),
             },
@@ -244,15 +240,14 @@ mod tests {
         // dbg!(&module.imports());
         let import_info = module.imports();
         dbg!(&import_info);
-        let function_id = import_info
+        let function_id = *import_info
             .imported(&Ident::from("miden:add/add@1.0.0"))
             .unwrap()
-            .into_iter()
+            .iter()
             .collect::<Vec<_>>()
             .first()
             .cloned()
-            .unwrap()
-            .clone();
+            .unwrap();
         dbg!(&function_id);
         dbg!(ir.imports());
         let component_import = ir.imports().get(&function_id).unwrap().unwrap_canon_abi_import();

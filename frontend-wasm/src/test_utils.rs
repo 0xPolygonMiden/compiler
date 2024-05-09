@@ -1,22 +1,18 @@
 use std::sync::Arc;
 
-use miden_diagnostics::term::termcolor::ColorChoice;
-use miden_diagnostics::CodeMap;
-use miden_diagnostics::DiagnosticsConfig;
-use miden_diagnostics::DiagnosticsHandler;
-use miden_diagnostics::Emitter;
-use miden_diagnostics::NullEmitter;
-use miden_diagnostics::Verbosity;
+use miden_diagnostics::{
+    term::termcolor::ColorChoice, CodeMap, DiagnosticsConfig, DiagnosticsHandler, Emitter,
+    NullEmitter, Verbosity,
+};
 
-pub fn default_emitter(verbosity: Verbosity, color: ColorChoice) -> Arc<dyn Emitter> {
-    match verbosity {
-        _ => Arc::new(NullEmitter::new(color)),
-    }
+pub fn default_emitter(color: ColorChoice) -> Arc<dyn Emitter> {
+    Arc::new(NullEmitter::new(color))
 }
 
 pub fn test_diagnostics() -> DiagnosticsHandler {
     let codemap = Arc::new(CodeMap::new());
-    let diagnostics = DiagnosticsHandler::new(
+
+    DiagnosticsHandler::new(
         DiagnosticsConfig {
             verbosity: Verbosity::Debug,
             warnings_as_errors: false,
@@ -24,7 +20,6 @@ pub fn test_diagnostics() -> DiagnosticsHandler {
             display: Default::default(),
         },
         codemap,
-        default_emitter(Verbosity::Debug, ColorChoice::Auto),
-    );
-    diagnostics
+        default_emitter(ColorChoice::Auto),
+    )
 }

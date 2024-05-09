@@ -72,3 +72,31 @@ jobs:
       with:
         command: test
         args: -p cargo-miden --test integration 
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+        override: true
+    - name: Cache Cargo
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+    - name: Install cargo-make
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-make
+    - name: Test
+      uses: actions-rs/cargo@v1
+      with:
+        command: make
+        args: clippy

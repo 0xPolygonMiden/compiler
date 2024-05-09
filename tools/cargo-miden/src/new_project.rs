@@ -57,6 +57,6 @@ impl NewCommand {
         };
         cargo_generate::generate(generate_args)
             .context("Failed to scaffold new Miden project from the template")?;
-        return Ok(self.path);
+        Ok(self.path)
     }
 }

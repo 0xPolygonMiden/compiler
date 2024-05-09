@@ -5,7 +5,6 @@ use miden_hir::{
     cranelift_entity::{packed_option::ReservedValue, PrimaryMap},
     Ident, Symbol,
 };
-use rustc_hash::FxHashMap;
 use wasmparser::{
     types::CoreTypeId, CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind,
     Encoding, ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator,
@@ -162,7 +161,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 match encoding {
                     Encoding::Module => {}
                     Encoding::Component => {
-                        return Err(WasmError::Unsupported(format!("component model")));
+                        return Err(WasmError::Unsupported("component model".to_string()));
                     }
                 }
             }
@@ -241,11 +240,12 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         let num = usize::try_from(types.count()).unwrap();
         self.result.module.types.reserve(num);
         self.types.reserve_wasm_signatures(num);
-        Ok(for i in 0..types.count() {
+        for i in 0..types.count() {
             let types = self.validator.types(0).unwrap();
             let ty = types.core_type_at(i);
             self.declare_type(ty.unwrap_sub())?;
-        })
+        }
+        Ok(())
     }
 
     fn import_section(
@@ -255,7 +255,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.import_section(&imports)?;
         let cnt = usize::try_from(imports.count()).unwrap();
         self.result.module.imports.reserve(cnt);
-        Ok(for entry in imports {
+        for entry in imports {
             let import = entry?;
             let ty = match import.ty {
                 TypeRef::Func(index) => {
@@ -282,7 +282,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 TypeRef::Tag(_) => unreachable!(),
             };
             self.declare_import(import.module, import.name, ty);
-        })
+        }
+        Ok(())
     }
 
     fn function_section(
@@ -292,12 +293,13 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.function_section(&functions)?;
         let cnt = usize::try_from(functions.count()).unwrap();
         self.result.module.functions.reserve_exact(cnt);
-        Ok(for entry in functions {
+        for entry in functions {
             let sigindex = entry?;
             let ty = TypeIndex::from_u32(sigindex);
             let sig_index = self.result.module.types[ty].unwrap_function();
             self.result.module.push_function(sig_index);
-        })
+        }
+        Ok(())
     }
 
     fn table_section(
@@ -307,7 +309,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.table_section(&tables)?;
         let cnt = usize::try_from(tables.count()).unwrap();
         self.result.module.tables.reserve_exact(cnt);
-        Ok(for entry in tables {
+        for entry in tables {
             let wasmparser::Table { ty, init } = entry?;
             let table = convert_table_type(&ty);
             self.result.module.tables.push(table);
@@ -336,7 +338,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 }
             };
             self.result.module.table_initialization.initial_values.push(init);
-        })
+        }
+        Ok(())
     }
 
     fn memory_section(
@@ -356,7 +359,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.global_section(&globals)?;
         let cnt = usize::try_from(globals.count()).unwrap();
         self.result.module.globals.reserve_exact(cnt);
-        Ok(for entry in globals {
+        for entry in globals {
             let wasmparser::Global { ty, init_expr } = entry?;
             let mut init_expr_reader = init_expr.get_binary_reader();
             let initializer = match init_expr_reader.read_operator()? {
@@ -380,7 +383,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             let ty = convert_global_type(&ty);
             self.result.module.globals.push(ty);
             self.result.module.global_initializers.push(initializer);
-        })
+        }
+        Ok(())
     }
 
     fn export_section(
@@ -390,7 +394,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.export_section(&exports)?;
         let cnt = usize::try_from(exports.count()).unwrap();
         self.result.module.exports.reserve(cnt);
-        Ok(for entry in exports {
+        for entry in exports {
             let wasmparser::Export { name, kind, index } = entry?;
             let entity = match kind {
                 ExternalKind::Func => {
@@ -406,7 +410,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 ExternalKind::Tag => unreachable!(),
             };
             self.result.module.exports.insert(String::from(name), entity);
-        })
+        }
+        Ok(())
     }
 
     fn start_section(&mut self, func: u32, range: Range<usize>) -> Result<(), WasmError> {
@@ -423,7 +428,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         elements: wasmparser::ElementSectionReader<'data>,
     ) -> Result<(), WasmError> {
         self.validator.element_section(&elements)?;
-        Ok(for (index, entry) in elements.into_iter().enumerate() {
+        for (index, entry) in elements.into_iter().enumerate() {
             let wasmparser::Element {
                 kind,
                 items,
@@ -504,7 +509,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
 
                 ElementKind::Declared => {}
             }
-        })
+        }
+        Ok(())
     }
 
     fn code_section_start(&mut self, count: u32, range: Range<usize>) -> Result<(), WasmError> {
@@ -640,7 +646,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 .name_section
                                 .locals_names
                                 .entry(FuncIndex::from_u32(f.index))
-                                .or_insert(FxHashMap::default())
+                                .or_default()
                                 .insert(index, Symbol::intern(name));
                         }
                     }
@@ -705,8 +711,10 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             ".debug_str" => dwarf.debug_str = gimli::DebugStr::new(data, endian),
             ".debug_str_offsets" => dwarf.debug_str_offsets = gimli::DebugStrOffsets::from(slice),
             ".debug_str_sup" => {
-                let mut dwarf_sup: Dwarf<'data> = Default::default();
-                dwarf_sup.debug_str = gimli::DebugStr::from(slice);
+                let dwarf_sup: Dwarf<'data> = Dwarf {
+                    debug_str: gimli::DebugStr::from(slice),
+                    ..Default::default()
+                };
                 dwarf.sup = Some(Arc::new(dwarf_sup));
             }
             ".debug_types" => dwarf.debug_types = gimli::DebugTypes::from(slice),

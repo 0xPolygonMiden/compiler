@@ -228,7 +228,7 @@ impl TryFrom<Ident> for MasmImport {
                     alias: name,
                 })
             }
-            Some((_, alias)) if alias.is_empty() => {
+            Some((_, "")) => {
                 bail!("invalid module identifier '{name}': trailing '::' is invalid");
             }
             Some((_, alias)) => {
@@ -255,7 +255,7 @@ impl FromStr for MasmImport {
                 let name = Ident::with_empty_span(Symbol::intern(s));
                 name.try_into()
             }
-            Some((_, alias)) if alias.is_empty() => {
+            Some((_, "")) => {
                 bail!("invalid import '{s}': alias cannot be empty")
             }
             Some((fqn, alias)) => {

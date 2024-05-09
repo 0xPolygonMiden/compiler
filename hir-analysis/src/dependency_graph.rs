@@ -493,18 +493,12 @@ impl NodeId {
 }
 impl fmt::Debug for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match Node::try_from(*self) {
-            Ok(node) => fmt::Debug::fmt(&node, f),
-            Err(_) => write!(f, "InvalidNodeId({:064b})", self.0),
-        }
+        fmt::Debug::fmt(&Node::from(*self), f)
     }
 }
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match Node::try_from(*self) {
-            Ok(node) => fmt::Display::fmt(&node, f),
-            Err(_) => write!(f, "InvalidNodeId({:064b})", self.0),
-        }
+        fmt::Debug::fmt(&Node::from(*self), f)
     }
 }
 impl From<Node> for NodeId {

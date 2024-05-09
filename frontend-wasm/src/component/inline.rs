@@ -46,25 +46,25 @@
 
 // Based on wasmtime v16.0 Wasm component translation
 
-use super::resources::ResourcesBuilder;
-use super::{
-    types::*, ClosedOverComponent, ClosedOverModule, ExportItem, LocalCanonicalOptions,
-    ParsedComponent, StringEncoding,
-};
-use crate::component::dfg;
-use crate::component::LocalInitializer;
-use crate::module::module_env::ParsedModule;
-use crate::module::{types::*, ModuleImport};
-use crate::translation_utils::BuildFxHasher;
+use std::{borrow::Cow, collections::HashMap};
+
 use anyhow::{bail, Result};
 use indexmap::IndexMap;
 use miden_hir::cranelift_entity::PrimaryMap;
 use rustc_hash::FxHashMap;
-use std::borrow::Cow;
-use std::collections::HashMap;
 use wasmparser::types::{ComponentAnyTypeId, ComponentEntityType, ComponentInstanceTypeId};
 
-pub fn run<'a, 'data>(
+use super::{
+    resources::ResourcesBuilder, types::*, ClosedOverComponent, ClosedOverModule, ExportItem,
+    LocalCanonicalOptions, ParsedComponent, StringEncoding,
+};
+use crate::{
+    component::{dfg, LocalInitializer},
+    module::{module_env::ParsedModule, types::*, ModuleImport},
+    translation_utils::BuildFxHasher,
+};
+
+pub fn run(
     types: &mut ComponentTypesBuilder,
     root_component: &ParsedComponent<'_>,
     nested_modules: &PrimaryMap<StaticModuleIndex, ParsedModule<'_>>,
@@ -138,13 +138,7 @@ pub fn run<'a, 'data>(
     // the root frame which are then used for recording the exports of the
     // component.
     inliner.result.num_runtime_component_instances += 1;
-    let frame = InlinerFrame::new(
-        index,
-        &root_component,
-        ComponentClosure::default(),
-        args,
-        None,
-    );
+    let frame = InlinerFrame::new(index, root_component, ComponentClosure::default(), args, None);
     let resources_snapshot = types.resources_mut().clone();
     let mut frames = vec![(frame, resources_snapshot)];
     let exports = inliner.run(types, &mut frames)?;
@@ -397,12 +391,11 @@ impl<'a> Inliner<'a> {
                 // Process the initializer and if it started the instantiation
                 // of another component then we push that frame on the stack to
                 // continue onwards.
-                Some(init) => match self.initializer(frame, types, init)? {
-                    Some(new_frame) => {
+                Some(init) => {
+                    if let Some(new_frame) = self.initializer(frame, types, init)? {
                         frames.push((new_frame, types.resources_mut().clone()));
                     }
-                    None => {}
-                },
+                }
 
                 // If there are no more initializers for this frame then the
                 // component it represents has finished instantiation. The
@@ -578,7 +571,10 @@ impl<'a> Inliner<'a> {
                     // Lowering a lifted function where the destination
                     // component is different than the source component
                     ComponentFuncDef::Lifted { .. } => {
-                        bail!( "Lowering a lifted function where the destination component is different than the source component is not supported");
+                        bail!(
+                            "Lowering a lifted function where the destination component is \
+                             different than the source component is not supported"
+                        );
                     }
                 };
                 frame.funcs.push(func);
@@ -613,9 +609,7 @@ impl<'a> Inliner<'a> {
                     dtor: dtor.map(|i| frame.funcs[i].clone()),
                     instance: frame.instance,
                 });
-                self.result
-                    .side_effects
-                    .push(dfg::SideEffect::Resource(idx));
+                self.result.side_effects.push(dfg::SideEffect::Resource(idx));
 
                 // Register with type translation that all future references to
                 // `ty` will refer to `idx`.
@@ -634,26 +628,17 @@ impl<'a> Inliner<'a> {
             // information and then new entries for each intrinsic are recorded.
             ResourceNew(id, ty) => {
                 let id = types.resource_id(id.resource());
-                let index = self
-                    .result
-                    .trampolines
-                    .push((*ty, dfg::Trampoline::ResourceNew(id)));
+                let index = self.result.trampolines.push((*ty, dfg::Trampoline::ResourceNew(id)));
                 frame.funcs.push(dfg::CoreDef::Trampoline(index));
             }
             ResourceRep(id, ty) => {
                 let id = types.resource_id(id.resource());
-                let index = self
-                    .result
-                    .trampolines
-                    .push((*ty, dfg::Trampoline::ResourceRep(id)));
+                let index = self.result.trampolines.push((*ty, dfg::Trampoline::ResourceRep(id)));
                 frame.funcs.push(dfg::CoreDef::Trampoline(index));
             }
             ResourceDrop(id, ty) => {
                 let id = types.resource_id(id.resource());
-                let index = self
-                    .result
-                    .trampolines
-                    .push((*ty, dfg::Trampoline::ResourceDrop(id)));
+                let index = self.result.trampolines.push((*ty, dfg::Trampoline::ResourceDrop(id)));
                 frame.funcs.push(dfg::CoreDef::Trampoline(index));
             }
 
@@ -685,7 +670,7 @@ impl<'a> Inliner<'a> {
                         {
                             let instance = args[module_name.as_str()];
                             defs.push(
-                                self.core_def_of_module_instance_export(frame, instance, &field),
+                                self.core_def_of_module_instance_export(frame, instance, field),
                             );
                         }
                         instance_module = InstanceModule::Static(*idx);
@@ -708,20 +693,14 @@ impl<'a> Inliner<'a> {
                 };
 
                 let idx = self.result.instances.push(init);
-                self.result
-                    .side_effects
-                    .push(dfg::SideEffect::Instance(idx));
+                self.result.side_effects.push(dfg::SideEffect::Instance(idx));
                 let idx2 = self.runtime_instances.push(instance_module);
                 assert_eq!(idx, idx2);
-                frame
-                    .module_instances
-                    .push(ModuleInstanceDef::Instantiated(idx, *module));
+                frame.module_instances.push(ModuleInstanceDef::Instantiated(idx, *module));
             }
 
             ModuleSynthetic(map) => {
-                frame
-                    .module_instances
-                    .push(ModuleInstanceDef::Synthetic(map));
+                frame.module_instances.push(ModuleInstanceDef::Synthetic(map));
             }
 
             // This is one of the stages of the "magic" of implementing outer
@@ -779,9 +758,7 @@ impl<'a> Inliner<'a> {
                     .iter()
                     .map(|(name, index)| Ok((*name, frame.item(*index, types)?)))
                     .collect::<Result<_>>()?;
-                frame
-                    .component_instances
-                    .push(ComponentInstanceDef::Items(items));
+                frame.component_instances.push(ComponentInstanceDef::Items(items));
             }
 
             // Core wasm aliases, this and the cases below, are creating
@@ -791,12 +768,12 @@ impl<'a> Inliner<'a> {
             AliasExportFunc(instance, name) => {
                 frame
                     .funcs
-                    .push(self.core_def_of_module_instance_export(frame, *instance, *name));
+                    .push(self.core_def_of_module_instance_export(frame, *instance, name));
             }
 
             AliasExportTable(instance, name) => {
                 frame.tables.push(
-                    match self.core_def_of_module_instance_export(frame, *instance, *name) {
+                    match self.core_def_of_module_instance_export(frame, *instance, name) {
                         dfg::CoreDef::Export(e) => e,
                         _ => unreachable!(),
                     },
@@ -805,7 +782,7 @@ impl<'a> Inliner<'a> {
 
             AliasExportGlobal(instance, name) => {
                 frame.globals.push(
-                    match self.core_def_of_module_instance_export(frame, *instance, *name) {
+                    match self.core_def_of_module_instance_export(frame, *instance, name) {
                         dfg::CoreDef::Export(e) => e,
                         _ => unreachable!(),
                     },
@@ -814,7 +791,7 @@ impl<'a> Inliner<'a> {
 
             AliasExportMemory(instance, name) => {
                 frame.memories.push(
-                    match self.core_def_of_module_instance_export(frame, *instance, *name) {
+                    match self.core_def_of_module_instance_export(frame, *instance, name) {
                         dfg::CoreDef::Export(e) => e,
                         _ => unreachable!(),
                     },
@@ -854,9 +831,7 @@ impl<'a> Inliner<'a> {
 
             Export(item) => match item {
                 ComponentItem::Func(i) => {
-                    frame
-                        .component_funcs
-                        .push(frame.component_funcs[*i].clone());
+                    frame.component_funcs.push(frame.component_funcs[*i].clone());
                 }
                 ComponentItem::Module(i) => {
                     frame.modules.push(frame.modules[*i].clone());
@@ -865,9 +840,7 @@ impl<'a> Inliner<'a> {
                     frame.components.push(frame.components[*i].clone());
                 }
                 ComponentItem::ComponentInstance(i) => {
-                    frame
-                        .component_instances
-                        .push(frame.component_instances[*i].clone());
+                    frame.component_instances.push(frame.component_instances[*i].clone());
                 }
 
                 // Type index spaces aren't maintained during this inlining pass
@@ -887,15 +860,11 @@ impl<'a> Inliner<'a> {
     /// runtime imports are lined up" and after that no more name resolution is
     /// necessary.
     fn runtime_import(&mut self, path: &ImportPath<'a>) -> RuntimeImportIndex {
-        *self
-            .import_path_interner
-            .entry(path.clone())
-            .or_insert_with(|| {
-                self.result.imports.push((
-                    path.index,
-                    path.path.iter().map(|s| s.to_string()).collect(),
-                ))
-            })
+        *self.import_path_interner.entry(path.clone()).or_insert_with(|| {
+            self.result
+                .imports
+                .push((path.index, path.path.iter().map(|s| s.to_string()).collect()))
+        })
     }
 
     /// Returns the `CoreDef`, the canonical definition for a core wasm item,
@@ -969,13 +938,9 @@ impl<'a> Inliner<'a> {
     /// use at runtime. This is only used for lowered host functions and lifted
     /// functions exported to the host.
     fn canonical_options(&mut self, options: AdapterOptions) -> dfg::CanonicalOptions {
-        let memory = options
-            .memory
-            .map(|export| self.result.memories.push(export));
+        let memory = options.memory.map(|export| self.result.memories.push(export));
         let realloc = options.realloc.map(|def| self.result.reallocs.push(def));
-        let post_return = options
-            .post_return
-            .map(|def| self.result.post_returns.push(def));
+        let post_return = options.post_return.map(|def| self.result.post_returns.push(def));
         dfg::CanonicalOptions {
             instance: options.instance,
             string_encoding: options.string_encoding,
@@ -1016,7 +981,10 @@ impl<'a> Inliner<'a> {
                 // somewhat tricky and needs something like temporary scratch
                 // space that isn't implemented.
                 ComponentFuncDef::Import(_) => {
-                    bail!("component export `{name}` is a reexport of an imported function which is not implemented")
+                    bail!(
+                        "component export `{name}` is a reexport of an imported function which is \
+                         not implemented"
+                    )
                 }
             },
 

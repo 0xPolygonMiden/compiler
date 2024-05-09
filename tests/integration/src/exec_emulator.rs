@@ -17,5 +17,5 @@ pub fn execute_emulator(program: Arc<Program>, args: &[Felt]) -> Vec<TestFelt> {
         }
     }
     let operand_stack = emulator.start().expect("failed to invoke");
-    operand_stack.stack().iter().map(|felt| TestFelt(felt.clone())).collect()
+    operand_stack.stack().iter().map(|felt| TestFelt(*felt)).collect()
 }

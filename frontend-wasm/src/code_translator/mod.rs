@@ -45,6 +45,7 @@ mod tests;
 mod tests_unsupported;
 
 /// Translates wasm operators into Miden IR instructions.
+#[allow(clippy::too_many_arguments)]
 pub fn translate_operator(
     op: &Operator,
     builder: &mut FunctionBuilderExt,
@@ -56,7 +57,7 @@ pub fn translate_operator(
     span: SourceSpan,
 ) -> WasmResult<()> {
     if !state.reachable {
-        translate_unreachable_operator(&op, builder, state, mod_types, span)?;
+        translate_unreachable_operator(op, builder, state, mod_types, span)?;
         return Ok(());
     }
 
@@ -701,7 +702,7 @@ fn translate_call(
         func_state.pushn(&results);
     } else {
         // no transformation needed
-        let call = builder.ins().call(func_id, &args, span);
+        let call = builder.ins().call(func_id, args, span);
         let results = builder.inst_results(call);
         func_state.popn(num_wasm_args);
         func_state.pushn(results);
@@ -722,7 +723,7 @@ fn translate_return(
     {
         let return_args = match return_count {
             0 => None,
-            1 => Some(state.peekn_mut(return_count).first().unwrap().clone()),
+            1 => Some(*state.peekn_mut(return_count).first().unwrap()),
             _ => {
                 unsupported_diag!(diagnostics, "Multiple values are not supported");
             }
@@ -754,7 +755,7 @@ fn translate_br(
         (return_count, frame.br_destination())
     };
     let destination_args = state.peekn_mut(return_count);
-    builder.ins().br(br_destination, &destination_args, span);
+    builder.ins().br(br_destination, destination_args, span);
     state.popn(return_count);
     state.reachable = false;
 }
@@ -855,7 +856,7 @@ fn translate_else(
     span: SourceSpan,
 ) -> WasmResult<()> {
     let i = state.control_stack.len() - 1;
-    Ok(match state.control_stack[i] {
+    match state.control_stack[i] {
         ControlStackFrame::If {
             ref else_data,
             head_is_reachable,
@@ -916,7 +917,8 @@ fn translate_else(
             }
         }
         _ => unreachable!(),
-    })
+    };
+    Ok(())
 }
 
 fn translate_if(

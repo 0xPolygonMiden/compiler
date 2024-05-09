@@ -1307,9 +1307,7 @@ impl MasmOp {
             Instruction::PushFelt(elem) => Self::Push(elem),
             Instruction::PushWord(word) => Self::Pushw(word),
             Instruction::PushU8List(u8s) => return u8s.into_iter().map(Self::PushU8).collect(),
-            Instruction::PushU16List(u16s) => {
-                return u16s.into_iter().map(|i| Self::PushU16(i as u16)).collect()
-            }
+            Instruction::PushU16List(u16s) => return u16s.into_iter().map(Self::PushU16).collect(),
             Instruction::PushU32List(u32s) => return u32s.into_iter().map(Self::PushU32).collect(),
             Instruction::PushFeltList(felts) => return felts.into_iter().map(Self::Push).collect(),
             Instruction::Locaddr(id) => Self::LocAddr(LocalId::from_u16(unwrap_u16!(id))),
@@ -1583,22 +1581,19 @@ impl MasmOp {
                     let callee = ProcedureName::new(callee.function.as_str())
                         .expect("invalid procedure name");
                     InvocationTarget::ProcedureName(callee)
-                } else {
-                    if let Some(alias) = imports.alias(&callee.module) {
-                        let name = ProcedureName::new(callee.function.as_str())
-                            .expect("invalid procedure name");
-                        InvocationTarget::ProcedurePath {
-                            name,
-                            module: masm::ast::Ident::new(alias.as_str())
-                                .expect("invalid module path"),
-                        }
-                    } else {
-                        let name = ProcedureName::new(callee.function.as_str())
-                            .expect("invalid procedure name");
-                        let path = LibraryPath::new(callee.module.as_str())
-                            .expect("invalid procedure path");
-                        InvocationTarget::AbsoluteProcedurePath { name, path }
+                } else if let Some(alias) = imports.alias(&callee.module) {
+                    let name = ProcedureName::new(callee.function.as_str())
+                        .expect("invalid procedure name");
+                    InvocationTarget::ProcedurePath {
+                        name,
+                        module: masm::ast::Ident::new(alias.as_str()).expect("invalid module path"),
                     }
+                } else {
+                    let name = ProcedureName::new(callee.function.as_str())
+                        .expect("invalid procedure name");
+                    let path =
+                        LibraryPath::new(callee.module.as_str()).expect("invalid procedure path");
+                    InvocationTarget::AbsoluteProcedurePath { name, path }
                 };
                 match op {
                     Self::Exec(_) => Instruction::Exec(target),

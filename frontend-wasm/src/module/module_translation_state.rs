@@ -36,7 +36,7 @@ impl ModuleTranslationState {
                     }
                     (EntityIndex::Function(_), ModuleArgument::ComponentImport(_)) => {
                         // Do nothing, the local function id will be used
-                        ()
+                        
                     }
                     (EntityIndex::Function(_), module_arg) => {
                         panic!(
@@ -55,35 +55,33 @@ impl ModuleTranslationState {
             let ir_func_type = ir_func_type(&wasm_func_type).unwrap();
             let sig = sig_from_funct_type(&ir_func_type, CallConv::SystemV, Linkage::External);
             if let Some(subst) = function_import_subst.get(&index) {
-                functions.insert(index, (subst.clone(), sig));
-            } else {
-                if module.is_imported_function(index) {
-                    assert!((index.as_u32() as usize) < module.num_imported_funcs);
-                    let import = &module.imports[index.as_u32() as usize];
-                    if let Ok((func_stable_name, digest)) =
-                        parse_import_function_digest(&import.field)
-                    {
-                        let func_id = FunctionIdent {
-                            module: Ident::from(import.module.as_str()),
-                            function: Ident::from(func_stable_name.as_str()),
-                        };
-                        functions.insert(index, (func_id, sig));
-                        digests.insert(func_id, digest);
-                    } else {
-                        let func_id = FunctionIdent {
-                            module: Ident::from(import.module.as_str()),
-                            function: Ident::from(import.field.as_str()),
-                        };
-                        functions.insert(index, (func_id, sig));
-                    };
-                } else {
-                    let func_name = module.func_name(index);
+                functions.insert(index, (*subst, sig));
+            } else if module.is_imported_function(index) {
+                assert!((index.as_u32() as usize) < module.num_imported_funcs);
+                let import = &module.imports[index.as_u32() as usize];
+                if let Ok((func_stable_name, digest)) =
+                    parse_import_function_digest(&import.field)
+                {
                     let func_id = FunctionIdent {
-                        module: module.name(),
-                        function: Ident::from(func_name.as_str()),
+                        module: Ident::from(import.module.as_str()),
+                        function: Ident::from(func_stable_name.as_str()),
+                    };
+                    functions.insert(index, (func_id, sig));
+                    digests.insert(func_id, digest);
+                } else {
+                    let func_id = FunctionIdent {
+                        module: Ident::from(import.module.as_str()),
+                        function: Ident::from(import.field.as_str()),
                     };
                     functions.insert(index, (func_id, sig));
                 };
+            } else {
+                let func_name = module.func_name(index);
+                let func_id = FunctionIdent {
+                    module: module.name(),
+                    function: Ident::from(func_name.as_str()),
+                };
+                functions.insert(index, (func_id, sig));
             };
         }
         Self {

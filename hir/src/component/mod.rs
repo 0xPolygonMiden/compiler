@@ -325,11 +325,11 @@ impl<'a> ComponentBuilder<'a> {
 
     pub fn build(self) -> Component {
         assert!(!self.modules.is_empty(), "Cannot build a component with no modules");
-        let mut c = Component::default();
-        c.modules = self.modules;
-        c.exports = self.exports;
-        c.imports = self.imports;
-        c
+        Component {
+            modules: self.modules,
+            imports: self.imports,
+            exports: self.exports,
+        }
     }
 }
 

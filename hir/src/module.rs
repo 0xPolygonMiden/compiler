@@ -411,7 +411,7 @@ impl Module {
         let mut cursor = self.cursor_mut_at(id);
         cursor
             .remove()
-            .expect(format!("cursor pointing to a null when removing function id: {id}").as_str())
+            .unwrap_or_else(|| panic!("cursor pointing to a null when removing function id: {id}"))
     }
 
     /// Append `function` to the end of this module's body, returning the [FuncId]

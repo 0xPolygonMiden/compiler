@@ -132,8 +132,8 @@ impl CompilerTest {
             .arg("--message-format=json-render-diagnostics")
             .stdout(Stdio::piped())
             .spawn()
-            .expect(
-                format!(
+            .unwrap_or_else(|_| {
+                panic!(
                     "Failed to execute cargo build {}.",
                     cargo_build_cmd
                         .get_args()
@@ -141,8 +141,7 @@ impl CompilerTest {
                         .collect::<Vec<_>>()
                         .join(" ")
                 )
-                .as_str(),
-            );
+            });
         let wasm_artifacts = find_wasm_artifacts(&mut child);
         let output = child.wait().expect("Couldn't get cargo's exit status");
         if !output.success() {
@@ -200,8 +199,8 @@ impl CompilerTest {
             .arg("--message-format=json-render-diagnostics")
             .stdout(Stdio::piped())
             .spawn()
-            .expect(
-                format!(
+            .unwrap_or_else(|_| {
+                panic!(
                     "Failed to execute cargo build {}.",
                     cargo_build_cmd
                         .get_args()
@@ -209,8 +208,7 @@ impl CompilerTest {
                         .collect::<Vec<_>>()
                         .join(" ")
                 )
-                .as_str(),
-            );
+            });
         let mut wasm_artifacts = find_wasm_artifacts(&mut child);
         let output = child.wait().expect("Couldn't get cargo's exit status");
         if !output.success() {
@@ -363,7 +361,7 @@ impl CompilerTest {
             cwd.parent().unwrap().parent().unwrap().join("sdk").join("prelude");
         let miden_prelude_path_str = miden_prelude_path.to_str().unwrap();
         // dbg!(&miden_prelude_path);
-        let proj = project(&name)
+        let proj = project(name)
             .file(
                 "Cargo.toml",
                 format!(
@@ -416,8 +414,8 @@ impl CompilerTest {
                 .as_str(),
             )
             .build();
-        let test = Self::rust_source_cargo_lib(proj.root(), false, Some("entrypoint".to_string()));
-        test
+
+        Self::rust_source_cargo_lib(proj.root(), false, Some("entrypoint".to_string()))
     }
 
     /// Compare the compiled Wasm against the expected output
@@ -447,7 +445,7 @@ impl CompilerTest {
             HirArtifact::Program(hir_program) => {
                 // Program does not implement pretty printer yet, use the first module
                 let ir_module = demangle(
-                    &hir_program
+                    hir_program
                         .modules()
                         .iter()
                         .take(1)
@@ -541,7 +539,7 @@ impl CompilerTest {
                     entrypoint_function.attrs.set(miden_hir::attributes::ENTRYPOINT);
                     let body = entrypoint_function.block_mut(entrypoint_function.body.id());
                     body.push(miden_hir::MasmOp::Exec(entrypoint));
-                    let mut name = LibraryPath::new(&module_name).unwrap();
+                    let mut name = LibraryPath::new(module_name).unwrap();
                     name.set_namespace(miden_assembly::LibraryNamespace::Exec);
                     let mut module = Module::new(name, ModuleKind::Executable);
                     module.push_back(Box::new(entrypoint_function));
@@ -569,7 +567,7 @@ fn get_workspace_dir() -> String {
 fn report_cargo_error(child: std::process::Child) {
     eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
     let mut stderr = Vec::new();
-    child.stderr.unwrap().read(&mut stderr).expect("Failed to read stderr");
+    child.stderr.unwrap().read_exact(&mut stderr).expect("Failed to read stderr");
     let stderr = String::from_utf8(stderr).expect("Failed to parse stderr");
     eprintln!("stderr: {}", stderr);
     panic!("Rust to Wasm compilation failed!");
@@ -579,16 +577,15 @@ fn find_wasm_artifacts(child: &mut std::process::Child) -> Vec<std::path::PathBu
     let mut wasm_artifacts = Vec::new();
     let reader = std::io::BufReader::new(child.stdout.take().unwrap());
     for message in cargo_metadata::Message::parse_stream(reader) {
-        match message.expect("Failed to parse cargo metadata") {
-            cargo_metadata::Message::CompilerArtifact(artifact) => {
-                // find the Wasm artifact in artifact.filenames
-                for filename in artifact.filenames {
-                    if filename.as_str().ends_with(".wasm") {
-                        wasm_artifacts.push(filename.into_std_path_buf());
-                    }
+        if let cargo_metadata::Message::CompilerArtifact(artifact) =
+            message.expect("Failed to parse cargo metadata")
+        {
+            // find the Wasm artifact in artifact.filenames
+            for filename in artifact.filenames {
+                if filename.as_str().ends_with(".wasm") {
+                    wasm_artifacts.push(filename.into_std_path_buf());
                 }
             }
-            _ => (),
         }
     }
     wasm_artifacts
@@ -629,7 +626,7 @@ fn compile_rust_file(rust_source: &str) -> InputFile {
     let output_file = proj_dir.join(format!("{file_name}.wasm"));
     fs::write(&input_file, rust_source).unwrap();
     let output = Command::new("rustc")
-        .args(&rustc_opts)
+        .args(rustc_opts)
         .arg(&input_file)
         .arg("-o")
         .arg(&output_file)

@@ -6,6 +6,7 @@ use super::*;
 /// flags provided to the compiler, we may or may not perform
 /// the link, in which case we will just have a loose collection
 /// of modules, not a [Program]
+#[allow(clippy::vec_box)]
 pub enum MaybeLinked {
     Linked(Box<hir::Program>),
     Unlinked(Vec<Box<hir::Module>>),
