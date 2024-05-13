@@ -18,4 +18,7 @@ fn account() {
     test.expect_ir(expect_file![format!(
         "../../expected/rust_sdk_account_test/{artifact_name}.hir"
     )]);
+    test.expect_masm(expect_file![format!(
+        "../../expected/rust_sdk_account_test/{artifact_name}.masm"
+    )]);
 }
