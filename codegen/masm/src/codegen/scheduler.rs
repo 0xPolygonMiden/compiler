@@ -558,12 +558,15 @@ impl<'a> BlockScheduler<'a> {
 
     /// We are visiting a `Node::Result` during planning, and need to determine whether or
     /// not to materialize the result at this point, or if we must defer to another result of
-    /// the same instruction which is visited later in planning.
+    /// the same instruction which is visited later in planning, OR if the result will be
+    /// materialized but unused due to the instruction having side effects.
     ///
     /// The name of this function refers to the fact that we may have to "force" materialization
     /// of an instruction when the Result node has no predecessors in the graph, but is either
     /// live _after_ the current block, or its instruction has side effects that require it to
-    /// be materialized anyway.
+    /// be materialized anyway. However, we only force materialize in the latter case if there
+    /// are no direct dependents on the instruction itself, so as to avoid materializing the
+    /// same instruction multiple times (once for the result, once for the dependent).
     fn maybe_force_materialize_inst_results(&mut self, result: hir::Value, result_node: NodeId) {
         let inst_node = self.block_info.depgraph.unwrap_child(result_node);
         let inst = inst_node.unwrap_inst();
@@ -578,17 +581,24 @@ impl<'a> BlockScheduler<'a> {
 
         // We're the first result scheduled, whether used or not. If the result is
         // not actually used, we may need to force materialization if the following
-        // two conditions hold:
+        // three conditions hold:
         //
         // * There are no results used
         // * The instruction has side effects
+        // * There are no dependencies on the instruction itself present in the graph, not counting
+        //   the edges produced by results of the instruction.
         //
         // However, if any of the results are used, we must materialize them now, since
         // we are scheduled before any of the others.
         let is_used = inst_info.results.iter().any(|v| v.is_used());
         let has_side_effects = self.f.dfg.inst(inst).has_side_effects();
+        let has_dependent_insts = self
+            .block_info
+            .depgraph
+            .predecessors(inst_node)
+            .any(|p| p.dependent.is_instruction());
 
-        if is_used || has_side_effects {
+        if is_used || (has_side_effects && !has_dependent_insts) {
             self.materialize_inst_results(inst_info);
         }
     }
@@ -617,6 +627,13 @@ impl<'a> BlockScheduler<'a> {
         let first_user = inst_info.results[0].first_user().unwrap();
         let is_first_use = first_user == dependent_info.node;
         if !is_first_use {
+            return;
+        }
+
+        // If the result belongs to an instruction which is a treegraph node, then
+        // we never materialize the results, because they must already have been
+        // materialized
+        if self.block_info.treegraph.is_root(inst_node) {
             return;
         }
 
