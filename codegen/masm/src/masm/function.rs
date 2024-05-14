@@ -141,7 +141,13 @@ impl Function {
         kind: ast::InvokeKind,
         target: FunctionIdent,
     ) {
-        let path = LibraryPath::new(target.module.as_str()).expect("invalid procedure path");
+        let module_name_span = miden_assembly::SourceSpan::new(
+            target.module.span.start_index().0..target.module.span.end_index().0,
+        );
+        let module_id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+            module_name_span,
+            Arc::from(target.module.as_str().to_string().into_boxed_str()),
+        ));
         let name_span = miden_assembly::SourceSpan::new(
             target.function.span.start_index().0..target.function.span.end_index().0,
         );
@@ -149,6 +155,9 @@ impl Function {
             name_span,
             Arc::from(target.function.as_str().to_string().into_boxed_str()),
         ));
+        let path = LibraryPath::new(target.module.as_str()).unwrap_or_else(|_| {
+            LibraryPath::new_from_components(LibraryNamespace::Anon, [module_id])
+        });
         let name = ast::ProcedureName::new_unchecked(id);
         self.register_invoked(kind, ast::InvocationTarget::AbsoluteProcedurePath { name, path });
     }
