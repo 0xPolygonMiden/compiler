@@ -1,5 +1,6 @@
 [package]
 name = "midenc-hir-type"
+description = "Miden HIR types"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
