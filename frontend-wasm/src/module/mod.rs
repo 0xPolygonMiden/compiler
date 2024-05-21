@@ -333,8 +333,8 @@ impl Module {
     /// Returns the name of this module
     pub fn name(&self) -> Ident {
         self.name_override
-            .or_else(|| self.name_section.module_name)
-            .or_else(|| self.name_fallback)
+            .or(self.name_section.module_name)
+            .or(self.name_fallback)
             .expect("No module name in the name section and no fallback name is set")
     }
 

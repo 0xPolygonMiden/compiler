@@ -1,23 +1,12 @@
 use miden_diagnostics::SourceSpan;
-use miden_hir::cranelift_entity::EntitySet;
-use miden_hir::cranelift_entity::SecondaryMap;
-use miden_hir::Block;
-use miden_hir::Br;
-use miden_hir::CondBr;
-use miden_hir::DataFlowGraph;
-use miden_hir::InsertionPoint;
-use miden_hir::Inst;
-use miden_hir::InstBuilderBase;
-use miden_hir::Instruction;
-use miden_hir::ModuleFunctionBuilder;
-use miden_hir::ProgramPoint;
-use miden_hir::Switch;
-use miden_hir::Value;
+use miden_hir::{
+    cranelift_entity::{EntitySet, SecondaryMap},
+    Block, Br, CondBr, DataFlowGraph, InsertionPoint, Inst, InstBuilderBase, Instruction,
+    ModuleFunctionBuilder, ProgramPoint, Switch, Value,
+};
 use miden_hir_type::Type;
 
-use crate::ssa::SSABuilder;
-use crate::ssa::SideEffects;
-use crate::ssa::Variable;
+use crate::ssa::{SSABuilder, SideEffects, Variable};
 
 /// Tracking variables and blocks for SSA construction.
 pub struct FunctionBuilderContext {
@@ -74,7 +63,7 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
     }
 
     pub fn data_flow_graph(&self) -> &DataFlowGraph {
-        &self.inner.data_flow_graph()
+        self.inner.data_flow_graph()
     }
 
     pub fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
@@ -129,9 +118,9 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
             "You can't add block parameters after adding any instruction"
         );
 
+        #[allow(clippy::unnecessary_to_owned)]
         for argtyp in self.signature().results().to_vec() {
-            self.inner
-                .append_block_param(block, argtyp.ty.clone(), SourceSpan::default());
+            self.inner.append_block_param(block, argtyp.ty.clone(), SourceSpan::default());
         }
     }
 
@@ -171,10 +160,7 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
     /// created. Forgetting to call this method on every block will cause inconsistencies in the
     /// produced functions.
     pub fn seal_block(&mut self, block: Block) {
-        let side_effects = self
-            .func_ctx
-            .ssa
-            .seal_block(block, self.inner.data_flow_graph_mut());
+        let side_effects = self.func_ctx.ssa.seal_block(block, self.inner.data_flow_graph_mut());
         self.handle_ssa_side_effects(side_effects);
     }
 
@@ -286,10 +272,7 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
     /// position of a previously defined user variable.
     pub fn use_var(&mut self, var: Variable) -> Value {
         self.try_use_var(var).unwrap_or_else(|_| {
-            panic!(
-                "variable {:?} is used but its type has not been declared",
-                var
-            )
+            panic!("variable {:?} is used but its type has not been declared", var)
         })
     }
 
@@ -306,33 +289,27 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
             return Err(DefVariableError::TypeMismatch(var, val));
         }
 
-        self.func_ctx
-            .ssa
-            .def_var(var, val, self.inner.current_block());
+        self.func_ctx.ssa.def_var(var, val, self.inner.current_block());
         Ok(())
     }
 
     /// Register a new definition of a user variable. The type of the value must be
     /// the same as the type registered for the variable.
     pub fn def_var(&mut self, var: Variable, val: Value) {
-        self.try_def_var(var, val)
-            .unwrap_or_else(|error| match error {
-                DefVariableError::TypeMismatch(var, val) => {
-                    assert_eq!(
-                        &self.func_ctx.types[var],
-                        self.data_flow_graph().value_type(val),
-                        "declared type of variable {:?} doesn't match type of value {}",
-                        var,
-                        val
-                    );
-                }
-                DefVariableError::DefinedBeforeDeclared(var) => {
-                    panic!(
-                        "variable {:?} is used but its type has not been declared",
-                        var
-                    );
-                }
-            })
+        self.try_def_var(var, val).unwrap_or_else(|error| match error {
+            DefVariableError::TypeMismatch(var, val) => {
+                assert_eq!(
+                    &self.func_ctx.types[var],
+                    self.data_flow_graph().value_type(val),
+                    "declared type of variable {:?} doesn't match type of value {}",
+                    var,
+                    val
+                );
+            }
+            DefVariableError::DefinedBeforeDeclared(var) => {
+                panic!("variable {:?} is used but its type has not been declared", var);
+            }
+        })
     }
 
     /// Returns `true` if and only if no instructions have been added since the last call to
@@ -347,17 +324,15 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
         self.func_ctx.status[block] == BlockStatus::Filled
     }
 
-    /// Returns `true` if and only if the current `Block` is sealed and has no predecessors declared.
+    /// Returns `true` if and only if the current `Block` is sealed and has no predecessors
+    /// declared.
     ///
     /// The entry block of a function is never unreachable.
     pub fn is_unreachable(&self) -> bool {
         let is_entry = self.inner.current_block() == self.data_flow_graph().entry_block();
         !is_entry
             && self.func_ctx.ssa.is_sealed(self.inner.current_block())
-            && !self
-                .func_ctx
-                .ssa
-                .has_any_predecessors(self.inner.current_block())
+            && !self.func_ctx.ssa.has_any_predecessors(self.inner.current_block())
     }
 
     /// Changes the destination of a jump instruction after creation.
@@ -422,10 +397,15 @@ pub enum DeclareVariableError {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, thiserror::Error)]
 /// An error encountered when defining the initial value of a variable.
 pub enum DefVariableError {
-    #[error("the types of variable {0} and value {1} are not the same. The `Value` supplied to `def_var` must be of the same type as the variable was declared to be of in `declare_var`.")]
+    #[error(
+        "the types of variable {0} and value {1} are not the same. The `Value` supplied to \
+         `def_var` must be of the same type as the variable was declared to be of in \
+         `declare_var`."
+    )]
     TypeMismatch(Variable, Value),
     #[error(
-        "the value of variable {0} was defined (in call `def_val`) before it was declared (in call `declare_var`)"
+        "the value of variable {0} was defined (in call `def_val`) before it was declared (in \
+         call `declare_var`)"
     )]
     DefinedBeforeDeclared(Variable),
 }
@@ -445,7 +425,7 @@ impl<'a, 'b, 'c, 'd> FuncInstBuilderExt<'a, 'b, 'c, 'd> {
 }
 impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> {
     fn data_flow_graph(&self) -> &DataFlowGraph {
-        &self.builder.data_flow_graph()
+        self.builder.data_flow_graph()
     }
 
     fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
@@ -463,19 +443,13 @@ impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> 
         // We only insert the Block in the layout when an instruction is added to it
         self.builder.ensure_inserted_block();
         let opcode = data.opcode();
-        let inst = self
-            .builder
-            .data_flow_graph_mut()
-            .insert_inst(self.ip, data, ty, span);
+        let inst = self.builder.data_flow_graph_mut().insert_inst(self.ip, data, ty, span);
 
         match &self.builder.inner.data_flow_graph().insts[inst].data.item {
             Instruction::Br(Br { destination, .. }) => {
                 // If the user has supplied jump arguments we must adapt the arguments of
                 // the destination block
-                self.builder
-                    .func_ctx
-                    .ssa
-                    .declare_block_predecessor(*destination, inst);
+                self.builder.func_ctx.ssa.declare_block_predecessor(*destination, inst);
             }
 
             Instruction::CondBr(CondBr {
@@ -483,15 +457,9 @@ impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> 
                 else_dest: (block_else, _),
                 ..
             }) => {
-                self.builder
-                    .func_ctx
-                    .ssa
-                    .declare_block_predecessor(*block_then, inst);
+                self.builder.func_ctx.ssa.declare_block_predecessor(*block_then, inst);
                 if block_then != block_else {
-                    self.builder
-                        .func_ctx
-                        .ssa
-                        .declare_block_predecessor(*block_else, inst);
+                    self.builder.func_ctx.ssa.declare_block_predecessor(*block_else, inst);
                 }
             }
             Instruction::Switch(Switch {
@@ -508,10 +476,7 @@ impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> 
                     if !unique.insert(*dest_block) {
                         continue;
                     }
-                    self.builder
-                        .func_ctx
-                        .ssa
-                        .declare_block_predecessor(*dest_block, inst);
+                    self.builder.func_ctx.ssa.declare_block_predecessor(*dest_block, inst);
                 }
             }
             inst => debug_assert!(!inst.opcode().is_branch()),

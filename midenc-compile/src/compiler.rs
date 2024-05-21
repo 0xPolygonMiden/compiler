@@ -117,7 +117,7 @@ impl Compiler {
         let cwd = self
             .working_dir
             .unwrap_or_else(|| std::env::current_dir().expect("no working directory available"));
-        let tmp_dir = self.target_dir.unwrap_or_else(|| std::env::temp_dir());
+        let tmp_dir = self.target_dir.unwrap_or_else(std::env::temp_dir);
 
         let color = match self.color {
             ColorChoice::Auto => MDColorChoice::Auto,

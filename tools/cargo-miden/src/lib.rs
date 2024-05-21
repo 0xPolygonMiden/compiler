@@ -85,7 +85,7 @@ where
     T: Iterator<Item = String>,
 {
     let args = args.collect::<Vec<_>>();
-    let subcommand = detect_subcommand(args.clone().into_iter());
+    let subcommand = detect_subcommand(args.clone());
 
     let outputs = match subcommand.as_deref() {
         // Check for built-in command or no command (shows help)
@@ -111,7 +111,7 @@ where
         _ => {
             // Not a built-in command, run the cargo command
             let cargo_args = CargoArguments::parse_from(args.clone().into_iter())?;
-            let metadata = load_metadata(&terminal, cargo_args.manifest_path.as_deref(), false)?;
+            let metadata = load_metadata(terminal, cargo_args.manifest_path.as_deref(), false)?;
             if metadata.packages.is_empty() {
                 bail!(
                     "manifest `{path}` contains no package or the workspace has no members",

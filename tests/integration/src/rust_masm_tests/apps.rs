@@ -20,7 +20,7 @@ fn fib() {
         .run(&(1u32..30), move |a| {
             let rust_out = miden_integration_tests_rust_fib::fib(a);
             let args = [Felt::from(a)];
-            let vm_out: u32 = execute_vm(&vm_program, &args).first().unwrap().clone().into();
+            let vm_out: u32 = (*execute_vm(vm_program, &args).first().unwrap()).into();
             prop_assert_eq!(rust_out, vm_out);
             // args.reverse();
             // let emul_out: u32 =

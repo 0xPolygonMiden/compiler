@@ -33,24 +33,24 @@ impl Stage for ParseStage {
         let file_type = input.file_type();
         match &input.file {
             InputType::Real(ref path) => match file_type {
-                FileType::Hir => self.parse_ast_from_file(path.as_ref(), &session),
-                FileType::Wasm => self.parse_hir_from_wasm_file(path.as_ref(), &session),
-                FileType::Wat => self.parse_hir_from_wat_file(path.as_ref(), &session),
+                FileType::Hir => self.parse_ast_from_file(path.as_ref(), session),
+                FileType::Wasm => self.parse_hir_from_wasm_file(path.as_ref(), session),
+                FileType::Wat => self.parse_hir_from_wat_file(path.as_ref(), session),
                 unsupported => unreachable!("unsupported file type: {unsupported}"),
             },
             InputType::Stdin { name, ref input } => match file_type {
-                FileType::Hir => self.parse_ast_from_bytes(&input, &session),
+                FileType::Hir => self.parse_ast_from_bytes(input, session),
                 FileType::Wasm => self.parse_hir_from_wasm_bytes(
-                    &input,
-                    &session,
+                    input,
+                    session,
                     &WasmTranslationConfig {
                         source_name: name.to_string().into(),
                         ..Default::default()
                     },
                 ),
                 FileType::Wat => self.parse_hir_from_wat_bytes(
-                    &input,
-                    &session,
+                    input,
+                    session,
                     &WasmTranslationConfig {
                         source_name: name.to_string().into(),
                         ..Default::default()

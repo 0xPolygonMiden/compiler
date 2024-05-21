@@ -115,7 +115,7 @@ impl From<TestFelt> for i32 {
 
 impl From<TestFelt> for u64 {
     fn from(f: TestFelt) -> Self {
-        f.0.as_int() as u64
+        f.0.as_int()
     }
 }
 

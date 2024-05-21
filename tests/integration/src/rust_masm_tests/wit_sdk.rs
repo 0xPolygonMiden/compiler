@@ -23,33 +23,33 @@ fn sdk() {
 fn sdk_basic_wallet() {
     let interface_tx = InterfaceIdent::from_full_ident("miden:base/tx@1.0.0".to_string());
     let create_note_ident = InterfaceFunctionIdent {
-        interface: interface_tx.clone(),
+        interface: interface_tx,
         function: Symbol::intern("create-note"),
     };
     let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0".to_string());
     let add_asset_ident = InterfaceFunctionIdent {
-        interface: interface_account.clone(),
+        interface: interface_account,
         function: Symbol::intern("add-asset"),
     };
     let remove_asset_ident = InterfaceFunctionIdent {
-        interface: interface_account.clone(),
+        interface: interface_account,
         function: Symbol::intern("remove-asset"),
     };
     let import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata> = [
         (
-            create_note_ident.clone(),
+            create_note_ident,
             ImportMetadata {
                 digest: RpoDigest::default(),
             },
         ),
         (
-            remove_asset_ident.clone(),
+            remove_asset_ident,
             ImportMetadata {
                 digest: RpoDigest::default(),
             },
         ),
         (
-            add_asset_ident.clone(),
+            add_asset_ident,
             ImportMetadata {
                 digest: RpoDigest::default(),
             },
@@ -93,7 +93,7 @@ fn sdk_basic_wallet_p2id_note() {
     let import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata> = [
         (
             InterfaceFunctionIdent {
-                interface: interface_account.clone(),
+                interface: interface_account,
                 function: Symbol::intern("get-id"),
             },
             ImportMetadata {
@@ -102,7 +102,7 @@ fn sdk_basic_wallet_p2id_note() {
         ),
         (
             InterfaceFunctionIdent {
-                interface: core_types.clone(),
+                interface: core_types,
                 function: Symbol::intern("account-id-from-felt"),
             },
             ImportMetadata {
@@ -111,7 +111,7 @@ fn sdk_basic_wallet_p2id_note() {
         ),
         (
             InterfaceFunctionIdent {
-                interface: basic_wallet.clone(),
+                interface: basic_wallet,
                 function: Symbol::intern("receive-asset"),
             },
             ImportMetadata {
@@ -120,7 +120,7 @@ fn sdk_basic_wallet_p2id_note() {
         ),
         (
             InterfaceFunctionIdent {
-                interface: note.clone(),
+                interface: note,
                 function: Symbol::intern("get-assets"),
             },
             ImportMetadata {
@@ -129,7 +129,7 @@ fn sdk_basic_wallet_p2id_note() {
         ),
         (
             InterfaceFunctionIdent {
-                interface: note.clone(),
+                interface: note,
                 function: Symbol::intern("get-inputs"),
             },
             ImportMetadata {

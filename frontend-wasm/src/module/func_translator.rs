@@ -43,6 +43,7 @@ impl FuncTranslator {
     }
 
     /// Translate a binary WebAssembly function from a `FunctionBody`.
+    #[allow(clippy::too_many_arguments)]
     pub fn translate_body(
         &mut self,
         body: &FunctionBody<'_>,
@@ -65,7 +66,7 @@ impl FuncTranslator {
         // function and its return values.
         let exit_block = builder.create_block();
         builder.append_block_params_for_function_returns(exit_block);
-        self.state.initialize(&builder.signature(), exit_block);
+        self.state.initialize(builder.signature(), exit_block);
 
         parse_local_decls(&mut reader, &mut builder, num_params, func_validator)?;
         parse_function_body(
@@ -150,6 +151,7 @@ fn declare_locals(
 ///
 /// This assumes that the local variable declarations have already been parsed and function
 /// arguments and locals are declared in the builder.
+#[allow(clippy::too_many_arguments)]
 fn parse_function_body(
     mut reader: BinaryReader,
     builder: &mut FunctionBuilderExt,
@@ -186,10 +188,8 @@ fn parse_function_body(
     //
     // If the exit block is unreachable, it may not have the correct arguments, so we would
     // generate a return instruction that doesn't match the signature.
-    if state.reachable {
-        if !builder.is_unreachable() {
-            builder.ins().ret(state.stack.first().cloned(), SourceSpan::default());
-        }
+    if state.reachable && !builder.is_unreachable() {
+        builder.ins().ret(state.stack.first().cloned(), SourceSpan::default());
     }
 
     // Discard any remaining values on the stack. Either we just returned them,

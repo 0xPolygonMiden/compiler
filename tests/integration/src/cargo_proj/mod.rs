@@ -273,7 +273,7 @@ impl Project {
     pub fn bin(&self, b: &str) -> PathBuf {
         self.build_dir()
             .join("debug")
-            .join(&format!("{}{}", b, env::consts::EXE_SUFFIX))
+            .join(format!("{}{}", b, env::consts::EXE_SUFFIX))
     }
 
     /// Path to a release binary.
@@ -281,13 +281,13 @@ impl Project {
     pub fn release_bin(&self, b: &str) -> PathBuf {
         self.build_dir()
             .join("release")
-            .join(&format!("{}{}", b, env::consts::EXE_SUFFIX))
+            .join(format!("{}{}", b, env::consts::EXE_SUFFIX))
     }
 
     /// Path to a debug binary for a specific target triple.
     /// ex: `/path/to/cargo/target/cit/t0/foo/target/i686-apple-darwin/debug/foo`
     pub fn target_bin(&self, target: &str, b: &str) -> PathBuf {
-        self.build_dir().join(target).join("debug").join(&format!(
+        self.build_dir().join(target).join("debug").join(format!(
             "{}{}",
             b,
             env::consts::EXE_SUFFIX
@@ -321,7 +321,7 @@ impl Project {
 
     /// Modifies `Cargo.toml` to remove all commented lines.
     pub fn uncomment_root_manifest(&self) {
-        let contents = self.read_file("Cargo.toml").replace("#", "");
+        let contents = self.read_file("Cargo.toml").replace('#', "");
         fs::write(self.root().join("Cargo.toml"), contents).unwrap();
     }
 

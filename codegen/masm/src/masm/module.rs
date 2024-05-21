@@ -168,7 +168,7 @@ impl Module {
             let name = if import.is_aliased() {
                 Symbol::intern(import.path.last())
             } else {
-                alias.clone()
+                alias
             };
             imports.insert(miden_hir::MasmImport { span, name, alias });
         }
@@ -239,7 +239,7 @@ impl Module {
             let span =
                 miden_assembly::SourceSpan::new(ir_span.start_index().0..ir_span.end_index().0);
             let name = ast::Ident::new_with_span(span, ir_import.alias.as_str())
-                .map_err(|err| Report::msg(err))?;
+                .map_err(Report::msg)?;
             let path = LibraryPath::new(ir_import.name.as_str()).expect("invalid import path");
             let import = ast::Import {
                 span,
@@ -297,7 +297,7 @@ impl Module {
         codemap: &miden_diagnostics::CodeMap,
         out: &mut dyn std::io::Write,
     ) -> std::io::Result<()> {
-        let ast = self.to_ast(codemap).map_err(|err| std::io::Error::other(err))?;
+        let ast = self.to_ast(codemap).map_err(std::io::Error::other)?;
         out.write_fmt(format_args!("{}", &ast))
     }
 }

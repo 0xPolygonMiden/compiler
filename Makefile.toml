@@ -280,3 +280,16 @@ install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = [
 ] }
 command = "mdbook"
 args = ["serve", "--open", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
+
+[tasks.clippy]
+description = "Runs clippy on the workspace"
+category = "Development"
+command = "cargo"
+args = ["clippy" , "--all", "--", "-D", "clippy::all", "-D", "warnings"]
+dependencies = ["install-clippy"]
+
+[tasks.install-clippy]
+category = "Development"
+description = "Installs cargo clippy plugin."
+command = "rustup"
+args = ["component", "add", "clippy"]

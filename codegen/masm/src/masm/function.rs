@@ -187,7 +187,7 @@ impl Function {
         }
 
         function.invoked.extend(proc.invoked().cloned());
-        function.body = Region::from_block(module, &proc.body());
+        function.body = Region::from_block(module, proc.body());
 
         function
     }
@@ -279,7 +279,7 @@ impl<'a> miden_hir::formatter::PrettyPrint for DisplayMasmFunction<'a> {
             text(format!("\"{}\"", self.function.name.function.as_str()))
         };
         let mut doc = display(visibility) + const_text(".") + name;
-        if self.function.locals.len() > 0 {
+        if !self.function.locals.is_empty() {
             doc += const_text(".") + display(self.function.locals.len());
         }
 

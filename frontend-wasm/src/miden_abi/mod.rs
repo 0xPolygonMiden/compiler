@@ -19,7 +19,7 @@ pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDig
     let digest = parts
         .next()
         .and_then(|s| s.strip_suffix('>'))
-        .ok_or_else(|| "Import name parsing error: missing closing angle bracket in import name")?;
+        .ok_or("Import name parsing error: missing closing angle bracket in import name")?;
     Ok((
         function_name.to_string(),
         RpoDigest::try_from(digest).map_err(|e| e.to_string())?,
@@ -46,14 +46,9 @@ fn is_miden_sdk_module(module_id: Symbol) -> bool {
 pub fn miden_sdk_function_type(module_id: Symbol, function_id: Symbol) -> FunctionType {
     let funcs = tx_kernel::signatures()
         .get(module_id.as_str())
-        .expect(format!("No Miden ABI function types found for module {}", module_id).as_str());
-    funcs.get(function_id.as_str()).cloned().expect(
-        format!(
-            "No Miden ABI function type found for function {} in module {}",
-            function_id, module_id
-        )
-        .as_str(),
-    )
+        .unwrap_or_else(|| panic!("No Miden ABI function types found for module {}", module_id));
+    funcs.get(function_id.as_str()).cloned().unwrap_or_else(|| panic!("No Miden ABI function type found for function {} in module {}",
+            function_id, module_id))
 }
 
 fn is_miden_stdlib_module(module_id: Symbol) -> bool {
@@ -65,12 +60,7 @@ fn is_miden_stdlib_module(module_id: Symbol) -> bool {
 fn miden_stdlib_function_type(module_id: Symbol, function_id: Symbol) -> FunctionType {
     let funcs = stdlib::signatures()
         .get(module_id.as_str())
-        .expect(format!("No Miden ABI function types found for module {}", module_id).as_str());
-    funcs.get(function_id.as_str()).cloned().expect(
-        format!(
-            "No Miden ABI function type found for function {} in module {}",
-            function_id, module_id
-        )
-        .as_str(),
-    )
+        .unwrap_or_else(|| panic!("No Miden ABI function types found for module {}", module_id));
+    funcs.get(function_id.as_str()).cloned().unwrap_or_else(|| panic!("No Miden ABI function type found for function {} in module {}",
+            function_id, module_id))
 }

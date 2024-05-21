@@ -596,7 +596,7 @@ impl ComponentTypesBuilder {
                 EntityType::Function(self.module_types_builder_mut().wasm_func_type(*idx, ty))
             }
             types::EntityType::Table(ty) => EntityType::Table(convert_table_type(ty)),
-            types::EntityType::Memory(ty) => EntityType::Memory(ty.clone().into()),
+            types::EntityType::Memory(ty) => EntityType::Memory((*ty).into()),
             types::EntityType::Global(ty) => EntityType::Global(convert_global_type(ty)),
             types::EntityType::Tag(_) => bail!("exceptions proposal not implemented"),
         })
@@ -907,7 +907,7 @@ where
     }
     let idx = list.push(item.clone());
     map.insert(item, idx);
-    return idx;
+    idx
 }
 
 /// Types of imports and exports in the component model.
@@ -1119,7 +1119,7 @@ impl CanonicalAbiInfo {
             ret.flat_count = add_flat(ret.flat_count, field.flat_count);
         }
         ret.size32 = align_to(ret.size32, ret.align32);
-        return ret;
+        ret
     }
 
     /// Same as `CanonicalAbiInfo::record` but in a `const`-friendly context.
@@ -1137,7 +1137,7 @@ impl CanonicalAbiInfo {
             i += 1;
         }
         ret.size32 = align_to(ret.size32, ret.align32);
-        return ret;
+        ret
     }
 
     /// Returns the delta from the current value of `offset` to align properly
@@ -1183,12 +1183,10 @@ impl CanonicalAbiInfo {
         let mut max_size32 = 0;
         let mut max_align32 = discrim_size;
         let mut max_case_count = Some(0);
-        for case in cases {
-            if let Some(case) = case {
-                max_size32 = max_size32.max(case.size32);
-                max_align32 = max_align32.max(case.align32);
-                max_case_count = max_flat(max_case_count, case.flat_count);
-            }
+        for case in cases.flatten() {
+            max_size32 = max_size32.max(case.size32);
+            max_align32 = max_align32.max(case.align32);
+            max_case_count = max_flat(max_case_count, case.flat_count);
         }
         CanonicalAbiInfo {
             size32: align_to(align_to(discrim_size, max_align32) + max_size32, max_align32),

@@ -800,7 +800,7 @@ fn try_insert_inst(
 
         // Add results to values_by_id map
         let mut is_valid = true;
-        let results_vec = inst_results.entry(id).or_insert_with(Default::default);
+        let results_vec = inst_results.entry(id).or_default();
         for tv in results.into_iter() {
             if let Some(value) =
                 try_insert_result_value(tv.id, tv.span(), id, num, tv.ty, values_by_id, diagnostics)

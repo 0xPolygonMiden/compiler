@@ -105,6 +105,7 @@ impl CargoPathExt for Path {
     }
 }
 
+#[allow(clippy::permissions_set_readonly_false)]
 fn do_op<F>(path: &Path, desc: &str, mut f: F)
 where
     F: FnMut(&Path) -> io::Result<()>,

@@ -424,7 +424,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         let mut component_type_index = self.validator.types(0).unwrap().component_type_count();
         self.validator.component_type_section(&s)?;
         let types = self.validator.types(0).unwrap();
-        Ok(for ty in s {
+        for ty in s {
             match ty? {
                 wasmparser::ComponentType::Resource { rep, dtor } => {
                     let rep = convert_valtype(rep);
@@ -441,7 +441,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             }
 
             component_type_index += 1;
-        })
+        };
+        Ok(())
     }
 
     fn component_import_section(
@@ -452,12 +453,13 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // which is to simply record the name of the import and the type
         // information associated with it.
         self.validator.component_import_section(&s)?;
-        Ok(for import in s {
+        for import in s {
             let import = import?;
             let types = self.validator.types(0).unwrap();
             let ty = types.component_entity_type_of_import(import.name.0).unwrap();
             self.result.initializers.push(LocalInitializer::Import(import.name, ty));
-        })
+        };
+        Ok(())
     }
 
     fn component_canonical_section(
@@ -468,7 +470,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // with the listed options for lifting/lowering.
         let mut core_func_index = self.validator.types(0).unwrap().function_count();
         self.validator.component_canonical_section(&s)?;
-        Ok(for func in s {
+        for func in s {
             let types = self.validator.types(0).unwrap();
             let init = match func? {
                 wasmparser::CanonicalFunction::Lift {
@@ -518,7 +520,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 }
             };
             self.result.initializers.push(init);
-        })
+        };
+        Ok(())
     }
 
     fn module_section(
@@ -538,9 +541,9 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // entire process has completed.
         self.validator.module_section(&range)?;
         let parsed_module = ModuleEnvironment::new(
-            &self.config,
+            self.config,
             self.validator,
-            &mut self.types.module_types_builder_mut(),
+            self.types.module_types_builder_mut(),
         )
         .parse(parser, &component[range.start..range.end], diagnostics)?;
         let static_idx = self.static_modules.push(parsed_module);
@@ -586,7 +589,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // largely just records the arguments given from wasmparser into a
         // `HashMap` for processing later during inlining.
         self.validator.instance_section(&s)?;
-        Ok(for instance in s {
+        for instance in s {
             let init = match instance? {
                 wasmparser::Instance::Instantiate { module_index, args } => {
                     let index = ModuleIndex::from_u32(module_index);
@@ -597,7 +600,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 }
             };
             self.result.initializers.push(init);
-        })
+        };
+        Ok(())
     }
 
     fn component_instance_section(
@@ -606,7 +610,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     ) -> Result<(), crate::WasmError> {
         let mut index = self.validator.types(0).unwrap().component_instance_count();
         self.validator.component_instance_section(&s)?;
-        Ok(for instance in s {
+        for instance in s {
             let init = match instance? {
                 wasmparser::ComponentInstance::Instantiate {
                     component_index,
@@ -623,7 +627,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             };
             self.result.initializers.push(init);
             index += 1;
-        })
+        };
+        Ok(())
     }
 
     fn component_export_section(
@@ -636,13 +641,14 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // records the index of what's exported and that's tracked further
         // later during inlining.
         self.validator.component_export_section(&s)?;
-        Ok(for export in s {
+        for export in s {
             let export = export?;
             let item = self.kind_to_item(export.kind, export.index)?;
             let prev = self.result.exports.insert(export.name.0, item);
             assert!(prev.is_none());
             self.result.initializers.push(LocalInitializer::Export(item));
-        })
+        };
+        Ok(())
     }
 
     fn component_alias_section(
@@ -653,7 +659,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // recorded as an initializer of the appropriate type with outer
         // aliases handled specially via upvars and type processing.
         self.validator.component_alias_section(&s)?;
-        Ok(for alias in s {
+        for alias in s {
             let init = match alias? {
                 wasmparser::ComponentAlias::InstanceExport {
                     kind: _,
@@ -677,7 +683,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 }
             };
             self.result.initializers.push(init);
-        })
+        };
+        Ok(())
     }
 
     /// Parses a component instance
@@ -885,15 +892,15 @@ fn canonical_options(opts: &[wasmparser::CanonicalOption]) -> LocalCanonicalOpti
             }
         }
     }
-    return ret;
+    ret
 }
 
 /// Converts wasmparser module instance alias information into `LocalInitializer`.
-fn alias_module_instance_export<'data>(
+fn alias_module_instance_export(
     kind: wasmparser::ExternalKind,
     instance: ModuleInstanceIndex,
-    name: &'data str,
-) -> LocalInitializer<'data> {
+    name: &str,
+) -> LocalInitializer<'_> {
     match kind {
         wasmparser::ExternalKind::Func => LocalInitializer::AliasExportFunc(instance, name),
         wasmparser::ExternalKind::Memory => LocalInitializer::AliasExportMemory(instance, name),

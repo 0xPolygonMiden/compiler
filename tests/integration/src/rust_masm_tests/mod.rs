@@ -21,7 +21,7 @@ pub fn run_masm_vs_rust<T>(
 where
     T: Clone + From<TestFelt> + std::cmp::PartialEq + std::fmt::Debug,
 {
-    let vm_out: T = execute_vm(&vm_program, &args).first().unwrap().clone().into();
+    let vm_out: T = (*execute_vm(vm_program, args).first().unwrap()).into();
     dbg!(&vm_out);
     prop_assert_eq!(rust_out.clone(), vm_out, "VM output mismatch");
     // TODO: eq for i64 and u64 fails with invalid operand stack size error

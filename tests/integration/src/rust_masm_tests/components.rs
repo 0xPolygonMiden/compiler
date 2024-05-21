@@ -93,7 +93,7 @@ fn wcm_import() {
         function: Symbol::intern("add"),
     };
     let import_metadata = [(
-        interface_function_ident.clone(),
+        interface_function_ident,
         ImportMetadata {
             digest: RpoDigest::default(),
         },
@@ -213,15 +213,14 @@ fn wcm_import() {
     let module = ir_component.modules().first().unwrap().1;
     dbg!(&module.imports());
     let import_info = module.imports();
-    let function_id = import_info
+    let function_id = *import_info
         .imported(&Ident::from("miden:add-package/add-interface@1.0.0"))
         .unwrap()
-        .into_iter()
+        .iter()
         .collect::<Vec<_>>()
         .first()
         .cloned()
-        .unwrap()
-        .clone();
+        .unwrap();
     let component_import =
         ir_component.imports().get(&function_id).unwrap().unwrap_canon_abi_import();
     assert_eq!(component_import.interface_function, interface_function_ident);
