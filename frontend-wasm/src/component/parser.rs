@@ -441,7 +441,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             }
 
             component_type_index += 1;
-        };
+        }
         Ok(())
     }
 
@@ -458,7 +458,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             let types = self.validator.types(0).unwrap();
             let ty = types.component_entity_type_of_import(import.name.0).unwrap();
             self.result.initializers.push(LocalInitializer::Import(import.name, ty));
-        };
+        }
         Ok(())
     }
 
@@ -520,7 +520,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 }
             };
             self.result.initializers.push(init);
-        };
+        }
         Ok(())
     }
 
@@ -600,7 +600,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 }
             };
             self.result.initializers.push(init);
-        };
+        }
         Ok(())
     }
 
@@ -627,7 +627,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             };
             self.result.initializers.push(init);
             index += 1;
-        };
+        }
         Ok(())
     }
 
@@ -647,7 +647,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             let prev = self.result.exports.insert(export.name.0, item);
             assert!(prev.is_none());
             self.result.initializers.push(LocalInitializer::Export(item));
-        };
+        }
         Ok(())
     }
 
@@ -683,7 +683,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 }
             };
             self.result.initializers.push(init);
-        };
+        }
         Ok(())
     }
 

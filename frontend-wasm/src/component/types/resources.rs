@@ -9,17 +9,15 @@
 //! The type of a resource can "change" sort of depending on who you are and how
 //! you view it. Some examples of resources are:
 //!
-//! * When a resource is imported into a component the internal component
-//!   doesn't know the underlying resource type, but the outer component which
-//!   performed an instantiation knows that. This means that if a component
-//!   imports two unique resources but is instantiated with two copies of the
-//!   same resource the internal component can't know they're the same but the
-//!   outer component knows they're the same.
+//! * When a resource is imported into a component the internal component doesn't know the
+//!   underlying resource type, but the outer component which performed an instantiation knows that.
+//!   This means that if a component imports two unique resources but is instantiated with two
+//!   copies of the same resource the internal component can't know they're the same but the outer
+//!   component knows they're the same.
 //!
-//! * Each instantiation of a component produces new resource types. This means
-//!   that if a component instantiates a subcomponent twice then the resources
-//!   defined in that subcomponent are considered different between the two
-//!   instances.
+//! * Each instantiation of a component produces new resource types. This means that if a component
+//!   instantiates a subcomponent twice then the resources defined in that subcomponent are
+//!   considered different between the two instances.
 //!
 //! All this is basically to say that resources require special care. The
 //! purpose of resources are to provide isolation across component boundaries
@@ -68,12 +66,13 @@
 
 // Based on wasmtime v16.0 Wasm component translation
 
+use rustc_hash::FxHashMap;
+use wasmparser::types;
+
 use crate::component::{
     ComponentTypes, ResourceIndex, RuntimeComponentInstanceIndex, TypeResourceTable,
     TypeResourceTableIndex,
 };
-use rustc_hash::FxHashMap;
-use wasmparser::types;
 
 /// Builder state used to translate wasmparser's `ResourceId` types to
 /// `TypeResourceTableIndex` type.
@@ -147,16 +146,11 @@ impl ResourcesBuilder {
         id: types::ResourceId,
         types: &mut ComponentTypes,
     ) -> TypeResourceTableIndex {
-        *self
-            .resource_id_to_table_index
-            .entry(id)
-            .or_insert_with(|| {
-                let ty = self.resource_id_to_resource_index[&id];
-                let instance = self.current_instance.expect("current instance not set");
-                types
-                    .resource_tables
-                    .push(TypeResourceTable { ty, instance })
-            })
+        *self.resource_id_to_table_index.entry(id).or_insert_with(|| {
+            let ty = self.resource_id_to_resource_index[&id];
+            let instance = self.current_instance.expect("current instance not set");
+            types.resource_tables.push(TypeResourceTable { ty, instance })
+        })
     }
 
     /// Walks over the `ty` provided, as defined within `types`, and registers

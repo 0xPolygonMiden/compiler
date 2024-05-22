@@ -7,20 +7,17 @@
 // away in favor of a more optimized representation. The considerations for this
 // are:
 //
-// * This representation of a `LinearComponent` avoids the need to create a
-//   `PrimaryMap` of some form for each of the index spaces within a component.
-//   This is less so an issue about allocations and moreso that this information
-//   generally just isn't needed any time after instantiation. Avoiding creating
-//   these altogether helps components be lighter weight at runtime and
-//   additionally accelerates instantiation.
+// * This representation of a `LinearComponent` avoids the need to create a `PrimaryMap` of some
+//   form for each of the index spaces within a component. This is less so an issue about
+//   allocations and moreso that this information generally just isn't needed any time after
+//   instantiation. Avoiding creating these altogether helps components be lighter weight at runtime
+//   and additionally accelerates instantiation.
 //
-// * Finally by performing this sort of dataflow analysis we are capable of
-//   identifying what adapters need trampolines. For
-//   example this tracks when host functions are lowered which enables us to
-//   enumerate what trampolines are required to enter into a component.
-//   Additionally (eventually) this will track all of the "fused" adapter
-//   functions where a function from one component instance is lifted and then
-//   lowered into another component instance.
+// * Finally by performing this sort of dataflow analysis we are capable of identifying what
+//   adapters need trampolines. For example this tracks when host functions are lowered which
+//   enables us to enumerate what trampolines are required to enter into a component. Additionally
+//   (eventually) this will track all of the "fused" adapter functions where a function from one
+//   component instance is lifted and then lowered into another component instance.
 //
 // Note, however, that the current design of `LinearComponent` has fundamental
 // limitations which it was not designed for. For example there is no feasible
@@ -37,12 +34,13 @@
 
 // Based on wasmtime v16.0 Wasm component translation
 
+use indexmap::IndexMap;
+use miden_hir::cranelift_entity::PrimaryMap;
+
 use crate::{
     component::*,
     module::types::{EntityIndex, MemoryIndex, WasmType},
 };
-use indexmap::IndexMap;
-use miden_hir::cranelift_entity::PrimaryMap;
 
 /// Metadata as a result of translating a component.
 pub struct LinearComponentTranslation {
@@ -156,9 +154,7 @@ impl LinearComponent {
     /// Returns `None` if `idx` is for an imported resource in this component or
     /// `Some` if it's a locally defined resource.
     pub fn defined_resource_index(&self, idx: ResourceIndex) -> Option<DefinedResourceIndex> {
-        let idx = idx
-            .as_u32()
-            .checked_sub(self.imported_resources.len() as u32)?;
+        let idx = idx.as_u32().checked_sub(self.imported_resources.len() as u32)?;
         Some(DefinedResourceIndex::from_u32(idx))
     }
 
@@ -264,10 +260,7 @@ pub enum InstantiateModule {
     /// This is similar to `Upvar` but notably the imports are provided as a
     /// two-level named map since import resolution order needs to happen at
     /// runtime.
-    Import(
-        RuntimeImportIndex,
-        IndexMap<String, IndexMap<String, CoreDef>>,
-    ),
+    Import(RuntimeImportIndex, IndexMap<String, IndexMap<String, CoreDef>>),
 }
 
 /// Definition of a core wasm item and where it can come from within a

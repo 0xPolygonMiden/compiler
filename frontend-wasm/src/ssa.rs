@@ -10,10 +10,14 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use core::mem;
+
 use miden_diagnostics::SourceSpan;
-use miden_hir::cranelift_entity::packed_option::PackedOption;
-use miden_hir::cranelift_entity::{entity_impl, EntityList, EntitySet, ListPool, SecondaryMap};
-use miden_hir::{Block, DataFlowGraph, Inst, Value};
+use miden_hir::{
+    cranelift_entity::{
+        entity_impl, packed_option::PackedOption, EntityList, EntitySet, ListPool, SecondaryMap,
+    },
+    Block, DataFlowGraph, Inst, Value,
+};
 use miden_hir_type::Type;
 
 /// Structure containing the data relevant the construction of SSA for a given function.
@@ -139,20 +143,19 @@ enum Call {
 ///
 /// - for each basic block, create a corresponding data for SSA construction with `declare_block`;
 ///
-/// - while traversing a basic block and translating instruction, use `def_var` and `use_var`
-///   to record definitions and uses of variables, these methods will give you the corresponding
-///   SSA values;
+/// - while traversing a basic block and translating instruction, use `def_var` and `use_var` to
+///   record definitions and uses of variables, these methods will give you the corresponding SSA
+///   values;
 ///
 /// - when all the instructions in a basic block have translated, the block is said _filled_ and
 ///   only then you can add it as a predecessor to other blocks with `declare_block_predecessor`;
 ///
-/// - when you have constructed all the predecessor to a basic block,
-///   call `seal_block` on it with the `Function` that you are building.
+/// - when you have constructed all the predecessor to a basic block, call `seal_block` on it with
+///   the `Function` that you are building.
 ///
 /// This API will give you the correct SSA values to use as arguments of your instructions,
 /// as well as modify the jump instruction and `Block` parameters to account for the SSA
 /// Phi functions.
-///
 impl SSABuilder {
     /// Declares a new definition of a variable in a given basic block.
     pub fn def_var(&mut self, var: Variable, val: Value, block: Block) {
@@ -318,10 +321,7 @@ impl SSABuilder {
     /// Callers are expected to avoid adding the same predecessor more than once in the case
     /// of a jump table.
     pub fn declare_block_predecessor(&mut self, block: Block, inst: Inst) {
-        debug_assert!(
-            !self.is_sealed(block),
-            "you cannot add a predecessor to a sealed block"
-        );
+        debug_assert!(!self.is_sealed(block), "you cannot add a predecessor to a sealed block");
         debug_assert!(
             self.ssa_blocks[block]
                 .predecessors
@@ -330,9 +330,7 @@ impl SSABuilder {
                 .all(|&branch| branch != inst),
             "you have declared the same predecessor twice!"
         );
-        self.ssa_blocks[block]
-            .predecessors
-            .push(inst, &mut self.inst_pool);
+        self.ssa_blocks[block].predecessors.push(inst, &mut self.inst_pool);
     }
 
     /// Remove a previously declared Block predecessor by giving a reference to the jump
@@ -429,8 +427,7 @@ impl SSABuilder {
     /// `sentinel` is a dummy Block parameter inserted by `use_var_nonlocal()`.
     /// Its purpose is to allow detection of CFG cycles while traversing predecessors.
     fn begin_predecessors_lookup(&mut self, sentinel: Value, dest_block: Block) {
-        self.calls
-            .push(Call::FinishPredecessorsLookup(sentinel, dest_block));
+        self.calls.push(Call::FinishPredecessorsLookup(sentinel, dest_block));
         // Iterate over the predecessors.
         self.calls.extend(
             self.ssa_blocks[dest_block]
@@ -471,9 +468,7 @@ impl SSABuilder {
 
     /// Returns the list of `Block`s that have been declared as predecessors of the argument.
     fn predecessors(&self, block: Block) -> &[Inst] {
-        self.ssa_blocks[block]
-            .predecessors
-            .as_slice(&self.inst_pool)
+        self.ssa_blocks[block].predecessors.as_slice(&self.inst_pool)
     }
 
     /// Returns whether the given Block has any predecessor or not.
