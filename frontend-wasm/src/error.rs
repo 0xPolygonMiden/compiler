@@ -1,5 +1,4 @@
-use miden_diagnostics::Diagnostic;
-use miden_diagnostics::ToDiagnostic;
+use miden_diagnostics::{Diagnostic, ToDiagnostic};
 use miden_hir::SymbolConflictError;
 use thiserror::Error;
 
@@ -71,8 +70,8 @@ impl ToDiagnostic for WasmError {
 /// A convenient alias for a `Result` that uses `WasmError` as the error type.
 pub type WasmResult<T> = Result<T, WasmError>;
 
-/// Emit diagnostics and return an `Err(WasmError::Unsupported(msg))` where `msg` the string built by calling `format!`
-/// on the arguments to this macro.
+/// Emit diagnostics and return an `Err(WasmError::Unsupported(msg))` where `msg` the string built
+/// by calling `format!` on the arguments to this macro.
 #[macro_export]
 macro_rules! unsupported_diag {
     ($diagnostics:expr, $($arg:tt)*) => {

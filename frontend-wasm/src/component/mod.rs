@@ -11,6 +11,4 @@ mod parser;
 mod translator;
 mod types;
 
-pub use self::info::*;
-pub use self::parser::*;
-pub use self::types::*;
+pub use self::{info::*, parser::*, types::*};

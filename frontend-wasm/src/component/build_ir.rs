@@ -94,7 +94,8 @@ mod tests {
             (func (;0;) (type 0) (canon lift (core func 0)))
             (export (;1;) "add" (func 0))
             )
-        "#.to_string();
+        "#
+        .to_string();
         let wasm = wat::parse_str(wat).unwrap();
         let diagnostics = test_diagnostics();
         let config = Default::default();

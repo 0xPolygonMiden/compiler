@@ -271,9 +271,7 @@ impl Project {
     /// Path to a debug binary.
     /// ex: `/path/to/cargo/target/cit/t0/foo/target/debug/foo`
     pub fn bin(&self, b: &str) -> PathBuf {
-        self.build_dir()
-            .join("debug")
-            .join(format!("{}{}", b, env::consts::EXE_SUFFIX))
+        self.build_dir().join("debug").join(format!("{}{}", b, env::consts::EXE_SUFFIX))
     }
 
     /// Path to a release binary.

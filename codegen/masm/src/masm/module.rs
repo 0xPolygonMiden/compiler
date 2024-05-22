@@ -238,8 +238,8 @@ impl Module {
             let ir_span = ir_import.span;
             let span =
                 miden_assembly::SourceSpan::new(ir_span.start_index().0..ir_span.end_index().0);
-            let name = ast::Ident::new_with_span(span, ir_import.alias.as_str())
-                .map_err(Report::msg)?;
+            let name =
+                ast::Ident::new_with_span(span, ir_import.alias.as_str()).map_err(Report::msg)?;
             let path = LibraryPath::new(ir_import.name.as_str()).expect("invalid import path");
             let import = ast::Import {
                 span,

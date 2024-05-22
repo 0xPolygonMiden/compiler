@@ -124,11 +124,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     ) -> Result<(), WasmError> {
         match instantiate_module {
             InstantiateModule::Static(static_module_idx, args) => {
-                if self
-                    .module_instances_source
-                    .values()
-                    .any(|idx| *idx == *static_module_idx)
-                {
+                if self.module_instances_source.values().any(|idx| *idx == *static_module_idx) {
                     return Err(WasmError::Unsupported(format!(
                         "A module with a static index {} is already instantiated. We don't \
                          support multiple instantiations of the same module.",
@@ -357,7 +353,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                         ))
                     }
                 };
-                
+
                 miden_hir::FunctionIdent {
                     module: module_name,
                     function: miden_hir::Ident::with_empty_span(func_name),
@@ -405,7 +401,7 @@ fn function_id_from_import(_module: &Module, module_import: &ModuleImport) -> Fu
 /// Get the function id from the given Wasm func_idx in the given Wasm core exporting_module
 fn function_id_from_export(exporting_module: &Module, func_idx: FuncIndex) -> FunctionIdent {
     let func_name = exporting_module.func_name(func_idx);
-    
+
     FunctionIdent {
         module: exporting_module.name(),
         function: Ident::with_empty_span(func_name),

@@ -61,7 +61,9 @@ pub fn translate_module_as_component(
                     ext_func.module.as_symbol(),
                     ext_func.function.as_symbol(),
                 );
-                let digest = *module_state.digest(ext_func).unwrap_or_else(|| panic!("failed to find MAST root hash for function {}", ext_func.function));
+                let digest = *module_state.digest(ext_func).unwrap_or_else(|| {
+                    panic!("failed to find MAST root hash for function {}", ext_func.function)
+                });
                 let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
                     function_ty,
                     digest,
@@ -149,7 +151,7 @@ fn build_globals(
                 .emit();
             return Err(WasmError::Unexpected(message));
         }
-    };
+    }
     Ok(())
 }
 

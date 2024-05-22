@@ -17,10 +17,5 @@ pub fn execute_vm(program: &Program, args: &[Felt]) -> Vec<TestFelt> {
         ExecutionOptions::default(),
     )
     .expect("failed to execute program on VM");
-    trace
-        .stack_outputs()
-        .stack()
-        .iter()
-        .map(|i| TestFelt(*i))
-        .collect()
+    trace.stack_outputs().stack().iter().map(|i| TestFelt(*i)).collect()
 }

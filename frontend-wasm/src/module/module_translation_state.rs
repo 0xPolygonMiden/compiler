@@ -36,7 +36,6 @@ impl ModuleTranslationState {
                     }
                     (EntityIndex::Function(_), ModuleArgument::ComponentImport(_)) => {
                         // Do nothing, the local function id will be used
-                        
                     }
                     (EntityIndex::Function(_), module_arg) => {
                         panic!(
@@ -59,8 +58,7 @@ impl ModuleTranslationState {
             } else if module.is_imported_function(index) {
                 assert!((index.as_u32() as usize) < module.num_imported_funcs);
                 let import = &module.imports[index.as_u32() as usize];
-                if let Ok((func_stable_name, digest)) =
-                    parse_import_function_digest(&import.field)
+                if let Ok((func_stable_name, digest)) = parse_import_function_digest(&import.field)
                 {
                     let func_id = FunctionIdent {
                         module: Ident::from(import.module.as_str()),
