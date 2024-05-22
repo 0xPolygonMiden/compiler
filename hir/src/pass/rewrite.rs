@@ -158,9 +158,9 @@ where
             if self.0.should_apply(&function, session) {
                 dirty = true;
                 self.0.apply(&mut function, analyses, session)?;
-            } else {
-                analyses.mark_all_preserved::<crate::Function>(&function.id);
+                analyses.invalidate::<crate::Function>(&function.id);
             }
+
             // Add the function back to the module
             //
             // We add it before the current position of the cursor

@@ -104,7 +104,7 @@ pub fn return_via_pointer(
             // expected to be +8 from the first and so on. So we need to
             // multiply the index by 8 so that the subsequent Rust code finds
             // the values in the expected locations.
-            let imm = Immediate::I32(idx as i32 * 8);
+            let imm = Immediate::U32(idx as u32 * 8);
             builder.ins().add_imm_checked(ptr_u32, imm, span)
         };
         let value_ty = builder.data_flow_graph().value_type(*value).clone();
