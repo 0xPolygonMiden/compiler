@@ -331,3 +331,234 @@ export.load_dw # [waddr, index, offset]
         end
     end
 end
+
+# Given an element index, a new element, and a word, in that order, replace the element
+# at the specified index, leaving the modified word on top of the stack
+#
+# The element index must be in the range 0..=3.
+export.replace_element # [element_index, value, w0, w1, w2, w3]
+    # assert the index given is valid
+    dup.0 push.3 lte assert
+    # compute a set of three booleans which used in conjunction with cdrop will
+    # extract the desired value for each element of the given word
+    movup.2 dup.2         # [value, w0, element_index, value, w1, ..w3]
+    dup.2 push.0 eq cdrop # [w0', element_index, value, w1, ..w3]
+    movdn.6               # [element_index, value, w1, ..w3, w0']
+    movup.2 dup.2
+    dup.2 push.1 eq cdrop
+    movdn.6               # [element_index, value, w2, w3, w0', w1']
+    movup.2 dup.2
+    dup.2 push.2 eq cdrop
+    movdn.6               # [element_index, value, w3, w0', w1', w2']
+    # on the last element, consume the element index and replacement value
+    push.3 eq cdrop       # [w3', w0', w1', w2']
+    movdn.4
+end
+
+# See `store_felt` for safe usage
+proc.store_felt_unchecked # [waddr, index, value]
+    # prepare the stack to receive the loaded word
+    # [waddr, 0, 0, 0, 0, waddr, index, value]
+    padw dup.4
+    # load the original word
+    mem_loadw  # [w0, w1, w2, w3, waddr, index, value]
+
+    # rewrite the desired element
+    movup.6
+    movup.5
+    exec.replace_element
+
+    # store the updated word
+    movup.4
+    mem_storew
+    dropw
+end
+
+# Store a field element to the given native pointer triplet.
+#
+# A native pointer triplet consists of a word address which contains the
+# start of the data; an element index, which indicates which element of
+# the word the data starts in; and a byte offset, which indicates which
+# byte is the start of the data.
+#
+# A field element must be naturally aligned, i.e. it's byte offset must be zero.
+export.store_felt # [waddr, index, offset, value]
+    # assert the pointer is felt-aligned, then load
+    movup.2 assertz exec.store_felt_unchecked
+end
+
+# Store a single 32-bit machine word from the given native pointer triplet.
+#
+# A native pointer triplet consists of a word address which contains the
+# start of the data; an element index, which indicates which element of
+# the word the data starts in; and a byte offset, which indicates which
+# byte is the start of the data.
+export.store_sw # [waddr, index, offset, value]
+    # check for alignment and offset validity
+    dup.2 eq.0
+    dup.3 push.8 u32lt assert # offset must be < 8
+    # if the pointer is naturally aligned..
+    if.true
+        # drop the byte offset
+        movup.2 drop
+        # load the element containing the data we want
+        exec.store_felt_unchecked
+    else
+        # check if the store starts in the first element
+        dup.1 eq.0
+        if.true
+            # the store is across both the first and second elements
+            # drop the element index
+            swap.1 drop
+            # load current value
+            padw dup.4 mem_loadw # [w0, w1, w2, w3, waddr, offset, value]
+
+            # compute the bit shift
+            push.32 dup.6 sub    # [rshift, w0..w3, waddr, offset, value]
+
+            # compute the masks
+            push.4294967295 dup.1 u32shl  # [mask_hi, rshift, w0..w3, waddr, offset, value]
+            dup.0 u32not                  # [mask_lo, mask_hi, rshift, w0, w1, w2, w3, waddr, offset, value]
+
+            # manipulate the bits of the two target elements, such that the 32-bit word
+            # we're storing is placed at the correct offset from the start of the memory
+            # cell when viewing the cell as a set of 4 32-bit chunks
+            movup.4 u32and         # [w1_masked, mask_hi, rshift, w0, w2, w3, waddr, offset, value]
+            movup.3 movup.2 u32and # [w0_masked, w1_masked, rshift, w2, w3, waddr, offset, value]
+
+            # now, we need to shift/mask/split the 32-bit value into two elements, then
+            # combine them with the preserved bits of the original contents of the cell
+            #
+            # first, the contents of w0
+            dup.7 movup.7 u32shr u32or   # [w0', w1_masked, rshift, w2..w3, waddr, value]
+            # then the contents of w1
+            swap.1
+            movup.6 movup.3 u32shl u32or # [w1', w0', w2, w3, waddr]
+
+            # ensure word is in order
+            swap.1
+
+            # finally, write back the updated word, and clean up the operand stack
+            movup.4 mem_storew dropw
+        else
+            # check if the load starts in the second element
+            dup.1 eq.1
+            if.true
+                # the load is across both the second and third elements
+                # drop the element idnex
+                swap.1 drop
+
+                # load current value
+                padw dup.4 mem_loadw # [w0, w1, w2, w3, waddr, offset, value]
+
+                # compute the bit shift
+                push.32 dup.6 sub    # [rshift, w0..w3, waddr, offset, value]
+
+                # compute the masks
+                push.4294967295 dup.1 u32shl  # [mask_hi, rshift, w0..w3, waddr, offset, value]
+                dup.0 u32not                  # [mask_lo, mask_hi, rshift, w0, w1, w2, w3, waddr, offset, value]
+
+                # manipulate the bits of the two target elements, such that the 32-bit word
+                # we're storing is placed at the correct offset from the start of the memory
+                # cell when viewing the cell as a set of 4 32-bit chunks
+                movup.5 u32and         # [w2_masked, mask_hi, rshift, w0, w1, w3, waddr, offset, value]
+                movup.4 movup.2 u32and # [w1_masked, w2_masked, rshift, w0, w3, waddr, offset, value]
+
+                # now, we need to shift/mask/split the 32-bit value into two elements, then
+                # combine them with the preserved bits of the original contents of the cell
+                #
+                # first, the contents of w1
+                dup.7 movup.7 u32shr u32or   # [w1', w2_masked, rshift, w0, w3, waddr, value]
+                # then the contents of w2
+                swap.1
+                movup.6 movup.3 u32shl u32or # [w2', w1', w0, w3, waddr]
+
+                # ensure the elements are in order
+                swap.2
+
+                # finally, write back the updated word, and clean up the operand stack
+                movup.4 mem_storew dropw
+            else
+                # check if the load starts in the third element
+                swap.1 eq.2
+                if.true
+                    # the load is across both the third and fourth elements
+                    # load current value
+                    padw dup.4 mem_loadw # [w0, w1, w2, w3, waddr, offset, value]
+
+                    # compute the bit shift
+                    push.32 dup.6 sub    # [rshift, w0..w3, waddr, offset, value]
+
+                    # compute the masks
+                    push.4294967295 dup.1 u32shl  # [mask_hi, rshift, w0..w3, waddr, offset, value]
+                    dup.0 u32not                  # [mask_lo, mask_hi, rshift, w0, w1, w2, w3, waddr, offset, value]
+
+                    # manipulate the bits of the two target elements, such that the 32-bit word
+                    # we're storing is placed at the correct offset from the start of the memory
+                    # cell when viewing the cell as a set of 4 32-bit chunks
+                    movup.6 u32and         # [w3_masked, mask_hi, rshift, w0, w1, w2, waddr, offset, value]
+                    movup.5 movup.2 u32and # [w2_masked, w3_masked, rshift, w0, w1, waddr, offset, value]
+
+                    # now, we need to shift/mask/split the 32-bit value into two elements, then
+                    # combine them with the preserved bits of the original contents of the cell
+                    #
+                    # first, the contents of w2
+                    dup.7 movup.7 u32shr u32or   # [w2', w3_masked, rshift, w0, w1, waddr, value]
+                    # then the contents of w3
+                    swap.1
+                    movup.6 movup.3 u32shl u32or # [w3', w2', w0, w1, waddr]
+
+                    # ensure the elements are in order
+                    swap.3 movup.2
+
+                    # finally, write back the updated word, and clean up the operand stack
+                    movup.4 mem_storew dropw
+                else
+                    # the load crosses a word boundary, start with the word containing the highest-addressed bits
+
+                    # compute the address for the second word
+                    dup.0  # [waddr, waddr, offset, value]
+                    u32overflowing_add.1 assertz # [waddr + 1, waddr, offset, value]
+
+                    # load the element we need to mix bits with
+                    mem_load  # [w0, waddr, offset, value]
+
+                    # compute the bit shift
+                    push.32 dup.3 sub    # [rshift, w0, waddr, offset, value]
+
+                    # compute the masks
+                    push.4294967295 dup.1 u32shl  # [mask_hi, rshift, w0, waddr, offset, value]
+                    dup.0 u32not                  # [mask_lo, mask_hi, rshift, w0, waddr, offset, value]
+
+                    # mask out the bits of the value that are being overwritten
+                    movup.3 u32and # [w0', mask_hi, rshift, waddr, offset, value]
+
+                    # extract the bits to be stored in this word
+                    dup.5 movup.3 u32shl u32or # [w0'', mask_hi, waddr, offset, value]
+
+                    # store the updated element
+                    dup.2 add.1 # [waddr + 1, w0'', mask_hi, waddr, offset, value]
+                    mem_store # [mask_hi, waddr, offset, value]
+
+                    # next, update the last element of the lowest addressed word
+                    padw dup.5 mem_loadw # [w0, w1, w2, w3, mask_hi, waddr, offset, value]
+
+                    # mask out the bits of the value that are being overwritten
+                    movup.3 movup.4 u32and # [w3_masked, w0, w1, w2, waddr, offset, value]
+
+                    # extract the bits to be stored in this word and combine them
+                    movup.6 movup.6 u32shr u32or # [w3', w0, w1, w2, waddr]
+
+                    # ensure elements of word are in order
+                    movdn.3
+
+                    # write updated word
+                    movup.4 mem_storew
+
+                    # clean up operand stack
+                    dropw
+                end
+            end
+        end
+    end
+end
