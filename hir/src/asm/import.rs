@@ -35,10 +35,7 @@ impl ModuleImportInfo {
         let module_id = id.module;
         match self.modules.entry(module_id) {
             Entry::Vacant(entry) => {
-                let alias = match module_id.as_str().rsplit_once("::") {
-                    None => module_id.as_symbol(),
-                    Some((_, alias)) => Symbol::intern(alias),
-                };
+                let alias = module_id_alias(module_id);
                 let span = module_id.span();
                 let alias_id = if self.aliases.contains_key(&alias) {
                     // The alias is already used by another module, we must
@@ -69,7 +66,8 @@ impl ModuleImportInfo {
                 self.functions.entry(alias_id).or_default().insert(id);
             }
             Entry::Occupied(_) => {
-                let alias = self.aliases[&module_id];
+                let module_id_alias = module_id_alias(module_id);
+                let alias = self.aliases[&module_id_alias];
                 let functions = self.functions.entry(alias).or_default();
                 functions.insert(id);
             }
@@ -134,6 +132,13 @@ impl ModuleImportInfo {
     /// Get an iterator over the aliased module names in this table
     pub fn iter_module_names(&self) -> impl Iterator<Item = &Ident> {
         self.modules.keys()
+    }
+}
+
+fn module_id_alias(module_id: Ident) -> Symbol {
+    match module_id.as_str().rsplit_once("::") {
+        None => module_id.as_symbol(),
+        Some((_, alias)) => Symbol::intern(alias),
     }
 }
 

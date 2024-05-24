@@ -423,7 +423,13 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             .function
             .globals
             .get_computed_addr(&self.function.f.id, op.global)
-            .expect("expected linker to identify all undefined symbols");
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected linker to identify all undefined symbols, but failed on func id: \
+                     {}, gv: {}",
+                    self.function.f.id, op.global
+                )
+            });
         match self.function.f.dfg.global_value(op.global) {
             hir::GlobalValueData::Load { ref ty, .. } => {
                 let mut emitter = self.inst_emitter(inst_info.inst);

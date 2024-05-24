@@ -5,6 +5,7 @@ use proptest::{prop_assert_eq, test_runner::TestCaseError};
 
 use crate::{execute_vm, felt_conversion::TestFelt};
 
+mod abi_transform;
 mod apps;
 mod components;
 mod instructions;
