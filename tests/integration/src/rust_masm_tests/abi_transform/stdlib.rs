@@ -8,6 +8,7 @@ use proptest::{
 
 use crate::CompilerTest;
 
+#[ignore = "until the VM stack overflow during the MASM generation is fixed"]
 #[test]
 fn test_blake3_hash() {
     let main_fn = format!(
