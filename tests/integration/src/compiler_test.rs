@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::panic;
 use std::{
     fs,
@@ -356,10 +358,7 @@ impl CompilerTest {
 
     /// Set the Rust source code to compile with `miden-prelude` (stdlib + intrinsics)
     pub fn rust_fn_body_with_prelude(name: &str, rust_source: &str, is_build_std: bool) -> Self {
-        let cwd = std::env::current_dir().unwrap();
-        let miden_prelude_path =
-            cwd.parent().unwrap().parent().unwrap().join("sdk").join("prelude");
-        let miden_prelude_path_str = miden_prelude_path.to_str().unwrap();
+        let miden_prelude_path_str = prelude_crate_path();
         // dbg!(&miden_prelude_path);
         let proj = project(name)
             .file(
@@ -369,7 +368,7 @@ impl CompilerTest {
                 [package]
                 name = "{name}"
                 version = "0.0.1"
-                edition = "2015"
+                edition = "2021"
                 authors = []
 
                 [dependencies]
@@ -551,6 +550,31 @@ impl CompilerTest {
     }
 }
 
+fn prelude_crate_path() -> String {
+    let cwd = std::env::current_dir().unwrap();
+    cwd.parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("sdk")
+        .join("prelude")
+        .to_str()
+        .unwrap()
+        .to_string()
+}
+
+pub fn sdk_crate_path() -> String {
+    let cwd = std::env::current_dir().unwrap();
+    cwd.parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("sdk")
+        .join("sdk")
+        .to_str()
+        .unwrap()
+        .to_string()
+}
 /// Get the directory for the top-level workspace
 fn get_workspace_dir() -> String {
     // Get the directory for the integration test suite project
