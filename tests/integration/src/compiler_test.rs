@@ -414,9 +414,7 @@ impl CompilerTest {
                 .as_str(),
             )
             .build();
-        let test =
-            Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()));
-        test
+        Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()))
     }
 
     /// Compare the compiled Wasm against the expected output
