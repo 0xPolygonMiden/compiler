@@ -2565,6 +2565,24 @@
                 (ret))
         )
 
+        (func (export #dummy) 
+            (block 0
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
+        (func (export #__wasm_call_dtors) 
+            (block 0
+                (call #dummy)
+                (call #dummy)
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
         (func (export #alloc::alloc::handle_alloc_error)
               (param i32) (param i32)
             (block 0 (param v0 i32) (param v1 i32)
@@ -2615,6 +2633,128 @@
                 (let (v11 (ptr u8)) (inttoptr v10))
                 (memcpy v11 v9 v1)
                 (ret))
+        )
+
+        (func (export #get_wallet_magic_number.command_export) (result felt)
+            (block 0
+                (let (v1 felt) (call #get_wallet_magic_number))
+                (call #__wasm_call_dtors)
+                (br (block 1 v1)))
+
+            (block 1 (param v0 felt)
+                (ret v0))
+        )
+
+        (func (export #test_add_asset.command_export) (result felt)
+            (block 0
+                (let (v1 felt) (call #test_add_asset))
+                (call #__wasm_call_dtors)
+                (br (block 1 v1)))
+
+            (block 1 (param v0 felt)
+                (ret v0))
+        )
+
+        (func (export #test_felt_ops_smoke.command_export)
+              (param felt) (param felt) (result felt)
+            (block 0 (param v0 felt) (param v1 felt)
+                (let (v3 felt) (call #test_felt_ops_smoke v0 v1))
+                (call #__wasm_call_dtors)
+                (br (block 1 v3)))
+
+            (block 1 (param v2 felt)
+                (ret v2))
+        )
+
+        (func (export #note_script.command_export) (result felt)
+            (block 0
+                (let (v1 felt) (call #note_script))
+                (call #__wasm_call_dtors)
+                (br (block 1 v1)))
+
+            (block 1 (param v0 felt)
+                (ret v0))
+        )
+
+        (func (export #test_blake3_hash_1to1.command_export)
+              (param i32) (param i32)
+            (block 0 (param v0 i32) (param v1 i32)
+                (call #test_blake3_hash_1to1 v0 v1)
+                (call #__wasm_call_dtors)
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
+        (func (export #test_blake3_hash_2to1.command_export)
+              (param i32) (param i32) (param i32)
+            (block 0 (param v0 i32) (param v1 i32) (param v2 i32)
+                (call #test_blake3_hash_2to1 v0 v1 v2)
+                (call #__wasm_call_dtors)
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
+        (func (export #test_rpo_falcon512_verify.command_export)
+              (param i32) (param i32)
+            (block 0 (param v0 i32) (param v1 i32)
+                (call #test_rpo_falcon512_verify v0 v1)
+                (call #__wasm_call_dtors)
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
+        (func (export #test_pipe_words_to_memory.command_export)
+              (param i32) (param felt)
+            (block 0 (param v0 i32) (param v1 felt)
+                (call #test_pipe_words_to_memory v0 v1)
+                (call #__wasm_call_dtors)
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
+        (func (export #test_pipe_double_words_to_memory.command_export)
+              (param i32) (param felt)
+            (block 0 (param v0 i32) (param v1 felt)
+                (call #test_pipe_double_words_to_memory v0 v1)
+                (call #__wasm_call_dtors)
+                (br (block 1)))
+
+            (block 1
+                (ret))
+        )
+
+        (func (export #test_remove_asset.command_export)
+              (param i32) (result felt)
+            (block 0 (param v0 i32)
+                (let (v2 felt) (call #test_remove_asset v0))
+                (call #__wasm_call_dtors)
+                (br (block 1 v2)))
+
+            (block 1 (param v1 felt)
+                (ret v1))
+        )
+
+        (func (export #test_create_note.command_export)
+              (param i32) (param felt) (param felt) (param i32) (result felt)
+            (block 0
+                    (param v0 i32)
+                    (param v1 felt)
+                    (param v2 felt)
+                    (param v3 i32)
+                (let (v5 felt) (call #test_create_note v0 v1 v2 v3))
+                (call #__wasm_call_dtors)
+                (br (block 1 v5)))
+
+            (block 1 (param v4 felt)
+                (ret v4))
         )
 
         ;; Imports

@@ -16,7 +16,7 @@ fn wcm_no_imports() {
             [package]
             name = "add-wasm-component"
             version = "0.0.1"
-            edition = "2015"
+            edition = "2021"
             authors = []
 
             [dependencies]
@@ -132,7 +132,7 @@ fn wcm_import() {
             [package]
             name = "inc-wasm-component"
             version = "0.0.1"
-            edition = "2015"
+            edition = "2021"
             authors = []
 
             [dependencies]

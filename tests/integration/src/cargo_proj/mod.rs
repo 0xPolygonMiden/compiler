@@ -363,7 +363,7 @@ pub fn basic_manifest(name: &str, version: &str) -> String {
         name = "{}"
         version = "{}"
         authors = []
-        edition = "2015"
+        edition = "2021"
     "#,
         name, version
     )
@@ -377,7 +377,7 @@ pub fn basic_bin_manifest(name: &str) -> String {
         name = "{}"
         version = "0.5.0"
         authors = ["wycats@example.com"]
-        edition = "2015"
+        edition = "2021"
 
         [[bin]]
 
@@ -395,7 +395,7 @@ pub fn basic_lib_manifest(name: &str) -> String {
         name = "{}"
         version = "0.5.0"
         authors = ["wycats@example.com"]
-        edition = "2015"
+        edition = "2021"
 
         [lib]
 

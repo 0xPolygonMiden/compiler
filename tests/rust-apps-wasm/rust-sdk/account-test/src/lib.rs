@@ -1,15 +1,7 @@
-#![no_std]
-
-#[panic_handler]
-fn my_panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 extern crate alloc;
-use alloc::vec::Vec;
 
 use miden_sdk::*;
 

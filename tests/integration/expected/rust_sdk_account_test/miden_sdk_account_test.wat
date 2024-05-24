@@ -1855,19 +1855,24 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $alloc::alloc::handle_alloc_error (;62;) (type 20) (param i32 i32)
+  (func $dummy (;62;) (type 26))
+  (func $__wasm_call_dtors (;63;) (type 26)
+    call $dummy
+    call $dummy
+  )
+  (func $alloc::alloc::handle_alloc_error (;64;) (type 20) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $alloc::raw_vec::capacity_overflow (;63;) (type 26)
+  (func $alloc::raw_vec::capacity_overflow (;65;) (type 26)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;64;) (type 19) (param i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;66;) (type 19) (param i32 i32 i32)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice (;65;) (type 27) (param i32 i32 i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice (;67;) (type 27) (param i32 i32 i32 i32 i32)
     block ;; label = @1
       local.get 1
       local.get 3
@@ -1885,20 +1890,82 @@
     call $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail
     unreachable
   )
+  (func $get_wallet_magic_number.command_export (;68;) (type 11) (result f64)
+    call $get_wallet_magic_number
+    call $__wasm_call_dtors
+  )
+  (func $test_add_asset.command_export (;69;) (type 11) (result f64)
+    call $test_add_asset
+    call $__wasm_call_dtors
+  )
+  (func $test_felt_ops_smoke.command_export (;70;) (type 1) (param f64 f64) (result f64)
+    local.get 0
+    local.get 1
+    call $test_felt_ops_smoke
+    call $__wasm_call_dtors
+  )
+  (func $note_script.command_export (;71;) (type 11) (result f64)
+    call $note_script
+    call $__wasm_call_dtors
+  )
+  (func $test_blake3_hash_1to1.command_export (;72;) (type 20) (param i32 i32)
+    local.get 0
+    local.get 1
+    call $test_blake3_hash_1to1
+    call $__wasm_call_dtors
+  )
+  (func $test_blake3_hash_2to1.command_export (;73;) (type 19) (param i32 i32 i32)
+    local.get 0
+    local.get 1
+    local.get 2
+    call $test_blake3_hash_2to1
+    call $__wasm_call_dtors
+  )
+  (func $test_rpo_falcon512_verify.command_export (;74;) (type 20) (param i32 i32)
+    local.get 0
+    local.get 1
+    call $test_rpo_falcon512_verify
+    call $__wasm_call_dtors
+  )
+  (func $test_pipe_words_to_memory.command_export (;75;) (type 21) (param i32 f64)
+    local.get 0
+    local.get 1
+    call $test_pipe_words_to_memory
+    call $__wasm_call_dtors
+  )
+  (func $test_pipe_double_words_to_memory.command_export (;76;) (type 21) (param i32 f64)
+    local.get 0
+    local.get 1
+    call $test_pipe_double_words_to_memory
+    call $__wasm_call_dtors
+  )
+  (func $test_remove_asset.command_export (;77;) (type 22) (param i32) (result f64)
+    local.get 0
+    call $test_remove_asset
+    call $__wasm_call_dtors
+  )
+  (func $test_create_note.command_export (;78;) (type 23) (param i32 f64 f64 i32) (result f64)
+    local.get 0
+    local.get 1
+    local.get 2
+    local.get 3
+    call $test_create_note
+    call $__wasm_call_dtors
+  )
   (table (;0;) 1 1 funcref)
   (memory (;0;) 17)
   (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
   (export "memory" (memory 0))
-  (export "get_wallet_magic_number" (func $get_wallet_magic_number))
-  (export "test_add_asset" (func $test_add_asset))
-  (export "test_felt_ops_smoke" (func $test_felt_ops_smoke))
-  (export "note_script" (func $note_script))
-  (export "test_blake3_hash_1to1" (func $test_blake3_hash_1to1))
-  (export "test_blake3_hash_2to1" (func $test_blake3_hash_2to1))
-  (export "test_rpo_falcon512_verify" (func $test_rpo_falcon512_verify))
-  (export "test_pipe_words_to_memory" (func $test_pipe_words_to_memory))
-  (export "test_pipe_double_words_to_memory" (func $test_pipe_double_words_to_memory))
-  (export "test_remove_asset" (func $test_remove_asset))
-  (export "test_create_note" (func $test_create_note))
+  (export "get_wallet_magic_number" (func $get_wallet_magic_number.command_export))
+  (export "test_add_asset" (func $test_add_asset.command_export))
+  (export "test_felt_ops_smoke" (func $test_felt_ops_smoke.command_export))
+  (export "note_script" (func $note_script.command_export))
+  (export "test_blake3_hash_1to1" (func $test_blake3_hash_1to1.command_export))
+  (export "test_blake3_hash_2to1" (func $test_blake3_hash_2to1.command_export))
+  (export "test_rpo_falcon512_verify" (func $test_rpo_falcon512_verify.command_export))
+  (export "test_pipe_words_to_memory" (func $test_pipe_words_to_memory.command_export))
+  (export "test_pipe_double_words_to_memory" (func $test_pipe_double_words_to_memory.command_export))
+  (export "test_remove_asset" (func $test_remove_asset.command_export))
+  (export "test_create_note" (func $test_create_note.command_export))
   (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00\8b\00\00\00(\00\00\00\00\00\10\00)\00\00\00\d1\00\00\00(\00\00\00")
 )
