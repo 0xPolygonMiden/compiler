@@ -39,3 +39,4 @@ proptest.workspace = true
 [dev-dependencies]
 miden-core.workspace = true
 concat-idents = "1.1"
+blake3.workspace = true

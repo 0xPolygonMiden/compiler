@@ -84,6 +84,7 @@ midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }
 miden-integration-tests = { path = "tests/integration" }
 wat = "1.0.69"
+blake3 = "1.5"
 
 [patch.crates-io]
 thiserror = { git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
