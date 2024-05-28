@@ -578,6 +578,10 @@ impl DataFlowGraph {
     pub fn create_block_after(&mut self, block: Block) -> Block {
         let id = self.blocks.create();
         let data = BlockData::new(id);
+        assert!(
+            self.blocks.get(block).is_some(),
+            "cannot insert a new block after {block}, it is not linked"
+        );
         self.blocks.insert_after(id, block, data);
         id
     }
