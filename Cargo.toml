@@ -69,16 +69,16 @@ miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0a
 miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
 miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
 miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
-miden-codegen-masm = { path = "codegen/masm" }
+midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
-miden-hir = { path = "hir" }
-miden-hir-analysis = { path = "hir-analysis" }
-miden-hir-macros = { path = "hir-macros" }
-miden-hir-symbol = { path = "hir-symbol" }
-miden-hir-transform = { path = "hir-transform" }
-miden-hir-type = { path = "hir-type" }
+midenc-hir= { path = "hir" }
+midenc-hir-analysis = { path = "hir-analysis" }
+midenc-hir-macros = { path = "hir-macros" }
+midenc-hir-symbol = { path = "hir-symbol" }
+midenc-hir-transform = { path = "hir-transform" }
+midenc-hir-type = { path = "hir-type" }
 miden-parsing = "0.1"
-miden-frontend-wasm = { path = "frontend-wasm" }
+midenc-frontend-wasm = { path = "frontend-wasm" }
 midenc-compile = { path = "midenc-compile" }
 midenc-driver = { path = "midenc-driver" }
 midenc-session = { path = "midenc-session" }

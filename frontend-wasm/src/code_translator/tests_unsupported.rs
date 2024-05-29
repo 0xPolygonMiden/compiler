@@ -1,5 +1,5 @@
 use miden_diagnostics::SourceSpan;
-use miden_hir::{CallConv, Linkage, ModuleBuilder, Signature};
+use midenc_hir::{CallConv, Linkage, ModuleBuilder, Signature};
 use wasmparser::{MemArg, Operator, Operator::*};
 
 use super::translate_operator;

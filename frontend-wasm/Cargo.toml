@@ -1,5 +1,5 @@
 [package]
-name = "miden-frontend-wasm"
+name = "midenc-frontend-wasm"
 description = "Build MidenIR from Wasm"
 version.workspace = true
 rust-version.workspace = true
@@ -13,8 +13,8 @@ edition.workspace = true
 
 [dependencies]
 miden-core.workspace = true
-miden-hir.workspace = true
-miden-hir-type.workspace = true
+midenc-hir.workspace = true
+midenc-hir-type.workspace = true
 miden-diagnostics.workspace = true
 thiserror.workspace = true
 smallvec.workspace = true

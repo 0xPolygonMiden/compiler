@@ -1,5 +1,5 @@
 use miden_diagnostics::{Diagnostic, ToDiagnostic};
-use miden_hir::SymbolConflictError;
+use midenc_hir::SymbolConflictError;
 use thiserror::Error;
 
 /// A WebAssembly translation error.
@@ -43,7 +43,7 @@ pub enum WasmError {
 
     /// An error occurred during IR program linking
     #[error("Failed to link module. See diagnostics for details")]
-    LinkerError(#[from] miden_hir::LinkerError),
+    LinkerError(#[from] midenc_hir::LinkerError),
 
     #[error("Import metadata is missing: {0}")]
     MissingImportMetadata(String),

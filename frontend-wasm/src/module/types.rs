@@ -5,8 +5,8 @@ use std::{collections::HashMap, ops::Index};
 
 use hir::Abi;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{cranelift_entity::PrimaryMap, AbiParam, CallConv, Linkage, Signature};
-use miden_hir_type as hir;
+use midenc_hir::{cranelift_entity::PrimaryMap, AbiParam, CallConv, Linkage, Signature};
+use midenc_hir_type as hir;
 use wasmparser::types::CoreTypeId;
 
 use crate::{
@@ -26,7 +26,7 @@ macro_rules! indices {
         )]
         #[repr(transparent)]
         pub struct $name(u32);
-        miden_hir::cranelift_entity::entity_impl!($name);
+        midenc_hir::cranelift_entity::entity_impl!($name);
     )*);
 }
 

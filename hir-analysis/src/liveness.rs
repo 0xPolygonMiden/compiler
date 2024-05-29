@@ -3,7 +3,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
-use miden_hir::{
+use midenc_hir::{
     self as hir,
     pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
     Block as BlockId, Inst as InstId, Value as ValueId, *,

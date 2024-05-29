@@ -2639,31 +2639,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-codegen-masm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cranelift-entity",
- "env_logger 0.9.3",
- "intrusive-collections",
- "inventory",
- "log",
- "miden-assembly",
- "miden-core",
- "miden-diagnostics",
- "miden-hir",
- "miden-hir-analysis",
- "miden-hir-transform",
- "midenc-session",
- "paste",
- "petgraph",
- "proptest",
- "rustc-hash",
- "smallvec",
- "thiserror",
-]
-
-[[package]]
 name = "miden-core"
 version = "0.8.0"
 source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=0ac54125d5bd43160566736b2be3f5818fd84f69#0ac54125d5bd43160566736b2be3f5818fd84f69"
@@ -2731,118 +2706,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-frontend-wasm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "derive_more",
- "expect-test",
- "gimli",
- "indexmap 2.1.0",
- "log",
- "miden-core",
- "miden-diagnostics",
- "miden-hir",
- "miden-hir-type",
- "miden-integration-tests",
- "rustc-hash",
- "smallvec",
- "thiserror",
- "wasmparser 0.118.1",
- "wat",
-]
-
-[[package]]
-name = "miden-hir"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cranelift-entity",
- "derive_more",
- "either",
- "indexmap 2.1.0",
- "intrusive-collections",
- "inventory",
- "lalrpop",
- "lalrpop-util",
- "miden-assembly",
- "miden-core",
- "miden-diagnostics",
- "miden-hir-macros",
- "miden-hir-symbol",
- "miden-hir-type",
- "miden-parsing",
- "midenc-session",
- "num-bigint",
- "num-traits",
- "paste",
- "petgraph",
- "pretty_assertions",
- "rustc-hash",
- "smallvec",
- "thiserror",
- "typed-arena",
- "unicode-width",
-]
-
-[[package]]
-name = "miden-hir-analysis"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cranelift-bforest",
- "cranelift-entity",
- "inventory",
- "miden-diagnostics",
- "miden-hir",
- "midenc-session",
- "rustc-hash",
- "smallvec",
- "thiserror",
-]
-
-[[package]]
-name = "miden-hir-macros"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "proc-macro2",
- "quote",
- "syn 2.0.48",
-]
-
-[[package]]
-name = "miden-hir-symbol"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "rustc-hash",
- "toml 0.5.11",
-]
-
-[[package]]
-name = "miden-hir-transform"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "inventory",
- "miden-diagnostics",
- "miden-hir",
- "miden-hir-analysis",
- "midenc-session",
- "pretty_assertions",
- "rustc-hash",
- "smallvec",
-]
-
-[[package]]
-name = "miden-hir-type"
-version = "0.1.0"
-dependencies = [
- "smallvec",
-]
-
-[[package]]
 name = "miden-integration-tests"
 version = "0.1.0"
 dependencies = [
@@ -2855,16 +2718,16 @@ dependencies = [
  "filetime",
  "glob",
  "miden-assembly",
- "miden-codegen-masm",
  "miden-core",
  "miden-diagnostics",
- "miden-frontend-wasm",
- "miden-hir",
- "miden-hir-transform",
  "miden-integration-tests-rust-fib",
  "miden-processor",
  "miden-stdlib",
+ "midenc-codegen-masm",
  "midenc-compile",
+ "midenc-frontend-wasm",
+ "midenc-hir",
+ "midenc-hir-transform",
  "midenc-session",
  "proptest",
  "rustc-demangle",
@@ -2917,6 +2780,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "midenc-codegen-masm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cranelift-entity",
+ "env_logger 0.9.3",
+ "intrusive-collections",
+ "inventory",
+ "log",
+ "miden-assembly",
+ "miden-core",
+ "miden-diagnostics",
+ "midenc-hir",
+ "midenc-hir-analysis",
+ "midenc-hir-transform",
+ "midenc-session",
+ "paste",
+ "petgraph",
+ "proptest",
+ "rustc-hash",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "midenc-compile"
 version = "0.1.0"
 dependencies = [
@@ -2925,11 +2813,11 @@ dependencies = [
  "inventory",
  "log",
  "miden-assembly",
- "miden-codegen-masm",
  "miden-diagnostics",
- "miden-frontend-wasm",
- "miden-hir",
- "miden-hir-transform",
+ "midenc-codegen-masm",
+ "midenc-frontend-wasm",
+ "midenc-hir",
+ "midenc-hir-transform",
  "midenc-session",
  "rustc-hash",
  "thiserror",
@@ -2943,10 +2831,122 @@ dependencies = [
  "anyhow",
  "clap",
  "miden-diagnostics",
- "miden-hir",
  "midenc-compile",
+ "midenc-hir",
  "midenc-session",
  "thiserror",
+]
+
+[[package]]
+name = "midenc-frontend-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "expect-test",
+ "gimli",
+ "indexmap 2.1.0",
+ "log",
+ "miden-core",
+ "miden-diagnostics",
+ "miden-integration-tests",
+ "midenc-hir",
+ "midenc-hir-type",
+ "rustc-hash",
+ "smallvec",
+ "thiserror",
+ "wasmparser 0.118.1",
+ "wat",
+]
+
+[[package]]
+name = "midenc-hir"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cranelift-entity",
+ "derive_more",
+ "either",
+ "indexmap 2.1.0",
+ "intrusive-collections",
+ "inventory",
+ "lalrpop",
+ "lalrpop-util",
+ "miden-assembly",
+ "miden-core",
+ "miden-diagnostics",
+ "miden-parsing",
+ "midenc-hir-macros",
+ "midenc-hir-symbol",
+ "midenc-hir-type",
+ "midenc-session",
+ "num-bigint",
+ "num-traits",
+ "paste",
+ "petgraph",
+ "pretty_assertions",
+ "rustc-hash",
+ "smallvec",
+ "thiserror",
+ "typed-arena",
+ "unicode-width",
+]
+
+[[package]]
+name = "midenc-hir-analysis"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cranelift-bforest",
+ "cranelift-entity",
+ "inventory",
+ "miden-diagnostics",
+ "midenc-hir",
+ "midenc-session",
+ "rustc-hash",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
+name = "midenc-hir-macros"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
+name = "midenc-hir-symbol"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "rustc-hash",
+ "toml 0.5.11",
+]
+
+[[package]]
+name = "midenc-hir-transform"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "inventory",
+ "miden-diagnostics",
+ "midenc-hir",
+ "midenc-hir-analysis",
+ "midenc-session",
+ "pretty_assertions",
+ "rustc-hash",
+ "smallvec",
+]
+
+[[package]]
+name = "midenc-hir-type"
+version = "0.1.0"
+dependencies = [
+ "smallvec",
 ]
 
 [[package]]
@@ -2957,7 +2957,7 @@ dependencies = [
  "clap",
  "inventory",
  "miden-diagnostics",
- "miden-hir-symbol",
+ "midenc-hir-symbol",
  "rustc-hash",
  "thiserror",
 ]

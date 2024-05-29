@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
-use miden_hir::{
+use midenc_hir::{
     self as hir,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     Block as BlockId, *,
 };
-use miden_hir_analysis::ControlFlowGraph;
+use midenc_hir_analysis::ControlFlowGraph;
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -141,7 +141,7 @@ impl RewritePass for SplitCriticalEdges {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{
+    use midenc_hir::{
         pass::{AnalysisManager, RewritePass},
         testing::TestContext,
         AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,

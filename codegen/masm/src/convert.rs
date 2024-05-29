@@ -1,10 +1,10 @@
 use miden_assembly::LibraryPath;
-use miden_hir::{
+use midenc_hir::{
     self as hir,
     pass::{AnalysisManager, ConversionPass, ConversionResult},
     ConversionPassRegistration, PassInfo,
 };
-use miden_hir_analysis as analysis;
+use midenc_hir_analysis as analysis;
 use midenc_session::Session;
 
 use crate::{
@@ -106,7 +106,7 @@ impl ConversionPass for ConvertHirToMasm<hir::Module> {
         session: &Session,
     ) -> ConversionResult<Self::To> {
         use miden_assembly::ast::ModuleKind;
-        use miden_hir::ProgramAnalysisKey;
+        use midenc_hir::ProgramAnalysisKey;
 
         let kind = if module.is_kernel() {
             ModuleKind::Kernel
@@ -151,7 +151,7 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
-        use miden_hir::ProgramAnalysisKey;
+        use midenc_hir::ProgramAnalysisKey;
 
         let mut f_prime = masm::Function::new(f.id, f.signature.clone());
 

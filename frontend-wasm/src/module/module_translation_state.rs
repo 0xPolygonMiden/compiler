@@ -1,6 +1,6 @@
 use miden_core::crypto::hash::RpoDigest;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{AbiParam, CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature};
+use midenc_hir::{AbiParam, CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature};
 use rustc_hash::FxHashMap;
 
 use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Module, ModuleTypes};

@@ -1,5 +1,5 @@
 [package]
-name = "miden-hir-transform"
+name = "midenc-hir-transform"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -14,8 +14,8 @@ edition.workspace = true
 anyhow.workspace = true
 inventory.workspace = true
 miden-diagnostics.workspace = true
-miden-hir.workspace = true
-miden-hir-analysis.workspace = true
+midenc-hir.workspace = true
+midenc-hir-analysis.workspace = true
 midenc-session.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true

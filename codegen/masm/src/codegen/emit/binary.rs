@@ -1,4 +1,4 @@
-use miden_hir::{assert_matches, Felt, Immediate, Overflow, Type};
+use midenc_hir::{assert_matches, Felt, Immediate, Overflow, Type};
 
 use super::OpEmitter;
 use crate::masm::Op;

@@ -2,8 +2,8 @@ use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
 
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
-use miden_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
-use miden_hir::{FunctionExportName, InterfaceFunctionIdent, InterfaceIdent, Symbol};
+use midenc_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
+use midenc_hir::{FunctionExportName, InterfaceFunctionIdent, InterfaceIdent, Symbol};
 
 use crate::CompilerTest;
 

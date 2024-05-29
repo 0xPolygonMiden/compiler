@@ -3,7 +3,7 @@ pub(crate) mod transform;
 pub(crate) mod tx_kernel;
 
 use miden_core::crypto::hash::RpoDigest;
-use miden_hir::{FunctionType, Symbol};
+use midenc_hir::{FunctionType, Symbol};
 use rustc_hash::FxHashMap;
 
 pub(crate) type FunctionTypeMap = FxHashMap<&'static str, FunctionType>;

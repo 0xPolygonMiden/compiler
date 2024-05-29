@@ -1,5 +1,5 @@
 [package]
-name = "miden-hir-macros"
+name = "midenc-hir-macros"
 description = "Provides proc macro support for Miden IR"
 version.workspace = true
 rust-version.workspace = true

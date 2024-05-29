@@ -1,5 +1,5 @@
-use miden_hir::RewritePassRegistration;
-use miden_hir_transform as transforms;
+use midenc_hir::RewritePassRegistration;
+use midenc_hir_transform as transforms;
 
 use super::*;
 
@@ -19,7 +19,7 @@ impl Stage for ApplyRewritesStage {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        use miden_hir::pass::{ModuleRewritePassAdapter, RewriteSet};
+        use midenc_hir::pass::{ModuleRewritePassAdapter, RewriteSet};
 
         // Get all registered module rewrites and apply them in the order they appear
         let mut registered = vec![];

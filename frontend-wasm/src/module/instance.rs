@@ -1,4 +1,4 @@
-use miden_hir::{ComponentImport, FunctionIdent};
+use midenc_hir::{ComponentImport, FunctionIdent};
 
 /// Represents module argument that is used to instantiate a module.
 #[derive(Debug, Clone)]

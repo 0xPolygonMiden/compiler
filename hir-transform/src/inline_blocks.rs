@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
-use miden_hir::{
+use midenc_hir::{
     self as hir,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     *,
 };
-use miden_hir_analysis::ControlFlowGraph;
+use midenc_hir_analysis::ControlFlowGraph;
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -273,7 +273,7 @@ fn rewrite_use(
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{
+    use midenc_hir::{
         pass::{AnalysisManager, RewritePass},
         testing::TestContext,
         AbiParam, Function, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,

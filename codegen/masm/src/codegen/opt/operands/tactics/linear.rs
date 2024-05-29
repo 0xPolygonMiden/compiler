@@ -1,4 +1,4 @@
-use miden_hir::adt::SmallSet;
+use midenc_hir::adt::SmallSet;
 use petgraph::prelude::{DiGraphMap, Direction};
 
 use super::*;

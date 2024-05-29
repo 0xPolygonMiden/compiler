@@ -7,7 +7,7 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
+use midenc_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
 use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
 
 use super::{module_translation_state::ModuleTranslationState, Module};

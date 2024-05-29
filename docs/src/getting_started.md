@@ -16,7 +16,7 @@ There are three ways you might use the Miden compiler:
 
 
 1. As an executable (via `midenc`)
-2. As a library (most likely via the `midenc-compile` and `miden-hir` crates) 
+2. As a library (most likely via the `midenc-compile` and `midenc-hir` crates) 
 3. As a Cargo extension (via `cargo miden`)
 
 Each of these is described in the following chapters, we hope you find this book useful!

@@ -1,5 +1,5 @@
-use miden_hir::FunctionType;
-use miden_hir_type::Type::*;
+use midenc_hir::FunctionType;
+use midenc_hir_type::Type::*;
 
 use crate::miden_abi::{FunctionTypeMap, ModuleFunctionTypeMap};
 

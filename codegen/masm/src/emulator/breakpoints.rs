@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use miden_hir::FunctionIdent;
+use midenc_hir::FunctionIdent;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{Addr, BreakpointEvent, EmulatorEvent, Instruction, InstructionPointer};

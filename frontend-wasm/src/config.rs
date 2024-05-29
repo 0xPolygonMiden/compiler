@@ -1,7 +1,7 @@
 use alloc::{borrow::Cow, collections::BTreeMap};
 
 use miden_core::crypto::hash::RpoDigest;
-use miden_hir::InterfaceFunctionIdent;
+use midenc_hir::InterfaceFunctionIdent;
 
 /// Represents Miden VM codegen metadata for a function import.
 /// This struct will have more fields in the future e.g. where the function

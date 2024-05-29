@@ -12,13 +12,13 @@
 use core::mem;
 
 use miden_diagnostics::SourceSpan;
-use miden_hir::{
+use midenc_hir::{
     cranelift_entity::{
         entity_impl, packed_option::PackedOption, EntityList, EntitySet, ListPool, SecondaryMap,
     },
     Block, DataFlowGraph, Inst, Value,
 };
-use miden_hir_type::Type;
+use midenc_hir_type::Type;
 
 /// Structure containing the data relevant the construction of SSA for a given function.
 ///

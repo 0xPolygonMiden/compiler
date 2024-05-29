@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use miden_codegen_masm::{Emulator, Program};
-use miden_hir::{Felt, Stack};
+use midenc_codegen_masm::{Emulator, Program};
+use midenc_hir::{Felt, Stack};
 
 use crate::felt_conversion::TestFelt;
 

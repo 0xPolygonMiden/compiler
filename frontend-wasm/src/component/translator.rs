@@ -1,9 +1,9 @@
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{
+use midenc_hir::{
     cranelift_entity::PrimaryMap, CanonAbiImport, ComponentBuilder, ComponentExport, FunctionIdent,
     FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
 };
-use miden_hir_type::Abi;
+use midenc_hir_type::Abi;
 use rustc_hash::FxHashMap;
 
 use super::{
@@ -68,9 +68,9 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     pub fn translate(
         mut self,
         wasm_translation: LinearComponentTranslation,
-    ) -> WasmResult<miden_hir::Component> {
-        let mut component_builder: miden_hir::ComponentBuilder<'a> =
-            miden_hir::ComponentBuilder::new(self.diagnostics);
+    ) -> WasmResult<midenc_hir::Component> {
+        let mut component_builder: midenc_hir::ComponentBuilder<'a> =
+            midenc_hir::ComponentBuilder::new(self.diagnostics);
         dbg!(&wasm_translation.component.initializers);
         for initializer in &wasm_translation.component.initializers {
             match initializer {
@@ -249,7 +249,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         signature: TypeFuncIndex,
         options: &CanonicalOptions,
         wasm_component: &LinearComponent,
-    ) -> WasmResult<miden_hir::ComponentImport> {
+    ) -> WasmResult<midenc_hir::ComponentImport> {
         let (import_idx, import_names) = &wasm_component.imports[runtime_import_index];
         if import_names.len() != 1 {
             return Err(crate::WasmError::Unsupported(
@@ -270,7 +270,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         };
         let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
 
-        let component_import = miden_hir::ComponentImport::CanonAbiImport(CanonAbiImport {
+        let component_import = midenc_hir::ComponentImport::CanonAbiImport(CanonAbiImport {
             function_ty: lifted_func_ty,
             interface_function,
             digest: import_metadata.digest,
@@ -323,7 +323,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     ) -> WasmResult<ComponentExport> {
         let func_ident = self.func_id_from_core_def(func)?;
         let lifted_func_ty = convert_lifted_func_ty(ty, &self.component_types);
-        let export = miden_hir::ComponentExport {
+        let export = midenc_hir::ComponentExport {
             function: func_ident,
             function_ty: lifted_func_ty,
             options: self.translate_canonical_options(options)?,
@@ -354,9 +354,9 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     }
                 };
 
-                miden_hir::FunctionIdent {
+                midenc_hir::FunctionIdent {
                     module: module_name,
-                    function: miden_hir::Ident::with_empty_span(func_name),
+                    function: midenc_hir::Ident::with_empty_span(func_name),
                 }
             }
             CoreDef::InstanceFlags(_) => {
@@ -375,14 +375,14 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     fn translate_canonical_options(
         &self,
         options: &CanonicalOptions,
-    ) -> WasmResult<miden_hir::CanonicalOptions> {
+    ) -> WasmResult<midenc_hir::CanonicalOptions> {
         if options.string_encoding != StringEncoding::Utf8 {
             return Err(WasmError::Unsupported(
                 "UTF-8 is expected in CanonicalOptions, string transcoding is not yet supported"
                     .to_string(),
             ));
         }
-        Ok(miden_hir::CanonicalOptions {
+        Ok(midenc_hir::CanonicalOptions {
             realloc: options.realloc.map(|idx| self.reallocs[&idx]),
             post_return: options.post_return.map(|idx| self.post_returns[&idx]),
         })

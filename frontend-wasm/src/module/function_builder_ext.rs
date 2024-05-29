@@ -1,10 +1,10 @@
 use miden_diagnostics::SourceSpan;
-use miden_hir::{
+use midenc_hir::{
     cranelift_entity::{EntitySet, SecondaryMap},
     Block, Br, CondBr, DataFlowGraph, InsertionPoint, Inst, InstBuilderBase, Instruction,
     ModuleFunctionBuilder, ProgramPoint, Switch, Value,
 };
-use miden_hir_type::Type;
+use midenc_hir_type::Type;
 
 use crate::ssa::{SSABuilder, SideEffects, Variable};
 
@@ -70,7 +70,7 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
         self.inner.data_flow_graph_mut()
     }
 
-    pub fn signature(&self) -> &miden_hir::Signature {
+    pub fn signature(&self) -> &midenc_hir::Signature {
         self.inner.signature()
     }
 

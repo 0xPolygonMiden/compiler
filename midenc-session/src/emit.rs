@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write, path::Path};
 
-use miden_hir_symbol::Symbol;
+use midenc_hir_symbol::Symbol;
 
 use crate::OutputType;
 

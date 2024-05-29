@@ -7,7 +7,7 @@ use std::{borrow::Cow, collections::BTreeMap, ops::Range};
 
 use indexmap::IndexMap;
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{
+use midenc_hir::{
     cranelift_entity::{packed_option::ReservedValue, EntityRef, PrimaryMap},
     Ident, Symbol,
 };
@@ -381,7 +381,7 @@ impl FunctionTypeInfo {
 /// Index into the funcref table
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct FuncRefIndex(u32);
-miden_hir::cranelift_entity::entity_impl!(FuncRefIndex);
+midenc_hir::cranelift_entity::entity_impl!(FuncRefIndex);
 
 #[derive(Debug, Default)]
 pub struct NameSection {

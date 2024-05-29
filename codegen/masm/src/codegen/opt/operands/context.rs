@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, num::NonZeroU8};
 
-use miden_hir as hir;
+use midenc_hir as hir;
 
 use super::{SolverError, Stack, ValueOrAlias};
 use crate::codegen::Constraint;

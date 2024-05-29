@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use cranelift_entity::SecondaryMap;
 use hir::Type;
-use miden_hir::{self as hir, adt::SparseMap, assert_matches};
-use miden_hir_analysis::{
+use midenc_hir::{self as hir, adt::SparseMap, assert_matches};
+use midenc_hir_analysis::{
     DominatorTree, GlobalVariableLayout, LivenessAnalysis, Loop, LoopAnalysis,
 };
 use smallvec::SmallVec;
@@ -196,7 +196,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_inst(&mut self, inst_info: &InstInfo, tasks: &mut Tasks) {
-        use miden_hir::Instruction;
+        use midenc_hir::Instruction;
 
         // Move instruction operands into place, minimizing unnecessary stack manipulation ops
         //
@@ -229,7 +229,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_ret(&mut self, inst_info: &InstInfo, ix: &hir::Instruction) {
-        use miden_hir::Instruction;
+        use midenc_hir::Instruction;
         assert!(
             !self.visited,
             "invalid control flow graph: unexpected return instruction in loop in {}",
@@ -444,7 +444,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_unary_imm_op(&mut self, inst_info: &InstInfo, op: &hir::UnaryOpImm) {
-        use miden_hir::Immediate;
+        use midenc_hir::Immediate;
 
         let mut emitter = self.inst_emitter(inst_info.inst);
         match op.op {
@@ -550,7 +550,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_binary_imm_op(&mut self, inst_info: &InstInfo, op: &hir::BinaryOpImm) {
-        use miden_hir::Overflow;
+        use midenc_hir::Overflow;
 
         let mut emitter = self.inst_emitter(inst_info.inst);
         let overflow = op.overflow.unwrap_or(Overflow::Checked);
@@ -588,7 +588,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_binary_op(&mut self, inst_info: &InstInfo, op: &hir::BinaryOp) {
-        use miden_hir::Overflow;
+        use midenc_hir::Overflow;
 
         let mut emitter = self.inst_emitter(inst_info.inst);
         let overflow = op.overflow.unwrap_or(Overflow::Checked);

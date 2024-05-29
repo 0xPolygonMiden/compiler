@@ -1,6 +1,6 @@
 use cranelift_bforest as bforest;
 use cranelift_entity::SecondaryMap;
-use miden_hir::{
+use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult},
     Block, DataFlowGraph, Function, Inst, Instruction,
 };
@@ -218,7 +218,7 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
     block: Block,
     mut visit: F,
 ) {
-    use miden_hir::{Br, CondBr, Switch};
+    use midenc_hir::{Br, CondBr, Switch};
 
     if let Some(inst) = dfg.last_inst(block) {
         match &dfg[inst] {
@@ -261,7 +261,7 @@ mod tests {
     use miden_diagnostics::{
         term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler,
     };
-    use miden_hir::*;
+    use midenc_hir::*;
 
     use super::*;
 

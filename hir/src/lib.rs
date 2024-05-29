@@ -21,9 +21,9 @@ extern crate lalrpop_util;
 pub use intrusive_collections::UnsafeRef;
 pub use miden_core::{FieldElement, StarkField};
 pub use miden_diagnostics::SourceSpan;
-pub use miden_hir_macros::*;
-pub use miden_hir_symbol::{symbols, Symbol};
-pub use miden_hir_type::{AddressSpace, Alignable, FunctionType, StructType, Type, TypeRepr};
+pub use midenc_hir_macros::*;
+pub use midenc_hir_symbol::{symbols, Symbol};
+pub use midenc_hir_type::{AddressSpace, Alignable, FunctionType, StructType, Type, TypeRepr};
 
 /// Represents a field element in Miden
 pub type Felt = miden_core::Felt;

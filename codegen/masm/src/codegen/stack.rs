@@ -4,7 +4,7 @@ use core::{
     ops::{Index, IndexMut},
 };
 
-use miden_hir::{Felt, FieldElement, Immediate, Type, Value};
+use midenc_hir::{Felt, FieldElement, Immediate, Type, Value};
 use smallvec::{smallvec, SmallVec};
 
 /// This represents a constraint an operand's usage at
@@ -905,7 +905,7 @@ impl fmt::Debug for OperandStack {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::StructType;
+    use midenc_hir::StructType;
 
     use super::*;
 
@@ -1066,7 +1066,7 @@ mod tests {
 
     #[test]
     fn operand_stack_values_test() {
-        use miden_hir::Value;
+        use midenc_hir::Value;
         let mut stack = OperandStack::default();
 
         let zero = Value::from_u32(0);

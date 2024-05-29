@@ -1,7 +1,7 @@
 use std::{ops::Range, path::PathBuf, sync::Arc};
 
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{
+use midenc_hir::{
     cranelift_entity::{packed_option::ReservedValue, PrimaryMap},
     Ident, Symbol,
 };

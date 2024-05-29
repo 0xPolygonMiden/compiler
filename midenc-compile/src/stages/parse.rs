@@ -74,7 +74,7 @@ impl ParseStage {
     fn parse_ast_from_bytes(&self, bytes: &[u8], session: &Session) -> CompilerResult<ParseOutput> {
         use std::io::{Error, ErrorKind};
 
-        use miden_hir::parser::Parser;
+        use midenc_hir::parser::Parser;
 
         let source = core::str::from_utf8(bytes).map_err(|_| {
             CompilerError::Io(Error::new(ErrorKind::InvalidInput, "input is not valid utf-8"))

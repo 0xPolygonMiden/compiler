@@ -1,4 +1,4 @@
-use miden_hir::{
+use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult},
     Function, FunctionIdent, GlobalValue, GlobalValueData, GlobalVariableTable, Module, Program,
 };

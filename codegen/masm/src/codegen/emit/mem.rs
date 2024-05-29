@@ -1,4 +1,4 @@
-use miden_hir::{StructType, Type};
+use midenc_hir::{StructType, Type};
 
 use super::OpEmitter;
 use crate::masm::{NativePtr, Op};

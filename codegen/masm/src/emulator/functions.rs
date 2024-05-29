@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt, rc::Rc, sync::Arc};
 
-use miden_hir::Felt;
+use midenc_hir::Felt;
 use smallvec::{smallvec, SmallVec};
 
 use super::{Addr, ControlEffect, EmulationError, Emulator, InstructionPointer};
@@ -484,7 +484,7 @@ impl Activation {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{assert_matches, Signature};
+    use midenc_hir::{assert_matches, Signature};
 
     use super::*;
 

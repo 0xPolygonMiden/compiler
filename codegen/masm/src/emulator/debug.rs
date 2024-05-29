@@ -1,6 +1,6 @@
 use std::fmt;
 
-use miden_hir::{Felt, FunctionIdent, OperandStack};
+use midenc_hir::{Felt, FunctionIdent, OperandStack};
 
 use super::{Addr, InstructionPointer, InstructionWithOp};
 
@@ -38,7 +38,7 @@ impl DebugInfo<'_> {
 }
 impl<'a> fmt::Debug for DebugInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use miden_hir::Stack;
+        use midenc_hir::Stack;
 
         f.debug_struct("DebugInfo")
             .field("cycle", &self.cycle)
@@ -65,7 +65,7 @@ pub struct DebugInfoWithStack {
 }
 impl fmt::Debug for DebugInfoWithStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use miden_hir::Stack;
+        use midenc_hir::Stack;
 
         f.debug_struct("DebugInfo")
             .field("cycle", &self.cycle)

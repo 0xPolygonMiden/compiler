@@ -1,11 +1,11 @@
 use std::{collections::VecDeque, rc::Rc};
 
-use miden_hir::{
+use midenc_hir::{
     self as hir,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     Block as BlockId, Value as ValueId, *,
 };
-use miden_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, LoopAnalysis};
+use midenc_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, LoopAnalysis};
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
 
@@ -645,7 +645,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{
+    use midenc_hir::{
         pass::{AnalysisManager, RewritePass},
         testing::{self, TestContext},
         ModuleBuilder,

@@ -1,5 +1,5 @@
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
-use miden_hir::*;
+use midenc_hir::*;
 
 use super::{
     BlockValidator, DefsDominateUses, NamingConventions, Rule, TypeCheck, ValidationError,

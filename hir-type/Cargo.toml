@@ -1,5 +1,5 @@
 [package]
-name = "miden-hir-type"
+name = "midenc-hir-type"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true

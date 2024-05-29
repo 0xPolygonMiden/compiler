@@ -1,7 +1,7 @@
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
-use miden_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
-use miden_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol, Type};
+use midenc_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
+use midenc_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol, Type};
 
 use crate::{cargo_proj::project, CompilerTest};
 

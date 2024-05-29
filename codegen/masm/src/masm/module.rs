@@ -12,7 +12,7 @@ use miden_assembly::{
     LibraryNamespace, LibraryPath,
 };
 use miden_diagnostics::{CodeMap, SourceFile, SourceIndex, SourceSpan};
-use miden_hir::{formatter::PrettyPrint, FunctionIdent, Ident, Symbol};
+use midenc_hir::{formatter::PrettyPrint, FunctionIdent, Ident, Symbol};
 
 use super::{function::Functions, FrozenFunctionList, Function, ModuleImportInfo};
 
@@ -170,7 +170,7 @@ impl Module {
             } else {
                 alias
             };
-            imports.insert(miden_hir::MasmImport { span, name, alias });
+            imports.insert(midenc_hir::MasmImport { span, name, alias });
         }
 
         for export in ast.procedures() {
@@ -301,9 +301,9 @@ impl Module {
         out.write_fmt(format_args!("{}", &ast))
     }
 }
-impl miden_hir::formatter::PrettyPrint for Module {
-    fn render(&self) -> miden_hir::formatter::Document {
-        use miden_hir::formatter::*;
+impl midenc_hir::formatter::PrettyPrint for Module {
+    fn render(&self) -> midenc_hir::formatter::Document {
+        use midenc_hir::formatter::*;
 
         let mut doc = Document::Empty;
         if let Some(docs) = self.docs.as_ref() {

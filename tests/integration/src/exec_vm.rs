@@ -1,6 +1,6 @@
 use miden_core::{Program, StackInputs};
-use miden_hir::Felt;
 use miden_processor::{DefaultHost, ExecutionOptions};
+use midenc_hir::Felt;
 
 use crate::felt_conversion::TestFelt;
 
