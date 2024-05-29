@@ -4,7 +4,7 @@ use std::{
     fmt,
 };
 
-use miden_hir as hir;
+use midenc_hir as hir;
 use smallvec::SmallVec;
 
 /// This represents a node in a [DependencyGraph].
@@ -421,7 +421,7 @@ impl NodeId {
         self.into()
     }
 
-    /// Extract the [miden_hir::Inst] associated with the corresponding [Node], or panic
+    /// Extract the [midenc_hir::Inst] associated with the corresponding [Node], or panic
     /// if the node type does not have an associated instruction identifier.
     pub fn unwrap_inst(self) -> hir::Inst {
         let tag = self.0 & Self::TAG_MASK;
@@ -1262,7 +1262,7 @@ pub(crate) fn simple_dependency_graph() -> DependencyGraph {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{self as hir, assert_matches};
+    use midenc_hir::{self as hir, assert_matches};
 
     use super::*;
 

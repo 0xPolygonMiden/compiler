@@ -16,7 +16,7 @@ mod wit_sdk;
 pub fn run_masm_vs_rust<T>(
     rust_out: T,
     vm_program: &miden_core::Program,
-    _ir_masm: Arc<miden_codegen_masm::Program>,
+    _ir_masm: Arc<midenc_codegen_masm::Program>,
     args: &[Felt],
 ) -> Result<(), TestCaseError>
 where

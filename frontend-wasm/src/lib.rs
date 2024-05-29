@@ -33,7 +33,7 @@ pub fn translate(
     wasm: &[u8],
     config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
-) -> WasmResult<miden_hir::Component> {
+) -> WasmResult<midenc_hir::Component> {
     if wasm[4..8] == [0x01, 0x00, 0x00, 0x00] {
         // Wasm core module
         // see https://github.com/WebAssembly/component-model/blob/main/design/mvp/Binary.md#component-definitions

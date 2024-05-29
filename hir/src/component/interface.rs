@@ -1,6 +1,6 @@
 use core::fmt;
 
-use miden_hir_symbol::Symbol;
+use midenc_hir_symbol::Symbol;
 
 use crate::formatter::PrettyPrint;
 

@@ -2,8 +2,8 @@ use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 use clap::{ColorChoice, Parser, Subcommand};
 use miden_diagnostics::Emitter;
-use miden_hir::FunctionIdent;
 use midenc_compile as compile;
+use midenc_hir::FunctionIdent;
 use midenc_session::{InputFile, TargetEnv, VerbosityFlag, Warnings};
 
 use super::DriverError;

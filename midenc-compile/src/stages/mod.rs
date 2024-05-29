@@ -1,6 +1,6 @@
-use miden_codegen_masm as masm;
-use miden_frontend_wasm as wasm;
-use miden_hir::{
+use midenc_codegen_masm as masm;
+use midenc_frontend_wasm as wasm;
+use midenc_hir::{
     self as hir,
     parser::ast,
     pass::{AnalysisManager, ConversionPass, RewritePass},

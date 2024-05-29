@@ -5,7 +5,7 @@ mod tactics;
 
 use std::{fmt, num::NonZeroU8};
 
-use miden_hir as hir;
+use midenc_hir as hir;
 
 pub use self::solver::{OperandMovementConstraintSolver, SolverError};
 use self::{context::SolverContext, stack::Stack};
@@ -29,7 +29,7 @@ pub enum Action {
     MoveDown(u8),
 }
 
-/// This is a [miden_hir::Value], but with a modified encoding that lets
+/// This is a [midenc_hir::Value], but with a modified encoding that lets
 /// us uniquely identify aliases of a value on the operand stack during
 /// analysis.
 ///
@@ -72,7 +72,7 @@ impl ValueOrAlias {
         self.0 = self.id() | ((id.get() as u32) << 23);
     }
 
-    /// Get the raw u32 value of the original [miden_hir::Value]
+    /// Get the raw u32 value of the original [midenc_hir::Value]
     pub fn id(self) -> u32 {
         self.0 & !Self::ALIAS_MASK
     }

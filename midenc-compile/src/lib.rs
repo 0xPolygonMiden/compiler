@@ -4,8 +4,8 @@ mod stages;
 
 use std::sync::Arc;
 
-use miden_codegen_masm as masm;
-use miden_hir::pass::AnalysisManager;
+use midenc_codegen_masm as masm;
+use midenc_hir::pass::AnalysisManager;
 use midenc_session::{OutputType, Session};
 
 pub use self::{compiler::Compiler, stages::Compiled};
@@ -26,25 +26,25 @@ pub enum CompilerError {
     InvalidInput(#[from] midenc_session::InvalidInputError),
     /// An error occurred while parsing/translating a Wasm module from binary
     #[error(transparent)]
-    WasmError(#[from] miden_frontend_wasm::WasmError),
+    WasmError(#[from] midenc_frontend_wasm::WasmError),
     /// An error occurred while parsing/translating a Wasm module from text
     #[error(transparent)]
     WatError(#[from] wat::Error),
     /// An error occurred while parsing an HIR module
     #[error(transparent)]
-    Parsing(#[from] miden_hir::parser::ParseError),
+    Parsing(#[from] midenc_hir::parser::ParseError),
     /// An error occurred while running an analysis
     #[error(transparent)]
-    Analysis(#[from] miden_hir::pass::AnalysisError),
+    Analysis(#[from] midenc_hir::pass::AnalysisError),
     /// An error occurred while rewriting an IR entity
     #[error(transparent)]
-    Rewriting(#[from] miden_hir::pass::RewriteError),
+    Rewriting(#[from] midenc_hir::pass::RewriteError),
     /// An error occurred while converting from one dialect to another
     #[error(transparent)]
-    Conversion(#[from] miden_hir::pass::ConversionError),
+    Conversion(#[from] midenc_hir::pass::ConversionError),
     /// An error occurred while linking a program
     #[error(transparent)]
-    Linker(#[from] miden_hir::LinkerError),
+    Linker(#[from] midenc_hir::LinkerError),
     /// An error occurred when reading a file
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -55,15 +55,15 @@ pub enum CompilerError {
     #[error("exited due to error: see diagnostics for details")]
     Reported,
 }
-impl From<miden_hir::ModuleConflictError> for CompilerError {
-    fn from(err: miden_hir::ModuleConflictError) -> CompilerError {
-        Self::Linker(miden_hir::LinkerError::ModuleConflict(err.0))
+impl From<midenc_hir::ModuleConflictError> for CompilerError {
+    fn from(err: midenc_hir::ModuleConflictError) -> CompilerError {
+        Self::Linker(midenc_hir::LinkerError::ModuleConflict(err.0))
     }
 }
 
 /// Register dynamic flags to be shown via `midenc help compile`
 pub fn register_flags(cmd: clap::Command) -> clap::Command {
-    use miden_hir::RewritePassRegistration;
+    use midenc_hir::RewritePassRegistration;
     use midenc_session::CompileFlag;
 
     let cmd = inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
@@ -103,7 +103,7 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
         cmd.arg(arg)
     });
 
-    inventory::iter::<RewritePassRegistration<miden_hir::Module>>.into_iter().fold(
+    inventory::iter::<RewritePassRegistration<midenc_hir::Module>>.into_iter().fold(
         cmd,
         |cmd, rewrite| {
             let name = rewrite.name();

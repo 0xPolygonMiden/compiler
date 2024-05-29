@@ -35,7 +35,7 @@
 // Based on wasmtime v16.0 Wasm component translation
 
 use indexmap::IndexMap;
-use miden_hir::cranelift_entity::PrimaryMap;
+use midenc_hir::cranelift_entity::PrimaryMap;
 
 use crate::{
     component::*,

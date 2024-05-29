@@ -1,6 +1,6 @@
 use std::{cell::RefCell, sync::Arc};
 
-use miden_hir::{
+use midenc_hir::{
     pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
     AbiParam, CallConv, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, Linkage,
@@ -54,12 +54,12 @@ impl TestByEmulationHarness {
         program: &hir::Program,
         function: &mut hir::Function,
     ) -> CompilerResult<Box<Function>> {
-        use miden_hir::{
+        use midenc_hir::{
             pass::{Analysis, RewritePass},
             ProgramAnalysisKey,
         };
-        use miden_hir_analysis as analysis;
-        use miden_hir_transform as transform;
+        use midenc_hir_analysis as analysis;
+        use midenc_hir_transform as transform;
 
         // Analyze function
         let mut analyses = AnalysisManager::new();

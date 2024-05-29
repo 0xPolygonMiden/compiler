@@ -16,7 +16,7 @@
 use std::{collections::hash_map, u64};
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{
+use midenc_hir::{
     cranelift_entity::packed_option::ReservedValue, Block, Immediate, Inst, InstBuilder, Type,
     Type::*, Value,
 };

@@ -2,7 +2,7 @@ mod felt;
 
 use std::{collections::HashSet, sync::OnceLock};
 
-use miden_hir::{FunctionIdent, SourceSpan, Symbol, Value};
+use midenc_hir::{FunctionIdent, SourceSpan, Symbol, Value};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
 

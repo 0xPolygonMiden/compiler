@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::PrimaryMap;
 use miden_assembly::ast;
-use miden_hir::{formatter::PrettyPrint, FunctionIdent, Ident};
+use midenc_hir::{formatter::PrettyPrint, FunctionIdent, Ident};
 use smallvec::smallvec;
 
 use super::*;
@@ -119,9 +119,9 @@ pub struct DisplayRegion<'a> {
     function: Option<FunctionIdent>,
     imports: &'a ModuleImportInfo,
 }
-impl<'a> miden_hir::formatter::PrettyPrint for DisplayRegion<'a> {
-    fn render(&self) -> miden_hir::formatter::Document {
-        use miden_hir::DisplayMasmBlock;
+impl<'a> midenc_hir::formatter::PrettyPrint for DisplayRegion<'a> {
+    fn render(&self) -> midenc_hir::formatter::Document {
+        use midenc_hir::DisplayMasmBlock;
 
         let block = DisplayMasmBlock::new(
             self.function,

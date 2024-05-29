@@ -6,8 +6,8 @@
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
 use miden_diagnostics::SourceSpan;
-use miden_hir::{Block, Inst, InstBuilder, Signature, Value};
-use miden_hir_type::Type;
+use midenc_hir::{Block, Inst, InstBuilder, Signature, Value};
+use midenc_hir_type::Type;
 
 use super::function_builder_ext::FunctionBuilderExt;
 use crate::module::types::BlockType;

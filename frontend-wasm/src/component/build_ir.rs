@@ -12,7 +12,7 @@ pub fn translate_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
-) -> WasmResult<miden_hir::Component> {
+) -> WasmResult<midenc_hir::Component> {
     let (mut component_types_builder, parsed_component) = parse(config, wasm, diagnostics)?;
     let linearized_component_translation = inline(&mut component_types_builder, &parsed_component)?;
     let component_types = component_types_builder.finish();
@@ -62,8 +62,8 @@ fn inline(
 #[cfg(test)]
 mod tests {
     use miden_core::crypto::hash::RpoDigest;
-    use miden_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol};
-    use miden_hir_type::Type;
+    use midenc_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol};
+    use midenc_hir_type::Type;
 
     use super::*;
     use crate::{

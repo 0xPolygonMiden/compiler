@@ -50,7 +50,7 @@ use std::{borrow::Cow, collections::HashMap};
 
 use anyhow::{bail, Result};
 use indexmap::IndexMap;
-use miden_hir::cranelift_entity::PrimaryMap;
+use midenc_hir::cranelift_entity::PrimaryMap;
 use rustc_hash::FxHashMap;
 use wasmparser::types::{ComponentAnyTypeId, ComponentEntityType, ComponentInstanceTypeId};
 

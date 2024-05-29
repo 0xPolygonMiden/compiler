@@ -1,4 +1,4 @@
-use miden_hir::FunctionIdent;
+use midenc_hir::FunctionIdent;
 
 use super::{Addr, InstructionPointer};
 use crate::BlockId;

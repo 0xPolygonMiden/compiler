@@ -35,7 +35,7 @@
 use std::{hash::Hash, ops::Index};
 
 use indexmap::IndexMap;
-use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
+use midenc_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -152,7 +152,7 @@ macro_rules! id {
         #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
         #[allow(missing_docs)]
         pub struct $name(u32);
-        miden_hir::cranelift_entity::entity_impl!($name);
+        midenc_hir::cranelift_entity::entity_impl!($name);
     )*)
 }
 

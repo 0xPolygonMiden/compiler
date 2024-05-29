@@ -7,7 +7,7 @@ use miden_assembly::{
     LibraryNamespace, LibraryPath,
 };
 use miden_diagnostics::{SourceSpan, Spanned};
-use miden_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
+use midenc_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
 use smallvec::SmallVec;
 
 use super::*;
@@ -53,7 +53,7 @@ impl Function {
 
     /// Returns true if this function is decorated with the `entrypoint` attribute.
     pub fn is_entrypoint(&self) -> bool {
-        use miden_hir::symbols;
+        use midenc_hir::symbols;
 
         self.attrs.has(&symbols::Entrypoint)
     }
@@ -171,7 +171,7 @@ impl Function {
     }
 
     pub fn from_ast(module: Ident, proc: &ast::Procedure) -> Box<Self> {
-        use miden_hir::{Linkage, Symbol};
+        use midenc_hir::{Linkage, Symbol};
 
         let id = FunctionIdent {
             module,
@@ -183,12 +183,12 @@ impl Function {
         if !visibility.is_exported() {
             signature.linkage = Linkage::Internal;
         } else if visibility.is_syscall() {
-            signature.cc = miden_hir::CallConv::Kernel;
+            signature.cc = midenc_hir::CallConv::Kernel;
         }
 
         let mut function = Box::new(Self::new(id, signature));
         if proc.is_entrypoint() {
-            function.attrs.set(miden_hir::attributes::ENTRYPOINT);
+            function.attrs.set(midenc_hir::attributes::ENTRYPOINT);
         }
 
         for _ in 0..proc.num_locals() {
@@ -204,7 +204,7 @@ impl Function {
     pub fn to_ast(
         &self,
         codemap: &miden_diagnostics::CodeMap,
-        imports: &miden_hir::ModuleImportInfo,
+        imports: &midenc_hir::ModuleImportInfo,
         locals: &BTreeSet<FunctionIdent>,
     ) -> ast::Procedure {
         let visibility = if self.signature.is_kernel() {
@@ -261,9 +261,9 @@ pub struct DisplayMasmFunction<'a> {
     function: &'a Function,
     imports: &'a ModuleImportInfo,
 }
-impl<'a> miden_hir::formatter::PrettyPrint for DisplayMasmFunction<'a> {
-    fn render(&self) -> miden_hir::formatter::Document {
-        use miden_hir::formatter::*;
+impl<'a> midenc_hir::formatter::PrettyPrint for DisplayMasmFunction<'a> {
+    fn render(&self) -> midenc_hir::formatter::Document {
+        use midenc_hir::formatter::*;
 
         if self.function.name.module.as_str() == LibraryNamespace::EXEC_PATH
             && self.function.name.function.as_str() == ProcedureName::MAIN_PROC_NAME

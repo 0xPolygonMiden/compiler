@@ -1,8 +1,8 @@
 //! Helper functions and structures for the translation.
 
 use miden_diagnostics::SourceSpan;
-use miden_hir::{AbiParam, CallConv, Felt, FieldElement, InstBuilder, Linkage, Signature, Value};
-use miden_hir_type::{FunctionType, Type};
+use midenc_hir::{AbiParam, CallConv, Felt, FieldElement, InstBuilder, Linkage, Signature, Value};
+use midenc_hir_type::{FunctionType, Type};
 use rustc_hash::FxHasher;
 
 use crate::{error::WasmResult, module::function_builder_ext::FunctionBuilderExt, WasmError};

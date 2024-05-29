@@ -1,7 +1,7 @@
 use core::fmt::Write;
 
 use expect_test::expect;
-use miden_hir::Ident;
+use midenc_hir::Ident;
 
 use crate::{test_utils::test_diagnostics, translate, WasmTranslationConfig};
 
@@ -34,7 +34,7 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
         .insts()
         .take_while(|inst| !func.dfg[*inst].opcode().is_branch())
     {
-        let inst_printer = miden_hir::InstPrettyPrinter {
+        let inst_printer = midenc_hir::InstPrettyPrinter {
             current_function: func.id,
             id: inst,
             dfg: &func.dfg,

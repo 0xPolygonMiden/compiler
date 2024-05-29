@@ -6,7 +6,7 @@ mod functions;
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
 use miden_assembly::{ast::ProcedureName, LibraryNamespace};
-use miden_hir::{assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack};
+use midenc_hir::{assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use self::functions::{Activation, Stub};

@@ -1,7 +1,7 @@
 use core::mem;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use miden_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
+use midenc_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
 use super::{module_translation_state::ModuleTranslationState, Module};
@@ -27,7 +27,7 @@ pub fn translate_module_as_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
-) -> WasmResult<miden_hir::Component> {
+) -> WasmResult<midenc_hir::Component> {
     let wasm_features = WasmFeatures::default();
     let mut validator = Validator::new_with_features(wasm_features);
     let parser = wasmparser::Parser::new(0);
@@ -48,7 +48,7 @@ pub fn translate_module_as_component(
         ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
     let module =
         build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)?;
-    let mut cb = miden_hir::ComponentBuilder::new(diagnostics);
+    let mut cb = midenc_hir::ComponentBuilder::new(diagnostics);
     let module_imports = module.imports();
     for import_module_id in module_imports.iter_module_names() {
         if let Some(imports) = module_imports.imported(import_module_id) {
@@ -64,10 +64,11 @@ pub fn translate_module_as_component(
                 let digest = *module_state.digest(ext_func).unwrap_or_else(|| {
                     panic!("failed to find MAST root hash for function {}", ext_func.function)
                 });
-                let component_import = miden_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
-                    function_ty,
-                    digest,
-                });
+                let component_import =
+                    midenc_hir::ComponentImport::MidenAbiImport(MidenAbiImport {
+                        function_ty,
+                        digest,
+                    });
                 cb.add_import(*ext_func, component_import);
             }
         }
@@ -82,7 +83,7 @@ pub fn build_ir_module(
     module_state: &mut ModuleTranslationState,
     _config: &WasmTranslationConfig,
     diagnostics: &DiagnosticsHandler,
-) -> WasmResult<miden_hir::Module> {
+) -> WasmResult<midenc_hir::Module> {
     let name = parsed_module.module.name();
     let mut module_builder = ModuleBuilder::new(name.as_str());
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;

@@ -1,4 +1,4 @@
-use miden_hir::{Felt, FieldElement};
+use midenc_hir::{Felt, FieldElement};
 
 use super::OpEmitter;
 use crate::masm::Op;

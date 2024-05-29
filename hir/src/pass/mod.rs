@@ -1,5 +1,5 @@
 //! This module provides traits and associated types for use in compiler pass pipelines.
-//use miden_hir_pass::RewritePassRegistration;
+//use midenc_hir_pass::RewritePassRegistration;
 
 // Register rewrite passes for modules
 //inventory::collect!(RewritePassRegistration<crate::Module>);

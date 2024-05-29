@@ -4,7 +4,7 @@ mod module;
 mod program;
 mod region;
 
-pub use miden_hir::{
+pub use midenc_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,
     ModuleImportInfo,
 };
@@ -39,7 +39,7 @@ pub struct NativePtr {
     /// in the root context.
     ///
     /// Currently this has no effect, but is here as we expand support for multiple memories.
-    pub addrspace: miden_hir::AddressSpace,
+    pub addrspace: midenc_hir::AddressSpace,
 }
 impl NativePtr {
     /// Translates a raw pointer (assumed to be in a byte-addressable address space) to

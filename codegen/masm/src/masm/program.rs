@@ -5,7 +5,7 @@ use miden_assembly::{
     ast::{ModuleKind, ProcedureName},
     LibraryNamespace,
 };
-use miden_hir::{self as hir, DataSegmentTable, FunctionIdent, Ident};
+use midenc_hir::{self as hir, DataSegmentTable, FunctionIdent, Ident};
 
 use super::{module::Modules, *};
 

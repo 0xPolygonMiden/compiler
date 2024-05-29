@@ -1,6 +1,6 @@
 use std::vec;
 
-use miden_hir::{Felt, FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
+use midenc_hir::{Felt, FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
 

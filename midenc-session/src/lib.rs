@@ -14,7 +14,7 @@ use std::{
 
 use clap::ValueEnum;
 use miden_diagnostics::{CodeMap, DiagnosticsHandler, Emitter};
-use miden_hir_symbol::Symbol;
+use midenc_hir_symbol::Symbol;
 
 pub use self::{
     duration::HumanDuration,

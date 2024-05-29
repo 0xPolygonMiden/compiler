@@ -5,7 +5,7 @@ use core::{
 
 use anyhow::bail;
 use miden_diagnostics::{SourceSpan, Spanned};
-use miden_hir::Symbol;
+use midenc_hir::Symbol;
 
 /// This represents an import statement in Miden Assembly
 #[derive(Debug, Copy, Clone, Spanned)]

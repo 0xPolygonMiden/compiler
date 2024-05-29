@@ -1,5 +1,5 @@
 use expect_test::expect_file;
-use miden_hir::Felt;
+use midenc_hir::Felt;
 use proptest::{prelude::*, test_runner::TestRunner};
 
 use crate::{execute_vm, CompilerTest};

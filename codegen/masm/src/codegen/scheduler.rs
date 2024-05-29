@@ -1,12 +1,12 @@
 use std::{cmp::Ordering, collections::VecDeque, rc::Rc};
 
 use cranelift_entity::SecondaryMap;
-use miden_hir::{
+use midenc_hir::{
     self as hir,
     adt::{SmallMap, SmallSet, SparseMap, SparseMapValue},
     assert_matches, BranchInfo, ProgramPoint,
 };
-use miden_hir_analysis::{
+use midenc_hir_analysis::{
     dependency_graph::{ArgumentNode, DependencyGraph, Node, NodeId},
     DominatorTree, LivenessAnalysis, Loop, LoopAnalysis, OrderedTreeGraph,
 };

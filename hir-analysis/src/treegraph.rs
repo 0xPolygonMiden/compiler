@@ -686,7 +686,7 @@ impl<'a> fmt::Debug for DebugEdges<'a> {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir as hir;
+    use midenc_hir as hir;
 
     use super::*;
 

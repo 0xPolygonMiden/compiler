@@ -88,7 +88,7 @@ pub mod unary;
 use core::ops::{Deref, DerefMut};
 
 use miden_assembly::ast::InvokeKind;
-use miden_hir::{self as hir, Immediate, Type};
+use midenc_hir::{self as hir, Immediate, Type};
 
 use super::{Operand, OperandStack};
 use crate::masm::{self as masm, Op};
@@ -605,7 +605,7 @@ impl<'a> OpEmitter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{AbiParam, Felt, FieldElement, Overflow, Signature};
+    use midenc_hir::{AbiParam, Felt, FieldElement, Overflow, Signature};
 
     use super::*;
     use crate::{codegen::TypedValue, masm::Function};
@@ -1848,7 +1848,7 @@ mod tests {
 
     #[test]
     fn op_emitter_u32_exec_test() {
-        use miden_hir::ExternalFunction;
+        use midenc_hir::ExternalFunction;
 
         let mut function = setup();
         let entry = function.body.id();

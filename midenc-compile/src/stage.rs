@@ -1,4 +1,4 @@
-use miden_hir::pass::AnalysisManager;
+use midenc_hir::pass::AnalysisManager;
 use midenc_session::Session;
 
 use crate::{CompilerError, CompilerResult};

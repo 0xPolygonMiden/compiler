@@ -1,5 +1,5 @@
 [package]
-name = "miden-hir"
+name = "midenc-hir"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -27,9 +27,9 @@ lalrpop-util = "0.20"
 miden-core.workspace = true
 miden-assembly.workspace = true
 miden-diagnostics.workspace = true
-miden-hir-symbol.workspace = true
-miden-hir-type.workspace = true
-miden-hir-macros.workspace = true
+midenc-hir-symbol.workspace = true
+midenc-hir-type.workspace = true
+midenc-hir-macros.workspace = true
 miden-parsing.workspace = true
 midenc-session.workspace = true
 num-bigint = "0.4"

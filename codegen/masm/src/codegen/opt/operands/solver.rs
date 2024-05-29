@@ -1,4 +1,4 @@
-use miden_hir as hir;
+use midenc_hir as hir;
 use smallvec::SmallVec;
 
 use super::{tactics::Tactic, *};
@@ -291,7 +291,7 @@ impl OperandMovementConstraintSolver {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{self as hir, Type};
+    use midenc_hir::{self as hir, Type};
     use proptest::{prelude::*, test_runner::TestRunner};
 
     use super::*;

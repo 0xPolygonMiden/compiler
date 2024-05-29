@@ -8,7 +8,7 @@ mod masm;
 #[cfg(test)]
 mod tests;
 
-use miden_hir as hir;
+use midenc_hir as hir;
 use midenc_session::Session;
 
 pub use self::{
@@ -46,9 +46,9 @@ pub type CompilerResult<T> = Result<T, CompilerError>;
 /// of Miden Assembly which is used within the Miden compiler framework for various purposes,
 /// and can be emitted directly to textual Miden Assembly.
 ///
-/// The [MasmCompiler] is designed to compile a [miden_hir::Program]
+/// The [MasmCompiler] is designed to compile a [midenc_hir::Program]
 ///
-/// can be used to take a linked [miden_hir::Program] and
+/// can be used to take a linked [midenc_hir::Program] and
 /// compile it to MASM IR, an intermediate representation of Miden Assembly
 /// used within the compiler.
 pub struct MasmCompiler<'a> {
@@ -65,8 +65,8 @@ impl<'a> MasmCompiler<'a> {
 
     /// Compile an [hir::Program] that has been linked and is ready to be compiled.
     pub fn compile(&mut self, mut input: Box<hir::Program>) -> CompilerResult<Box<Program>> {
-        use miden_hir::pass::{ConversionPass, ModuleRewritePassAdapter, RewritePass, RewriteSet};
-        use miden_hir_transform as transforms;
+        use midenc_hir::pass::{ConversionPass, ModuleRewritePassAdapter, RewritePass, RewriteSet};
+        use midenc_hir_transform as transforms;
 
         let mut rewrites = RewriteSet::default();
         rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));

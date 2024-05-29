@@ -27,8 +27,8 @@ impl<P> ConversionPassInfo for P where P: PassInfo + ConversionPass {}
 /// Specifically, this is used to convert between intermediate representations/dialects in the
 /// compiler.
 ///
-/// For example, a conversion pass would be used to lower a `miden_hir::parser::ast::Module`
-/// to a `miden_hir::Module`. Each conversion between dialects like this can be thought of
+/// For example, a conversion pass would be used to lower a `midenc_hir::parser::ast::Module`
+/// to a `midenc_hir::Module`. Each conversion between dialects like this can be thought of
 /// as delineating compilation phases (e.g. parsing, semantic analysis, elaboration, optimization,
 /// etc.).
 pub trait ConversionPass {

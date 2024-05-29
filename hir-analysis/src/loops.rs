@@ -1,5 +1,5 @@
 use cranelift_entity::{entity_impl, packed_option::PackedOption, PrimaryMap, SecondaryMap};
-use miden_hir::{
+use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
     Block, DataFlowGraph, Function,
 };
@@ -340,7 +340,7 @@ impl LoopAnalysis {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{AbiParam, FunctionBuilder, InstBuilder, Signature, SourceSpan, Type};
+    use midenc_hir::{AbiParam, FunctionBuilder, InstBuilder, Signature, SourceSpan, Type};
 
     use super::*;
 

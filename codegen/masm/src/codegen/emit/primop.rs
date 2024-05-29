@@ -1,4 +1,4 @@
-use miden_hir::{self as hir, ArgumentExtension, ArgumentPurpose, Felt, Immediate, Type};
+use midenc_hir::{self as hir, ArgumentExtension, ArgumentPurpose, Felt, Immediate, Type};
 
 use super::{int64, OpEmitter};
 use crate::masm::Op;

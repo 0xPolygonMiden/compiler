@@ -13,11 +13,11 @@ use miden_assembly::{
     ast::{ModuleKind, ProcedureName},
     Assembler, LibraryPath,
 };
-use miden_codegen_masm::{Function, Module};
 use miden_diagnostics::{CodeMap, SourceSpan};
-use miden_frontend_wasm::{translate, WasmTranslationConfig};
-use miden_hir::{FunctionIdent, Ident, Signature, Symbol};
 use miden_stdlib::StdLibrary;
+use midenc_codegen_masm::{Function, Module};
+use midenc_frontend_wasm::{translate, WasmTranslationConfig};
+use midenc_hir::{FunctionIdent, Ident, Signature, Symbol};
 use midenc_session::{
     InputFile, InputType, Options, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session,
 };
@@ -54,27 +54,27 @@ impl CompilerTestSource {
 
 #[derive(derive_more::From)]
 pub enum HirArtifact {
-    Program(Box<miden_hir::Program>),
-    Module(Box<miden_hir::Module>),
-    Component(Box<miden_hir::Component>),
+    Program(Box<midenc_hir::Program>),
+    Module(Box<midenc_hir::Module>),
+    Component(Box<midenc_hir::Component>),
 }
 
 impl HirArtifact {
-    pub fn unwrap_module(&self) -> &miden_hir::Module {
+    pub fn unwrap_module(&self) -> &midenc_hir::Module {
         match self {
             HirArtifact::Module(module) => module,
             _ => panic!("Expected a Module"),
         }
     }
 
-    pub fn unwrap_program(&self) -> &miden_hir::Program {
+    pub fn unwrap_program(&self) -> &midenc_hir::Program {
         match self {
             Self::Program(program) => program,
             _ => panic!("attempted to unwrap a program, but had a component"),
         }
     }
 
-    pub fn unwrap_component(&self) -> &miden_hir::Component {
+    pub fn unwrap_component(&self) -> &midenc_hir::Component {
         match self {
             Self::Component(program) => program,
             _ => panic!("attempted to unwrap a component, but had a program"),
@@ -96,7 +96,7 @@ pub struct CompilerTest {
     /// The compiled IR
     pub hir: Option<HirArtifact>,
     /// The compiled MASM
-    pub ir_masm: Option<Arc<miden_codegen_masm::Program>>,
+    pub ir_masm: Option<Arc<midenc_codegen_masm::Program>>,
 }
 
 impl CompilerTest {
@@ -447,7 +447,7 @@ impl CompilerTest {
                         .modules()
                         .iter()
                         .take(1)
-                        .collect::<Vec<&miden_hir::Module>>()
+                        .collect::<Vec<&midenc_hir::Module>>()
                         .first()
                         .expect("no module in IR program")
                         .to_string()
@@ -500,8 +500,8 @@ impl CompilerTest {
             .unwrap_or_else(|err| panic!("VM assembler failed to compile program:\n{}", err))
     }
 
-    /// Get the compiled MASM as [`miden_codegen_masm::Program`]
-    pub fn ir_masm_program(&mut self) -> Arc<miden_codegen_masm::Program> {
+    /// Get the compiled MASM as [`midenc_codegen_masm::Program`]
+    pub fn ir_masm_program(&mut self) -> Arc<midenc_codegen_masm::Program> {
         if self.ir_masm.is_none() {
             let ir_masm = self.compile_wasm_to_masm_program();
             let frozen = ir_masm.freeze();
@@ -518,12 +518,12 @@ impl CompilerTest {
         }
     }
 
-    fn compile_wasm_to_masm_program(&self) -> Box<miden_codegen_masm::Program> {
+    fn compile_wasm_to_masm_program(&self) -> Box<midenc_codegen_masm::Program> {
         match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
             midenc_compile::Compiled::Program(p) => p,
             midenc_compile::Compiled::Modules(modules) => {
                 assert_eq!(modules.len(), 1, "Expected one module");
-                let mut program = miden_codegen_masm::Program::empty();
+                let mut program = midenc_codegen_masm::Program::empty();
                 for module in modules.into_iter() {
                     program.insert(module);
                 }
@@ -534,9 +534,9 @@ impl CompilerTest {
                     let func_name = format!("{module_name}::{}", ProcedureName::MAIN_PROC_NAME);
                     let mut entrypoint_function =
                         Function::new(func_name.parse().unwrap(), Signature::new(vec![], vec![]));
-                    entrypoint_function.attrs.set(miden_hir::attributes::ENTRYPOINT);
+                    entrypoint_function.attrs.set(midenc_hir::attributes::ENTRYPOINT);
                     let body = entrypoint_function.block_mut(entrypoint_function.body.id());
-                    body.push(miden_hir::MasmOp::Exec(entrypoint));
+                    body.push(midenc_hir::MasmOp::Exec(entrypoint));
                     let mut name = LibraryPath::new(module_name).unwrap();
                     name.set_namespace(miden_assembly::LibraryNamespace::Exec);
                     let mut module = Module::new(name, ModuleKind::Executable);

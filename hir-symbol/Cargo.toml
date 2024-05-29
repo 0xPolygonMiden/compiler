@@ -1,5 +1,5 @@
 [package]
-name = "miden-hir-symbol"
+name = "midenc-hir-symbol"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true

@@ -17,6 +17,6 @@ atty = "0.2"
 clap.workspace = true
 inventory.workspace = true
 miden-diagnostics.workspace = true
-miden-hir-symbol.workspace = true
+midenc-hir-symbol.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true

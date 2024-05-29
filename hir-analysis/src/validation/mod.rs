@@ -168,7 +168,7 @@ mod naming;
 mod typecheck;
 
 use miden_diagnostics::DiagnosticsHandler;
-use miden_hir::{
+use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult},
     *,
 };
@@ -433,7 +433,7 @@ impl From<ModuleValidationAnalysis> for Result<(), ValidationError> {
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::testing::TestContext;
+    use midenc_hir::testing::TestContext;
 
     use super::*;
 

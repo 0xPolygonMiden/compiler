@@ -10,7 +10,7 @@ use core::{hash::Hash, ops::Index};
 
 use anyhow::{bail, Result};
 use indexmap::IndexSet;
-use miden_hir::cranelift_entity::{EntityRef, PrimaryMap};
+use midenc_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use rustc_hash::FxHashMap;
 use wasmparser::{names::KebabString, types};
 
@@ -1726,17 +1726,17 @@ impl TypeInformation {
 pub fn interface_type_to_ir(
     ty: &InterfaceType,
     component_types: &ComponentTypes,
-) -> miden_hir_type::Type {
+) -> midenc_hir_type::Type {
     match ty {
-        InterfaceType::Bool => miden_hir_type::Type::I1,
-        InterfaceType::S8 => miden_hir_type::Type::I8,
-        InterfaceType::U8 => miden_hir_type::Type::U8,
-        InterfaceType::S16 => miden_hir_type::Type::I16,
-        InterfaceType::U16 => miden_hir_type::Type::U16,
-        InterfaceType::S32 => miden_hir_type::Type::I32,
-        InterfaceType::U32 => miden_hir_type::Type::U32,
-        InterfaceType::S64 => miden_hir_type::Type::I64,
-        InterfaceType::U64 => miden_hir_type::Type::U64,
+        InterfaceType::Bool => midenc_hir_type::Type::I1,
+        InterfaceType::S8 => midenc_hir_type::Type::I8,
+        InterfaceType::U8 => midenc_hir_type::Type::U8,
+        InterfaceType::S16 => midenc_hir_type::Type::I16,
+        InterfaceType::U16 => midenc_hir_type::Type::U16,
+        InterfaceType::S32 => midenc_hir_type::Type::I32,
+        InterfaceType::U32 => midenc_hir_type::Type::U32,
+        InterfaceType::S64 => midenc_hir_type::Type::I64,
+        InterfaceType::U64 => midenc_hir_type::Type::U64,
         InterfaceType::Float32 => todo!(),
         InterfaceType::Float64 => todo!(),
         InterfaceType::Char => todo!(),
@@ -1746,20 +1746,20 @@ pub fn interface_type_to_ir(
                 .fields
                 .iter()
                 .map(|f| interface_type_to_ir(&f.ty, component_types));
-            miden_hir_type::Type::Struct(miden_hir_type::StructType::new(tys))
+            midenc_hir_type::Type::Struct(midenc_hir_type::StructType::new(tys))
         }
         InterfaceType::Variant(_) => todo!(),
         InterfaceType::List(idx) => {
             let element_ty =
                 interface_type_to_ir(&component_types.lists[*idx].element, component_types);
-            miden_hir_type::Type::List(Box::new(element_ty))
+            midenc_hir_type::Type::List(Box::new(element_ty))
         }
         InterfaceType::Tuple(tuple_idx) => {
             let tys = component_types.tuples[*tuple_idx]
                 .types
                 .iter()
                 .map(|t| interface_type_to_ir(t, component_types));
-            miden_hir_type::Type::Struct(miden_hir_type::StructType::new(tys))
+            midenc_hir_type::Type::Struct(midenc_hir_type::StructType::new(tys))
         }
         InterfaceType::Flags(_) => todo!(),
         InterfaceType::Enum(_) => todo!(),

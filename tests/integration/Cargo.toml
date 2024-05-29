@@ -11,10 +11,10 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
-miden-frontend-wasm.workspace = true
-miden-hir.workspace = true
-miden-hir-transform.workspace = true
-miden-codegen-masm.workspace = true
+midenc-frontend-wasm.workspace = true
+midenc-hir.workspace = true
+midenc-hir-transform.workspace = true
+midenc-codegen-masm.workspace = true
 miden-assembly.workspace = true
 miden-core.workspace = true
 miden-processor.workspace = true

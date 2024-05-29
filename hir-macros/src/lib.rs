@@ -143,7 +143,7 @@ pub fn derive_rewrite_pass_registration(item: proc_macro::TokenStream) -> proc_m
     let id = derive_input.ident.clone();
 
     let quoted = quote! {
-        inventory::submit!(miden_hir::pass::RewritePassRegistration::new::<#id>());
+        inventory::submit!(midenc_hir::pass::RewritePassRegistration::new::<#id>());
     };
 
     proc_macro::TokenStream::from(quoted)
@@ -157,7 +157,7 @@ pub fn derive_module_rewrite_pass_adapter(
     let id = derive_input.ident.clone();
 
     let quoted = quote! {
-        inventory::submit!(miden_hir::pass::RewritePassRegistration::new::<miden_hir::pass::ModuleRewritePassAdapter::<#id>>());
+        inventory::submit!(midenc_hir::pass::RewritePassRegistration::new::<midenc_hir::pass::ModuleRewritePassAdapter::<#id>>());
     };
 
     proc_macro::TokenStream::from(quoted)

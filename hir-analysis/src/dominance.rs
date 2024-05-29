@@ -4,7 +4,7 @@ use std::{
 };
 
 use cranelift_entity::{packed_option::PackedOption, SecondaryMap};
-use miden_hir::{
+use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
     Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint,
 };
@@ -694,7 +694,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use miden_hir::{
+    use midenc_hir::{
         AbiParam, FunctionBuilder, Immediate, InstBuilder, Signature, SourceSpan, Type,
     };
 

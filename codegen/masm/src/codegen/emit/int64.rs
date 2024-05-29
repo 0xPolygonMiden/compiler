@@ -1,4 +1,4 @@
-use miden_hir::{Felt, FieldElement, Overflow};
+use midenc_hir::{Felt, FieldElement, Overflow};
 
 use super::{felt, OpEmitter, P};
 use crate::masm::{self as masm, Op};

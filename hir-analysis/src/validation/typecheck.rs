@@ -1,7 +1,7 @@
 use core::fmt;
 
 use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
-use miden_hir::*;
+use midenc_hir::*;
 use rustc_hash::FxHashMap;
 
 use super::{Rule, ValidationError};
