@@ -2847,6 +2847,7 @@ name = "miden-integration-tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "blake3",
  "cargo-util",
  "cargo_metadata",
  "concat-idents",
