@@ -2,7 +2,7 @@
 name = "basic-wallet"
 version = "0.1.0"
 rust-version = "1.71"
-authors = ["Miden Team"]
+authors = ["Miden contributors"]
 description = "Basic wallet"
 repository = "https://github.com/0xPolygonMiden/miden-ir"
 homepage = "https://github.com/0xPolygonMiden/miden-ir"

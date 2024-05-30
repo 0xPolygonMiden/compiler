@@ -2,7 +2,7 @@
 name = "miden-sdk"
 version = "0.1.0"
 rust-version = "1.71"
-authors = ["Miden Team"]
+authors = ["Miden contributors"]
 description = "Miden SDK"
 license = "MIT"
 edition = "2021"
