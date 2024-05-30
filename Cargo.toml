@@ -22,7 +22,7 @@ exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 [workspace.package]
 version = "0.1.0"
 rust-version = "1.73"
-authors = ["Miden Team"]
+authors = ["Miden contributors"]
 description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/compiler"
 homepage = "https://github.com/0xPolygonMiden/compiler"
