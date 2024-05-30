@@ -2,7 +2,7 @@ use core::panic;
 
 use expect_test::expect_file;
 use miden_core::utils::group_slice_elements;
-use miden_hir::Felt;
+use midenc_hir::Felt;
 use proptest::{
     arbitrary::any,
     prop_assert_eq,
