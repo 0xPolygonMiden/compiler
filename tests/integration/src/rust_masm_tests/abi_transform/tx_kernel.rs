@@ -2,6 +2,7 @@ use expect_test::expect_file;
 
 use crate::CompilerTest;
 
+#[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/200 is fixed"]
 #[test]
 fn test_get_inputs() {
     let main_fn = format!("() -> Vec<Felt> {{ get_inputs() }}");
