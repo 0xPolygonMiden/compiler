@@ -204,7 +204,12 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         // handled separately within the specific handlers for those instructions
         let args = self.function.f.dfg.inst_args(inst_info.inst);
         self.schedule_operands(args, inst_info.plain_arguments()).unwrap_or_else(|err| {
-            panic!("failed to schedule operands for {}: {err:?}", inst_info.inst)
+            panic!(
+                "failed to schedule operands: {:?} \n for inst:\n {}\n {:?}\n with error: {err:?}",
+                args,
+                inst_info.inst,
+                self.function.f.dfg.inst(inst_info.inst),
+            )
         });
 
         match self.function.f.dfg.inst(inst_info.inst) {
@@ -1000,7 +1005,16 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             // No loops involved
             (None, None) => {
                 assert!(is_first_visit);
-                assert_eq!(self.controlling_loop, None);
+                assert_eq!(
+                    self.controlling_loop,
+                    None,
+                    "unexpected controlling loop: {:?}, parent: {:?}",
+                    self.function.loops.loop_header(self.controlling_loop.unwrap()),
+                    self.function
+                        .loops
+                        .loop_parent(self.controlling_loop.unwrap())
+                        .map(|l| self.function.loops.loop_header(l))
+                );
                 None
             }
             // Entering a top-level loop, set the controlling loop

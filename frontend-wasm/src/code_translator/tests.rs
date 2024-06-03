@@ -54,8 +54,7 @@ fn memory_grow() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1))
-            (let (v1 u32) (cast v0))
-            (let (v2 i32) (memory.grow v1))
+            (let (v1 i32) (const.i32 1048575))
         "#]],
     )
 }

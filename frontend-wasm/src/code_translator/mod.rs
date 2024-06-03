@@ -141,8 +141,14 @@ pub fn translate_operator(
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            let arg = state.pop1_casted(U32, builder, span);
-            state.push1(builder.ins().mem_grow(arg, span));
+            // let arg = state.pop1_casted(U32, builder, span);
+            // state.push1(builder.ins().mem_grow(arg, span));
+            // TODO: temporary workaround until we have this instruction
+            // properly implemented in codegen Wasm `memory.grow` instruction is
+            // expected to return -1 if the memory cannot grow and the old mem
+            // page count if it can grow. 
+            // Return total Miden memory size
+            state.push1(builder.ins().i32(mem_total_pages(), span));
         }
         Operator::MemorySize { .. } => {
             // Return total Miden memory size

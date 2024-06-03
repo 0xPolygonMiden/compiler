@@ -5,9 +5,9 @@ use crate::CompilerTest;
 #[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/200 is fixed"]
 #[test]
 fn test_get_inputs() {
-    let main_fn = format!("() -> Vec<Felt> {{ get_inputs() }}");
+    let main_fn = "() -> Vec<Felt> {{ get_inputs() }}";
     let artifact_name = "abi_transform_tx_kernel_get_inputs";
-    let mut test = CompilerTest::rust_fn_body_with_sdk(&artifact_name, &main_fn, true);
+    let mut test = CompilerTest::rust_fn_body_with_sdk(artifact_name, main_fn, true);
     // Test expected compilation artifacts
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
