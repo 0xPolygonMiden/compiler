@@ -6,7 +6,7 @@
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden:tx_kernel/account #add_asset)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (result felt)))) (#miden:tx_kernel/account #get_id)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden:tx_kernel/account #remove_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param i32) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt)))) (#miden:tx_kernel/tx #create_note)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt)))) (#std::crypto_hashes #blake3_hash_2to1)
 
@@ -2769,7 +2769,7 @@
         (func (import #miden:tx_kernel/account #remove_asset)
               (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
         (func (import #miden:tx_kernel/note #get_inputs)
-              (param felt) (result i32 felt))
+              (param i32) (result i32 felt))
         (func (import #miden:tx_kernel/tx #create_note)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
         (func (import #std::crypto_hashes #blake3_hash_1to1)

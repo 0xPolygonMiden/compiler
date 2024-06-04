@@ -12,7 +12,6 @@ fn setup_log() {
         .try_init();
 }
 
-#[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/200 is fixed"]
 #[test]
 fn test_get_inputs() {
     // setup_log();
