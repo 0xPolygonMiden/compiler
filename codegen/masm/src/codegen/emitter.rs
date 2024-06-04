@@ -205,10 +205,13 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         let args = self.function.f.dfg.inst_args(inst_info.inst);
         self.schedule_operands(args, inst_info.plain_arguments()).unwrap_or_else(|err| {
             panic!(
-                "failed to schedule operands: {:?} \n for inst:\n {}\n {:?}\n with error: {err:?}",
+                "failed to schedule operands: {:?} \n for inst: {} {:?}\n with error: {err:?}\n \
+                 constraints: {:?}\n stack: {:?}",
                 args,
                 inst_info.inst,
                 self.function.f.dfg.inst(inst_info.inst),
+                inst_info.plain_arguments(),
+                self.stack,
             )
         });
 

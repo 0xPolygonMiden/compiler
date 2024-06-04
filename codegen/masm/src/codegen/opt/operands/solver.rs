@@ -427,6 +427,40 @@ mod tests {
         }
     }
 
+    /// This test reproduces https://github.com/0xPolygonMiden/compiler/issues/200
+    /// where v7 value should be duplicated on the stack
+    #[test]
+    fn operand_movement_constraint_solver_duplicate() {
+        setup();
+        let v7 = hir::Value::from_u32(1);
+        let v16 = hir::Value::from_u32(2);
+        let v32 = hir::Value::from_u32(3);
+        let v0 = hir::Value::from_u32(4);
+
+        let tests = [[v32, v7, v16, v0]];
+
+        for test in tests.into_iter() {
+            let mut stack = crate::codegen::OperandStack::default();
+            for value in test.into_iter().rev() {
+                stack.push(crate::codegen::TypedValue {
+                    ty: Type::I32,
+                    value,
+                });
+            }
+            // The v7 is expected to be twice on stack
+            let expected = [v7, v7, v32, v16];
+            let constraints = [Constraint::Copy; 4];
+
+            match OperandMovementConstraintSolver::new(&expected, &constraints, &stack) {
+                Ok(solver) => {
+                    let _result = solver.solve().expect("no solution found");
+                }
+                Err(SolverError::AlreadySolved) => panic!("already solved"),
+                Err(err) => panic!("invalid solver context: {err:?}"),
+            }
+        }
+    }
+
     // Strategy:
     //
     // 1. Generate a set of 1..16 operands to form a stack (called `stack`), with no more than 2
