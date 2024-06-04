@@ -432,10 +432,10 @@ mod tests {
     #[test]
     fn operand_movement_constraint_solver_duplicate() {
         setup();
-        let v7 = hir::Value::from_u32(1);
-        let v16 = hir::Value::from_u32(2);
-        let v32 = hir::Value::from_u32(3);
-        let v0 = hir::Value::from_u32(4);
+        let v7 = hir::Value::from_u32(7);
+        let v16 = hir::Value::from_u32(16);
+        let v32 = hir::Value::from_u32(32);
+        let v0 = hir::Value::from_u32(0);
 
         let tests = [[v32, v7, v16, v0]];
 
