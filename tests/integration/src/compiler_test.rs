@@ -416,6 +416,72 @@ impl CompilerTest {
         Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()))
     }
 
+    /// Set the Rust source code to compile with `miden-prelude` (stdlib + intrinsics)
+    pub fn rust_fn_body_with_sdk(name: &str, rust_source: &str, is_build_std: bool) -> Self {
+        let cwd = std::env::current_dir().unwrap();
+        let miden_sdk_path = cwd.parent().unwrap().parent().unwrap().join("sdk").join("sdk");
+        let miden_sdk_path_str = miden_sdk_path.to_str().unwrap();
+        // dbg!(&miden_prelude_path);
+        let proj = project(name)
+            .file(
+                "Cargo.toml",
+                format!(
+                    r#"
+                [package]
+                name = "{name}"
+                version = "0.0.1"
+                edition = "2015"
+                authors = []
+
+                [dependencies]
+                wee_alloc = {{ version = "0.4.5", default-features = false}}
+                miden-sdk = {{ path = "{miden_sdk_path_str}" }}
+
+                [lib]
+                crate-type = ["cdylib"]
+
+                [profile.release]
+                panic = "abort"
+                # optimize for size
+                opt-level = "z"
+            "#
+                )
+                .as_str(),
+            )
+            .file(
+                "src/lib.rs",
+                format!(
+                    r#"
+                #![no_std]
+                #![no_main]
+
+                #[panic_handler]
+                fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
+                    loop {{}}
+                }}
+
+
+                #[global_allocator]
+                static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+                extern crate miden_sdk;
+                use miden_sdk::*;
+
+                extern crate alloc;
+                use alloc::vec::Vec;
+
+                #[no_mangle]
+                pub extern "C" fn entrypoint{}
+            "#,
+                    rust_source
+                )
+                .as_str(),
+            )
+            .build();
+
+        Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()))
+    }
+
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&self, expected_wat_file: expect_test::ExpectFile) {
         let wasm_bytes = self.wasm_bytes();
