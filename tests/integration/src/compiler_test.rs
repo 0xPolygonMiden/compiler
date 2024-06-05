@@ -534,8 +534,8 @@ impl CompilerTest {
 
     /// Compare the compiled MASM against the expected output
     pub fn expect_masm(&mut self, expected_masm_file: expect_test::ExpectFile) {
-        let program = self.ir_masm_program();
-        expected_masm_file.assert_eq(&program.to_string());
+        let program = demangle(self.ir_masm_program().to_string().as_str());
+        expected_masm_file.assert_eq(&program);
     }
 
     /// Get the compiled MASM as [`miden_assembly::Program`]

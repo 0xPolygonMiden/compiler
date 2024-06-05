@@ -75,7 +75,7 @@ fn sdk_basic_wallet() {
         "../../expected/wit_sdk_basic_wallet/{artifact_name}.hir"
     )]);
     let ir = test.hir().unwrap_component();
-    for (_, import) in ir.imports() {
+    for import in ir.imports().values() {
         assert!(import_metadata.contains_key(&import.unwrap_canon_abi_import().interface_function));
     }
     for name in expected_exports {
@@ -156,7 +156,7 @@ fn sdk_basic_wallet_p2id_note() {
         "../../expected/wit_sdk_basic_wallet/{artifact_name}.hir"
     )]);
     let ir = test.hir().unwrap_component();
-    for (_, import) in ir.imports() {
+    for import in ir.imports().values() {
         let canon_abi_import = import.unwrap_canon_abi_import();
         assert!(import_metadata.contains_key(&canon_abi_import.interface_function));
         if ["get-assets", "get-inputs"]

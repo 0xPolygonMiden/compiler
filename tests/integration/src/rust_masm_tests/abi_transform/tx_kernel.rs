@@ -15,7 +15,7 @@ fn setup_log() {
 #[test]
 fn test_get_inputs() {
     // setup_log();
-    let main_fn = "() -> Vec<Felt> {{ get_inputs() }}";
+    let main_fn = "() -> Vec<Felt> { get_inputs() }";
     let artifact_name = "abi_transform_tx_kernel_get_inputs";
     let mut test = CompilerTest::rust_fn_body_with_sdk(artifact_name, main_fn, true);
     // Test expected compilation artifacts

@@ -3,7 +3,7 @@ mod abi_transform_tx_kernel_get_inputs
 use.miden:tx_kernel/note
 
 export.entrypoint
-    exec."_ZN19miden_sdk_tx_kernel10get_inputs17h6e5762b00f2d3838E"
+    exec."miden_sdk_tx_kernel::get_inputs"
 end
 
 
@@ -11,7 +11,7 @@ export."__rust_alloc"
     push.1048576
     movup.2
     swap.1
-    exec."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17h43f7854ace487521E"
+    exec."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
 end
 
 
@@ -19,7 +19,7 @@ export."__rust_alloc_zeroed"
     push.1048576
     movup.2
     swap.1
-    exec."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17h43f7854ace487521E"
+    exec."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
     dup.0
     eq.0
     neq.0
@@ -31,7 +31,7 @@ export."__rust_alloc_zeroed"
 end
 
 
-export."_ZN9wee_alloc9neighbors18Neighbors$LT$T$GT$6remove17h30395097cf05ff32E"
+export."wee_alloc::neighbors::Neighbors<T>::remove"
     dup.0
     dup.0
     push.2147483648
@@ -661,7 +661,7 @@ export."_ZN9wee_alloc9neighbors18Neighbors$LT$T$GT$6remove17h30395097cf05ff32E"
 end
 
 
-export."_ZN70_$LT$wee_alloc..LargeAllocPolicy$u20$as$u20$wee_alloc..AllocPolicy$GT$22new_cell_for_free_list17hf20e8828dd8da295E"
+export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
     push.3
     movup.4
     swap.1
@@ -820,7 +820,7 @@ export."_ZN70_$LT$wee_alloc..LargeAllocPolicy$u20$as$u20$wee_alloc..AllocPolicy$
 end
 
 
-export."_ZN9wee_alloc15alloc_first_fit17h5cf1f963ec6ad59fE"
+export."wee_alloc::alloc_first_fit"
     push.0
     push.4294967295
     dup.3
@@ -926,7 +926,7 @@ export."_ZN9wee_alloc15alloc_first_fit17h5cf1f963ec6ad59fE"
                     neq.0
                     if.true
                         dup.1
-                        exec."_ZN9wee_alloc9neighbors18Neighbors$LT$T$GT$6remove17h30395097cf05ff32E"
+                        exec."wee_alloc::neighbors::Neighbors<T>::remove"
                         push.0
                         dup.1
                         dup.0
@@ -1088,7 +1088,7 @@ export."_ZN9wee_alloc15alloc_first_fit17h5cf1f963ec6ad59fE"
                     else
                         drop
                         dup.0
-                        exec."_ZN9wee_alloc9neighbors18Neighbors$LT$T$GT$6remove17h30395097cf05ff32E"
+                        exec."wee_alloc::neighbors::Neighbors<T>::remove"
                         push.0
                         swap.1
                         dup.0
@@ -2174,7 +2174,7 @@ export."_ZN9wee_alloc15alloc_first_fit17h5cf1f963ec6ad59fE"
 end
 
 
-export."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAlloc$GT$5alloc17h43f7854ace487521E"
+export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
     push.1
     dup.2
     dup.0
@@ -2292,7 +2292,7 @@ export."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAllo
         swap.3
         movdn.2
         swap.1
-        exec."_ZN9wee_alloc15alloc_first_fit17h5cf1f963ec6ad59fE"
+        exec."wee_alloc::alloc_first_fit"
         dup.0
         eq.0
         neq.0
@@ -2302,7 +2302,7 @@ export."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAllo
             dup.1
             dup.3
             dup.4
-            exec."_ZN70_$LT$wee_alloc..LargeAllocPolicy$u20$as$u20$wee_alloc..AllocPolicy$GT$22new_cell_for_free_list17hf20e8828dd8da295E"
+            exec."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
             dup.1
             dup.0
             push.2147483648
@@ -2430,7 +2430,7 @@ export."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAllo
                 swap.2
                 swap.3
                 swap.1
-                exec."_ZN9wee_alloc15alloc_first_fit17h5cf1f963ec6ad59fE"
+                exec."wee_alloc::alloc_first_fit"
                 dup.0
                 neq.0
                 if.true
@@ -2567,7 +2567,7 @@ export."_ZN72_$LT$wee_alloc..WeeAlloc$u20$as$u20$core..alloc..global..GlobalAllo
 end
 
 
-export."_ZN19miden_sdk_tx_kernel10get_inputs17h6e5762b00f2d3838E"
+export."miden_sdk_tx_kernel::get_inputs"
     mem_load.0x00000000
     push.16
     u32wrapping_sub
@@ -2611,7 +2611,7 @@ export."_ZN19miden_sdk_tx_kernel10get_inputs17h6e5762b00f2d3838E"
     dup.5
     swap.1
     u32wrapping_add
-    exec."_ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$15try_allocate_in17h2f06feab30b6b49eE"
+    exec."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
     dup.3
     swap.1
     dup.0
@@ -2723,11 +2723,11 @@ export."_ZN19miden_sdk_tx_kernel10get_inputs17h6e5762b00f2d3838E"
         eq.0
         neq.0
         if.true
-            exec."_ZN5alloc7raw_vec17capacity_overflow17h10137de15f2f9efdE"
+            exec."alloc::raw_vec::capacity_overflow"
             push.0
             assert
         else
-            exec."_ZN5alloc5alloc18handle_alloc_error17h5fb52744b429a2f7E"
+            exec."alloc::alloc::handle_alloc_error"
             push.0
             assert
         end
@@ -2735,7 +2735,7 @@ export."_ZN19miden_sdk_tx_kernel10get_inputs17h6e5762b00f2d3838E"
 end
 
 
-export."_ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$15try_allocate_in17h2f06feab30b6b49eE"
+export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
     dup.1
     neq.0
     if.true
@@ -3080,12 +3080,12 @@ export."_ZN5alloc7raw_vec19RawVec$LT$T$C$A$GT$15try_allocate_in17h2f06feab30b6b4
 end
 
 
-export."_ZN5alloc5alloc18handle_alloc_error17h5fb52744b429a2f7E"
+export."alloc::alloc::handle_alloc_error"
     push.0 assert
 end
 
 
-export."_ZN5alloc7raw_vec17capacity_overflow17h10137de15f2f9efdE"
+export."alloc::raw_vec::capacity_overflow"
     push.0 assert
 end
 
