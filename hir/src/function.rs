@@ -479,6 +479,10 @@ impl Function {
     pub fn builder(&mut self) -> FunctionBuilder {
         FunctionBuilder::new(self)
     }
+
+    pub fn cfg_printer(&self) -> impl fmt::Display + '_ {
+        CfgPrinter { function: self }
+    }
 }
 impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -615,5 +619,55 @@ impl PartialEq for Function {
 
         // We expect both functions to have the same imports
         self.dfg.imports == other.dfg.imports
+    }
+}
+
+struct CfgPrinter<'a> {
+    function: &'a Function,
+}
+impl<'a> fmt::Display for CfgPrinter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::collections::{BTreeSet, VecDeque};
+
+        f.write_str("flowchart TB\n")?;
+
+        let mut block_q = VecDeque::from([self.function.dfg.entry_block()]);
+        let mut visited = BTreeSet::<Block>::default();
+        while let Some(block_id) = block_q.pop_front() {
+            if !visited.insert(block_id) {
+                continue;
+            }
+            if let Some(last_inst) = self.function.dfg.last_inst(block_id) {
+                match self.function.dfg.analyze_branch(last_inst) {
+                    BranchInfo::NotABranch => {
+                        // Must be a return or unreachable, print opcode for readability
+                        let opcode = self.function.dfg.inst(last_inst).opcode();
+                        writeln!(f, "    {block_id} --> {opcode}")?;
+                    }
+                    BranchInfo::SingleDest(succ, _) => {
+                        assert!(
+                            self.function.dfg.is_block_linked(succ),
+                            "reference to detached block in attached block {}",
+                            succ
+                        );
+                        writeln!(f, "    {block_id} --> {succ}")?;
+                        block_q.push_back(succ);
+                    }
+                    BranchInfo::MultiDest(ref jts) => {
+                        for jt in jts {
+                            assert!(
+                                self.function.dfg.is_block_linked(jt.destination),
+                                "reference to detached block in attached block {}",
+                                jt.destination
+                            );
+                            writeln!(f, "    {block_id} --> {}", jt.destination)?;
+                            block_q.push_back(jt.destination);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }

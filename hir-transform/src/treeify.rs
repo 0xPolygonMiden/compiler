@@ -1,33 +1,62 @@
-use std::{collections::VecDeque, rc::Rc};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    rc::Rc,
+};
 
 use midenc_hir::{
     self as hir,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     Block as BlockId, Value as ValueId, *,
 };
-use midenc_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, LoopAnalysis};
+use midenc_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, Loop, LoopAnalysis};
 use midenc_session::Session;
-use rustc_hash::FxHashSet;
+use smallvec::{smallvec, SmallVec};
 
 use crate::adt::ScopedMap;
 
 /// This pass rewrites the CFG of a function so that it forms a tree.
 ///
-/// While we technically call this treeification, loop headers are preserved, so
-/// there are still nodes in the CFG with multiple predecessors, but _only_ those
-/// blocks which are loop headers are permitted to be unaltered.
+/// While we technically call this treeification, the CFG cannot be fully converted into a
+/// tree in general, as loops must be preserved (they can be copied along multiple control
+/// flow paths, but we want to preserve the loop structure in the CFG).
 ///
-/// This transformation splits vertices with multiple predecessors, by duplicating the
-/// subtree of the program rooted at those vertices. As mentioned above, we do not split
-/// vertices representing loop headers, in order to preserve loops in the CFG of the resulting
-/// IR. However, we can consider each loop within the overall CFG of a function to be a single
-/// vertex after this transformation, and with this perspective the CFG forms a tree. Loop
-/// nodes are then handled specially during codegen.
+/// The treeify transformation concerns itself with any block B which has multiple predecessors
+/// in the control flow graph, where for at least two of those predecessors, the predecessor is
+/// always visited before B, if control flows through both. This is a slightly less restrictive
+/// conditon than the dominance property, but is very much related - the primary difference being
+/// that unlike dominance, what we are capturing is that the predecessor block is not along a
+/// loopback edge. It is quite common for a predecessor block to always be visited first in the
+/// CFG, while not dominating its successor: consider an if/else expression, where control splits
+/// at the `if/else`, and rejoins afterwards, the code in the final block where control is joined
+/// can only be reached after either the `if` or `else` block has executed, but neither the `if`
+/// nor the `else` blocks can be considered to "dominate" the final block in the graph theoretical
+/// sense.
 ///
-/// The transformation is performed bottom-up, in CFG postorder.
+/// The actual treeification process works like so:
 ///
-/// This pass also computes the set of blocks in each loop which must be terminated with `push.0`
-/// to exit the containing loop.
+/// 1. For each block B, in the postorder sort of the CFG, determine if B has more than one
+///    predecessor P, where P appears before B in the reverse postorder sort of the CFG. a. If
+///    found, treeify the block as described in subsequent steps b. Otherwise, ignore this block and
+///    proceed
+/// 2. For each P, clone B to a new block B', and rewrite P such that it branches to B' rather than
+///    B.
+/// 3. For each successor S of B: a. If S is a loop header, and S appears before B in the reverse
+///    postorder sort of the CFG, then it is a loopback edge, so the corresponding edge from B' to S
+///    is left intact. b. If S is a loop header, but S appears after B in the reverse postorder sort
+///    of the CFG, then it is treated like other blocks (see c.) c. Otherwise, clone S to S', and
+///    rewrite B' to branch to S' instead of S.
+/// 4. Repeat step 2 for the successors of S, recursively, until the subgraph reachable from B
+///
+/// Since we are treeifying blocks from the leaves of the CFG to the root, and because we do not
+/// follow loopback edges which escape/continue an outer loop - whenever we clone a subgraph of
+/// the CFG, we know that it has already been treeified, as we only start to treeify a block once
+/// all of the blocks reachable via that block have been treeified.
+///
+/// In short, we're trying to split blocks with multiple predecessors such that all blocks have
+/// either zero or one predecessors, i.e. the CFG forms a tree. As mentioned previously, we must
+/// make an exception for loop headers, which by definition must have at least one predecessor
+/// which is a loopback edge, but this suits us just fine, as Miden Assembly provides control flow
+/// instructions compatible with lowering from such a CFG.
 ///
 /// # Examples
 ///
@@ -273,63 +302,108 @@ impl RewritePass for Treeify {
         let domtree = analyses.get_or_compute::<DominatorTree>(function, session)?;
         let loops = analyses.get_or_compute::<LoopAnalysis>(function, session)?;
 
+        // Obtain the set of all blocks we need to check for treeification in a new vector.
+        //
+        // We must do this because as we treeify the CFG, we will be updating it, as well
+        // as all of the analyses, such as the dominator tree, so we can't iterate it at
+        // the same time as we do treeification.
+        //
+        // Additionally, this set never changes - we are visiting the function bottom-up,
+        // so we only start to treeify a block once all of the blocks reachable via that
+        // block have been treeified. As a result, the tree reachable from B is already
+        // treeified.
+        let to_visit = domtree.cfg_postorder().to_vec();
+
+        // This outer loop visits all of the original blocks of the CFG postorder (bottom-up),
+        // and is simply searching for blocks of the function which meet the criteria for
+        // treeification.
+        //
+        // The inner loop is responsible for actually treeifying those blocks. This
+        // necessarily has the effect of mutating the function, and therefore requires
+        // us to recompute some of the analyses so that we can properly determine how
+        // to handle certain blocks in the portion of the CFG being treeified, namely
+        // loops (via loop headers).
+        //
+        // Loops require special handling, as during treeification we typically will be
+        // cloning blocks that belong to the portion of the CFG rooted at the block being
+        // treeified. However, if we are treeifying a block that belongs to a loop, we do
+        // not want to clone along control flow edges representing continuation or breaking
+        // out of an outer loop. On the other hand, if we reach a loop that is only reachable
+        // via the block being treeified, we do want to copy those, as each branch of the tree
+        // will need its own copy of that loop.
+        //
+        // To handle this, we require the ability to:
+        //
+        // * Identify loop headers (which requires the loops analysis)
+        // * Identify the reverse postorder index of a block (which requires the dominator tree)
+        //
+        // The dominator tree requires the control flow graph analysis, and the loop analysis
+        // requires the dominator tree - as a result, each time we modify the CFG, we must also
+        // ensure that all three analyses reflect any effects of such modifications.
+        //
+        // However, this would be very expensive to compute as frequently as would be required
+        // by this transformation. Instead, since the transformation is essentially just cloning
+        // multiple copies of various subgraphs of the original CFG, we can use the analyses of
+        // the original CFG as well, by mapping each copied block back to the block in the CFG
+        // from which it is derived. By doing so, we can determine if that block is a loop header,
+        // or how two blocks are sorted relative to each other in the reverse postorder, without
+        // having to ever recompute the three analyses mentioned above.
+        let mut block_infos = BlockInfos::new(cfg, domtree, loops);
+
+        // For each block B, treeify B IFF it has multiple predecessors, where for each
+        // predecessor P, P appears before B in the reverse postorder sort of the CFG.
+        // Treeifying B involves creating a copy of B and the subgraph of the CFG rooted at B,
+        // for each P.
+        //
+        // The blocks are selected this way, since by splitting these nodes in the CFG, such
+        // that each predecessor gets its own copy of the subgraph reached via B, the CFG is
+        // made more tree-like. Once all nodes are split, then the CFG is either a tree, or
+        // a DAG that is almost a tree, with the only remaining DAG edges being loopback edges
+        // for loops that appear in the CFG.
         let mut block_q = VecDeque::<CopyBlock>::default();
         let mut changed = false;
+        for b in to_visit {
+            // Check if this block meets the conditions for treeification
+            let predecessors = block_infos
+                .cfg
+                .pred_iter(b)
+                .filter(|bp| block_infos.rpo_cmp(bp.block, b).is_lt())
+                .collect::<Vec<_>>();
 
-        for b in domtree.cfg_postorder().iter().copied() {
-            if loops.is_loop_header(b).is_some() {
-                // Ignore loop headers
+            if predecessors.len() < 2 {
                 continue;
             }
 
-            // Blocks with multiple predecessors cause the CFG to form a DAG,
-            // we need to duplicate the CFG rooted at this block for all predecessors.
-            //
-            // While we could technically preserve one of the predecessors, we perform
-            // some transformations during the copy that would result in copied vs original
-            // trees to differ slightly, which would inhibit subsequent optimizations.
-            // The original subtree blocks are detached from the function.
-            if cfg.num_predecessors(b) > 1 {
-                for p in cfg.pred_iter(b) {
-                    assert!(block_q.is_empty());
-                    block_q.push_back(CopyBlock::new(b, p));
-                    while let Some(CopyBlock {
-                        b,
-                        ref p,
-                        value_map,
-                        block_map,
-                    }) = block_q.pop_front()
-                    {
-                        // Copy this block and its children
-                        if loops.is_loop_header(b).is_some() {
-                            treeify_loop(
-                                b,
-                                p,
-                                function,
-                                &cfg,
-                                &loops,
-                                &mut block_q,
-                                value_map,
-                                block_map,
-                            )?;
-                        } else {
-                            treeify(
-                                b,
-                                p,
-                                function,
-                                &cfg,
-                                &loops,
-                                &mut block_q,
-                                value_map,
-                                block_map,
-                            )?;
-                        }
-                    }
-                }
+            // For each predecessor, create a clone of B and all of its successors, with
+            // the exception of successors which are loop headers where the loop header
+            // appears before B in the reverse postorder sort of the CFG. Such edges are
+            // loopback edges to an outer loop, which must be preserved, even when cloning
+            // the subgraph rooted at B.
+            for p in predecessors {
+                assert!(block_q.is_empty());
+                block_q.push_back(CopyBlock::new(b, p));
+                let root = b;
 
-                // After treeification, the original subtree blocks cannot possibly be
-                // referenced by other blocks in the function, so remove all of them
-                detach_tree(b, function, &cfg);
+                while let Some(CopyBlock {
+                    b,
+                    ref p,
+                    value_map,
+                    block_map,
+                }) = block_q.pop_front()
+                {
+                    // If we enqueue a successor block to be copied, and that block is a loop header
+                    // which appears before the root block in the CFG, then it is  a loopback edge
+                    // that escapes the portion of the CFG being treeified, and we do not want not
+                    // actually copy it.
+                    if block_infos.is_loop_header(b).is_some()
+                        && block_infos.rpo_cmp(b, root).is_lt()
+                    {
+                        continue;
+                    }
+
+                    // Copy this block and its successors
+                    treeify(b, p, function, &mut block_infos, &mut block_q, value_map, block_map)?;
+                }
 
                 // Mark the control flow graph as modified
                 changed = true;
@@ -339,6 +413,21 @@ impl RewritePass for Treeify {
         // If we made any changes, we need to recompute all analyses
         if !changed {
             analyses.mark_all_preserved::<Function>(&function.id);
+        } else {
+            // Recompute the CFG and dominator tree and remove all unreachable blocks
+            let cfg = ControlFlowGraph::with_function(function);
+            let domtree = DominatorTree::with_function(function, &cfg);
+            let mut to_remove = vec![];
+            for (b, _) in function.dfg.blocks() {
+                if domtree.is_reachable(b) {
+                    continue;
+                }
+                to_remove.push(b);
+            }
+            // Remove all blocks from the function that were unreachable
+            for b in to_remove {
+                function.dfg.detach_block(b);
+            }
         }
 
         Ok(())
@@ -350,110 +439,74 @@ fn treeify(
     b: BlockId,
     p: &BlockPredecessor,
     function: &mut hir::Function,
-    cfg: &ControlFlowGraph,
-    loops: &LoopAnalysis,
+    block_infos: &mut BlockInfos,
     block_q: &mut VecDeque<CopyBlock>,
     mut value_map: ScopedMap<ValueId, ValueId>,
     mut block_map: ScopedMap<BlockId, BlockId>,
 ) -> anyhow::Result<()> {
-    // 1. Create a new block `b'`, without block arguments,
+    // Check if we're dealing with a loop header
+    let is_loop = block_infos.is_loop_header(b).is_some();
+
+    // 1. Create a new block `b'`, without block arguments, unless it is a loop header,
+    // in which case we want to preserve the block arguments, just with new value ids
     let b_prime = function.dfg.create_block_after(p.block);
     block_map.insert(b, b_prime);
-    // 2. Initialize a lookup table of old value defs to new value defs, seed it by mapping the
-    //    block arguments of `b` to the values passed from the predecessor
-    match function.dfg.analyze_branch(p.inst) {
-        BranchInfo::SingleDest(_, args) => {
-            value_map.extend(function.dfg.block_args(b).iter().copied().zip(args.iter().copied()));
+    block_infos.insert_copy(b_prime, b);
+
+    // 2. Remap values in the cloned block:
+    //
+    // * If this is a loop header, we need to replace references to the old block arguments with the
+    //   new block arguments.
+    // * If this is not a loop header, then we need to replace references to the block arguments
+    //   with the values which were passed as arguments in the predecessor block
+    if is_loop {
+        function.dfg.clone_block_params(b, b_prime);
+        for (src, dest) in function
+            .dfg
+            .block_params(b)
+            .iter()
+            .copied()
+            .zip(function.dfg.block_params(b_prime).iter().copied())
+        {
+            value_map.insert(src, dest);
         }
-        BranchInfo::MultiDest(ref jts) => {
-            for jt in jts.iter() {
-                if jt.destination == b {
-                    value_map.extend(
-                        function.dfg.block_args(b).iter().copied().zip(jt.args.iter().copied()),
-                    );
-                    break;
-                }
+    } else {
+        match function.dfg.analyze_branch(p.inst) {
+            BranchInfo::SingleDest(_, args) => {
+                value_map
+                    .extend(function.dfg.block_args(b).iter().copied().zip(args.iter().copied()));
+            }
+            BranchInfo::MultiDest(ref jts) => {
+                let jt = jts.iter().find(|jt| jt.destination == b).unwrap();
+                value_map.extend(
+                    function.dfg.block_args(b).iter().copied().zip(jt.args.iter().copied()),
+                );
+            }
+            BranchInfo::NotABranch => unreachable!(),
+        }
+    }
+
+    // 3. Update the predecessor instruction to reference the new block, remove block arguments if
+    //    this is not a loop header.
+    let mut seen = false; // Only update the first occurrance of this predecessor
+    update_predecessor(function, p, |dest, dest_args, pool| {
+        if *dest == b && !seen {
+            seen = true;
+            *dest = b_prime;
+            if !is_loop {
+                dest_args.clear(pool);
             }
         }
-        BranchInfo::NotABranch => unreachable!(),
-    }
-    // 3. Update the predecessor instruction to reference the new block, remove block arguments.
-    update_predecessor(function, p, |dest, dest_args, pool| {
-        if *dest == b {
-            *dest = b_prime;
-            dest_args.clear(pool);
-        }
     });
+    assert!(seen);
+
     // 4. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands to
     //    their new "corrected" values
     copy_instructions(b, b_prime, function, &mut value_map, &block_map);
-    // 5. Recursively copy all children of `b` to `b_prime`
-    copy_children(b, b_prime, function, cfg, loops, block_q, value_map, block_map)
-}
 
-#[allow(clippy::too_many_arguments)]
-fn treeify_loop(
-    b: BlockId,
-    p: &BlockPredecessor,
-    function: &mut hir::Function,
-    cfg: &ControlFlowGraph,
-    loops: &LoopAnalysis,
-    block_q: &mut VecDeque<CopyBlock>,
-    mut value_map: ScopedMap<ValueId, ValueId>,
-    mut block_map: ScopedMap<BlockId, BlockId>,
-) -> anyhow::Result<()> {
-    // 1. Create new block, b', with a new set of block arguments matching the original,
-    // populate the value map with rewrites for the original block argument values
-    let b_prime = function.dfg.create_block_after(p.block);
-    block_map.insert(b, b_prime);
-    function.dfg.clone_block_params(b, b_prime);
-    for (src, dest) in function
-        .dfg
-        .block_params(b)
-        .iter()
-        .copied()
-        .zip(function.dfg.block_params(b_prime).iter().copied())
-    {
-        value_map.insert(src, dest);
-    }
-    // 2. Update the predecessor instruction to reference the new block, leave block arguments
-    //    unchanged
-    update_predecessor(function, p, |dest, _, _| {
-        if *dest == b {
-            *dest = b_prime;
-        }
-    });
-    // 3. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands to
-    //    their new "corrected" values
-    copy_instructions(b, b_prime, function, &mut value_map, &block_map);
-    // 4. Recursively copy all children of `b` to `b_prime`
-    copy_children(b, b_prime, function, cfg, loops, block_q, value_map, block_map)
-}
-
-/// Detach `root`, and all of it's reachable children, from the layout of `function`
-///
-/// When called, it is assumed that `root` has been cloned to a new block,
-/// along with all of it's reachable children, and its predecessor rewritten
-/// to refer to the new block instead. As a result, `root` should no longer be
-/// reachable in the CFG, along with its children, as they would have been cloned
-/// as well.
-///
-/// NOTE: This does not delete the block data attached to the function, only the
-/// presence of the block in the layout of the function.
-fn detach_tree(root: BlockId, function: &mut hir::Function, cfg: &ControlFlowGraph) {
-    let mut delete_q = VecDeque::<BlockId>::default();
-    let mut visited = FxHashSet::<BlockId>::default();
-    delete_q.push_back(root);
-    visited.insert(root);
-    while let Some(block) = delete_q.pop_front() {
-        function.dfg.detach_block(block);
-        for b in cfg.succ_iter(block) {
-            // Skip blocks we've already seen
-            if visited.insert(b) {
-                delete_q.push_back(b);
-            }
-        }
-    }
+    // 5. Clone the children of `b` and append to `b_prime`, but do not clone children of `b` that
+    //    are loop headers, only clone the edge.
+    copy_children(b, b_prime, function, block_q, value_map, block_map)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -461,8 +514,6 @@ fn copy_children(
     b: BlockId,
     b_prime: BlockId,
     function: &mut hir::Function,
-    cfg: &ControlFlowGraph,
-    loops: &LoopAnalysis,
     block_q: &mut VecDeque<CopyBlock>,
     value_map: ScopedMap<ValueId, ValueId>,
     block_map: ScopedMap<BlockId, BlockId>,
@@ -471,21 +522,23 @@ fn copy_children(
         inst: function.dfg.last_inst(b_prime).expect("expected non-empty block"),
         block: b_prime,
     };
+    let successors = match function.dfg.analyze_branch(function.dfg.last_inst(b).unwrap()) {
+        BranchInfo::NotABranch => return Ok(()),
+        BranchInfo::SingleDest(dest, _) => smallvec![dest],
+        BranchInfo::MultiDest(ref jts) => {
+            SmallVec::<[_; 2]>::from_iter(jts.iter().map(|jt| jt.destination))
+        }
+    };
     let value_map = Rc::new(value_map);
     let block_map = Rc::new(block_map);
-    for succ in cfg.succ_iter(b) {
-        // If we've already seen this successor, and it is a loop header, then
-        // we don't want to copy it, but we do want to replace the reference to
-        // this block with its copy
+
+    for succ in successors {
         if let Some(succ_prime) = block_map.get(&succ) {
-            if loops.is_loop_header(succ).is_some() {
-                update_predecessor(function, &pred, |dest, _, _| {
-                    if dest == &succ {
-                        *dest = *succ_prime;
-                    }
-                });
-                continue;
-            }
+            update_predecessor(function, &pred, |dest, _, _| {
+                if dest == &succ {
+                    *dest = *succ_prime;
+                }
+            });
         }
 
         block_q.push_back(CopyBlock {
@@ -640,6 +693,54 @@ where
             panic!("expected switch instructions to have been simplified prior to treeification")
         }
         _ => unreachable!(),
+    }
+}
+
+struct BlockInfos {
+    blocks: BTreeMap<BlockId, BlockId>,
+    cfg: Rc<ControlFlowGraph>,
+    domtree: Rc<DominatorTree>,
+    loops: Rc<LoopAnalysis>,
+}
+impl BlockInfos {
+    pub fn new(
+        cfg: Rc<ControlFlowGraph>,
+        domtree: Rc<DominatorTree>,
+        loops: Rc<LoopAnalysis>,
+    ) -> Self {
+        Self {
+            blocks: Default::default(),
+            cfg,
+            domtree,
+            loops,
+        }
+    }
+
+    pub fn insert_copy(&mut self, copied: BlockId, original: BlockId) {
+        let resolved = self.to_original_block(original);
+        self.blocks.insert(copied, resolved);
+    }
+
+    pub fn is_loop_header(&self, block_id: BlockId) -> Option<Loop> {
+        let resolved = self.to_original_block(block_id);
+        self.loops.is_loop_header(resolved)
+    }
+
+    pub fn rpo_cmp(&self, a: BlockId, b: BlockId) -> core::cmp::Ordering {
+        let a_orig = self.to_original_block(a);
+        let b_orig = self.to_original_block(b);
+        self.domtree.rpo_cmp_block(a_orig, b_orig)
+    }
+
+    fn to_original_block(&self, mut block_id: BlockId) -> BlockId {
+        loop {
+            if let Some(copied_from) = self.blocks.get(&block_id).copied() {
+                block_id = copied_from;
+                continue;
+            }
+
+            break block_id;
+        }
     }
 }
 
