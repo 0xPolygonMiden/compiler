@@ -12,6 +12,6 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
         RPO_FALCON512_VERIFY,
         FunctionType::new([Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt], []),
     );
-    m.insert("miden:prelude/std_crypto_dsa", funcs);
+    m.insert("miden:prelude/std_crypto_dsa".to_string(), funcs);
     m
 }

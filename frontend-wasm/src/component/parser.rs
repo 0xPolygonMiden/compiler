@@ -27,7 +27,7 @@ use crate::{
             TableIndex, WasmType,
         },
     },
-    translation_utils::BuildFxHasher,
+    translation_utils::{sanitize_name, BuildFxHasher},
     unsupported_diag, WasmError, WasmTranslationConfig,
 };
 
@@ -206,7 +206,7 @@ pub enum LocalInitializer<'data> {
     ModuleStatic(StaticModuleIndex),
 
     // core wasm module instances
-    ModuleInstantiate(ModuleIndex, FxHashMap<&'data str, ModuleInstanceIndex>),
+    ModuleInstantiate(ModuleIndex, FxHashMap<String, ModuleInstanceIndex>),
     ModuleSynthetic(FxHashMap<&'data str, EntityIndex>),
 
     // components
@@ -819,7 +819,7 @@ fn instantiate_module<'data>(
         match arg.kind {
             wasmparser::InstantiationArgKind::Instance => {
                 let idx = ModuleInstanceIndex::from_u32(arg.index);
-                args.insert(arg.name, idx);
+                args.insert(sanitize_name(arg.name), idx);
             }
         }
     }

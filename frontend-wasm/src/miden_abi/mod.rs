@@ -7,7 +7,7 @@ use midenc_hir::{FunctionType, Symbol};
 use rustc_hash::FxHashMap;
 
 pub(crate) type FunctionTypeMap = FxHashMap<&'static str, FunctionType>;
-pub(crate) type ModuleFunctionTypeMap = FxHashMap<&'static str, FunctionTypeMap>;
+pub(crate) type ModuleFunctionTypeMap = FxHashMap<String, FunctionTypeMap>;
 
 /// Parse the stable import function name and the hex encoded digest from the function name
 pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDigest), String> {

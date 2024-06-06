@@ -7,6 +7,7 @@ pub(crate) mod tx;
 use std::sync::OnceLock;
 
 use super::ModuleFunctionTypeMap;
+use crate::translation_utils::sanitize_name;
 
 pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
     static TYPES: OnceLock<ModuleFunctionTypeMap> = OnceLock::new();
@@ -15,6 +16,14 @@ pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
         m.extend(account::signatures());
         m.extend(note::signatures());
         m.extend(tx::signatures());
-        m
+
+        let m_sanitized: ModuleFunctionTypeMap = m
+            .into_iter()
+            .map(|(module, v)| {
+                let module_sanitized = sanitize_name(&module);
+                (module_sanitized, v)
+            })
+            .collect();
+        m_sanitized
     })
 }

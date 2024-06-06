@@ -1,8 +1,8 @@
 (component 
     ;; Component Imports
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden:tx_kernel/account #add_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden:tx_kernel/account #remove_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt)))) (#miden:tx_kernel/tx #create_note)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden_tx_kernel_account #add_asset)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden_tx_kernel_account #remove_asset)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt)))) (#miden_tx_kernel_tx #create_note)
 
     ;; Modules
     (module #rust_sdk_basic_wallet
@@ -81,7 +81,7 @@
                 (let (v19 u32) (add.checked v18 24))
                 (let (v20 (ptr felt)) (inttoptr v19))
                 (let (v21 felt) (load v20))
-                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden:tx_kernel/account #add_asset) v9 v13 v17 v21))
+                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden_tx_kernel_account #add_asset) v9 v13 v17 v21))
                 (let (v26 u32) (cast v5))
                 (let (v27 (ptr felt)) (inttoptr v26))
                 (store v27 v22)
@@ -164,7 +164,7 @@
                 (let (v19 u32) (add.checked v18 24))
                 (let (v20 (ptr felt)) (inttoptr v19))
                 (let (v21 felt) (load v20))
-                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden:tx_kernel/account #remove_asset) v9 v13 v17 v21))
+                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden_tx_kernel_account #remove_asset) v9 v13 v17 v21))
                 (let (v26 u32) (cast v5))
                 (let (v27 (ptr felt)) (inttoptr v26))
                 (store v27 v22)
@@ -260,7 +260,7 @@
                 (let (v32 u32) (add.checked v31 24))
                 (let (v33 (ptr felt)) (inttoptr v32))
                 (let (v34 felt) (load v33))
-                (let (v35 felt) (call (#miden:tx_kernel/tx #create_note) v7 v11 v15 v19 v1 v2 v22 v26 v30 v34))
+                (let (v35 felt) (call (#miden_tx_kernel_tx #create_note) v7 v11 v15 v19 v1 v2 v22 v26 v30 v34))
                 (br (block 1 v35)))
 
             (block 1 (param v4 felt)
@@ -268,11 +268,11 @@
         )
 
         ;; Imports
-        (func (import #miden:tx_kernel/account #add_asset)
+        (func (import #miden_tx_kernel_account #add_asset)
               (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
-        (func (import #miden:tx_kernel/account #remove_asset)
+        (func (import #miden_tx_kernel_account #remove_asset)
               (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
-        (func (import #miden:tx_kernel/tx #create_note)
+        (func (import #miden_tx_kernel_tx #create_note)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
     )
 

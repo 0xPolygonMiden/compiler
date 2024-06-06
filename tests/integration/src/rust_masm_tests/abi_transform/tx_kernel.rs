@@ -1,6 +1,7 @@
+#![allow(unused)]
 use expect_test::expect_file;
 
-use crate::CompilerTest;
+use crate::{execute_vm, CompilerTest};
 
 #[allow(unused)]
 fn setup_log() {
@@ -22,9 +23,9 @@ fn test_get_inputs() {
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
-    // let ir_masm = test.ir_masm_program();
     // let vm_program = test.vm_masm_program();
 
+    // let _vm_out = execute_vm(&vm_program, &[]);
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     // let res =
     //     TestRunner::default().run(&(any::<[u8; 32]>(), any::<[u8; 32]>()), move |(_a, _b)| {

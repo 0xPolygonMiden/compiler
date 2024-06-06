@@ -27,6 +27,7 @@ use crate::{
         },
         FuncRefIndex, Module, ModuleType, TableSegment,
     },
+    translation_utils::sanitize_name,
     unsupported_diag, WasmError, WasmTranslationConfig,
 };
 
@@ -281,7 +282,9 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 // doesn't get past validation
                 TypeRef::Tag(_) => unreachable!(),
             };
-            self.declare_import(import.module, import.name, ty);
+
+            let import_module_name = sanitize_name(import.module);
+            self.declare_import(import_module_name, import.name.to_string(), ty);
         }
         Ok(())
     }
@@ -608,7 +611,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         if (index as usize) >= self.result.module.functions.len() {
                             continue;
                         }
-
+                        let name = sanitize_name(name);
                         // Store the name unconditionally, regardless of
                         // whether we're parsing debuginfo, since function
                         // names are almost always present in the
@@ -740,11 +743,11 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
 
     /// Declares a new import with the `module` and `field` names, importing the
     /// `ty` specified.
-    fn declare_import(&mut self, module: &'data str, field: &'data str, ty: EntityType) {
+    fn declare_import(&mut self, module: String, field: String, ty: EntityType) {
         let index = self.push_type(ty);
         self.result.module.imports.push(ModuleImport {
-            module: module.to_owned(),
-            field: field.to_owned(),
+            module,
+            field,
             index,
         });
     }

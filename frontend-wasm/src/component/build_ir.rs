@@ -67,7 +67,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        component::StaticModuleIndex, config::ImportMetadata, test_utils::test_diagnostics,
+        component::StaticModuleIndex, config::ImportMetadata, sanitize_name,
+        test_utils::test_diagnostics,
     };
 
     #[test]
@@ -242,7 +243,7 @@ mod tests {
         let import_info = module.imports();
         dbg!(&import_info);
         let function_id = *import_info
-            .imported(&Ident::from("miden:add/add@1.0.0"))
+            .imported(&Ident::from(sanitize_name("miden:add/add@1.0.0").as_str()))
             .unwrap()
             .iter()
             .collect::<Vec<_>>()

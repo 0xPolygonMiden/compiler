@@ -1,6 +1,6 @@
 mod abi_transform_tx_kernel_get_inputs
 
-use.miden:tx_kernel/note
+use.miden_tx_kernel_note
 
 export.entrypoint
     exec."miden_sdk_tx_kernel::get_inputs"
@@ -11,7 +11,7 @@ export."__rust_alloc"
     push.1048576
     movup.2
     swap.1
-    exec."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
+    exec."<wee_alloc__WeeAlloc as core__alloc__global__GlobalAlloc>::alloc"
 end
 
 
@@ -19,7 +19,7 @@ export."__rust_alloc_zeroed"
     push.1048576
     movup.2
     swap.1
-    exec."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
+    exec."<wee_alloc__WeeAlloc as core__alloc__global__GlobalAlloc>::alloc"
     dup.0
     eq.0
     neq.0
@@ -661,7 +661,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
 end
 
 
-export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
+export."<wee_alloc__LargeAllocPolicy as wee_alloc__AllocPolicy>::new_cell_for_free_list"
     push.3
     movup.4
     swap.1
@@ -2174,7 +2174,7 @@ export."wee_alloc::alloc_first_fit"
 end
 
 
-export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
+export."<wee_alloc__WeeAlloc as core__alloc__global__GlobalAlloc>::alloc"
     push.1
     dup.2
     dup.0
@@ -2302,7 +2302,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             dup.1
             dup.3
             dup.4
-            exec."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
+            exec."<wee_alloc__LargeAllocPolicy as wee_alloc__AllocPolicy>::new_cell_for_free_list"
             dup.1
             dup.0
             push.2147483648
@@ -2644,7 +2644,7 @@ export."miden_sdk_tx_kernel::get_inputs"
     neq.0
     if.true
         dup.0
-        exec.miden:tx_kernel/note::get_inputs
+        exec.miden_tx_kernel_note::get_inputs
         push.16
         movup.5
         swap.1

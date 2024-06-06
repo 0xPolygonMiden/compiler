@@ -3,6 +3,7 @@
 use std::sync::OnceLock;
 
 use super::ModuleFunctionTypeMap;
+use crate::translation_utils::sanitize_name;
 
 pub(crate) mod crypto;
 pub(crate) mod mem;
@@ -14,6 +15,13 @@ pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
         m.extend(crypto::hashes::signatures());
         m.extend(crypto::dsa::signatures());
         m.extend(mem::signatures());
-        m
+        let m_sanitized: ModuleFunctionTypeMap = m
+            .into_iter()
+            .map(|(module, v)| {
+                let module_sanitized = sanitize_name(&module);
+                (module_sanitized, v)
+            })
+            .collect();
+        m_sanitized
     })
 }

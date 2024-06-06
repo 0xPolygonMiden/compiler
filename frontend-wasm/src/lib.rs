@@ -24,6 +24,7 @@ use component::build_ir::translate_component;
 use error::WasmResult;
 use miden_diagnostics::DiagnosticsHandler;
 use module::build_ir::translate_module_as_component;
+pub use translation_utils::sanitize_name;
 
 pub use self::{config::*, error::WasmError};
 

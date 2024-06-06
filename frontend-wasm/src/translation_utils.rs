@@ -145,3 +145,10 @@ pub fn sig_from_funct_type(
         linkage,
     }
 }
+
+/// Replace characters that are not allowed in MASM identifiers
+pub fn sanitize_name(name: &str) -> String {
+    // Wasm CM style module names `namespace:package/interface@version`
+    // The `.` is used in mangled function names, so we replace it with `_`
+    name.replace([':', '/', '@', '.'], "_")
+}
