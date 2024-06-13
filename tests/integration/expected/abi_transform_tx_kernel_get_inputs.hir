@@ -1,7 +1,4 @@
 (component 
-    ;; Component Imports
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param i32) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
-
     ;; Modules
     (module #abi_transform_tx_kernel_get_inputs
         ;; Constants
@@ -676,23 +673,23 @@
                 (unreachable))
 
             (block 3
-                (let [(v28 i32) (v29 felt)] (call (#miden:tx_kernel/note #get_inputs) v13))
-                (let (v30 i32) (const.i32 0))
-                (let (v31 u32) (cast v0))
-                (let (v32 u32) (add.checked v31 8))
-                (let (v33 (ptr i32)) (inttoptr v32))
-                (store v33 v30)
-                (let (v34 u32) (cast v0))
-                (let (v35 u32) (add.checked v34 4))
-                (let (v36 (ptr i32)) (inttoptr v35))
-                (store v36 v13)
-                (let (v37 u32) (cast v0))
-                (let (v38 (ptr i32)) (inttoptr v37))
-                (store v38 v17)
-                (let (v39 i32) (const.i32 16))
-                (let (v40 i32) (add.wrapping v4 v39))
-                (let (v41 (ptr i32)) (global.symbol #__stack_pointer))
-                (store v41 v40)
+                (let (v28 i32) (call (#miden::note #get_inputs) v13))
+                (let (v29 i32) (const.i32 0))
+                (let (v30 u32) (cast v0))
+                (let (v31 u32) (add.checked v30 8))
+                (let (v32 (ptr i32)) (inttoptr v31))
+                (store v32 v29)
+                (let (v33 u32) (cast v0))
+                (let (v34 u32) (add.checked v33 4))
+                (let (v35 (ptr i32)) (inttoptr v34))
+                (store v35 v13)
+                (let (v36 u32) (cast v0))
+                (let (v37 (ptr i32)) (inttoptr v36))
+                (store v37 v17)
+                (let (v38 i32) (const.i32 16))
+                (let (v39 i32) (add.wrapping v4 v38))
+                (let (v40 (ptr i32)) (global.symbol #__stack_pointer))
+                (store v40 v39)
                 (ret))
 
             (block 4
@@ -826,8 +823,7 @@
         )
 
         ;; Imports
-        (func (import #miden:tx_kernel/note #get_inputs)
-              (param i32) (result i32 felt))
+        (func (import #miden::note #get_inputs) (param i32) (result i32))
     )
 
 )

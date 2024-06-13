@@ -1,6 +1,6 @@
 use expect_test::expect_file;
 
-use crate::CompilerTest;
+use crate::{execute_vm, CompilerTest};
 
 #[allow(unused)]
 fn setup_log() {
@@ -12,6 +12,7 @@ fn setup_log() {
         .try_init();
 }
 
+#[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/207 is resolved"]
 #[test]
 fn test_get_inputs() {
     // setup_log();
@@ -22,8 +23,13 @@ fn test_get_inputs() {
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
-    // let ir_masm = test.ir_masm_program();
-    // let vm_program = test.vm_masm_program();
+
+    // TODO: use.miden::note instead of use.miden_tx_kernel_note. And then exec.note::get_inputs
+    // OR: `use.miden::note->miden_tx_kernel_note` and then
+    // `exec.miden_tx_kernel_note::get_inputs`
+    let vm_program = test.masm_program();
+
+    let _vm_out = execute_vm(&vm_program, &[]);
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     // let res =

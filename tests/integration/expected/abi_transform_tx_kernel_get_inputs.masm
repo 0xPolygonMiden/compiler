@@ -1,6 +1,6 @@
 mod abi_transform_tx_kernel_get_inputs
 
-use.miden:tx_kernel/note
+use.miden::note
 
 export.entrypoint
     exec."miden_sdk_tx_kernel::get_inputs"
@@ -2644,28 +2644,11 @@ export."miden_sdk_tx_kernel::get_inputs"
     neq.0
     if.true
         dup.0
-        exec.miden:tx_kernel/note::get_inputs
+        exec.note::get_inputs
         push.16
-        movup.5
-        swap.1
-        u32wrapping_add
-        dup.0
-        u32mod.16
-        dup.0
-        u32mod.4
-        swap.1
-        u32div.4
-        movup.2
-        u32div.16
-        exec.intrinsics::mem::store_sw
-        dup.4
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         movup.4
         swap.1
+        u32wrapping_add
         dup.0
         u32mod.16
         dup.0
@@ -2681,8 +2664,6 @@ export."miden_sdk_tx_kernel::get_inputs"
         u32and
         eq.2147483648
         assertz
-        add.4
-        u32assert
         movup.3
         swap.1
         dup.0
@@ -2694,8 +2675,27 @@ export."miden_sdk_tx_kernel::get_inputs"
         movup.2
         u32div.16
         exec.intrinsics::mem::store_sw
+        dup.2
+        dup.0
+        push.2147483648
+        u32and
+        eq.2147483648
+        assertz
+        add.4
+        u32assert
+        movup.2
+        swap.1
+        dup.0
+        u32mod.16
+        dup.0
+        u32mod.4
+        swap.1
+        u32div.4
+        movup.2
+        u32div.16
+        exec.intrinsics::mem::store_sw
         push.0
-        movup.3
+        movup.2
         dup.0
         push.2147483648
         u32and
@@ -2712,7 +2712,6 @@ export."miden_sdk_tx_kernel::get_inputs"
         movup.2
         u32div.16
         exec.intrinsics::mem::store_sw
-        dropw
         dropw
     else
         swap.3
