@@ -17,6 +17,6 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
         FunctionType::new([Felt, Felt, Felt, Felt], [Felt, Felt, Felt, Felt]),
     );
     account.insert(GET_ID, FunctionType::new([], [Felt]));
-    m.insert("miden:tx_kernel/account", account);
+    m.insert("miden::account", account);
     m
 }
