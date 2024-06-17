@@ -178,6 +178,34 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         // up these unused values is pushed into the successor on entry.
         self.drop_unused_operands();
 
+        // Workaround for the https://github.com/0xPolygonMiden/compiler/issues/207
+        // to avoid emitting empty blocks in `if.true..else..end` op
+        // We're interested in blocks consisting of a single instruction (return instruction)
+        if let [ScheduleOp::Enter(_), ScheduleOp::Inst(inst_info), ScheduleOp::Exit] =
+            block_schedule
+        {
+            let ix = self.function.f.dfg.inst(inst_info.inst);
+            // The single instruction in this block is a return instruction
+            if let midenc_hir::Instruction::Ret(_) = ix {
+                // We're only interested in blocks that are empty, i.e. has nothing emitted yet
+                if self.current_block().ops().is_empty() {
+                    self.emit_ret(inst_info, ix);
+                    // Emit only if the `emit_ret` above did not emit anything and the block is
+                    // still empty
+                    if self.current_block().ops().is_empty() {
+                        let mut emitter = self.emitter();
+                        // We want to emit a no-op instruction to ensure that
+                        // the block is not empty since we don't have a no-op
+                        // instruction, we'll just simulate it by pushing a zero
+                        // onto the stack and then immediately dropping it.
+                        emitter.emit_all(&[Op::PushU32(0), Op::Drop]);
+                    }
+                    // Return early to avoid emitting the block again
+                    return;
+                }
+            }
+        }
+
         // Continue normally, by emitting the contents of the block based on the given schedule
         for op in block_schedule.iter() {
             match op {

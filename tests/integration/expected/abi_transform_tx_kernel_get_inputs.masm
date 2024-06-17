@@ -24,7 +24,7 @@ export."__rust_alloc_zeroed"
     eq.0
     neq.0
     if.true
-
+        push.0 drop
     else
         push.0 eq.0 assert
     end

@@ -12,7 +12,7 @@ fn setup_log() {
         .try_init();
 }
 
-#[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/207 is resolved"]
+#[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/211 is resolved"]
 #[test]
 fn test_get_inputs() {
     // setup_log();
