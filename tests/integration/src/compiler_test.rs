@@ -9,7 +9,8 @@ use std::{
     sync::Arc,
 };
 
-use miden_assembly::{ast::ModuleKind, Assembler, LibraryPath};
+use miden_assembly::{ast::ModuleKind, diagnostics::Report, Assembler, LibraryPath};
+use miden_core::Program;
 use miden_diagnostics::SourceSpan;
 use miden_stdlib::StdLibrary;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
@@ -545,8 +546,9 @@ impl CompilerTest {
     pub fn masm_program(&mut self) -> Box<miden_core::Program> {
         if self.masm_program.is_none() {
             let (masm, src) = self.compile_wasm_to_masm_program();
-            self.masm_program = Some(masm);
             self.masm_src = Some(src);
+            let unwrapped = masm.unwrap_or_else(|e| panic!("Failed to assemble MASM: {:?}", e));
+            self.masm_program = Some(unwrapped.into());
         }
         self.masm_program.clone().unwrap()
     }
@@ -555,8 +557,8 @@ impl CompilerTest {
     pub fn masm_src(&mut self) -> String {
         if self.masm_src.is_none() {
             let (masm, src) = self.compile_wasm_to_masm_program();
-            self.masm_program = Some(masm);
             self.masm_src = Some(src);
+            self.masm_program = masm.ok().map(Box::from);
         }
         self.masm_src.clone().unwrap()
     }
@@ -569,65 +571,98 @@ impl CompilerTest {
         }
     }
 
-    pub(crate) fn compile_wasm_to_masm_program(&self) -> (Box<miden_core::Program>, String) {
+    pub(crate) fn compile_wasm_to_masm_program(
+        &self,
+    ) -> (Result<miden_core::Program, Report>, String) {
         match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
             midenc_compile::Compiled::Program(_p) => todo!("Program compilation not yet supported"),
             midenc_compile::Compiled::Modules(modules) => {
-                let mut src = String::new();
-                let mut assembler = Assembler::default()
-                    .with_library(&StdLibrary::default())
-                    .expect("Failed to load stdlib");
                 let user_ns_name = "user_ns";
-                for module in modules.into_iter() {
-                    let module_src = format!("{}", module);
-                    // eprintln!("{}", &module_src);
-                    let path = if module.id.as_str().contains("::") {
-                        module.id.as_str().to_string()
-                    } else {
-                        // workaround for the assembler not supporting importing
-                        // modules without a namespace which is the case for the
-                        // module compiled from Rust source
-                        let path = format!("{user_ns_name}::{}", module.id.as_str());
-                        src.push_str(format!("# mod {path}\n\n").as_str());
-                        src.push_str(&module_src);
-                        path
-                    };
-                    let library_path = LibraryPath::new(path).unwrap();
-                    // dbg!(&library_path);
-                    let options = miden_assembly::CompileOptions {
-                        kind: ModuleKind::Library,
-                        warnings_as_errors: false,
-                        path: Some(library_path),
-                    };
-                    assembler.add_module_with_options(module_src, options).unwrap_or_else(|err| {
-                        panic!("VM assembler failed to add a module:\n{:?}", err)
-                    });
-                }
-                if let Some(entrypoint) = self.entrypoint {
-                    let module_name = entrypoint.module.as_str();
-                    let function_name = entrypoint.function.as_str();
-                    let prog_source = format!(
-                        r#"
+                let src =
+                    expected_masm_prog_source_from_modules(user_ns_name, &modules, self.entrypoint);
+                let prog = masm_prog_from_modules(user_ns_name, &modules, self.entrypoint);
+                (prog, src)
+            }
+        }
+    }
+}
+
+// Assemble the VM MASM program from the compiled IR MASM modules
+fn masm_prog_from_modules(
+    user_ns_name: &str,
+    modules: &[Box<midenc_codegen_masm::Module>],
+    entrypoint: Option<FunctionIdent>,
+) -> Result<Program, Report> {
+    let mut assembler = Assembler::default().with_library(&StdLibrary::default())?;
+    for module in modules {
+        let module_src = format!("{}", module);
+        // eprintln!("{}", &module_src);
+        let path = masm_module_path(user_ns_name, module);
+        let library_path = LibraryPath::new(path).unwrap();
+        // dbg!(&library_path);
+        let options = miden_assembly::CompileOptions {
+            kind: ModuleKind::Library,
+            warnings_as_errors: false,
+            path: Some(library_path),
+        };
+        assembler.add_module_with_options(module_src, options)?;
+    }
+    if let Some(entrypoint) = entrypoint {
+        let prog_source = masm_prog_source(user_ns_name, entrypoint);
+        assembler.assemble(prog_source)
+    } else {
+        todo!()
+    }
+}
+
+// Generate the MASM program source code from the compiled IR MASM modules
+fn expected_masm_prog_source_from_modules(
+    user_ns_name: &str,
+    modules: &[Box<midenc_codegen_masm::Module>],
+    entrypoint: Option<FunctionIdent>,
+) -> String {
+    let mut src = String::new();
+    for module in modules {
+        let module_src = format!("{}", module);
+        let path = masm_module_path(user_ns_name, module);
+        if !path.contains("intrinsic") {
+            // print only user modules and not intrinsic modules
+            src.push_str(format!("# mod {path}\n\n").as_str());
+            src.push_str(&module_src);
+        }
+    }
+    if let Some(entrypoint) = entrypoint {
+        let prog_source = masm_prog_source(user_ns_name, entrypoint);
+        src.push_str(&prog_source);
+    } else {
+        todo!()
+    }
+    src
+}
+
+// Generate the MASM program source code (call the entrypoint function)
+fn masm_prog_source(user_ns_name: &str, entrypoint: FunctionIdent) -> String {
+    let module_name = entrypoint.module.as_str();
+    let function_name = entrypoint.function.as_str();
+    format!(
+        r#"
 use.{user_ns_name}::{module_name}
 
 begin
     exec.{module_name}::{function_name}  
 end"#,
-                    );
-                    src.push_str(&prog_source);
+    )
+}
 
-                    let masm = assembler
-                        .assemble(prog_source)
-                        .unwrap_or_else(|err| {
-                            panic!("VM assembler failed to compile program:\n{:?}", err)
-                        })
-                        .into();
-                    (masm, src)
-                } else {
-                    todo!()
-                }
-            }
-        }
+// Generate the MASM module path
+fn masm_module_path(user_ns_name: &str, module: &midenc_codegen_masm::Module) -> String {
+    if module.id.as_str().contains("::") {
+        module.id.as_str().to_string()
+    } else {
+        // workaround for the assembler not supporting importing
+        // modules without a namespace which is the case for the
+        // module compiled from Rust source
+        format!("{user_ns_name}::{}", module.id.as_str())
     }
 }
 
