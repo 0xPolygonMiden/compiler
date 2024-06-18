@@ -2,5 +2,6 @@
 # Only publish when the release PR is merged
 # https://release-plz.ieni.dev/docs/config#the-release_always-field
 release_always = false
-# Creates the release PR with the draft status
-pr_draft = true
+# Does not create a git tag
+# https://release-plz.ieni.dev/docs/config#the-git_tag_enable-field
+git_tag_enable = false
