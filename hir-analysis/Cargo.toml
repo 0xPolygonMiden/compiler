@@ -1,5 +1,6 @@
 [package]
 name = "midenc-hir-analysis"
+description = "HIR analysis for the Miden compiler"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true

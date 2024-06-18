@@ -1,9 +1,9 @@
 [package]
 name = "cargo-miden"
+description = "A cargo extension to build Miden projects"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
-description.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
