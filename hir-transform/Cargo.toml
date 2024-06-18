@@ -1,5 +1,6 @@
 [package]
 name = "midenc-hir-transform"
+description = "HIR transformation utilities for the Miden compiler"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true

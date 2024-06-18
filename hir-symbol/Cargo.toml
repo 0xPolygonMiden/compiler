@@ -1,5 +1,6 @@
 [package]
 name = "midenc-hir-symbol"
+description = "Symbols for the Midend compiler"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true

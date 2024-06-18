@@ -1,5 +1,6 @@
 [package]
 name = "midenc-hir"
+description = "High-level Intermediate Representation for Miden Assembly"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
