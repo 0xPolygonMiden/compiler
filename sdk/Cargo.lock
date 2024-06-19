@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "miden-sdk"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "miden-stdlib-sys",
  "miden-tx-kernel-sys",
@@ -12,11 +12,11 @@ dependencies = [
 
 [[package]]
 name = "miden-stdlib-sys"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "miden-tx-kernel-sys"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "miden-stdlib-sys",
 ]
