@@ -167,75 +167,88 @@ impl CompilerTest {
     /// Set the Rust source code to compile a library Cargo project to Wasm module
     pub fn rust_source_cargo_lib(
         cargo_project_folder: PathBuf,
+        artifact_name: &str,
         is_build_std: bool,
         entry_func_name: Option<String>,
     ) -> Self {
-        let manifest_path = cargo_project_folder.join("Cargo.toml");
-        let mut cargo_build_cmd = Command::new("cargo");
-        let compiler_workspace_dir = get_workspace_dir();
-        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
-        // Remap the compiler workspace directory to `~` to have a reproducible build that does not
-        // have the absolute local path baked into the Wasm binary
-        cargo_build_cmd.env(
-            "RUSTFLAGS",
-            format!(
-                "-C target-feature=+bulk-memory --remap-path-prefix {compiler_workspace_dir}=~"
-            ),
-        );
-        cargo_build_cmd
-            .arg("build")
-            .arg("--manifest-path")
-            .arg(manifest_path)
-            .arg("--release")
-            .arg("--target=wasm32-wasi");
-        if is_build_std {
-            // compile std as part of crate graph compilation
-            // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-            cargo_build_cmd.arg("-Z")
+        let expected_wasm_artifact_path = wasm_artifact_path(&cargo_project_folder, artifact_name);
+        // dbg!(&wasm_artifact_path);
+        let wasm_artifact_path = if !skip_rust_compilation(&cargo_project_folder, artifact_name)
+            || !expected_wasm_artifact_path.exists()
+        {
+            let manifest_path = cargo_project_folder.join("Cargo.toml");
+            let mut cargo_build_cmd = Command::new("cargo");
+            let compiler_workspace_dir = get_workspace_dir();
+            // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy`
+            // import) Remap the compiler workspace directory to `~` to have a
+            // reproducible build that does not have the absolute local path baked into
+            // the Wasm binary
+            cargo_build_cmd.env(
+                "RUSTFLAGS",
+                format!(
+                    "-C target-feature=+bulk-memory --remap-path-prefix {compiler_workspace_dir}=~"
+                ),
+            );
+            cargo_build_cmd
+                .arg("build")
+                .arg("--manifest-path")
+                .arg(manifest_path)
+                .arg("--release")
+                .arg("--target=wasm32-wasi");
+            if is_build_std {
+                // compile std as part of crate graph compilation
+                // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+                cargo_build_cmd.arg("-Z")
             .arg("build-std=std,core,alloc,panic_abort")
             .arg("-Z")
             // abort on panic without message formatting (core::fmt uses call_indirect)
             .arg("build-std-features=panic_immediate_abort");
-        }
-        let mut child = cargo_build_cmd
-            .arg("--message-format=json-render-diagnostics")
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to execute cargo build {}.",
-                    cargo_build_cmd
-                        .get_args()
-                        .map(|arg| format!("'{}'", arg.to_str().unwrap()))
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                )
+            }
+            let mut child = cargo_build_cmd
+                .arg("--message-format=json-render-diagnostics")
+                .stdout(Stdio::piped())
+                .spawn()
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Failed to execute cargo build {}.",
+                        cargo_build_cmd
+                            .get_args()
+                            .map(|arg| format!("'{}'", arg.to_str().unwrap()))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                });
+
+            // Find the Wasm artifacts from the cargo build output for debugging purposes
+            let mut wasm_artifacts = find_wasm_artifacts(&mut child);
+            let output = child.wait().expect("Couldn't get cargo's exit status");
+            if !output.success() {
+                report_cargo_error(child);
+            }
+            assert!(output.success());
+            // filter out dependencies
+            wasm_artifacts.retain(|path| {
+                let path_str = path.to_str().unwrap();
+                !path_str.contains("release/deps")
             });
-        let mut wasm_artifacts = find_wasm_artifacts(&mut child);
-        let output = child.wait().expect("Couldn't get cargo's exit status");
-        if !output.success() {
-            report_cargo_error(child);
-        }
-        assert!(output.success());
-        // filter out dependencies
-        wasm_artifacts.retain(|path| {
-            let path_str = path.to_str().unwrap();
-            !path_str.contains("release/deps")
-        });
-        // dbg!(&wasm_artifacts);
-        assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
-        let wasm_comp_path = &wasm_artifacts.first().unwrap();
-        let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
-        dbg!(&artifact_name);
+            dbg!(&wasm_artifacts);
+            assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
+            wasm_artifacts.first().unwrap().to_path_buf()
+        } else {
+            expected_wasm_artifact_path
+        };
+
         let entrypoint = entry_func_name.map(|func_name| FunctionIdent {
-            module: Ident::new(Symbol::intern(artifact_name.clone()), SourceSpan::default()),
+            module: Ident::new(Symbol::intern(artifact_name), SourceSpan::default()),
             function: Ident::new(Symbol::intern(func_name.to_string()), SourceSpan::default()),
         });
-        let input_file = InputFile::from_path(wasm_artifacts.first().unwrap()).unwrap();
+        let input_file = InputFile::from_path(wasm_artifact_path).unwrap();
         Self {
             config: WasmTranslationConfig::default(),
             session: default_session(input_file),
-            source: CompilerTestSource::RustCargoLib { artifact_name },
+            source: CompilerTestSource::RustCargoLib {
+                artifact_name: artifact_name.to_string(),
+            },
             entrypoint,
             hir: None,
             masm_program: None,
@@ -416,7 +429,7 @@ impl CompilerTest {
                 .as_str(),
             )
             .build();
-        Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()))
+        Self::rust_source_cargo_lib(proj.root(), name, is_build_std, Some("entrypoint".to_string()))
     }
 
     /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
@@ -481,7 +494,7 @@ impl CompilerTest {
             )
             .build();
 
-        Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()))
+        Self::rust_source_cargo_lib(proj.root(), name, is_build_std, Some("entrypoint".to_string()))
     }
 
     /// Compare the compiled Wasm against the expected output
@@ -564,7 +577,8 @@ impl CompilerTest {
     /// The compiled Wasm component/module
     fn wasm_bytes(&self) -> Vec<u8> {
         match &self.session.input.file {
-            InputType::Real(file_path) => fs::read(file_path).unwrap(),
+            InputType::Real(file_path) => fs::read(file_path)
+                .unwrap_or_else(|_| panic!("Failed to read Wasm file: {}", file_path.display())),
             InputType::Stdin { name: _, input } => input.clone(),
         }
     }
@@ -583,6 +597,26 @@ impl CompilerTest {
             }
         }
     }
+}
+
+fn wasm_artifact_path(cargo_project_folder: &Path, artifact_name: &str) -> PathBuf {
+    cargo_project_folder
+        .to_path_buf()
+        .join("target")
+        .join("wasm32-wasi")
+        .join("release")
+        .join(artifact_name)
+        .with_extension("wasm")
+}
+
+/// Directs if we should do the Rust compilation step or not
+pub fn skip_rust_compilation(cargo_project_folder: &Path, artifact_name: &str) -> bool {
+    let expected_wasm_artifact_path = wasm_artifact_path(cargo_project_folder, artifact_name);
+    let skip_rust = std::env::var("SKIP_RUST").is_ok() && expected_wasm_artifact_path.exists();
+    if skip_rust {
+        eprintln!("Skipping Rust compilation");
+    };
+    skip_rust
 }
 
 // Assemble the VM MASM program from the compiled IR MASM modules

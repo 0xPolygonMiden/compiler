@@ -44,6 +44,7 @@ pub fn panic_error(what: &str, err: impl Into<anyhow::Error>) -> ! {
 
 pub mod paths;
 use self::paths::CargoPathExt;
+use crate::compiler_test::skip_rust_compilation;
 
 /*
  *
@@ -204,6 +205,13 @@ impl ProjectBuilder {
 
     /// Creates the project.
     pub fn build(mut self) -> Project {
+        let last_path_component =
+            self.root.root().file_name().unwrap().to_string_lossy().to_string();
+        if skip_rust_compilation(&self.root(), &last_path_component) {
+            // Return the root directory without re-creating any files
+            return self.root;
+        }
+
         // First, clean the directory if it already exists
         self.rm_root();
 
