@@ -6,18 +6,20 @@ TBD
 
 The release process for the Miden Compiler is managed using the `release-plz` tool. The following steps outline the process for creating a new release:
 
-1. Create a release PR using the `release-plz release-pr` command. This will create a new branch with the release changes (crate versions bumped, changelog generated, etc.).
-2. Review the changes in the release PR, commit edits if needed and merge it into the main branch.
-3. The CI will automatically run `release-plz release` after the release PR is merged to publish the new versions to crates.io.
+1. Run `release-plz update` to update the crate versions and generate changelogs.
+2. Create a release PR naming the branch with `release-plz-` suffix (its important to use this suffix to trigger the crate publishing on CI in step 4).
+3. Review the changes in the release PR, commit edits if needed and merge it into the main branch.
+4. The CI will automatically run `release-plz release` after the release PR is merged to publish the new versions to crates.io.
+5. Set a git tag for the published crates to mark the release.
 
 ### Prerequisites
 
 Install `release-plz` CLI tool following the instructions [here](https://release-plz.ieni.dev/docs/usage/installation)
 
-
 ### Release of the Miden Cargo Extension
 
-1. Run `release-plz release-pr` in the repo root folder to create a release PR.
-2. Check and commit edits to the release PR if needed.
-3. Merge the release PR into the main branch.
-4. The CI will automatically run `release-plz release` after the release PR is merged to publish the new versions to crates.io.
+Run the steps outlined above in the `Release Process` section in the repo root folder.
+
+### Release of the Miden SDK
+
+TBD
