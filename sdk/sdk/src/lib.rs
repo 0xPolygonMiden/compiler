@@ -1,4 +1,4 @@
 #![no_std]
 
-pub use miden_sdk_tx_kernel::*;
 pub use miden_stdlib_sys::*;
+pub use miden_tx_kernel_sys::*;

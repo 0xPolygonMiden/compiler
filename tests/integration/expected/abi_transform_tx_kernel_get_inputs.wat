@@ -7,10 +7,10 @@
   (type (;5;) (func (param i32 i32 i32)))
   (type (;6;) (func (param i32 i32)))
   (type (;7;) (func))
-  (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_note_get_inputs (;0;) (type 0)))
+  (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_note_get_inputs (;0;) (type 0)))
   (func $entrypoint (;1;) (type 1) (param i32)
     local.get 0
-    call $miden_sdk_tx_kernel::get_inputs
+    call $miden_tx_kernel_sys::get_inputs
   )
   (func $__rust_alloc (;2;) (type 2) (param i32 i32) (result i32)
     i32.const 1048576
@@ -485,7 +485,7 @@
     global.set $__stack_pointer
     local.get 1
   )
-  (func $miden_sdk_tx_kernel::get_inputs (;8;) (type 1) (param i32)
+  (func $miden_tx_kernel_sys::get_inputs (;8;) (type 1) (param i32)
     (local i32 i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -519,7 +519,7 @@
         unreachable
       end
       local.get 2
-      call $miden_sdk_tx_kernel::externs::extern_note_get_inputs
+      call $miden_tx_kernel_sys::externs::extern_note_get_inputs
       drop
       local.get 0
       i32.const 0

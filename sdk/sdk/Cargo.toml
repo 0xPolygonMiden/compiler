@@ -16,4 +16,4 @@ crate-type = ["rlib"]
 
 [dependencies]
 miden-stdlib-sys = { path = "../stdlib-sys" }
-miden-sdk-tx-kernel = { path = "../tx-kernel" }
+miden-tx-kernel-sys = { path = "../tx-kernel-sys" }

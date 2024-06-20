@@ -5,9 +5,9 @@
   (type (;3;) (func (param i32 f64 f64 i32)))
   (type (;4;) (func (param i32 i32)))
   (type (;5;) (func (param i32 f64 f64 i32) (result f64)))
-  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_add_asset (;0;) (type 0)))
-  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_remove_asset (;1;) (type 0)))
-  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_tx_create_note (;2;) (type 1)))
+  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_add_asset (;0;) (type 0)))
+  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_remove_asset (;1;) (type 0)))
+  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_tx_create_note (;2;) (type 1)))
   (func $receive_asset (;3;) (type 2) (param i32)
     (local i32)
     global.get $__stack_pointer
@@ -17,7 +17,7 @@
     global.set $__stack_pointer
     local.get 1
     local.get 0
-    call $miden_sdk_tx_kernel::add_asset
+    call $miden_tx_kernel_sys::add_asset
     local.get 1
     i32.const 32
     i32.add
@@ -32,19 +32,19 @@
     global.set $__stack_pointer
     local.get 4
     local.get 0
-    call $miden_sdk_tx_kernel::remove_asset
+    call $miden_tx_kernel_sys::remove_asset
     local.get 4
     local.get 1
     local.get 2
     local.get 3
-    call $miden_sdk_tx_kernel::create_note
+    call $miden_tx_kernel_sys::create_note
     drop
     local.get 4
     i32.const 32
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_sdk_tx_kernel::add_asset (;5;) (type 4) (param i32 i32)
+  (func $miden_tx_kernel_sys::add_asset (;5;) (type 4) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -60,7 +60,7 @@
     local.get 1
     f64.load offset=24
     local.get 2
-    call $miden_sdk_tx_kernel::externs::extern_account_add_asset
+    call $miden_tx_kernel_sys::externs::extern_account_add_asset
     local.get 0
     i32.const 24
     i32.add
@@ -94,7 +94,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_sdk_tx_kernel::remove_asset (;6;) (type 4) (param i32 i32)
+  (func $miden_tx_kernel_sys::remove_asset (;6;) (type 4) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -110,7 +110,7 @@
     local.get 1
     f64.load offset=24
     local.get 2
-    call $miden_sdk_tx_kernel::externs::extern_account_remove_asset
+    call $miden_tx_kernel_sys::externs::extern_account_remove_asset
     local.get 0
     i32.const 24
     i32.add
@@ -144,7 +144,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_sdk_tx_kernel::create_note (;7;) (type 5) (param i32 f64 f64 i32) (result f64)
+  (func $miden_tx_kernel_sys::create_note (;7;) (type 5) (param i32 f64 f64 i32) (result f64)
     local.get 0
     f64.load
     local.get 0
@@ -163,7 +163,7 @@
     f64.load offset=16
     local.get 3
     f64.load offset=24
-    call $miden_sdk_tx_kernel::externs::extern_tx_create_note
+    call $miden_tx_kernel_sys::externs::extern_tx_create_note
   )
   (table (;0;) 1 1 funcref)
   (memory (;0;) 16)

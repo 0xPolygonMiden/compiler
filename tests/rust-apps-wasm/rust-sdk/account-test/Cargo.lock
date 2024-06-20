@@ -24,8 +24,8 @@ checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 name = "miden-sdk"
 version = "0.1.0"
 dependencies = [
- "miden-sdk-tx-kernel",
  "miden-stdlib-sys",
+ "miden-tx-kernel-sys",
 ]
 
 [[package]]
@@ -37,15 +37,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-sdk-tx-kernel"
+name = "miden-stdlib-sys"
+version = "0.1.0"
+
+[[package]]
+name = "miden-tx-kernel-sys"
 version = "0.1.0"
 dependencies = [
  "miden-stdlib-sys",
 ]
-
-[[package]]
-name = "miden-stdlib-sys"
-version = "0.1.0"
 
 [[package]]
 name = "wee_alloc"
