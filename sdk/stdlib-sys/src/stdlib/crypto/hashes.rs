@@ -3,7 +3,6 @@
 //! value per element.
 use crate::Felt;
 
-// #[link(wasm_import_module = "miden:prelude/std_crypto_hashes")]
 #[link(wasm_import_module = "std::crypto_hashes")]
 extern "C" {
     /// Computes BLAKE3 1-to-1 hash.

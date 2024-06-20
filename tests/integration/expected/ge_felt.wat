@@ -1,10 +1,10 @@
 (module $ge_felt.wasm
   (type (;0;) (func (param f64 f64) (result i32)))
-  (import "miden:prelude/intrinsics_felt" "ge" (func $miden_prelude::intrinsics::felt::extern_ge (;0;) (type 0)))
+  (import "miden:stdlib/intrinsics_felt" "ge" (func $miden_stdlib_sys::intrinsics::felt::extern_ge (;0;) (type 0)))
   (func $entrypoint (;1;) (type 0) (param f64 f64) (result i32)
     local.get 0
     local.get 1
-    call $miden_prelude::intrinsics::felt::extern_ge
+    call $miden_stdlib_sys::intrinsics::felt::extern_ge
     i32.const 0
     i32.ne
   )

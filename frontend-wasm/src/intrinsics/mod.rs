@@ -15,7 +15,7 @@ fn modules() -> &'static HashSet<&'static str> {
     static MODULES: OnceLock<HashSet<&'static str>> = OnceLock::new();
     MODULES.get_or_init(|| {
         let mut s = HashSet::default();
-        s.insert(felt::PRELUDE_INTRINSICS_FELT_MODULE_NAME);
+        s.insert(felt::INTRINSICS_FELT_MODULE_NAME);
         s
     })
 }
@@ -28,7 +28,7 @@ pub fn convert_intrinsics_call(
     span: SourceSpan,
 ) -> Vec<Value> {
     match func_id.module.as_symbol().as_str() {
-        felt::PRELUDE_INTRINSICS_FELT_MODULE_NAME => {
+        felt::INTRINSICS_FELT_MODULE_NAME => {
             felt::convert_felt_intrinsics(func_id, args, builder, span)
         }
         _ => panic!("No intrinsics found for {}", func_id),

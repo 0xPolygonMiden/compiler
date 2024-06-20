@@ -360,10 +360,9 @@ impl CompilerTest {
         }
     }
 
-    /// Set the Rust source code to compile with `miden-prelude` (stdlib + intrinsics)
-    pub fn rust_fn_body_with_prelude(name: &str, rust_source: &str, is_build_std: bool) -> Self {
-        let miden_prelude_path_str = prelude_crate_path();
-        // dbg!(&miden_prelude_path);
+    /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
+    pub fn rust_fn_body_with_stdlib_sys(name: &str, rust_source: &str, is_build_std: bool) -> Self {
+        let miden_stdlib_sys_path_str = stdlib_sys_crate_path();
         let proj = project(name)
             .file(
                 "Cargo.toml",
@@ -377,7 +376,7 @@ impl CompilerTest {
 
                 [dependencies]
                 wee_alloc = {{ version = "0.4.5", default-features = false}}
-                miden-prelude = {{ path = "{miden_prelude_path_str}" }}
+                miden-stdlib-sys = {{ path = "{miden_stdlib_sys_path_str}" }}
 
                 [lib]
                 crate-type = ["cdylib"]
@@ -406,8 +405,8 @@ impl CompilerTest {
                 #[global_allocator]
                 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-                extern crate miden_prelude;
-                use miden_prelude::*;
+                extern crate miden_stdlib_sys;
+                use miden_stdlib_sys::*;
 
                 #[no_mangle]
                 pub extern "C" fn entrypoint{}
@@ -420,12 +419,11 @@ impl CompilerTest {
         Self::rust_source_cargo_lib(proj.root(), is_build_std, Some("entrypoint".to_string()))
     }
 
-    /// Set the Rust source code to compile with `miden-prelude` (stdlib + intrinsics)
+    /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
     pub fn rust_fn_body_with_sdk(name: &str, rust_source: &str, is_build_std: bool) -> Self {
         let cwd = std::env::current_dir().unwrap();
         let miden_sdk_path = cwd.parent().unwrap().parent().unwrap().join("sdk").join("sdk");
         let miden_sdk_path_str = miden_sdk_path.to_str().unwrap();
-        // dbg!(&miden_prelude_path);
         let proj = project(name)
             .file(
                 "Cargo.toml",
@@ -666,14 +664,14 @@ fn masm_module_path(user_ns_name: &str, module: &midenc_codegen_masm::Module) ->
     }
 }
 
-fn prelude_crate_path() -> String {
+fn stdlib_sys_crate_path() -> String {
     let cwd = std::env::current_dir().unwrap();
     cwd.parent()
         .unwrap()
         .parent()
         .unwrap()
         .join("sdk")
-        .join("prelude")
+        .join("stdlib-sys")
         .to_str()
         .unwrap()
         .to_string()

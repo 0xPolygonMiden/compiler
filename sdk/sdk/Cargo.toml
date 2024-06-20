@@ -15,5 +15,5 @@ edition.workspace = true
 crate-type = ["rlib"]
 
 [dependencies]
-miden-prelude = { path = "../prelude" }
+miden-stdlib-sys = { path = "../stdlib-sys" }
 miden-sdk-tx-kernel = { path = "../tx-kernel" }

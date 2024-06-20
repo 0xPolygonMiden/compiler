@@ -1,10 +1,10 @@
 (module $div_felt.wasm
   (type (;0;) (func (param f64 f64) (result f64)))
-  (import "miden:prelude/intrinsics_felt" "div" (func $miden_prelude::intrinsics::felt::extern_div (;0;) (type 0)))
+  (import "miden:stdlib/intrinsics_felt" "div" (func $miden_stdlib_sys::intrinsics::felt::extern_div (;0;) (type 0)))
   (func $entrypoint (;1;) (type 0) (param f64 f64) (result f64)
     local.get 0
     local.get 1
-    call $miden_prelude::intrinsics::felt::extern_div
+    call $miden_stdlib_sys::intrinsics::felt::extern_div
   )
   (table (;0;) 1 1 funcref)
   (memory (;0;) 16)

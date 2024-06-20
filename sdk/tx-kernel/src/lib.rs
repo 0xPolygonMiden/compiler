@@ -10,7 +10,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 
-use miden_prelude::Felt;
+use miden_stdlib_sys::Felt;
 
 /// Get the account ID of the currently executing note account.
 pub fn get_id() -> AccountId {

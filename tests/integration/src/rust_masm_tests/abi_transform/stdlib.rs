@@ -14,11 +14,11 @@ use crate::{execute_vm, felt_conversion::TestFelt, CompilerTest};
 #[ignore = "until the VM stack overflow during the MASM generation is fixed"]
 #[test]
 fn test_blake3_hash() {
-    let main_fn = "(a: [u8; 32], b: [u8; 32]) -> [u8; 32] { miden_prelude::blake3_hash_2to1(a, b) \
-                   }"
-    .to_string();
+    let main_fn = "(a: [u8; 32], b: [u8; 32]) -> [u8; 32] { miden_stdlib_sys::blake3_hash_2to1(a, \
+                   b) }"
+        .to_string();
     let artifact_name = "abi_transform_stdlib_blake3_hash";
-    let mut test = CompilerTest::rust_fn_body_with_prelude(artifact_name, &main_fn, true);
+    let mut test = CompilerTest::rust_fn_body_with_stdlib_sys(artifact_name, &main_fn, true);
     // Test expected compilation artifacts
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);

@@ -1,4 +1,4 @@
-use miden_prelude::{Felt, Word};
+use miden_stdlib_sys::{Felt, Word};
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]

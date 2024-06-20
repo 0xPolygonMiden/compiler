@@ -40,6 +40,6 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
             ],
         ),
     );
-    m.insert("miden:prelude/std_mem", funcs);
+    m.insert("miden:stdlib/std_mem", funcs);
     m
 }

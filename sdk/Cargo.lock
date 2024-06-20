@@ -3,20 +3,20 @@
 version = 3
 
 [[package]]
-name = "miden-prelude"
-version = "0.1.0"
-
-[[package]]
 name = "miden-sdk"
 version = "0.1.0"
 dependencies = [
- "miden-prelude",
  "miden-sdk-tx-kernel",
+ "miden-stdlib-sys",
 ]
 
 [[package]]
 name = "miden-sdk-tx-kernel"
 version = "0.1.0"
 dependencies = [
- "miden-prelude",
+ "miden-stdlib-sys",
 ]
+
+[[package]]
+name = "miden-stdlib-sys"
+version = "0.1.0"

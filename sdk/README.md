@@ -4,11 +4,11 @@ The Miden SDK is a set of Rust crates that provide libraries for developing Mide
 
 The SDK is composed of the following crates:
 
-## Miden Prelude
+## Miden Standard Library
 
-The `miden-prelude` crate provides a `Felt` type that represents field element in the Miden VM and a standard library for developing Miden programs.
+The `miden-stdlib-sys` crate provides a `Felt` type that represents field element in the Miden VM and a standard library for developing Miden programs.
 
-See [README](prelude/README.md)
+See [README](stdlib-sys/README.md)
 
 ## Miden SDK
 

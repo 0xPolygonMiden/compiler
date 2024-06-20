@@ -1,10 +1,10 @@
 (module $lt_felt.wasm
   (type (;0;) (func (param f64 f64) (result i32)))
-  (import "miden:prelude/intrinsics_felt" "lt" (func $miden_prelude::intrinsics::felt::extern_lt (;0;) (type 0)))
+  (import "miden:stdlib/intrinsics_felt" "lt" (func $miden_stdlib_sys::intrinsics::felt::extern_lt (;0;) (type 0)))
   (func $entrypoint (;1;) (type 0) (param f64 f64) (result i32)
     local.get 1
     local.get 0
-    call $miden_prelude::intrinsics::felt::extern_lt
+    call $miden_stdlib_sys::intrinsics::felt::extern_lt
     i32.const 0
     i32.ne
   )
