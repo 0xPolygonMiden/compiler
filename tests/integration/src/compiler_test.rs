@@ -33,6 +33,9 @@ pub enum CompilerTestSource {
     RustCargoComponent {
         artifact_name: String,
     },
+    Wasm {
+        artifact_name: String,
+    },
 }
 
 impl CompilerTestSource {
@@ -497,6 +500,27 @@ impl CompilerTest {
         Self::rust_source_cargo_lib(proj.root(), name, is_build_std, Some("entrypoint".to_string()))
     }
 
+    /// Set the Wasm core module to compile
+    pub fn wasm_module(wasm_bytes: Vec<u8>) -> Self {
+        let artifact_name = "wasm_smith";
+        let input_file = InputFile::from_bytes(
+            wasm_bytes,
+            miden_diagnostics::FileName::Virtual(artifact_name.into()),
+        )
+        .unwrap();
+        Self {
+            config: WasmTranslationConfig::default(),
+            session: default_session(input_file),
+            source: CompilerTestSource::Wasm {
+                artifact_name: artifact_name.to_string(),
+            },
+            entrypoint: None,
+            hir: None,
+            masm_program: None,
+            masm_src: None,
+        }
+    }
+
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&self, expected_wat_file: expect_test::ExpectFile) {
         let wasm_bytes = self.wasm_bytes();
@@ -770,7 +794,7 @@ pub(crate) fn demangle(name: &str) -> String {
     String::from_utf8(demangled).unwrap()
 }
 
-fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
+pub fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
     let mut wasm_printer = wasmprinter::Printer::new();
     // disable printing of the "producers" section because it contains a rustc version
     // to not brake tests when rustc is updated
