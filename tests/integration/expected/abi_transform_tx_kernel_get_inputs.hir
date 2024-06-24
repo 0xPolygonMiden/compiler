@@ -1,6 +1,6 @@
 (component 
     ;; Component Imports
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param i32) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
 
     ;; Modules
     (module #abi_transform_tx_kernel_get_inputs
@@ -827,7 +827,7 @@
 
         ;; Imports
         (func (import #miden:tx_kernel/note #get_inputs)
-              (param felt) (result i32 felt))
+              (param i32) (result i32 felt))
     )
 
 )

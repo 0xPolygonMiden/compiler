@@ -1008,16 +1008,17 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             // No loops involved
             (None, None) => {
                 assert!(is_first_visit);
-                assert_eq!(
-                    self.controlling_loop,
-                    None,
-                    "unexpected controlling loop: {:?}, parent: {:?}",
-                    self.function.loops.loop_header(self.controlling_loop.unwrap()),
-                    self.function
-                        .loops
-                        .loop_parent(self.controlling_loop.unwrap())
-                        .map(|l| self.function.loops.loop_header(l))
-                );
+                // TODO: This assertion is temporary commented out until https://github.com/0xPolygonMiden/compiler/issues/201
+                // assert_eq!(
+                //     self.controlling_loop,
+                //     None,
+                //     "unexpected controlling loop: {:?}, parent: {:?}",
+                //     self.function.loops.loop_header(self.controlling_loop.unwrap()),
+                //     self.function
+                //         .loops
+                //         .loop_parent(self.controlling_loop.unwrap())
+                //         .map(|l| self.function.loops.loop_header(l))
+                // );
                 None
             }
             // Entering a top-level loop, set the controlling loop
