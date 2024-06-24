@@ -23,7 +23,7 @@ fn test_blake3_hash() {
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
-    let vm_program = test.vm_masm_program();
+    let vm_program = test.masm_program();
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     let res = TestRunner::default().run(&any::<[u8; 64]>(), move |ibytes| {

@@ -13,7 +13,7 @@ fn fib() {
     test.expect_ir(expect_file!["../../expected/fib.hir"]);
     test.expect_masm(expect_file!["../../expected/fib.masm"]);
     // let ir_masm = test.ir_masm_program();
-    let vm_program = &test.vm_masm_program();
+    let vm_program = &test.masm_program();
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     TestRunner::default()

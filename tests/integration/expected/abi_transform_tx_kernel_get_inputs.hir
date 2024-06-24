@@ -1,7 +1,4 @@
 (component 
-    ;; Component Imports
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param i32) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
-
     ;; Modules
     (module #abi_transform_tx_kernel_get_inputs
         ;; Constants
@@ -676,7 +673,7 @@
                 (unreachable))
 
             (block 3
-                (let [(v28 i32) (v29 felt)] (call (#miden:tx_kernel/note #get_inputs) v13))
+                (let [(v28 i32) (v29 felt)] (call (#miden::note #get_inputs) v13))
                 (let (v30 i32) (const.i32 0))
                 (let (v31 u32) (cast v0))
                 (let (v32 u32) (add.checked v31 8))
@@ -826,8 +823,7 @@
         )
 
         ;; Imports
-        (func (import #miden:tx_kernel/note #get_inputs)
-              (param i32) (result i32 felt))
+        (func (import #miden::note #get_inputs) (param i32) (result i32 felt))
     )
 
 )

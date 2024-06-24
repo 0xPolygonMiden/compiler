@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use miden_core::Felt;
 use proptest::{prop_assert_eq, test_runner::TestCaseError};
 
@@ -16,7 +14,6 @@ mod wit_sdk;
 pub fn run_masm_vs_rust<T>(
     rust_out: T,
     vm_program: &miden_core::Program,
-    _ir_masm: Arc<midenc_codegen_masm::Program>,
     args: &[Felt],
 ) -> Result<(), TestCaseError>
 where

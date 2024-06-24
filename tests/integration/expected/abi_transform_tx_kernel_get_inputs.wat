@@ -7,7 +7,7 @@
   (type (;5;) (func (param i32 i32 i32)))
   (type (;6;) (func (param i32 i32)))
   (type (;7;) (func))
-  (import "miden:tx_kernel/note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_note_get_inputs (;0;) (type 0)))
+  (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_note_get_inputs (;0;) (type 0)))
   (func $entrypoint (;1;) (type 1) (param i32)
     local.get 0
     call $miden_sdk_tx_kernel::get_inputs
