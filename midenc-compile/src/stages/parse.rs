@@ -44,7 +44,7 @@ impl Stage for ParseStage {
                     input,
                     session,
                     &WasmTranslationConfig {
-                        source_name: name.to_string().into(),
+                        source_name: name.as_str().unwrap().to_string().into(),
                         ..Default::default()
                     },
                 ),
@@ -52,7 +52,7 @@ impl Stage for ParseStage {
                     input,
                     session,
                     &WasmTranslationConfig {
-                        source_name: name.to_string().into(),
+                        source_name: name.as_str().unwrap().to_string().into(),
                         ..Default::default()
                     },
                 ),
