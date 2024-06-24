@@ -2,9 +2,20 @@ use expect_test::expect_file;
 
 use crate::CompilerTest;
 
+#[allow(unused)]
+fn setup_log() {
+    use log::LevelFilter;
+    let _ = env_logger::builder()
+        .filter_level(LevelFilter::Trace)
+        .format_timestamp(None)
+        .is_test(true)
+        .try_init();
+}
+
 #[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/200 is fixed"]
 #[test]
 fn test_get_inputs() {
+    // setup_log();
     let main_fn = "() -> Vec<Felt> {{ get_inputs() }}";
     let artifact_name = "abi_transform_tx_kernel_get_inputs";
     let mut test = CompilerTest::rust_fn_body_with_sdk(artifact_name, main_fn, true);

@@ -40,3 +40,5 @@ proptest.workspace = true
 miden-core.workspace = true
 concat-idents = "1.1"
 blake3.workspace = true
+log.workspace = true
+env_logger.workspace = true
