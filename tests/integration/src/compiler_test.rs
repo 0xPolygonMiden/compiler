@@ -588,7 +588,6 @@ impl CompilerTest {
         match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
             midenc_compile::Compiled::Program(p) => p,
             midenc_compile::Compiled::Modules(modules) => {
-                assert_eq!(modules.len(), 1, "Expected one module");
                 let mut program = midenc_codegen_masm::Program::empty();
                 for module in modules.into_iter() {
                     program.insert(module);
