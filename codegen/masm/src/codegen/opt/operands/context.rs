@@ -21,8 +21,6 @@ impl SolverContext {
         constraints: &[Constraint],
         stack: &crate::codegen::OperandStack,
     ) -> Result<Self, SolverError> {
-        use std::collections::btree_map::Entry;
-
         // Compute the expected output on the stack, as well as alias/copy information
         let mut stack = Stack::from(stack);
         let mut expected_output = Stack::default();
@@ -35,9 +33,9 @@ impl SolverContext {
                 Constraint::Move => {
                     expected_output.push(value);
                 }
-                // If we observe a value with copy semantics, then it is
-                // always referencing an alias, because the original would
-                // need to be preserved
+                // If we observe a value with copy semantics, then the expected
+                // output is always an alias, because the original would need to
+                // be preserved
                 Constraint::Copy => {
                     expected_output.push(copies.push(value));
                 }
@@ -45,26 +43,13 @@ impl SolverContext {
         }
 
         // Rename multiple occurrences of the same value on the operand stack, if present
-        let mut renamed = BTreeMap::<ValueOrAlias, u8>::default();
+        let mut dupes = CopyInfo::default();
         for operand in stack.iter_mut().rev() {
-            match renamed.entry(operand.value) {
-                Entry::Vacant(entry) => {
-                    entry.insert(0);
-                }
-                Entry::Occupied(mut entry) => {
-                    let next_id = entry.get_mut();
-                    *next_id += 1;
-                    operand.value.set_alias(NonZeroU8::new(*next_id).unwrap());
-                }
-            }
+            operand.value = dupes.push_if_duplicate(operand.value);
         }
 
         // Determine if the stack is already in the desired order
-        //
-        // If copies are required we can't consider the stack in order even if
-        // the operands we want are in the desired order, because we must make
-        // copies of them anyway.
-        let requires_copies = !copies.is_empty();
+        let requires_copies = copies.copies_required();
         let is_solved = !requires_copies
             && expected_output.iter().rev().all(|op| &stack[op.pos as usize] == op);
         if is_solved {
@@ -131,24 +116,59 @@ impl CopyInfo {
     }
 
     /// Push a new copy of `value`, returning an alias of that value
+    ///
+    /// NOTE: It is expected that `value` is not an alias.
     pub fn push(&mut self, value: ValueOrAlias) -> ValueOrAlias {
         use std::collections::btree_map::Entry;
+
+        assert!(!value.is_alias());
 
         self.num_copies += 1;
         match self.copies.entry(value) {
             Entry::Vacant(entry) => {
-                entry.insert(0);
+                entry.insert(1);
                 value.copy(unsafe { NonZeroU8::new_unchecked(1) })
             }
             Entry::Occupied(mut entry) => {
                 let next_id = entry.get_mut();
                 *next_id += 1;
-                value.copy(NonZeroU8::new(*next_id).unwrap())
+                value.copy(unsafe { NonZeroU8::new_unchecked(*next_id) })
             }
         }
     }
 
+    /// Push a copy of `value`, but only if `value` has already been seen
+    /// at least once, i.e. `value` is a duplicate.
+    ///
+    /// NOTE: It is expected that `value` is not an alias.
+    pub fn push_if_duplicate(&mut self, value: ValueOrAlias) -> ValueOrAlias {
+        use std::collections::btree_map::Entry;
+
+        assert!(!value.is_alias());
+
+        match self.copies.entry(value) {
+            // `value` is not a duplicate
+            Entry::Vacant(entry) => {
+                entry.insert(0);
+                value
+            }
+            // `value` is a duplicate, record it as such
+            Entry::Occupied(mut entry) => {
+                self.num_copies += 1;
+                let next_id = entry.get_mut();
+                *next_id += 1;
+                value.copy(unsafe { NonZeroU8::new_unchecked(*next_id) })
+            }
+        }
+    }
+
+    /// Returns true if `value` has at least one copy
     pub fn has_copies(&self, value: &ValueOrAlias) -> bool {
-        self.copies.contains_key(value)
+        self.copies.get(value).map(|count| *count > 0).unwrap_or(false)
+    }
+
+    /// Returns true if any of the values seen so far have copies
+    pub fn copies_required(&self) -> bool {
+        self.copies.values().any(|count| *count > 0)
     }
 }
