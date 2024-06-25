@@ -64,11 +64,11 @@ thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", b
 toml = { version = "0.5", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.1"
-# 0ac54125 is the latest commit in 'next' that includes the assembler refactoring
-miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
-miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
-miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
-miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "0ac54125d5bd43160566736b2be3f5818fd84f69" }
+# ddf536cd7157053f0940d7be41998b2a6546b4c1 is the latest commit in 'next' that includes the `if.true` empty blocks support
+miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "ddf536cd7157053f0940d7be41998b2a6546b4c1" }
+miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "ddf536cd7157053f0940d7be41998b2a6546b4c1" }
+miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "ddf536cd7157053f0940d7be41998b2a6546b4c1" }
+miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "ddf536cd7157053f0940d7be41998b2a6546b4c1" }
 midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir= { path = "hir" }

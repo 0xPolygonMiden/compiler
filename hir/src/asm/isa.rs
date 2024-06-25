@@ -824,6 +824,8 @@ pub enum MasmOp {
     Emit(u32),
     /// Emit a trace event with the given code
     Trace(u32),
+    /// No operation
+    Nop,
 }
 
 macro_rules! unwrap_imm {
@@ -1099,7 +1101,8 @@ impl MasmOp {
             | Self::DebugFrame
             | Self::DebugFrameAt(_)
             | Self::DebugFrameRange(..)
-            | Self::Breakpoint => 0,
+            | Self::Breakpoint
+            | Self::Nop => 0,
         }
     }
 
@@ -1404,6 +1407,18 @@ impl MasmOp {
             Instruction::Debug(DebugOptions::LocalInterval(start, end)) => {
                 Self::DebugFrameRange(unwrap_u16!(start), unwrap_u16!(end))
             }
+            Instruction::Nop => Self::Nop,
+            Instruction::LtImm(imm) => Self::LtImm(unwrap_imm!(imm)),
+            Instruction::LteImm(imm) => Self::LteImm(unwrap_imm!(imm)),
+            Instruction::GtImm(imm) => Self::GtImm(unwrap_imm!(imm)),
+            Instruction::GteImm(imm) => Self::GteImm(unwrap_imm!(imm)),
+            Instruction::U32LtImm(_) => todo!(),
+            Instruction::U32LteImm(_) => todo!(),
+            Instruction::U32GtImm(_) => todo!(),
+            Instruction::U32GteImm(_) => todo!(),
+            Instruction::U32MinImm(_) => todo!(),
+            Instruction::U32MaxImm(_) => todo!(),
+            Instruction::MTreeVerifyWithError(_) => todo!(),
         };
         smallvec![op]
     }
@@ -1750,6 +1765,7 @@ impl MasmOp {
             }
             Self::Emit(ev) => Instruction::Emit(ev.into()),
             Self::Trace(ev) => Instruction::Trace(ev.into()),
+            Self::Nop => Instruction::Nop,
         };
         smallvec![inst]
     }
@@ -1924,6 +1940,7 @@ impl fmt::Display for MasmOp {
             }
             Self::Emit(_) => f.write_str("emit"),
             Self::Trace(_) => f.write_str("trace"),
+            Self::Nop => f.write_str("nop"),
         }
     }
 }
