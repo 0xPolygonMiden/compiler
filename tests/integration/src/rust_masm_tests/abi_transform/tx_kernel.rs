@@ -24,9 +24,6 @@ fn test_get_inputs() {
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
-    // TODO: use.miden::note instead of use.miden_tx_kernel_note. And then exec.note::get_inputs
-    // OR: `use.miden::note->miden_tx_kernel_note` and then
-    // `exec.miden_tx_kernel_note::get_inputs`
     let vm_program = test.masm_program();
 
     let _vm_out = execute_vm(&vm_program, &[]);

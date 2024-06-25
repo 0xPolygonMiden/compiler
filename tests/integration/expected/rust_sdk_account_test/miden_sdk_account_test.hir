@@ -1,13 +1,10 @@
 (component 
     ;; Component Imports
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #add_asset)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #remove_asset)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt)))) (#miden:prelude/std_crypto_dsa #rpo_falcon512_verify)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt felt felt felt felt felt)))) (#miden:prelude/std_mem #pipe_double_words_to_memory)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (result felt felt felt felt felt)))) (#miden:prelude/std_mem #pipe_words_to_memory)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden:tx_kernel/account #add_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (result felt)))) (#miden:tx_kernel/account #get_id)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden:tx_kernel/account #remove_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param i32) (result i32 felt)))) (#miden:tx_kernel/note #get_inputs)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt)))) (#miden:tx_kernel/tx #create_note)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt)))) (#std::crypto_hashes #blake3_hash_2to1)
 
     ;; Modules
@@ -1872,7 +1869,7 @@
         (func (export #miden_sdk_tx_kernel::get_id)
               (result felt)
             (block 0
-                (let (v1 felt) (call (#miden:tx_kernel/account #get_id)))
+                (let (v1 felt) (call (#miden::account #get_id)))
                 (br (block 1 v1)))
 
             (block 1 (param v0 felt)
@@ -1917,7 +1914,7 @@
                 (unreachable))
 
             (block 3
-                (let [(v28 i32) (v29 felt)] (call (#miden:tx_kernel/note #get_inputs) v13))
+                (let [(v28 i32) (v29 felt)] (call (#miden::note #get_inputs) v13))
                 (let (v30 i32) (const.i32 0))
                 (let (v31 u32) (cast v0))
                 (let (v32 u32) (add.checked v31 8))
@@ -1971,7 +1968,7 @@
                 (let (v19 u32) (add.checked v18 24))
                 (let (v20 (ptr felt)) (inttoptr v19))
                 (let (v21 felt) (load v20))
-                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden:tx_kernel/account #add_asset) v9 v13 v17 v21))
+                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden::account #add_asset) v9 v13 v17 v21))
                 (let (v26 u32) (cast v5))
                 (let (v27 (ptr felt)) (inttoptr v26))
                 (store v27 v22)
@@ -2054,7 +2051,7 @@
                 (let (v19 u32) (add.checked v18 24))
                 (let (v20 (ptr felt)) (inttoptr v19))
                 (let (v21 felt) (load v20))
-                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden:tx_kernel/account #remove_asset) v9 v13 v17 v21))
+                (let [(v22 felt) (v23 felt) (v24 felt) (v25 felt)] (call (#miden::account #remove_asset) v9 v13 v17 v21))
                 (let (v26 u32) (cast v5))
                 (let (v27 (ptr felt)) (inttoptr v26))
                 (store v27 v22)
@@ -2150,7 +2147,7 @@
                 (let (v32 u32) (add.checked v31 24))
                 (let (v33 (ptr felt)) (inttoptr v32))
                 (let (v34 felt) (load v33))
-                (let (v35 felt) (call (#miden:tx_kernel/tx #create_note) v7 v11 v15 v19 v1 v2 v22 v26 v30 v34))
+                (let (v35 felt) (call (#miden::tx #create_note) v7 v11 v15 v19 v1 v2 v22 v26 v30 v34))
                 (br (block 1 v35)))
 
             (block 1 (param v4 felt)
@@ -2757,21 +2754,20 @@
         )
 
         ;; Imports
+        (func (import #miden::account #add_asset)
+              (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
+        (func (import #miden::account #get_id) (result felt))
+        (func (import #miden::account #remove_asset)
+              (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
+        (func (import #miden::note #get_inputs) (param i32) (result i32 felt))
+        (func (import #miden::tx #create_note)
+              (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
         (func (import #miden:prelude/std_crypto_dsa #rpo_falcon512_verify)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt))
         (func (import #miden:prelude/std_mem #pipe_double_words_to_memory)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt felt felt felt felt felt))
         (func (import #miden:prelude/std_mem #pipe_words_to_memory)
               (param felt) (param felt) (result felt felt felt felt felt))
-        (func (import #miden:tx_kernel/account #add_asset)
-              (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
-        (func (import #miden:tx_kernel/account #get_id) (result felt))
-        (func (import #miden:tx_kernel/account #remove_asset)
-              (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
-        (func (import #miden:tx_kernel/note #get_inputs)
-              (param i32) (result i32 felt))
-        (func (import #miden:tx_kernel/tx #create_note)
-              (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
         (func (import #std::crypto_hashes #blake3_hash_1to1)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt))
         (func (import #std::crypto_hashes #blake3_hash_2to1)

@@ -5,9 +5,9 @@
   (type (;3;) (func (param i32 f64 f64 i32)))
   (type (;4;) (func (param i32 i32)))
   (type (;5;) (func (param i32 f64 f64 i32) (result f64)))
-  (import "miden:tx_kernel/account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_add_asset (;0;) (type 0)))
-  (import "miden:tx_kernel/account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_remove_asset (;1;) (type 0)))
-  (import "miden:tx_kernel/tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_tx_create_note (;2;) (type 1)))
+  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_add_asset (;0;) (type 0)))
+  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_remove_asset (;1;) (type 0)))
+  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_tx_create_note (;2;) (type 1)))
   (func $receive_asset (;3;) (type 2) (param i32)
     (local i32)
     global.get $__stack_pointer

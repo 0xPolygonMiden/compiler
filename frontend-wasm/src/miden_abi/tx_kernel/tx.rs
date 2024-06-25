@@ -12,6 +12,6 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
         CREATE_NOTE,
         FunctionType::new([Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt, Felt], [Felt]),
     );
-    m.insert("miden:tx_kernel/tx", note);
+    m.insert("miden::tx", note);
     m
 }
