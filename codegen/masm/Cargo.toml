@@ -1,6 +1,6 @@
 [package]
 name = "midenc-codegen-masm"
-description = "Code generation for Miden Assembly"
+description = "Miden Assembly backend for the Miden compiler"
 version = "0.0.0"
 rust-version.workspace = true
 authors.workspace = true

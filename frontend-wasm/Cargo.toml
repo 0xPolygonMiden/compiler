@@ -1,6 +1,6 @@
 [package]
 name = "midenc-frontend-wasm"
-description = "Build Miden HIR from Wasm"
+description = "Wasm frontend for the Miden compiler"
 version = "0.0.0"
 rust-version.workspace = true
 authors.workspace = true
