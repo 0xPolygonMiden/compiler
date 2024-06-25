@@ -2138,7 +2138,8 @@ fn apply_op_stack_effects(
         | MasmOp::DebugMemoryRange(..)
         | MasmOp::DebugFrame
         | MasmOp::DebugFrameAt(_)
-        | MasmOp::DebugFrameRange(..) => (),
+        | MasmOp::DebugFrameRange(..)
+        | MasmOp::Nop => (),
     }
 }
 

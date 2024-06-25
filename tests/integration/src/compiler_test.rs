@@ -609,7 +609,7 @@ fn masm_prog_from_modules(
     }
     if let Some(entrypoint) = entrypoint {
         let prog_source = masm_prog_source(user_ns_name, entrypoint);
-        assembler.assemble(prog_source)
+        assembler.assemble_program(prog_source)
     } else {
         todo!()
     }

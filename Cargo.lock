@@ -2613,8 +2613,8 @@ dependencies = [
 
 [[package]]
 name = "miden-air"
-version = "0.8.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=0ac54125d5bd43160566736b2be3f5818fd84f69#0ac54125d5bd43160566736b2be3f5818fd84f69"
+version = "0.9.2"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=ddf536cd7157053f0940d7be41998b2a6546b4c1#ddf536cd7157053f0940d7be41998b2a6546b4c1"
 dependencies = [
  "miden-core",
  "winter-air",
@@ -2623,8 +2623,8 @@ dependencies = [
 
 [[package]]
 name = "miden-assembly"
-version = "0.8.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=0ac54125d5bd43160566736b2be3f5818fd84f69#0ac54125d5bd43160566736b2be3f5818fd84f69"
+version = "0.9.2"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=ddf536cd7157053f0940d7be41998b2a6546b4c1#ddf536cd7157053f0940d7be41998b2a6546b4c1"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -2640,8 +2640,8 @@ dependencies = [
 
 [[package]]
 name = "miden-core"
-version = "0.8.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=0ac54125d5bd43160566736b2be3f5818fd84f69#0ac54125d5bd43160566736b2be3f5818fd84f69"
+version = "0.9.1"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=ddf536cd7157053f0940d7be41998b2a6546b4c1#ddf536cd7157053f0940d7be41998b2a6546b4c1"
 dependencies = [
  "miden-crypto",
  "miden-formatting",
@@ -2653,8 +2653,7 @@ dependencies = [
 [[package]]
 name = "miden-crypto"
 version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40dbd2701d7a0dd2ee9bb429388c21145a83e3228144ed086dfc04d676b8bc3a"
+source = "git+https://github.com/0xPolygonMiden/crypto?branch=next#b06cfa3c035ada8122a405a72d2e4b2ad1a89b47"
 dependencies = [
  "blake3",
  "cc",
@@ -2755,8 +2754,8 @@ dependencies = [
 
 [[package]]
 name = "miden-processor"
-version = "0.8.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=0ac54125d5bd43160566736b2be3f5818fd84f69#0ac54125d5bd43160566736b2be3f5818fd84f69"
+version = "0.9.2"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=ddf536cd7157053f0940d7be41998b2a6546b4c1#ddf536cd7157053f0940d7be41998b2a6546b4c1"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -2766,8 +2765,8 @@ dependencies = [
 
 [[package]]
 name = "miden-stdlib"
-version = "0.8.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=0ac54125d5bd43160566736b2be3f5818fd84f69#0ac54125d5bd43160566736b2be3f5818fd84f69"
+version = "0.9.2"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=ddf536cd7157053f0940d7be41998b2a6546b4c1#ddf536cd7157053f0940d7be41998b2a6546b4c1"
 dependencies = [
  "miden-assembly",
 ]
@@ -5689,9 +5688,9 @@ dependencies = [
 
 [[package]]
 name = "winter-air"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07390d3217bdd6410c1ef43f3d06510d3a424e7259b371fccbc7cd79a9c00a15"
+checksum = "b72f12b88ebb060b52c0e9aece9bb64a9fc38daf7ba689dd5ce63271b456c883"
 dependencies = [
  "libm",
  "winter-crypto",
@@ -5702,9 +5701,9 @@ dependencies = [
 
 [[package]]
 name = "winter-crypto"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aea508aa819e934c837f24bb706e69d890b9be2db82da39cde887e6f0a37246"
+checksum = "00fbb724d2d9fbfd3aa16ea27f5e461d4fe1d74b0c9e0ed1bf79e9e2a955f4d5"
 dependencies = [
  "blake3",
  "sha3",
@@ -5714,9 +5713,9 @@ dependencies = [
 
 [[package]]
 name = "winter-fri"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "660f47c5c9f5872940ac07a724b1df426590dcffad26776e0528466f2e3095f8"
+checksum = "3ab6077cf4c23c0411f591f4ba29378e27f26acb8cef3c51cadd93daaf6080b3"
 dependencies = [
  "winter-crypto",
  "winter-math",
@@ -5725,32 +5724,44 @@ dependencies = [
 
 [[package]]
 name = "winter-math"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0c91111b368b08c5a76009514e9b6d26af41fbb28604ea77a249282323b64d5"
+checksum = "004f85bb051ce986ec0b9a2bd90aaf81b83e3c67464becfdf7db31f14c1019ba"
 dependencies = [
  "winter-utils",
 ]
 
 [[package]]
-name = "winter-prover"
-version = "0.8.3"
+name = "winter-maybe-async"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "170c1ef487df609625580156ea0350c500aeabb3f429dc88cfe800c4b7893edf"
+checksum = "7ce0f4161cdde50de809b3869c1cb083a09e92e949428ea28f04c0d64045875c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
+name = "winter-prover"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f17e3dbae97050f58e01ed4f12906e247841575a0518632e052941a1c37468df"
 dependencies = [
  "tracing",
  "winter-air",
  "winter-crypto",
  "winter-fri",
  "winter-math",
+ "winter-maybe-async",
  "winter-utils",
 ]
 
 [[package]]
 name = "winter-utils"
-version = "0.8.4"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab6efccf6efa6fd0a80784f3894bc372ada67cc30d9c017fc907d4c0cdce86e7"
+checksum = "0568612a95bcae3c94fb14da2686f8279ca77723dbdf1e97cf3673798faf6485"
 
 [[package]]
 name = "wit-bindgen-core"
