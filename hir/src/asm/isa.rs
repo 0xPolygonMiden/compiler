@@ -385,6 +385,16 @@ pub enum MasmOp {
     /// [V, d, i, R] => [V, d, i, R]
     /// ```
     MtreeVerify,
+    /// Verifies that a Merkle tree with root `R` opens to node `V` at depth `d` and index `i`.
+    ///
+    /// The Merkle tree with root `R` must be present in the advice provider or the operation
+    /// fails.
+    ///
+    /// ```ignore
+    /// [V, d, i, R] => [V, d, i, R]
+    /// ```
+    /// Raise the given error code if the verification fails
+    MtreeVerifyWithError(u32),
     /// Performs FRI layer folding by a factor of 4 for FRI protocol executed in a degree 2
     /// extension of the base field. Additionally, performs several computations which simplify
     /// FRI verification procedure.
@@ -782,26 +792,38 @@ pub enum MasmOp {
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Lt,
+    /// Same as above, but `b` is provided by the immediate
+    U32LtImm(u32),
     /// Pops `b, a` from the stack, and places 1 on the stack if `a <= b`, else 0
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Lte,
+    /// Same as above, but `b` is provided by the immediate
+    U32LteImm(u32),
     /// Pops `b, a` from the stack, and places 1 on the stack if `a > b`, else 0
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Gt,
+    /// Same as above, but `b` is provided by the immediate
+    U32GtImm(u32),
     /// Pops `b, a` from the stack, and places 1 on the stack if `a >= b`, else 0
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Gte,
+    /// Same as above, but `b` is provided by the immediate
+    U32GteImm(u32),
     /// Pops `b, a` from the stack, and places `a` back on the stack if `a < b`, else `b`
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Min,
+    /// Same as above, but `b` is provided by the immediate
+    U32MinImm(u32),
     /// Pops `b, a` from the stack, and places `a` back on the stack if `a > b`, else `b`
     ///
     /// This operation is unchecked, so the result is undefined if the operands are not valid u32
     U32Max,
+    /// Same as above, but `b` is provided by the immediate
+    U32MaxImm(u32),
     /// Trigger a breakpoint when this instruction is reached
     Breakpoint,
     /// Print out the contents of the stack
@@ -824,6 +846,8 @@ pub enum MasmOp {
     Emit(u32),
     /// Emit a trace event with the given code
     Trace(u32),
+    /// No operation
+    Nop,
 }
 
 macro_rules! unwrap_imm {
@@ -1011,7 +1035,7 @@ impl MasmOp {
             Self::MtreeGet => 9,
             Self::MtreeSet => 29,
             Self::MtreeMerge => 16,
-            Self::MtreeVerify => 1,
+            Self::MtreeVerify | Self::MtreeVerifyWithError(_) => 1,
             // This hasn't been measured, just a random guess due to the complexity
             Self::FriExt2Fold4 | Self::RCombBase => 50,
             Self::Ext2add => 5,
@@ -1072,11 +1096,17 @@ impl MasmOp {
             Self::U32Clo => 36,
             Self::U32Cto => 33,
             Self::U32Lt => 3,
+            Self::U32LtImm(_) => 4,
             Self::U32Lte => 5,
+            Self::U32LteImm(_) => 6,
             Self::U32Gt => 4,
+            Self::U32GtImm(_) => 5,
             Self::U32Gte => 4,
+            Self::U32GteImm(_) => 5,
             Self::U32Min => 8,
+            Self::U32MinImm(_) => 9,
             Self::U32Max => 9,
+            Self::U32MaxImm(_) => 10,
             // These instructions do not modify the VM state, so we place set their cost at 0 for
             // now
             Self::Emit(_)
@@ -1099,7 +1129,8 @@ impl MasmOp {
             | Self::DebugFrame
             | Self::DebugFrameAt(_)
             | Self::DebugFrameRange(..)
-            | Self::Breakpoint => 0,
+            | Self::Breakpoint
+            | Self::Nop => 0,
         }
     }
 
@@ -1148,9 +1179,13 @@ impl MasmOp {
             Instruction::NeqImm(imm) => Self::NeqImm(unwrap_imm!(imm)),
             Instruction::Eqw => Self::Eqw,
             Instruction::Lt => Self::Lt,
+            Instruction::LtImm(imm) => Self::LtImm(unwrap_imm!(imm)),
             Instruction::Lte => Self::Lte,
+            Instruction::LteImm(imm) => Self::LteImm(unwrap_imm!(imm)),
             Instruction::Gt => Self::Gt,
+            Instruction::GtImm(imm) => Self::GtImm(unwrap_imm!(imm)),
             Instruction::Gte => Self::Gte,
+            Instruction::GteImm(imm) => Self::GteImm(unwrap_imm!(imm)),
             Instruction::IsOdd => Self::IsOdd,
             Instruction::Hash => Self::Hash,
             Instruction::HMerge => Self::Hmerge,
@@ -1159,6 +1194,9 @@ impl MasmOp {
             Instruction::MTreeSet => Self::MtreeSet,
             Instruction::MTreeMerge => Self::MtreeMerge,
             Instruction::MTreeVerify => Self::MtreeVerify,
+            Instruction::MTreeVerifyWithError(code) => {
+                Self::MtreeVerifyWithError(unwrap_u32!(code))
+            }
             Instruction::Ext2Add => Self::Ext2add,
             Instruction::Ext2Sub => Self::Ext2sub,
             Instruction::Ext2Mul => Self::Ext2mul,
@@ -1217,11 +1255,17 @@ impl MasmOp {
             Instruction::U32Clo => Self::U32Clo,
             Instruction::U32Cto => Self::U32Cto,
             Instruction::U32Lt => Self::U32Lt,
+            Instruction::U32LtImm(imm) => Self::U32LtImm(unwrap_u32!(imm)),
             Instruction::U32Lte => Self::U32Lte,
+            Instruction::U32LteImm(imm) => Self::U32LteImm(unwrap_u32!(imm)),
             Instruction::U32Gt => Self::U32Gt,
+            Instruction::U32GtImm(imm) => Self::U32GtImm(unwrap_u32!(imm)),
             Instruction::U32Gte => Self::U32Gte,
+            Instruction::U32GteImm(imm) => Self::U32GteImm(unwrap_u32!(imm)),
             Instruction::U32Min => Self::U32Min,
+            Instruction::U32MinImm(imm) => Self::U32MinImm(unwrap_u32!(imm)),
             Instruction::U32Max => Self::U32Max,
+            Instruction::U32MaxImm(imm) => Self::U32MaxImm(unwrap_u32!(imm)),
             Instruction::Drop => Self::Drop,
             Instruction::DropW => Self::Dropw,
             Instruction::PadW => Self::Padw,
@@ -1404,6 +1448,7 @@ impl MasmOp {
             Instruction::Debug(DebugOptions::LocalInterval(start, end)) => {
                 Self::DebugFrameRange(unwrap_u16!(start), unwrap_u16!(end))
             }
+            Instruction::Nop => Self::Nop,
         };
         smallvec![op]
     }
@@ -1662,6 +1707,7 @@ impl MasmOp {
             Self::MtreeSet => Instruction::MTreeSet,
             Self::MtreeMerge => Instruction::MTreeMerge,
             Self::MtreeVerify => Instruction::MTreeVerify,
+            Self::MtreeVerifyWithError(code) => Instruction::MTreeVerifyWithError(code.into()),
             Self::FriExt2Fold4 => Instruction::FriExt2Fold4,
             Self::RCombBase => Instruction::RCombBase,
             Self::U32Test => Instruction::U32Test,
@@ -1726,11 +1772,17 @@ impl MasmOp {
             Self::U32Clo => Instruction::U32Clo,
             Self::U32Cto => Instruction::U32Cto,
             Self::U32Lt => Instruction::U32Lt,
+            Self::U32LtImm(imm) => Instruction::U32LtImm(imm.into()),
             Self::U32Lte => Instruction::U32Lte,
+            Self::U32LteImm(imm) => Instruction::U32LteImm(imm.into()),
             Self::U32Gt => Instruction::U32Gt,
+            Self::U32GtImm(imm) => Instruction::U32GtImm(imm.into()),
             Self::U32Gte => Instruction::U32Gte,
+            Self::U32GteImm(imm) => Instruction::U32GteImm(imm.into()),
             Self::U32Min => Instruction::U32Min,
+            Self::U32MinImm(imm) => Instruction::U32MinImm(imm.into()),
             Self::U32Max => Instruction::U32Max,
+            Self::U32MaxImm(imm) => Instruction::U32MaxImm(imm.into()),
             Self::Breakpoint => Instruction::Breakpoint,
             Self::DebugStack => Instruction::Debug(DebugOptions::StackAll),
             Self::DebugStackN(n) => Instruction::Debug(DebugOptions::StackTop(n.into())),
@@ -1750,6 +1802,7 @@ impl MasmOp {
             }
             Self::Emit(ev) => Instruction::Emit(ev.into()),
             Self::Trace(ev) => Instruction::Trace(ev.into()),
+            Self::Nop => Instruction::Nop,
         };
         smallvec![inst]
     }
@@ -1864,6 +1917,7 @@ impl fmt::Display for MasmOp {
             Self::MtreeSet => f.write_str("mtree_set"),
             Self::MtreeMerge => f.write_str("mtree_merge"),
             Self::MtreeVerify => f.write_str("mtree_verify"),
+            Self::MtreeVerifyWithError(code) => write!(f, "mtree_verify.err={code}"),
             Self::FriExt2Fold4 => f.write_str("fri_ext2fold4"),
             Self::RCombBase => f.write_str("rcomb_base"),
             Self::U32Test => f.write_str("u32test"),
@@ -1908,12 +1962,12 @@ impl fmt::Display for MasmOp {
             Self::U32Ctz => f.write_str("u32ctz"),
             Self::U32Clo => f.write_str("u32clo"),
             Self::U32Cto => f.write_str("u32cto"),
-            Self::U32Lt => f.write_str("u32lt"),
-            Self::U32Lte => f.write_str("u32lte"),
-            Self::U32Gt => f.write_str("u32gt"),
-            Self::U32Gte => f.write_str("u32gte"),
-            Self::U32Min => f.write_str("u32min"),
-            Self::U32Max => f.write_str("u32max"),
+            Self::U32Lt | Self::U32LtImm(_) => f.write_str("u32lt"),
+            Self::U32Lte | Self::U32LteImm(_) => f.write_str("u32lte"),
+            Self::U32Gt | Self::U32GtImm(_) => f.write_str("u32gt"),
+            Self::U32Gte | Self::U32GteImm(_) => f.write_str("u32gte"),
+            Self::U32Min | Self::U32MinImm(_) => f.write_str("u32min"),
+            Self::U32Max | Self::U32MaxImm(_) => f.write_str("u32max"),
             Self::Breakpoint => f.write_str("breakpoint"),
             Self::DebugStack | Self::DebugStackN(_) => f.write_str("debug.stack"),
             Self::DebugMemory | Self::DebugMemoryAt(_) | Self::DebugMemoryRange(..) => {
@@ -1924,6 +1978,7 @@ impl fmt::Display for MasmOp {
             }
             Self::Emit(_) => f.write_str("emit"),
             Self::Trace(_) => f.write_str("trace"),
+            Self::Nop => f.write_str("nop"),
         }
     }
 }
