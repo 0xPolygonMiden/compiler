@@ -1,9 +1,9 @@
 [package]
 name = "cargo-miden"
-version.workspace = true
+description = "A cargo extension to build Miden projects"
+version = "0.0.0"
 rust-version.workspace = true
 authors.workspace = true
-description.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
@@ -12,7 +12,6 @@ keywords.workspace = true
 license.workspace = true
 readme.workspace = true
 edition.workspace = true
-publish.workspace = true
 autotests = false # disable autodiscovery of tests
 
 [[bin]]

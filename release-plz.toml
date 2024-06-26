@@ -1,0 +1,7 @@
+[workspace]
+# Only publish when the release PR is merged
+# https://release-plz.ieni.dev/docs/config#the-release_always-field
+release_always = false
+# Does not create a git tag
+# https://release-plz.ieni.dev/docs/config#the-git_tag_enable-field
+git_tag_enable = false

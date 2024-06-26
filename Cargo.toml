@@ -20,9 +20,9 @@ members = [
 exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.0.0"
 rust-version = "1.73"
-authors = ["Miden Team"]
+authors = ["Miden contributors"]
 description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/compiler"
 homepage = "https://github.com/0xPolygonMiden/compiler"
@@ -71,7 +71,7 @@ miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "d
 miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "ddf536cd7157053f0940d7be41998b2a6546b4c1" }
 midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
-midenc-hir= { path = "hir" }
+midenc-hir = { path = "hir" }
 midenc-hir-analysis = { path = "hir-analysis" }
 midenc-hir-macros = { path = "hir-macros" }
 midenc-hir-symbol = { path = "hir-symbol" }
