@@ -2,15 +2,15 @@
     ;; Component Imports
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #add_asset)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #remove_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt)))) (#miden:prelude/std_crypto_dsa #rpo_falcon512_verify)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt felt felt felt felt felt)))) (#miden:prelude/std_mem #pipe_double_words_to_memory)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (result felt felt felt felt felt)))) (#miden:prelude/std_mem #pipe_words_to_memory)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt)))) (#miden:stdlib/std_crypto_dsa #rpo_falcon512_verify)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt felt felt felt felt felt)))) (#miden:stdlib/std_mem #pipe_double_words_to_memory)
+    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (result felt felt felt felt felt)))) (#miden:stdlib/std_mem #pipe_words_to_memory)
     (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt)))) (#std::crypto_hashes #blake3_hash_2to1)
 
     ;; Modules
     (module #miden_sdk_account_test
         ;; Data Segments
-        (data (mut) (offset 1048576) 0x7e2f73646b2f7072656c7564652f7372632f7374646c69622f63727970746f2f6861736865732e727300000000001000290000008b000000280000000000100029000000d100000028000000)
+        (data (mut) (offset 1048576) 0x7e2f73646b2f7374646c69622d7379732f7372632f7374646c69622f63727970746f2f6861736865732e7273000010002c0000008a00000028000000000010002c000000d000000028000000)
 
         ;; Constants
         (const (id 0) 0x00100000)
@@ -149,7 +149,7 @@
         (func (export #get_wallet_magic_number) (result felt)
             (block 0
                 (let (v1 felt) (const.felt 0))
-                (let (v2 felt) (call #miden_sdk_tx_kernel::get_id))
+                (let (v2 felt) (call #miden_tx_kernel_sys::get_id))
                 (let (v3 i64) (const.i64 42))
                 (let (v4 felt) (cast v3))
                 (let (v5 felt) (add.unchecked v4 v2))
@@ -193,7 +193,7 @@
                 (store v25 v8)
                 (let (v26 i32) (const.i32 32))
                 (let (v27 i32) (add.wrapping v5 v26))
-                (call #miden_sdk_tx_kernel::add_asset v27 v5)
+                (call #miden_tx_kernel_sys::add_asset v27 v5)
                 (let (v28 u32) (cast v5))
                 (let (v29 u32) (add.checked v28 32))
                 (let (v30 (ptr felt)) (inttoptr v29))
@@ -313,7 +313,7 @@
                 (store v7 v6)
                 (let (v8 i64) (const.i64 0))
                 (let (v9 felt) (cast v8))
-                (call #miden_sdk_tx_kernel::get_inputs v6)
+                (call #miden_tx_kernel_sys::get_inputs v6)
                 (let (v10 u32) (cast v6))
                 (let (v11 (ptr i32)) (inttoptr v10))
                 (let (v12 i32) (load v11))
@@ -1039,7 +1039,7 @@
                 (let (v29 u32) (add.checked v28 24))
                 (let (v30 (ptr felt)) (inttoptr v29))
                 (let (v31 felt) (load v30))
-                (call (#miden:prelude/std_crypto_dsa #rpo_falcon512_verify) v4 v8 v12 v16 v19 v23 v27 v31)
+                (call (#miden:stdlib/std_crypto_dsa #rpo_falcon512_verify) v4 v8 v12 v16 v19 v23 v27 v31)
                 (br (block 1)))
 
             (block 1
@@ -1048,7 +1048,7 @@
 
         (func (export #test_pipe_words_to_memory) (param i32) (param felt)
             (block 0 (param v0 i32) (param v1 felt)
-                (call #miden_prelude::stdlib::mem::pipe_words_to_memory v0 v1)
+                (call #miden_stdlib_sys::stdlib::mem::pipe_words_to_memory v0 v1)
                 (br (block 1)))
 
             (block 1
@@ -1058,7 +1058,7 @@
         (func (export #test_pipe_double_words_to_memory)
               (param i32) (param felt)
             (block 0 (param v0 i32) (param v1 felt)
-                (call #miden_prelude::stdlib::mem::pipe_double_words_to_memory v0 v1)
+                (call #miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory v0 v1)
                 (br (block 1)))
 
             (block 1
@@ -1074,7 +1074,7 @@
                 (let (v6 i32) (sub.wrapping v4 v5))
                 (let (v7 (ptr i32)) (global.symbol #__stack_pointer))
                 (store v7 v6)
-                (call #miden_sdk_tx_kernel::remove_asset v6 v0)
+                (call #miden_tx_kernel_sys::remove_asset v6 v0)
                 (let (v8 u32) (cast v6))
                 (let (v9 (ptr felt)) (inttoptr v8))
                 (let (v10 felt) (load v9))
@@ -1095,7 +1095,7 @@
                     (param v1 felt)
                     (param v2 felt)
                     (param v3 i32)
-                (let (v5 felt) (call #miden_sdk_tx_kernel::create_note v0 v1 v2 v3))
+                (let (v5 felt) (call #miden_tx_kernel_sys::create_note v0 v1 v2 v3))
                 (br (block 1 v5)))
 
             (block 1 (param v4 felt)
@@ -1866,7 +1866,7 @@
                 (br (block 12 v78 v80 v100 v91)))
         )
 
-        (func (export #miden_sdk_tx_kernel::get_id)
+        (func (export #miden_tx_kernel_sys::get_id)
               (result felt)
             (block 0
                 (let (v1 felt) (call (#miden::account #get_id)))
@@ -1876,7 +1876,7 @@
                 (ret v0))
         )
 
-        (func (export #miden_sdk_tx_kernel::get_inputs)
+        (func (export #miden_tx_kernel_sys::get_inputs)
               (param i32)
             (block 0 (param v0 i32)
                 (let (v1 i32) (const.i32 0))
@@ -1944,7 +1944,7 @@
                 (unreachable))
         )
 
-        (func (export #miden_sdk_tx_kernel::add_asset)
+        (func (export #miden_tx_kernel_sys::add_asset)
               (param i32) (param i32)
             (block 0 (param v0 i32) (param v1 i32)
                 (let (v2 i32) (const.i32 0))
@@ -2027,7 +2027,7 @@
                 (ret))
         )
 
-        (func (export #miden_sdk_tx_kernel::remove_asset)
+        (func (export #miden_tx_kernel_sys::remove_asset)
               (param i32) (param i32)
             (block 0 (param v0 i32) (param v1 i32)
                 (let (v2 i32) (const.i32 0))
@@ -2110,7 +2110,7 @@
                 (ret))
         )
 
-        (func (export #miden_sdk_tx_kernel::create_note)
+        (func (export #miden_tx_kernel_sys::create_note)
               (param i32) (param felt) (param felt) (param i32) (result felt)
             (block 0
                     (param v0 i32)
@@ -2323,7 +2323,7 @@
                 (br (block 2 v37 v45)))
         )
 
-        (func (export #<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from)
+        (func (export #<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from)
               (param i32) (result felt)
             (block 0 (param v0 i32)
                 (let (v2 u32) (cast v0))
@@ -2336,7 +2336,7 @@
                 (ret v1))
         )
 
-        (func (export #miden_prelude::stdlib::mem::pipe_words_to_memory)
+        (func (export #miden_stdlib_sys::stdlib::mem::pipe_words_to_memory)
               (param i32) (param felt)
             (block 0 (param v0 i32) (param v1 felt)
                 (let (v2 i32) (const.i32 0))
@@ -2356,10 +2356,10 @@
                 (let (v14 u32) (add.checked v13 56))
                 (let (v15 (ptr i32)) (inttoptr v14))
                 (let (v16 i32) (load v15))
-                (let (v17 felt) (call #<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from v16))
+                (let (v17 felt) (call #<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from v16))
                 (let (v18 i32) (const.i32 8))
                 (let (v19 i32) (add.wrapping v5 v18))
-                (let [(v20 felt) (v21 felt) (v22 felt) (v23 felt) (v24 felt)] (call (#miden:prelude/std_mem #pipe_words_to_memory) v1 v17))
+                (let [(v20 felt) (v21 felt) (v22 felt) (v23 felt) (v24 felt)] (call (#miden:stdlib/std_mem #pipe_words_to_memory) v1 v17))
                 (let (v25 u32) (cast v19))
                 (let (v26 (ptr felt)) (inttoptr v25))
                 (store v26 v20)
@@ -2434,7 +2434,7 @@
                 (ret))
         )
 
-        (func (export #miden_prelude::stdlib::mem::pipe_double_words_to_memory)
+        (func (export #miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory)
               (param i32) (param felt)
             (block 0 (param v0 i32) (param v1 felt)
                 (let (v2 i32) (const.i32 0))
@@ -2455,14 +2455,14 @@
                 (let (v15 u32) (add.checked v14 16))
                 (let (v16 (ptr i32)) (inttoptr v15))
                 (let (v17 i32) (load v16))
-                (let (v18 felt) (call #<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from v17))
-                (let (v19 felt) (call #<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from v13))
+                (let (v18 felt) (call #<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from v17))
+                (let (v19 felt) (call #<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from v13))
                 (let (v20 felt) (add.unchecked v18 v19))
                 (let (v21 i64) (const.i64 0))
                 (let (v22 felt) (cast v21))
                 (let (v23 i32) (const.i32 24))
                 (let (v24 i32) (add.wrapping v6 v23))
-                (let [(v25 felt) (v26 felt) (v27 felt) (v28 felt) (v29 felt) (v30 felt) (v31 felt) (v32 felt) (v33 felt) (v34 felt) (v35 felt) (v36 felt) (v37 felt)] (call (#miden:prelude/std_mem #pipe_double_words_to_memory) v22 v22 v22 v22 v22 v22 v22 v22 v22 v22 v22 v22 v18 v20))
+                (let [(v25 felt) (v26 felt) (v27 felt) (v28 felt) (v29 felt) (v30 felt) (v31 felt) (v32 felt) (v33 felt) (v34 felt) (v35 felt) (v36 felt) (v37 felt)] (call (#miden:stdlib/std_mem #pipe_double_words_to_memory) v22 v22 v22 v22 v22 v22 v22 v22 v22 v22 v22 v22 v18 v20))
                 (let (v38 u32) (cast v24))
                 (let (v39 (ptr felt)) (inttoptr v38))
                 (store v39 v25)
@@ -2762,11 +2762,11 @@
         (func (import #miden::note #get_inputs) (param i32) (result i32 felt))
         (func (import #miden::tx #create_note)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
-        (func (import #miden:prelude/std_crypto_dsa #rpo_falcon512_verify)
+        (func (import #miden:stdlib/std_crypto_dsa #rpo_falcon512_verify)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt))
-        (func (import #miden:prelude/std_mem #pipe_double_words_to_memory)
+        (func (import #miden:stdlib/std_mem #pipe_double_words_to_memory)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt felt felt felt felt felt))
-        (func (import #miden:prelude/std_mem #pipe_words_to_memory)
+        (func (import #miden:stdlib/std_mem #pipe_words_to_memory)
               (param felt) (param felt) (result felt felt felt felt felt))
         (func (import #std::crypto_hashes #blake3_hash_1to1)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt felt felt felt felt))

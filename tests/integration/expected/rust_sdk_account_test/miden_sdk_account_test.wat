@@ -27,35 +27,35 @@
   (type (;25;) (func (param i32 i32 i32 i32)))
   (type (;26;) (func))
   (type (;27;) (func (param i32 i32 i32 i32 i32)))
-  (import "miden:prelude/intrinsics_felt" "from_u64_unchecked" (func $miden_prelude::intrinsics::felt::extern_from_u64_unchecked (;0;) (type 0)))
-  (import "miden:prelude/intrinsics_felt" "add" (func $miden_prelude::intrinsics::felt::extern_add (;1;) (type 1)))
-  (import "miden:prelude/intrinsics_felt" "as_u64" (func $miden_prelude::intrinsics::felt::extern_as_u64 (;2;) (type 2)))
-  (import "miden:prelude/intrinsics_felt" "gt" (func $miden_prelude::intrinsics::felt::extern_gt (;3;) (type 3)))
-  (import "miden:prelude/intrinsics_felt" "lt" (func $miden_prelude::intrinsics::felt::extern_lt (;4;) (type 3)))
-  (import "miden:prelude/intrinsics_felt" "le" (func $miden_prelude::intrinsics::felt::extern_le (;5;) (type 3)))
-  (import "miden:prelude/intrinsics_felt" "ge" (func $miden_prelude::intrinsics::felt::extern_ge (;6;) (type 3)))
-  (import "miden:prelude/intrinsics_felt" "eq" (func $miden_prelude::intrinsics::felt::extern_eq (;7;) (type 3)))
-  (import "miden:prelude/intrinsics_felt" "is_odd" (func $miden_prelude::intrinsics::felt::extern_is_odd (;8;) (type 4)))
-  (import "miden:prelude/intrinsics_felt" "assertz" (func $miden_prelude::intrinsics::felt::extern_assertz (;9;) (type 5)))
-  (import "miden:prelude/intrinsics_felt" "assert" (func $miden_prelude::intrinsics::felt::extern_assert (;10;) (type 5)))
-  (import "miden:prelude/intrinsics_felt" "inv" (func $miden_prelude::intrinsics::felt::extern_inv (;11;) (type 6)))
-  (import "miden:prelude/intrinsics_felt" "exp" (func $miden_prelude::intrinsics::felt::extern_exp (;12;) (type 1)))
-  (import "miden:prelude/intrinsics_felt" "sub" (func $miden_prelude::intrinsics::felt::extern_sub (;13;) (type 1)))
-  (import "miden:prelude/intrinsics_felt" "pow2" (func $miden_prelude::intrinsics::felt::extern_pow2 (;14;) (type 6)))
-  (import "miden:prelude/intrinsics_felt" "mul" (func $miden_prelude::intrinsics::felt::extern_mul (;15;) (type 1)))
-  (import "miden:prelude/intrinsics_felt" "div" (func $miden_prelude::intrinsics::felt::extern_div (;16;) (type 1)))
-  (import "miden:prelude/intrinsics_felt" "assert_eq" (func $miden_prelude::intrinsics::felt::extern_assert_eq (;17;) (type 7)))
-  (import "miden:prelude/intrinsics_felt" "neg" (func $miden_prelude::intrinsics::felt::extern_neg (;18;) (type 6)))
-  (import "std::crypto_hashes" "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;19;) (type 8)))
-  (import "std::crypto_hashes" "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;20;) (type 9)))
-  (import "miden:prelude/std_crypto_dsa" "rpo_falcon512_verify<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::crypto::dsa::extern_rpo_falcon512_verify (;21;) (type 10)))
-  (import "miden::account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_get_id (;22;) (type 11)))
-  (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_note_get_inputs (;23;) (type 12)))
-  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_add_asset (;24;) (type 13)))
-  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_account_remove_asset (;25;) (type 13)))
-  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_sdk_tx_kernel::externs::extern_tx_create_note (;26;) (type 14)))
-  (import "miden:prelude/std_mem" "pipe_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::mem::extern_pipe_words_to_memory (;27;) (type 15)))
-  (import "miden:prelude/std_mem" "pipe_double_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_prelude::stdlib::mem::extern_pipe_double_words_to_memory (;28;) (type 16)))
+  (import "miden:stdlib/intrinsics_felt" "from_u64_unchecked" (func $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked (;0;) (type 0)))
+  (import "miden:stdlib/intrinsics_felt" "add" (func $miden_stdlib_sys::intrinsics::felt::extern_add (;1;) (type 1)))
+  (import "miden:stdlib/intrinsics_felt" "as_u64" (func $miden_stdlib_sys::intrinsics::felt::extern_as_u64 (;2;) (type 2)))
+  (import "miden:stdlib/intrinsics_felt" "gt" (func $miden_stdlib_sys::intrinsics::felt::extern_gt (;3;) (type 3)))
+  (import "miden:stdlib/intrinsics_felt" "lt" (func $miden_stdlib_sys::intrinsics::felt::extern_lt (;4;) (type 3)))
+  (import "miden:stdlib/intrinsics_felt" "le" (func $miden_stdlib_sys::intrinsics::felt::extern_le (;5;) (type 3)))
+  (import "miden:stdlib/intrinsics_felt" "ge" (func $miden_stdlib_sys::intrinsics::felt::extern_ge (;6;) (type 3)))
+  (import "miden:stdlib/intrinsics_felt" "eq" (func $miden_stdlib_sys::intrinsics::felt::extern_eq (;7;) (type 3)))
+  (import "miden:stdlib/intrinsics_felt" "is_odd" (func $miden_stdlib_sys::intrinsics::felt::extern_is_odd (;8;) (type 4)))
+  (import "miden:stdlib/intrinsics_felt" "assertz" (func $miden_stdlib_sys::intrinsics::felt::extern_assertz (;9;) (type 5)))
+  (import "miden:stdlib/intrinsics_felt" "assert" (func $miden_stdlib_sys::intrinsics::felt::extern_assert (;10;) (type 5)))
+  (import "miden:stdlib/intrinsics_felt" "inv" (func $miden_stdlib_sys::intrinsics::felt::extern_inv (;11;) (type 6)))
+  (import "miden:stdlib/intrinsics_felt" "exp" (func $miden_stdlib_sys::intrinsics::felt::extern_exp (;12;) (type 1)))
+  (import "miden:stdlib/intrinsics_felt" "sub" (func $miden_stdlib_sys::intrinsics::felt::extern_sub (;13;) (type 1)))
+  (import "miden:stdlib/intrinsics_felt" "pow2" (func $miden_stdlib_sys::intrinsics::felt::extern_pow2 (;14;) (type 6)))
+  (import "miden:stdlib/intrinsics_felt" "mul" (func $miden_stdlib_sys::intrinsics::felt::extern_mul (;15;) (type 1)))
+  (import "miden:stdlib/intrinsics_felt" "div" (func $miden_stdlib_sys::intrinsics::felt::extern_div (;16;) (type 1)))
+  (import "miden:stdlib/intrinsics_felt" "assert_eq" (func $miden_stdlib_sys::intrinsics::felt::extern_assert_eq (;17;) (type 7)))
+  (import "miden:stdlib/intrinsics_felt" "neg" (func $miden_stdlib_sys::intrinsics::felt::extern_neg (;18;) (type 6)))
+  (import "std::crypto_hashes" "blake3_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;19;) (type 8)))
+  (import "std::crypto_hashes" "blake3_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;20;) (type 9)))
+  (import "miden:stdlib/std_crypto_dsa" "rpo_falcon512_verify<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_stdlib_sys::stdlib::crypto::dsa::extern_rpo_falcon512_verify (;21;) (type 10)))
+  (import "miden::account" "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_get_id (;22;) (type 11)))
+  (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_note_get_inputs (;23;) (type 12)))
+  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_add_asset (;24;) (type 13)))
+  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_remove_asset (;25;) (type 13)))
+  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_tx_create_note (;26;) (type 14)))
+  (import "miden:stdlib/std_mem" "pipe_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_stdlib_sys::stdlib::mem::extern_pipe_words_to_memory (;27;) (type 15)))
+  (import "miden:stdlib/std_mem" "pipe_double_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_stdlib_sys::stdlib::mem::extern_pipe_double_words_to_memory (;28;) (type 16)))
   (func $<<alloc::vec::into_iter::IntoIter<T,A> as core::ops::drop::Drop>::drop::DropGuard<T,A> as core::ops::drop::Drop>::drop (;29;) (type 17) (param i32)
     (local i32)
     global.get $__stack_pointer
@@ -143,12 +143,12 @@
   )
   (func $get_wallet_magic_number (;34;) (type 11) (result f64)
     (local f64)
-    call $miden_sdk_tx_kernel::get_id
+    call $miden_tx_kernel_sys::get_id
     local.set 0
     i64.const 42
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.get 0
-    call $miden_prelude::intrinsics::felt::extern_add
+    call $miden_stdlib_sys::intrinsics::felt::extern_add
   )
   (func $test_add_asset (;35;) (type 11) (result f64)
     (local i32 f64 f64 f64)
@@ -158,17 +158,17 @@
     local.tee 0
     global.set $__stack_pointer
     i64.const 1
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.set 1
     i64.const 2
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.set 2
     i64.const 3
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.set 3
     local.get 0
     i64.const 4
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     f64.store offset=24
     local.get 0
     local.get 3
@@ -183,7 +183,7 @@
     i32.const 32
     i32.add
     local.get 0
-    call $miden_sdk_tx_kernel::add_asset
+    call $miden_tx_kernel_sys::add_asset
     local.get 0
     f64.load offset=32
     local.set 1
@@ -196,7 +196,7 @@
   (func $test_felt_ops_smoke (;36;) (type 1) (param f64 f64) (result f64)
     (local i64)
     local.get 0
-    call $miden_prelude::intrinsics::felt::extern_as_u64
+    call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
     local.set 2
     block ;; label = @1
       block ;; label = @2
@@ -206,81 +206,81 @@
               block ;; label = @6
                 local.get 0
                 local.get 1
-                call $miden_prelude::intrinsics::felt::extern_gt
+                call $miden_stdlib_sys::intrinsics::felt::extern_gt
                 br_if 0 (;@6;)
                 local.get 1
                 local.get 0
-                call $miden_prelude::intrinsics::felt::extern_lt
+                call $miden_stdlib_sys::intrinsics::felt::extern_lt
                 br_if 1 (;@5;)
                 local.get 1
                 local.get 0
-                call $miden_prelude::intrinsics::felt::extern_le
+                call $miden_stdlib_sys::intrinsics::felt::extern_le
                 br_if 2 (;@4;)
                 local.get 0
                 local.get 1
-                call $miden_prelude::intrinsics::felt::extern_ge
+                call $miden_stdlib_sys::intrinsics::felt::extern_ge
                 br_if 3 (;@3;)
                 local.get 0
                 local.get 1
-                call $miden_prelude::intrinsics::felt::extern_eq
+                call $miden_stdlib_sys::intrinsics::felt::extern_eq
                 i32.const 1
                 i32.eq
                 br_if 4 (;@2;)
                 local.get 0
                 local.get 1
-                call $miden_prelude::intrinsics::felt::extern_eq
+                call $miden_stdlib_sys::intrinsics::felt::extern_eq
                 i32.const 1
                 i32.ne
                 br_if 5 (;@1;)
                 block ;; label = @7
                   local.get 1
-                  call $miden_prelude::intrinsics::felt::extern_is_odd
+                  call $miden_stdlib_sys::intrinsics::felt::extern_is_odd
                   br_if 0 (;@7;)
                   local.get 1
-                  call $miden_prelude::intrinsics::felt::extern_assertz
+                  call $miden_stdlib_sys::intrinsics::felt::extern_assertz
                   local.get 0
                   return
                 end
                 local.get 0
-                call $miden_prelude::intrinsics::felt::extern_assert
+                call $miden_stdlib_sys::intrinsics::felt::extern_assert
                 local.get 1
                 return
               end
               local.get 0
-              call $miden_prelude::intrinsics::felt::extern_inv
+              call $miden_stdlib_sys::intrinsics::felt::extern_inv
               local.get 1
-              call $miden_prelude::intrinsics::felt::extern_add
+              call $miden_stdlib_sys::intrinsics::felt::extern_add
               return
             end
             local.get 0
             local.get 1
-            call $miden_prelude::intrinsics::felt::extern_exp
+            call $miden_stdlib_sys::intrinsics::felt::extern_exp
             local.get 1
-            call $miden_prelude::intrinsics::felt::extern_sub
+            call $miden_stdlib_sys::intrinsics::felt::extern_sub
             return
           end
           local.get 0
-          call $miden_prelude::intrinsics::felt::extern_pow2
+          call $miden_stdlib_sys::intrinsics::felt::extern_pow2
           local.get 1
-          call $miden_prelude::intrinsics::felt::extern_mul
+          call $miden_stdlib_sys::intrinsics::felt::extern_mul
           return
         end
         local.get 1
         local.get 0
-        call $miden_prelude::intrinsics::felt::extern_div
+        call $miden_stdlib_sys::intrinsics::felt::extern_div
         return
       end
       local.get 0
       local.get 1
-      call $miden_prelude::intrinsics::felt::extern_assert_eq
+      call $miden_stdlib_sys::intrinsics::felt::extern_assert_eq
       local.get 0
       local.get 2
-      call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
-      call $miden_prelude::intrinsics::felt::extern_add
+      call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
+      call $miden_stdlib_sys::intrinsics::felt::extern_add
       return
     end
     local.get 0
-    call $miden_prelude::intrinsics::felt::extern_neg
+    call $miden_stdlib_sys::intrinsics::felt::extern_neg
   )
   (func $note_script (;37;) (type 11) (result f64)
     (local i32 f64 i32 i32 i32 i32)
@@ -290,10 +290,10 @@
     local.tee 0
     global.set $__stack_pointer
     i64.const 0
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.set 1
     local.get 0
-    call $miden_sdk_tx_kernel::get_inputs
+    call $miden_tx_kernel_sys::get_inputs
     local.get 0
     i32.load
     local.set 2
@@ -338,7 +338,7 @@
       local.get 1
       local.get 3
       f64.load
-      call $miden_prelude::intrinsics::felt::extern_add
+      call $miden_stdlib_sys::intrinsics::felt::extern_add
       local.set 1
       local.get 3
       i32.const 8
@@ -357,7 +357,7 @@
     i32.const 0
     local.set 3
     i64.const 0
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.set 4
     loop ;; label = @1
       block ;; label = @2
@@ -393,7 +393,7 @@
               local.get 2
               i32.const 72
               i32.add
-              call $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_1to1
+              call $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_1to1
               local.get 2
               i32.const 136
               i32.add
@@ -436,7 +436,7 @@
                 local.get 2
                 local.get 1
                 f64.load
-                call $miden_prelude::intrinsics::felt::extern_as_u64
+                call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
                 i64.store offset=232
                 local.get 2
                 i32.const 200
@@ -468,7 +468,7 @@
             i32.add
             local.get 1
             i64.load32_u align=1
-            call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+            call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
             f64.store
             local.get 3
             i32.const 8
@@ -545,7 +545,7 @@
     i32.const 0
     local.set 4
     i64.const 0
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.set 5
     loop ;; label = @1
       block ;; label = @2
@@ -564,7 +564,7 @@
             i32.const 0
             local.set 4
             i64.const 0
-            call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+            call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
             local.set 5
             loop ;; label = @5
               block ;; label = @6
@@ -616,7 +616,7 @@
                       local.get 3
                       i32.const 136
                       i32.add
-                      call $miden_prelude::stdlib::crypto::hashes::extern_blake3_hash_2to1
+                      call $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_2to1
                       local.get 3
                       i32.const 264
                       i32.add
@@ -659,7 +659,7 @@
                         local.get 3
                         local.get 2
                         f64.load
-                        call $miden_prelude::intrinsics::felt::extern_as_u64
+                        call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
                         i64.store offset=424
                         local.get 3
                         i32.const 392
@@ -691,7 +691,7 @@
                     i32.add
                     local.get 2
                     i64.load32_u align=1
-                    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+                    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
                     f64.store
                     local.get 4
                     i32.const 8
@@ -765,7 +765,7 @@
           i32.add
           local.get 1
           i64.load32_u align=1
-          call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+          call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
           f64.store
           local.get 4
           i32.const 8
@@ -809,17 +809,17 @@
     f64.load offset=16
     local.get 1
     f64.load offset=24
-    call $miden_prelude::stdlib::crypto::dsa::extern_rpo_falcon512_verify
+    call $miden_stdlib_sys::stdlib::crypto::dsa::extern_rpo_falcon512_verify
   )
   (func $test_pipe_words_to_memory (;41;) (type 21) (param i32 f64)
     local.get 0
     local.get 1
-    call $miden_prelude::stdlib::mem::pipe_words_to_memory
+    call $miden_stdlib_sys::stdlib::mem::pipe_words_to_memory
   )
   (func $test_pipe_double_words_to_memory (;42;) (type 21) (param i32 f64)
     local.get 0
     local.get 1
-    call $miden_prelude::stdlib::mem::pipe_double_words_to_memory
+    call $miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory
   )
   (func $test_remove_asset (;43;) (type 22) (param i32) (result f64)
     (local i32 f64)
@@ -830,7 +830,7 @@
     global.set $__stack_pointer
     local.get 1
     local.get 0
-    call $miden_sdk_tx_kernel::remove_asset
+    call $miden_tx_kernel_sys::remove_asset
     local.get 1
     f64.load
     local.set 2
@@ -845,7 +845,7 @@
     local.get 1
     local.get 2
     local.get 3
-    call $miden_sdk_tx_kernel::create_note
+    call $miden_tx_kernel_sys::create_note
   )
   (func $__rust_alloc (;45;) (type 24) (param i32 i32) (result i32)
     i32.const 1048652
@@ -1412,10 +1412,10 @@
       i32.store
     end
   )
-  (func $miden_sdk_tx_kernel::get_id (;52;) (type 11) (result f64)
-    call $miden_sdk_tx_kernel::externs::extern_account_get_id
+  (func $miden_tx_kernel_sys::get_id (;52;) (type 11) (result f64)
+    call $miden_tx_kernel_sys::externs::extern_account_get_id
   )
-  (func $miden_sdk_tx_kernel::get_inputs (;53;) (type 17) (param i32)
+  (func $miden_tx_kernel_sys::get_inputs (;53;) (type 17) (param i32)
     (local i32 i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -1449,7 +1449,7 @@
         unreachable
       end
       local.get 2
-      call $miden_sdk_tx_kernel::externs::extern_note_get_inputs
+      call $miden_tx_kernel_sys::externs::extern_note_get_inputs
       drop
       local.get 0
       i32.const 0
@@ -1469,7 +1469,7 @@
     call $alloc::raw_vec::capacity_overflow
     unreachable
   )
-  (func $miden_sdk_tx_kernel::add_asset (;54;) (type 20) (param i32 i32)
+  (func $miden_tx_kernel_sys::add_asset (;54;) (type 20) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -1485,7 +1485,7 @@
     local.get 1
     f64.load offset=24
     local.get 2
-    call $miden_sdk_tx_kernel::externs::extern_account_add_asset
+    call $miden_tx_kernel_sys::externs::extern_account_add_asset
     local.get 0
     i32.const 24
     i32.add
@@ -1519,7 +1519,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_sdk_tx_kernel::remove_asset (;55;) (type 20) (param i32 i32)
+  (func $miden_tx_kernel_sys::remove_asset (;55;) (type 20) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
     i32.const 32
@@ -1535,7 +1535,7 @@
     local.get 1
     f64.load offset=24
     local.get 2
-    call $miden_sdk_tx_kernel::externs::extern_account_remove_asset
+    call $miden_tx_kernel_sys::externs::extern_account_remove_asset
     local.get 0
     i32.const 24
     i32.add
@@ -1569,7 +1569,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_sdk_tx_kernel::create_note (;56;) (type 23) (param i32 f64 f64 i32) (result f64)
+  (func $miden_tx_kernel_sys::create_note (;56;) (type 23) (param i32 f64 f64 i32) (result f64)
     local.get 0
     f64.load
     local.get 0
@@ -1588,7 +1588,7 @@
     f64.load offset=16
     local.get 3
     f64.load offset=24
-    call $miden_sdk_tx_kernel::externs::extern_tx_create_note
+    call $miden_tx_kernel_sys::externs::extern_tx_create_note
   )
   (func $alloc::vec::Vec<T>::with_capacity (;57;) (type 20) (param i32 i32)
     (local i32 i32)
@@ -1715,12 +1715,12 @@
     local.get 1
     i32.store
   )
-  (func $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from (;59;) (type 22) (param i32) (result f64)
+  (func $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from (;59;) (type 22) (param i32) (result f64)
     local.get 0
     i64.extend_i32_u
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
   )
-  (func $miden_prelude::stdlib::mem::pipe_words_to_memory (;60;) (type 21) (param i32 f64)
+  (func $miden_stdlib_sys::stdlib::mem::pipe_words_to_memory (;60;) (type 21) (param i32 f64)
     (local i32)
     global.get $__stack_pointer
     i32.const 64
@@ -1731,7 +1731,7 @@
     i32.const 52
     i32.add
     local.get 1
-    call $miden_prelude::intrinsics::felt::extern_as_u64
+    call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
     i32.wrap_i64
     i32.const 2
     i32.shl
@@ -1739,11 +1739,11 @@
     local.get 1
     local.get 2
     i32.load offset=56
-    call $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from
+    call $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from
     local.get 2
     i32.const 8
     i32.add
-    call $miden_prelude::stdlib::mem::extern_pipe_words_to_memory
+    call $miden_stdlib_sys::stdlib::mem::extern_pipe_words_to_memory
     local.get 0
     local.get 2
     f64.load offset=32
@@ -1777,7 +1777,7 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_prelude::stdlib::mem::pipe_double_words_to_memory (;61;) (type 21) (param i32 f64)
+  (func $miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory (;61;) (type 21) (param i32 f64)
     (local i32 i32 f64 f64)
     global.get $__stack_pointer
     i32.const 128
@@ -1788,7 +1788,7 @@
     i32.const 12
     i32.add
     local.get 1
-    call $miden_prelude::intrinsics::felt::extern_as_u64
+    call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
     i32.wrap_i64
     i32.const 2
     i32.shl
@@ -1796,14 +1796,14 @@
     call $alloc::vec::Vec<T>::with_capacity
     local.get 2
     i32.load offset=16
-    call $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from
+    call $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from
     local.tee 4
     local.get 3
-    call $<miden_prelude::intrinsics::felt::Felt as core::convert::From<u32>>::from
-    call $miden_prelude::intrinsics::felt::extern_add
+    call $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from
+    call $miden_stdlib_sys::intrinsics::felt::extern_add
     local.set 5
     i64.const 0
-    call $miden_prelude::intrinsics::felt::extern_from_u64_unchecked
+    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.tee 1
     local.get 1
     local.get 1
@@ -1821,7 +1821,7 @@
     local.get 2
     i32.const 24
     i32.add
-    call $miden_prelude::stdlib::mem::extern_pipe_double_words_to_memory
+    call $miden_stdlib_sys::stdlib::mem::extern_pipe_double_words_to_memory
     local.get 0
     local.get 2
     f64.load offset=80
@@ -1967,5 +1967,5 @@
   (export "test_pipe_double_words_to_memory" (func $test_pipe_double_words_to_memory.command_export))
   (export "test_remove_asset" (func $test_remove_asset.command_export))
   (export "test_create_note" (func $test_create_note.command_export))
-  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/prelude/src/stdlib/crypto/hashes.rs\00\00\00\00\00\10\00)\00\00\00\8b\00\00\00(\00\00\00\00\00\10\00)\00\00\00\d1\00\00\00(\00\00\00")
+  (data $.rodata (;0;) (i32.const 1048576) "~/sdk/stdlib-sys/src/stdlib/crypto/hashes.rs\00\00\10\00,\00\00\00\8a\00\00\00(\00\00\00\00\00\10\00,\00\00\00\d0\00\00\00(\00\00\00")
 )

@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-  "prelude",
-  "tx-kernel",
+  "stdlib-sys",
+  "tx-kernel-sys",
   "sdk",
 ]
 

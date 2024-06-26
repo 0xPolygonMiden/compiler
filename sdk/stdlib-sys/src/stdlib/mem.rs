@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 
 use crate::{Felt, Word};
 
-#[link(wasm_import_module = "miden:prelude/std_mem")]
+#[link(wasm_import_module = "miden:stdlib/std_mem")]
 extern "C" {
 
     /// Moves an arbitrary number of words from the advice stack to memory.

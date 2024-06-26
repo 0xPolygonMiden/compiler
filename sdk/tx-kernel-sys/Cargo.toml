@@ -1,5 +1,5 @@
 [package]
-name = "miden-sdk-tx-kernel"
+name = "miden-tx-kernel-sys"
 description = "Miden SDK transaction kernel"
 version.workspace = true
 rust-version.workspace = true
@@ -15,4 +15,4 @@ edition.workspace = true
 crate-type = ["rlib"]
 
 [dependencies]
-miden-prelude = { path = "../prelude" }
+miden-stdlib-sys = { path = "../stdlib-sys" }

@@ -36,9 +36,9 @@ impl NewCommand {
             template_path: TemplatePath {
                 git: Some("https://github.com/0xPolygonMiden/rust-templates".into()),
                 auto_path: Some("account".into()),
-                // Preparation for alpha release
-                // committed in https://github.com/0xPolygonMiden/rust-templates/pull/1
-                revision: Some("93e61ba087a982f0b53d098e2581152c34bf801c".to_string()),
+                // Preparation for alpha release committed in
+                // https://github.com/0xPolygonMiden/rust-templates/pull/2
+                revision: Some("8d14bbb08a11d525f220e7fc8b831f22550f8989".to_string()),
                 ..Default::default()
             },
             destination: self

@@ -10,7 +10,7 @@
         ;; Functions
         (func (export #entrypoint) (param i32)
             (block 0 (param v0 i32)
-                (call #miden_sdk_tx_kernel::get_inputs v0)
+                (call #miden_tx_kernel_sys::get_inputs v0)
                 (br (block 1)))
 
             (block 1
@@ -635,7 +635,7 @@
                 (br (block 6 v7)))
         )
 
-        (func (export #miden_sdk_tx_kernel::get_inputs)
+        (func (export #miden_tx_kernel_sys::get_inputs)
               (param i32)
             (block 0 (param v0 i32)
                 (let (v1 i32) (const.i32 0))

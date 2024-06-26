@@ -1,4 +1,4 @@
-use miden_prelude::Felt;
+use miden_stdlib_sys::Felt;
 
 use crate::{AccountId, CoreAsset, NoteId, NoteType, Tag};
 

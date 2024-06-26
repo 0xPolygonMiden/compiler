@@ -1,6 +1,6 @@
 [package]
-name = "miden-prelude"
-description = "Miden Prelude: intrinsics and standard library for Miden"
+name = "miden-stdlib-sys"
+description = "Low-level Rust bindings for the Miden standard library"
 version.workspace = true
 rust-version.workspace = true
 authors.workspace = true

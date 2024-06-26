@@ -3,7 +3,7 @@
 use.miden::note
 
 export.entrypoint
-    exec."miden_sdk_tx_kernel::get_inputs"
+    exec."miden_tx_kernel_sys::get_inputs"
 end
 
 
@@ -2567,7 +2567,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
 end
 
 
-export."miden_sdk_tx_kernel::get_inputs"
+export."miden_tx_kernel_sys::get_inputs"
     mem_load.0x00000000
     push.16
     u32wrapping_sub

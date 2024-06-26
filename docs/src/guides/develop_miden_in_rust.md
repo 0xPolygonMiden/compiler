@@ -1,13 +1,13 @@
 # Developing Miden Programs In Rust
 
-This chapter will walk through how to develop Miden programs in Rust using the prelude and standard library provided by the `miden-prelude` crate (see the [README](https://github.com/0xPolygonMiden/compiler/sdk/prelude/README.md)).
+This chapter will walk through how to develop Miden programs in Rust using the standard library provided by the `miden-stdlib-sys` crate (see the [README](https://github.com/0xPolygonMiden/compiler/sdk/stdlib-sys/README.md)).
 
 ## Getting Started
 
-Import the prelude and standard library from the `miden-prelude` crate:
+Import the standard library from the `miden-stdlib-sys` crate:
 
 ```rust
-use miden_prelude::*;
+use miden_stdlib_sys::*;
 ```
 
 ## Using `Felt` (field element) type
