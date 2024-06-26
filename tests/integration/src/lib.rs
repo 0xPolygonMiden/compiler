@@ -15,3 +15,6 @@ pub use exec_vm::execute_vm;
 
 #[cfg(test)]
 mod rust_masm_tests;
+
+#[cfg(test)]
+mod wasm_smith_tests;
