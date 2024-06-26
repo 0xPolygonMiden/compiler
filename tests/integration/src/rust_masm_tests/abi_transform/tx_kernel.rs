@@ -12,7 +12,26 @@ fn setup_log() {
         .try_init();
 }
 
-#[ignore = "until https://github.com/0xPolygonMiden/compiler/issues/207 is resolved"]
+#[test]
+fn test_get_inputs_masm_assembly() {
+    // setup_log();
+    let main_fn = "() -> Vec<Felt> { get_inputs() }";
+    let artifact_name = "abi_transform_tx_kernel_get_inputs";
+    let mut test = CompilerTest::rust_fn_body_with_sdk(artifact_name, main_fn, true);
+    // Test expected compilation artifacts
+    test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
+    test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
+    test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
+
+    let assembly_res = test.compile_wasm_to_masm_program().0;
+    assert!(assembly_res.is_err());
+    // until `miden::note.get_inputs` code injection is implemented lets just check that the masm
+    // assembly goes all the way to its resolution
+    let expected_error_msg = "undefined module 'miden::note'";
+    assert_eq!(expected_error_msg, assembly_res.unwrap_err().to_string());
+}
+
+#[ignore = "until `miden::note.get_inputs` code injection is implemented"]
 #[test]
 fn test_get_inputs() {
     // setup_log();

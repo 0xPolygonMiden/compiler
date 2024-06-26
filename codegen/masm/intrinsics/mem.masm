@@ -562,3 +562,15 @@ export.store_sw # [waddr, index, offset, value]
         end
     end
 end
+
+# Store a double 32-bit machine word from the given native pointer triplet.
+#
+# A native pointer triplet consists of a word address which contains the
+# start of the data; an element index, which indicates which element of
+# the word the data starts in; and a byte offset, which indicates which
+# byte is the start of the data.
+export.store_dw # [waddr, index, offset, value]
+    # TODO: implement
+    # cleanup the operand stack
+    dropw
+end
