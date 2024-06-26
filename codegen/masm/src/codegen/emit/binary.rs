@@ -166,7 +166,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Gt);
             }
-            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_gt".parse().unwrap())),
+            Type::I32 => self.emit(Op::Exec("::intrinsics::i32::is_gt".parse().unwrap())),
             ty => unimplemented!("gt is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -186,7 +186,7 @@ impl<'a> OpEmitter<'a> {
             Type::I32 => {
                 self.emit_all(&[
                     Op::PushU32(imm.as_i32().unwrap() as u32),
-                    Op::Exec("intrinsics::i32::is_gt".parse().unwrap()),
+                    Op::Exec("::intrinsics::i32::is_gt".parse().unwrap()),
                 ]);
             }
             ty => unimplemented!("gt is not yet implemented for {ty}"),
@@ -206,7 +206,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Gte);
             }
-            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_gte".parse().unwrap())),
+            Type::I32 => self.emit(Op::Exec("::intrinsics::i32::is_gte".parse().unwrap())),
             ty => unimplemented!("gte is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -226,7 +226,7 @@ impl<'a> OpEmitter<'a> {
             Type::I32 => {
                 self.emit_all(&[
                     Op::PushU32(imm.as_i32().unwrap() as u32),
-                    Op::Exec("intrinsics::i32::is_gte".parse().unwrap()),
+                    Op::Exec("::intrinsics::i32::is_gte".parse().unwrap()),
                 ]);
             }
             ty => unimplemented!("gte is not yet implemented for {ty}"),
@@ -246,7 +246,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Lt);
             }
-            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_lt".parse().unwrap())),
+            Type::I32 => self.emit(Op::Exec("::intrinsics::i32::is_lt".parse().unwrap())),
             ty => unimplemented!("lt is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -266,7 +266,7 @@ impl<'a> OpEmitter<'a> {
             Type::I32 => {
                 self.emit_all(&[
                     Op::PushU32(imm.as_i32().unwrap() as u32),
-                    Op::Exec("intrinsics::i32::is_lt".parse().unwrap()),
+                    Op::Exec("::intrinsics::i32::is_lt".parse().unwrap()),
                 ]);
             }
             ty => unimplemented!("lt is not yet implemented for {ty}"),
@@ -286,7 +286,7 @@ impl<'a> OpEmitter<'a> {
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Lte);
             }
-            Type::I32 => self.emit(Op::Exec("intrinsics::i32::is_lte".parse().unwrap())),
+            Type::I32 => self.emit(Op::Exec("::intrinsics::i32::is_lte".parse().unwrap())),
             ty => unimplemented!("lte is not yet implemented for {ty}"),
         }
         self.push(Type::I1);
@@ -306,7 +306,7 @@ impl<'a> OpEmitter<'a> {
             Type::I32 => {
                 self.emit_all(&[
                     Op::PushU32(imm.as_i32().unwrap() as u32),
-                    Op::Exec("intrinsics::i32::is_lte".parse().unwrap()),
+                    Op::Exec("::intrinsics::i32::is_lte".parse().unwrap()),
                 ]);
             }
             ty => unimplemented!("lte is not yet implemented for {ty}"),
@@ -788,7 +788,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(&[Op::Exp, Op::U32Assert]);
             }
             Type::I32 => {
-                self.emit(Op::Exec("intrinsics::i32::ipow".parse().unwrap()));
+                self.emit(Op::Exec("::intrinsics::i32::ipow".parse().unwrap()));
             }
             ty @ (Type::U16 | Type::U8) => {
                 self.emit_all(&[Op::Exp, Op::U32Assert]);
@@ -819,7 +819,7 @@ impl<'a> OpEmitter<'a> {
             Type::I32 => {
                 self.emit_all(&[
                     Op::PushU8(exp),
-                    Op::Exec("intrinsics::i32::ipow".parse().unwrap()),
+                    Op::Exec("::intrinsics::i32::ipow".parse().unwrap()),
                 ]);
             }
             ty @ (Type::U16 | Type::U8) => {
