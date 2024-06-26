@@ -1855,7 +1855,7 @@ fn apply_op_stack_effects(
             assert!(stack.len() >= 8, "expected at least 8 elements on the stack for mtree_merge");
             stack.dropw();
         }
-        MasmOp::MtreeVerify => {
+        MasmOp::MtreeVerify | MasmOp::MtreeVerifyWithError(_) => {
             assert!(
                 stack.len() >= 10,
                 "expected at least 10 elements on the stack for mtree_verify"
@@ -2076,7 +2076,13 @@ fn apply_op_stack_effects(
         | MasmOp::U32WrappingAddImm(_)
         | MasmOp::U32WrappingSubImm(_)
         | MasmOp::U32WrappingMulImm(_)
-        | MasmOp::U32Not => {
+        | MasmOp::U32Not
+        | MasmOp::U32LtImm(_)
+        | MasmOp::U32LteImm(_)
+        | MasmOp::U32GtImm(_)
+        | MasmOp::U32GteImm(_)
+        | MasmOp::U32MinImm(_)
+        | MasmOp::U32MaxImm(_) => {
             let ty = stack.pop().expect("operand stack is empty");
             assert_compatible_u32_operand!(ty, op);
             stack.push(ty);
