@@ -545,12 +545,12 @@ or discussed some of the compiler options. We will be updating this documentatio
 details and more in the coming days, so bear with us while we flesh out our guides!</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="developing-miden-programs-in-rust"><a class="header" href="#developing-miden-programs-in-rust">Developing Miden Programs In Rust</a></h1>
-<p>This chapter will walk through how to develop Miden programs in Rust using the prelude and standard library provided by the <code>miden-prelude</code> crate (see the <a href="https://github.com/0xPolygonMiden/compiler/sdk/prelude/README.md">README</a>).</p>
+<p>This chapter will walk through how to develop Miden programs in Rust using the standard library provided by the <code>miden-stdlib-sys</code> crate (see the <a href="https://github.com/0xPolygonMiden/compiler/sdk/stdlib-sys/README.md">README</a>).</p>
 <h2 id="getting-started-1"><a class="header" href="#getting-started-1">Getting Started</a></h2>
-<p>Import the prelude and standard library from the <code>miden-prelude</code> crate:</p>
+<p>Import the standard library from the <code>miden-stdlib-sys</code> crate:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>use miden_prelude::*;
+</span>use miden_stdlib_sys::*;
 <span class="boring">}</span></code></pre></pre>
 <h2 id="using-felt-field-element-type"><a class="header" href="#using-felt-field-element-type">Using <code>Felt</code> (field element) type</a></h2>
 <p>The <code>Felt</code> type is a field element type that is used to represent the field element values of the Miden VM.</p>
