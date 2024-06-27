@@ -6,7 +6,9 @@ mod functions;
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
 use miden_assembly::{ast::ProcedureName, LibraryNamespace};
-use midenc_hir::{assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack};
+use midenc_hir::{
+    assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack, Symbol,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use self::functions::{Activation, Stub};
@@ -1547,6 +1549,19 @@ impl Emulator {
                     return Ok(EmulatorEvent::EnterLoop(body_blk));
                 }
                 Op::Exec(callee) => {
+                    // remove the `::` prefix (absolute path) if any from the
+                    // callee.module
+                    let callee = if callee.module.as_str().starts_with("::") {
+                        FunctionIdent {
+                            module: Ident::with_empty_span(Symbol::intern(
+                                &callee.module.as_str()[2..],
+                            )),
+                            function: callee.function,
+                        }
+                    } else {
+                        callee
+                    };
+                    dbg!(&callee);
                     let fun = self
                         .functions
                         .get(&callee)
