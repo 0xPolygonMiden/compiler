@@ -1,6 +1,6 @@
 (component 
     ;; Modules
-    (module #abi_transform_tx_kernel_get_inputs
+    (module #abi_transform_tx_kernel_get_inputs_4
         ;; Constants
         (const (id 0) 0x00100000)
 
