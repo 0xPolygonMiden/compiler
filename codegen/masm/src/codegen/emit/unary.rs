@@ -1280,7 +1280,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);
             }
             Type::I32 => {
-                self.emit(Op::Exec("intrinsics::i32::pow2".parse().unwrap()));
+                self.emit(Op::Exec("::intrinsics::i32::pow2".parse().unwrap()));
             }
             Type::U8 | Type::U16 => {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);
