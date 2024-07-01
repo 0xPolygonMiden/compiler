@@ -1,4 +1,16 @@
-# mod user_ns::abi_transform_tx_kernel_get_inputs
+# mod miden::note
+
+export.get_inputs
+    push.4294967295
+    push.1
+    push.0
+    push.4294967295
+    dup.4
+    mem_storew
+    push.4
+    end
+
+# mod user_ns::abi_transform_tx_kernel_get_inputs_4
 
 use.miden::note
 
@@ -3090,8 +3102,8 @@ export."alloc::raw_vec::capacity_overflow"
 end
 
 
-use.user_ns::abi_transform_tx_kernel_get_inputs
+use.user_ns::abi_transform_tx_kernel_get_inputs_4
 
 begin
-    exec.abi_transform_tx_kernel_get_inputs::entrypoint  
+    exec.abi_transform_tx_kernel_get_inputs_4::entrypoint  
 end

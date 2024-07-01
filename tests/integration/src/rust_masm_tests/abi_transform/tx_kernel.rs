@@ -1,6 +1,10 @@
-use expect_test::expect_file;
+use std::fmt::Write;
 
-use crate::{execute_vm, CompilerTest};
+use expect_test::expect_file;
+use miden_assembly::LibraryPath;
+use miden_core::{Felt, FieldElement};
+
+use crate::CompilerTest;
 
 #[allow(unused)]
 fn setup_log() {
@@ -12,52 +16,43 @@ fn setup_log() {
         .try_init();
 }
 
-#[test]
-fn test_get_inputs_masm_assembly() {
-    // setup_log();
-    let main_fn = "() -> Vec<Felt> { get_inputs() }";
-    let artifact_name = "abi_transform_tx_kernel_get_inputs";
-    let mut test = CompilerTest::rust_fn_body_with_sdk(artifact_name, main_fn, true);
+fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
+    assert!(expected_inputs.len() == 4, "for now only word-sized inputs are supported");
+    let mut main_fn = String::new();
+    writeln!(main_fn, "() -> Vec<Felt> {{\n").unwrap();
+    writeln!(main_fn, "    let inputs = get_inputs();").unwrap();
+    // for (_i, _expected_input) in expected_inputs.iter().enumerate() {
+    // TODO: use miden asserts once they are implemented
+    // writeln!(main_fn, "    assert_eq!(inputs[{i}], {expected_input});").unwrap();
+    // }
+    writeln!(main_fn, "    inputs").unwrap();
+    writeln!(main_fn, "}}").unwrap();
+
+    let artifact_name = format!("abi_transform_tx_kernel_get_inputs_{}", test_name);
+    let mut test = CompilerTest::rust_fn_body_with_sdk(&artifact_name, &main_fn, true);
+    let mut masm = String::new();
+    writeln!(masm, "export.get_inputs").unwrap();
+    for expected_input in expected_inputs.iter() {
+        writeln!(masm, "    push.{expected_input}").unwrap();
+    }
+    // copy the pointer to the top of the stack
+    writeln!(masm, "    dup.4").unwrap();
+    writeln!(masm, "    mem_storew").unwrap();
+    // push the inputs len on the stack
+    writeln!(masm, "    push.{}", expected_inputs.len()).unwrap();
+    writeln!(masm, "    end").unwrap();
+    test.link_masm_modules = vec![(LibraryPath::new("miden::note").unwrap(), masm)];
+
     // Test expected compilation artifacts
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
-    let assembly_res = test.compile_wasm_to_masm_program().0;
-    assert!(assembly_res.is_err());
-    // until `miden::note.get_inputs` code injection is implemented lets just check that the masm
-    // assembly goes all the way to its resolution
-    let expected_error_msg = "undefined module 'miden::note'";
-    assert_eq!(expected_error_msg, assembly_res.unwrap_err().to_string());
+    let _vm_program = test.masm_program();
+    // let _vm_out = execute_vm(&vm_program, &[]);
 }
 
-#[ignore = "until `miden::note.get_inputs` code injection is implemented"]
 #[test]
-fn test_get_inputs() {
-    // setup_log();
-    let main_fn = "() -> Vec<Felt> { get_inputs() }";
-    let artifact_name = "abi_transform_tx_kernel_get_inputs";
-    let mut test = CompilerTest::rust_fn_body_with_sdk(artifact_name, main_fn, true);
-    // Test expected compilation artifacts
-    test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
-    test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
-    test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
-
-    let vm_program = test.masm_program();
-
-    let _vm_out = execute_vm(&vm_program, &[]);
-
-    // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
-    // let res =
-    //     TestRunner::default().run(&(any::<[u8; 32]>(), any::<[u8; 32]>()), move |(_a, _b)| {
-    //         todo!("test against rust");
-    //         // run_masm_vs_rust(rs_out, &vm_program, ir_masm.clone(), &args)
-    //     });
-    // match res {
-    //     Err(TestError::Fail(_, value)) => {
-    //         panic!("Found minimal(shrinked) failing case: {:?}", value);
-    //     }
-    //     Ok(_) => (),
-    //     _ => panic!("Unexpected test result: {:?}", res),
-    // }
+fn test_get_inputs_4() {
+    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
 }
