@@ -1,12 +1,10 @@
-# mod user_ns::test_rust_aa4e8ec18774f7791634833f5a14b633e4c1a7d4ec8ae07ec95668a9f3fb05d6
+# mod test_rust_aa4e8ec18774f7791634833f5a14b633e4c1a7d4ec8ae07ec95668a9f3fb05d6
 
 export.entrypoint
     u32wrapping_add
 end
 
 
-use.user_ns::test_rust_aa4e8ec18774f7791634833f5a14b633e4c1a7d4ec8ae07ec95668a9f3fb05d6
-
 begin
-    exec.test_rust_aa4e8ec18774f7791634833f5a14b633e4c1a7d4ec8ae07ec95668a9f3fb05d6::entrypoint  
+    exec.::test_rust_aa4e8ec18774f7791634833f5a14b633e4c1a7d4ec8ae07ec95668a9f3fb05d6::entrypoint  
 end

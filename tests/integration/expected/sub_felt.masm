@@ -1,12 +1,10 @@
-# mod user_ns::sub_felt
+# mod sub_felt
 
 export.entrypoint
     swap.1 sub
 end
 
 
-use.user_ns::sub_felt
-
 begin
-    exec.sub_felt::entrypoint  
+    exec.::sub_felt::entrypoint  
 end

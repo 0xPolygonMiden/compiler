@@ -1,12 +1,10 @@
-# mod user_ns::test_rust_4d99fac9eee91dee5488ef87e46cd372efb54cac7088374c284c7fe1d592975b
+# mod test_rust_4d99fac9eee91dee5488ef87e46cd372efb54cac7088374c284c7fe1d592975b
 
 export.entrypoint
     push.0 swap.1 u32wrapping_sub
 end
 
 
-use.user_ns::test_rust_4d99fac9eee91dee5488ef87e46cd372efb54cac7088374c284c7fe1d592975b
-
 begin
-    exec.test_rust_4d99fac9eee91dee5488ef87e46cd372efb54cac7088374c284c7fe1d592975b::entrypoint  
+    exec.::test_rust_4d99fac9eee91dee5488ef87e46cd372efb54cac7088374c284c7fe1d592975b::entrypoint  
 end
