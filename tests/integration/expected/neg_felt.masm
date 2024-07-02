@@ -1,12 +1,10 @@
-# mod user_ns::neg_felt
+# mod neg_felt
 
 export.entrypoint
     swap.1 sub
 end
 
 
-use.user_ns::neg_felt
-
 begin
-    exec.neg_felt::entrypoint  
+    exec.::neg_felt::entrypoint  
 end

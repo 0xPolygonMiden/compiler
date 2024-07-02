@@ -1,12 +1,10 @@
-# mod user_ns::test_rust_c3626bb8d040702290734d36fd1995f9bd099bbd60fea362c6a50e3386dab95b
+# mod test_rust_c3626bb8d040702290734d36fd1995f9bd099bbd60fea362c6a50e3386dab95b
 
 export.entrypoint
     swap.1 u32shl
 end
 
 
-use.user_ns::test_rust_c3626bb8d040702290734d36fd1995f9bd099bbd60fea362c6a50e3386dab95b
-
 begin
-    exec.test_rust_c3626bb8d040702290734d36fd1995f9bd099bbd60fea362c6a50e3386dab95b::entrypoint  
+    exec.::test_rust_c3626bb8d040702290734d36fd1995f9bd099bbd60fea362c6a50e3386dab95b::entrypoint  
 end

@@ -1,12 +1,10 @@
-# mod user_ns::test_rust_58aae86db503f25d519c45a178d348c9fa62ad89779c3a7beb32041962ccbd8a
+# mod test_rust_58aae86db503f25d519c45a178d348c9fa62ad89779c3a7beb32041962ccbd8a
 
 export.entrypoint
     swap.1 eq
 end
 
 
-use.user_ns::test_rust_58aae86db503f25d519c45a178d348c9fa62ad89779c3a7beb32041962ccbd8a
-
 begin
-    exec.test_rust_58aae86db503f25d519c45a178d348c9fa62ad89779c3a7beb32041962ccbd8a::entrypoint  
+    exec.::test_rust_58aae86db503f25d519c45a178d348c9fa62ad89779c3a7beb32041962ccbd8a::entrypoint  
 end

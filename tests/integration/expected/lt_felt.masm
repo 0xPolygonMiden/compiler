@@ -1,12 +1,10 @@
-# mod user_ns::lt_felt
+# mod lt_felt
 
 export.entrypoint
     lt push.0 neq
 end
 
 
-use.user_ns::lt_felt
-
 begin
-    exec.lt_felt::entrypoint  
+    exec.::lt_felt::entrypoint  
 end
