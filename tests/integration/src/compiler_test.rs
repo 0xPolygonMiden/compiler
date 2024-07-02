@@ -11,7 +11,6 @@ use std::{
 };
 
 use miden_assembly::{ast::ModuleKind, diagnostics::Report, Assembler, LibraryPath};
-use miden_core::Program;
 use miden_diagnostics::SourceSpan;
 use miden_stdlib::StdLibrary;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
@@ -93,14 +92,16 @@ pub struct CompilerTest {
     pub source: CompilerTestSource,
     /// The entrypoint function to use when building the IR
     entrypoint: Option<FunctionIdent>,
-    /// The compiled IR
-    pub hir: Option<HirArtifact>,
-    /// The compiled MASM
-    pub masm_program: Option<Box<miden_core::Program>>,
-    /// The MASM source code
-    pub masm_src: Option<String>,
     /// The extra MASM modules to link to the compiled MASM program
     pub link_masm_modules: LinkMasmModules,
+    /// The compiled IR
+    hir: Option<HirArtifact>,
+    /// The MASM source code
+    masm_src: Option<String>,
+    /// The compiled IR MASM program
+    ir_masm_program: Option<Result<Arc<midenc_codegen_masm::Program>, String>>,
+    /// The compiled VM program
+    vm_masm_program: Option<Result<Arc<miden_core::Program>, String>>,
 }
 
 impl Default for CompilerTest {
@@ -110,10 +111,11 @@ impl Default for CompilerTest {
             session: Arc::new(dummy_session()),
             source: CompilerTestSource::Rust(String::new()),
             entrypoint: None,
-            hir: None,
-            masm_program: None,
-            masm_src: None,
             link_masm_modules: Vec::new(),
+            hir: None,
+            masm_src: None,
+            ir_masm_program: None,
+            vm_masm_program: None,
         }
     }
 }
@@ -558,23 +560,26 @@ impl CompilerTest {
         expected_masm_file.assert_eq(&program);
     }
 
-    /// Get the compiled MASM as [`miden_core::Program`]
-    pub fn masm_program(&mut self) -> Box<miden_core::Program> {
-        if self.masm_program.is_none() {
-            let (masm, src) = self.compile_wasm_to_masm_program();
-            self.masm_src = Some(src);
-            let unwrapped = masm.unwrap_or_else(|e| panic!("Failed to assemble MASM: {:?}", e));
-            self.masm_program = Some(unwrapped.into());
+    /// Get the compiled IR MASM program
+    pub fn ir_masm_program(&mut self) -> Arc<midenc_codegen_masm::Program> {
+        if self.ir_masm_program.is_none() {
+            self.compile_wasm_to_masm_program();
         }
-        self.masm_program.clone().unwrap()
+        self.ir_masm_program.as_ref().unwrap().as_ref().unwrap().clone()
+    }
+
+    /// Get the compiled MASM as [`miden_core::Program`]
+    pub fn vm_masm_program(&mut self) -> Arc<miden_core::Program> {
+        if self.vm_masm_program.is_none() {
+            self.compile_wasm_to_masm_program();
+        }
+        self.vm_masm_program.as_ref().unwrap().as_ref().unwrap().clone()
     }
 
     /// Get the MASM source code
     pub fn masm_src(&mut self) -> String {
         if self.masm_src.is_none() {
-            let (masm, src) = self.compile_wasm_to_masm_program();
-            self.masm_src = Some(src);
-            self.masm_program = masm.ok().map(Box::from);
+            self.compile_wasm_to_masm_program();
         }
         self.masm_src.clone().unwrap()
     }
@@ -588,9 +593,7 @@ impl CompilerTest {
         }
     }
 
-    pub(crate) fn compile_wasm_to_masm_program(
-        &self,
-    ) -> (Result<miden_core::Program, Report>, String) {
+    pub(crate) fn compile_wasm_to_masm_program(&mut self) {
         match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
             midenc_compile::Compiled::Program(_p) => todo!("Program compilation not yet supported"),
             midenc_compile::Compiled::Modules(modules) => {
@@ -599,9 +602,13 @@ impl CompilerTest {
                     self.entrypoint,
                     &self.link_masm_modules,
                 );
-                let prog =
-                    masm_prog_from_modules(&modules, self.entrypoint, &self.link_masm_modules);
-                (prog, src)
+                self.masm_src = Some(src);
+                let vm_prog =
+                    vm_masm_prog_from_modules(&modules, self.entrypoint, &self.link_masm_modules);
+                self.vm_masm_program = Some(vm_prog.map_err(|e| format!("{:?}", e)));
+                let ir_prog =
+                    ir_masm_prog_from_modules(modules, self.entrypoint, &self.link_masm_modules);
+                self.ir_masm_program = Some(ir_prog.map_err(|e| format!("{:?}", e)));
             }
         }
     }
@@ -627,12 +634,29 @@ pub fn skip_rust_compilation(cargo_project_folder: &Path, artifact_name: &str) -
     skip_rust
 }
 
+#[allow(clippy::vec_box)]
+fn ir_masm_prog_from_modules(
+    modules: Vec<Box<midenc_codegen_masm::Module>>,
+    entrypoint: Option<FunctionIdent>,
+    link_masm_modules: &LinkMasmModules,
+) -> Result<Arc<midenc_codegen_masm::Program>, Report> {
+    let mut p = midenc_codegen_masm::Program::empty();
+    for (_path, _src) in link_masm_modules {
+        // TODO: implement linking of MASM source code
+    }
+    for module in modules.into_iter() {
+        p.insert(module);
+    }
+    p.entrypoint = entrypoint;
+    Ok(Box::new(p).freeze())
+}
+
 // Assemble the VM MASM program from the compiled IR MASM modules
-fn masm_prog_from_modules(
+fn vm_masm_prog_from_modules(
     modules: &[Box<midenc_codegen_masm::Module>],
     entrypoint: Option<FunctionIdent>,
     link_masm_modules: &LinkMasmModules,
-) -> Result<Program, Report> {
+) -> Result<Arc<miden_core::Program>, Report> {
     let mut assembler = Assembler::default().with_library(&StdLibrary::default())?;
     for (path, src) in link_masm_modules {
         let options = miden_assembly::CompileOptions {
@@ -657,7 +681,7 @@ fn masm_prog_from_modules(
     }
     if let Some(entrypoint) = entrypoint {
         let prog_source = masm_prog_source(entrypoint);
-        assembler.assemble_program(prog_source)
+        assembler.assemble_program(prog_source).map(Arc::new)
     } else {
         todo!()
     }
