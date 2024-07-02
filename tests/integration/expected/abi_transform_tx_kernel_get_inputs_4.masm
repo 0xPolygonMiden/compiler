@@ -10,7 +10,7 @@ export.get_inputs
     push.4
     end
 
-# mod user_ns::abi_transform_tx_kernel_get_inputs_4
+# mod abi_transform_tx_kernel_get_inputs_4
 
 use.miden::note
 
@@ -3102,8 +3102,6 @@ export."alloc::raw_vec::capacity_overflow"
 end
 
 
-use.user_ns::abi_transform_tx_kernel_get_inputs_4
-
 begin
-    exec.abi_transform_tx_kernel_get_inputs_4::entrypoint  
+    exec.::abi_transform_tx_kernel_get_inputs_4::entrypoint  
 end

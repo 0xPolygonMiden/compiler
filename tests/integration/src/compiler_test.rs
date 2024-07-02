@@ -594,19 +594,13 @@ impl CompilerTest {
         match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
             midenc_compile::Compiled::Program(_p) => todo!("Program compilation not yet supported"),
             midenc_compile::Compiled::Modules(modules) => {
-                let user_ns_name = "user_ns";
                 let src = expected_masm_prog_source_from_modules(
-                    user_ns_name,
                     &modules,
                     self.entrypoint,
                     &self.link_masm_modules,
                 );
-                let prog = masm_prog_from_modules(
-                    user_ns_name,
-                    &modules,
-                    self.entrypoint,
-                    &self.link_masm_modules,
-                );
+                let prog =
+                    masm_prog_from_modules(&modules, self.entrypoint, &self.link_masm_modules);
                 (prog, src)
             }
         }
@@ -635,7 +629,6 @@ pub fn skip_rust_compilation(cargo_project_folder: &Path, artifact_name: &str) -
 
 // Assemble the VM MASM program from the compiled IR MASM modules
 fn masm_prog_from_modules(
-    user_ns_name: &str,
     modules: &[Box<midenc_codegen_masm::Module>],
     entrypoint: Option<FunctionIdent>,
     link_masm_modules: &LinkMasmModules,
@@ -652,7 +645,7 @@ fn masm_prog_from_modules(
     for module in modules {
         let module_src = format!("{}", module);
         // eprintln!("{}", &module_src);
-        let path = masm_module_path(user_ns_name, module);
+        let path = module.id.as_str().to_string();
         let library_path = LibraryPath::new(path).unwrap();
         // dbg!(&library_path);
         let options = miden_assembly::CompileOptions {
@@ -663,7 +656,7 @@ fn masm_prog_from_modules(
         assembler.add_module_with_options(module_src, options)?;
     }
     if let Some(entrypoint) = entrypoint {
-        let prog_source = masm_prog_source(user_ns_name, entrypoint);
+        let prog_source = masm_prog_source(entrypoint);
         assembler.assemble_program(prog_source)
     } else {
         todo!()
@@ -672,7 +665,6 @@ fn masm_prog_from_modules(
 
 // Generate the MASM program source code from the compiled IR MASM modules
 fn expected_masm_prog_source_from_modules(
-    user_ns_name: &str,
     modules: &[Box<midenc_codegen_masm::Module>],
     entrypoint: Option<FunctionIdent>,
     link_masm_modules: &LinkMasmModules,
@@ -684,7 +676,7 @@ fn expected_masm_prog_source_from_modules(
     }
     for module in modules {
         let module_src = format!("{}", module);
-        let path = masm_module_path(user_ns_name, module);
+        let path = module.id.as_str().to_string();
         if !path.contains("intrinsic") {
             // print only user modules and not intrinsic modules
             writeln!(src, "# mod {path}\n").unwrap();
@@ -692,7 +684,7 @@ fn expected_masm_prog_source_from_modules(
         }
     }
     if let Some(entrypoint) = entrypoint {
-        let prog_source = masm_prog_source(user_ns_name, entrypoint);
+        let prog_source = masm_prog_source(entrypoint);
         src.push_str(&prog_source);
     } else {
         todo!()
@@ -701,29 +693,15 @@ fn expected_masm_prog_source_from_modules(
 }
 
 // Generate the MASM program source code (call the entrypoint function)
-fn masm_prog_source(user_ns_name: &str, entrypoint: FunctionIdent) -> String {
+fn masm_prog_source(entrypoint: FunctionIdent) -> String {
     let module_name = entrypoint.module.as_str();
     let function_name = entrypoint.function.as_str();
     format!(
         r#"
-use.{user_ns_name}::{module_name}
-
 begin
-    exec.{module_name}::{function_name}  
+    exec.::{module_name}::{function_name}  
 end"#,
     )
-}
-
-// Generate the MASM module path
-fn masm_module_path(user_ns_name: &str, module: &midenc_codegen_masm::Module) -> String {
-    if module.id.as_str().contains("::") {
-        module.id.as_str().to_string()
-    } else {
-        // workaround for the assembler not supporting importing
-        // modules without a namespace which is the case for the
-        // module compiled from Rust source
-        format!("{user_ns_name}::{}", module.id.as_str())
-    }
 }
 
 fn stdlib_sys_crate_path() -> String {
