@@ -132,6 +132,7 @@ pub struct Emulator {
     step_over: Option<InstructionPointer>,
     clk: usize,
     clk_limit: usize,
+    entrypoint: Option<FunctionIdent>,
 }
 impl Default for Emulator {
     fn default() -> Self {
@@ -170,6 +171,7 @@ impl Emulator {
             step_over: None,
             clk: 0,
             clk_limit: usize::MAX,
+            entrypoint: None,
         }
     }
 
@@ -292,6 +294,7 @@ impl Emulator {
             self.load_module(module)?;
             cursor.move_next();
         }
+        self.entrypoint = program.entrypoint;
 
         // TODO: Load data segments
 
@@ -508,10 +511,10 @@ impl Emulator {
             Status::Faulted(ref err) => return Err(err.clone()),
         }
 
-        let main_fn = FunctionIdent {
+        let main_fn = self.entrypoint.unwrap_or_else(|| FunctionIdent {
             module: LibraryNamespace::EXEC_PATH.into(),
             function: ProcedureName::MAIN_PROC_NAME.into(),
-        };
+        });
 
         // Run to completion
         let stack = self.invoke(main_fn, &[]).map_err(|err| match err {
