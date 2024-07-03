@@ -1561,7 +1561,6 @@ impl Emulator {
                     } else {
                         callee
                     };
-                    dbg!(&callee);
                     let fun = self
                         .functions
                         .get(&callee)
