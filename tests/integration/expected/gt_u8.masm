@@ -1,18 +1,7 @@
 # mod test_rust_9ff23d66c653e992b6e1b92ca070ee51c8fb198f18a46cf1f931db5256d81673
 
 export.entrypoint
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
-    swap.1
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
-    u32gt
+    swap.1 u32gt
 end
 
 

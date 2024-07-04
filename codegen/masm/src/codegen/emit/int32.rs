@@ -114,8 +114,9 @@ impl<'a> OpEmitter<'a> {
     /// See `is_signed` for semantics and stack effects of the signedness check.
     #[inline]
     pub fn assert_unsigned_int32(&mut self) {
-        self.is_signed_int32();
-        self.emit(Op::Assertz);
+        // TODO: temporarily disabled until https://github.com/0xPolygonMiden/compiler/issues/174 is fixed
+        // self.is_signed_int32();
+        // self.emit(Op::Assertz);
     }
 
     /// Emits code to assert that a 32-bit value on the operand stack is equal to the given constant

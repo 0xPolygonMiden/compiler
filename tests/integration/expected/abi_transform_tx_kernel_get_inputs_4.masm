@@ -46,11 +46,6 @@ end
 export."wee_alloc::neighbors::Neighbors<T>::remove"
     dup.0
     dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
-    dup.0
     u32mod.16
     dup.0
     u32mod.4
@@ -66,11 +61,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
     neq.0
     if.true
         dup.1
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.4
         u32assert
         dup.0
@@ -97,11 +87,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32and
             dup.2
             dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
-            dup.0
             u32mod.16
             dup.0
             u32mod.4
@@ -113,11 +98,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             push.3
             u32and
             swap.1
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -134,11 +114,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             drop
             dup.2
             dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
-            dup.0
             u32mod.16
             dup.0
             u32mod.4
@@ -151,11 +126,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32and
             dup.3
             dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
-            dup.0
             u32mod.16
             dup.0
             u32mod.4
@@ -165,11 +135,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.16
             exec.::intrinsics::mem::store_sw
             dup.2
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -184,11 +149,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             push.3
             u32and
             movup.3
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -201,11 +161,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.16
             exec.::intrinsics::mem::store_sw
             dup.0
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             dup.0
             u32mod.16
             dup.0
@@ -223,11 +178,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32and
             u32or
             swap.1
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             dup.0
             u32mod.16
             dup.0
@@ -249,11 +199,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
         if.true
             drop
             dup.1
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -280,11 +225,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32and
                 dup.2
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -296,11 +236,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 push.3
                 u32and
                 swap.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -317,11 +252,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 drop
                 dup.2
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -334,11 +264,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32and
                 dup.3
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -348,11 +273,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 dup.2
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -367,11 +287,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 push.3
                 u32and
                 movup.3
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -384,11 +299,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 dup.0
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 dup.0
                 u32mod.16
                 dup.0
@@ -406,11 +316,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32and
                 u32or
                 swap.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 dup.0
                 u32mod.16
                 dup.0
@@ -426,11 +331,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             drop
             dup.1
             dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
-            dup.0
             u32mod.16
             dup.0
             u32mod.4
@@ -440,11 +340,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.16
             exec.::intrinsics::mem::load_sw
             dup.1
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -459,11 +354,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             push.3
             u32and
             dup.3
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -479,11 +369,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32and
             u32or
             movup.2
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -496,11 +381,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.16
             exec.::intrinsics::mem::store_sw
             dup.1
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -527,11 +407,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32and
                 dup.2
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -543,11 +418,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 push.3
                 u32and
                 swap.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -564,11 +434,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 drop
                 dup.2
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -581,11 +446,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32and
                 dup.3
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -595,11 +455,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 dup.2
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -614,11 +469,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 push.3
                 u32and
                 movup.3
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -631,11 +481,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 dup.0
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 dup.0
                 u32mod.16
                 dup.0
@@ -653,11 +498,6 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32and
                 u32or
                 swap.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 dup.0
                 u32mod.16
                 dup.0
@@ -685,17 +525,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
     swap.1
     u32shl
     dup.0
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     dup.2
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     u32gt
     neq.0
     cdrop
@@ -715,11 +545,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         push.0
         dup.3
         dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
-        dup.0
         u32mod.16
         dup.0
         u32mod.4
@@ -729,11 +554,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.16
         exec.::intrinsics::mem::store_sw
         movup.2
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.4
         u32assert
         dup.1
@@ -758,11 +578,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32or
         dup.1
         dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
-        dup.0
         u32mod.16
         dup.0
         u32mod.4
@@ -773,11 +588,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         exec.::intrinsics::mem::store_sw
         push.0.0
         movup.2
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.4
         u32assert
         dup.0
@@ -797,11 +607,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         push.1
         dup.1
         dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
-        dup.0
         u32mod.16
         dup.0
         u32mod.4
@@ -812,11 +617,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         exec.::intrinsics::mem::store_sw
         push.0
         swap.1
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.4
         u32assert
         dup.0
@@ -847,11 +647,6 @@ export."wee_alloc::alloc_first_fit"
     u32shl
     dup.4
     dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
-    dup.0
     u32mod.16
     dup.0
     u32mod.4
@@ -872,11 +667,6 @@ export."wee_alloc::alloc_first_fit"
             dropw drop push.0
         else
             dup.0
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.8
             u32assert
             dup.0
@@ -899,11 +689,6 @@ export."wee_alloc::alloc_first_fit"
                     push.4294967294
                     u32and
                     dup.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.8
                     u32assert
                     dup.0
@@ -916,11 +701,6 @@ export."wee_alloc::alloc_first_fit"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     dup.0
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.4
                     u32assert
                     dup.0
@@ -942,11 +722,6 @@ export."wee_alloc::alloc_first_fit"
                         push.0
                         dup.1
                         dup.0
-                        push.2147483648
-                        u32and
-                        eq.2147483648
-                        assertz
-                        dup.0
                         u32mod.16
                         dup.0
                         u32mod.4
@@ -962,11 +737,6 @@ export."wee_alloc::alloc_first_fit"
                         neq.0
                         cdrop
                         swap.1
-                        dup.0
-                        push.2147483648
-                        u32and
-                        eq.2147483648
-                        assertz
                         dup.0
                         u32mod.16
                         dup.0
@@ -984,11 +754,6 @@ export."wee_alloc::alloc_first_fit"
                         neq.0
                         if.true
                             dup.4
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.1
                             swap.1
                             dup.0
@@ -1001,11 +766,6 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             dup.0
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             add.8
                             u32assert
                             dup.0
@@ -1025,11 +785,6 @@ export."wee_alloc::alloc_first_fit"
                             push.1
                         else
                             dup.4
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.1
                             swap.1
                             dup.0
@@ -1042,11 +797,6 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             dup.0
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.0
                             u32mod.16
                             dup.0
@@ -1060,11 +810,6 @@ export."wee_alloc::alloc_first_fit"
                             u32or
                             dup.1
                             dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
-                            dup.0
                             u32mod.16
                             dup.0
                             u32mod.4
@@ -1074,11 +819,6 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             dup.0
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             add.8
                             u32assert
                             dup.0
@@ -1104,11 +844,6 @@ export."wee_alloc::alloc_first_fit"
                         push.0
                         swap.1
                         dup.0
-                        push.2147483648
-                        u32and
-                        eq.2147483648
-                        assertz
-                        dup.0
                         u32mod.16
                         dup.0
                         u32mod.4
@@ -1125,11 +860,6 @@ export."wee_alloc::alloc_first_fit"
                         neq.0
                         if.true
                             dup.4
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.1
                             swap.1
                             dup.0
@@ -1142,11 +872,6 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             dup.0
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             add.8
                             u32assert
                             dup.0
@@ -1166,11 +891,6 @@ export."wee_alloc::alloc_first_fit"
                             push.1
                         else
                             dup.4
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.1
                             swap.1
                             dup.0
@@ -1183,11 +903,6 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             dup.0
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.0
                             u32mod.16
                             dup.0
@@ -1201,11 +916,6 @@ export."wee_alloc::alloc_first_fit"
                             u32or
                             dup.1
                             dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
-                            dup.0
                             u32mod.16
                             dup.0
                             u32mod.4
@@ -1215,11 +925,6 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             dup.0
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             add.8
                             u32assert
                             dup.0
@@ -1242,11 +947,6 @@ export."wee_alloc::alloc_first_fit"
                 else
                     dup.1
                     dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
-                    dup.0
                     u32mod.16
                     dup.0
                     u32mod.4
@@ -1264,17 +964,7 @@ export."wee_alloc::alloc_first_fit"
                     dup.1
                     dup.1
                     u32wrapping_sub
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     dup.5
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     u32lt
                     neq.0
                     if.true
@@ -1285,11 +975,6 @@ export."wee_alloc::alloc_first_fit"
                         drop
                         drop
                         dup.4
-                        dup.0
-                        push.2147483648
-                        u32and
-                        eq.2147483648
-                        assertz
                         dup.1
                         swap.1
                         dup.0
@@ -1311,11 +996,6 @@ export."wee_alloc::alloc_first_fit"
                         dup.1
                         swap.1
                         u32wrapping_add
-                        dup.0
-                        push.2147483648
-                        u32and
-                        eq.2147483648
-                        assertz
                         dup.5
                         swap.1
                         swap.3
@@ -1324,11 +1004,6 @@ export."wee_alloc::alloc_first_fit"
                         dup.6
                         u32and
                         dup.0
-                        dup.0
-                        push.2147483648
-                        u32and
-                        eq.2147483648
-                        assertz
                         movup.3
                         swap.1
                         u32lte
@@ -1353,11 +1028,6 @@ export."wee_alloc::alloc_first_fit"
                             u32wrapping_add
                             dup.2
                             dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
-                            dup.0
                             u32mod.16
                             dup.0
                             u32mod.4
@@ -1370,11 +1040,6 @@ export."wee_alloc::alloc_first_fit"
                             u32and
                             dup.1
                             dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
-                            dup.0
                             u32mod.16
                             dup.0
                             u32mod.4
@@ -1385,11 +1050,6 @@ export."wee_alloc::alloc_first_fit"
                             exec.::intrinsics::mem::store_sw
                             push.0.0
                             dup.2
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.0
                             u32mod.16
                             dup.0
@@ -1402,11 +1062,6 @@ export."wee_alloc::alloc_first_fit"
                             push.0
                             movup.2
                             dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
-                            dup.0
                             u32mod.16
                             dup.0
                             u32mod.4
@@ -1417,11 +1072,6 @@ export."wee_alloc::alloc_first_fit"
                             exec.::intrinsics::mem::store_sw
                             push.0
                             dup.2
-                            dup.0
-                            push.2147483648
-                            u32and
-                            eq.2147483648
-                            assertz
                             dup.0
                             u32mod.16
                             dup.0
@@ -1440,11 +1090,6 @@ export."wee_alloc::alloc_first_fit"
                                 drop
                                 dup.2
                                 dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
-                                dup.0
                                 u32mod.16
                                 dup.0
                                 u32mod.4
@@ -1460,11 +1105,6 @@ export."wee_alloc::alloc_first_fit"
                                 dup.3
                                 u32or
                                 dup.4
-                                dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
                                 dup.1
                                 swap.1
                                 dup.0
@@ -1477,11 +1117,6 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.16
                                 exec.::intrinsics::mem::store_sw
                                 dup.4
-                                dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
                                 add.8
                                 u32assert
                                 dup.0
@@ -1496,11 +1131,6 @@ export."wee_alloc::alloc_first_fit"
                                 push.4294967294
                                 u32and
                                 dup.5
-                                dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
                                 add.8
                                 u32assert
                                 dup.0
@@ -1518,11 +1148,6 @@ export."wee_alloc::alloc_first_fit"
                                 swap.1
                                 u32or
                                 dup.3
-                                dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
                                 add.4
                                 u32assert
                                 dup.0
@@ -1540,11 +1165,6 @@ export."wee_alloc::alloc_first_fit"
                                 if.true
                                     dup.1
                                     dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
-                                    dup.0
                                     u32mod.16
                                     dup.0
                                     u32mod.4
@@ -1559,11 +1179,6 @@ export."wee_alloc::alloc_first_fit"
                                     u32or
                                     dup.2
                                     dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
-                                    dup.0
                                     u32mod.16
                                     dup.0
                                     u32mod.4
@@ -1575,11 +1190,6 @@ export."wee_alloc::alloc_first_fit"
                                     push.4294967293
                                     u32and
                                     movup.2
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     dup.0
                                     u32mod.16
                                     dup.0
@@ -1597,11 +1207,6 @@ export."wee_alloc::alloc_first_fit"
                                     drop
                                     dup.0
                                     dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
-                                    dup.0
                                     u32mod.16
                                     dup.0
                                     u32mod.4
@@ -1613,11 +1218,6 @@ export."wee_alloc::alloc_first_fit"
                                     push.1
                                     u32or
                                     dup.1
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     dup.0
                                     u32mod.16
                                     dup.0
@@ -1640,11 +1240,6 @@ export."wee_alloc::alloc_first_fit"
                                     drop
                                     dup.2
                                     dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
-                                    dup.0
                                     u32mod.16
                                     dup.0
                                     u32mod.4
@@ -1660,11 +1255,6 @@ export."wee_alloc::alloc_first_fit"
                                     dup.3
                                     u32or
                                     dup.4
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     dup.1
                                     swap.1
                                     dup.0
@@ -1677,11 +1267,6 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.16
                                     exec.::intrinsics::mem::store_sw
                                     dup.4
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.8
                                     u32assert
                                     dup.0
@@ -1696,11 +1281,6 @@ export."wee_alloc::alloc_first_fit"
                                     push.4294967294
                                     u32and
                                     dup.5
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.8
                                     u32assert
                                     dup.0
@@ -1718,11 +1298,6 @@ export."wee_alloc::alloc_first_fit"
                                     swap.1
                                     u32or
                                     dup.3
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.4
                                     u32assert
                                     dup.0
@@ -1740,11 +1315,6 @@ export."wee_alloc::alloc_first_fit"
                                     if.true
                                         dup.1
                                         dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
-                                        dup.0
                                         u32mod.16
                                         dup.0
                                         u32mod.4
@@ -1759,11 +1329,6 @@ export."wee_alloc::alloc_first_fit"
                                         u32or
                                         dup.2
                                         dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
-                                        dup.0
                                         u32mod.16
                                         dup.0
                                         u32mod.4
@@ -1775,11 +1340,6 @@ export."wee_alloc::alloc_first_fit"
                                         push.4294967293
                                         u32and
                                         movup.2
-                                        dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
                                         dup.0
                                         u32mod.16
                                         dup.0
@@ -1797,11 +1357,6 @@ export."wee_alloc::alloc_first_fit"
                                         drop
                                         dup.0
                                         dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
-                                        dup.0
                                         u32mod.16
                                         dup.0
                                         u32mod.4
@@ -1813,11 +1368,6 @@ export."wee_alloc::alloc_first_fit"
                                         push.1
                                         u32or
                                         dup.1
-                                        dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
                                         dup.0
                                         u32mod.16
                                         dup.0
@@ -1835,11 +1385,6 @@ export."wee_alloc::alloc_first_fit"
                                     drop
                                     dup.2
                                     dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
-                                    dup.0
                                     u32mod.16
                                     dup.0
                                     u32mod.4
@@ -1855,11 +1400,6 @@ export."wee_alloc::alloc_first_fit"
                                     dup.3
                                     u32or
                                     dup.4
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     dup.1
                                     swap.1
                                     dup.0
@@ -1872,11 +1412,6 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.16
                                     exec.::intrinsics::mem::store_sw
                                     dup.4
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.8
                                     u32assert
                                     dup.0
@@ -1891,11 +1426,6 @@ export."wee_alloc::alloc_first_fit"
                                     push.4294967294
                                     u32and
                                     dup.5
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.8
                                     u32assert
                                     dup.0
@@ -1908,11 +1438,6 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.16
                                     exec.::intrinsics::mem::store_sw
                                     dup.3
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.4
                                     u32assert
                                     dup.0
@@ -1929,11 +1454,6 @@ export."wee_alloc::alloc_first_fit"
                                     dup.5
                                     u32or
                                     dup.4
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.4
                                     u32assert
                                     dup.0
@@ -1946,11 +1466,6 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.16
                                     exec.::intrinsics::mem::store_sw
                                     dup.2
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.4
                                     u32assert
                                     dup.0
@@ -1967,11 +1482,6 @@ export."wee_alloc::alloc_first_fit"
                                     dup.4
                                     u32or
                                     movup.3
-                                    dup.0
-                                    push.2147483648
-                                    u32and
-                                    eq.2147483648
-                                    assertz
                                     add.4
                                     u32assert
                                     dup.0
@@ -1991,11 +1501,6 @@ export."wee_alloc::alloc_first_fit"
                                     if.true
                                         dup.1
                                         dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
-                                        dup.0
                                         u32mod.16
                                         dup.0
                                         u32mod.4
@@ -2010,11 +1515,6 @@ export."wee_alloc::alloc_first_fit"
                                         u32or
                                         dup.2
                                         dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
-                                        dup.0
                                         u32mod.16
                                         dup.0
                                         u32mod.4
@@ -2026,11 +1526,6 @@ export."wee_alloc::alloc_first_fit"
                                         push.4294967293
                                         u32and
                                         movup.2
-                                        dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
                                         dup.0
                                         u32mod.16
                                         dup.0
@@ -2048,11 +1543,6 @@ export."wee_alloc::alloc_first_fit"
                                         drop
                                         dup.0
                                         dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
-                                        dup.0
                                         u32mod.16
                                         dup.0
                                         u32mod.4
@@ -2064,11 +1554,6 @@ export."wee_alloc::alloc_first_fit"
                                         push.1
                                         u32or
                                         dup.1
-                                        dup.0
-                                        push.2147483648
-                                        u32and
-                                        eq.2147483648
-                                        assertz
                                         dup.0
                                         u32mod.16
                                         dup.0
@@ -2093,11 +1578,6 @@ export."wee_alloc::alloc_first_fit"
                                 swap.1
                                 drop
                                 dup.4
-                                dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
                                 dup.1
                                 swap.1
                                 dup.0
@@ -2125,11 +1605,6 @@ export."wee_alloc::alloc_first_fit"
                                 drop
                                 dup.1
                                 dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
-                                dup.0
                                 u32mod.16
                                 dup.0
                                 u32mod.4
@@ -2142,11 +1617,6 @@ export."wee_alloc::alloc_first_fit"
                                 u32or
                                 dup.2
                                 dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
-                                dup.0
                                 u32mod.16
                                 dup.0
                                 u32mod.4
@@ -2158,11 +1628,6 @@ export."wee_alloc::alloc_first_fit"
                                 push.4294967292
                                 u32and
                                 movup.2
-                                dup.0
-                                push.2147483648
-                                u32and
-                                eq.2147483648
-                                assertz
                                 dup.0
                                 u32mod.16
                                 dup.0
@@ -2189,17 +1654,7 @@ end
 export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
     push.1
     dup.2
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     push.1
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     u32gt
     neq.0
     movup.3
@@ -2243,11 +1698,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
     else
         dup.2
         dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
-        dup.0
         u32mod.16
         dup.0
         u32mod.4
@@ -2257,11 +1707,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
         u32div.16
         exec.::intrinsics::mem::load_sw
         dup.1
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.12
         u32assert
         dup.0
@@ -2281,23 +1726,8 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
         movup.5
         swap.1
         u32wrapping_add
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         push.2
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         u32shr
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         dup.0
         dup.4
         movup.2
@@ -2317,11 +1747,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             exec."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
             dup.1
             dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
-            dup.0
             u32mod.16
             dup.0
             u32mod.4
@@ -2334,11 +1759,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             neq.0
             if.true
                 dup.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.4
                 u32assert
                 dup.0
@@ -2351,11 +1771,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.16
                 exec.::intrinsics::mem::load_sw
                 dup.2
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.12
                 u32assert
                 dup.0
@@ -2369,11 +1784,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 exec.::intrinsics::mem::load_sw
                 movup.5
                 dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
-                dup.0
                 u32mod.16
                 dup.0
                 u32mod.4
@@ -2383,11 +1793,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 dup.2
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.12
                 u32assert
                 dup.1
@@ -2402,11 +1807,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 dup.2
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.12
                 u32assert
                 dup.0
@@ -2419,11 +1819,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.16
                 exec.::intrinsics::mem::load_sw
                 swap.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.8
                 u32assert
                 dup.0
@@ -2492,11 +1887,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 movup.2
                 u32div.16
                 exec.::intrinsics::mem::store_sw
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 add.12
                 u32assert
                 dup.0
@@ -2509,11 +1899,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.16
                 exec.::intrinsics::mem::load_sw
                 swap.1
-                dup.0
-                push.2147483648
-                u32and
-                eq.2147483648
-                assertz
                 dup.0
                 u32mod.16
                 dup.0
@@ -2543,11 +1928,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             movup.2
             u32div.16
             exec.::intrinsics::mem::store_sw
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.12
             u32assert
             dup.0
@@ -2560,11 +1940,6 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             u32div.16
             exec.::intrinsics::mem::load_sw
             movup.2
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             dup.0
             u32mod.16
             dup.0
@@ -2584,11 +1959,6 @@ export."miden_tx_kernel_sys::get_inputs"
     push.16
     u32wrapping_sub
     dup.0
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     add.8
     u32assert
     dup.0
@@ -2601,11 +1971,6 @@ export."miden_tx_kernel_sys::get_inputs"
     u32div.16
     exec.::intrinsics::mem::load_sw
     dup.1
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     add.12
     u32assert
     dup.0
@@ -2636,11 +2001,6 @@ export."miden_tx_kernel_sys::get_inputs"
     u32div.16
     exec.::intrinsics::mem::store_sw
     dup.2
-    dup.0
-    push.2147483648
-    u32and
-    eq.2147483648
-    assertz
     add.4
     u32assert
     dup.0
@@ -2671,11 +2031,6 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.16
         exec.::intrinsics::mem::store_sw
         dup.4
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         movup.4
         swap.1
         dup.0
@@ -2688,11 +2043,6 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.16
         exec.::intrinsics::mem::store_sw
         dup.3
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.4
         u32assert
         movup.3
@@ -2708,11 +2058,6 @@ export."miden_tx_kernel_sys::get_inputs"
         exec.::intrinsics::mem::store_sw
         push.0
         movup.3
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.8
         u32assert
         dup.0
@@ -2752,17 +2097,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
     neq.0
     if.true
         dup.1
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         push.268435456
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         u32lt
         neq.0
         if.true
@@ -2787,11 +2122,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     push.1
                     dup.2
                     dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
-                    dup.0
                     u32mod.16
                     dup.0
                     u32mod.4
@@ -2802,11 +2132,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     exec.::intrinsics::mem::store_sw
                     push.8
                     dup.2
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.4
                     u32assert
                     dup.0
@@ -2819,11 +2144,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     swap.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.8
                     u32assert
                     dup.0
@@ -2841,11 +2161,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     push.0
                     dup.2
                     dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
-                    dup.0
                     u32mod.16
                     dup.0
                     u32mod.4
@@ -2855,11 +2170,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     dup.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.4
                     u32assert
                     movup.3
@@ -2874,11 +2184,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     swap.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.8
                     u32assert
                     dup.0
@@ -2906,11 +2211,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     push.1
                     dup.2
                     dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
-                    dup.0
                     u32mod.16
                     dup.0
                     u32mod.4
@@ -2921,11 +2221,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     exec.::intrinsics::mem::store_sw
                     push.8
                     dup.2
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.4
                     u32assert
                     dup.0
@@ -2938,11 +2233,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     swap.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.8
                     u32assert
                     dup.0
@@ -2960,11 +2250,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     push.0
                     dup.2
                     dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
-                    dup.0
                     u32mod.16
                     dup.0
                     u32mod.4
@@ -2974,11 +2259,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     dup.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.4
                     u32assert
                     movup.3
@@ -2993,11 +2273,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     swap.1
-                    dup.0
-                    push.2147483648
-                    u32and
-                    eq.2147483648
-                    assertz
                     add.8
                     u32assert
                     dup.0
@@ -3018,11 +2293,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
             push.1
             dup.1
             dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
-            dup.0
             u32mod.16
             dup.0
             u32mod.4
@@ -3033,11 +2303,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
             exec.::intrinsics::mem::store_sw
             push.0
             swap.1
-            dup.0
-            push.2147483648
-            u32and
-            eq.2147483648
-            assertz
             add.4
             u32assert
             dup.0
@@ -3057,11 +2322,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         push.0
         dup.1
         dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
-        dup.0
         u32mod.16
         dup.0
         u32mod.4
@@ -3072,11 +2332,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         exec.::intrinsics::mem::store_sw
         push.8.0
         movup.2
-        dup.0
-        push.2147483648
-        u32and
-        eq.2147483648
-        assertz
         add.4
         u32assert
         dup.0
