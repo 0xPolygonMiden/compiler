@@ -36,13 +36,19 @@ struct TestByEmulationHarness {
 }
 #[allow(unused)]
 impl TestByEmulationHarness {
-    pub fn with_emulator_config(memory_size: usize, hp: usize, lp: usize) -> Self {
+    pub fn with_emulator_config(
+        memory_size: usize,
+        hp: usize,
+        lp: usize,
+        print_stack: bool,
+    ) -> Self {
         let mut harness = Self {
             context: TestContext::default(),
             emulator: Emulator::new(
                 memory_size.try_into().expect("invalid memory size"),
                 hp.try_into().expect("invalid address"),
                 lp.try_into().expect("invalid address"),
+                print_stack,
             ),
         };
         harness.set_cycle_budget(2000);

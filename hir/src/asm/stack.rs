@@ -458,6 +458,19 @@ impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> DebugStack<'a, T> {
         self.limit = Some(n);
         self
     }
+
+    pub fn pretty(&self) -> String {
+        let mut s = String::new();
+        for (i, value) in self.stack.stack().iter().rev().enumerate() {
+            if let Some(limit) = self.limit {
+                if i >= limit {
+                    break;
+                }
+            }
+            s.push_str(&format!("{:?} ", value.debug()));
+        }
+        s
+    }
 }
 impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> fmt::Debug for DebugStack<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

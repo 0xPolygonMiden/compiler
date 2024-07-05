@@ -2,9 +2,11 @@ mod breakpoints;
 mod debug;
 mod events;
 mod functions;
+mod memory;
 
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
+use memory::Memory;
 use miden_assembly::{ast::ProcedureName, LibraryNamespace};
 use midenc_hir::{assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -118,7 +120,7 @@ pub struct Emulator {
     locals: FxHashMap<FunctionIdent, Addr>,
     modules_loaded: FxHashMap<Ident, Arc<Module>>,
     modules_pending: FxHashSet<Ident>,
-    memory: Vec<[Felt; 4]>,
+    memory: Memory,
     stack: OperandStack<Felt>,
     advice_stack: OperandStack<Felt>,
     callstack: Vec<Activation>,
@@ -131,17 +133,22 @@ pub struct Emulator {
     clk: usize,
     clk_limit: usize,
     entrypoint: Option<FunctionIdent>,
+    print_trace: bool,
 }
 impl Default for Emulator {
     fn default() -> Self {
-        Self::new(Self::DEFAULT_HEAP_SIZE, Self::DEFAULT_HEAP_START, Self::DEFAULT_LOCALS_START)
+        Self::new(
+            Self::DEFAULT_HEAP_SIZE,
+            Self::DEFAULT_HEAP_START,
+            Self::DEFAULT_LOCALS_START,
+            false,
+        )
     }
 }
 impl Emulator {
     pub const DEFAULT_HEAP_SIZE: u32 = (4 * Self::PAGE_SIZE) / 16;
     pub const DEFAULT_HEAP_START: u32 = (2 * Self::PAGE_SIZE) / 16;
     pub const DEFAULT_LOCALS_START: u32 = (3 * Self::PAGE_SIZE) / 16;
-    const EMPTY_WORD: [Felt; 4] = [Felt::ZERO; 4];
     const PAGE_SIZE: u32 = 64 * 1024;
 
     /// Construct a new, empty emulator with:
@@ -149,8 +156,8 @@ impl Emulator {
     /// * A linear memory heap of `memory_size` words
     /// * The start of the usable heap set to `hp` (an address in words)
     /// * The start of the reserved heap used for locals set to `lp` (an address in words)
-    pub fn new(memory_size: u32, hp: u32, lp: u32) -> Self {
-        let memory = vec![Self::EMPTY_WORD; memory_size as usize];
+    pub fn new(memory_size: u32, hp: u32, lp: u32, print_stack: bool) -> Self {
+        let memory = Memory::new(memory_size as usize);
         Self {
             status: Status::Init,
             functions: Default::default(),
@@ -170,6 +177,7 @@ impl Emulator {
             clk: 0,
             clk_limit: usize::MAX,
             entrypoint: None,
+            print_trace: print_stack,
         }
     }
 
@@ -570,7 +578,7 @@ impl Emulator {
     pub fn stop(&mut self) {
         self.callstack.clear();
         self.stack.clear();
-        self.memory = vec![Self::EMPTY_WORD; self.memory.len()];
+        self.memory.reset();
         self.hp = self.hp_start;
         self.lp = self.lp_start;
         self.step_over = None;
@@ -887,7 +895,12 @@ macro_rules! peek_u32 {
 macro_rules! pop_addr {
     ($emu:ident) => {{
         let addr = pop_u32!($emu, "expected valid 32-bit address, got {}") as usize;
-        assert!(addr < $emu.memory.len(), "out of bounds memory access");
+        assert!(
+            addr < $emu.memory.len(),
+            "out of bounds memory access, addr: {}, available memory: {}",
+            addr,
+            $emu.memory.len()
+        );
         addr
     }};
 }
@@ -1241,6 +1254,11 @@ impl Emulator {
         // control flow effect occurred to reach it
         let ix_with_op = state.next();
         if let Some(ix_with_op) = ix_with_op {
+            if self.print_trace {
+                eprintln!("stk: {}", self.stack.debug().pretty());
+                eprintln!("mem: {:?}", self.memory);
+                eprintln!("op>: {:?}", ix_with_op.op);
+            }
             match ix_with_op.op {
                 Op::Padw => {
                     self.stack.padw();
