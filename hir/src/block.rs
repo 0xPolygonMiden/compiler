@@ -1,5 +1,4 @@
 use cranelift_entity::entity_impl;
-use intrusive_collections::linked_list::{Cursor, CursorMut};
 
 use super::*;
 
@@ -81,11 +80,43 @@ impl BlockData {
     }
 
     #[inline(always)]
-    pub fn cursor_mut<'a, 'b: 'a>(&'b mut self) -> CursorMut<'a, InstAdapter> {
+    pub fn front<'a, 'b: 'a>(&'b self) -> InstructionCursor<'a> {
+        self.insts.front()
+    }
+
+    #[inline(always)]
+    pub fn back<'a, 'b: 'a>(&'b self) -> InstructionCursor<'a> {
+        self.insts.back()
+    }
+
+    pub fn cursor_at_inst<'a, 'b: 'a>(&'b self, inst: Inst) -> InstructionCursor<'a> {
+        let mut cursor = self.insts.front();
+        while let Some(current_inst) = cursor.get() {
+            if current_inst.key == inst {
+                break;
+            }
+            cursor.move_next();
+        }
+        cursor
+    }
+
+    pub fn cursor_mut_at_inst<'a, 'b: 'a>(&'b mut self, inst: Inst) -> InstructionCursorMut<'a> {
+        let mut cursor = self.insts.front_mut();
+        while let Some(current_inst) = cursor.get() {
+            if current_inst.key == inst {
+                break;
+            }
+            cursor.move_next();
+        }
+        cursor
+    }
+
+    #[inline(always)]
+    pub fn cursor_mut<'a, 'b: 'a>(&'b mut self) -> InstructionCursorMut<'a> {
         self.insts.front_mut()
     }
 
-    pub fn cursor_mut_at<'a, 'b: 'a>(&'b mut self, index: usize) -> CursorMut<'a, InstAdapter> {
+    pub fn cursor_mut_at<'a, 'b: 'a>(&'b mut self, index: usize) -> InstructionCursorMut<'a> {
         let mut cursor = self.insts.front_mut();
         for _ in 0..index {
             cursor.move_next();
@@ -124,7 +155,7 @@ impl BlockData {
 }
 
 struct Insts<'f> {
-    cursor: Cursor<'f, InstAdapter>,
+    cursor: InstructionCursor<'f>,
 }
 impl<'f> Iterator for Insts<'f> {
     type Item = Inst;

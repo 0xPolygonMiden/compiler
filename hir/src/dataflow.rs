@@ -551,6 +551,17 @@ impl DataFlowGraph {
         self.blocks[block].insts()
     }
 
+    pub fn block_cursor(&self, block: Block) -> InstructionCursor<'_> {
+        self.blocks[block].front()
+    }
+
+    pub fn block_cursor_at(&self, inst: Inst) -> InstructionCursor<'_> {
+        let block = self.inst_block(inst).expect("instruction is not linked to a block");
+        let cursor = self.blocks[block].cursor_at_inst(inst);
+        assert!(!cursor.is_null());
+        cursor
+    }
+
     pub fn last_inst(&self, block: Block) -> Option<Inst> {
         self.blocks[block].last()
     }
@@ -684,12 +695,13 @@ impl DataFlowGraph {
         dest: Block,
         value: Value,
     ) {
-        match self.insts[branch_inst].data.item {
+        match self.insts[branch_inst].data.as_mut() {
             Instruction::Br(Br {
                 destination,
                 ref mut args,
                 ..
-            }) if destination == dest => {
+            }) => {
+                debug_assert_eq!(*destination, dest);
                 args.push(value, &mut self.value_lists);
             }
             Instruction::CondBr(CondBr {
@@ -697,18 +709,14 @@ impl DataFlowGraph {
                 else_dest: (else_dest, ref mut else_args),
                 ..
             }) => {
-                if then_dest == dest {
+                if *then_dest == dest {
                     then_args.push(value, &mut self.value_lists);
-                } else if else_dest == dest {
+                }
+                if *else_dest == dest {
                     else_args.push(value, &mut self.value_lists);
                 }
             }
-            Instruction::Switch(Switch {
-                op: _,
-                arg: _,
-                arms: _,
-                default: _,
-            }) => {
+            Instruction::Switch(_) => {
                 panic!(
                     "cannot append argument {value} to Switch destination block {dest}, since it \
                      has no block arguments support"

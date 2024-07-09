@@ -87,6 +87,9 @@ intrusive_adapter!(pub InstAdapter = UnsafeRef<InstNode>: InstNode { link: Linke
 /// A type alias for `LinkedList<InstAdapter>`
 pub type InstructionList = intrusive_collections::LinkedList<InstAdapter>;
 
+pub type InstructionCursor<'a> = intrusive_collections::linked_list::Cursor<'a, InstAdapter>;
+pub type InstructionCursorMut<'a> = intrusive_collections::linked_list::CursorMut<'a, InstAdapter>;
+
 /// Represents the type of instruction associated with a particular opcode
 #[derive(Debug)]
 pub enum Instruction {
