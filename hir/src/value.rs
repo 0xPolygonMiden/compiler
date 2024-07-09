@@ -93,6 +93,12 @@ impl ValueData {
             _ => panic!("expected instruction result value, got block parameter"),
         }
     }
+
+    pub fn num(&self) -> u16 {
+        match self {
+            Self::Inst { num, .. } | Self::Param { num, .. } => *num,
+        }
+    }
 }
 
 pub struct Values<'a> {
