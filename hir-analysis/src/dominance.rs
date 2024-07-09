@@ -6,7 +6,7 @@ use std::{
 use cranelift_entity::{packed_option::PackedOption, SecondaryMap};
 use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
-    Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint,
+    Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint, Value,
 };
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
@@ -666,11 +666,30 @@ impl DominanceFrontier {
         }
     }
 
+    /// Get an iterator over the dominance frontier of `value`
+    pub fn iter_by_value(
+        &self,
+        value: Value,
+        function: &Function,
+    ) -> impl Iterator<Item = Block> + '_ {
+        let defining_block = function.dfg.value_block(value);
+        DominanceFrontierIter {
+            df: self.dfs.get(defining_block).map(|set| set.iter().copied()),
+        }
+    }
+
     /// Get the set of blocks in the dominance frontier of `block`,
     /// or `None` if `block` has an empty dominance frontier.
     #[inline]
     pub fn get(&self, block: &Block) -> Option<&FxHashSet<Block>> {
         self.dfs.get(*block)
+    }
+
+    /// Get the set of blocks in the dominance frontier of `value`,
+    /// or `None` if `value` has an empty dominance frontier.
+    pub fn get_by_value(&self, value: Value, function: &Function) -> Option<&FxHashSet<Block>> {
+        let defining_block = function.dfg.value_block(value);
+        self.dfs.get(defining_block)
     }
 }
 
