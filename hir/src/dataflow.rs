@@ -463,6 +463,50 @@ impl DataFlowGraph {
         }
     }
 
+    /// Replace argument at `index` in the argument list of `inst`
+    ///
+    /// NOTE: This should not be used for successor arguments, as each successor gets its
+    /// own distinct argument list, separate from the instruction argument list.
+    pub fn replace_argument(&mut self, inst: Inst, index: usize, replacement: Value) {
+        self.insts[inst].data.arguments_mut(&mut self.value_lists)[index] = replacement;
+    }
+
+    /// Replace the block argument at `index`, for the successor argument list of the
+    /// successor at `succ_index`, in the set of successors for `inst`.
+    pub fn replace_successor_argument(
+        &mut self,
+        inst: Inst,
+        succ_index: usize,
+        index: usize,
+        replacement: Value,
+    ) {
+        let ix = &mut self.insts[inst];
+        match ix.data.as_mut() {
+            Instruction::Br(Br { ref mut args, .. }) => {
+                debug_assert_eq!(succ_index, 0);
+                args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+            }
+            Instruction::CondBr(CondBr {
+                then_dest: (_, ref mut then_args),
+                else_dest: (_, ref mut else_args),
+                ..
+            }) => match succ_index {
+                0 => {
+                    then_args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                }
+                1 => {
+                    else_args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                }
+                _ => unreachable!("expected valid successor index for cond_br, got {succ_index}"),
+            },
+            Instruction::Switch(_) => unimplemented!(
+                "invalid instruction: cannot replace successor arguments for 'switch': arms \
+                 cannot have arguments yet"
+            ),
+            ix => panic!("invalid instruction: expected branch instruction, got {ix:#?}"),
+        }
+    }
+
     pub fn pp_block(&self, pp: ProgramPoint) -> Block {
         match pp {
             ProgramPoint::Block(block) => block,
