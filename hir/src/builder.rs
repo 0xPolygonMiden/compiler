@@ -630,6 +630,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     integer_literal!(16);
     integer_literal!(32);
     integer_literal!(64);
+    integer_literal!(128);
 
     fn felt(self, i: Felt, span: SourceSpan) -> Value {
         into_first_result!(self.UnaryImm(Opcode::ImmFelt, Type::Felt, Immediate::Felt(i), span))

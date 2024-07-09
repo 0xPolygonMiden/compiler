@@ -1009,6 +1009,8 @@ impl<'a> InstTypeChecker<'a> {
             Opcode::ImmI32 => InstPattern::Unary(Type::I32.into()),
             Opcode::ImmU64 => InstPattern::Unary(Type::U64.into()),
             Opcode::ImmI64 => InstPattern::Unary(Type::I64.into()),
+            Opcode::ImmU128 => InstPattern::Unary(Type::U128.into()),
+            Opcode::ImmI128 => InstPattern::Unary(Type::I128.into()),
             Opcode::ImmFelt => InstPattern::Unary(Type::Felt.into()),
             Opcode::ImmF64 => InstPattern::Unary(Type::F64.into()),
             Opcode::Alloca => InstPattern::Exact(vec![], vec![TypePattern::Pointer]),
