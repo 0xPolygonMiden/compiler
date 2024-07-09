@@ -1,10 +1,8 @@
-use cranelift_entity::packed_option::PackedOption;
-
 use super::*;
 
 pub struct FunctionBuilder<'f> {
     pub func: &'f mut Function,
-    position: PackedOption<Block>,
+    ip: InsertionPoint,
 }
 impl<'f> FunctionBuilder<'f> {
     pub fn new(func: &'f mut Function) -> Self {
@@ -13,8 +11,12 @@ impl<'f> FunctionBuilder<'f> {
 
         Self {
             func,
-            position: position.into(),
+            ip: InsertionPoint::after(ProgramPoint::Block(position)),
         }
+    }
+
+    pub fn at(func: &'f mut Function, ip: InsertionPoint) -> Self {
+        Self { func, ip }
     }
 
     pub fn entry_block(&self) -> Block {
@@ -23,12 +25,12 @@ impl<'f> FunctionBuilder<'f> {
 
     #[inline]
     pub fn current_block(&self) -> Block {
-        self.position.expand().unwrap()
+        self.ip.block(self.func)
     }
 
     #[inline]
     pub fn switch_to_block(&mut self, block: Block) {
-        self.position = PackedOption::from(block);
+        self.ip = InsertionPoint::after(ProgramPoint::Block(block));
     }
 
     pub fn create_block(&mut self) -> Block {
@@ -82,8 +84,7 @@ impl<'f> FunctionBuilder<'f> {
     }
 
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> DefaultInstBuilder<'a> {
-        let block = self.position.expect("must be in a block to insert instructions");
-        DefaultInstBuilder::new(&mut self.func.dfg, block)
+        DefaultInstBuilder::at(&mut self.func.dfg, self.ip)
     }
 }
 
@@ -101,7 +102,7 @@ impl<'f> DefaultInstBuilder<'f> {
         }
     }
 
-    fn at(dfg: &'f mut DataFlowGraph, ip: InsertionPoint) -> Self {
+    pub fn at(dfg: &'f mut DataFlowGraph, ip: InsertionPoint) -> Self {
         Self { dfg, ip }
     }
 }
