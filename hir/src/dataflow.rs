@@ -186,6 +186,15 @@ impl DataFlowGraph {
         self.values[v].clone()
     }
 
+    pub fn value_block(&self, v: Value) -> Block {
+        match self.value_data(v) {
+            ValueData::Inst { inst, .. } => self
+                .inst_block(*inst)
+                .expect("invalid value reference: instruction is not attached to a block"),
+            ValueData::Param { block, .. } => *block,
+        }
+    }
+
     /// Get a reference to the metadata for an instruction
     #[inline(always)]
     pub fn inst_node(&self, inst: Inst) -> &InstNode {
