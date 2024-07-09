@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 /// larger you should reach for quite efficient in general, and is particularly fast
 /// when all of the data is stored inline, but may not be a good fit for all use cases.
 ///
-/// Due to its design constraints, it only supports elements which implement [Ord].
+/// Due to its design constraints, elements must implement [Eq].
 pub struct SmallSet<T, const N: usize> {
     items: SmallVec<[T; N]>,
 }
@@ -66,7 +66,7 @@ impl<T, const N: usize> IntoIterator for SmallSet<T, N> {
 }
 impl<T, const N: usize> From<[T; N]> for SmallSet<T, N>
 where
-    T: Ord,
+    T: Eq,
 {
     #[inline]
     fn from(items: [T; N]) -> Self {
@@ -75,7 +75,7 @@ where
 }
 impl<T, const N: usize> FromIterator<T> for SmallSet<T, N>
 where
-    T: Ord,
+    T: Eq,
 {
     fn from_iter<I>(iter: I) -> Self
     where
@@ -90,7 +90,7 @@ where
 }
 impl<T, const N: usize> SmallSet<T, N>
 where
-    T: Ord,
+    T: Eq,
 {
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
@@ -120,12 +120,20 @@ where
     pub fn remove<Q>(&mut self, item: &Q) -> Option<T>
     where
         T: Borrow<Q>,
-        Q: Ord + ?Sized,
+        Q: Eq + ?Sized,
     {
         match self.find(item) {
             Some(idx) => Some(self.items.remove(idx)),
             None => None,
         }
+    }
+
+    /// Remove all items from the set for which `predicate` returns false.
+    pub fn retain<F>(&mut self, predicate: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        self.items.retain(predicate);
     }
 
     /// Clear the content of the set
@@ -136,7 +144,7 @@ where
     pub fn contains<Q>(&self, item: &Q) -> bool
     where
         T: Borrow<Q>,
-        Q: Ord + ?Sized,
+        Q: Eq + ?Sized,
     {
         self.find(item).is_some()
     }
@@ -144,7 +152,7 @@ where
     pub fn get<Q>(&self, item: &Q) -> Option<&T>
     where
         T: Borrow<Q>,
-        Q: Ord + ?Sized,
+        Q: Eq + ?Sized,
     {
         match self.find(item) {
             Some(idx) => Some(&self.items[idx]),
@@ -155,7 +163,7 @@ where
     pub fn get_mut<Q>(&mut self, item: &Q) -> Option<&mut T>
     where
         T: Borrow<Q>,
-        Q: Ord + ?Sized,
+        Q: Eq + ?Sized,
     {
         match self.find(item) {
             Some(idx) => Some(&mut self.items[idx]),
@@ -173,8 +181,118 @@ where
     fn find<Q>(&self, item: &Q) -> Option<usize>
     where
         T: Borrow<Q>,
-        Q: Ord + ?Sized,
+        Q: Eq + ?Sized,
     {
         self.items.iter().position(|elem| elem.borrow() == item)
+    }
+}
+
+impl<T, const N: usize> SmallSet<T, N>
+where
+    T: Clone + Eq,
+{
+    /// Obtain a new [SmallSet] containing the unique elements of both `self` and `other`
+    pub fn union(&self, other: &Self) -> Self {
+        let mut result = self.clone();
+
+        for item in other.items.iter() {
+            if result.contains(item) {
+                continue;
+            }
+            result.items.push(item.clone());
+        }
+
+        result
+    }
+
+    /// Obtain a new [SmallSet] containing the unique elements of both `self` and `other`
+    pub fn into_union(mut self, other: &Self) -> Self {
+        for item in other.items.iter() {
+            if self.contains(item) {
+                continue;
+            }
+            self.items.push(item.clone());
+        }
+
+        self
+    }
+
+    /// Obtain a new [SmallSet] containing the elements in common between `self` and `other`
+    pub fn intersection(&self, other: &Self) -> Self {
+        let mut result = Self::default();
+
+        for item in self.items.iter() {
+            if other.contains(item) {
+                result.items.push(item.clone());
+            }
+        }
+
+        result
+    }
+
+    /// Obtain a new [SmallSet] containing the elements in common between `self` and `other`
+    pub fn into_intersection(self, other: &Self) -> Self {
+        let mut result = Self::default();
+
+        for item in self.items.into_iter() {
+            if other.contains(&item) {
+                result.items.push(item);
+            }
+        }
+
+        result
+    }
+
+    /// Obtain a new [SmallSet] containing the elements in `self` but not in `other`
+    pub fn difference(&self, other: &Self) -> Self {
+        let mut result = Self::default();
+
+        for item in self.items.iter() {
+            if other.contains(item) {
+                continue;
+            }
+            result.items.push(item.clone());
+        }
+
+        result
+    }
+
+    /// Obtain a new [SmallSet] containing the elements in `self` but not in `other`
+    pub fn into_difference(mut self, other: &Self) -> Self {
+        Self {
+            items: self.items.drain_filter(|item| !other.contains(item)).collect(),
+        }
+    }
+
+    /// Obtain a new [SmallSet] containing the elements in `self` or `other`, but not in both
+    pub fn symmetric_difference(&self, other: &Self) -> Self {
+        let mut result = Self::default();
+
+        for item in self.items.iter() {
+            if other.contains(item) {
+                continue;
+            }
+            result.items.push(item.clone());
+        }
+
+        for item in other.items.iter() {
+            if self.contains(item) {
+                continue;
+            }
+            result.items.push(item.clone());
+        }
+
+        result
+    }
+}
+
+impl<E, const N: usize> core::iter::Extend<E> for SmallSet<E, N>
+where
+    E: Eq,
+{
+    fn extend<T: IntoIterator<Item = E>>(&mut self, iter: T) {
+        for item in iter {
+            self.insert(item);
+        }
     }
 }
