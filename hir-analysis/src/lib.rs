@@ -5,6 +5,7 @@ pub mod dependency_graph;
 mod dominance;
 mod liveness;
 mod loops;
+pub mod spill;
 mod treegraph;
 mod validation;
 
@@ -16,6 +17,7 @@ pub use self::{
     dominance::{DominanceFrontier, DominatorTree, DominatorTreePreorder},
     liveness::LivenessAnalysis,
     loops::{Loop, LoopAnalysis, LoopLevel},
+    spill::{Reload, ReloadInfo, Spill, SpillAnalysis, SpillInfo},
     treegraph::{OrderedTreeGraph, TreeGraph},
     validation::{ModuleValidationAnalysis, Rule},
 };
