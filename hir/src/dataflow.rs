@@ -17,6 +17,7 @@ pub struct DataFlowGraph {
     pub value_lists: ValueListPool,
     pub imports: FxHashMap<FunctionIdent, ExternalFunction>,
     pub globals: PrimaryMap<GlobalValue, GlobalValueData>,
+    pub locals: PrimaryMap<LocalId, Local>,
     pub constants: ConstantPool,
 }
 impl Default for DataFlowGraph {
@@ -41,6 +42,7 @@ impl DataFlowGraph {
             value_lists: ValueListPool::new(),
             imports: Default::default(),
             globals: PrimaryMap::new(),
+            locals: PrimaryMap::new(),
             constants: ConstantPool::default(),
         }
     }
@@ -777,6 +779,15 @@ impl DataFlowGraph {
             }
             _ => panic!("{} must be a branch instruction", branch_inst),
         }
+    }
+
+    pub fn alloc_local(&mut self, ty: Type) -> LocalId {
+        let id = self.locals.next_key();
+        self.locals.push(Local { id, ty })
+    }
+
+    pub fn local_type(&self, id: LocalId) -> &Type {
+        &self.locals[id].ty
     }
 }
 impl Index<Inst> for DataFlowGraph {

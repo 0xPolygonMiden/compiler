@@ -146,6 +146,69 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     let args = args.as_slice(&self.dfg.value_lists);
                     typechecker.check_immediate(args, imm, results)?;
                 }
+                Instruction::LocalVar(LocalVarOp { op, local, args }) => {
+                    let args = args.as_slice(&self.dfg.value_lists);
+                    match op {
+                        Opcode::Store => {
+                            let expected_ty = self.dfg.local_type(*local);
+                            let actual_ty = self.dfg.value_type(args[0]);
+                            if actual_ty != expected_ty {
+                                return Err(ValidationError::TypeError(
+                                    TypeError::IncorrectArgumentType {
+                                        expected: expected_ty.clone().into(),
+                                        actual: actual_ty.clone(),
+                                        index: 0,
+                                    },
+                                ));
+                            }
+                            typechecker.check(args, results)?;
+                        }
+                        Opcode::Load => {
+                            if !args.is_empty() {
+                                invalid_instruction!(
+                                    diagnostics,
+                                    node.key,
+                                    span,
+                                    "local.load does not accept any arguments"
+                                );
+                            }
+                            if results.len() != 1 {
+                                invalid_instruction!(
+                                    diagnostics,
+                                    node.key,
+                                    span,
+                                    "local.load should have exactly one result"
+                                );
+                            }
+                            let local_ty = self.dfg.local_type(*local);
+                            if local_ty.size_in_felts() > 4 {
+                                invalid_instruction!(
+                                    diagnostics,
+                                    node.key,
+                                    span,
+                                    "cannot load a value of type {local_ty} on the stack, as it \
+                                     is larger than 16 bytes"
+                                );
+                            }
+                            let result_ty = self.dfg.value_type(results[0]);
+                            if local_ty != result_ty {
+                                return Err(ValidationError::TypeError(
+                                    TypeError::IncorrectArgumentType {
+                                        expected: local_ty.clone().into(),
+                                        actual: result_ty.clone(),
+                                        index: 0,
+                                    },
+                                ));
+                            }
+                        }
+                        opcode => invalid_instruction!(
+                            diagnostics,
+                            node.key,
+                            span,
+                            "opcode '{opcode}' cannot be used with local variables"
+                        ),
+                    }
+                }
                 Instruction::GlobalValue(_)
                 | Instruction::BinaryOp(_)
                 | Instruction::PrimOp(_)
@@ -997,6 +1060,7 @@ impl<'a> InstTypeChecker<'a> {
     ) -> Result<Self, ValidationError> {
         let span = node.span();
         let opcode = node.opcode();
+        let is_local_op = matches!(node.data.as_ref(), Instruction::LocalVar(_));
         let pattern = match opcode {
             Opcode::Assert | Opcode::Assertz => InstPattern::UnaryNoResult(Type::I1.into()),
             Opcode::AssertEq => InstPattern::BinaryMatchingNoResult(Type::I1.into()),
@@ -1029,7 +1093,9 @@ impl<'a> InstTypeChecker<'a> {
                 }
                 inst => panic!("invalid opcode '{opcode}' for {inst:#?}"),
             },
+            Opcode::Load if is_local_op => InstPattern::Unary(TypePattern::Any),
             Opcode::Load => InstPattern::UnaryMap(TypePattern::Pointer, TypePattern::Any),
+            Opcode::Store if is_local_op => InstPattern::UnaryNoResult(TypePattern::Any),
             Opcode::Store => {
                 InstPattern::Exact(vec![TypePattern::Pointer, TypePattern::Any], vec![])
             }

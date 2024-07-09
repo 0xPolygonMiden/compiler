@@ -233,6 +233,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             Instruction::Switch(_) => {
                 panic!("expected switch instructions to have been rewritten before stackification")
             }
+            Instruction::LocalVar(_) => unimplemented!(),
         }
     }
 

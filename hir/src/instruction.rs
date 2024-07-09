@@ -94,6 +94,7 @@ pub type InstructionCursorMut<'a> = intrusive_collections::linked_list::CursorMu
 #[derive(Debug)]
 pub enum Instruction {
     GlobalValue(GlobalValueOp),
+    LocalVar(LocalVarOp),
     BinaryOp(BinaryOp),
     BinaryOpImm(BinaryOpImm),
     UnaryOp(UnaryOp),
@@ -114,6 +115,7 @@ impl Instruction {
     pub fn deep_clone(&self, value_lists: &mut ValueListPool) -> Self {
         match self {
             Self::GlobalValue(gv) => Self::GlobalValue(gv.clone()),
+            Self::LocalVar(lv) => Self::LocalVar(lv.clone()),
             Self::BinaryOp(op) => Self::BinaryOp(op.clone()),
             Self::BinaryOpImm(op) => Self::BinaryOpImm(op.clone()),
             Self::UnaryOp(op) => Self::UnaryOp(op.clone()),
@@ -157,6 +159,7 @@ impl Instruction {
     pub fn opcode(&self) -> Opcode {
         match self {
             Self::GlobalValue(GlobalValueOp { ref op, .. })
+            | Self::LocalVar(LocalVarOp { ref op, .. })
             | Self::BinaryOp(BinaryOp { ref op, .. })
             | Self::BinaryOpImm(BinaryOpImm { ref op, .. })
             | Self::UnaryOp(UnaryOp { ref op, .. })
@@ -226,6 +229,7 @@ impl Instruction {
             Self::PrimOpImm(PrimOpImm { ref args, .. }) => args.as_slice(pool),
             Self::Test(Test { ref arg, .. }) => core::slice::from_ref(arg),
             Self::InlineAsm(InlineAsm { ref args, .. }) => args.as_slice(pool),
+            Self::LocalVar(LocalVarOp { ref args, .. }) => args.as_slice(pool),
             Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &[],
         }
     }
@@ -244,6 +248,7 @@ impl Instruction {
             Self::PrimOpImm(PrimOpImm { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::Test(Test { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::InlineAsm(InlineAsm { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::LocalVar(LocalVarOp { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &mut [],
         }
     }
@@ -904,6 +909,13 @@ pub struct GlobalValueOp {
 }
 
 #[derive(Debug, Clone)]
+pub struct LocalVarOp {
+    pub op: Opcode,
+    pub local: LocalId,
+    pub args: ValueList,
+}
+
+#[derive(Debug, Clone)]
 pub struct BinaryOp {
     pub op: Opcode,
     pub overflow: Option<Overflow>,
@@ -1340,6 +1352,12 @@ impl<'a> formatter::PrettyPrint for InstPrettyPrinter<'a> {
                     None => inner,
                     Some(wrapper) => wrapper + inner + const_text(")"),
                 };
+            }
+            Instruction::LocalVar(LocalVarOp { local, args, .. }) => {
+                let args = core::iter::once(display(local))
+                    .chain(args.as_slice(&self.dfg.value_lists).iter().copied().map(display))
+                    .collect();
+                (vec![const_text("local")], args)
             }
             Instruction::GlobalValue(GlobalValueOp { global, .. }) => {
                 let inner = self.dfg.global_value(*global).render(self.dfg);
