@@ -781,6 +781,45 @@ impl DataFlowGraph {
         }
     }
 
+    /// Try to locate a valid definition of `value` in the current block, looking up the block from
+    /// `user`
+    pub fn nearest_definition_in_block(&self, user: Inst, value: Value) -> Option<Value> {
+        let mut cursor = self.block_cursor_at(user);
+        // Move to the first instruction preceding this one, or the null cursor if this
+        // is the first instruction in its containing block
+        cursor.move_prev();
+
+        while let Some(current_inst) = cursor.get() {
+            match self.inst(current_inst.key) {
+                Instruction::PrimOp(PrimOp {
+                    op: Opcode::Reload,
+                    args,
+                }) => {
+                    if args.as_slice(&self.value_lists).contains(&value) {
+                        // We have found the closest definition of `value`, which
+                        // is a reload from a spill slot
+                        return Some(self.first_result(current_inst.key));
+                    }
+                }
+                _ => {
+                    if self.inst_results(current_inst.key).contains(&value) {
+                        // We have reached the original definition of `value`
+                        return Some(value);
+                    }
+                }
+            }
+
+            cursor.move_prev();
+        }
+
+        // Search block parameter list
+        let current_block = self.inst_block(user).unwrap();
+        match self.value_data(value) {
+            ValueData::Param { block, .. } if block == &current_block => Some(value),
+            _ => None,
+        }
+    }
+
     pub fn alloc_local(&mut self, ty: Type) -> LocalId {
         let id = self.locals.next_key();
         self.locals.push(Local { id, ty })

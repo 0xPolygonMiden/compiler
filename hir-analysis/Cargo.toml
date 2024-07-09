@@ -16,6 +16,7 @@ anyhow.workspace = true
 cranelift-entity.workspace = true
 cranelift-bforest.workspace = true
 inventory.workspace = true
+intrusive-collections.workspace = true
 miden-diagnostics.workspace = true
 midenc-hir.workspace = true
 midenc-session.workspace = true
