@@ -305,7 +305,7 @@ impl<'a> ComponentBuilder<'a> {
     /// into the set of modules to be linked into the final [Component].
     pub fn module<S: Into<Ident>>(&mut self, name: S) -> ComponentModuleBuilder<'_, 'a> {
         let name = name.into();
-        let module = match self.modules.remove(&name) {
+        let module = match self.modules.shift_remove(&name) {
             None => Box::new(Module::new(name)),
             Some(module) => module,
         };

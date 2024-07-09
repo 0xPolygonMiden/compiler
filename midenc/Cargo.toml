@@ -16,5 +16,5 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 env_logger.workspace = true
-human-panic = "1.0"
+human-panic = "2.0"
 midenc-driver.workspace = true
