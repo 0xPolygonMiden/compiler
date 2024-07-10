@@ -2807,6 +2807,7 @@ dependencies = [
  "midenc-codegen-masm",
  "midenc-frontend-wasm",
  "midenc-hir",
+ "midenc-hir-analysis",
  "midenc-hir-transform",
  "midenc-session",
  "rustc-hash",

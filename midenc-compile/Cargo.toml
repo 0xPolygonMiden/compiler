@@ -23,6 +23,7 @@ midenc-codegen-masm.workspace = true
 miden-diagnostics.workspace = true
 midenc-frontend-wasm.workspace = true
 midenc-hir.workspace = true
+midenc-hir-analysis.workspace = true
 midenc-hir-transform.workspace = true
 midenc-session.workspace = true
 rustc-hash.workspace = true

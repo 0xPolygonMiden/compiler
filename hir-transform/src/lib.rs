@@ -5,6 +5,8 @@ mod split_critical_edges;
 mod treeify;
 
 pub use self::{
-    inline_blocks::InlineBlocks, spill::InsertSpills, split_critical_edges::SplitCriticalEdges,
+    inline_blocks::InlineBlocks,
+    spill::{InsertSpills, RewriteSpills},
+    split_critical_edges::SplitCriticalEdges,
     treeify::Treeify,
 };

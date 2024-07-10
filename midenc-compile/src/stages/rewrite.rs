@@ -1,4 +1,8 @@
-use midenc_hir::RewritePassRegistration;
+use midenc_hir::{
+    self as hir,
+    pass::{RewriteFn, RewriteResult},
+    RewritePassRegistration,
+};
 use midenc_hir_transform as transforms;
 
 use super::*;
@@ -47,6 +51,36 @@ impl Stage for ApplyRewritesStage {
                 rewrites.push(ModuleRewritePassAdapter::new(transforms::SplitCriticalEdges));
                 rewrites.push(ModuleRewritePassAdapter::new(transforms::Treeify));
                 rewrites.push(ModuleRewritePassAdapter::new(transforms::InlineBlocks));
+                // The two spills transformation passes must be applied consecutively
+                //
+                // We run this transformation after any other significant rewrites, to ensure that
+                // the spill placement is as accurate as possible. Block inlining will not disturb
+                // spill placement, but we want to run it at least once before this pass to simplify
+                // the output of the treeification pass.
+                rewrites.push(ModuleRewritePassAdapter::new(transforms::InsertSpills));
+                rewrites.push(ModuleRewritePassAdapter::new(transforms::RewriteSpills));
+                // If the spills transformation is run, we want to run the block inliner again to
+                // clean up the output, but _only_ if there were actually spills, otherwise running
+                // the inliner again will have no effect. To avoid that case, we wrap the second run
+                // in a closure which will only apply the pass if there were spills
+                let maybe_rerun_block_inliner: Box<RewriteFn<hir::Function>> = Box::new(
+                    |function: &mut hir::Function,
+                     analyses: &mut AnalysisManager,
+                     session: &Session|
+                     -> RewriteResult {
+                        let has_spills = analyses
+                            .get::<midenc_hir_analysis::SpillAnalysis>(&function.id)
+                            .map(|spills| spills.has_spills())
+                            .unwrap_or(false);
+                        if has_spills {
+                            let mut inliner = transforms::InlineBlocks;
+                            inliner.apply(function, analyses, session)
+                        } else {
+                            Ok(())
+                        }
+                    },
+                );
+                rewrites.push(ModuleRewritePassAdapter::new(maybe_rerun_block_inliner));
             }
         } else {
             rewrites.extend(registered.into_iter().map(|(_, r)| r));
