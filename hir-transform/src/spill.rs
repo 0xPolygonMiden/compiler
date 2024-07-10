@@ -308,25 +308,27 @@ impl RewritePass for RewriteSpills {
         //
         // 1. For each spilled value V
         // 2. Obtain the set of blocks, R, containing a reload of V
-        // 3. For each block B in the dominance frontier of R, insert a phi in B for V
-        // 4. In each block of R, add a new block argument to B, passing V initially
+        // 3. For each block B in the iterated dominance frontier of R, insert a phi in B for V
+        // 4. For every predecessor of B, append a new block argument to B, passing V initially
         // 5. Traverse the CFG bottom-up, finding uses of V, until we reach an inserted phi, a
         //    reload, or the original definition. Rewrite all found uses of V up to that point, to
         //    use this definition.
         let mut required_phis = BTreeMap::<Value, SmallSet<Block, 2>>::default();
         for info in spills.reloads() {
             let r_block = function.dfg.inst_block(info.inst.unwrap()).unwrap();
-            let domf_r = required_phis.entry(info.value).or_default();
-            domf_r.extend(domf.iter(&r_block));
+            let r = required_phis.entry(info.value).or_default();
+            r.insert(r_block);
         }
 
         let mut inserted_phis = BTreeMap::<Block, SmallMap<Value, Value, 2>>::default();
         for (value, domf_r) in required_phis {
-            // Add phi to each B in DF(R)
+            // Compute the iterated dominance frontier, DF+(R)
+            let idf_r = domf.iterate_all(domf_r);
+            // Add phi to each B in DF+(R)
             let data = function.dfg.value_data(value);
             let ty = data.ty().clone();
             let span = data.span();
-            for b in domf_r {
+            for b in idf_r {
                 // Allocate new block parameter/phi, if one is not already present
                 let phis = inserted_phis.entry(b).or_default();
                 if let adt::smallmap::Entry::Vacant(entry) = phis.entry(value) {
@@ -486,11 +488,8 @@ impl RewritePass for RewriteSpills {
                 }
 
                 // Record any uses of spilled values in the argument list for `current_inst` (except
-                // reloads and spills)
-                let ignored = matches!(
-                    function.dfg.inst(current_inst).opcode(),
-                    Opcode::Reload | Opcode::Spill
-                );
+                // reloads)
+                let ignored = matches!(function.dfg.inst(current_inst).opcode(), Opcode::Reload);
                 if !ignored {
                     for (index, arg) in function.dfg.inst_args(current_inst).iter().enumerate() {
                         if spills.is_spilled(arg) {
@@ -554,17 +553,43 @@ impl RewritePass for RewriteSpills {
         }
 
         // For each spilled value, allocate a procedure local, rewrite the spill instruction as a
-        // `local.store`
+        // `local.store`, unless the spill is dead, in which case we remove the spill entirely.
+        //
+        // Dead spills can occur because the spills analysis must conservatively place them to
+        // ensure that all paths to a block where a value has been spilled along at least one
+        // of those paths, gets spilled on all of them, by inserting extra spills along those
+        // edges where a spill hasn't occurred yet.
+        //
+        // However, this produces dead spills on some paths through the function, which are not
+        // needed once rewrites have been performed. So we eliminate dead spills by identifying
+        // those spills which do not dominate any reloads - if a store to a spill slot can never
+        // be read, then the store can be elided.
         let mut locals = BTreeMap::<Value, LocalId>::default();
         for spill_info in spills.spills() {
-            let value = spill_info.value;
-            let local = function.dfg.alloc_local(spill_info.ty.clone());
-            assert_eq!(locals.insert(value, local), None, "unexpected duplicate spill for {value}");
-            let builder = ReplaceBuilder::new(
-                &mut function.dfg,
-                spill_info.inst.expect("expected spill to have been materialized"),
-            );
-            builder.store_local(local, value, spill_info.span);
+            let spill = spill_info.inst.expect("expected spill to have been materialized");
+            let spilled = spill_info.value;
+            let stored = function.dfg.inst_args(spill)[0];
+            let is_used = spills.reloads().iter().any(|info| {
+                if info.value == spilled {
+                    let reload = info.inst.unwrap();
+                    let dominates = domtree.dominates(spill, reload, &function.dfg);
+                    dbg!(spill, reload);
+                    dominates
+                } else {
+                    false
+                }
+            });
+            if is_used {
+                let local = *locals
+                    .entry(spilled)
+                    .or_insert_with(|| function.dfg.alloc_local(spill_info.ty.clone()));
+                let builder = ReplaceBuilder::new(&mut function.dfg, spill);
+                builder.store_local(local, stored, spill_info.span);
+            } else {
+                let spill_block = function.dfg.inst_block(spill).unwrap();
+                let block = function.dfg.block_mut(spill_block);
+                block.cursor_mut_at_inst(spill).remove();
+            }
         }
 
         // Rewrite all used reload instructions as `local.load` instructions from the corresponding
@@ -586,6 +611,242 @@ mod tests {
     use pretty_assertions::{assert_ne, assert_str_eq};
 
     use super::*;
+
+    #[test]
+    fn spills_intra_block() {
+        let context = TestContext::default();
+        let id = "test::spill".parse().unwrap();
+        let mut function = Function::new(
+            id,
+            Signature::new(
+                [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
+                [AbiParam::new(Type::U32)],
+            ),
+        );
+
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let example = builder
+                .import_function(
+                    "foo",
+                    "example",
+                    Signature::new(
+                        [
+                            AbiParam::new(Type::Ptr(Box::new(Type::U128))),
+                            AbiParam::new(Type::U128),
+                            AbiParam::new(Type::U128),
+                            AbiParam::new(Type::U128),
+                            AbiParam::new(Type::U64),
+                        ],
+                        [AbiParam::new(Type::U32)],
+                    ),
+                    SourceSpan::UNKNOWN,
+                )
+                .unwrap();
+            let entry = builder.current_block();
+            let v0 = {
+                let args = builder.block_params(entry);
+                args[0]
+            };
+
+            // entry
+            let v1 = builder.ins().ptrtoint(v0, Type::U32, SourceSpan::UNKNOWN);
+            let v2 = builder.ins().add_imm_unchecked(v1, Immediate::U32(32), SourceSpan::UNKNOWN);
+            let v3 =
+                builder.ins().inttoptr(v2, Type::Ptr(Box::new(Type::U128)), SourceSpan::UNKNOWN);
+            let v4 = builder.ins().load(v3, SourceSpan::UNKNOWN);
+            let v5 = builder.ins().add_imm_unchecked(v1, Immediate::U32(64), SourceSpan::UNKNOWN);
+            let v6 =
+                builder.ins().inttoptr(v5, Type::Ptr(Box::new(Type::U128)), SourceSpan::UNKNOWN);
+            let v7 = builder.ins().load(v6, SourceSpan::UNKNOWN);
+            let v8 = builder.ins().u64(1, SourceSpan::UNKNOWN);
+            builder.ins().call(example, &[v6, v4, v7, v7, v8], SourceSpan::UNKNOWN);
+            let v10 = builder.ins().add_imm_unchecked(v1, Immediate::U32(72), SourceSpan::UNKNOWN);
+            builder.ins().store(v3, v7, SourceSpan::UNKNOWN);
+            let v11 =
+                builder.ins().inttoptr(v10, Type::Ptr(Box::new(Type::U64)), SourceSpan::UNKNOWN);
+            let _v12 = builder.ins().load(v11, SourceSpan::UNKNOWN);
+            builder.ins().ret(Some(v2), SourceSpan::UNKNOWN);
+        }
+
+        let original = function.to_string();
+        let mut analyses = AnalysisManager::default();
+        let mut rewrite = InsertSpills;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
+            .expect("spill insertion failed");
+
+        analyses.invalidate::<Function>(&function.id);
+
+        let mut rewrite = RewriteSpills;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
+            .expect("spill cleanup failed");
+
+        let expected = "\
+(func (export #spill) (param (ptr u8)) (result u32)
+    (block 0 (param v0 (ptr u8))
+        (let (v1 u32) (ptrtoint v0))
+        (let (v2 u32) (add.unchecked v1 32))
+        (let (v3 (ptr u128)) (inttoptr v2))
+        (let (v4 u128) (load v3))
+        (let (v5 u32) (add.unchecked v1 64))
+        (let (v6 (ptr u128)) (inttoptr v5))
+        (let (v7 u128) (load v6))
+        (let (v8 u64) (const.u64 1))
+        (store.local local0 v2)
+        (store.local local1 v3)
+        (let (v9 u32) (call (#foo #example) v6 v4 v7 v7 v8))
+        (let (v10 u32) (add.unchecked v1 72))
+        (let (v13 (ptr u128)) (load.local local1))
+        (store v13 v7)
+        (let (v11 (ptr u64)) (inttoptr v10))
+        (let (v12 u64) (load v11))
+        (let (v14 u32) (load.local local0))
+        (ret v14))
+)";
+
+        let transformed = function.to_string();
+        assert_ne!(transformed, original);
+        assert_str_eq!(transformed.as_str(), expected);
+    }
+
+    #[test]
+    fn spills_branching_control_flow() {
+        let context = TestContext::default();
+        let id = "test::spill".parse().unwrap();
+        let mut function = Function::new(
+            id,
+            Signature::new(
+                [AbiParam::new(Type::Ptr(Box::new(Type::U8)))],
+                [AbiParam::new(Type::U32)],
+            ),
+        );
+
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let example = builder
+                .import_function(
+                    "foo",
+                    "example",
+                    Signature::new(
+                        [
+                            AbiParam::new(Type::Ptr(Box::new(Type::U128))),
+                            AbiParam::new(Type::U128),
+                            AbiParam::new(Type::U128),
+                            AbiParam::new(Type::U128),
+                            AbiParam::new(Type::U64),
+                        ],
+                        [AbiParam::new(Type::U32)],
+                    ),
+                    SourceSpan::UNKNOWN,
+                )
+                .unwrap();
+            let entry = builder.current_block();
+            let block1 = builder.create_block();
+            let block2 = builder.create_block();
+            let block3 = builder.create_block();
+            let v0 = {
+                let args = builder.block_params(entry);
+                args[0]
+            };
+
+            // entry
+            let v1 = builder.ins().ptrtoint(v0, Type::U32, SourceSpan::UNKNOWN);
+            let v2 = builder.ins().add_imm_unchecked(v1, Immediate::U32(32), SourceSpan::UNKNOWN);
+            let v3 =
+                builder.ins().inttoptr(v2, Type::Ptr(Box::new(Type::U128)), SourceSpan::UNKNOWN);
+            let v4 = builder.ins().load(v3, SourceSpan::UNKNOWN);
+            let v5 = builder.ins().add_imm_unchecked(v1, Immediate::U32(64), SourceSpan::UNKNOWN);
+            let v6 =
+                builder.ins().inttoptr(v5, Type::Ptr(Box::new(Type::U128)), SourceSpan::UNKNOWN);
+            let v7 = builder.ins().load(v6, SourceSpan::UNKNOWN);
+            let v8 = builder.ins().eq_imm(v1, Immediate::U32(0), SourceSpan::UNKNOWN);
+            builder.ins().cond_br(v8, block1, &[], block2, &[], SourceSpan::UNKNOWN);
+
+            // block1
+            builder.switch_to_block(block1);
+            let v9 = builder.ins().u64(1, SourceSpan::UNKNOWN);
+            let call = builder.ins().call(example, &[v6, v4, v7, v7, v9], SourceSpan::UNKNOWN);
+            let v10 = builder.func.dfg.first_result(call);
+            builder.ins().br(block3, &[v10], SourceSpan::UNKNOWN);
+
+            // block2
+            builder.switch_to_block(block2);
+            let v11 = builder.ins().add_imm_unchecked(v1, Immediate::U32(8), SourceSpan::UNKNOWN);
+            builder.ins().br(block3, &[v11], SourceSpan::UNKNOWN);
+
+            // block3
+            let v12 = builder.append_block_param(block3, Type::U32, SourceSpan::UNKNOWN);
+            builder.switch_to_block(block3);
+            let v13 = builder.ins().add_imm_unchecked(v1, Immediate::U32(72), SourceSpan::UNKNOWN);
+            let v14 = builder.ins().add_unchecked(v13, v12, SourceSpan::UNKNOWN);
+            let v15 =
+                builder.ins().inttoptr(v14, Type::Ptr(Box::new(Type::U64)), SourceSpan::UNKNOWN);
+            builder.ins().store(v3, v7, SourceSpan::UNKNOWN);
+            let _v16 = builder.ins().load(v15, SourceSpan::UNKNOWN);
+            builder.ins().ret(Some(v2), SourceSpan::UNKNOWN);
+        }
+
+        let original = function.to_string();
+        let mut analyses = AnalysisManager::default();
+        let mut rewrite = InsertSpills;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
+            .expect("spill insertion failed");
+
+        analyses.invalidate::<Function>(&function.id);
+
+        let mut rewrite = RewriteSpills;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
+            .expect("spill cleanup failed");
+
+        let expected = "\
+(func (export #spill) (param (ptr u8)) (result u32)
+    (block 0 (param v0 (ptr u8))
+        (let (v1 u32) (ptrtoint v0))
+        (let (v2 u32) (add.unchecked v1 32))
+        (let (v3 (ptr u128)) (inttoptr v2))
+        (let (v4 u128) (load v3))
+        (let (v5 u32) (add.unchecked v1 64))
+        (let (v6 (ptr u128)) (inttoptr v5))
+        (let (v7 u128) (load v6))
+        (let (v8 i1) (eq v1 0))
+        (condbr v8 (block 1) (block 2)))
+
+    (block 1
+        (let (v9 u64) (const.u64 1))
+        (store.local local0 v2)
+        (store.local local1 v3)
+        (let (v10 u32) (call (#foo #example) v6 v4 v7 v7 v9))
+        (br (block 4)))
+
+    (block 2
+        (let (v11 u32) (add.unchecked v1 8))
+        (br (block 5)))
+
+    (block 3 (param v12 u32) (param v19 u32) (param v20 (ptr u128))
+        (let (v13 u32) (add.unchecked v1 72))
+        (let (v14 u32) (add.unchecked v13 v12))
+        (let (v15 (ptr u64)) (inttoptr v14))
+        (store v20 v7)
+        (let (v16 u64) (load v15))
+        (ret v19))
+
+    (block 4
+        (let (v17 (ptr u128)) (load.local local1))
+        (let (v18 u32) (load.local local0))
+        (br (block 3 v10 v18 v17)))
+
+    (block 5
+        (br (block 3 v11 v2 v3)))
+)";
+
+        let transformed = function.to_string();
+        assert_ne!(transformed, original);
+        assert_str_eq!(transformed.as_str(), expected);
+    }
 
     #[test]
     fn spills_loop_nest() {
@@ -674,23 +935,59 @@ mod tests {
             .apply(&mut function, &mut analyses, &context.session)
             .expect("spill insertion failed");
 
-        //analyses.invalidate::<Function>(&function.id);
+        analyses.invalidate::<Function>(&function.id);
 
-        //let mut rewrite = RewriteSpills;
-        //rewrite
-        //.apply(&mut function, &mut analyses, &context.session)
-        //.expect("spill cleanup failed");
+        let mut rewrite = RewriteSpills;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
+            .expect("spill cleanup failed");
 
-        // TODO: Test is failing because the spill of v1 is improperly placed. The spill occurs
-        // prior to entry to the inner loop, as it is not used in the inner loop, and is next
-        // used in the header of the outer loop, which the inner loop conditionally branches
-        // to. However, this places the spill inside a loop, when its definition exists outside
-        // the loop. Instead, we would expect the spill to be placed on entry to the outer loop,
-        // as even though it is easily held on the operand stack at that point, spilling it
-        // there ensures that we only need a single reload when continuing the outer loop from
-        // the inner loop, and no spills inside the loop.
         let expected = "\
-        )";
+(func (export #spill) (param (ptr u64)) (param u64) (param u64) (result u64)
+    (block 0 (param v0 (ptr u64)) (param v1 u64) (param v2 u64)
+        (let (v3 u64) (const.u64 0))
+        (let (v4 u64) (const.u64 0))
+        (let (v5 u64) (const.u64 0))
+        (br (block 1 v3 v4 v5 v1)))
+
+    (block 1 (param v6 u64) (param v7 u64) (param v8 u64) (param v24 u64)
+        (let (v9 i1) (eq v6 v24))
+        (condbr v9 (block 2) (block 3)))
+
+    (block 2
+        (ret v8))
+
+    (block 3
+        (br (block 7)))
+
+    (block 4 (param v10 u64) (param v11 u64)
+        (let (v12 i1) (eq v10 v2))
+        (condbr v12 (block 5) (block 6)))
+
+    (block 5
+        (let (v13 u64) (add.unchecked v6 1))
+        (br (block 8)))
+
+    (block 6
+        (let (v14 u64) (add.unchecked v6 1))
+        (let (v15 u64) (mul.unchecked v14 v2))
+        (let (v16 u64) (add.unchecked v10 v15))
+        (let (v17 u64) (ptrtoint v0))
+        (let (v18 u64) (add.unchecked v17 v16))
+        (let (v19 (ptr u64)) (inttoptr v18))
+        (let (v20 u64) (load v19))
+        (let (v21 u64) (add.unchecked v11 v20))
+        (let (v22 u64) (add.unchecked v10 1))
+        (br (block 4 v22 v21)))
+
+    (block 7
+        (store.local local0 v24)
+        (br (block 4 v7 v8)))
+
+    (block 8
+        (let (v23 u64) (load.local local0))
+        (br (block 1 v13 v10 v11 v23)))
+)";
 
         let transformed = function.to_string();
         assert_ne!(transformed, original);
