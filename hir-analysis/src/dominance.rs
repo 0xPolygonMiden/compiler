@@ -171,13 +171,14 @@ impl DominatorTree {
 
     /// Returns `true` if `a` dominates `b`.
     ///
-    /// This means that every control-flow path from the function entry to `b` must go through `a`.
+    /// The dominance relation requires that every path from the entry block to `b` passes through
+    /// `a`. As this function determines _non-strict_ dominance, a block/instruction is considered
+    /// to dominate itself. See [DominatorTree::strictly_dominates] for the strict variant of this
+    /// relationship.
     ///
-    /// Dominance is ill defined for unreachable blocks. This function can always determine
-    /// dominance for instructions in the same block, but otherwise returns `false` if either block
-    /// is unreachable.
-    ///
-    /// An instruction is considered to dominate itself.
+    /// Dominance is ill defined for unreachable blocks. If you happen to be querying dominance for
+    /// instructions in the same unreachable block, the result is always correct; but for other
+    /// pairings, the result will always be `false` if one of them is unreachable.
     pub fn dominates<A, B>(&self, a: A, b: B, dfg: &DataFlowGraph) -> bool
     where
         A: Into<ProgramPoint>,
@@ -185,12 +186,14 @@ impl DominatorTree {
     {
         let a = a.into();
         let b = b.into();
+        if a == b {
+            return true;
+        }
         match a {
-            ProgramPoint::Block(block_a) => {
-                a == b || self.last_dominator(block_a, b, dfg).is_some()
-            }
+            ProgramPoint::Block(block_a) => self.last_dominator(block_a, b, dfg).is_some(),
             ProgramPoint::Inst(inst_a) => {
-                let block_a = dfg.inst_block(inst_a).expect("Instruction not in layout.");
+                let block_a =
+                    dfg.inst_block(inst_a).expect("instruction is not attached to a block");
                 match self.last_dominator(block_a, b, dfg) {
                     Some(last) => dfg.pp_cmp(inst_a, last) != Ordering::Greater,
                     None => false,
@@ -199,7 +202,40 @@ impl DominatorTree {
         }
     }
 
+    /// Returns `true` if `a` strictly dominates `b`.
+    ///
+    /// This dominance relation requires that `a != b`, and that every path from the entry block to
+    /// `b` passes through `a`. See [DominatorTree::dominates] for the non-strict variant of this
+    /// relationship.
+    ///
+    /// Dominance is ill defined for unreachable blocks. If you happen to be querying dominance for
+    /// instructions in the same unreachable block, the result is always correct; but for other
+    /// pairings, the result will always be `false` if one of them is unreachable.
+    pub fn strictly_dominates<A, B>(&self, a: A, b: B, dfg: &DataFlowGraph) -> bool
+    where
+        A: Into<ProgramPoint>,
+        B: Into<ProgramPoint>,
+    {
+        let a = a.into();
+        let b = b.into();
+        if a == b {
+            return false;
+        }
+        match a {
+            ProgramPoint::Block(block_a) => self.last_dominator(block_a, b, dfg).is_some(),
+            ProgramPoint::Inst(inst_a) => {
+                let block_a =
+                    dfg.inst_block(inst_a).expect("instruction is not attached to a block");
+                match self.last_dominator(block_a, b, dfg) {
+                    Some(last) => dfg.pp_cmp(inst_a, last) == Ordering::Less,
+                    None => false,
+                }
+            }
+        }
+    }
+
     /// Find the last instruction in `a` that dominates `b`.
+    ///
     /// If no instructions in `a` dominate `b`, return `None`.
     pub fn last_dominator<B>(&self, a: Block, b: B, dfg: &DataFlowGraph) -> Option<Inst>
     where
@@ -207,9 +243,10 @@ impl DominatorTree {
     {
         let (mut block_b, mut inst_b) = match b.into() {
             ProgramPoint::Block(block) => (block, None),
-            ProgramPoint::Inst(inst) => {
-                (dfg.inst_block(inst).expect("Instruction not in layout."), Some(inst))
-            }
+            ProgramPoint::Inst(inst) => (
+                dfg.inst_block(inst).expect("instruction is not attached to a block"),
+                Some(inst),
+            ),
         };
         let rpo_a = self.nodes[a].rpo_number;
 
@@ -220,7 +257,9 @@ impl DominatorTree {
                 Some(idom) => idom,
                 None => return None, // a is unreachable, so we climbed past the entry
             };
-            block_b = dfg.inst_block(idom).expect("Dominator got removed.");
+            block_b = dfg
+                .inst_block(idom)
+                .expect("control flow graph has been modified since dominator tree was computed");
             inst_b = Some(idom);
         }
         if a == block_b {
