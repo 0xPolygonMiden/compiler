@@ -46,7 +46,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::load_sw
+    exec.::intrinsics::mem::load_sw
     push.2
     dup.1
     swap.1
@@ -69,7 +69,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::load_sw
+        exec.::intrinsics::mem::load_sw
         push.4294967292
         dup.1
         swap.1
@@ -97,7 +97,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
             push.3
             u32and
             swap.1
@@ -116,7 +116,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
         else
             swap.1
             drop
@@ -134,7 +134,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.3
             u32and
             dup.3
@@ -151,7 +151,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
             dup.2
             dup.0
             push.2147483648
@@ -168,7 +168,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.3
             u32and
             movup.3
@@ -187,7 +187,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
             dup.0
             dup.0
             push.2147483648
@@ -202,7 +202,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.3
             u32and
             push.4294967292
@@ -224,7 +224,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
         end
     else
         push.4294967292
@@ -252,7 +252,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.4294967292
             dup.1
             swap.1
@@ -280,7 +280,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 push.3
                 u32and
                 swap.1
@@ -299,7 +299,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
             else
                 swap.1
                 drop
@@ -317,7 +317,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 push.3
                 u32and
                 dup.3
@@ -334,7 +334,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.2
                 dup.0
                 push.2147483648
@@ -351,7 +351,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 push.3
                 u32and
                 movup.3
@@ -370,7 +370,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.0
                 dup.0
                 push.2147483648
@@ -385,7 +385,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 push.3
                 u32and
                 push.4294967292
@@ -407,7 +407,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
             end
         else
             swap.1
@@ -426,7 +426,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             dup.1
             dup.0
             push.2147483648
@@ -443,7 +443,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.3
             u32and
             dup.3
@@ -462,7 +462,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.4294967292
             u32and
             u32or
@@ -482,7 +482,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
             dup.1
             dup.0
             push.2147483648
@@ -499,7 +499,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.4294967292
             dup.1
             swap.1
@@ -527,7 +527,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 push.3
                 u32and
                 swap.1
@@ -546,7 +546,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
             else
                 swap.1
                 drop
@@ -564,7 +564,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 push.3
                 u32and
                 dup.3
@@ -581,7 +581,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.2
                 dup.0
                 push.2147483648
@@ -598,7 +598,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 push.3
                 u32and
                 movup.3
@@ -617,7 +617,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.0
                 dup.0
                 push.2147483648
@@ -632,7 +632,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 push.3
                 u32and
                 push.4294967292
@@ -654,7 +654,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
             end
         end
     end
@@ -715,7 +715,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         movup.2
         dup.0
         push.2147483648
@@ -734,7 +734,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         push.4294901760
         movup.2
         swap.1
@@ -758,7 +758,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         push.0.0
         movup.2
         dup.0
@@ -776,7 +776,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_dw
+        exec.::intrinsics::mem::store_dw
     else
         drop
         drop
@@ -797,7 +797,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         push.0
         swap.1
         dup.0
@@ -815,7 +815,7 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
     end
 end
 
@@ -847,7 +847,7 @@ export."wee_alloc::alloc_first_fit"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::load_sw
+    exec.::intrinsics::mem::load_sw
     movup.4
     swap.5
     movdn.4
@@ -875,7 +875,7 @@ export."wee_alloc::alloc_first_fit"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             push.1
             dup.1
             swap.1
@@ -902,7 +902,7 @@ export."wee_alloc::alloc_first_fit"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     dup.0
                     dup.0
                     push.2147483648
@@ -919,7 +919,7 @@ export."wee_alloc::alloc_first_fit"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::load_sw
+                    exec.::intrinsics::mem::load_sw
                     push.4294967292
                     u32and
                     dup.0
@@ -942,7 +942,7 @@ export."wee_alloc::alloc_first_fit"
                         u32div.4
                         movup.2
                         u32div.16
-                        exec.intrinsics::mem::load_sw
+                        exec.::intrinsics::mem::load_sw
                         push.128
                         u32and
                         push.1
@@ -963,7 +963,7 @@ export."wee_alloc::alloc_first_fit"
                         u32div.4
                         movup.2
                         u32div.16
-                        exec.intrinsics::mem::load_sw
+                        exec.::intrinsics::mem::load_sw
                         push.128
                         u32and
                         push.2
@@ -987,7 +987,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             dup.0
                             dup.0
                             push.2147483648
@@ -1004,7 +1004,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.1
                             dup.1
                             swap.1
@@ -1028,7 +1028,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             dup.0
                             dup.0
                             push.2147483648
@@ -1043,7 +1043,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.2
                             u32or
                             dup.1
@@ -1060,7 +1060,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             dup.0
                             dup.0
                             push.2147483648
@@ -1077,7 +1077,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.1
                             dup.1
                             swap.1
@@ -1104,7 +1104,7 @@ export."wee_alloc::alloc_first_fit"
                         u32div.4
                         movup.2
                         u32div.16
-                        exec.intrinsics::mem::load_sw
+                        exec.::intrinsics::mem::load_sw
                         push.128
                         u32and
                         push.2
@@ -1128,7 +1128,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             dup.0
                             dup.0
                             push.2147483648
@@ -1145,7 +1145,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.1
                             dup.1
                             swap.1
@@ -1169,7 +1169,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             dup.0
                             dup.0
                             push.2147483648
@@ -1184,7 +1184,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.2
                             u32or
                             dup.1
@@ -1201,7 +1201,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             dup.0
                             dup.0
                             push.2147483648
@@ -1218,7 +1218,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.1
                             dup.1
                             swap.1
@@ -1242,7 +1242,7 @@ export."wee_alloc::alloc_first_fit"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::load_sw
+                    exec.::intrinsics::mem::load_sw
                     push.4294967292
                     u32and
                     push.8
@@ -1288,7 +1288,7 @@ export."wee_alloc::alloc_first_fit"
                         u32div.4
                         movup.2
                         u32div.16
-                        exec.intrinsics::mem::store_sw
+                        exec.::intrinsics::mem::store_sw
                         dup.0
                         eq.0
                         neq.0
@@ -1353,7 +1353,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.4294967292
                             u32and
                             dup.1
@@ -1370,7 +1370,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             push.0.0
                             dup.2
                             dup.0
@@ -1386,7 +1386,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_dw
+                            exec.::intrinsics::mem::store_dw
                             push.0
                             movup.2
                             dup.0
@@ -1402,7 +1402,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::store_sw
+                            exec.::intrinsics::mem::store_sw
                             push.0
                             dup.2
                             dup.0
@@ -1418,7 +1418,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.4
                             movup.2
                             u32div.16
-                            exec.intrinsics::mem::load_sw
+                            exec.::intrinsics::mem::load_sw
                             push.2
                             dup.1
                             swap.1
@@ -1440,7 +1440,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::load_sw
+                                exec.::intrinsics::mem::load_sw
                                 push.3
                                 dup.1
                                 swap.1
@@ -1463,7 +1463,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::store_sw
+                                exec.::intrinsics::mem::store_sw
                                 dup.4
                                 dup.0
                                 push.2147483648
@@ -1480,7 +1480,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::load_sw
+                                exec.::intrinsics::mem::load_sw
                                 push.4294967294
                                 u32and
                                 dup.5
@@ -1499,7 +1499,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::store_sw
+                                exec.::intrinsics::mem::store_sw
                                 dup.4
                                 swap.1
                                 swap.3
@@ -1521,7 +1521,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::store_sw
+                                exec.::intrinsics::mem::store_sw
                                 push.2
                                 u32and
                                 neq.0
@@ -1540,7 +1540,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.2
                                     u32or
                                     push.1
@@ -1559,7 +1559,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     push.4294967293
                                     u32and
                                     movup.2
@@ -1576,7 +1576,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     push.8
                                     u32wrapping_add
                                 else
@@ -1597,7 +1597,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.1
                                     u32or
                                     dup.1
@@ -1614,7 +1614,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     push.8
                                     u32wrapping_add
                                 end
@@ -1640,7 +1640,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.3
                                     dup.1
                                     swap.1
@@ -1663,7 +1663,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     dup.4
                                     dup.0
                                     push.2147483648
@@ -1680,7 +1680,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.4294967294
                                     u32and
                                     dup.5
@@ -1699,7 +1699,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     dup.4
                                     swap.1
                                     swap.3
@@ -1721,7 +1721,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     push.2
                                     u32and
                                     neq.0
@@ -1740,7 +1740,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::load_sw
+                                        exec.::intrinsics::mem::load_sw
                                         push.2
                                         u32or
                                         push.1
@@ -1759,7 +1759,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::store_sw
+                                        exec.::intrinsics::mem::store_sw
                                         push.4294967293
                                         u32and
                                         movup.2
@@ -1776,7 +1776,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::store_sw
+                                        exec.::intrinsics::mem::store_sw
                                         push.8
                                         u32wrapping_add
                                     else
@@ -1797,7 +1797,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::load_sw
+                                        exec.::intrinsics::mem::load_sw
                                         push.1
                                         u32or
                                         dup.1
@@ -1814,7 +1814,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::store_sw
+                                        exec.::intrinsics::mem::store_sw
                                         push.8
                                         u32wrapping_add
                                     end
@@ -1835,7 +1835,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.3
                                     dup.1
                                     swap.1
@@ -1858,7 +1858,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     dup.4
                                     dup.0
                                     push.2147483648
@@ -1875,7 +1875,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.4294967294
                                     u32and
                                     dup.5
@@ -1894,7 +1894,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     dup.3
                                     dup.0
                                     push.2147483648
@@ -1911,7 +1911,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.3
                                     u32and
                                     dup.5
@@ -1932,7 +1932,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     dup.2
                                     dup.0
                                     push.2147483648
@@ -1949,7 +1949,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::load_sw
+                                    exec.::intrinsics::mem::load_sw
                                     push.3
                                     u32and
                                     dup.4
@@ -1970,7 +1970,7 @@ export."wee_alloc::alloc_first_fit"
                                     u32div.4
                                     movup.2
                                     u32div.16
-                                    exec.intrinsics::mem::store_sw
+                                    exec.::intrinsics::mem::store_sw
                                     push.2
                                     movup.2
                                     swap.1
@@ -1991,7 +1991,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::load_sw
+                                        exec.::intrinsics::mem::load_sw
                                         push.2
                                         u32or
                                         push.1
@@ -2010,7 +2010,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::store_sw
+                                        exec.::intrinsics::mem::store_sw
                                         push.4294967293
                                         u32and
                                         movup.2
@@ -2027,7 +2027,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::store_sw
+                                        exec.::intrinsics::mem::store_sw
                                         push.8
                                         u32wrapping_add
                                     else
@@ -2048,7 +2048,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::load_sw
+                                        exec.::intrinsics::mem::load_sw
                                         push.1
                                         u32or
                                         dup.1
@@ -2065,7 +2065,7 @@ export."wee_alloc::alloc_first_fit"
                                         u32div.4
                                         movup.2
                                         u32div.16
-                                        exec.intrinsics::mem::store_sw
+                                        exec.::intrinsics::mem::store_sw
                                         push.8
                                         u32wrapping_add
                                     end
@@ -2096,7 +2096,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::store_sw
+                                exec.::intrinsics::mem::store_sw
                                 dup.0
                                 eq.0
                                 neq.0
@@ -2125,7 +2125,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::load_sw
+                                exec.::intrinsics::mem::load_sw
                                 push.1
                                 u32or
                                 dup.2
@@ -2142,7 +2142,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::store_sw
+                                exec.::intrinsics::mem::store_sw
                                 push.4294967292
                                 u32and
                                 movup.2
@@ -2159,7 +2159,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.4
                                 movup.2
                                 u32div.16
-                                exec.intrinsics::mem::store_sw
+                                exec.::intrinsics::mem::store_sw
                                 push.8
                                 u32wrapping_add
                                 push.0
@@ -2206,7 +2206,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::store_sw
+    exec.::intrinsics::mem::store_sw
     dup.3
     eq.0
     neq.0
@@ -2227,7 +2227,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
     else
         dup.2
         dup.0
@@ -2243,7 +2243,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::load_sw
+        exec.::intrinsics::mem::load_sw
         dup.1
         dup.0
         push.2147483648
@@ -2260,7 +2260,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         push.12
         dup.1
         swap.1
@@ -2317,7 +2317,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             eq.0
             neq.0
             if.true
@@ -2337,7 +2337,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 dup.2
                 dup.0
                 push.2147483648
@@ -2354,7 +2354,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 movup.5
                 dup.0
                 push.2147483648
@@ -2369,7 +2369,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.2
                 dup.0
                 push.2147483648
@@ -2388,7 +2388,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.2
                 dup.0
                 push.2147483648
@@ -2405,7 +2405,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 swap.1
                 dup.0
                 push.2147483648
@@ -2422,7 +2422,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 push.12
                 dup.2
                 swap.1
@@ -2446,7 +2446,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                 else
                     drop
                     push.16
@@ -2459,7 +2459,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     push.0
                 end
             else
@@ -2479,7 +2479,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 dup.0
                 push.2147483648
                 u32and
@@ -2495,7 +2495,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::load_sw
+                exec.::intrinsics::mem::load_sw
                 swap.1
                 dup.0
                 push.2147483648
@@ -2510,7 +2510,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 u32div.4
                 movup.2
                 u32div.16
-                exec.intrinsics::mem::store_sw
+                exec.::intrinsics::mem::store_sw
                 push.0
             end
         else
@@ -2530,7 +2530,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
             dup.0
             push.2147483648
             u32and
@@ -2546,7 +2546,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::load_sw
+            exec.::intrinsics::mem::load_sw
             movup.2
             dup.0
             push.2147483648
@@ -2561,7 +2561,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
         end
     end
 end
@@ -2587,7 +2587,7 @@ export."miden_tx_kernel_sys::get_inputs"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::load_sw
+    exec.::intrinsics::mem::load_sw
     dup.1
     dup.0
     push.2147483648
@@ -2604,7 +2604,7 @@ export."miden_tx_kernel_sys::get_inputs"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::load_sw
+    exec.::intrinsics::mem::load_sw
     push.0
     push.256
     push.4
@@ -2622,7 +2622,7 @@ export."miden_tx_kernel_sys::get_inputs"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::store_sw
+    exec.::intrinsics::mem::store_sw
     dup.2
     dup.0
     push.2147483648
@@ -2639,7 +2639,7 @@ export."miden_tx_kernel_sys::get_inputs"
     u32div.4
     movup.2
     u32div.16
-    exec.intrinsics::mem::load_sw
+    exec.::intrinsics::mem::load_sw
     eq.0
     neq.0
     if.true
@@ -2657,7 +2657,7 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         dup.4
         dup.0
         push.2147483648
@@ -2674,7 +2674,7 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         dup.3
         dup.0
         push.2147483648
@@ -2693,7 +2693,7 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         push.0
         movup.3
         dup.0
@@ -2711,7 +2711,7 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         dropw
         dropw
     else
@@ -2787,7 +2787,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     push.8
                     dup.2
                     dup.0
@@ -2805,7 +2805,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     swap.1
                     dup.0
                     push.2147483648
@@ -2822,7 +2822,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                 else
                     swap.1
                     drop
@@ -2841,7 +2841,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     dup.1
                     dup.0
                     push.2147483648
@@ -2860,7 +2860,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     swap.1
                     dup.0
                     push.2147483648
@@ -2877,7 +2877,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                 end
             else
                 push.8
@@ -2906,7 +2906,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     push.8
                     dup.2
                     dup.0
@@ -2924,7 +2924,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     swap.1
                     dup.0
                     push.2147483648
@@ -2941,7 +2941,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                 else
                     swap.1
                     drop
@@ -2960,7 +2960,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     dup.1
                     dup.0
                     push.2147483648
@@ -2979,7 +2979,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                     swap.1
                     dup.0
                     push.2147483648
@@ -2996,7 +2996,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.4
                     movup.2
                     u32div.16
-                    exec.intrinsics::mem::store_sw
+                    exec.::intrinsics::mem::store_sw
                 end
             end
         else
@@ -3018,7 +3018,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
             push.0
             swap.1
             dup.0
@@ -3036,7 +3036,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
             u32div.4
             movup.2
             u32div.16
-            exec.intrinsics::mem::store_sw
+            exec.::intrinsics::mem::store_sw
         end
     else
         movdn.2
@@ -3057,7 +3057,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_sw
+        exec.::intrinsics::mem::store_sw
         push.8.0
         movup.2
         dup.0
@@ -3075,7 +3075,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         u32div.4
         movup.2
         u32div.16
-        exec.intrinsics::mem::store_dw
+        exec.::intrinsics::mem::store_dw
     end
 end
 
