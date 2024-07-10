@@ -1,5 +1,6 @@
 use std::{
     cmp::{self, Ordering},
+    collections::{BTreeSet, VecDeque},
     mem,
 };
 
@@ -688,11 +689,11 @@ impl<'a> Iterator for ChildIter<'a> {
 #[derive(Default)]
 pub struct DominanceFrontier {
     /// The dominance frontier for each block, as a set of blocks
-    dfs: SecondaryMap<Block, FxHashSet<Block>>,
+    dfs: SecondaryMap<Block, BTreeSet<Block>>,
 }
 impl DominanceFrontier {
     pub fn compute(domtree: &DominatorTree, cfg: &ControlFlowGraph, function: &Function) -> Self {
-        let mut dfs = SecondaryMap::<Block, FxHashSet<Block>>::default();
+        let mut dfs = SecondaryMap::<Block, BTreeSet<Block>>::default();
 
         for id in domtree.cfg_postorder() {
             let id = *id;
