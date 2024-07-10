@@ -10,7 +10,7 @@ use midenc_hir::{
     Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint, Value,
 };
 use midenc_session::Session;
-use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 
 use super::{BlockPredecessor, ControlFlowGraph};
 
@@ -716,6 +716,36 @@ impl DominanceFrontier {
         }
 
         Self { dfs }
+    }
+
+    /// Compute the iterated dominance frontier for `block`
+    pub fn iterate(&self, block: &Block) -> BTreeSet<Block> {
+        self.iterate_all([*block])
+    }
+
+    /// Compute the iterated dominance frontier for `blocks`
+    pub fn iterate_all<I>(&self, blocks: I) -> BTreeSet<Block>
+    where
+        I: IntoIterator<Item = Block>,
+    {
+        let mut block_q = VecDeque::from_iter(blocks);
+        let mut idf = BTreeSet::default();
+        while let Some(block) = block_q.pop_front() {
+            let added = self.dfs[block].difference(&idf).copied().collect::<SmallVec<[Block; 2]>>();
+            if added.is_empty() {
+                continue;
+            }
+
+            // Extend `df` and add the new blocks to the queue
+            for block in added {
+                idf.insert(block);
+                if !block_q.contains(&block) {
+                    block_q.push_back(block);
+                }
+            }
+        }
+
+        idf
     }
 
     /// Get an iterator over the dominance frontier of `block`
