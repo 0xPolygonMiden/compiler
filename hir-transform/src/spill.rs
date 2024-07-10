@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use midenc_hir::{
     self as hir,
+    adt::{SmallMap, SmallSet},
     pass::{AnalysisManager, RewritePass, RewriteResult},
     *,
 };
@@ -11,7 +12,6 @@ use midenc_hir_analysis::{
 };
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
-use smallvec::SmallVec;
 
 /// This pass inserts spills and reloads as computed by running a [SpillAnalysis] on the given
 /// function, recording materialized splits, spills, and reloads in the analysis results.
@@ -103,6 +103,15 @@ impl RewritePass for InsertSpills {
             let span = builder.func.dfg.inst_span(split_info.predecessor.inst);
             let ix = builder.func.dfg.inst_mut(split_info.predecessor.inst);
             let args = match ix {
+                Instruction::Br(Br {
+                    ref mut destination,
+                    args,
+                    ..
+                }) => {
+                    assert_eq!(*destination, split_info.block);
+                    *destination = split;
+                    args.take()
+                }
                 Instruction::CondBr(CondBr {
                     then_dest,
                     else_dest,
@@ -130,10 +139,7 @@ impl RewritePass for InsertSpills {
                     }
                     ValueList::default()
                 }
-                ix => unimplemented!(
-                    "unhandled multi-destination branch instruction: {}",
-                    ix.opcode()
-                ),
+                ix => unimplemented!("unhandled branch instruction: {}", ix.opcode()),
             };
             builder.ins().Br(Opcode::Br, Type::Unit, split_info.block, args, span);
         }
@@ -260,7 +266,7 @@ impl RewritePass for RewriteSpills {
         &mut self,
         function: &mut Self::Entity,
         analyses: &mut AnalysisManager,
-        _session: &Session,
+        session: &Session,
     ) -> RewriteResult {
         // At this point, we've potentially emitted spills/reloads, but these are not yet being
         // used to split the live ranges of the SSA values to which they apply. Our job now, is
@@ -294,9 +300,46 @@ impl RewritePass for RewriteSpills {
                 return Ok(());
             }
         };
-        let cfg = analyses.get::<ControlFlowGraph>(&function.id).unwrap();
-        let domtree = analyses.get::<DominatorTree>(&function.id).unwrap();
+        let cfg = analyses.get_or_compute::<ControlFlowGraph>(function, session).unwrap();
+        let domtree = analyses.get_or_compute::<DominatorTree>(function, session).unwrap();
         let domf = DominanceFrontier::compute(&domtree, &cfg, function);
+
+        // Insert additional phi nodes as follows:
+        //
+        // 1. For each spilled value V
+        // 2. Obtain the set of blocks, R, containing a reload of V
+        // 3. For each block B in the dominance frontier of R, insert a phi in B for V
+        // 4. In each block of R, add a new block argument to B, passing V initially
+        // 5. Traverse the CFG bottom-up, finding uses of V, until we reach an inserted phi, a
+        //    reload, or the original definition. Rewrite all found uses of V up to that point, to
+        //    use this definition.
+        let mut required_phis = BTreeMap::<Value, SmallSet<Block, 2>>::default();
+        for info in spills.reloads() {
+            let r_block = function.dfg.inst_block(info.inst.unwrap()).unwrap();
+            let domf_r = required_phis.entry(info.value).or_default();
+            domf_r.extend(domf.iter(&r_block));
+        }
+
+        let mut inserted_phis = BTreeMap::<Block, SmallMap<Value, Value, 2>>::default();
+        for (value, domf_r) in required_phis {
+            // Add phi to each B in DF(R)
+            let data = function.dfg.value_data(value);
+            let ty = data.ty().clone();
+            let span = data.span();
+            for b in domf_r {
+                // Allocate new block parameter/phi, if one is not already present
+                let phis = inserted_phis.entry(b).or_default();
+                if let adt::smallmap::Entry::Vacant(entry) = phis.entry(value) {
+                    let phi = function.dfg.append_block_param(b, ty.clone(), span);
+                    entry.insert(phi);
+
+                    // Append `value` as new argument to every predecessor to satisfy new parameter
+                    for pred in cfg.pred_iter(b) {
+                        function.dfg.append_branch_destination_argument(pred.inst, b, value);
+                    }
+                }
+            }
+        }
 
         // Traverse the CFG bottom-up, doing the following along the way:
         //
@@ -326,74 +369,16 @@ impl RewritePass for RewriteSpills {
         //    successor is not in the iterated dominance frontier for that value, are retained in
         //    the "used" set without any changes.
         let mut used_sets = BTreeMap::<Block, BTreeMap<Value, FxHashSet<User>>>::default();
-        let mut block_q = VecDeque::from_iter(domtree.cfg_postorder().iter().rev().copied());
+        let mut block_q = VecDeque::from_iter(domtree.cfg_postorder().iter().copied());
         while let Some(block_id) = block_q.pop_front() {
             // Compute the "used" set for this block
             let mut used = BTreeMap::<Value, FxHashSet<User>>::default();
             for succ in cfg.succ_iter(block_id) {
-                // If we haven't yet visited this successor (because of a loop), then add the
-                // current block back to the worklist, and proceed without handling this successor
                 if let Some(succ_used) = used_sets.get_mut(&succ) {
-                    // Is succ in the iterated dominance frontier of any values in "succ_used"?
-                    let in_frontier = succ_used
-                        .keys()
-                        .copied()
-                        .filter(|v| {
-                            domf.get_by_value(*v, function)
-                                .map(|frontier| frontier.contains(&succ))
-                                .unwrap_or(false)
-                        })
-                        .collect::<SmallVec<[Value; 2]>>();
-                    if !in_frontier.is_empty() {
-                        // Then we need to add a phi/block parameter in succ, and rewrite all uses
-                        // of values for which succ is in the iterated
-                        // dominance frontier for that value
-                        for value in in_frontier {
-                            let data = function.dfg.value_data(value);
-                            let ty = data.ty().clone();
-                            let span = data.span();
-                            // Allocate new block parameter/phi
-                            let phi = function.dfg.append_block_param(succ, ty, span);
-                            // Append `value` as new argument to successor to satisfy new parameter
-                            let terminator_inst = function.dfg.last_inst(block_id).unwrap();
-                            function.dfg.append_branch_destination_argument(
-                                terminator_inst,
-                                succ,
-                                value,
-                            );
-                            // Visit all uses of `value` in `succ_used`, and rewrite to `phi`
-                            let to_rewrite = succ_used.remove(&value).unwrap();
-                            for user in to_rewrite.iter() {
-                                match user.ty {
-                                    Use::BlockArgument {
-                                        succ: succ_succ,
-                                        index,
-                                    } => {
-                                        function.dfg.replace_successor_argument(
-                                            user.inst,
-                                            succ_succ as usize,
-                                            index as usize,
-                                            phi,
-                                        );
-                                    }
-                                    Use::Operand { index } => {
-                                        function.dfg.replace_argument(
-                                            user.inst,
-                                            index as usize,
-                                            phi,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // Union the used set from this successor with the others
                     for (value, users) in succ_used.iter() {
                         used.entry(*value).or_default().extend(users.iter().cloned());
                     }
-                } else {
-                    block_q.push_back(block_id);
                 }
             }
 
@@ -477,11 +462,11 @@ impl RewritePass for RewriteSpills {
                             } else {
                                 // This reload is unused, so remove it entirely, and move to the
                                 // next instruction
-                                let mut cursor = function
-                                    .dfg
-                                    .block_mut(block_id)
-                                    .cursor_mut_at_inst(current_inst);
-                                cursor.remove();
+                                //let mut cursor = function
+                                //.dfg
+                                //.block_mut(block_id)
+                                //.cursor_mut_at_inst(current_inst);
+                                //cursor.remove();
                                 continue;
                             }
                         }
@@ -523,9 +508,44 @@ impl RewritePass for RewriteSpills {
 
             // At the top of the block, if any of the block parameters are in the "used" set, remove
             // those uses, as the block parameters are the original definitions for
-            // those values, and thus no rewrite is needed
+            // those values, and thus no rewrite is needed.
             for arg in function.dfg.block_args(block_id) {
                 used.remove(arg);
+            }
+
+            // If we have inserted any phis in this block, rewrite uses of the spilled values they
+            // represent.
+            if let Some(phis) = inserted_phis.get(&block_id) {
+                for (spilled, phi) in phis.iter() {
+                    if let Some(to_rewrite) = used.remove(spilled) {
+                        debug_assert!(
+                            !to_rewrite.is_empty(),
+                            "expected empty use sets to be removed"
+                        );
+
+                        for user in to_rewrite.iter() {
+                            match user.ty {
+                                Use::BlockArgument {
+                                    succ: succ_succ,
+                                    index,
+                                } => {
+                                    function.dfg.replace_successor_argument(
+                                        user.inst,
+                                        succ_succ as usize,
+                                        index as usize,
+                                        *phi,
+                                    );
+                                }
+                                Use::Operand { index } => {
+                                    function.dfg.replace_argument(user.inst, index as usize, *phi);
+                                }
+                            }
+                        }
+                    } else {
+                        // TODO(pauls): This phi is unused, we should be able to remove it
+                        continue;
+                    }
+                }
             }
 
             // What remains are the unsatisfied uses of spilled values for this block and its
@@ -561,4 +581,119 @@ impl RewritePass for RewriteSpills {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use midenc_hir::testing::TestContext;
+    use pretty_assertions::{assert_ne, assert_str_eq};
+
+    use super::*;
+
+    #[test]
+    fn spills_loop_nest() {
+        let context = TestContext::default();
+        let id = "test::spill".parse().unwrap();
+        let mut function = Function::new(
+            id,
+            Signature::new(
+                [
+                    AbiParam::new(Type::Ptr(Box::new(Type::U64))),
+                    AbiParam::new(Type::U64),
+                    AbiParam::new(Type::U64),
+                ],
+                [AbiParam::new(Type::U64)],
+            ),
+        );
+
+        {
+            let mut builder = FunctionBuilder::new(&mut function);
+            let entry = builder.current_block();
+            let (v0, v1, v2) = {
+                let args = builder.block_params(entry);
+                (args[0], args[1], args[2])
+            };
+
+            let block1 = builder.create_block();
+            let block2 = builder.create_block();
+            let block3 = builder.create_block();
+            let block4 = builder.create_block();
+            let block5 = builder.create_block();
+            let block6 = builder.create_block();
+
+            // entry
+            let v3 = builder.ins().u64(0, SourceSpan::UNKNOWN);
+            let v4 = builder.ins().u64(0, SourceSpan::UNKNOWN);
+            let v5 = builder.ins().u64(0, SourceSpan::UNKNOWN);
+            builder.ins().br(block1, &[v3, v4, v5], SourceSpan::UNKNOWN);
+
+            // block1 - outer loop header
+            let v6 = builder.append_block_param(block1, Type::U64, SourceSpan::UNKNOWN);
+            let v7 = builder.append_block_param(block1, Type::U64, SourceSpan::UNKNOWN);
+            let v8 = builder.append_block_param(block1, Type::U64, SourceSpan::UNKNOWN);
+            builder.switch_to_block(block1);
+            let v9 = builder.ins().eq(v6, v1, SourceSpan::UNKNOWN);
+            builder.ins().cond_br(v9, block2, &[], block3, &[], SourceSpan::UNKNOWN);
+
+            // block2 - outer exit
+            builder.switch_to_block(block2);
+            builder.ins().ret(Some(v8), SourceSpan::UNKNOWN);
+
+            // block3 - split edge
+            builder.switch_to_block(block3);
+            builder.ins().br(block4, &[v7, v8], SourceSpan::UNKNOWN);
+
+            // block4 - inner loop
+            let v10 = builder.append_block_param(block4, Type::U64, SourceSpan::UNKNOWN);
+            let v11 = builder.append_block_param(block4, Type::U64, SourceSpan::UNKNOWN);
+            builder.switch_to_block(block4);
+            let v12 = builder.ins().eq(v10, v2, SourceSpan::UNKNOWN);
+            builder.ins().cond_br(v12, block5, &[], block6, &[], SourceSpan::UNKNOWN);
+
+            // block5 - inner latch
+            builder.switch_to_block(block5);
+            let v13 = builder.ins().add_imm_unchecked(v6, Immediate::U64(1), SourceSpan::UNKNOWN);
+            builder.ins().br(block1, &[v13, v10, v11], SourceSpan::UNKNOWN);
+
+            // block6 - inner body
+            builder.switch_to_block(block6);
+            let v14 = builder.ins().add_imm_unchecked(v6, Immediate::U64(1), SourceSpan::UNKNOWN);
+            let v15 = builder.ins().mul_unchecked(v14, v2, SourceSpan::UNKNOWN);
+            let v16 = builder.ins().add_unchecked(v10, v15, SourceSpan::UNKNOWN);
+            let v17 = builder.ins().ptrtoint(v0, Type::U64, SourceSpan::UNKNOWN);
+            let v18 = builder.ins().add_unchecked(v17, v16, SourceSpan::UNKNOWN);
+            let v19 =
+                builder.ins().inttoptr(v18, Type::Ptr(Box::new(Type::U64)), SourceSpan::UNKNOWN);
+            let v20 = builder.ins().load(v19, SourceSpan::UNKNOWN);
+            let v21 = builder.ins().add_unchecked(v11, v20, SourceSpan::UNKNOWN);
+            let v22 = builder.ins().add_imm_unchecked(v10, Immediate::U64(1), SourceSpan::UNKNOWN);
+            builder.ins().br(block4, &[v22, v21], SourceSpan::UNKNOWN);
+        }
+
+        let original = function.to_string();
+        let mut analyses = AnalysisManager::default();
+        let mut rewrite = InsertSpills;
+        rewrite
+            .apply(&mut function, &mut analyses, &context.session)
+            .expect("spill insertion failed");
+
+        //analyses.invalidate::<Function>(&function.id);
+
+        //let mut rewrite = RewriteSpills;
+        //rewrite
+        //.apply(&mut function, &mut analyses, &context.session)
+        //.expect("spill cleanup failed");
+
+        // TODO: Test is failing because the spill of v1 is improperly placed. The spill occurs
+        // prior to entry to the inner loop, as it is not used in the inner loop, and is next
+        // used in the header of the outer loop, which the inner loop conditionally branches
+        // to. However, this places the spill inside a loop, when its definition exists outside
+        // the loop. Instead, we would expect the spill to be placed on entry to the outer loop,
+        // as even though it is easily held on the operand stack at that point, spilling it
+        // there ensures that we only need a single reload when continuing the outer loop from
+        // the inner loop, and no spills inside the loop.
+        let expected = "\
+        )";
+
+        let transformed = function.to_string();
+        assert_ne!(transformed, original);
+        assert_str_eq!(transformed.as_str(), expected);
+    }
+}
