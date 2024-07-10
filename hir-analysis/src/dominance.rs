@@ -602,70 +602,89 @@ impl<'a> Iterator for ChildIter<'a> {
 
 /// Calculates the dominance frontier for every block in a given `DominatorTree`
 ///
-/// A dominance frontier of a block `B` is the set of blocks `N` where control flow
-/// join points exist, where multiple value definitions together as one.
+/// The dominance frontier of a block `B` is the set of blocks `DF` where for each block `Y` in `DF`
+/// `B` dominates some predecessor of `Y`, but does not strictly dominate `Y`.
 ///
-/// More formally, the dominance frontier is every block `Ni` in `N` where the following
-/// properties hold:
+/// Dominance frontiers are useful in the construction of SSA form, as well as identifying control
+/// dependent dataflow (for example, a variable in a program that has a different value depending
+/// on what branch of an `if` statement is taken).
 ///
-/// * `B` dominates an immediate predecessor of `Ni`
-/// * `B` does not strictly dominate `Ni`; strict dominance is when `B` dominates
-/// `Ni`, but `B != Ni`
+/// A dominance frontier can also be computed for a set of blocks, by taking the union of the
+/// dominance frontiers of each block in the set.
 ///
-/// Consider the following example:
+/// An iterated dominance frontier is given by computing the dominance frontier for some set `X`,
+/// i.e. `DF(X)`, then computing the dominance frontier on that, i.e. `DF(DF(X))`, taking the union
+/// of the results, and repeating this process until fixpoint is reached. This is often represented
+/// in literature as `DF+(X)`.
+///
+/// Iterated dominance frontiers are of particular usefulness to us, because they correspond to the
+/// set of blocks in which we need to place phi nodes for some variable, in order to properly handle
+/// control dependent dataflow for that variable.
+///
+/// Consider the following example (not in SSA form):
 ///
 ///
 /// ```text,ignore
-/// block0(v0):
-///   v1 = ...
-///   cond_br v0, block1, block2
+/// block0(x):
+///   v = 0
+///   cond_br x, block1, block2
 ///
 /// block1():
-///   br block3(v1)
+///   v = 1
+///   br block3
 ///
 /// block2():
-///   v2 = ...
-///   br block3(v2)
+///   v = 2
+///   br block3
 ///
-/// block3(v3):
-///   ...
+/// block3:
+///   ret v
 /// ```
 ///
-/// Here, `block0` strictly dominates all other blocks; but neither `block1` or `block2`
-/// dominate `block3`. This tells us that `block3` must be in the dominance frontier of `block1`
-/// and `block2`, because:
+/// In this example, we have a variable, `v`, which is assigned new values later in the program
+/// depending on which path through the program is taken. To transform this program into SSA form,
+/// we take the set `V`, containing all of the assignments to `v`, and compute `DF+(V)`. Given
+/// the program above, that would give us the set `{block3}`:
 ///
-/// * By definition, every block dominates itself, but does not strictly dominate itself
-/// * Both `block1` and `block2` are immediate predecessors of `block3`
-/// * Thus, both `block1` and `block2` technically dominate a predecessor of `block3`
-/// * Neither `block1` nor `block2` strictly dominate `block3`
+/// * The dominance frontier of the assignment in `block0` is empty, because `block0` strictly
+/// dominates all other blocks in the program.
+/// * The dominance frontier of the assignment in `block1` contains `block3`, because `block1`
+/// dominates a predecessor of `block3` (itself), but does not strictly dominate that predecessor,
+/// because a node cannot strictly dominate itself.
+/// * The dominance frontier of the assignment in `block2` contains `block3`, for the same reasons
+/// as `block1`.
+/// * The dominance frontier of `block3` is empty, because it has no successors and thus cannot
+/// dominate any other blocks.
+/// * The union of all the dominance frontiers is simply `{block3}`
 ///
-/// It is also obvious that `block3` must be in the dominance frontier of `block1` and `block2`,
-/// because we can observe that `block3` is a join point for control that flows through `block1` and
-/// `block2` - the value of `v3` depends on which path is taken to reach `block3`.
+/// So this tells us that we need to place a phi node (a block parameter) at `block3`, and rewrite
+/// all uses of `v` strictly dominated by the phi node to use the value associated with the phi
+/// instead. In every predecessor of `block3`, we must pass `v` as a new block argument. Lastly, to
+/// obtain SSA form, we rewrite assignments to `v` as defining new variables instead, and walk up
+/// the dominance tree from each use of `v` until we find the nearest dominating definition for that
+/// use, and rewrite the usage of `v` to use the value produced by that definition. Performing these
+/// steps gives us the following program:
 ///
-/// You might wonder if `block3` is in the dominance frontier of `block0`, and the answer is no.
-/// That's because `block0` strictly dominates `block3`, i.e. all control flow must pass through it
-/// to reach `block3`. The reason why strict dominance matters becomes more clear when you consider
-/// that any value defined in `block0` will have the same definition same regardless of which path
-/// is taken to reach `block3`.
+/// ```text,ignore
+/// block0(x):
+///   v0 = 0
+///   cond_br x, block1, block2
 ///
-/// ## Purpose
+/// block1():
+///   v2 = 1
+///   br block3(v2)
 ///
-/// The dominance frontier is used to place new phi nodes (which in our IR are represented by block
-/// arguments) after introducing register spills/reloads. Reloads would naturally introduce multiple
-/// definitions for a given value, which would break the SSA property of the IR, so to preserve it,
-/// reloads introduce new definitions, and all uses of the original definition dominated by the
-/// reload are updated.
+/// block2():
+///   v3 = 2
+///   br block3(v3)
 ///
-/// However, that alone is insufficient, since there may be uses of the original definition which
-/// are _not_ dominated by the reload due to branching control flow. To address this, we must
-/// introduce new block arguments to every block in the dominance frontier of the block in which
-/// reloads occur, and where the reloaded value is live. All uses of either the original definition
-/// dominated by that phi node are rewritten to use the definition produced by the phi.
+/// block3(v1):
+///   ret v1
+/// ```
 ///
-/// The actual algorithm works bottom-up, rather than top-down, but the relationship to the
-/// dominance frontier is the same in both cases.
+/// This program is in SSA form, and the dataflow for `v` is now explicit. An interesting
+/// consequence of the transformation we performed, is that we are able to trivially recognize
+/// that the definition of `v` in `block0` is unused, allowing us to eliminate it entirely.
 #[derive(Default)]
 pub struct DominanceFrontier {
     /// The dominance frontier for each block, as a set of blocks
@@ -717,16 +736,16 @@ impl DominanceFrontier {
         }
     }
 
-    /// Get the set of blocks in the dominance frontier of `block`,
-    /// or `None` if `block` has an empty dominance frontier.
+    /// Get the set of blocks in the dominance frontier of `block`, or `None` if `block` has an
+    /// empty dominance frontier.
     #[inline]
-    pub fn get(&self, block: &Block) -> Option<&FxHashSet<Block>> {
+    pub fn get(&self, block: &Block) -> Option<&BTreeSet<Block>> {
         self.dfs.get(*block)
     }
 
-    /// Get the set of blocks in the dominance frontier of `value`,
-    /// or `None` if `value` has an empty dominance frontier.
-    pub fn get_by_value(&self, value: Value, function: &Function) -> Option<&FxHashSet<Block>> {
+    /// Get the set of blocks in the dominance frontier of `value`, or `None` if `value` has an
+    /// empty dominance frontier.
+    pub fn get_by_value(&self, value: Value, function: &Function) -> Option<&BTreeSet<Block>> {
         let defining_block = function.dfg.value_block(value);
         self.dfs.get(defining_block)
     }
