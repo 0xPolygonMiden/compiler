@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::BTreeMap, rc::Rc};
 
 use cranelift_entity::SecondaryMap;
 use hir::Type;
@@ -22,6 +22,7 @@ pub struct FunctionEmitter<'a> {
     domtree: &'a DominatorTree,
     loops: &'a LoopAnalysis,
     liveness: &'a LivenessAnalysis,
+    locals: BTreeMap<hir::LocalId, masm::LocalId>,
     globals: &'a GlobalVariableLayout,
     visited: SecondaryMap<hir::Block, bool>,
 }
@@ -96,12 +97,18 @@ impl<'a> FunctionEmitter<'a> {
         liveness: &'a LivenessAnalysis,
         globals: &'a GlobalVariableLayout,
     ) -> Self {
+        // Allocate procedure locals for each local variable
+        let locals = BTreeMap::from_iter(
+            f.dfg.locals().map(|local| (local.id, f_prime.alloc_local(local.ty.clone()))),
+        );
+
         Self {
             f,
             f_prime,
             domtree,
             loops,
             liveness,
+            locals,
             globals,
             visited: SecondaryMap::new(),
         }
@@ -233,7 +240,21 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             Instruction::Switch(_) => {
                 panic!("expected switch instructions to have been rewritten before stackification")
             }
-            Instruction::LocalVar(_) => unimplemented!(),
+            Instruction::LocalVar(ref op) => {
+                let local = self.function.locals[&op.local];
+                let args = op.args.as_slice(&self.function.f.dfg.value_lists);
+                let mut emitter = self.inst_emitter(inst_info.inst);
+                match op.op {
+                    hir::Opcode::Store => {
+                        assert_eq!(args.len(), 1);
+                        emitter.store_local(local);
+                    }
+                    hir::Opcode::Load => {
+                        emitter.load_local(local);
+                    }
+                    opcode => unimplemented!("unrecognized local variable op '{opcode}'"),
+                }
+            }
         }
     }
 

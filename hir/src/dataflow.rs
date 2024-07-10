@@ -828,6 +828,10 @@ impl DataFlowGraph {
     pub fn local_type(&self, id: LocalId) -> &Type {
         &self.locals[id].ty
     }
+
+    pub fn locals(&self) -> impl Iterator<Item = &Local> + '_ {
+        self.locals.values()
+    }
 }
 impl Index<Inst> for DataFlowGraph {
     type Output = Instruction;
