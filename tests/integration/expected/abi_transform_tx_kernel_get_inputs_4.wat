@@ -1,4 +1,4 @@
-(module $abi_transform_tx_kernel_get_inputs.wasm
+(module $abi_transform_tx_kernel_get_inputs_4.wasm
   (type (;0;) (func (param i32) (result i32)))
   (type (;1;) (func (param i32)))
   (type (;2;) (func (param i32 i32) (result i32)))

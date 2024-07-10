@@ -2,6 +2,7 @@
 
 use core::panic;
 use std::{
+    fmt::Write,
     fs,
     io::Read,
     path::{Path, PathBuf},
@@ -20,6 +21,8 @@ use midenc_session::{
 };
 
 use crate::cargo_proj::project;
+
+type LinkMasmModules = Vec<(LibraryPath, String)>;
 
 pub enum CompilerTestSource {
     Rust(String),
@@ -96,6 +99,23 @@ pub struct CompilerTest {
     pub masm_program: Option<Box<miden_core::Program>>,
     /// The MASM source code
     pub masm_src: Option<String>,
+    /// The extra MASM modules to link to the compiled MASM program
+    pub link_masm_modules: LinkMasmModules,
+}
+
+impl Default for CompilerTest {
+    fn default() -> Self {
+        Self {
+            config: WasmTranslationConfig::default(),
+            session: Arc::new(dummy_session()),
+            source: CompilerTestSource::Rust(String::new()),
+            entrypoint: None,
+            hir: None,
+            masm_program: None,
+            masm_src: None,
+            link_masm_modules: Vec::new(),
+        }
+    }
 }
 
 impl CompilerTest {
@@ -157,10 +177,7 @@ impl CompilerTest {
             config,
             session: default_session(input_file),
             source: CompilerTestSource::RustCargoComponent { artifact_name },
-            entrypoint: None,
-            hir: None,
-            masm_program: None,
-            masm_src: None,
+            ..Default::default()
         }
     }
 
@@ -250,9 +267,7 @@ impl CompilerTest {
                 artifact_name: artifact_name.to_string(),
             },
             entrypoint,
-            hir: None,
-            masm_program: None,
-            masm_src: None,
+            ..Default::default()
         }
     }
 
@@ -303,16 +318,13 @@ impl CompilerTest {
             function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
         };
         CompilerTest {
-            config: WasmTranslationConfig::default(),
             session,
             source: CompilerTestSource::RustCargo {
                 cargo_project_folder_name: cargo_project_folder.to_string(),
                 artifact_name: artifact_name.to_string(),
             },
             entrypoint: Some(entrypoint),
-            hir: None,
-            masm_program: None,
-            masm_src: None,
+            ..Default::default()
         }
     }
 
@@ -321,13 +333,9 @@ impl CompilerTest {
         let wasm_file = compile_rust_file(rust_source);
         let session = default_session(wasm_file);
         CompilerTest {
-            config: WasmTranslationConfig::default(),
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
-            entrypoint: None,
-            hir: None,
-            masm_program: None,
-            masm_src: None,
+            ..Default::default()
         }
     }
 
@@ -363,13 +371,10 @@ impl CompilerTest {
         };
 
         CompilerTest {
-            config: WasmTranslationConfig::default(),
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
             entrypoint: Some(entrypoint),
-            hir: None,
-            masm_program: None,
-            masm_src: None,
+            ..Default::default()
         }
     }
 
@@ -590,9 +595,18 @@ impl CompilerTest {
             midenc_compile::Compiled::Program(_p) => todo!("Program compilation not yet supported"),
             midenc_compile::Compiled::Modules(modules) => {
                 let user_ns_name = "user_ns";
-                let src =
-                    expected_masm_prog_source_from_modules(user_ns_name, &modules, self.entrypoint);
-                let prog = masm_prog_from_modules(user_ns_name, &modules, self.entrypoint);
+                let src = expected_masm_prog_source_from_modules(
+                    user_ns_name,
+                    &modules,
+                    self.entrypoint,
+                    &self.link_masm_modules,
+                );
+                let prog = masm_prog_from_modules(
+                    user_ns_name,
+                    &modules,
+                    self.entrypoint,
+                    &self.link_masm_modules,
+                );
                 (prog, src)
             }
         }
@@ -624,8 +638,17 @@ fn masm_prog_from_modules(
     user_ns_name: &str,
     modules: &[Box<midenc_codegen_masm::Module>],
     entrypoint: Option<FunctionIdent>,
+    link_masm_modules: &LinkMasmModules,
 ) -> Result<Program, Report> {
     let mut assembler = Assembler::default().with_library(&StdLibrary::default())?;
+    for (path, src) in link_masm_modules {
+        let options = miden_assembly::CompileOptions {
+            kind: ModuleKind::Library,
+            warnings_as_errors: false,
+            path: Some(path.clone()),
+        };
+        assembler.add_module_with_options(src, options)?;
+    }
     for module in modules {
         let module_src = format!("{}", module);
         // eprintln!("{}", &module_src);
@@ -652,15 +675,20 @@ fn expected_masm_prog_source_from_modules(
     user_ns_name: &str,
     modules: &[Box<midenc_codegen_masm::Module>],
     entrypoint: Option<FunctionIdent>,
+    link_masm_modules: &LinkMasmModules,
 ) -> String {
     let mut src = String::new();
+    for (path, module_src) in link_masm_modules {
+        writeln!(src, "# mod {path}\n").unwrap();
+        writeln!(src, "{module_src}").unwrap();
+    }
     for module in modules {
         let module_src = format!("{}", module);
         let path = masm_module_path(user_ns_name, module);
         if !path.contains("intrinsic") {
             // print only user modules and not intrinsic modules
-            src.push_str(format!("# mod {path}\n\n").as_str());
-            src.push_str(&module_src);
+            writeln!(src, "# mod {path}\n").unwrap();
+            write!(src, "{module_src}").unwrap();
         }
     }
     if let Some(entrypoint) = entrypoint {
@@ -810,16 +838,38 @@ fn compile_rust_file(rust_source: &str) -> InputFile {
     InputFile::from_path(output_file).unwrap()
 }
 
-/// Create a default session for testing
-pub fn default_session(input_file: InputFile) -> Arc<Session> {
+fn dummy_session() -> Session {
     let output_type = OutputType::Masm;
     let output_types = OutputTypes::new(vec![OutputTypeSpec {
         output_type,
         path: None,
     }]);
     let options = Options::default().with_output_types(output_types);
-    let session = Session::new(Default::default(), input_file, None, None, None, options, None)
-        .with_project_type(ProjectType::Library);
+    Session::new(
+        Default::default(),
+        InputFile::from_path(PathBuf::from("dummy.wasm")).unwrap(),
+        None,
+        None,
+        None,
+        options,
+        None,
+    )
+    .with_project_type(ProjectType::Library)
+}
+
+/// Create a default session for testing
+pub fn default_session(input_file: InputFile) -> Arc<Session> {
+    let default_session = dummy_session();
+    let session = Session::new(
+        Default::default(),
+        input_file,
+        None,
+        None,
+        None,
+        default_session.options,
+        None,
+    )
+    .with_project_type(ProjectType::Library);
     Arc::new(session)
 }
 
