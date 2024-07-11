@@ -2757,7 +2757,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         u32and
         eq.2147483648
         assertz
-        push.268435456
+        push.536870912
         dup.0
         push.2147483648
         u32and
@@ -2766,14 +2766,14 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         u32lt
         neq.0
         if.true
-            push.3
+            push.2
             dup.2
             swap.1
             u32shl
             movup.3
             neq.0
             if.true
-                push.8
+                push.4
                 dup.1
                 exec."__rust_alloc_zeroed"
                 dup.0
@@ -2800,7 +2800,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::store_sw
-                    push.8
+                    push.4
                     dup.2
                     dup.0
                     push.2147483648
@@ -2892,7 +2892,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     exec.::intrinsics::mem::store_sw
                 end
             else
-                push.8
+                push.4
                 dup.1
                 exec."__rust_alloc"
                 dup.0
@@ -2919,7 +2919,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::store_sw
-                    push.8
+                    push.4
                     dup.2
                     dup.0
                     push.2147483648
@@ -3070,7 +3070,7 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         movup.2
         u32div.16
         exec.::intrinsics::mem::store_sw
-        push.8.0
+        push.4.0
         movup.2
         dup.0
         push.2147483648

@@ -14,11 +14,11 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
         FunctionType::new(
             [
                 Felt, // num_words
-                Felt, // write_ptr
+                I32,  // write_ptr
             ],
             [
                 Felt, Felt, Felt, Felt, // HASH
-                Felt, // write_ptr'
+                I32,  // write_ptr'
             ],
         ),
     );
@@ -29,14 +29,14 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
                 Felt, Felt, Felt, Felt, // C
                 Felt, Felt, Felt, Felt, // B
                 Felt, Felt, Felt, Felt, // A
-                Felt, // write_ptr
-                Felt, // end_ptr
+                I32,  // write_ptr
+                I32,  // end_ptr
             ],
             [
                 Felt, Felt, Felt, Felt, // C
                 Felt, Felt, Felt, Felt, // B
                 Felt, Felt, Felt, Felt, // A
-                Felt, // write_ptr
+                I32,  // write_ptr
             ],
         ),
     );

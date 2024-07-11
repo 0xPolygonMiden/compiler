@@ -5,8 +5,8 @@ use smallvec::SmallVec;
 
 use super::*;
 
-const FELT_SIZE: usize = core::mem::size_of::<u64>();
-const WORD_SIZE: usize = core::mem::size_of::<[u64; 4]>();
+const FELT_SIZE: usize = core::mem::size_of::<u32>();
+const WORD_SIZE: usize = core::mem::size_of::<[u32; 4]>();
 
 impl Type {
     /// Convert this type into a vector of types corresponding to how this type

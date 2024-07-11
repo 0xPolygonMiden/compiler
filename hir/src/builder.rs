@@ -278,6 +278,20 @@ macro_rules! require_integer {
     }};
 }
 
+macro_rules! require_felt_sized_integer {
+    ($this:ident, $val:ident) => {{
+        let ty = $this.data_flow_graph().value_type($val);
+        assert!(ty.is_integer(), "expected {} to be of integral type", stringify!($val));
+        assert_eq!(
+            ty.size_in_felts(),
+            1,
+            "expected {} to be an integer no larger than 1 felt in size",
+            stringify!($val)
+        );
+        ty
+    }};
+}
+
 macro_rules! require_pointer {
     ($this:ident, $val:ident) => {{
         let ty = $this.data_flow_graph().value_type($val);
@@ -552,7 +566,7 @@ macro_rules! signed_integer_literal {
 
 pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     fn assert(mut self, value: Value, span: SourceSpan) -> Inst {
-        require_integer!(self, value, Type::I1);
+        require_felt_sized_integer!(self, value);
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
@@ -562,7 +576,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     }
 
     fn assert_with_error(mut self, value: Value, code: u32, span: SourceSpan) -> Inst {
-        require_integer!(self, value, Type::I1);
+        require_felt_sized_integer!(self, value);
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
@@ -572,7 +586,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     }
 
     fn assertz(mut self, value: Value, span: SourceSpan) -> Inst {
-        require_integer!(self, value, Type::I1);
+        require_felt_sized_integer!(self, value);
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
@@ -582,7 +596,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     }
 
     fn assertz_with_error(mut self, value: Value, code: u32, span: SourceSpan) -> Inst {
-        require_integer!(self, value, Type::I1);
+        require_felt_sized_integer!(self, value);
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;

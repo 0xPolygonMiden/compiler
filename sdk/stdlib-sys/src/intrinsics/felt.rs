@@ -79,7 +79,7 @@ pub enum FeltError {
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]
-pub struct Felt(f64);
+pub struct Felt(f32);
 
 impl Felt {
     /// Field modulus = 2^64 - 2^32 + 1
@@ -133,32 +133,32 @@ impl Felt {
 
 impl From<Felt> for u64 {
     fn from(felt: Felt) -> u64 {
-        felt.0 as u64
+        felt.as_u64()
     }
 }
 
 impl From<u32> for Felt {
     fn from(value: u32) -> Self {
-        Self::from_u64_unchecked(value as u64)
+        Self(unsafe { core::mem::transmute(value) })
     }
 }
 
 impl From<u16> for Felt {
     fn from(value: u16) -> Self {
-        Self::from_u64_unchecked(value as u64)
+        Self(unsafe { core::mem::transmute(value as u32) })
     }
 }
 
 impl From<u8> for Felt {
     fn from(value: u8) -> Self {
-        Self::from_u64_unchecked(value as u64)
+        Self(unsafe { core::mem::transmute(value as u32) })
     }
 }
 
 #[cfg(target_pointer_width = "32")]
 impl From<usize> for Felt {
     fn from(value: usize) -> Self {
-        Self::from_u64_unchecked(value as u64)
+        Self(unsafe { core::mem::transmute(value as u32) })
     }
 }
 

@@ -1,28 +1,28 @@
 (module $miden_sdk_account_test.wasm
-  (type (;0;) (func (param i64) (result f64)))
-  (type (;1;) (func (param f64 f64) (result f64)))
-  (type (;2;) (func (param f64) (result i64)))
-  (type (;3;) (func (param f64 f64) (result i32)))
-  (type (;4;) (func (param f64) (result i32)))
-  (type (;5;) (func (param f64)))
-  (type (;6;) (func (param f64) (result f64)))
-  (type (;7;) (func (param f64 f64)))
-  (type (;8;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 i32)))
-  (type (;9;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 i32)))
-  (type (;10;) (func (param f64 f64 f64 f64 f64 f64 f64 f64)))
-  (type (;11;) (func (result f64)))
+  (type (;0;) (func (param i64) (result f32)))
+  (type (;1;) (func (param f32 f32) (result f32)))
+  (type (;2;) (func (param f32) (result i64)))
+  (type (;3;) (func (param f32 f32) (result i32)))
+  (type (;4;) (func (param f32) (result i32)))
+  (type (;5;) (func (param f32)))
+  (type (;6;) (func (param f32) (result f32)))
+  (type (;7;) (func (param f32 f32)))
+  (type (;8;) (func (param f32 f32 f32 f32 f32 f32 f32 f32 i32)))
+  (type (;9;) (func (param f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 i32)))
+  (type (;10;) (func (param f32 f32 f32 f32 f32 f32 f32 f32)))
+  (type (;11;) (func (result f32)))
   (type (;12;) (func (param i32) (result i32)))
-  (type (;13;) (func (param f64 f64 f64 f64 i32)))
-  (type (;14;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64) (result f64)))
-  (type (;15;) (func (param f64 f64 i32)))
-  (type (;16;) (func (param f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 f64 i32)))
+  (type (;13;) (func (param f32 f32 f32 f32 i32)))
+  (type (;14;) (func (param f32 f32 f32 f32 f32 f32 f32 f32 f32 f32) (result f32)))
+  (type (;15;) (func (param f32 i32 i32)))
+  (type (;16;) (func (param f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 i32 i32 i32)))
   (type (;17;) (func (param i32)))
   (type (;18;) (func (param i32 i32 i32) (result i32)))
   (type (;19;) (func (param i32 i32 i32)))
   (type (;20;) (func (param i32 i32)))
-  (type (;21;) (func (param i32 f64)))
-  (type (;22;) (func (param i32) (result f64)))
-  (type (;23;) (func (param i32 f64 f64 i32) (result f64)))
+  (type (;21;) (func (param i32 f32)))
+  (type (;22;) (func (param i32) (result f32)))
+  (type (;23;) (func (param i32 f32 f32 i32) (result f32)))
   (type (;24;) (func (param i32 i32) (result i32)))
   (type (;25;) (func (param i32 i32 i32 i32)))
   (type (;26;) (func))
@@ -93,9 +93,9 @@
       local.get 0
       i32.load offset=4
       local.get 1
-      i32.const 3
+      i32.const 2
       i32.shl
-      i32.const 8
+      i32.const 4
       call $__rust_dealloc
     end
   )
@@ -141,8 +141,8 @@
     i32.add
     global.set $__stack_pointer
   )
-  (func $get_wallet_magic_number (;34;) (type 11) (result f64)
-    (local f64)
+  (func $get_wallet_magic_number (;34;) (type 11) (result f32)
+    (local f32)
     call $miden_tx_kernel_sys::get_id
     local.set 0
     i64.const 42
@@ -150,10 +150,10 @@
     local.get 0
     call $miden_stdlib_sys::intrinsics::felt::extern_add
   )
-  (func $test_add_asset (;35;) (type 11) (result f64)
-    (local i32 f64 f64 f64)
+  (func $test_add_asset (;35;) (type 11) (result f32)
+    (local i32 f32 f32 f32)
     global.get $__stack_pointer
-    i32.const 64
+    i32.const 32
     i32.sub
     local.tee 0
     global.set $__stack_pointer
@@ -169,31 +169,31 @@
     local.get 0
     i64.const 4
     call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
-    f64.store offset=24
+    f32.store offset=12
     local.get 0
     local.get 3
-    f64.store offset=16
+    f32.store offset=8
     local.get 0
     local.get 2
-    f64.store offset=8
+    f32.store offset=4
     local.get 0
     local.get 1
-    f64.store
+    f32.store
     local.get 0
-    i32.const 32
+    i32.const 16
     i32.add
     local.get 0
     call $miden_tx_kernel_sys::add_asset
     local.get 0
-    f64.load offset=32
+    f32.load offset=16
     local.set 1
     local.get 0
-    i32.const 64
+    i32.const 32
     i32.add
     global.set $__stack_pointer
     local.get 1
   )
-  (func $test_felt_ops_smoke (;36;) (type 1) (param f64 f64) (result f64)
+  (func $test_felt_ops_smoke (;36;) (type 1) (param f32 f32) (result f32)
     (local i64)
     local.get 0
     call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
@@ -282,8 +282,8 @@
     local.get 0
     call $miden_stdlib_sys::intrinsics::felt::extern_neg
   )
-  (func $note_script (;37;) (type 11) (result f64)
-    (local i32 f64 i32 i32 i32 i32)
+  (func $note_script (;37;) (type 11) (result f32)
+    (local i32 f32 i32 i32 i32 i32)
     global.get $__stack_pointer
     i32.const 16
     i32.sub
@@ -303,7 +303,7 @@
     local.tee 3
     local.get 0
     i32.load offset=8
-    i32.const 3
+    i32.const 2
     i32.shl
     local.tee 4
     i32.add
@@ -315,7 +315,7 @@
     local.get 0
     local.get 3
     i32.store
-    loop (result f64) ;; label = @1
+    loop (result f32) ;; label = @1
       block ;; label = @2
         local.get 4
         br_if 0 (;@2;)
@@ -332,25 +332,25 @@
         return
       end
       local.get 4
-      i32.const -8
+      i32.const -4
       i32.add
       local.set 4
       local.get 1
       local.get 3
-      f64.load
+      f32.load
       call $miden_stdlib_sys::intrinsics::felt::extern_add
       local.set 1
       local.get 3
-      i32.const 8
+      i32.const 4
       i32.add
       local.set 3
       br 0 (;@1;)
     end
   )
   (func $test_blake3_hash_1to1 (;38;) (type 20) (param i32 i32)
-    (local i32 i32 f64)
+    (local i32 i32 f32)
     global.get $__stack_pointer
-    i32.const 240
+    i32.const 144
     i32.sub
     local.tee 2
     global.set $__stack_pointer
@@ -362,7 +362,7 @@
     loop ;; label = @1
       block ;; label = @2
         local.get 3
-        i32.const 64
+        i32.const 32
         i32.ne
         br_if 0 (;@2;)
         i32.const 0
@@ -371,49 +371,85 @@
           loop ;; label = @4
             block ;; label = @5
               local.get 3
-              i32.const 64
+              i32.const 32
               i32.ne
               br_if 0 (;@5;)
               local.get 2
-              f64.load offset=8
+              f32.load offset=8
               local.get 2
-              f64.load offset=16
+              f32.load offset=12
               local.get 2
-              f64.load offset=24
+              f32.load offset=16
               local.get 2
-              f64.load offset=32
+              f32.load offset=20
               local.get 2
-              f64.load offset=40
+              f32.load offset=24
               local.get 2
-              f64.load offset=48
+              f32.load offset=28
               local.get 2
-              f64.load offset=56
+              f32.load offset=32
               local.get 2
-              f64.load offset=64
+              f32.load offset=36
               local.get 2
-              i32.const 72
+              i32.const 40
               i32.add
               call $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_1to1
               local.get 2
-              i32.const 136
+              i32.const 72
               i32.add
+              i32.const 24
+              i32.add
+              local.get 2
+              i32.const 40
+              i32.add
+              i32.const 24
+              i32.add
+              i64.load align=4
+              i64.store
               local.get 2
               i32.const 72
               i32.add
-              i32.const 64
-              memory.copy
+              i32.const 16
+              i32.add
               local.get 2
-              i32.const 224
+              i32.const 40
+              i32.add
+              i32.const 16
+              i32.add
+              i64.load align=4
+              i64.store
+              local.get 2
+              i32.const 72
+              i32.add
+              i32.const 8
+              i32.add
+              local.get 2
+              i32.const 40
+              i32.add
+              i32.const 8
+              i32.add
+              i64.load align=4
+              i64.store
+              local.get 2
+              local.get 2
+              i64.load offset=40 align=4
+              i64.store offset=72
+              local.get 2
+              i32.const 104
+              i32.add
+              i32.const 24
               i32.add
               i64.const 0
               i64.store
               local.get 2
-              i32.const 216
+              i32.const 104
+              i32.add
+              i32.const 16
               i32.add
               i64.const 0
               i64.store
               local.get 2
-              i32.const 200
+              i32.const 104
               i32.add
               i32.const 8
               i32.add
@@ -421,11 +457,7 @@
               i64.store
               local.get 2
               i64.const 0
-              i64.store offset=200
-              local.get 2
-              i32.const 136
-              i32.add
-              local.set 1
+              i64.store offset=104
               i32.const 0
               local.set 3
               loop ;; label = @6
@@ -434,18 +466,22 @@
                 i32.eq
                 br_if 3 (;@3;)
                 local.get 2
-                local.get 1
-                f64.load
-                call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
-                i64.store offset=232
                 local.get 2
-                i32.const 200
+                i32.const 72
+                i32.add
+                local.get 3
+                i32.add
+                f32.load
+                call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
+                i64.store offset=136
+                local.get 2
+                i32.const 104
                 i32.add
                 local.get 3
                 i32.add
                 i32.const 4
                 local.get 2
-                i32.const 232
+                i32.const 136
                 i32.add
                 i32.const 4
                 i32.const 1048620
@@ -454,10 +490,6 @@
                 i32.const 4
                 i32.add
                 local.set 3
-                local.get 1
-                i32.const 8
-                i32.add
-                local.set 1
                 br 0 (;@6;)
               end
             end
@@ -467,29 +499,27 @@
             local.get 3
             i32.add
             local.get 1
+            local.get 3
+            i32.add
             i64.load32_u align=1
             call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
-            f64.store
+            f32.store
             local.get 3
-            i32.const 8
-            i32.add
-            local.set 3
-            local.get 1
             i32.const 4
             i32.add
-            local.set 1
+            local.set 3
             br 0 (;@4;)
           end
         end
         local.get 0
         local.get 2
-        i64.load offset=200
+        i64.load offset=104
         i64.store align=1
         local.get 0
         i32.const 24
         i32.add
         local.get 2
-        i32.const 200
+        i32.const 104
         i32.add
         i32.const 24
         i32.add
@@ -499,7 +529,7 @@
         i32.const 16
         i32.add
         local.get 2
-        i32.const 200
+        i32.const 104
         i32.add
         i32.const 16
         i32.add
@@ -509,14 +539,14 @@
         i32.const 8
         i32.add
         local.get 2
-        i32.const 200
+        i32.const 104
         i32.add
         i32.const 8
         i32.add
         i64.load
         i64.store align=1
         local.get 2
-        i32.const 240
+        i32.const 144
         i32.add
         global.set $__stack_pointer
         return
@@ -527,18 +557,18 @@
       local.get 3
       i32.add
       local.get 4
-      f64.store
+      f32.store
       local.get 3
-      i32.const 8
+      i32.const 4
       i32.add
       local.set 3
       br 0 (;@1;)
     end
   )
   (func $test_blake3_hash_2to1 (;39;) (type 19) (param i32 i32 i32)
-    (local i32 i32 f64)
+    (local i32 i32 f32)
     global.get $__stack_pointer
-    i32.const 432
+    i32.const 240
     i32.sub
     local.tee 3
     global.set $__stack_pointer
@@ -550,7 +580,7 @@
     loop ;; label = @1
       block ;; label = @2
         local.get 4
-        i32.const 64
+        i32.const 32
         i32.ne
         br_if 0 (;@2;)
         i32.const 0
@@ -558,7 +588,7 @@
         loop ;; label = @3
           block ;; label = @4
             local.get 4
-            i32.const 64
+            i32.const 32
             i32.ne
             br_if 0 (;@4;)
             i32.const 0
@@ -569,7 +599,7 @@
             loop ;; label = @5
               block ;; label = @6
                 local.get 4
-                i32.const 64
+                i32.const 32
                 i32.ne
                 br_if 0 (;@6;)
                 i32.const 0
@@ -578,77 +608,71 @@
                   loop ;; label = @8
                     block ;; label = @9
                       local.get 4
-                      i32.const 64
+                      i32.const 32
                       i32.ne
                       br_if 0 (;@9;)
                       local.get 3
-                      f64.load offset=8
+                      f32.load offset=8
                       local.get 3
-                      f64.load offset=16
+                      f32.load offset=12
                       local.get 3
-                      f64.load offset=24
+                      f32.load offset=16
                       local.get 3
-                      f64.load offset=32
+                      f32.load offset=20
                       local.get 3
-                      f64.load offset=40
+                      f32.load offset=24
                       local.get 3
-                      f64.load offset=48
+                      f32.load offset=28
                       local.get 3
-                      f64.load offset=56
+                      f32.load offset=32
                       local.get 3
-                      f64.load offset=64
+                      f32.load offset=36
                       local.get 3
-                      f64.load offset=72
+                      f32.load offset=40
                       local.get 3
-                      f64.load offset=80
+                      f32.load offset=44
                       local.get 3
-                      f64.load offset=88
+                      f32.load offset=48
                       local.get 3
-                      f64.load offset=96
+                      f32.load offset=52
                       local.get 3
-                      f64.load offset=104
+                      f32.load offset=56
                       local.get 3
-                      f64.load offset=112
+                      f32.load offset=60
                       local.get 3
-                      f64.load offset=120
+                      f32.load offset=64
                       local.get 3
-                      f64.load offset=128
+                      f32.load offset=68
                       local.get 3
-                      i32.const 136
+                      i32.const 72
                       i32.add
                       call $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_2to1
                       local.get 3
-                      i32.const 264
-                      i32.add
-                      local.get 3
                       i32.const 136
                       i32.add
-                      i32.const 128
+                      local.get 3
+                      i32.const 72
+                      i32.add
+                      i32.const 64
                       memory.copy
                       local.get 3
-                      i32.const 416
+                      i32.const 224
                       i32.add
                       i64.const 0
                       i64.store
                       local.get 3
-                      i32.const 408
+                      i32.const 216
                       i32.add
                       i64.const 0
                       i64.store
                       local.get 3
-                      i32.const 392
-                      i32.add
-                      i32.const 8
+                      i32.const 208
                       i32.add
                       i64.const 0
                       i64.store
                       local.get 3
                       i64.const 0
-                      i64.store offset=392
-                      local.get 3
-                      i32.const 264
-                      i32.add
-                      local.set 2
+                      i64.store offset=200
                       i32.const 0
                       local.set 4
                       loop ;; label = @10
@@ -657,18 +681,22 @@
                         i32.eq
                         br_if 3 (;@7;)
                         local.get 3
-                        local.get 2
-                        f64.load
-                        call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
-                        i64.store offset=424
                         local.get 3
-                        i32.const 392
+                        i32.const 136
+                        i32.add
+                        local.get 4
+                        i32.add
+                        f32.load
+                        call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
+                        i64.store offset=232
+                        local.get 3
+                        i32.const 200
                         i32.add
                         local.get 4
                         i32.add
                         i32.const 4
                         local.get 3
-                        i32.const 424
+                        i32.const 232
                         i32.add
                         i32.const 4
                         i32.const 1048636
@@ -677,42 +705,36 @@
                         i32.const 4
                         i32.add
                         local.set 4
-                        local.get 2
-                        i32.const 8
-                        i32.add
-                        local.set 2
                         br 0 (;@10;)
                       end
                     end
                     local.get 3
-                    i32.const 72
+                    i32.const 40
                     i32.add
                     local.get 4
                     i32.add
                     local.get 2
+                    local.get 4
+                    i32.add
                     i64.load32_u align=1
                     call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
-                    f64.store
+                    f32.store
                     local.get 4
-                    i32.const 8
-                    i32.add
-                    local.set 4
-                    local.get 2
                     i32.const 4
                     i32.add
-                    local.set 2
+                    local.set 4
                     br 0 (;@8;)
                   end
                 end
                 local.get 0
                 local.get 3
-                i64.load offset=392
+                i64.load offset=200
                 i64.store align=1
                 local.get 0
                 i32.const 24
                 i32.add
                 local.get 3
-                i32.const 392
+                i32.const 200
                 i32.add
                 i32.const 24
                 i32.add
@@ -722,7 +744,7 @@
                 i32.const 16
                 i32.add
                 local.get 3
-                i32.const 392
+                i32.const 200
                 i32.add
                 i32.const 16
                 i32.add
@@ -732,27 +754,27 @@
                 i32.const 8
                 i32.add
                 local.get 3
-                i32.const 392
+                i32.const 200
                 i32.add
                 i32.const 8
                 i32.add
                 i64.load
                 i64.store align=1
                 local.get 3
-                i32.const 432
+                i32.const 240
                 i32.add
                 global.set $__stack_pointer
                 return
               end
               local.get 3
-              i32.const 72
+              i32.const 40
               i32.add
               local.get 4
               i32.add
               local.get 5
-              f64.store
+              f32.store
               local.get 4
-              i32.const 8
+              i32.const 4
               i32.add
               local.set 4
               br 0 (;@5;)
@@ -764,17 +786,15 @@
           local.get 4
           i32.add
           local.get 1
+          local.get 4
+          i32.add
           i64.load32_u align=1
           call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
-          f64.store
+          f32.store
           local.get 4
-          i32.const 8
-          i32.add
-          local.set 4
-          local.get 1
           i32.const 4
           i32.add
-          local.set 1
+          local.set 4
           br 0 (;@3;)
         end
       end
@@ -784,9 +804,9 @@
       local.get 4
       i32.add
       local.get 5
-      f64.store
+      f32.store
       local.get 4
-      i32.const 8
+      i32.const 4
       i32.add
       local.set 4
       br 0 (;@1;)
@@ -794,37 +814,37 @@
   )
   (func $test_rpo_falcon512_verify (;40;) (type 20) (param i32 i32)
     local.get 0
-    f64.load
+    f32.load
     local.get 0
-    f64.load offset=8
+    f32.load offset=4
     local.get 0
-    f64.load offset=16
+    f32.load offset=8
     local.get 0
-    f64.load offset=24
+    f32.load offset=12
     local.get 1
-    f64.load
+    f32.load
     local.get 1
-    f64.load offset=8
+    f32.load offset=4
     local.get 1
-    f64.load offset=16
+    f32.load offset=8
     local.get 1
-    f64.load offset=24
+    f32.load offset=12
     call $miden_stdlib_sys::stdlib::crypto::dsa::extern_rpo_falcon512_verify
   )
-  (func $test_pipe_words_to_memory (;41;) (type 21) (param i32 f64)
+  (func $test_pipe_words_to_memory (;41;) (type 21) (param i32 f32)
     local.get 0
     local.get 1
     call $miden_stdlib_sys::stdlib::mem::pipe_words_to_memory
   )
-  (func $test_pipe_double_words_to_memory (;42;) (type 21) (param i32 f64)
+  (func $test_pipe_double_words_to_memory (;42;) (type 21) (param i32 f32)
     local.get 0
     local.get 1
     call $miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory
   )
-  (func $test_remove_asset (;43;) (type 22) (param i32) (result f64)
-    (local i32 f64)
+  (func $test_remove_asset (;43;) (type 22) (param i32) (result f32)
+    (local i32 f32)
     global.get $__stack_pointer
-    i32.const 32
+    i32.const 16
     i32.sub
     local.tee 1
     global.set $__stack_pointer
@@ -832,15 +852,15 @@
     local.get 0
     call $miden_tx_kernel_sys::remove_asset
     local.get 1
-    f64.load
+    f32.load
     local.set 2
     local.get 1
-    i32.const 32
+    i32.const 16
     i32.add
     global.set $__stack_pointer
     local.get 2
   )
-  (func $test_create_note (;44;) (type 23) (param i32 f64 f64 i32) (result f64)
+  (func $test_create_note (;44;) (type 23) (param i32 f32 f32 i32) (result f32)
     local.get 0
     local.get 1
     local.get 2
@@ -1412,7 +1432,7 @@
       i32.store
     end
   )
-  (func $miden_tx_kernel_sys::get_id (;52;) (type 11) (result f64)
+  (func $miden_tx_kernel_sys::get_id (;52;) (type 11) (result f32)
     call $miden_tx_kernel_sys::externs::extern_account_get_id
   )
   (func $miden_tx_kernel_sys::get_inputs (;53;) (type 17) (param i32)
@@ -1472,122 +1492,90 @@
   (func $miden_tx_kernel_sys::add_asset (;54;) (type 20) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 32
+    i32.const 16
     i32.sub
     local.tee 2
     global.set $__stack_pointer
     local.get 1
-    f64.load
+    f32.load
     local.get 1
-    f64.load offset=8
+    f32.load offset=4
     local.get 1
-    f64.load offset=16
+    f32.load offset=8
     local.get 1
-    f64.load offset=24
+    f32.load offset=12
     local.get 2
     call $miden_tx_kernel_sys::externs::extern_account_add_asset
     local.get 0
-    i32.const 24
-    i32.add
-    local.get 2
-    i32.const 24
-    i32.add
-    i64.load
-    i64.store
-    local.get 0
-    i32.const 16
-    i32.add
-    local.get 2
-    i32.const 16
-    i32.add
-    i64.load
-    i64.store
-    local.get 0
     i32.const 8
     i32.add
     local.get 2
     i32.const 8
     i32.add
-    i64.load
-    i64.store
+    i64.load align=4
+    i64.store align=4
     local.get 0
     local.get 2
-    i64.load
-    i64.store
+    i64.load align=4
+    i64.store align=4
     local.get 2
-    i32.const 32
+    i32.const 16
     i32.add
     global.set $__stack_pointer
   )
   (func $miden_tx_kernel_sys::remove_asset (;55;) (type 20) (param i32 i32)
     (local i32)
     global.get $__stack_pointer
-    i32.const 32
+    i32.const 16
     i32.sub
     local.tee 2
     global.set $__stack_pointer
     local.get 1
-    f64.load
+    f32.load
     local.get 1
-    f64.load offset=8
+    f32.load offset=4
     local.get 1
-    f64.load offset=16
+    f32.load offset=8
     local.get 1
-    f64.load offset=24
+    f32.load offset=12
     local.get 2
     call $miden_tx_kernel_sys::externs::extern_account_remove_asset
     local.get 0
-    i32.const 24
-    i32.add
-    local.get 2
-    i32.const 24
-    i32.add
-    i64.load
-    i64.store
-    local.get 0
-    i32.const 16
-    i32.add
-    local.get 2
-    i32.const 16
-    i32.add
-    i64.load
-    i64.store
-    local.get 0
     i32.const 8
     i32.add
     local.get 2
     i32.const 8
     i32.add
-    i64.load
-    i64.store
+    i64.load align=4
+    i64.store align=4
     local.get 0
     local.get 2
-    i64.load
-    i64.store
+    i64.load align=4
+    i64.store align=4
     local.get 2
-    i32.const 32
+    i32.const 16
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_tx_kernel_sys::create_note (;56;) (type 23) (param i32 f64 f64 i32) (result f64)
+  (func $miden_tx_kernel_sys::create_note (;56;) (type 23) (param i32 f32 f32 i32) (result f32)
     local.get 0
-    f64.load
+    f32.load
     local.get 0
-    f64.load offset=8
+    f32.load offset=4
     local.get 0
-    f64.load offset=16
+    f32.load offset=8
     local.get 0
-    f64.load offset=24
+    f32.load offset=12
     local.get 1
     local.get 2
     local.get 3
-    f64.load
+    f32.load
     local.get 3
-    f64.load offset=8
+    f32.load offset=4
     local.get 3
-    f64.load offset=16
+    f32.load offset=8
     local.get 3
-    f64.load offset=24
+    f32.load offset=12
     call $miden_tx_kernel_sys::externs::extern_tx_create_note
   )
   (func $alloc::vec::Vec<T>::with_capacity (;57;) (type 20) (param i32 i32)
@@ -1648,7 +1636,7 @@
         local.get 1
         br_if 0 (;@2;)
         local.get 0
-        i64.const 34359738368
+        i64.const 17179869184
         i64.store offset=4 align=4
         i32.const 0
         local.set 1
@@ -1657,7 +1645,7 @@
       block ;; label = @2
         block ;; label = @3
           local.get 1
-          i32.const 268435456
+          i32.const 536870912
           i32.lt_u
           br_if 0 (;@3;)
           local.get 0
@@ -1666,7 +1654,7 @@
           br 1 (;@2;)
         end
         local.get 1
-        i32.const 3
+        i32.const 2
         i32.shl
         local.set 3
         block ;; label = @3
@@ -1677,13 +1665,13 @@
             i32.load8_u offset=1048656
             drop
             local.get 3
-            i32.const 8
+            i32.const 4
             call $__rust_alloc
             local.set 2
             br 1 (;@3;)
           end
           local.get 3
-          i32.const 8
+          i32.const 4
           call $__rust_alloc_zeroed
           local.set 2
         end
@@ -1705,7 +1693,7 @@
         local.get 3
         i32.store offset=8
         local.get 0
-        i32.const 8
+        i32.const 4
         i32.store offset=4
       end
       i32.const 1
@@ -1715,72 +1703,10 @@
     local.get 1
     i32.store
   )
-  (func $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from (;59;) (type 22) (param i32) (result f64)
-    local.get 0
-    i64.extend_i32_u
-    call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
-  )
-  (func $miden_stdlib_sys::stdlib::mem::pipe_words_to_memory (;60;) (type 21) (param i32 f64)
-    (local i32)
+  (func $miden_stdlib_sys::stdlib::mem::pipe_words_to_memory (;59;) (type 21) (param i32 f32)
+    (local i32 i64 i64)
     global.get $__stack_pointer
     i32.const 64
-    i32.sub
-    local.tee 2
-    global.set $__stack_pointer
-    local.get 2
-    i32.const 52
-    i32.add
-    local.get 1
-    call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
-    i32.wrap_i64
-    i32.const 2
-    i32.shl
-    call $alloc::vec::Vec<T>::with_capacity
-    local.get 1
-    local.get 2
-    i32.load offset=56
-    call $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from
-    local.get 2
-    i32.const 8
-    i32.add
-    call $miden_stdlib_sys::stdlib::mem::extern_pipe_words_to_memory
-    local.get 0
-    local.get 2
-    f64.load offset=32
-    f64.store offset=24
-    local.get 0
-    local.get 2
-    f64.load offset=24
-    f64.store offset=16
-    local.get 0
-    local.get 2
-    f64.load offset=16
-    f64.store offset=8
-    local.get 0
-    local.get 2
-    f64.load offset=8
-    f64.store
-    local.get 0
-    local.get 2
-    i64.load offset=52 align=4
-    i64.store offset=32 align=4
-    local.get 0
-    i32.const 40
-    i32.add
-    local.get 2
-    i32.const 60
-    i32.add
-    i32.load
-    i32.store
-    local.get 2
-    i32.const 64
-    i32.add
-    global.set $__stack_pointer
-  )
-  (func $miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory (;61;) (type 21) (param i32 f64)
-    (local i32 i32 f64 f64)
-    global.get $__stack_pointer
-    i32.const 128
     i32.sub
     local.tee 2
     global.set $__stack_pointer
@@ -1792,16 +1718,79 @@
     i32.wrap_i64
     i32.const 2
     i32.shl
+    call $alloc::vec::Vec<T>::with_capacity
+    local.get 1
+    local.get 2
+    i32.load offset=16
+    local.get 2
+    i32.const 40
+    i32.add
+    call $miden_stdlib_sys::stdlib::mem::extern_pipe_words_to_memory
+    local.get 2
+    i32.const 24
+    i32.add
+    i32.const 8
+    i32.add
+    local.get 2
+    i32.const 40
+    i32.add
+    i32.const 8
+    i32.add
+    i64.load
     local.tee 3
+    i64.store
+    local.get 2
+    local.get 2
+    i64.load offset=40
+    local.tee 4
+    i64.store offset=24
+    local.get 0
+    i32.const 8
+    i32.add
+    local.get 3
+    i64.store align=4
+    local.get 0
+    local.get 4
+    i64.store align=4
+    local.get 0
+    local.get 2
+    i64.load offset=12 align=4
+    i64.store offset=16 align=4
+    local.get 0
+    i32.const 24
+    i32.add
+    local.get 2
+    i32.const 12
+    i32.add
+    i32.const 8
+    i32.add
+    i32.load
+    i32.store
+    local.get 2
+    i32.const 64
+    i32.add
+    global.set $__stack_pointer
+  )
+  (func $miden_stdlib_sys::stdlib::mem::pipe_double_words_to_memory (;60;) (type 21) (param i32 f32)
+    (local i32 i32 i32 i64 i64)
+    global.get $__stack_pointer
+    i32.const 96
+    i32.sub
+    local.tee 2
+    global.set $__stack_pointer
+    local.get 2
+    i32.const 12
+    i32.add
+    local.get 1
+    call $miden_stdlib_sys::intrinsics::felt::extern_as_u64
+    i32.wrap_i64
+    local.tee 3
+    i32.const 2
+    i32.shl
     call $alloc::vec::Vec<T>::with_capacity
     local.get 2
     i32.load offset=16
-    call $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from
-    local.tee 4
-    local.get 3
-    call $<miden_stdlib_sys::intrinsics::felt::Felt as core::convert::From<u32>>::from
-    call $miden_stdlib_sys::intrinsics::felt::extern_add
-    local.set 5
+    local.set 4
     i64.const 0
     call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
     local.tee 1
@@ -1817,62 +1806,78 @@
     local.get 1
     local.get 1
     local.get 4
-    local.get 5
+    local.get 4
+    local.get 3
+    i32.const 4
+    i32.shl
+    i32.add
+    local.get 2
+    i32.const 40
+    i32.add
+    call $miden_stdlib_sys::stdlib::mem::extern_pipe_double_words_to_memory
     local.get 2
     i32.const 24
     i32.add
-    call $miden_stdlib_sys::stdlib::mem::extern_pipe_double_words_to_memory
-    local.get 0
+    i32.const 8
+    i32.add
     local.get 2
-    f64.load offset=80
-    f64.store offset=24
-    local.get 0
+    i32.const 40
+    i32.add
+    i32.const 24
+    i32.add
+    i64.load
+    local.tee 5
+    i64.store
     local.get 2
-    f64.load offset=72
-    f64.store offset=16
-    local.get 0
     local.get 2
-    f64.load offset=64
-    f64.store offset=8
+    i64.load offset=56
+    local.tee 6
+    i64.store offset=24
     local.get 0
-    local.get 2
-    f64.load offset=56
-    f64.store
+    i32.const 8
+    i32.add
+    local.get 5
+    i64.store align=4
+    local.get 0
+    local.get 6
+    i64.store align=4
     local.get 0
     local.get 2
     i64.load offset=12 align=4
-    i64.store offset=32 align=4
+    i64.store offset=16 align=4
     local.get 0
-    i32.const 40
+    i32.const 24
     i32.add
     local.get 2
-    i32.const 20
+    i32.const 12
+    i32.add
+    i32.const 8
     i32.add
     i32.load
     i32.store
     local.get 2
-    i32.const 128
+    i32.const 96
     i32.add
     global.set $__stack_pointer
   )
-  (func $dummy (;62;) (type 26))
-  (func $__wasm_call_dtors (;63;) (type 26)
+  (func $dummy (;61;) (type 26))
+  (func $__wasm_call_dtors (;62;) (type 26)
     call $dummy
     call $dummy
   )
-  (func $alloc::alloc::handle_alloc_error (;64;) (type 20) (param i32 i32)
+  (func $alloc::alloc::handle_alloc_error (;63;) (type 20) (param i32 i32)
     unreachable
     unreachable
   )
-  (func $alloc::raw_vec::capacity_overflow (;65;) (type 26)
+  (func $alloc::raw_vec::capacity_overflow (;64;) (type 26)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;66;) (type 19) (param i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;65;) (type 19) (param i32 i32 i32)
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice (;67;) (type 27) (param i32 i32 i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice (;66;) (type 27) (param i32 i32 i32 i32 i32)
     block ;; label = @1
       local.get 1
       local.get 3
@@ -1890,61 +1895,61 @@
     call $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail
     unreachable
   )
-  (func $get_wallet_magic_number.command_export (;68;) (type 11) (result f64)
+  (func $get_wallet_magic_number.command_export (;67;) (type 11) (result f32)
     call $get_wallet_magic_number
     call $__wasm_call_dtors
   )
-  (func $test_add_asset.command_export (;69;) (type 11) (result f64)
+  (func $test_add_asset.command_export (;68;) (type 11) (result f32)
     call $test_add_asset
     call $__wasm_call_dtors
   )
-  (func $test_felt_ops_smoke.command_export (;70;) (type 1) (param f64 f64) (result f64)
+  (func $test_felt_ops_smoke.command_export (;69;) (type 1) (param f32 f32) (result f32)
     local.get 0
     local.get 1
     call $test_felt_ops_smoke
     call $__wasm_call_dtors
   )
-  (func $note_script.command_export (;71;) (type 11) (result f64)
+  (func $note_script.command_export (;70;) (type 11) (result f32)
     call $note_script
     call $__wasm_call_dtors
   )
-  (func $test_blake3_hash_1to1.command_export (;72;) (type 20) (param i32 i32)
+  (func $test_blake3_hash_1to1.command_export (;71;) (type 20) (param i32 i32)
     local.get 0
     local.get 1
     call $test_blake3_hash_1to1
     call $__wasm_call_dtors
   )
-  (func $test_blake3_hash_2to1.command_export (;73;) (type 19) (param i32 i32 i32)
+  (func $test_blake3_hash_2to1.command_export (;72;) (type 19) (param i32 i32 i32)
     local.get 0
     local.get 1
     local.get 2
     call $test_blake3_hash_2to1
     call $__wasm_call_dtors
   )
-  (func $test_rpo_falcon512_verify.command_export (;74;) (type 20) (param i32 i32)
+  (func $test_rpo_falcon512_verify.command_export (;73;) (type 20) (param i32 i32)
     local.get 0
     local.get 1
     call $test_rpo_falcon512_verify
     call $__wasm_call_dtors
   )
-  (func $test_pipe_words_to_memory.command_export (;75;) (type 21) (param i32 f64)
+  (func $test_pipe_words_to_memory.command_export (;74;) (type 21) (param i32 f32)
     local.get 0
     local.get 1
     call $test_pipe_words_to_memory
     call $__wasm_call_dtors
   )
-  (func $test_pipe_double_words_to_memory.command_export (;76;) (type 21) (param i32 f64)
+  (func $test_pipe_double_words_to_memory.command_export (;75;) (type 21) (param i32 f32)
     local.get 0
     local.get 1
     call $test_pipe_double_words_to_memory
     call $__wasm_call_dtors
   )
-  (func $test_remove_asset.command_export (;77;) (type 22) (param i32) (result f64)
+  (func $test_remove_asset.command_export (;76;) (type 22) (param i32) (result f32)
     local.get 0
     call $test_remove_asset
     call $__wasm_call_dtors
   )
-  (func $test_create_note.command_export (;78;) (type 23) (param i32 f64 f64 i32) (result f64)
+  (func $test_create_note.command_export (;77;) (type 23) (param i32 f32 f32 i32) (result f32)
     local.get 0
     local.get 1
     local.get 2

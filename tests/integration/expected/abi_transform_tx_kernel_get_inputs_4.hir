@@ -720,7 +720,7 @@
                 (br (block 1)))
 
             (block 3
-                (let (v10 i32) (const.i32 268435456))
+                (let (v10 i32) (const.i32 536870912))
                 (let (v11 u32) (cast v1))
                 (let (v12 u32) (cast v10))
                 (let (v13 i1) (lt v11 v12))
@@ -729,7 +729,7 @@
                 (condbr v15 (block 6) (block 7)))
 
             (block 4
-                (let (v5 i64) (const.i64 34359738368))
+                (let (v5 i64) (const.i64 17179869184))
                 (let (v6 u32) (cast v0))
                 (let (v7 u32) (add.checked v6 4))
                 (let (v8 (ptr i64)) (inttoptr v7))
@@ -742,7 +742,7 @@
                 (br (block 2 v56 v54)))
 
             (block 6
-                (let (v20 i32) (const.i32 3))
+                (let (v20 i32) (const.i32 2))
                 (let (v21 i32) (shl.wrapping v1 v20))
                 (let (v22 i1) (neq v2 0))
                 (condbr v22 (block 9) (block 10)))
@@ -766,7 +766,7 @@
                 (condbr v36 (block 11) (block 12)))
 
             (block 9
-                (let (v31 i32) (const.i32 8))
+                (let (v31 i32) (const.i32 4))
                 (let (v32 i32) (call #__rust_alloc_zeroed v21 v31))
                 (br (block 8 v32 v0 v1 v21)))
 
@@ -777,7 +777,7 @@
                 (let (v26 (ptr u8)) (inttoptr v25))
                 (let (v27 u8) (load v26))
                 (let (v28 i32) (zext v27))
-                (let (v29 i32) (const.i32 8))
+                (let (v29 i32) (const.i32 4))
                 (let (v30 i32) (call #__rust_alloc v21 v29))
                 (br (block 8 v30 v0 v1 v21)))
 
@@ -786,7 +786,7 @@
                 (let (v48 u32) (add.checked v47 8))
                 (let (v49 (ptr i32)) (inttoptr v48))
                 (store v49 v46)
-                (let (v50 i32) (const.i32 8))
+                (let (v50 i32) (const.i32 4))
                 (let (v51 u32) (cast v37))
                 (let (v52 u32) (add.checked v51 4))
                 (let (v53 (ptr i32)) (inttoptr v52))

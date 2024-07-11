@@ -546,7 +546,7 @@
         local.get 1
         br_if 0 (;@2;)
         local.get 0
-        i64.const 34359738368
+        i64.const 17179869184
         i64.store offset=4 align=4
         i32.const 0
         local.set 1
@@ -555,7 +555,7 @@
       block ;; label = @2
         block ;; label = @3
           local.get 1
-          i32.const 268435456
+          i32.const 536870912
           i32.lt_u
           br_if 0 (;@3;)
           local.get 0
@@ -564,7 +564,7 @@
           br 1 (;@2;)
         end
         local.get 1
-        i32.const 3
+        i32.const 2
         i32.shl
         local.set 3
         block ;; label = @3
@@ -575,13 +575,13 @@
             i32.load8_u offset=1048580
             drop
             local.get 3
-            i32.const 8
+            i32.const 4
             call $__rust_alloc
             local.set 2
             br 1 (;@3;)
           end
           local.get 3
-          i32.const 8
+          i32.const 4
           call $__rust_alloc_zeroed
           local.set 2
         end
@@ -603,7 +603,7 @@
         local.get 3
         i32.store offset=8
         local.get 0
-        i32.const 8
+        i32.const 4
         i32.store offset=4
       end
       i32.const 1

@@ -146,7 +146,7 @@ pub fn translate_operator(
             // TODO: temporary workaround until we have this instruction
             // properly implemented in codegen Wasm `memory.grow` instruction is
             // expected to return -1 if the memory cannot grow and the old mem
-            // page count if it can grow. 
+            // page count if it can grow.
             // Return total Miden memory size
             state.push1(builder.ins().i32(mem_total_pages(), span));
         }
@@ -220,11 +220,11 @@ pub fn translate_operator(
         }
         Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
         Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
-        Operator::F64Load { memarg } => translate_load(Felt, memarg, state, builder, span),
+        Operator::F32Load { memarg } => translate_load(Felt, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
-        Operator::F64Store { memarg } => translate_store(Felt, memarg, state, builder, span),
+        Operator::F32Store { memarg } => translate_store(Felt, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
             translate_store(U8, memarg, state, builder, span);
         }
@@ -326,10 +326,6 @@ pub fn translate_operator(
             // wrapping because the result is mod 2^N
             // https://www.w3.org/TR/wasm-core-1/#op-isub
             state.push1(builder.ins().sub_wrapping(arg1, arg2, span));
-        }
-        Operator::F64Sub => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().sub_checked(arg1, arg2, span));
         }
         Operator::I32Mul | Operator::I64Mul => {
             let (arg1, arg2) = state.pop2();
