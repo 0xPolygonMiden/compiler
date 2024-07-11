@@ -71,7 +71,6 @@ impl<'a> OpEmitter<'a> {
     #[inline(always)]
     pub fn felt_to_i64(&mut self) {
         self.felt_to_u64();
-        self.assert_unsigned_int64();
     }
 
     /// Convert a field element value to an unsigned N-bit integer, where N <= 32
@@ -83,8 +82,7 @@ impl<'a> OpEmitter<'a> {
             // Split into u32 limbs
             Op::U32Split,
             // Assert most significant 32 bits are unused
-            Op::EqImm(ZERO),
-            Op::Assert,
+            Op::Assertz,
         ]);
         if n < 32 {
             // Convert to N-bit integer
@@ -101,8 +99,7 @@ impl<'a> OpEmitter<'a> {
             // Split into u32 limbs
             Op::U32Split,
             // Assert most significant 32 bits are unused
-            Op::EqImm(ZERO),
-            Op::Assert,
+            Op::Assertz,
         ]);
         // Assert the sign bit isn't set
         self.assert_unsigned_int32();

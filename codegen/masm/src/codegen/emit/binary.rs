@@ -10,23 +10,11 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected eq operands to be the same type");
         match &ty {
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.eq_i128();
             }
             Type::I64 | Type::U64 => {
-                // context: [b_hi, b_lo, a_hi, a_lo]
-                self.emit_all(&[
-                    // [a_hi, b_hi, b_lo, a_lo]
-                    Op::Movup(2),
-                    // [hi_equal, b_lo, a_lo]
-                    Op::Eq,
-                    // [b_lo, a_lo, hi_equal]
-                    Op::Movdn(3),
-                    // [lo_equal, hi_equal]
-                    Op::Eq,
-                    // [is_equal]
-                    Op::And,
-                ]);
+                self.eq_int64();
             }
             Type::Felt
             | Type::Ptr(_)
@@ -49,25 +37,13 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected eq operands to be the same type");
         match &ty {
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.push_immediate(imm);
                 self.eq_i128();
             }
             Type::I64 | Type::U64 => {
                 self.push_immediate(imm);
-                // context: [b_hi, b_lo, a_hi, a_lo]
-                self.emit_all(&[
-                    // [a_hi, b_hi, b_lo, a_lo]
-                    Op::Movup(2),
-                    // [hi_equal, b_lo, a_lo]
-                    Op::Eq,
-                    // [b_lo, a_lo, hi_equal]
-                    Op::Movdn(3),
-                    // [lo_equal, hi_equal]
-                    Op::Eq,
-                    // [is_equal]
-                    Op::And,
-                ]);
+                self.eq_int64();
             }
             Type::Felt | Type::Ptr(_) | Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::EqImm(imm.as_felt().unwrap()));
@@ -86,23 +62,10 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected neq operands to be the same type");
         match &ty {
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.neq_i128();
             }
-            Type::I64 | Type::U64 => {
-                self.emit_all(&[
-                    // [a_hi, b_hi, b_lo, a_lo]
-                    Op::Movup(2),
-                    // [hi_not_equal, b_lo, a_lo]
-                    Op::Neq,
-                    // [b_lo, a_lo, hi_not_equal]
-                    Op::Movdn(3),
-                    // [lo_not_equal, hi_not_equal]
-                    Op::Neq,
-                    // [is_not_equal]
-                    Op::Or,
-                ]);
-            }
+            Type::I64 | Type::U64 => self.neq_int64(),
             Type::Felt
             | Type::Ptr(_)
             | Type::U32
@@ -124,24 +87,13 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected neq operands to be the same type");
         match &ty {
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.push_immediate(imm);
                 self.neq_i128();
             }
             Type::I64 | Type::U64 => {
                 self.push_immediate(imm);
-                self.emit_all(&[
-                    // [a_hi, b_hi, b_lo, a_lo]
-                    Op::Movup(2),
-                    // [hi_not_equal, b_lo, a_lo]
-                    Op::Neq,
-                    // [b_lo, a_lo, hi_not_equal]
-                    Op::Movdn(3),
-                    // [lo_not_equal, hi_not_equal]
-                    Op::Neq,
-                    // [is_not_equal]
-                    Op::Or,
-                ]);
+                self.neq_int64()
             }
             Type::Felt | Type::Ptr(_) | Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::NeqImm(imm.as_felt().unwrap()));
@@ -163,6 +115,9 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Gt);
             }
+            Type::I64 | Type::U64 => {
+                self.gt_u64();
+            }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Gt);
             }
@@ -179,6 +134,14 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::Felt => {
                 self.emit(Op::GtImm(imm.as_felt().unwrap()));
+            }
+            Type::U64 => {
+                self.push_u64(imm.as_u64().unwrap());
+                self.gt_u64();
+            }
+            Type::I64 => {
+                self.push_i64(imm.as_i64().unwrap());
+                self.gt_u64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Gt]);
@@ -203,6 +166,9 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Gte);
             }
+            Type::I64 | Type::U64 => {
+                self.gte_u64();
+            }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Gte);
             }
@@ -219,6 +185,14 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::Felt => {
                 self.emit(Op::GteImm(imm.as_felt().unwrap()));
+            }
+            Type::U64 => {
+                self.push_u64(imm.as_u64().unwrap());
+                self.gte_u64();
+            }
+            Type::I64 => {
+                self.push_i64(imm.as_i64().unwrap());
+                self.gte_u64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Gte]);
@@ -243,6 +217,9 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Lt);
             }
+            Type::I64 | Type::U64 => {
+                self.lt_u64();
+            }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Lt);
             }
@@ -259,6 +236,14 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::Felt => {
                 self.emit(Op::LtImm(imm.as_felt().unwrap()));
+            }
+            Type::U64 => {
+                self.push_u64(imm.as_u64().unwrap());
+                self.lt_u64();
+            }
+            Type::I64 => {
+                self.push_i64(imm.as_i64().unwrap());
+                self.lt_u64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Lt]);
@@ -283,6 +268,9 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Lte);
             }
+            Type::I64 | Type::U64 => {
+                self.lte_u64();
+            }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Lte);
             }
@@ -299,6 +287,14 @@ impl<'a> OpEmitter<'a> {
         match &ty {
             Type::Felt => {
                 self.emit(Op::LteImm(imm.as_felt().unwrap()));
+            }
+            Type::U64 => {
+                self.push_u64(imm.as_u64().unwrap());
+                self.lte_u64();
+            }
+            Type::I64 => {
+                self.push_i64(imm.as_i64().unwrap());
+                self.lte_u64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Lte]);
@@ -437,7 +433,7 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected mul operands to be the same type");
         match &ty {
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 // We can use the Karatsuba algorithm for multiplication here:
                 //
                 // x = x_hi * 2^63 + x_lo
@@ -897,6 +893,29 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected band operands to be the same type");
         match &ty {
+            Type::U128 | Type::I128 => {
+                // AND the high bits
+                //
+                // [b_hi_hi, b_hi_lo, b_lo_hi, b_lo_lo, a_hi_hi, ..]
+                self.emit_all(&[
+                    // [a_hi_hi, a_hi_lo, b_hi_hi, b_hi_lo, ..]
+                    Op::Movup(5),
+                    Op::Movup(5),
+                ]);
+                self.band_int64(); // [band_hi_hi, band_hi_lo, b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo]
+                                   // AND the low bits
+                self.emit_all(&[
+                    // [b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo, band_hi_hi, band_hi_lo]
+                    Op::Movdn(5),
+                    Op::Movdn(5),
+                ]);
+                self.band_int64(); // [band_lo_hi, band_lo_lo, band_hi_hi, band_hi_lo]
+                self.emit_all(&[
+                    // [band_hi_hi, band_hi_lo, band_lo_hi, band_lo_lo]
+                    Op::Movup(3),
+                    Op::Movup(3),
+                ]);
+            }
             Type::U64 | Type::I64 => self.band_int64(),
             Type::U32 | Type::I32 | Type::U16 | Type::I16 | Type::U8 | Type::I8 => self.band_u32(),
             Type::I1 => self.emit(Op::And),
@@ -913,6 +932,30 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected band operands to be the same type");
         match &ty {
+            Type::U128 | Type::I128 => {
+                self.push_immediate(imm);
+                // AND the high bits
+                //
+                // [b_hi_hi, b_hi_lo, b_lo_hi, b_lo_lo, a_hi_hi, ..]
+                self.emit_all(&[
+                    // [a_hi_hi, a_hi_lo, b_hi_hi, b_hi_lo, ..]
+                    Op::Movup(5),
+                    Op::Movup(5),
+                ]);
+                self.band_int64(); // [band_hi_hi, band_hi_lo, b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo]
+                                   // AND the low bits
+                self.emit_all(&[
+                    // [b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo, band_hi_hi, band_hi_lo]
+                    Op::Movdn(5),
+                    Op::Movdn(5),
+                ]);
+                self.band_int64(); // [band_lo_hi, band_lo_lo, band_hi_hi, band_hi_lo]
+                self.emit_all(&[
+                    // [band_hi_hi, band_hi_lo, band_lo_hi, band_lo_lo]
+                    Op::Movup(3),
+                    Op::Movup(3),
+                ]);
+            }
             Type::U64 | Type::I64 => {
                 self.push_immediate(imm);
                 self.band_int64();
@@ -936,6 +979,29 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected bor operands to be the same type");
         match &ty {
+            Type::U128 | Type::I128 => {
+                // OR the high bits
+                //
+                // [b_hi_hi, b_hi_lo, b_lo_hi, b_lo_lo, a_hi_hi, ..]
+                self.emit_all(&[
+                    // [a_hi_hi, a_hi_lo, b_hi_hi, b_hi_lo, ..]
+                    Op::Movup(5),
+                    Op::Movup(5),
+                ]);
+                self.bor_int64(); // [band_hi_hi, band_hi_lo, b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo]
+                                  // OR the low bits
+                self.emit_all(&[
+                    // [b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo, band_hi_hi, band_hi_lo]
+                    Op::Movdn(5),
+                    Op::Movdn(5),
+                ]);
+                self.bor_int64(); // [band_lo_hi, band_lo_lo, band_hi_hi, band_hi_lo]
+                self.emit_all(&[
+                    // [band_hi_hi, band_hi_lo, band_lo_hi, band_lo_lo]
+                    Op::Movup(3),
+                    Op::Movup(3),
+                ]);
+            }
             Type::U64 | Type::I64 => self.bor_int64(),
             Type::U32 | Type::I32 | Type::U16 | Type::I16 | Type::U8 | Type::I8 => self.bor_u32(),
             Type::I1 => self.emit(Op::Or),
@@ -952,6 +1018,30 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected bor operands to be the same type");
         match &ty {
+            Type::U128 | Type::I128 => {
+                self.push_immediate(imm);
+                // OR the high bits
+                //
+                // [b_hi_hi, b_hi_lo, b_lo_hi, b_lo_lo, a_hi_hi, ..]
+                self.emit_all(&[
+                    // [a_hi_hi, a_hi_lo, b_hi_hi, b_hi_lo, ..]
+                    Op::Movup(5),
+                    Op::Movup(5),
+                ]);
+                self.bor_int64(); // [band_hi_hi, band_hi_lo, b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo]
+                                  // OR the low bits
+                self.emit_all(&[
+                    // [b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo, band_hi_hi, band_hi_lo]
+                    Op::Movdn(5),
+                    Op::Movdn(5),
+                ]);
+                self.bor_int64(); // [band_lo_hi, band_lo_lo, band_hi_hi, band_hi_lo]
+                self.emit_all(&[
+                    // [band_hi_hi, band_hi_lo, band_lo_hi, band_lo_lo]
+                    Op::Movup(3),
+                    Op::Movup(3),
+                ]);
+            }
             Type::U64 | Type::I64 => {
                 self.push_immediate(imm);
                 self.bor_int64();
@@ -975,6 +1065,29 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected bxor operands to be the same type");
         match &ty {
+            Type::U128 | Type::I128 => {
+                // XOR the high bits
+                //
+                // [b_hi_hi, b_hi_lo, b_lo_hi, b_lo_lo, a_hi_hi, ..]
+                self.emit_all(&[
+                    // [a_hi_hi, a_hi_lo, b_hi_hi, b_hi_lo, ..]
+                    Op::Movup(5),
+                    Op::Movup(5),
+                ]);
+                self.bxor_int64(); // [band_hi_hi, band_hi_lo, b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo]
+                                   // XOR the low bits
+                self.emit_all(&[
+                    // [b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo, band_hi_hi, band_hi_lo]
+                    Op::Movdn(5),
+                    Op::Movdn(5),
+                ]);
+                self.bxor_int64(); // [band_lo_hi, band_lo_lo, band_hi_hi, band_hi_lo]
+                self.emit_all(&[
+                    // [band_hi_hi, band_hi_lo, band_lo_hi, band_lo_lo]
+                    Op::Movup(3),
+                    Op::Movup(3),
+                ]);
+            }
             Type::U64 | Type::I64 => self.bxor_int64(),
             Type::U32 | Type::I32 => self.bxor_u32(),
             ty @ (Type::U16 | Type::I16 | Type::U8 | Type::I8) => {
@@ -995,6 +1108,30 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected bxor operands to be the same type");
         match &ty {
+            Type::U128 | Type::I128 => {
+                self.push_immediate(imm);
+                // XOR the high bits
+                //
+                // [b_hi_hi, b_hi_lo, b_lo_hi, b_lo_lo, a_hi_hi, ..]
+                self.emit_all(&[
+                    // [a_hi_hi, a_hi_lo, b_hi_hi, b_hi_lo, ..]
+                    Op::Movup(5),
+                    Op::Movup(5),
+                ]);
+                self.bxor_int64(); // [band_hi_hi, band_hi_lo, b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo]
+                                   // XOR the low bits
+                self.emit_all(&[
+                    // [b_lo_hi, b_lo_lo, a_lo_hi, a_lo_lo, band_hi_hi, band_hi_lo]
+                    Op::Movdn(5),
+                    Op::Movdn(5),
+                ]);
+                self.bxor_int64(); // [band_lo_hi, band_lo_lo, band_hi_hi, band_hi_lo]
+                self.emit_all(&[
+                    // [band_hi_hi, band_hi_lo, band_lo_hi, band_lo_lo]
+                    Op::Movup(3),
+                    Op::Movup(3),
+                ]);
+            }
             Type::U64 | Type::I64 => {
                 self.push_immediate(imm);
                 self.bxor_int64();

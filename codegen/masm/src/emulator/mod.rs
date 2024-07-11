@@ -870,6 +870,7 @@ macro_rules! pop_u32 {
 }
 
 /// Peeks a u32 value from the top of the stack, and asserts if it is out of range
+#[allow(unused)]
 macro_rules! peek_u32 {
     ($emu:ident) => {{
         let value = peek!($emu).as_int();
@@ -1817,20 +1818,20 @@ impl Emulator {
                     self.stack.push_u32(a.count_ones());
                 }
                 Op::U32Clz => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.leading_zeros());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.leading_zeros());
                 }
                 Op::U32Clo => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.leading_ones());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.leading_ones());
                 }
                 Op::U32Ctz => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.trailing_zeros());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.trailing_zeros());
                 }
                 Op::U32Cto => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.trailing_ones());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.trailing_ones());
                 }
                 Op::U32Gt => comparison!(self, gt),
                 Op::U32Gte => comparison!(self, ge),

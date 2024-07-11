@@ -1,6 +1,6 @@
 use midenc_hir::{Felt, FieldElement, Overflow};
 
-use super::OpEmitter;
+use super::{felt, OpEmitter};
 use crate::masm::Op;
 
 pub const SIGN_BIT: u32 = 1 << 31;
@@ -364,6 +364,15 @@ impl<'a> OpEmitter<'a> {
     #[inline(always)]
     pub fn push_i32(&mut self, i: i32) {
         self.emit(Op::PushU32(i as u32));
+    }
+
+    /// This is the inverse operation of the Miden VM `u32split` instruction.
+    ///
+    /// This takes two 32-bit limbs, and produces a felt.
+    ///
+    /// NOTE: It is expected that the caller has validated that the limbs are valid u32 values.
+    pub fn u32unsplit(&mut self) {
+        self.emit_all(&[Op::MulImm(felt::U32_FIELD_MODULUS), Op::Add]);
     }
 
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a + b`.

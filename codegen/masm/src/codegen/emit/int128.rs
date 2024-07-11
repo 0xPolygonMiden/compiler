@@ -5,13 +5,13 @@ use crate::masm::Op;
 impl<'a> OpEmitter<'a> {
     /// Checks if the i128 value on the stack has its sign bit set.
     #[inline(always)]
-    pub fn is_signed_i128(&mut self) {
+    pub fn is_signed_int128(&mut self) {
         self.is_signed_int32()
     }
 
     /// Assert that the i128 value on the stack does not have its sign bit set.
     #[inline(always)]
-    pub fn assert_unsigned_i128(&mut self) {
+    pub fn assert_unsigned_int128(&mut self) {
         // Assert that the sign bit is unset
         self.assert_unsigned_int32()
     }
@@ -20,6 +20,21 @@ impl<'a> OpEmitter<'a> {
     ///
     /// An i128 value consists of 4 32-bit limbs
     pub fn push_i128(&mut self, value: i128) {
+        let bytes = value.to_le_bytes();
+        let hi = u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let lo = u64::from_le_bytes([
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ]);
+        self.push_u64(lo);
+        self.push_u64(hi);
+    }
+
+    /// Push a u128 value on the operand stack
+    ///
+    /// A u128 value consists of 4 32-bit limbs
+    pub fn push_u128(&mut self, value: u128) {
         let bytes = value.to_le_bytes();
         let hi = u64::from_le_bytes([
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
@@ -41,36 +56,61 @@ impl<'a> OpEmitter<'a> {
     ///
     /// NOTE: This function does not validate the i128, the caller is expected to
     /// have already validated that the top of the stack holds a valid i128.
-    pub fn i128_to_felt(&mut self) {
+    pub fn int128_to_felt(&mut self) {
         // First, convert to u64
-        self.i128_to_u64();
+        self.int128_to_u64();
         // Then convert the u64 to felt
         self.u64_to_felt();
     }
 
-    /// Convert an i128 value to u64
+    /// Convert a 128-bit value to u64
     ///
-    /// This is different than `trunc_i128_to_u64`, as this function performs a
+    /// This is different than `trunc_i128`, as this function performs a
     /// range check on the input value to ensure that it will fit in a u64.
     ///
     /// This consumes the input value, and leaves a u64 value on the stack.
     ///
     /// NOTE: This function does not validate the i128, the caller is expected to
     /// have already validated that the top of the stack holds a valid i128.
-    pub fn i128_to_u64(&mut self) {
-        // Assert the first element is equal to 0 without consuming it
-        //
-        // This has the effect of validating not only that the value is
-        // unsigned, but that the value is small enough to fit in an i96
-        self.assert_felt_is_zero();
-        // Assert that the high 64 bits are all zero
-        //
-        // This extends the range check above, validating that the input
-        // is small enough to fit in an i64
+    pub fn int128_to_u64(&mut self) {
+        // Assert the first two limbs are equal to 0
         //
         // What remains on the stack at this point are the low 64-bits,
         // which is also our result.
-        self.emit(Op::AssertEq);
+        self.emit_n(2, Op::Assertz);
+    }
+
+    /// Convert a 128-bit value to u32
+    ///
+    /// This is different than `trunc_i128`, as this function performs a
+    /// range check on the input value to ensure that it will fit in a u32.
+    ///
+    /// This consumes the input value, and leaves a u32 value on the stack.
+    ///
+    /// NOTE: This function does not validate the i128, the caller is expected to
+    /// have already validated that the top of the stack holds a valid i128.
+    pub fn int128_to_u32(&mut self) {
+        // Assert the first three limbs are equal to 0
+        //
+        // What remains on the stack at this point are the low 32-bits,
+        // which is also our result.
+        self.emit_n(3, Op::Assertz);
+    }
+
+    /// Convert a unsigned 128-bit value to i64
+    ///
+    /// This is different than `trunc_i128_to_i64`, as this function performs a
+    /// range check on the input value to ensure that it will fit in a i64.
+    ///
+    /// This consumes the input value, and leaves an i64 value on the stack.
+    ///
+    /// NOTE: This function does not validate the i128, the caller is expected to
+    /// have already validated that the top of the stack holds a valid i128.
+    pub fn u128_to_i64(&mut self) {
+        // Truncate the first 64-bits, so long as those bits are zero
+        self.int128_to_u64();
+        // Ensure that the remaining 64 bits are a valid non-negative i64 value
+        self.assert_unsigned_int64();
     }
 
     /// Convert an i128 value to i64
