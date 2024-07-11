@@ -562,16 +562,6 @@ pub trait Alignable {
     /// * `self` + `align` must be less than `Self::MAX`
     fn align_up(self, align: Self) -> Self;
 
-    /// Compute the smallest value greater than or equal to `self` that is a multiple of `m`
-    ///
-    /// The following must be true, or this function will panic:
-    ///
-    /// * `m` must be non-zero
-    /// * `self` + `m` must be less than `Self::MAX`
-    ///
-    /// TODO: Replace this with the standard library `next_multiple_of` when 1.73 drops.
-    fn next_multiple_of(self, m: Self) -> Self;
-
     /// Compute the nearest power of two less than or equal to `self`
     fn prev_power_of_two(self) -> Self;
 }
@@ -590,26 +580,14 @@ macro_rules! alignable_impl {
         impl Alignable for $ty {
             #[inline]
             fn align_offset(self, align: Self) -> Self {
-                assert!(align.is_power_of_two());
-                self.next_multiple_of(align) - self
+                self.align_up(align) - self
             }
 
             #[inline]
             fn align_up(self, align: Self) -> Self {
-                assert!(self.saturating_add(align) < Self::MAX);
-                self.next_multiple_of(align)
-            }
-
-            #[inline]
-            fn next_multiple_of(self, m: Self) -> Self {
-                // The offset in from the last multiple of `m` to reach `n`
-                let offset = self % m;
-                // If `n` is a multiple of `m`, this is 0, else 1
-                let is_not_multiple = (offset > 0) as $ty;
-                // Apply offset to `n` to reach the next nearest multiple  of `m`
-                //
-                // If `n` is already a multiple of `m`, the offset is 0
-                self + ((m - offset) * is_not_multiple)
+                assert_ne!(align, 0);
+                assert!(align.is_power_of_two());
+                self.checked_next_multiple_of(align).expect("alignment overflow")
             }
 
             #[inline]
