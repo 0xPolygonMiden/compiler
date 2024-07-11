@@ -48,7 +48,7 @@ fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
-    let _vm_program = test.masm_program();
+    let _vm_program = test.vm_masm_program();
     // let _vm_out = execute_vm(&vm_program, &[]);
 }
 

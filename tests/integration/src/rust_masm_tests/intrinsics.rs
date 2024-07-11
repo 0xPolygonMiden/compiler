@@ -25,7 +25,8 @@ macro_rules! test_bin_op {
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
                 test.expect_ir(expect_file![format!("../../expected/{artifact_name}.hir")]);
                 test.expect_masm(expect_file![format!("../../expected/{artifact_name}.masm")]);
-                let vm_program = test.masm_program();
+                let vm_program = test.vm_masm_program();
+                let ir_program = test.ir_masm_program();
 
                 // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
                 let res = TestRunner::default()
@@ -36,7 +37,7 @@ macro_rules! test_bin_op {
                         let rs_out = a_felt $op b_felt;
                         dbg!(&rs_out);
                         let args = [a.0, b.0];
-                        run_masm_vs_rust(rs_out, &vm_program, &args)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
