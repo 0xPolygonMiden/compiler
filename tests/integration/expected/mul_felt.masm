@@ -1,12 +1,10 @@
-# mod user_ns::mul_felt
+# mod mul_felt
 
 export.entrypoint
     swap.1 mul
 end
 
 
-use.user_ns::mul_felt
-
 begin
-    exec.mul_felt::entrypoint  
+    exec.::mul_felt::entrypoint  
 end

@@ -1,12 +1,10 @@
-# mod user_ns::eq_felt
+# mod eq_felt
 
 export.entrypoint
     swap.1 eq push.1 eq
 end
 
 
-use.user_ns::eq_felt
-
 begin
-    exec.eq_felt::entrypoint  
+    exec.::eq_felt::entrypoint  
 end

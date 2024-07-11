@@ -1,4 +1,4 @@
-# mod user_ns::test_rust_76b95aeb59987e43311d2fb22a7021b58c09a51fe7457153d1a9986095f5038e
+# mod test_rust_76b95aeb59987e43311d2fb22a7021b58c09a51fe7457153d1a9986095f5038e
 
 export.entrypoint
     dup.0
@@ -16,8 +16,6 @@ export.entrypoint
 end
 
 
-use.user_ns::test_rust_76b95aeb59987e43311d2fb22a7021b58c09a51fe7457153d1a9986095f5038e
-
 begin
-    exec.test_rust_76b95aeb59987e43311d2fb22a7021b58c09a51fe7457153d1a9986095f5038e::entrypoint  
+    exec.::test_rust_76b95aeb59987e43311d2fb22a7021b58c09a51fe7457153d1a9986095f5038e::entrypoint  
 end

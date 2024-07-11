@@ -1,12 +1,10 @@
-# mod user_ns::div_felt
+# mod div_felt
 
 export.entrypoint
     swap.1 div
 end
 
 
-use.user_ns::div_felt
-
 begin
-    exec.div_felt::entrypoint  
+    exec.::div_felt::entrypoint  
 end

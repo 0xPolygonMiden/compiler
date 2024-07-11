@@ -1,4 +1,4 @@
-# mod user_ns::miden_integration_tests_rust_fib_wasm
+# mod miden_integration_tests_rust_fib_wasm
 
 export.fib
     push.0
@@ -31,8 +31,6 @@ export.fib
 end
 
 
-use.user_ns::miden_integration_tests_rust_fib_wasm
-
 begin
-    exec.miden_integration_tests_rust_fib_wasm::fib  
+    exec.::miden_integration_tests_rust_fib_wasm::fib  
 end

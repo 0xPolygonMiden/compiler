@@ -1,12 +1,10 @@
-# mod user_ns::test_rust_e7047e5fc0fbd81c45f586a2e1236121815ef43b08b645ca6cfa83914a40321c
+# mod test_rust_e7047e5fc0fbd81c45f586a2e1236121815ef43b08b645ca6cfa83914a40321c
 
 export.entrypoint
     push.4294967295 u32xor
 end
 
 
-use.user_ns::test_rust_e7047e5fc0fbd81c45f586a2e1236121815ef43b08b645ca6cfa83914a40321c
-
 begin
-    exec.test_rust_e7047e5fc0fbd81c45f586a2e1236121815ef43b08b645ca6cfa83914a40321c::entrypoint  
+    exec.::test_rust_e7047e5fc0fbd81c45f586a2e1236121815ef43b08b645ca6cfa83914a40321c::entrypoint  
 end

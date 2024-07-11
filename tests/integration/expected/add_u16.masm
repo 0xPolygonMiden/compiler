@@ -1,12 +1,10 @@
-# mod user_ns::test_rust_10c9fc505476d6021538a9abdcf2c4d73bd1d8cc42c25993867649bb63b4319d
+# mod test_rust_10c9fc505476d6021538a9abdcf2c4d73bd1d8cc42c25993867649bb63b4319d
 
 export.entrypoint
     u32wrapping_add push.65535 u32and
 end
 
 
-use.user_ns::test_rust_10c9fc505476d6021538a9abdcf2c4d73bd1d8cc42c25993867649bb63b4319d
-
 begin
-    exec.test_rust_10c9fc505476d6021538a9abdcf2c4d73bd1d8cc42c25993867649bb63b4319d::entrypoint  
+    exec.::test_rust_10c9fc505476d6021538a9abdcf2c4d73bd1d8cc42c25993867649bb63b4319d::entrypoint  
 end

@@ -1,12 +1,10 @@
-# mod user_ns::ge_felt
+# mod ge_felt
 
 export.entrypoint
     swap.1 gte push.0 neq
 end
 
 
-use.user_ns::ge_felt
-
 begin
-    exec.ge_felt::entrypoint  
+    exec.::ge_felt::entrypoint  
 end

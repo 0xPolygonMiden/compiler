@@ -1,4 +1,4 @@
-# mod user_ns::test_rust_12e1569e41153e52fb7cb3781dcfca47ee0548f6160a9e8e38b7734ffd45cb7e
+# mod test_rust_12e1569e41153e52fb7cb3781dcfca47ee0548f6160a9e8e38b7734ffd45cb7e
 
 export.entrypoint
     push.15
@@ -11,8 +11,6 @@ export.entrypoint
 end
 
 
-use.user_ns::test_rust_12e1569e41153e52fb7cb3781dcfca47ee0548f6160a9e8e38b7734ffd45cb7e
-
 begin
-    exec.test_rust_12e1569e41153e52fb7cb3781dcfca47ee0548f6160a9e8e38b7734ffd45cb7e::entrypoint  
+    exec.::test_rust_12e1569e41153e52fb7cb3781dcfca47ee0548f6160a9e8e38b7734ffd45cb7e::entrypoint  
 end
