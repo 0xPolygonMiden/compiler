@@ -8,6 +8,12 @@ use cargo_miden::run;
 
 #[test]
 fn build_new_project_from_template() {
+    // Signal to `cargo-miden` that we're running in a test harness.
+    //
+    // This is necessary because cfg!(test) does not work for integration tests, so we're forced
+    // to use an out-of-band signal like this instead
+    env::set_var("TEST", "1");
+
     let restore_dir = env::current_dir().unwrap();
     let temp_dir = env::temp_dir();
     env::set_current_dir(&temp_dir).unwrap();
