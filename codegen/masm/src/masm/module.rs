@@ -46,6 +46,7 @@ impl From<Report> for LoadModuleError {
 /// ordering of functions in the module body. We typically access all of the
 /// functions in a given module, so O(1) access to a specific function is not
 /// of primary importance.
+#[derive(Clone)]
 pub struct Module {
     link: RBTreeAtomicLink,
     pub span: SourceSpan,

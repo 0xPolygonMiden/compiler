@@ -30,3 +30,27 @@ pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
         }
     }
 }
+
+/// This helper loads the Miden Standard Library modules from the current miden-stdlib crate
+pub fn load_stdlib(codemap: &CodeMap) -> &'static [Module] {
+    use std::sync::OnceLock;
+
+    use miden_assembly::Library;
+    use miden_diagnostics::SourceSpan;
+    use miden_stdlib::StdLibrary;
+
+    static LOADED: OnceLock<Vec<Module>> = OnceLock::new();
+
+    LOADED
+        .get_or_init(|| {
+            let library = StdLibrary::default();
+
+            let mut loaded = Vec::with_capacity(library.modules().len());
+            for module in library.modules() {
+                let ir_module = Module::from_ast(module, SourceSpan::UNKNOWN, codemap);
+                loaded.push(ir_module);
+            }
+            loaded
+        })
+        .as_slice()
+}

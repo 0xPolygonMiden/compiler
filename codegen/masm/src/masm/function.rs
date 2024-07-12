@@ -16,7 +16,7 @@ intrusive_adapter!(pub FunctionListAdapter = Box<Function>: Function { link: Lin
 intrusive_adapter!(pub FrozenFunctionListAdapter = Arc<Function>: Function { link: LinkedListAtomicLink });
 
 /// This represents a function in Miden Assembly
-#[derive(Spanned)]
+#[derive(Spanned, Clone)]
 pub struct Function {
     link: LinkedListAtomicLink,
     #[span]
@@ -86,6 +86,23 @@ impl Function {
         let local = Local { id, ty };
         self.locals.push(local);
         id
+    }
+
+    /// Allocate `n` locals for use by this function.
+    ///
+    /// Each local can be independently accessed, but they are all of type `Felt`
+    pub fn alloc_n_locals(&mut self, n: u16) {
+        assert!(
+            (self.next_local_id + n as usize) < u16::MAX as usize,
+            "unable to allocate {n} locals"
+        );
+
+        let num_locals = self.locals.len();
+        self.locals.resize_with(num_locals + n as usize, || {
+            let id = LocalId::new(self.next_local_id);
+            self.next_local_id += 1;
+            Local { id, ty: Type::Felt }
+        });
     }
 
     /// Get the local with the given identifier
@@ -191,9 +208,7 @@ impl Function {
             function.attrs.set(midenc_hir::attributes::ENTRYPOINT);
         }
 
-        for _ in 0..proc.num_locals() {
-            function.alloc_local(Type::Felt);
-        }
+        function.alloc_n_locals(proc.num_locals());
 
         function.invoked.extend(proc.invoked().cloned());
         function.body = Region::from_block(module, proc.body());
@@ -312,6 +327,26 @@ pub type FrozenFunctionListIter<'a> =
 pub(super) enum Functions {
     Open(FunctionList),
     Frozen(FrozenFunctionList),
+}
+impl Clone for Functions {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Open(list) => {
+                let mut new_list = FunctionList::new(Default::default());
+                for f in list.iter() {
+                    new_list.push_back(Box::new(f.clone()));
+                }
+                Self::Open(new_list)
+            }
+            Self::Frozen(list) => {
+                let mut new_list = FrozenFunctionList::new(Default::default());
+                for f in list.iter() {
+                    new_list.push_back(Arc::from(Box::new(f.clone())));
+                }
+                Self::Frozen(new_list)
+            }
+        }
+    }
 }
 impl Default for Functions {
     fn default() -> Self {

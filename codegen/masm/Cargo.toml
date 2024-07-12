@@ -20,6 +20,7 @@ log.workspace = true
 miden-assembly.workspace = true
 miden-core.workspace = true
 miden-diagnostics.workspace = true
+miden-stdlib.workspace = true
 midenc-hir.workspace = true
 midenc-hir-analysis.workspace = true
 midenc-hir-transform.workspace = true

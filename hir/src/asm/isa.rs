@@ -326,6 +326,8 @@ pub enum MasmOp {
     /// [B, A, C]
     /// ```
     AdvInjectInsertHperm,
+    /// TODO
+    AdvInjectPushSignature(miden_assembly::ast::SignatureKind),
     /// Compute the Rescue Prime Optimized (RPO) hash of the word on top of the operand stack.
     ///
     /// The resulting hash of one word is placed on the operand stack.
@@ -481,7 +483,7 @@ pub enum MasmOp {
     /// and the block is skipped.
     While(MasmBlockId),
     /// Repeatedly evaluates the given block, `n` times.
-    Repeat(u8, MasmBlockId),
+    Repeat(u16, MasmBlockId),
     /// Pops `N` args off the stack, executes the procedure, results will be placed on the stack
     Exec(FunctionIdent),
     /// Pops `N` args off the stack, executes the procedure in the root context, results will be
@@ -1121,6 +1123,7 @@ impl MasmOp {
             | Self::AdvInjectInsertHdword
             | Self::AdvInjectInsertHdwordImm(_)
             | Self::AdvInjectInsertHperm
+            | Self::AdvInjectPushSignature(_)
             | Self::DebugStack
             | Self::DebugStackN(_)
             | Self::DebugMemory
@@ -1388,6 +1391,9 @@ impl MasmOp {
             Instruction::AdvInject(AdviceInjectorNode::PushMapValNImm { offset }) => {
                 Self::AdvInjectPushMapValNImm(unwrap_u8!(offset))
             }
+            Instruction::AdvInject(AdviceInjectorNode::PushSignature { kind }) => {
+                Self::AdvInjectPushSignature(kind)
+            }
             Instruction::AdvInject(injector) => {
                 unimplemented!("unsupported advice injector: {injector:?}")
             }
@@ -1614,6 +1620,9 @@ impl MasmOp {
                 Instruction::AdvInject(AdviceInjectorNode::InsertHdwordImm {
                     domain: domain.into(),
                 })
+            }
+            Self::AdvInjectPushSignature(kind) => {
+                Instruction::AdvInject(AdviceInjectorNode::PushSignature { kind })
             }
             Self::If(..) | Self::While(_) | Self::Repeat(..) => {
                 panic!("control flow instructions are meant to be handled specially by the caller")
@@ -1868,6 +1877,7 @@ impl fmt::Display for MasmOp {
             Self::AdvInjectInsertHdword | Self::AdvInjectInsertHdwordImm(_) => {
                 f.write_str("adv.insert_hdword")
             }
+            Self::AdvInjectPushSignature(kind) => write!(f, "adv.push_sig.{kind}"),
             Self::If(..) => f.write_str("if.true"),
             Self::While(_) => f.write_str("while.true"),
             Self::Repeat(..) => f.write_str("repeat"),
