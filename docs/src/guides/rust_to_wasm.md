@@ -7,7 +7,7 @@ modules and compile them on to Miden Assembly, which will be covered in the next
 ## Setup
 
 First, let's set up a simple Rust project that contains an implementation of the Fibonacci
-function (I know, its overdone, but we're trying to keep things as simple as possible to
+function (I know, it's overdone, but we're trying to keep things as simple as possible to
 make it easier to show the results at each step, so bear with me):
 
 Start by creating a new library crate:
@@ -41,7 +41,7 @@ crate-type = ["cdylib"]
 [dependencies]
 # Use a tiny allocator in place of the default one, if we want
 # to make use of types in the `alloc` crate, e.g. String. We
-# don't need that now, but its good information to have in hand.
+# don't need that now, but it's good information to have in hand.
 #wee_alloc = "0.4"
 
 # When we build for Wasm, we'll use the release profile
