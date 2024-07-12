@@ -113,7 +113,7 @@ Interacting with memory in Miden is quite similar to WebAssembly in some ways:
 
 * The address space is linear, with addresses starting at zero, and ranging up to 2^32-1
 * There is no memory protection per se, you either have full read/write access, or no access to a specific memory context
-* How memory is used is completely up the program being executed
+* How memory is used is completely up to the program being executed
 
 This is where it begins to differ though, and takes on qualities unique to Miden (in part, or whole):
 
@@ -194,10 +194,10 @@ are allocated space in a reserved region of linear memory in a single consecutiv
 and because Miden is a Harvard architecture machine, there are no return addresses. Instead, languages (such as C) which have the concept
 of a stack frame with implications for the semantics of say, taking the address of a local variable, will need to emit code in function
 prologues and epilogues to maintain a shadow stack in Miden's linear memory. If all you need is local variables, you can get away with
-leaning on Miden's notion of local variables without implenting a shadow stack.
+leaning on Miden's notion of local variables without implementing a shadow stack.
 
 Because there are no registers, the notion of callee-saved or caller-saved registers does not have a direct equivalent in Miden. However,
-in its place, a somewhat equivalent set of rules defines the contract betweeen caller and callee in terms of the state of the operand stack,
+in its place, a somewhat equivalent set of rules defines the contract between caller and callee in terms of the state of the operand stack,
 those are described below in the section covering the operand stack.
 
 ### The shadow stack
@@ -257,7 +257,7 @@ Functions in Miden IR always have a signature, which specify the following:
 
 * The calling convention required to call the function
 * The number and types of the function arguments
-* The type of value, if any, returned by by the function, and whether it is returned by value or reference
+* The type of value, if any, returned by the function, and whether it is returned by value or reference
 
 The following table relates IR types to how they are expected to be passed from the caller to the callee, and vice versa:
 
