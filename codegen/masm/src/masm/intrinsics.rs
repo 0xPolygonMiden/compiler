@@ -25,9 +25,15 @@ pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
     let path = LibraryPath::new(name).expect("invalid module name");
     match Module::parse_source_file(path, ModuleKind::Library, source_file, codemap) {
         Ok(module) => Some(module),
-        Err(err) => {
-            panic!("unexpected syntax error in intrinsic module: {err}");
-        }
+        Err(err) => match err {
+            crate::LoadModuleError::Report(report) => {
+                let report = miden_assembly::diagnostics::reporting::PrintDiagnostic::new(
+                    report.into_report(),
+                );
+                panic!("failed to parse intrinsic module: {report}");
+            }
+            other => panic!("unexpected syntax error in intrinsic module: {other}"),
+        },
     }
 }
 
