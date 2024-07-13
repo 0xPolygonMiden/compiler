@@ -1220,8 +1220,58 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
-    fn store_small(&mut self, _ty: &Type, _ptr: Option<NativePtr>) {
-        todo!()
+    fn store_small(&mut self, ty: &Type, ptr: Option<NativePtr>) {
+        if let Some(imm) = ptr {
+            return self.store_small_imm(ty, imm);
+        }
+
+        let type_size = ty.size_in_bits();
+        if type_size == 32 {
+            self.store_word(ptr);
+            return;
+        }
+
+        // Duplicate the address
+        self.emit_all(&[Op::Dup(2), Op::Dup(2), Op::Dup(2)]);
+
+        // Load the current 32-bit value at `ptr`
+        self.load_word(ptr);
+
+        // Mask out the bits we're going to be writing from the loaded value
+        let mask = u32::MAX << type_size;
+        self.const_mask_u32(mask);
+
+        // Mix in the bits we want to write: [masked, addr1, addr2, addr3, value]
+        self.emit(Op::Movup(5));
+        self.bor_u32();
+
+        // Store the combined bits: [value, addr1, addr2, addr3]
+        self.emit(Op::Movdn(4));
+        self.store_word(ptr);
+    }
+
+    fn store_small_imm(&mut self, ty: &Type, ptr: NativePtr) {
+        assert!(ptr.alignment() as usize >= ty.min_alignment());
+
+        let type_size = ty.size_in_bits();
+        if type_size == 32 {
+            self.store_word_imm(ptr);
+            return;
+        }
+
+        // Load the current 32-bit value at `ptr`
+        self.load_word_imm(ptr);
+
+        // Mask out the bits we're going to be writing from the loaded value
+        let mask = u32::MAX << type_size;
+        self.const_mask_u32(mask);
+
+        // Mix in the bits we want to write
+        self.emit(Op::Movup(4));
+        self.bor_u32();
+
+        // Store the combined bits
+        self.store_word_imm(ptr);
     }
 
     fn store_array(&mut self, _element_ty: &Type, _ptr: Option<NativePtr>) {
