@@ -1097,10 +1097,6 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     binary_int_op!(bor, Opcode::Bor);
     binary_boolean_op!(xor, Opcode::Xor);
     binary_int_op!(bxor, Opcode::Bxor);
-    binary_int_op_with_overflow!(shl, Opcode::Shl);
-    binary_int_op_with_overflow!(shr, Opcode::Shr);
-    binary_int_op!(rotl, Opcode::Rotl);
-    binary_int_op!(rotr, Opcode::Rotr);
     unary_int_op!(neg, Opcode::Neg);
     unary_int_op!(inv, Opcode::Inv);
     unary_int_op_with_overflow!(incr, Opcode::Incr);
@@ -1113,6 +1109,106 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     unary_int_op!(ctz, Opcode::Ctz);
     unary_int_op!(clo, Opcode::Clo);
     unary_int_op!(cto, Opcode::Cto);
+
+    fn rotl(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        require_integer!(self, rhs, Type::U32);
+        into_first_result!(self.BinaryWithOverflow(
+            Opcode::Rotl,
+            lty,
+            lhs,
+            rhs,
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn rotl_imm(self, lhs: Value, shift: u32, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        into_first_result!(self.BinaryImmWithOverflow(
+            Opcode::Rotl,
+            lty,
+            lhs,
+            shift.into(),
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn rotr(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        require_integer!(self, rhs, Type::U32);
+        into_first_result!(self.BinaryWithOverflow(
+            Opcode::Rotr,
+            lty,
+            lhs,
+            rhs,
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn rotr_imm(self, lhs: Value, shift: u32, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        into_first_result!(self.BinaryImmWithOverflow(
+            Opcode::Rotr,
+            lty,
+            lhs,
+            shift.into(),
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn shl(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        require_integer!(self, rhs, Type::U32);
+        into_first_result!(self.BinaryWithOverflow(
+            Opcode::Shl,
+            lty,
+            lhs,
+            rhs,
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn shl_imm(self, lhs: Value, shift: u32, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        into_first_result!(self.BinaryImmWithOverflow(
+            Opcode::Shl,
+            lty,
+            lhs,
+            shift.into(),
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn shr(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        require_integer!(self, rhs, Type::U32);
+        into_first_result!(self.BinaryWithOverflow(
+            Opcode::Shr,
+            lty,
+            lhs,
+            rhs,
+            Overflow::Wrapping,
+            span
+        ))
+    }
+
+    fn shr_imm(self, lhs: Value, shift: u32, span: SourceSpan) -> Value {
+        let lty = require_integer!(self, lhs).clone();
+        into_first_result!(self.BinaryImmWithOverflow(
+            Opcode::Shr,
+            lty,
+            lhs,
+            shift.into(),
+            Overflow::Wrapping,
+            span
+        ))
+    }
 
     fn eq(self, lhs: Value, rhs: Value, span: SourceSpan) -> Value {
         into_first_result!(self.Binary(Opcode::Eq, Type::I1, lhs, rhs, span))

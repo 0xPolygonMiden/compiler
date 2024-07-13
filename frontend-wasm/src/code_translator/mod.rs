@@ -13,12 +13,12 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::{collections::hash_map, u64};
+use std::collections::hash_map;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use midenc_hir::{
-    cranelift_entity::packed_option::ReservedValue, Block, Immediate, Inst, InstBuilder, Type,
-    Type::*, Value,
+    cranelift_entity::packed_option::ReservedValue, Block, FieldElement, Immediate, Inst,
+    InstBuilder, Type, Type::*, Value,
 };
 use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
@@ -275,38 +275,68 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().bxor(arg1, arg2, span));
         }
-        Operator::I32Shl | Operator::I64Shl => {
+        Operator::I32Shl => {
             let (arg1, arg2) = state.pop2();
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            state.push1(builder.ins().shl_wrapping(arg1, arg2, span));
+            let arg2 = builder.ins().bitcast(arg2, U32, span);
+            state.push1(builder.ins().shl(arg1, arg2, span));
+        }
+        Operator::I64Shl => {
+            let (arg1, arg2) = state.pop2();
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            let arg2 = builder.ins().cast(arg2, U32, span);
+            state.push1(builder.ins().shl(arg1, arg2, span));
         }
         Operator::I32ShrU => {
-            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
+            let (arg1, arg2) = state.pop2_bitcasted(U32, builder, span);
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            let val = builder.ins().shr_wrapping(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            let val = builder.ins().shr(arg1, arg2, span);
+            state.push1(builder.ins().bitcast(val, I32, span));
         }
         Operator::I64ShrU => {
-            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
+            let (arg1, arg2) = state.pop2();
+            let arg1 = builder.ins().bitcast(arg1, U64, span);
+            let arg2 = builder.ins().cast(arg2, U32, span);
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            let val = builder.ins().shr_wrapping(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I64, span));
+            let val = builder.ins().shr(arg1, arg2, span);
+            state.push1(builder.ins().bitcast(val, I64, span));
         }
-        Operator::I32ShrS | Operator::I64ShrS => {
+        Operator::I32ShrS => {
             let (arg1, arg2) = state.pop2();
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            state.push1(builder.ins().shr_wrapping(arg1, arg2, span));
+            let arg2 = builder.ins().bitcast(arg2, Type::U32, span);
+            state.push1(builder.ins().shr(arg1, arg2, span));
         }
-        Operator::I32Rotl | Operator::I64Rotl => {
+        Operator::I64ShrS => {
             let (arg1, arg2) = state.pop2();
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            let arg2 = builder.ins().cast(arg2, Type::U32, span);
+            state.push1(builder.ins().shr(arg1, arg2, span));
+        }
+        Operator::I32Rotl => {
+            let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().bitcast(arg2, Type::U32, span);
             state.push1(builder.ins().rotl(arg1, arg2, span));
         }
-        Operator::I32Rotr | Operator::I64Rotr => {
+        Operator::I64Rotl => {
             let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().cast(arg2, Type::U32, span);
+            state.push1(builder.ins().rotl(arg1, arg2, span));
+        }
+        Operator::I32Rotr => {
+            let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().bitcast(arg2, Type::U32, span);
+            state.push1(builder.ins().rotr(arg1, arg2, span));
+        }
+        Operator::I64Rotr => {
+            let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().cast(arg2, Type::U32, span);
             state.push1(builder.ins().rotr(arg1, arg2, span));
         }
         Operator::I32Sub | Operator::I64Sub => {
