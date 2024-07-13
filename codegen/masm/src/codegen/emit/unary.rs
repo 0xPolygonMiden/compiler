@@ -36,20 +36,30 @@ impl<'a> OpEmitter<'a> {
             // If the types are equivalent, it's a no-op
             (src, dst) if src == dst => (),
             (Type::Felt, _) if n <= 32 => self.trunc_felt(n),
+            // Truncating i128 to u128, and vice versa is a bitcast
+            (Type::I128 | Type::U128, Type::U128 | Type::I128) => (),
             // Truncating to felt
             (Type::U128 | Type::I128, Type::Felt) => self.trunc_i128_to_felt(),
             // Truncating a 128-bit integer to 64 bits or smaller
             (Type::U128 | Type::I128, _) if n <= 64 => self.trunc_i128(n),
             // Truncating i64/u64 to felt
             (Type::I64 | Type::U64, Type::Felt) => self.trunc_int64_to_felt(),
+            // Truncating i64 to u64, and vice versa is a bitcast
+            (Type::I64 | Type::U64, Type::U64 | Type::I64) => (),
             // Truncating a u64/i64 to 32 bits or smaller
             (Type::I64 | Type::U64, _) if n <= 32 => self.trunc_int64(n),
             // Truncating a felt to 32 bits or smaller
             (Type::Felt, _) if n <= 32 => self.trunc_felt(n),
+            // Truncating i32 to u32, and vice versa is a bitcast
+            (Type::I32 | Type::U32, Type::U32 | Type::I32) => (),
             // Truncating an i32/u32 to smaller than 32 bits
             (Type::I32 | Type::U32, _) if n <= 32 => self.trunc_int32(n),
+            // Truncating i16 to u16, and vice versa is a bitcast
+            (Type::I16 | Type::U16, Type::U16 | Type::I16) => (),
             // Truncating an i16/u16 to smaller than 16 bits
             (Type::I16 | Type::U16, _) if n <= 16 => self.trunc_int32(n),
+            // Truncating i8 to u8, and vice versa is a bitcast
+            (Type::I8 | Type::U8, Type::U8 | Type::I8) => (),
             // Truncating an i8/u8 to smaller than 8 bits
             (Type::I8 | Type::U8, _) if n <= 8 => self.trunc_int32(n),
             (src, dst) => unimplemented!("unsupported truncation of {src} to {dst}"),
@@ -832,6 +842,9 @@ impl<'a> OpEmitter<'a> {
                     // Obtain the u64 representation by splitting the felt result
                     Op::U32Split,
                 ]);
+            }
+            Type::I64 => {
+                self.emit(Op::Exec("intrinsics::i64::pow2".parse().unwrap()));
             }
             Type::Felt => {
                 self.emit(Op::Pow2);

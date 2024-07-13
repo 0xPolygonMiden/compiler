@@ -115,8 +115,11 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Gt);
             }
-            Type::I64 | Type::U64 => {
+            Type::U64 => {
                 self.gt_u64();
+            }
+            Type::I64 => {
+                self.gt_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Gt);
@@ -141,7 +144,7 @@ impl<'a> OpEmitter<'a> {
             }
             Type::I64 => {
                 self.push_i64(imm.as_i64().unwrap());
-                self.gt_u64();
+                self.gt_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Gt]);
@@ -166,8 +169,11 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Gte);
             }
-            Type::I64 | Type::U64 => {
+            Type::U64 => {
                 self.gte_u64();
+            }
+            Type::I64 => {
+                self.gte_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Gte);
@@ -192,7 +198,7 @@ impl<'a> OpEmitter<'a> {
             }
             Type::I64 => {
                 self.push_i64(imm.as_i64().unwrap());
-                self.gte_u64();
+                self.gte_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Gte]);
@@ -217,8 +223,11 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Lt);
             }
-            Type::I64 | Type::U64 => {
+            Type::U64 => {
                 self.lt_u64();
+            }
+            Type::I64 => {
+                self.lt_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Lt);
@@ -243,7 +252,7 @@ impl<'a> OpEmitter<'a> {
             }
             Type::I64 => {
                 self.push_i64(imm.as_i64().unwrap());
-                self.lt_u64();
+                self.lt_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Lt]);
@@ -268,8 +277,11 @@ impl<'a> OpEmitter<'a> {
             Type::Felt => {
                 self.emit(Op::Lte);
             }
-            Type::I64 | Type::U64 => {
+            Type::U64 => {
                 self.lte_u64();
+            }
+            Type::I64 => {
+                self.lte_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit(Op::U32Lte);
@@ -294,7 +306,7 @@ impl<'a> OpEmitter<'a> {
             }
             Type::I64 => {
                 self.push_i64(imm.as_i64().unwrap());
-                self.lte_u64();
+                self.lte_i64();
             }
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => {
                 self.emit_all(&[Op::PushU32(imm.as_u32().unwrap()), Op::U32Lte]);
@@ -321,6 +333,9 @@ impl<'a> OpEmitter<'a> {
             }
             Type::U64 => {
                 self.add_u64(overflow);
+            }
+            Type::I64 => {
+                self.add_i64(overflow);
             }
             Type::U32 => {
                 self.add_u32(overflow);
@@ -352,6 +367,9 @@ impl<'a> OpEmitter<'a> {
                 self.push_immediate(imm);
                 self.add_u64(overflow);
             }
+            Type::I64 => {
+                self.add_imm_i64(imm.as_i64().unwrap(), overflow);
+            }
             Type::U32 => {
                 self.add_imm_u32(imm.as_u32().unwrap(), overflow);
             }
@@ -381,6 +399,9 @@ impl<'a> OpEmitter<'a> {
             Type::U64 => {
                 self.sub_u64(overflow);
             }
+            Type::I64 => {
+                self.sub_i64(overflow);
+            }
             Type::U32 => {
                 self.sub_u32(overflow);
             }
@@ -409,6 +430,9 @@ impl<'a> OpEmitter<'a> {
             Type::U64 => {
                 self.push_immediate(imm);
                 self.sub_u64(overflow);
+            }
+            Type::I64 => {
+                self.sub_imm_i64(imm.as_i64().unwrap(), overflow);
             }
             Type::U32 => {
                 self.sub_imm_u32(imm.as_u32().unwrap(), overflow);
@@ -449,7 +473,6 @@ impl<'a> OpEmitter<'a> {
                 // stack
                 todo!()
             }
-            Type::U64 => self.mul_u64(overflow),
             Type::Felt => {
                 assert_matches!(
                     overflow,
@@ -458,6 +481,8 @@ impl<'a> OpEmitter<'a> {
                 );
                 self.emit(Op::Mul);
             }
+            Type::U64 => self.mul_u64(overflow),
+            Type::I64 => self.mul_i64(overflow),
             Type::U32 => self.mul_u32(overflow),
             Type::I32 => self.mul_i32(overflow),
             ty @ (Type::U16 | Type::U8) => {
@@ -479,10 +504,6 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected mul operands to be the same type");
         match &ty {
-            Type::U64 => {
-                self.push_immediate(imm);
-                self.mul_u64(overflow);
-            }
             Type::Felt => {
                 assert_matches!(
                     overflow,
@@ -491,6 +512,11 @@ impl<'a> OpEmitter<'a> {
                 );
                 self.emit(Op::MulImm(imm.as_felt().unwrap()));
             }
+            Type::U64 => {
+                self.push_immediate(imm);
+                self.mul_u64(overflow);
+            }
+            Type::I64 => self.mul_imm_i64(imm.as_i64().unwrap(), overflow),
             Type::U32 => self.mul_imm_u32(imm.as_u32().unwrap(), overflow),
             Type::I32 => self.mul_imm_i32(imm.as_i32().unwrap(), overflow),
             ty @ (Type::U16 | Type::U8) => {
@@ -513,10 +539,11 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected div operands to be the same type");
         match &ty {
-            Type::U64 => self.checked_div_u64(),
             Type::Felt => {
                 self.emit(Op::Div);
             }
+            Type::U64 => self.checked_div_u64(),
+            Type::I64 => self.checked_div_i64(),
             Type::U32 => self.checked_div_u32(),
             Type::I32 => self.checked_div_i32(),
             ty @ (Type::U16 | Type::U8) => {
@@ -535,14 +562,15 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected div operands to be the same type");
         match &ty {
+            Type::Felt => {
+                self.emit(Op::Div);
+            }
             Type::U64 => {
                 assert_ne!(imm.as_u64().unwrap(), 0, "invalid division by zero");
                 self.push_immediate(imm);
                 self.checked_div_u64();
             }
-            Type::Felt => {
-                self.emit(Op::Div);
-            }
+            Type::I64 => self.checked_div_imm_i64(imm.as_i64().unwrap()),
             Type::U32 => self.checked_div_imm_u32(imm.as_u32().unwrap()),
             Type::I32 => self.checked_div_imm_i32(imm.as_i32().unwrap()),
             ty @ (Type::U16 | Type::U8) => {
@@ -562,10 +590,11 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, rhs.ty(), "expected div operands to be the same type");
         match &ty {
-            Type::U64 => self.unchecked_div_u64(),
             Type::Felt => {
                 self.emit(Op::Div);
             }
+            Type::U64 => self.unchecked_div_u64(),
+            Type::I64 => self.checked_div_i64(),
             Type::U32 | Type::U16 | Type::U8 => self.unchecked_div_u32(),
             Type::I32 => self.checked_div_i32(),
             ty if !ty.is_integer() => {
@@ -581,14 +610,15 @@ impl<'a> OpEmitter<'a> {
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected div operands to be the same type");
         match &ty {
+            Type::Felt => {
+                self.emit(Op::Div);
+            }
             Type::U64 => {
                 assert_ne!(imm.as_u64().unwrap(), 0, "invalid division by zero");
                 self.push_immediate(imm);
                 self.unchecked_div_u64();
             }
-            Type::Felt => {
-                self.emit(Op::Div);
-            }
+            Type::I64 => self.checked_div_imm_i64(imm.as_i64().unwrap()),
             Type::U32 => self.unchecked_div_imm_u32(imm.as_u32().unwrap()),
             Type::I32 => self.checked_div_imm_i32(imm.as_i32().unwrap()),
             ty @ (Type::U16 | Type::U8) => {
@@ -1159,11 +1189,11 @@ impl<'a> OpEmitter<'a> {
         let rhs = self.pop().expect("operand stack is empty");
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, rhs.ty(), "expected shl operands to be the same type");
+        assert_eq!(rhs.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
-            Type::U64 => self.shl_u64(),
+            Type::U64 | Type::I64 => self.shl_u64(),
             Type::U32 | Type::I32 => self.shl_u32(),
-            ty @ (Type::U16 | Type::U8) => {
+            ty @ (Type::U16 | Type::I16 | Type::U8 | Type::I8) => {
                 self.shl_u32();
                 self.trunc_int32(ty.size_in_bits() as u32);
             }
@@ -1178,16 +1208,16 @@ impl<'a> OpEmitter<'a> {
     pub fn shl_imm(&mut self, imm: Immediate) {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, imm.ty(), "expected shl operands to be the same type");
+        assert_eq!(imm.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
-            Type::U64 => {
-                assert!(imm.as_u64().unwrap() < 64, "invalid shift value: must be < 64");
+            Type::U64 | Type::I64 => {
+                assert!(imm.as_u32().unwrap() < 64, "invalid shift value: must be < 64");
                 self.push_immediate(imm);
                 self.shl_u64();
             }
             Type::U32 => self.shl_imm_u32(imm.as_u32().unwrap()),
-            Type::I32 => self.shl_imm_u32(imm.as_i32().unwrap() as u32),
-            ty @ (Type::U16 | Type::U8) => {
+            Type::I32 => self.shl_imm_u32(imm.as_u32().unwrap()),
+            ty @ (Type::U16 | Type::I16 | Type::U8 | Type::I8) => {
                 self.shl_imm_u32(imm.as_u32().unwrap());
                 self.trunc_int32(ty.size_in_bits() as u32);
             }
@@ -1203,9 +1233,10 @@ impl<'a> OpEmitter<'a> {
         let rhs = self.pop().expect("operand stack is empty");
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, rhs.ty(), "expected shr operands to be the same type");
+        assert_eq!(rhs.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
             Type::U64 => self.shr_u64(),
+            Type::I64 => self.shr_i64(),
             Type::U32 | Type::U16 | Type::U8 => self.shr_u32(),
             Type::I32 => self.shr_i32(),
             ty if !ty.is_integer() => {
@@ -1219,16 +1250,17 @@ impl<'a> OpEmitter<'a> {
     pub fn shr_imm(&mut self, imm: Immediate) {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, imm.ty(), "expected shr operands to be the same type");
+        assert_eq!(imm.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
             Type::U64 => {
-                let shift = imm.as_u64().unwrap();
+                let shift = imm.as_u32().unwrap();
                 assert!(shift < 64, "invalid shift value: must be < 64, got {shift}");
                 self.push_immediate(imm);
                 self.shr_u64();
             }
+            Type::I64 => self.shr_imm_i64(imm.as_u32().unwrap()),
             Type::U32 | Type::U16 | Type::U8 => self.shr_imm_u32(imm.as_u32().unwrap()),
-            Type::I32 => self.shr_imm_i32(imm.as_i32().unwrap()),
+            Type::I32 => self.shr_imm_i32(imm.as_u32().unwrap()),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: shr expects integer operands, got {ty}")
             }
@@ -1241,10 +1273,10 @@ impl<'a> OpEmitter<'a> {
         let rhs = self.pop().expect("operand stack is empty");
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, rhs.ty(), "expected rotl operands to be the same type");
+        assert_eq!(rhs.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
-            Type::U64 => self.rotl_u64(),
-            Type::U32 => self.rotl_u32(),
+            Type::U64 | Type::I64 => self.rotl_u64(),
+            Type::U32 | Type::I32 => self.rotl_u32(),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: rotl expects integer operands, got {ty}")
             }
@@ -1256,13 +1288,13 @@ impl<'a> OpEmitter<'a> {
     pub fn rotl_imm(&mut self, imm: Immediate) {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, imm.ty(), "expected rotl operands to be the same type");
+        assert_eq!(imm.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
-            Type::U64 => {
+            Type::U64 | Type::I64 => {
                 self.push_immediate(imm);
                 self.rotl_u64();
             }
-            Type::U32 => self.rotl_imm_u32(imm.as_u32().unwrap()),
+            Type::U32 | Type::I32 => self.rotl_imm_u32(imm.as_u32().unwrap()),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: rotl expects integer operands, got {ty}")
             }
@@ -1275,10 +1307,10 @@ impl<'a> OpEmitter<'a> {
         let rhs = self.pop().expect("operand stack is empty");
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, rhs.ty(), "expected rotr operands to be the same type");
+        assert_eq!(rhs.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
-            Type::U64 => self.rotr_u64(),
-            Type::U32 => self.rotr_u32(),
+            Type::U64 | Type::I64 => self.rotr_u64(),
+            Type::U32 | Type::I32 => self.rotr_u32(),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: rotr expects integer operands, got {ty}")
             }
@@ -1290,13 +1322,13 @@ impl<'a> OpEmitter<'a> {
     pub fn rotr_imm(&mut self, imm: Immediate) {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
-        assert_eq!(ty, imm.ty(), "expected rotr operands to be the same type");
+        assert_eq!(imm.ty(), Type::U32, "expected shift operand to be u32");
         match &ty {
-            Type::U64 => {
+            Type::U64 | Type::I64 => {
                 self.push_immediate(imm);
                 self.rotr_u64();
             }
-            Type::U32 => self.rotr_imm_u32(imm.as_u32().unwrap()),
+            Type::U32 | Type::I32 => self.rotr_imm_u32(imm.as_u32().unwrap()),
             ty if !ty.is_integer() => {
                 panic!("invalid binary operand: rotr expects integer operands, got {ty}")
             }
@@ -1312,6 +1344,7 @@ impl<'a> OpEmitter<'a> {
         assert_eq!(ty, rhs.ty(), "expected min operands to be the same type");
         match &ty {
             Type::U64 => self.min_u64(),
+            Type::I64 => self.min_i64(),
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.min_u32(),
             Type::I32 => self.min_i32(),
             ty if !ty.is_integer() => {
@@ -1331,6 +1364,7 @@ impl<'a> OpEmitter<'a> {
                 self.push_immediate(imm);
                 self.min_u64();
             }
+            Type::I64 => self.min_imm_i64(imm.as_i64().unwrap()),
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.min_imm_u32(imm.as_u32().unwrap()),
             Type::I32 => self.min_imm_i32(imm.as_i32().unwrap()),
             ty if !ty.is_integer() => {
@@ -1348,6 +1382,7 @@ impl<'a> OpEmitter<'a> {
         assert_eq!(ty, rhs.ty(), "expected max operands to be the same type");
         match &ty {
             Type::U64 => self.max_u64(),
+            Type::I64 => self.max_i64(),
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.max_u32(),
             Type::I32 => self.max_i32(),
             ty if !ty.is_integer() => {
@@ -1367,6 +1402,7 @@ impl<'a> OpEmitter<'a> {
                 self.push_immediate(imm);
                 self.max_u64();
             }
+            Type::I64 => self.max_imm_i64(imm.as_i64().unwrap()),
             Type::U32 | Type::U16 | Type::U8 | Type::I1 => self.max_imm_u32(imm.as_u32().unwrap()),
             Type::I32 => self.max_imm_i32(imm.as_i32().unwrap()),
             ty if !ty.is_integer() => {

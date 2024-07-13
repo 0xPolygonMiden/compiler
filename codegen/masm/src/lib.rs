@@ -96,6 +96,10 @@ impl<'a> MasmCompiler<'a> {
             intrinsics::load("intrinsics::i32", &self.session.codemap)
                 .expect("undefined intrinsics module"),
         ));
+        program.insert(Box::new(
+            intrinsics::load("intrinsics::i64", &self.session.codemap)
+                .expect("undefined intrinsics module"),
+        ));
 
         Ok(program)
     }
