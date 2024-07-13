@@ -177,6 +177,16 @@ impl<'a> OpEmitter<'a> {
         self.stack.push(dst.clone());
     }
 
+    pub fn bitcast(&mut self, dst: &Type) {
+        let arg = self.stack.pop().expect("operand stack is empty");
+        let src = arg.ty();
+        assert!(
+            src.is_integer() && dst.is_integer(),
+            "invalid cast of {src} to {dst}: only integer-to-integer bitcasts are supported"
+        );
+        self.stack.push(dst.clone());
+    }
+
     /// Convert between two integral types, given as `src` and `dst`,
     /// indicating the direction of the conversion.
     ///

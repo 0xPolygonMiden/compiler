@@ -540,6 +540,10 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                 let dst_ty = emitter.value_type(result).clone();
                 emitter.cast(&dst_ty);
             }
+            hir::Opcode::Bitcast => {
+                let dst_ty = emitter.value_type(result).clone();
+                emitter.bitcast(&dst_ty);
+            }
             hir::Opcode::Trunc => {
                 let dst_ty = emitter.value_type(result).clone();
                 emitter.trunc(&dst_ty);
@@ -699,6 +703,21 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             hir::Opcode::Store => {
                 assert_eq!(args.len(), 2);
                 emitter.store();
+            }
+            // Grow the heap by `num_pages` pages
+            hir::Opcode::MemGrow => {
+                assert_eq!(args.len(), 1);
+                emitter.mem_grow();
+            }
+            // Return the size of the heap in pages
+            hir::Opcode::MemSize => {
+                assert_eq!(args.len(), 0);
+                emitter.mem_size();
+            }
+            // Write `count` copies of `value` starting at the destination address
+            hir::Opcode::MemSet => {
+                assert_eq!(args.len(), 3);
+                emitter.memset();
             }
             // Copy `count * sizeof(ctrl_ty)` bytes from source to destination address
             hir::Opcode::MemCpy => {

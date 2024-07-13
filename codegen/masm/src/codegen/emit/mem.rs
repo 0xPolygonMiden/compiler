@@ -1,7 +1,9 @@
-use midenc_hir::{StructType, Type};
+use midenc_hir::{Felt, FieldElement, StructType, Type};
 
 use super::OpEmitter;
 use crate::masm::{NativePtr, Op};
+
+const PAGE_SIZE: u32 = 64 * 1024;
 
 /// Allocation
 impl<'a> OpEmitter<'a> {
@@ -19,6 +21,20 @@ impl<'a> OpEmitter<'a> {
             }
             ty => panic!("expected a pointer type, got {ty}"),
         }
+    }
+
+    /// TODO(pauls): For now, we simply return -1 as if the heap cannot be grown any further
+    pub fn mem_grow(&mut self) {
+        let _size = self.stack.pop().expect("operand stack is empty");
+        self.emit(Op::PushU32(-1i32 as u32));
+        self.stack.push(Type::I32);
+    }
+
+    /// TODO(pauls): For now, we simply return u32::MAX as if the heap is already fully grown
+    pub fn mem_size(&mut self) {
+        const MAX_HEAP_PAGES: u32 = u32::MAX / PAGE_SIZE;
+        self.emit(Op::PushU32(MAX_HEAP_PAGES));
+        self.stack.push(Type::U32);
     }
 }
 
@@ -874,6 +890,66 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
+    pub fn memset(&mut self) {
+        let dst = self.stack.pop().expect("operand stack is empty");
+        let count = self.stack.pop().expect("operand stack is empty");
+        let value = self.stack.pop().expect("operand stack is empty");
+        assert_eq!(count.ty(), Type::U32, "expected count operand to be a u32");
+        let ty = value.ty();
+        assert!(dst.ty().is_pointer());
+        assert_eq!(&ty, dst.ty().pointee().unwrap(), "expected value and pointee type to match");
+
+        // Prepare to loop until `count` iterations have been performed
+        let current_block = self.current_block;
+        let body = self.function.create_block();
+        self.emit_all(&[
+            // [dst, count, value..]
+            Op::PushU32(0),         // [i, dst, count, value..]
+            Op::Dup(2),             // [count, i, dst, count, value..]
+            Op::GteImm(Felt::ZERO), // [count > 0, i, dst, count, value..]
+            Op::While(body),
+        ]);
+
+        // Loop body - compute address for next value to be written
+        let value_size = value.ty().size_in_bytes();
+        self.switch_to_block(body);
+        self.emit_all(&[
+            // [i, dst, count, value..]
+            // Offset the pointer by the current iteration count * aligned size of value, and trap
+            // if it overflows
+            Op::Dup(1), // [dst, i, dst, count, value]
+            Op::Dup(1), // [i, dst, i, dst, count, value]
+            Op::PushU32(value_size.try_into().expect("invalid value size")), /* [value_size, i,
+                         * dst, ..] */
+            Op::U32OverflowingMadd, // [value_size * i + dst, i, dst, count, value]
+            Op::Assertz,            // [aligned_dst, i, dst, count, value..]
+        ]);
+
+        // Loop body - move value to top of stack, swap with pointer
+        self.stack.push(value);
+        self.stack.push(count);
+        self.stack.push(dst.clone());
+        self.stack.push(dst.ty());
+        self.stack.push(dst.ty());
+        self.dup(4); // [value, aligned_dst, i, dst, count, value]
+        self.swap(1); // [aligned_dst, value, i, dst, count, value]
+
+        // Loop body - write value to destination
+        self.store(); // [i, dst, count, value]
+
+        // Loop body - increment iteration count, determine whether to continue loop
+        self.emit_all(&[
+            Op::U32WrappingAddImm(1),
+            Op::Dup(0), // [i++, i++, dst, count, value]
+            Op::Dup(3), // [count, i++, i++, dst, count, value]
+            Op::U32Gte, // [i++ >= count, i++, dst, count, value]
+        ]);
+
+        // Cleanup - at end of 'while' loop, drop the 4 operands remaining on the stack
+        self.switch_to_block(current_block);
+        self.dropn(4);
+    }
+
     /// Copy `count * sizeof(*ty)` from a source address to a destination address.
     ///
     /// The order of operands on the stack is `src`, `dst`, then `count`.
@@ -891,16 +967,93 @@ impl<'a> OpEmitter<'a> {
         let count = self.stack.pop().expect("operand stack is empty");
         assert_eq!(count.ty(), Type::U32, "expected count operand to be a u32");
         let ty = src.ty();
+        assert!(ty.is_pointer());
         assert_eq!(ty, dst.ty(), "expected src and dst operands to have the same type");
-        match ty {
-            Type::Ptr(ref _pointee) => {
-                todo!()
+        let value_ty = ty.pointee().unwrap();
+        let value_size = u32::try_from(value_ty.size_in_bytes()).expect("invalid value size");
+
+        // Use optimized intrinsics when available
+        match value_size {
+            // Word-sized values have an optimized intrinsic we can lean on
+            16 => {
+                self.emit_all(&[
+                    // [src, dst, count]
+                    Op::Movup(2), // [count, src, dst]
+                    Op::Exec("std::mem::memcopy".parse().unwrap()),
+                ]);
+                return;
             }
-            ty if !ty.is_pointer() => {
-                panic!("invalid operand to memcpy: expected pointer, got {ty}")
+            // Values which can be broken up into word-sized chunks can piggy-back on the
+            // intrinsic for word-sized values, but we have to compute a new `count` by
+            // multiplying `count` by the number of words in each value
+            size if size % 16 == 0 => {
+                let factor = size / 16;
+                self.emit_all(&[
+                    // [src, dst, count]
+                    Op::Movup(2), // [count, src, dst]
+                    Op::U32OverflowingMulImm(factor),
+                    Op::Assertz, // [count * (size / 16), src, dst]
+                    Op::Exec("std::mem::memcopy".parse().unwrap()),
+                ]);
+                return;
             }
-            ty => unimplemented!("memcpy support for pointers of type {ty} is not implemented"),
+            // For now, all other values fallback to the default implementation
+            _ => (),
         }
+
+        // Prepare to loop until `count` iterations have been performed
+        let current_block = self.current_block;
+        let body = self.function.create_block();
+        self.emit_all(&[
+            // [src, dst, count]
+            Op::PushU32(0),         // [i, src, dst, count]
+            Op::Dup(3),             // [count, i, src, dst, count]
+            Op::GteImm(Felt::ZERO), // [count > 0, i, src, dst, count]
+            Op::While(body),
+        ]);
+
+        // Loop body - compute address for next value to be written
+        self.switch_to_block(body);
+
+        // Compute the source and destination addresses
+        self.emit_all(&[
+            // [i, src, dst, count]
+            Op::Dup(2),              // [dst, i, src, dst, count]
+            Op::Dup(1),              // [i, dst, i, src, dst, count]
+            Op::PushU32(value_size), // [offset, i, dst, i, src, dst, count]
+            Op::U32OverflowingMadd,
+            Op::Assertz,             // [new_dst := i * offset + dst, i, src, dst, count]
+            Op::Dup(2),              // [src, new_dst, i, src, dst, count]
+            Op::Dup(2),              // [i, src, new_dst, i, src, dst, count]
+            Op::PushU32(value_size), // [offset, i, src, new_dst, i, src, dst, count]
+            Op::U32OverflowingMadd,
+            Op::Assertz, // [new_src := i * offset + src, new_dst, i, src, dst, count]
+        ]);
+
+        // Load the source value
+        self.stack.push(count.clone());
+        self.stack.push(dst.clone());
+        self.stack.push(src.clone());
+        self.stack.push(Type::U32);
+        self.stack.push(dst.clone());
+        self.stack.push(src.clone());
+        self.load(value_ty.clone()); // [value, new_dst, i, src, dst, count]
+
+        // Write to the destination
+        self.swap(1); // [new_dst, value, i, src, dst, count]
+        self.store(); // [i, src, dst, count]
+
+        // Increment iteration count, determine whether to continue loop
+        self.emit_all(&[
+            Op::U32WrappingAddImm(1),
+            Op::Dup(0), // [i++, i++, src, dst, count]
+            Op::Dup(4), // [count, i++, i++, src, dst, count]
+            Op::U32Gte, // [i++ >= count, i++, src, dst, count]
+        ]);
+
+        // Cleanup - at end of 'while' loop, drop the 4 operands remaining on the stack
+        self.switch_to_block(current_block);
+        self.dropn(4);
     }
 
     /// Store a quartet of machine words (32-bit elements) to the operand stack

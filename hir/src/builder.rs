@@ -652,14 +652,22 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         ))
     }
 
-    fn mem_grow(mut self, value: Value, span: SourceSpan) -> Value {
-        require_integer!(self, value, Type::U32);
+    /// Grow the global heap by `num_pages` pages, in 64kb units.
+    ///
+    /// Returns the previous size (in pages) of the heap, or -1 if the heap could not be grown.
+    fn mem_grow(mut self, num_pages: Value, span: SourceSpan) -> Value {
+        require_integer!(self, num_pages, Type::U32);
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
-            vlist.push(value, pool);
+            vlist.push(num_pages, pool);
         }
-        into_first_result!(self.PrimOp(Opcode::MemGrow, Type::I32, vlist, span,))
+        into_first_result!(self.PrimOp(Opcode::MemGrow, Type::I32, vlist, span))
+    }
+
+    /// Return the size of the global heap in pages, where each page is 64kb.
+    fn mem_size(self, span: SourceSpan) -> Value {
+        into_first_result!(self.PrimOp(Opcode::MemSize, Type::U32, ValueList::default(), span))
     }
 
     /// Get a [GlobalValue] which represents the address of a global variable whose symbol is `name`
@@ -861,6 +869,24 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.PrimOp(Opcode::Store, Type::Unit, vlist, span).0
     }
 
+    /// Writes `count` copies of `value` to memory starting at address `dst`.
+    ///
+    /// Each copy of `value` will be written to memory starting at the next aligned address from
+    /// the previous copy. This instruction will trap if the input address does not meet the
+    /// minimum alignment requirements of the type.
+    fn memset(mut self, dst: Value, count: Value, value: Value, span: SourceSpan) -> Inst {
+        require_integer!(self, count, Type::U32);
+        let dst_ty = require_pointee!(self, dst);
+        let value_ty = self.data_flow_graph().value_type(value);
+        assert_eq!(value_ty, dst_ty, "expected value to be a {}, got {}", dst_ty, value_ty);
+        let mut vlist = ValueList::default();
+        {
+            let dfg = self.data_flow_graph_mut();
+            vlist.extend([dst, count, value], &mut dfg.value_lists);
+        }
+        self.PrimOp(Opcode::MemSet, Type::Unit, vlist, span).0
+    }
+
     /// Copies `count` values from the memory at address `src`, to the memory at address `dst`.
     ///
     /// The unit size for `count` is determined by the `src` pointer type, i.e. a pointer to u8
@@ -963,6 +989,25 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let new_addr = self.ins().add_imm_checked(addr, Immediate::U32(offset), span);
         // Cast back to a pointer to the selected element type
         self.inttoptr(new_addr, ty, span)
+    }
+
+    /// Cast `arg` to a value of type `ty`
+    ///
+    /// NOTE: This is only supported for integral types currently, and the types must be of the same
+    /// size in bytes, i.e. i32 -> u32 or vice versa.
+    ///
+    /// The intention of bitcasts is to reinterpret a value with different semantics, with no
+    /// validation that is typically implied by casting from one type to another.
+    fn bitcast(self, arg: Value, ty: Type, span: SourceSpan) -> Value {
+        let arg_ty = self.data_flow_graph().value_type(arg);
+        let both_numeric = arg_ty.is_numeric() && ty.is_numeric();
+        assert!(
+            both_numeric,
+            "invalid bitcast, expected source and target types to be of the same type: value is \
+             of type {}, and target type is {}",
+            &arg_ty, &ty
+        );
+        into_first_result!(self.Unary(Opcode::Bitcast, ty, arg, span))
     }
 
     /// Cast `arg` to a value of type `ty`

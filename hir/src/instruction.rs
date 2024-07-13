@@ -353,6 +353,11 @@ pub enum Opcode {
     /// that point (assuming it is within the 32-bit address range), however this allows us to
     /// support code compiled for the `wasm32-unknown-unknown` target cleanly.
     MemGrow,
+    /// Corresponds to the WebAssembly `memory.size` instruction, this returns the current number
+    /// of pages allocated to the global heap. Each page is 64kb by default.
+    ///
+    /// This simply computes the offset in pages of the current global heap pointer
+    MemSize,
     /// This instruction is used to represent a global value in the IR
     ///
     /// See [GlobalValueOp] and [GlobalValueData] for details on what types of values are
@@ -362,6 +367,8 @@ pub enum Opcode {
     Load,
     /// Stores a value to a pointer to memory
     Store,
+    /// Writes `n` copies of a value starting at a given address in memory
+    MemSet,
     /// Copies `n` values of a given type from a source pointer to a destination pointer
     MemCpy,
     /// Casts a pointer value to an integral type
@@ -373,6 +380,14 @@ pub enum Opcode {
     /// It is not valid to perform a cast on any value other than a field element, see
     /// `Trunc`, `Zext`, and `Sext` for casts between machine integer types.
     Cast,
+    /// Reinterprets the bits of an integral type from signed to unsigned or vice versa
+    ///
+    /// This is intended for representing casts that have no validation whatsoever. In
+    /// particular, it is designed to support WebAssembly translation, which represents all
+    /// numeric types using signed types by default, and selectively interprets them as
+    /// unsigned as needed. This results in many casts where we do not want to generate
+    /// asserts and other forms of dynamic checks, as the types are already validated.
+    Bitcast,
     /// Truncates a larger integral type to a smaller integral type, e.g. i64 -> i32
     Trunc,
     /// Zero-extends a smaller unsigned integral type to a larger unsigned integral type, e.g. u32
@@ -471,8 +486,9 @@ impl Opcode {
             | Self::AssertEq
             | Self::Store
             | Self::Alloca
-            | Self::MemCpy
             | Self::MemGrow
+            | Self::MemSet
+            | Self::MemCpy
             | Self::Call
             | Self::Syscall
             | Self::Br
@@ -493,11 +509,13 @@ impl Opcode {
             | Self::ImmI64
             | Self::ImmFelt
             | Self::ImmF64
+            | Self::MemSize
             | Self::GlobalValue
             | Self::Load
             | Self::PtrToInt
             | Self::IntToPtr
             | Self::Cast
+            | Self::Bitcast
             | Self::Trunc
             | Self::Zext
             | Self::Sext
@@ -593,6 +611,7 @@ impl Opcode {
             | Self::PtrToInt
             | Self::IntToPtr
             | Self::Cast
+            | Self::Bitcast
             | Self::Trunc
             | Self::Zext
             | Self::Sext
@@ -612,8 +631,9 @@ impl Opcode {
             | Self::IsOdd => 1,
             // Select requires condition, arg1, and arg2
             Self::Select => 3,
-            // MemCpy requires source, destination, and arity
-            Self::MemCpy => 3,
+            // memset requires destination, arity, and value
+            // memcpy requires source, destination, and arity
+            Self::MemSet | Self::MemCpy => 3,
             // Calls are entirely variable
             Self::Call | Self::Syscall => 0,
             // Unconditional branches have no fixed arguments
@@ -625,7 +645,11 @@ impl Opcode {
             // Returns require at least one argument
             Self::Ret => 1,
             // The following require no arguments
-            Self::GlobalValue | Self::Alloca | Self::Unreachable | Self::InlineAsm => 0,
+            Self::MemSize
+            | Self::GlobalValue
+            | Self::Alloca
+            | Self::Unreachable
+            | Self::InlineAsm => 0,
         }
     }
 
@@ -638,6 +662,7 @@ impl Opcode {
             | Self::Assertz
             | Self::AssertEq
             | Self::Store
+            | Self::MemSet
             | Self::MemCpy
             | Self::Br
             | Self::CondBr
@@ -674,6 +699,7 @@ impl Opcode {
             | Self::PtrToInt
             | Self::IntToPtr
             | Self::Cast
+            | Self::Bitcast
             | Self::Trunc
             | Self::Zext
             | Self::Sext
@@ -693,7 +719,8 @@ impl Opcode {
             | Self::Bxor
             | Self::Rotl
             | Self::Rotr
-            | Self::MemGrow => {
+            | Self::MemGrow
+            | Self::MemSize => {
                 smallvec![ctrl_ty]
             }
             // These ops always return a usize/u32 type
@@ -736,12 +763,15 @@ impl fmt::Display for Opcode {
             Self::GlobalValue => f.write_str("global"),
             Self::Alloca => f.write_str("alloca"),
             Self::MemGrow => f.write_str("memory.grow"),
+            Self::MemSize => f.write_str("memory.size"),
             Self::Load => f.write_str("load"),
             Self::Store => f.write_str("store"),
+            Self::MemSet => f.write_str("memset"),
             Self::MemCpy => f.write_str("memcpy"),
             Self::PtrToInt => f.write_str("ptrtoint"),
             Self::IntToPtr => f.write_str("inttoptr"),
             Self::Cast => f.write_str("cast"),
+            Self::Bitcast => f.write_str("bitcast"),
             Self::Trunc => f.write_str("trunc"),
             Self::Zext => f.write_str("zext"),
             Self::Sext => f.write_str("sext"),

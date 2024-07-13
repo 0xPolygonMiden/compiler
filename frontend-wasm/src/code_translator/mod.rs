@@ -141,18 +141,12 @@ pub fn translate_operator(
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            // let arg = state.pop1_casted(U32, builder, span);
-            // state.push1(builder.ins().mem_grow(arg, span));
-            // TODO: temporary workaround until we have this instruction
-            // properly implemented in codegen Wasm `memory.grow` instruction is
-            // expected to return -1 if the memory cannot grow and the old mem
-            // page count if it can grow.
-            // Return total Miden memory size
-            state.push1(builder.ins().i32(mem_total_pages(), span));
+            let arg = state.pop1_casted(U32, builder, span);
+            state.push1(builder.ins().mem_grow(arg, span));
         }
         Operator::MemorySize { .. } => {
             // Return total Miden memory size
-            state.push1(builder.ins().i32(mem_total_pages(), span));
+            state.push1(builder.ins().mem_size(span));
         }
         /******************************* Bulk memory operations *********************************/
         Operator::MemoryCopy { dst_mem, src_mem } => {
@@ -170,22 +164,16 @@ pub fn translate_operator(
         }
         Operator::MemoryFill { mem } => {
             // See semantics at https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-fill
-
-            // This is a temporary workaround until we have this instruction
-            // properly implemented in IR. I encountered the Wasm `memory.fill`
-            // instruction in the `GlobalAlloc::alloc_zeroed` function, which is
-            // used to zero out the memory allocated by `GlobalAlloc::alloc`, but
-            // since the memory in Miden VM is guaranteed to be initialized to
-            // zeros we can ignore this instruction in this case for now
-            // see https://github.com/0xPolygonMiden/compiler/issues/156
             if *mem != 0 {
                 unsupported_diag!(diagnostics, "MemoryFill: only single memory is supported");
             }
-            let _num_bytes = state.pop1();
-            let val = state.pop1();
-            let _dst_i32 = state.pop1();
-            // Fail if the value is not zero, i.e. the memory is not zeroed
-            builder.ins().assert_eq_imm(Immediate::I32(0), val, span);
+            let num_bytes = state.pop1();
+            let value = state.pop1();
+            let dst_i32 = state.pop1();
+            let value = builder.ins().trunc(value, Type::U8, span);
+            let num_bytes = builder.ins().bitcast(num_bytes, Type::U32, span);
+            let dst = prepare_addr(dst_i32, &U8, None, builder, span);
+            builder.ins().memset(dst, num_bytes, value, span);
         }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
@@ -566,15 +554,6 @@ fn translate_br_table(
     }
     state.reachable = false;
     Ok(())
-}
-
-/// Return the total Miden VM memory size (2^32 addresses * word (4 felts) bytes) in 64KB pages
-const fn mem_total_pages() -> i32 {
-    const FELT_BYTES: u64 = 4; // felts are effectively 32 bits
-    const WORD_BYTES: u64 = 4 * FELT_BYTES; // 4 felts per word
-    const PAGE_SIZE: u64 = 64 * 1024;
-    const MEMORY_SIZE: u64 = u32::MAX as u64 * WORD_BYTES;
-    (MEMORY_SIZE / PAGE_SIZE) as i32
 }
 
 fn translate_load(
