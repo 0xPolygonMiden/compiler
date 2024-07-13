@@ -5,20 +5,25 @@ use proptest::{
 };
 
 use super::run_masm_vs_rust;
-use crate::{felt_conversion::TestFelt, CompilerTest};
+use crate::{felt_conversion::PushToStack, CompilerTest};
 
 macro_rules! test_bin_op {
-    ($name:ident, $op:tt, $op_ty:tt, $res_ty:tt, $a_range:expr, $b_range:expr) => {
-        concat_idents::concat_idents!(test_name = $name, _, $op_ty {
+    ($name:ident, $op:tt, $op_ty:ty, $res_ty:ty, $a_range:expr, $b_range:expr) => {
+        test_bin_op!($name, $op, $op_ty, $op_ty, $res_ty, $a_range, $b_range);
+    };
+
+    ($name:ident, $op:tt, $a_ty:ty, $b_ty:ty, $res_ty:tt, $a_range:expr, $b_range:expr) => {
+        concat_idents::concat_idents!(test_name = $name, _, $a_ty {
             #[test]
             fn test_name() {
                 let op_str = stringify!($op);
-                let op_ty_str = stringify!($op_ty);
+                let a_ty_str = stringify!($a_ty);
+                let b_ty_str = stringify!($b_ty);
                 let res_ty_str = stringify!($res_ty);
-                let main_fn = format!("(a: {op_ty_str}, b: {op_ty_str}) -> {res_ty_str} {{ a {op_str} b }}");
+                let main_fn = format!("(a: {a_ty_str}, b: {b_ty_str}) -> {res_ty_str} {{ a {op_str} b }}");
                 let mut test = CompilerTest::rust_fn_body(&main_fn);
                 // Test expected compilation artifacts
-                let artifact_name = format!("{}_{}", stringify!($name), stringify!($op_ty));
+                let artifact_name = format!("{}_{}", stringify!($name), stringify!($a_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
                 test.expect_ir(expect_file![format!("../../expected/{artifact_name}.hir")]);
                 test.expect_masm(expect_file![format!("../../expected/{artifact_name}.masm")]);
@@ -31,7 +36,9 @@ macro_rules! test_bin_op {
                         dbg!(a, b);
                         let rs_out = a $op b;
                         dbg!(&rs_out);
-                        let args = [TestFelt::from(a).0, TestFelt::from(b).0];
+                        let mut args = Vec::<midenc_hir::Felt>::default();
+                        PushToStack::try_push(&b, &mut args);
+                        PushToStack::try_push(&a, &mut args);
                         run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
                     });
                 match res {
@@ -69,7 +76,8 @@ macro_rules! test_unary_op {
                     .run(&($range), move |a| {
                         let rs_out = $op a;
                         dbg!(&rs_out);
-                        let args = [TestFelt::from(a).0];
+                        let mut args = Vec::<midenc_hir::Felt>::default();
+                        a.try_push(&mut args);
                         run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
                     });
                 match res {
@@ -109,7 +117,9 @@ macro_rules! test_func_two_arg {
                     .run(&(0..$a_ty::MAX/2, any::<$b_ty>()), move |(a, b)| {
                         let rust_out = $func(a, b);
                         dbg!(&rust_out);
-                        let args = [TestFelt::from(a).0, TestFelt::from(b).0];
+                        let mut args = Vec::<midenc_hir::Felt>::default();
+                        b.try_push(&mut args);
+                        a.try_push(&mut args);
                         run_masm(rust_out, &vm_program, ir_masm.clone(), &args)
                     });
                 match res {
@@ -131,8 +141,12 @@ macro_rules! test_bool_op_total {
 }
 
 macro_rules! test_int_op {
-    ($name:ident, $op:tt, $op_ty:tt, $a_range:expr, $b_range:expr) => {
+    ($name:ident, $op:tt, $op_ty:ty, $a_range:expr, $b_range:expr) => {
         test_bin_op!($name, $op, $op_ty, $op_ty, $a_range, $b_range);
+    };
+
+    ($name:ident, $op:tt, $a_ty:ty, $b_ty:ty, $a_range:expr, $b_range:expr) => {
+        test_bin_op!($name, $op, $a_ty, $b_ty, $a_ty, $a_range, $b_range);
     };
 }
 

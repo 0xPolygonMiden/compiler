@@ -7,7 +7,11 @@ use proptest::{
     test_runner::{TestError, TestRunner},
 };
 
-use crate::{felt_conversion::TestFelt, rust_masm_tests::run_masm_vs_rust, CompilerTest};
+use crate::{
+    felt_conversion::{PushToStack, TestFelt},
+    rust_masm_tests::run_masm_vs_rust,
+    CompilerTest,
+};
 
 /// Compiles, runs VM vs. Rust fuzzing the inputs via proptest
 macro_rules! test_bin_op {
@@ -36,7 +40,9 @@ macro_rules! test_bin_op {
                         let b_felt: Felt = b.0;
                         let rs_out = a_felt $op b_felt;
                         dbg!(&rs_out);
-                        let args = [a.0, b.0];
+                        let mut args = Vec::<midenc_hir::Felt>::default();
+                        PushToStack::try_push(&b, &mut args);
+                        PushToStack::try_push(&a, &mut args);
                         run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
                     });
                 match res {

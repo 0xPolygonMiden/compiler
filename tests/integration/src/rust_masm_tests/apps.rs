@@ -1,8 +1,14 @@
+use std::collections::VecDeque;
+
 use expect_test::expect_file;
 use midenc_hir::Felt;
 use proptest::{prelude::*, test_runner::TestRunner};
 
-use crate::{execute_vm, CompilerTest};
+use crate::{
+    execute_vm,
+    felt_conversion::{PopFromStack, PushToStack},
+    CompilerTest,
+};
 
 #[test]
 fn fib() {
@@ -19,8 +25,12 @@ fn fib() {
     TestRunner::default()
         .run(&(1u32..30), move |a| {
             let rust_out = miden_integration_tests_rust_fib::fib(a);
-            let args = [Felt::from(a)];
-            let vm_out: u32 = (*execute_vm(vm_program, &args).first().unwrap()).into();
+            let mut args = Vec::<Felt>::default();
+            PushToStack::try_push(&a, &mut args);
+
+            let mut out = VecDeque::from(execute_vm(vm_program, &args));
+            dbg!(&out);
+            let vm_out = u32::try_pop(&mut out).expect("invalid result");
             prop_assert_eq!(rust_out, vm_out);
             // args.reverse();
             // let emul_out: u32 =
