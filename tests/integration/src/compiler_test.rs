@@ -723,7 +723,7 @@ fn masm_prog_source(entrypoint: FunctionIdent) -> String {
     format!(
         r#"
 begin
-    exec.::{module_name}::{function_name}  
+    exec.::{module_name}::{function_name}
 end"#,
     )
 }

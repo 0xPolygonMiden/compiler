@@ -136,7 +136,7 @@ impl<'a> OpEmitter<'a> {
             return self.load_felt_imm(imm);
         }
 
-        self.emit(Op::Exec("::intrinsics::mem::load_felt".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::load_felt".parse().unwrap()));
     }
 
     fn load_felt_imm(&mut self, ptr: NativePtr) {
@@ -186,7 +186,7 @@ impl<'a> OpEmitter<'a> {
             return self.load_word_imm(imm);
         }
 
-        self.emit(Op::Exec("::intrinsics::mem::load_sw".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::load_sw".parse().unwrap()));
     }
 
     /// Loads a single 32-bit machine word from the given immediate address.
@@ -323,7 +323,7 @@ impl<'a> OpEmitter<'a> {
             return self.load_double_word_imm(imm);
         }
 
-        self.emit(Op::Exec("::intrinsics::mem::load_dw".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::load_dw".parse().unwrap()));
     }
 
     fn load_double_word_imm(&mut self, ptr: NativePtr) {
@@ -452,7 +452,7 @@ impl<'a> OpEmitter<'a> {
         if let Some(imm) = ptr {
             return self.load_quad_word_imm(imm);
         }
-        self.emit(Op::Exec("::intrinsics::mem::load_qw".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::load_qw".parse().unwrap()));
     }
 
     fn load_quad_word_imm(&mut self, ptr: NativePtr) {
@@ -1061,7 +1061,7 @@ impl<'a> OpEmitter<'a> {
         if let Some(imm) = ptr {
             return self.store_quad_word_imm(imm);
         }
-        self.emit(Op::Exec("::intrinsics::mem::store_qw".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::store_qw".parse().unwrap()));
     }
 
     fn store_quad_word_imm(&mut self, ptr: NativePtr) {
@@ -1082,7 +1082,7 @@ impl<'a> OpEmitter<'a> {
             return self.store_double_word_imm(imm);
         }
 
-        self.emit(Op::Exec("::intrinsics::mem::store_dw".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::store_dw".parse().unwrap()));
     }
 
     fn store_double_word_imm(&mut self, ptr: NativePtr) {
@@ -1106,7 +1106,7 @@ impl<'a> OpEmitter<'a> {
             return self.store_word_imm(imm);
         }
 
-        self.emit(Op::Exec("::intrinsics::mem::store_sw".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::store_sw".parse().unwrap()));
     }
 
     /// Stores a single 32-bit machine word to the given immediate address.
@@ -1330,7 +1330,7 @@ impl<'a> OpEmitter<'a> {
             return self.store_felt_imm(imm);
         }
 
-        self.emit(Op::Exec("::intrinsics::mem::store_felt".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::mem::store_felt".parse().unwrap()));
     }
 
     fn store_felt_imm(&mut self, ptr: NativePtr) {

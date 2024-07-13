@@ -503,7 +503,7 @@ impl<'a> OpEmitter<'a> {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
-                let u64_clz = "::std::math::u64::clz".parse().unwrap();
+                let u64_clz = "std::math::u64::clz".parse().unwrap();
                 // We decompose the 128-bit value into two 64-bit limbs, and use the standard
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all zero,
@@ -525,7 +525,7 @@ impl<'a> OpEmitter<'a> {
                 ]);
             }
             Type::I64 | Type::U64 => {
-                self.emit(Op::Exec("::std::math::u64::clz".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::clz".parse().unwrap()));
             }
             Type::I32 | Type::U32 => {
                 self.emit(Op::U32Clz);
@@ -571,7 +571,7 @@ impl<'a> OpEmitter<'a> {
         match arg.ty() {
             // The implementation here is effectively the same as `clz`, just with minor adjustments
             Type::I128 | Type::U128 => {
-                let u64_clo = "::std::math::u64::clo".parse().unwrap();
+                let u64_clo = "std::math::u64::clo".parse().unwrap();
                 // We decompose the 128-bit value into two 64-bit limbs, and use the standard
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all one,
@@ -592,7 +592,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Add,
                 ]);
             }
-            Type::I64 | Type::U64 => self.emit(Op::Exec("::std::math::u64::clo".parse().unwrap())),
+            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::clo".parse().unwrap())),
             Type::I32 | Type::U32 => {
                 self.emit(Op::U32Clo);
             }
@@ -646,7 +646,7 @@ impl<'a> OpEmitter<'a> {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
-                let u64_ctz = "::std::math::u64::ctz".parse().unwrap();
+                let u64_ctz = "std::math::u64::ctz".parse().unwrap();
                 // We decompose the 128-bit value into two 64-bit limbs, and use the standard
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all one,
@@ -668,7 +668,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Add,
                 ]);
             }
-            Type::I64 | Type::U64 => self.emit(Op::Exec("::std::math::u64::ctz".parse().unwrap())),
+            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::ctz".parse().unwrap())),
             Type::I32 | Type::U32 => self.emit(Op::U32Ctz),
             Type::I16 | Type::U16 => {
                 // Clamp the total number of trailing zeros to 16
@@ -722,7 +722,7 @@ impl<'a> OpEmitter<'a> {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
-                let u64_cto = "::std::math::u64::cto".parse().unwrap();
+                let u64_cto = "std::math::u64::cto".parse().unwrap();
                 // We decompose the 128-bit value into two 64-bit limbs, and use the standard
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all one,
@@ -744,7 +744,7 @@ impl<'a> OpEmitter<'a> {
                     Op::Add,
                 ]);
             }
-            Type::I64 | Type::U64 => self.emit(Op::Exec("::std::math::u64::cto".parse().unwrap())),
+            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::cto".parse().unwrap())),
             Type::I32 | Type::U32 | Type::I16 | Type::U16 | Type::I8 | Type::U8 => {
                 // The number of trailing ones is de-facto clamped by the bitwidth of
                 // the value, since all of the padding bits are leading zeros.
@@ -840,7 +840,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);
             }
             Type::I32 => {
-                self.emit(Op::Exec("::intrinsics::i32::pow2".parse().unwrap()));
+                self.emit(Op::Exec("intrinsics::i32::pow2".parse().unwrap()));
             }
             Type::U8 | Type::U16 => {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);

@@ -38,6 +38,7 @@ impl<'a> OpEmitter<'a> {
             Op::Dup(0),
             Op::Push(Felt::new(2u64.pow(n) - 1)),
             Op::U32Lte,
+            Op::Assert,
         ]);
     }
 
@@ -239,7 +240,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn lt_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::lt".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::lt".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a <= b` on the stack.
@@ -247,7 +248,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn lte_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::lte".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::lte".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a > b` on the stack.
@@ -255,7 +256,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn gt_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::gt".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::gt".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a >= b` on the stack.
@@ -263,7 +264,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn gte_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::gte".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::gte".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a == b` on the stack.
@@ -271,7 +272,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn eq_int64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::eq".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::eq".parse().unwrap()));
     }
 
     /// Pops a u64 value off the stack, `a`, and pushes `a == 0` on the stack.
@@ -279,7 +280,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the value is not a valid u64, execution will trap.
     #[inline]
     pub fn is_zero_int64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::eqz".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::eqz".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `min(a, b)` on the stack.
@@ -287,7 +288,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn min_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::min".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::min".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `max(a, b)` on the stack.
@@ -295,7 +296,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn max_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::max".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::max".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a != b` on the stack.
@@ -303,7 +304,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is checked, so if the values are not valid u64, execution will trap.
     #[inline]
     pub fn neq_int64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::neq".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::neq".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and performs `a + b`.
@@ -324,15 +325,15 @@ impl<'a> OpEmitter<'a> {
         match overflow {
             Overflow::Checked => {
                 self.emit_all(&[
-                    Op::Exec("::std::math::u64::overflowing_add".parse().unwrap()),
+                    Op::Exec("std::math::u64::overflowing_add".parse().unwrap()),
                     Op::Assertz,
                 ]);
             }
             Overflow::Unchecked | Overflow::Wrapping => {
-                self.emit(Op::Exec("::std::math::u64::wrapping_add".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::wrapping_add".parse().unwrap()));
             }
             Overflow::Overflowing => {
-                self.emit(Op::Exec("::std::math::u64::overflowing_add".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::overflowing_add".parse().unwrap()));
             }
         }
     }
@@ -355,15 +356,15 @@ impl<'a> OpEmitter<'a> {
         match overflow {
             Overflow::Checked => {
                 self.emit_all(&[
-                    Op::Exec("::std::math::u64::overflowing_sub".parse().unwrap()),
+                    Op::Exec("std::math::u64::overflowing_sub".parse().unwrap()),
                     Op::Assertz,
                 ]);
             }
             Overflow::Unchecked | Overflow::Wrapping => {
-                self.emit(Op::Exec("::std::math::u64::wrapping_sub".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::wrapping_sub".parse().unwrap()));
             }
             Overflow::Overflowing => {
-                self.emit(Op::Exec("::std::math::u64::overflowing_sub".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::overflowing_sub".parse().unwrap()));
             }
         }
     }
@@ -386,15 +387,19 @@ impl<'a> OpEmitter<'a> {
         match overflow {
             Overflow::Checked => {
                 self.emit_all(&[
-                    Op::Exec("::std::math::u64::overflowing_mul".parse().unwrap()),
+                    Op::Exec("std::math::u64::overflowing_mul".parse().unwrap()),
+                    Op::Exec("std::math::u64::overflowing_eqz".parse().unwrap()),
                     Op::Assertz,
                 ]);
             }
             Overflow::Unchecked | Overflow::Wrapping => {
-                self.emit(Op::Exec("::std::math::u64::wrapping_mul".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::wrapping_mul".parse().unwrap()));
             }
             Overflow::Overflowing => {
-                self.emit(Op::Exec("::std::math::u64::overflowing_mul".parse().unwrap()));
+                self.emit_all(&[
+                    Op::Exec("std::math::u64::overflowing_mul".parse().unwrap()),
+                    Op::Exec("std::math::u64::overflowing_eqz".parse().unwrap()),
+                ]);
             }
         }
     }
@@ -405,7 +410,7 @@ impl<'a> OpEmitter<'a> {
     /// Both the operands and result are validated to ensure they are valid u64 values.
     #[inline]
     pub fn checked_div_u64(&mut self) {
-        self.emit_all(&[Op::U32Assertw, Op::Exec("::std::math::u64::div".parse().unwrap())]);
+        self.emit_all(&[Op::U32Assertw, Op::Exec("std::math::u64::div".parse().unwrap())]);
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a / b` on the
@@ -414,7 +419,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is unchecked, it is up to the caller to ensure validity of the operands.
     #[inline]
     pub fn unchecked_div_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::div".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::div".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a % b` on the
@@ -423,7 +428,7 @@ impl<'a> OpEmitter<'a> {
     /// Both the operands and result are validated to ensure they are valid u64 values.
     #[inline]
     pub fn checked_mod_u64(&mut self) {
-        self.emit_all(&[Op::U32Assertw, Op::Exec("::std::math::u64::mod".parse().unwrap())]);
+        self.emit_all(&[Op::U32Assertw, Op::Exec("std::math::u64::mod".parse().unwrap())]);
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes the result of `a % b` on the
@@ -432,7 +437,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is unchecked, it is up to the caller to ensure validity of the operands.
     #[inline]
     pub fn unchecked_mod_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::mod".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::mod".parse().unwrap()));
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
@@ -441,7 +446,7 @@ impl<'a> OpEmitter<'a> {
     /// Both the operands and result are validated to ensure they are valid u64 values.
     #[inline]
     pub fn checked_divmod_u64(&mut self) {
-        self.emit_all(&[Op::U32Assertw, Op::Exec("::std::math::u64::divmod".parse().unwrap())]);
+        self.emit_all(&[Op::U32Assertw, Op::Exec("std::math::u64::divmod".parse().unwrap())]);
     }
 
     /// Pops two u64 values off the stack, `b` and `a`, and pushes `a / b`, then `a % b` on the
@@ -450,7 +455,7 @@ impl<'a> OpEmitter<'a> {
     /// This operation is unchecked, it is up to the caller to ensure validity of the operands.
     #[inline]
     pub fn unchecked_divmod_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::divmod".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::divmod".parse().unwrap()));
     }
 
     /// Pops two 64-bit values off the stack, `b` and `a`, and pushes `a & b` on the stack.
@@ -458,7 +463,7 @@ impl<'a> OpEmitter<'a> {
     /// Both the operands and result are validated to ensure they are valid int64 values.
     #[inline]
     pub fn band_int64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::and".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::and".parse().unwrap()));
     }
 
     /// Pops two 64-bit values off the stack, `b` and `a`, and pushes `a | b` on the stack.
@@ -466,7 +471,7 @@ impl<'a> OpEmitter<'a> {
     /// Both the operands and result are validated to ensure they are valid int64 values.
     #[inline]
     pub fn bor_int64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::or".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::or".parse().unwrap()));
     }
 
     /// Pops two 64-bit values off the stack, `b` and `a`, and pushes `a ^ b` on the stack.
@@ -474,7 +479,7 @@ impl<'a> OpEmitter<'a> {
     /// Both the operands and result are validated to ensure they are valid int64 values.
     #[inline]
     pub fn bxor_int64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::xor".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::xor".parse().unwrap()));
     }
 
     /// Pops a u32 value, `b`, and a u64 value, `a`, off the stack and pushes `a << b` on the stack.
@@ -484,7 +489,7 @@ impl<'a> OpEmitter<'a> {
     /// The operation will trap if the shift value is > 63.
     #[inline]
     pub fn shl_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::shl".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::shl".parse().unwrap()));
     }
 
     /// Pops a u32 value, `b`, and a u64 value, `a`, off the stack and pushes `a >> b` on the stack.
@@ -494,7 +499,7 @@ impl<'a> OpEmitter<'a> {
     /// The operation will trap if the shift value is > 63.
     #[inline]
     pub fn shr_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::shr".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::shr".parse().unwrap()));
     }
 
     /// Pops a u32 value, `b`, and a u64 value, `a`, off the stack and rotates the bitwise
@@ -504,7 +509,7 @@ impl<'a> OpEmitter<'a> {
     /// The operation will trap if the rotation value is > 63.
     #[inline]
     pub fn rotl_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::rotl".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::rotl".parse().unwrap()));
     }
 
     /// Pops a u32 value, `b`, and a u64 value, `a`, off the stack and rotates the bitwise
@@ -514,7 +519,7 @@ impl<'a> OpEmitter<'a> {
     /// The operation will trap if the rotation value is > 63.
     #[inline]
     pub fn rotr_u64(&mut self) {
-        self.emit(Op::Exec("::std::math::u64::rotr".parse().unwrap()));
+        self.emit(Op::Exec("std::math::u64::rotr".parse().unwrap()));
     }
 }
 

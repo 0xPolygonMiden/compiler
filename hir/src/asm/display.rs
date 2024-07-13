@@ -141,6 +141,8 @@ impl<'a> DisplayOp<'a> {
         }
     }
 
+    // TODO(pauls): Remove when we no longer need to deal with referencing aliased identifiers
+    #[allow(unused)]
     pub fn get_module_alias(&self, module: Ident) -> Symbol {
         self.imports
             .and_then(|imports| imports.alias(&module))
@@ -257,10 +259,9 @@ impl<'a> PrettyPrint for DisplayOp<'a> {
                 if self.is_local_module(module) {
                     text(format!("{op}")) + const_text(".") + function
                 } else {
-                    let alias = self.get_module_alias(*module);
                     text(format!("{op}"))
-                        + const_text(".")
-                        + display(alias)
+                        + const_text(".::")
+                        + display(module.as_str())
                         + const_text("::")
                         + function
                 }
