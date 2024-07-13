@@ -108,6 +108,24 @@ pub fn translate_operator(
             let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
+        Operator::TypedSelect { ty } => {
+            let (arg1, arg2, cond) = state.pop3();
+            match ty {
+                wasmparser::ValType::F32 => {
+                    let cond = builder.ins().gt_imm(cond, Immediate::Felt(midenc_hir::Felt::ZERO), span);
+                    state.push1(builder.ins().select(cond, arg1, arg2, span));
+                }
+                wasmparser::ValType::I32 => {
+                    let cond = builder.ins().neq_imm(cond, Immediate::I32(0), span);
+                    state.push1(builder.ins().select(cond, arg1, arg2, span));
+                }
+                wasmparser::ValType::I64 => {
+                    let cond = builder.ins().neq_imm(cond, Immediate::I64(0), span);
+                    state.push1(builder.ins().select(cond, arg1, arg2, span));
+                }
+                ty => panic!("unsupported value type for 'select': {ty}"),
+            }
+        }
         Operator::Unreachable => {
             builder.ins().unreachable(span);
             state.reachable = false;
