@@ -1,7 +1,7 @@
 # Compiling WebAssembly to Miden Assembly
 
 This chapter will walk you through compiling a WebAssembly (Wasm) module, in binary form
-(i.e. a `.wasm` file), to an corresponding Miden Assembly (Masm) module (i.e. a `.masm` file).
+(i.e. a `.wasm` file), to a corresponding Miden Assembly (Masm) module (i.e. a `.masm` file).
 
 ## Setup
 
@@ -80,7 +80,7 @@ the code we generate will match what you would write by hand.
 > [!NOTE]
 > This example is more complicated than it needs to be at the moment, bear with us!
 
-Assuming you have followed the instruction for installing the Miden VM locally,
+Assuming you have followed the instructions for installing the Miden VM locally,
 we can test this program out as follows:
 
 First, we need to define a program to link our `wasm_fib.masm` module into, since
