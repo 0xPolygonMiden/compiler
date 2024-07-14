@@ -287,7 +287,7 @@ constraints. The contents of any padding is undefined.</p>
 <ul>
 <li>The address space is linear, with addresses starting at zero, and ranging up to 2^32-1</li>
 <li>There is no memory protection per se, you either have full read/write access, or no access to a specific memory context</li>
-<li>How memory is used is completely up the program being executed</li>
+<li>How memory is used is completely up to the program being executed</li>
 </ul>
 <p>This is where it begins to differ though, and takes on qualities unique to Miden (in part, or whole):</p>
 <ul>
@@ -366,9 +366,9 @@ are allocated space in a reserved region of linear memory in a single consecutiv
 and because Miden is a Harvard architecture machine, there are no return addresses. Instead, languages (such as C) which have the concept
 of a stack frame with implications for the semantics of say, taking the address of a local variable, will need to emit code in function
 prologues and epilogues to maintain a shadow stack in Miden's linear memory. If all you need is local variables, you can get away with
-leaning on Miden's notion of local variables without implenting a shadow stack.</p>
+leaning on Miden's notion of local variables without implementing a shadow stack.</p>
 <p>Because there are no registers, the notion of callee-saved or caller-saved registers does not have a direct equivalent in Miden. However,
-in its place, a somewhat equivalent set of rules defines the contract betweeen caller and callee in terms of the state of the operand stack,
+in its place, a somewhat equivalent set of rules defines the contract between caller and callee in terms of the state of the operand stack,
 those are described below in the section covering the operand stack.</p>
 <h3 id="the-shadow-stack"><a class="header" href="#the-shadow-stack">The shadow stack</a></h3>
 <p>Miden is a <a href="https://en.wikipedia.org/wiki/Harvard_architecture">Harvard</a> architecture; as such, code and data are not in the same memory
@@ -424,7 +424,7 @@ Miden IR, which has a fairly expressive type system more or less equivalent to t
 <ul>
 <li>The calling convention required to call the function</li>
 <li>The number and types of the function arguments</li>
-<li>The type of value, if any, returned by by the function, and whether it is returned by value or reference</li>
+<li>The type of value, if any, returned by the function, and whether it is returned by value or reference</li>
 </ul>
 <p>The following table relates IR types to how they are expected to be passed from the caller to the callee, and vice versa:</p>
 <div class="table-wrapper"><table><thead><tr><th>Type</th><th>Parameter</th><th>Result</th></tr></thead><tbody>

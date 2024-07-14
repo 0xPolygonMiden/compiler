@@ -264,7 +264,7 @@ in binary (i.e. <code>.wasm</code>) form. The Miden compiler has a frontend whic
 modules and compile them on to Miden Assembly, which will be covered in the next chapter.</p>
 <h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
 <p>First, let's set up a simple Rust project that contains an implementation of the Fibonacci
-function (I know, its overdone, but we're trying to keep things as simple as possible to
+function (I know, it's overdone, but we're trying to keep things as simple as possible to
 make it easier to show the results at each step, so bear with me):</p>
 <p>Start by creating a new library crate:</p>
 <pre><code>cargo new --lib wasm-fib &amp;&amp; cd wasm-fib
@@ -293,7 +293,7 @@ crate-type = ["cdylib"]
 [dependencies]
 # Use a tiny allocator in place of the default one, if we want
 # to make use of types in the `alloc` crate, e.g. String. We
-# don't need that now, but its good information to have in hand.
+# don't need that now, but it's good information to have in hand.
 #wee_alloc = "0.4"
 
 # When we build for Wasm, we'll use the release profile
@@ -422,7 +422,7 @@ it to Miden Assembly using <code>midenc</code>!</p>
 <div style="break-before: page; page-break-before: always;"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
 <h1 id="compiling-webassembly-to-miden-assembly"><a class="header" href="#compiling-webassembly-to-miden-assembly">Compiling WebAssembly to Miden Assembly</a></h1>
 <p>This chapter will walk you through compiling a WebAssembly (Wasm) module, in binary form
-(i.e. a <code>.wasm</code> file), to an corresponding Miden Assembly (Masm) module (i.e. a <code>.masm</code> file).</p>
+(i.e. a <code>.wasm</code> file), to a corresponding Miden Assembly (Masm) module (i.e. a <code>.masm</code> file).</p>
 <h2 id="setup-1"><a class="header" href="#setup-1">Setup</a></h2>
 <p>We will be making use of the example crate we created in <a href="guides/rust_to_wasm.html">Compiling Rust to WebAssembly</a>,
 which produces a small, lightweight Wasm module that is easy to examine in Wasm
@@ -491,7 +491,7 @@ the code we generate will match what you would write by hand.</p>
 <p>[!NOTE]
 This example is more complicated than it needs to be at the moment, bear with us!</p>
 </blockquote>
-<p>Assuming you have followed the instruction for installing the Miden VM locally,
+<p>Assuming you have followed the instructions for installing the Miden VM locally,
 we can test this program out as follows:</p>
 <p>First, we need to define a program to link our <code>wasm_fib.masm</code> module into, since
 it is not a program, but a library module:</p>
@@ -689,7 +689,7 @@ constraints. The contents of any padding is undefined.</p>
 <ul>
 <li>The address space is linear, with addresses starting at zero, and ranging up to 2^32-1</li>
 <li>There is no memory protection per se, you either have full read/write access, or no access to a specific memory context</li>
-<li>How memory is used is completely up the program being executed</li>
+<li>How memory is used is completely up to the program being executed</li>
 </ul>
 <p>This is where it begins to differ though, and takes on qualities unique to Miden (in part, or whole):</p>
 <ul>
@@ -768,9 +768,9 @@ are allocated space in a reserved region of linear memory in a single consecutiv
 and because Miden is a Harvard architecture machine, there are no return addresses. Instead, languages (such as C) which have the concept
 of a stack frame with implications for the semantics of say, taking the address of a local variable, will need to emit code in function
 prologues and epilogues to maintain a shadow stack in Miden's linear memory. If all you need is local variables, you can get away with
-leaning on Miden's notion of local variables without implenting a shadow stack.</p>
+leaning on Miden's notion of local variables without implementing a shadow stack.</p>
 <p>Because there are no registers, the notion of callee-saved or caller-saved registers does not have a direct equivalent in Miden. However,
-in its place, a somewhat equivalent set of rules defines the contract betweeen caller and callee in terms of the state of the operand stack,
+in its place, a somewhat equivalent set of rules defines the contract between caller and callee in terms of the state of the operand stack,
 those are described below in the section covering the operand stack.</p>
 <h3 id="the-shadow-stack"><a class="header" href="#the-shadow-stack">The shadow stack</a></h3>
 <p>Miden is a <a href="https://en.wikipedia.org/wiki/Harvard_architecture">Harvard</a> architecture; as such, code and data are not in the same memory
@@ -826,7 +826,7 @@ Miden IR, which has a fairly expressive type system more or less equivalent to t
 <ul>
 <li>The calling convention required to call the function</li>
 <li>The number and types of the function arguments</li>
-<li>The type of value, if any, returned by by the function, and whether it is returned by value or reference</li>
+<li>The type of value, if any, returned by the function, and whether it is returned by value or reference</li>
 </ul>
 <p>The following table relates IR types to how they are expected to be passed from the caller to the callee, and vice versa:</p>
 <div class="table-wrapper"><table><thead><tr><th>Type</th><th>Parameter</th><th>Result</th></tr></thead><tbody>
