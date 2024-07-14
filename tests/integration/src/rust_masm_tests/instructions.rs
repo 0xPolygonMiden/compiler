@@ -92,7 +92,6 @@ macro_rules! test_unary_op {
     };
 }
 
-#[allow(unused_macros)]
 macro_rules! test_func_two_arg {
     ($name:ident, $func:path, $a_ty:tt, $b_ty:tt, $res_ty:tt) => {
         concat_idents::concat_idents!(test_name = $name, _, $a_ty, _, $b_ty {
@@ -120,7 +119,7 @@ macro_rules! test_func_two_arg {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         b.try_push(&mut args);
                         a.try_push(&mut args);
-                        run_masm(rust_out, &vm_program, ir_masm.clone(), &args)
+                        run_masm_vs_rust(rust_out, &vm_program, ir_masm.clone(), &args)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
@@ -162,112 +161,92 @@ macro_rules! test_unary_op_total {
     };
 }
 
-// 64-bit ops are not implemented yet
-// test_bool_op!(ge, >=, u64);
-// test_bool_op!(ge, >=, i64);
-// test_bool_op!(gt, >, u64);
-// test_bool_op!(gt, >, i64);
-// test_bool_op!(le, <=, u64);
-// test_bool_op!(le, <=, i64);
-// test_bool_op!(lt, <, u64);
-// test_bool_op!(lt, <, i64);
-// test_int_op!(add, +, u64);
-// test_int_op!(add, +, i64);
-// test_int_op!(sub, -, u64);
-// test_int_op!(sub, -, i64);
-// test_int_op!(mul, *, u64);
-// test_int_op!(mul, *, i64);
-// test_int_op!(div, /, u64);
-// test_int_op!(div, /, i64);
-// test_int_op!(rem, %, u64);
-// test_int_op!(rem, %, i64);
-// test_unary_op!(neg, -, u64);
-// test_unary_op!(neg, -, i64);
-// test_unary_op!(not, !, u64);
-// test_unary_op!(not, !, i64);
-// test_int_op!(shl, <<, u64);
-// test_int_op!(shl, <<, i64);
-// test_int_op!(shr, >>, u64);
-// test_int_op!(shr, >>, i64);
-// test_unary_op!(neg, -, i64);
-
-// MASM compilation error (missing import for intrinsic)
-//
-// Comparison ops
-//
-// test_bool_op!(ge, >=, i32);
-// test_bool_op!(ge, >=, i16);
-// test_bool_op!(ge, >=, i8);
-//
-// test_bool_op!(gt, >, i32);
-// test_bool_op!(gt, >, i16);
-// test_bool_op!(gt, >, i8);
-//
-// test_bool_op!(le, <=, i32);
-// test_bool_op!(le, <=, i16);
-// test_bool_op!(le, <=, i8);
-//
-// test_bool_op!(lt, <, i32);
-// test_bool_op!(lt, <, i16);
-// test_bool_op!(lt, <, i8);
-//
 // Arithmetic ops
 //
-// test_int_op!(mul, *, u32);
-// test_int_op!(mul, *, u16);
-// test_int_op!(mul, *, u8);
-// test_int_op!(mul, *, i32);
-// test_int_op!(mul, *, i16);
-// test_int_op!(mul, *, i8);
-//
-// Bitwise ops
-//
-// test_int_op!(shr, >>, i8);
-// test_int_op!(shr, >>, i16);
-// test_int_op!(shr, >>, i32);
-//
-// test_unary_op!(not, !, u64);
-// test_unary_op!(not, !, i64);
+// NOTE: We're testing a limited range of inputs for now to sidestep overflow
 
-// stdlib is not linked (missing import for stdlib)
-// test_int_op!(and, &, u64);
-// test_int_op!(and, &, i64);
-// test_int_op!(or, |, u64);
-// test_int_op!(or, |, i64);
-// test_int_op!(xor, ^, u64);
-// test_int_op!(xor, ^, i64);
+test_int_op!(add, +, u64, 0..=u64::MAX/2, 0..=u64::MAX/2);
+test_int_op!(add, +, i64, i64::MIN/2..=i64::MAX/2, -1..=i64::MAX/2);
+test_int_op!(add, +, u32, 0..=u32::MAX/2, 0..=u32::MAX/2);
+test_int_op!(add, +, u16, 0..=u16::MAX/2, 0..=u16::MAX/2);
+test_int_op!(add, +, u8, 0..=u8::MAX/2, 0..=u8::MAX/2);
+test_int_op!(add, +, i32, 0..=i32::MAX/2, 0..=i32::MAX/2);
+test_int_op!(add, +, i16, 0..=i16::MAX/2, 0..=i16::MAX/2);
+test_int_op!(add, +, i8, 0..=i8::MAX/2, 0..=i8::MAX/2);
+
+test_int_op!(sub, -, u64, u64::MAX/2..=u64::MAX, 0..=u64::MAX/2);
+test_int_op!(sub, -, i64, i64::MIN/2..=i64::MAX/2, -1..=i64::MAX/2);
+test_int_op!(sub, -, u32, u32::MAX/2..=u32::MAX, 0..=u32::MAX/2);
+test_int_op!(sub, -, u16, u16::MAX/2..=u16::MAX, 0..=u16::MAX/2);
+test_int_op!(sub, -, u8, u8::MAX/2..=u8::MAX, 0..=u8::MAX/2);
+test_int_op!(sub, -, i32, i32::MIN..=0, i32::MIN..=0);
+test_int_op!(sub, -, i16, i16::MIN..=0, i16::MIN..=0);
+test_int_op!(sub, -, i8, i8::MIN..=0, i8::MIN..=0);
+
+test_int_op!(mul, *, u64, 0u64..=16656, 0u64..=16656);
+test_int_op!(mul, *, i64, -65656i64..=65656, -65656i64..=65656);
+test_int_op!(mul, *, u32, 0u32..=16656, 0u32..=16656);
+test_int_op!(mul, *, u16, 0u16..=255, 0u16..=255);
+test_int_op!(mul, *, u8, 0u8..=16, 0u8..=15);
+test_int_op!(mul, *, i32, -16656i32..=16656, -16656i32..=16656);
+//test_int_op!(mul, *, i16);
+//test_int_op!(mul, *, i8);
 
 // TODO: build with cargo to avoid core::panicking
 // TODO: separate macro for div and rem tests to filter out division by zero
 // test_int_op!(div, /, u32);
 // ...
 // add tests for div, rem,
+//test_int_op!(div, /, u64, 0..=u64::MAX, 1..=u64::MAX);
+//test_int_op!(div, /, i64, i64::MIN..=i64::MAX, 1..=i64::MAX);
+//test_int_op!(rem, %, u64, 0..=u64::MAX, 1..=u64::MAX);
+//test_int_op!(rem, %, i64, i64::MIN..=i64::MAX, 1..=i64::MAX);
+
+test_unary_op!(neg, -, i64, (i64::MIN + 1)..=i64::MAX);
+
+// Comparison ops
 
 // enable when https://github.com/0xPolygonMiden/compiler/issues/56 is fixed
-//test_func_two_arg!(min, core::cmp::min, i32, i32, i32);
-// test_func_two_arg!(min, core::cmp::min, u32, u32, u32);
-// test_func_two_arg!(min, core::cmp::min, u8, u8, u8);
-// test_func_two_arg!(max, core::cmp::max, u8, u8, u8);
+test_func_two_arg!(min, core::cmp::min, i32, i32, i32);
+test_func_two_arg!(min, core::cmp::min, u32, u32, u32);
+test_func_two_arg!(min, core::cmp::min, u8, u8, u8);
+test_func_two_arg!(max, core::cmp::max, u8, u8, u8);
 
-// TODO: fails, when a or b => i32::MAX, see https://github.com/0xPolygonMiden/compiler/issues/174
-// test_bool_op!(ge, >=, u32);
+test_bool_op_total!(ge, >=, u64);
+test_bool_op_total!(ge, >=, i64);
+test_bool_op_total!(ge, >=, u32);
+test_bool_op_total!(ge, >=, i32);
 test_bool_op_total!(ge, >=, u16);
 test_bool_op_total!(ge, >=, u8);
+//test_bool_op_total!(ge, >=, i16);
+//test_bool_op_total!(ge, >=, i8);
 
-// TODO: fails, when a or b => i32::MAX, see https://github.com/0xPolygonMiden/compiler/issues/174
-// test_bool_op!(gt, >, u32);
+test_bool_op_total!(gt, >, u64);
+test_bool_op_total!(gt, >, i64);
+test_bool_op_total!(gt, >, u32);
 test_bool_op_total!(gt, >, u16);
+test_bool_op_total!(gt, >, i32);
 test_bool_op_total!(gt, >, u8);
+//test_bool_op_total!(gt, >, i16);
+//test_bool_op_total!(gt, >, i8);
 
-// TODO: fails, when a or b => i32::MAX, see https://github.com/0xPolygonMiden/compiler/issues/174
-// test_bool_op!(le, <=, u32);
+test_bool_op_total!(le, <=, u64);
+test_bool_op_total!(le, <=, i64);
+test_bool_op_total!(le, <=, u32);
+test_bool_op_total!(le, <=, i32);
 test_bool_op_total!(le, <=, u16);
 test_bool_op_total!(le, <=, u8);
+//test_bool_op_total!(le, <=, i16);
+//test_bool_op_total!(le, <=, i8);
 
-// TODO: fails, when a or b => i32::MAX, see https://github.com/0xPolygonMiden/compiler/issues/174
-// test_bool_op!(lt, <, u32);
+test_bool_op_total!(lt, <, u64);
+test_bool_op_total!(lt, <, i64);
+test_bool_op_total!(lt, <, u32);
+test_bool_op_total!(lt, <, i32);
 test_bool_op_total!(lt, <, u16);
 test_bool_op_total!(lt, <, u8);
+//test_bool_op_total!(lt, <, i16);
+//test_bool_op_total!(lt, <, i8);
 
 test_bool_op_total!(eq, ==, u64);
 test_bool_op_total!(eq, ==, u32);
@@ -278,66 +257,70 @@ test_bool_op_total!(eq, ==, i32);
 test_bool_op_total!(eq, ==, i16);
 test_bool_op_total!(eq, ==, i8);
 
-test_int_op!(add, +, u32, 0..=u32::MAX/2, 0..=u32::MAX/2);
-test_int_op!(add, +, u16, 0..=u16::MAX/2, 0..=u16::MAX/2);
-test_int_op!(add, +, u8, 0..=u8::MAX/2, 0..=u8::MAX/2);
-test_int_op!(add, +, i32, 0..=i32::MAX/2, 0..=i32::MAX/2);
-test_int_op!(add, +, i16, 0..=i16::MAX/2, 0..=i16::MAX/2);
-test_int_op!(add, +, i8, 0..=i8::MAX/2, 0..=i8::MAX/2);
-
-test_int_op!(sub, -, u32, u32::MAX/2..=u32::MAX, 0..=u32::MAX/2);
-test_int_op!(sub, -, u16, u16::MAX/2..=u16::MAX, 0..=u16::MAX/2);
-test_int_op!(sub, -, u8, u8::MAX/2..=u8::MAX, 0..=u8::MAX/2);
-test_int_op!(sub, -, i32, i32::MIN..=0, i32::MIN..=0);
-test_int_op!(sub, -, i16, i16::MIN..=0, i16::MIN..=0);
-test_int_op!(sub, -, i8, i8::MIN..=0, i8::MIN..=0);
+// Logical ops
 
 test_bool_op_total!(and, &&, bool);
 test_bool_op_total!(or, ||, bool);
 test_bool_op_total!(xor, ^, bool);
 
-test_int_op_total!(and, &, u8);
-test_int_op_total!(and, &, u16);
-test_int_op_total!(and, &, u32);
-test_int_op_total!(and, &, i8);
-test_int_op_total!(and, &, i16);
-test_int_op_total!(and, &, i32);
+// Bitwise ops
 
-test_int_op_total!(or, |, u8);
-test_int_op_total!(or, |, u16);
-test_int_op_total!(or, |, u32);
-test_int_op_total!(or, |, i8);
-test_int_op_total!(or, |, i16);
-test_int_op_total!(or, |, i32);
+test_int_op_total!(band, &, u8);
+test_int_op_total!(band, &, u16);
+test_int_op_total!(band, &, u32);
+test_int_op_total!(band, &, u64);
+test_int_op_total!(band, &, i8);
+test_int_op_total!(band, &, i16);
+test_int_op_total!(band, &, i32);
+test_int_op_total!(band, &, i64);
 
-test_int_op_total!(xor, ^, u8);
-test_int_op_total!(xor, ^, u16);
-test_int_op_total!(xor, ^, u32);
-test_int_op_total!(xor, ^, i8);
-test_int_op_total!(xor, ^, i16);
-test_int_op_total!(xor, ^, i32);
+test_int_op_total!(bor, |, u8);
+test_int_op_total!(bor, |, u16);
+test_int_op_total!(bor, |, u32);
+test_int_op_total!(bor, |, u64);
+test_int_op_total!(bor, |, i8);
+test_int_op_total!(bor, |, i16);
+test_int_op_total!(bor, |, i32);
+test_int_op_total!(bor, |, i64);
 
-test_int_op!(shl, <<, u8, 0..u8::MAX, 0..8);
-test_int_op!(shl, <<, u16, 0..u16::MAX, 0..16);
-test_int_op!(shl, <<, u32, 0..u32::MAX, 0..32);
-test_int_op!(shl, <<, i8, 0..i8::MAX, 0..8);
-test_int_op!(shl, <<, i16, 0..i16::MAX, 0..16);
-test_int_op!(shl, <<, i32, 0..i32::MAX, 0..32);
+test_int_op_total!(bxor, ^, u8);
+test_int_op_total!(bxor, ^, u16);
+test_int_op_total!(bxor, ^, u32);
+test_int_op_total!(bxor, ^, u64);
+test_int_op_total!(bxor, ^, i8);
+test_int_op_total!(bxor, ^, i16);
+test_int_op_total!(bxor, ^, i32);
+test_int_op_total!(bxor, ^, i64);
 
-test_int_op!(shr, >>, u8, 0..u8::MAX, 0..8);
+test_int_op!(shl, <<, u64, 0..=u64::MAX, 0u64..=63);
+test_int_op!(shl, <<, u32, 0..u32::MAX, 0u32..32);
+test_int_op!(shl, <<, u16, 0..u16::MAX, 0u16..16);
+test_int_op!(shl, <<, u8, 0..u8::MAX, 0u8..8);
+test_int_op!(shl, <<, i64, i64::MIN..=i64::MAX, 0u64..=63);
+test_int_op!(shl, <<, i32, 0..i32::MAX, 0u32..32);
+test_int_op!(shl, <<, i16, 0..i16::MAX, 0u16..16);
+test_int_op!(shl, <<, i8, 0..i8::MAX, 0u8..8);
+
+test_int_op!(shr, >>, i64, i64::MIN..=i64::MAX, 0u64..=63);
+test_int_op!(shr, >>, u64, 0..=u64::MAX, 0u64..=63);
+test_int_op!(shr, >>, u32, 0..u32::MAX, 0..32);
 test_int_op!(shr, >>, u16, 0..u16::MAX, 0..16);
-// TODO: fails, when a or b => i32::MAX, see https://github.com/0xPolygonMiden/compiler/issues/174
-// test_int_op!(shr, >>, u32, 0..u32::MAX, 0..32);
+test_int_op!(shr, >>, u8, 0..u8::MAX, 0..8);
+// # The following tests use small signed operands which we don't fully support yet
+//test_int_op!(shr, >>, i8, i8::MIN..=i8::MAX, 0..=7);
+//test_int_op!(shr, >>, i16, i16::MIN..=i16::MAX, 0..=15);
+//test_int_op!(shr, >>, i32, i32::MIN..=i32::MAX, 0..=31);
 
 test_unary_op!(neg, -, i32, (i32::MIN + 1)..=i32::MAX);
 test_unary_op!(neg, -, i16, (i16::MIN + 1)..=i16::MAX);
 test_unary_op!(neg, -, i8, (i8::MIN + 1)..=i8::MAX);
 
-test_unary_op_total!(not, !, i32);
-test_unary_op_total!(not, !, i16);
-test_unary_op_total!(not, !, i8);
-test_unary_op_total!(not, !, u32);
-test_unary_op_total!(not, !, u16);
-test_unary_op_total!(not, !, u8);
-
-test_unary_op_total!(not, !, bool);
+test_unary_op_total!(bnot, !, i64);
+test_unary_op_total!(bnot, !, i32);
+test_unary_op_total!(bnot, !, i16);
+test_unary_op_total!(bnot, !, i8);
+test_unary_op_total!(bnot, !, u64);
+test_unary_op_total!(bnot, !, u32);
+test_unary_op_total!(bnot, !, u16);
+test_unary_op_total!(bnot, !, u8);
+test_unary_op_total!(bnot, !, bool);

@@ -54,7 +54,8 @@ fn memory_grow() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1))
-            (let (v1 i32) (const.i32 1048575))
+            (let (v1 u32) (cast v0))
+            (let (v2 i32) (memory.grow v1))
         "#]],
     )
 }
@@ -67,7 +68,7 @@ fn memory_size() {
             drop
         "#,
         expect![[r#"
-            (let (v0 i32) (const.i32 1048575))
+            (let (v0 u32) (memory.size))
         "#]],
     )
 }
@@ -249,9 +250,11 @@ fn i64_load32_s() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
-            (let (v2 (ptr i32)) (inttoptr v1))
-            (let (v3 i32) (load v2))
-            (let (v4 i64) (sext v3))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz v2)
+            (let (v3 (ptr i32)) (inttoptr v1))
+            (let (v4 i32) (load v3))
+            (let (v5 i64) (sext v4))
         "#]],
     )
 }
@@ -267,9 +270,11 @@ fn i64_load32_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
-            (let (v2 (ptr u32)) (inttoptr v1))
-            (let (v3 u32) (load v2))
-            (let (v4 i64) (zext v3))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz v2)
+            (let (v3 (ptr u32)) (inttoptr v1))
+            (let (v4 u32) (load v3))
+            (let (v5 i64) (zext v4))
         "#]],
     )
 }
@@ -285,8 +290,10 @@ fn i32_load() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
-            (let (v2 (ptr i32)) (inttoptr v1))
-            (let (v3 i32) (load v2))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz v2)
+            (let (v3 (ptr i32)) (inttoptr v1))
+            (let (v4 i32) (load v3))
         "#]],
     )
 }
@@ -302,8 +309,10 @@ fn i64_load() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
-            (let (v2 (ptr i64)) (inttoptr v1))
-            (let (v3 i64) (load v2))
+            (let (v2 u32) (mod.unchecked v1 3))
+            (assertz v2)
+            (let (v3 (ptr i64)) (inttoptr v1))
+            (let (v4 i64) (load v3))
         "#]],
     )
 }
@@ -320,8 +329,10 @@ fn i32_store() {
             (let (v0 i32) (const.i32 1024))
             (let (v1 i32) (const.i32 1))
             (let (v2 u32) (cast v0))
-            (let (v3 (ptr i32)) (inttoptr v2))
-            (store v3 v1)
+            (let (v3 u32) (mod.unchecked v2 2))
+            (assertz v3)
+            (let (v4 (ptr i32)) (inttoptr v2))
+            (store v4 v1)
         "#]],
     )
 }
@@ -338,8 +349,10 @@ fn i64_store() {
             (let (v0 i32) (const.i32 1024))
             (let (v1 i64) (const.i64 1))
             (let (v2 u32) (cast v0))
-            (let (v3 (ptr i64)) (inttoptr v2))
-            (store v3 v1)
+            (let (v3 u32) (mod.unchecked v2 3))
+            (assertz v3)
+            (let (v4 (ptr i64)) (inttoptr v2))
+            (store v4 v1)
         "#]],
     )
 }
@@ -395,8 +408,10 @@ fn i64_store32() {
             (let (v1 i64) (const.i64 1))
             (let (v2 u32) (trunc v1))
             (let (v3 u32) (cast v0))
-            (let (v4 (ptr u32)) (inttoptr v3))
-            (store v4 v2)
+            (let (v4 u32) (mod.unchecked v3 2))
+            (assertz v4)
+            (let (v5 (ptr u32)) (inttoptr v3))
+            (store v5 v2)
         "#]],
     )
 }
@@ -527,9 +542,9 @@ fn i64_extend_i32_u() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1))
-            (let (v1 u32) (cast v0))
+            (let (v1 u32) (bitcast v0))
             (let (v2 u64) (zext v1))
-            (let (v3 i64) (cast v2))
+            (let (v3 i64) (bitcast v2))
         "#]],
     )
 }
@@ -731,7 +746,8 @@ fn i32_shl() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 i32) (shl.wrapping v0 v1))
+            (let (v2 u32) (bitcast v1))
+            (let (v3 i32) (shl.wrapping v0 v2))
         "#]],
     )
 }
@@ -748,7 +764,8 @@ fn i64_shl() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 i64) (shl.wrapping v0 v1))
+            (let (v2 u32) (cast v1))
+            (let (v3 i64) (shl.wrapping v0 v2))
         "#]],
     )
 }
@@ -765,10 +782,10 @@ fn i32_shr_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
             (let (v4 u32) (shr.wrapping v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (bitcast v4))
         "#]],
     )
 }
@@ -785,10 +802,10 @@ fn i64_shr_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u32) (cast v1))
             (let (v4 u64) (shr.wrapping v2 v3))
-            (let (v5 i64) (cast v4))
+            (let (v5 i64) (bitcast v4))
         "#]],
     )
 }
@@ -805,7 +822,8 @@ fn i32_shr_s() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 i32) (shr.wrapping v0 v1))
+            (let (v2 u32) (bitcast v1))
+            (let (v3 i32) (shr.wrapping v0 v2))
         "#]],
     )
 }
@@ -822,7 +840,8 @@ fn i64_shr_s() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 i64) (shr.wrapping v0 v1))
+            (let (v2 u32) (cast v1))
+            (let (v3 i64) (shr.wrapping v0 v2))
         "#]],
     )
 }
@@ -839,7 +858,8 @@ fn i32_rotl() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 i32) (rotl v0 v1))
+            (let (v2 u32) (bitcast v1))
+            (let (v3 i32) (rotl.wrapping v0 v2))
         "#]],
     )
 }
@@ -856,7 +876,8 @@ fn i64_rotl() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 i64) (rotl v0 v1))
+            (let (v2 u32) (cast v1))
+            (let (v3 i64) (rotl.wrapping v0 v2))
         "#]],
     )
 }
@@ -873,7 +894,8 @@ fn i32_rotr() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 i32) (rotr v0 v1))
+            (let (v2 u32) (bitcast v1))
+            (let (v3 i32) (rotr.wrapping v0 v2))
         "#]],
     )
 }
@@ -890,7 +912,8 @@ fn i64_rotr() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 i64) (rotr v0 v1))
+            (let (v2 u32) (cast v1))
+            (let (v3 i64) (rotr.wrapping v0 v2))
         "#]],
     )
 }
@@ -941,10 +964,10 @@ fn i32_div_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
-            (let (v4 u32) (div.checked v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
+            (let (v4 u32) (div.unchecked v2 v3))
+            (let (v5 i32) (bitcast v4))
         "#]],
     )
 }
@@ -961,10 +984,10 @@ fn i64_div_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
-            (let (v4 u64) (div.checked v2 v3))
-            (let (v5 i64) (cast v4))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u64) (bitcast v1))
+            (let (v4 u64) (div.unchecked v2 v3))
+            (let (v5 i64) (bitcast v4))
         "#]],
     )
 }
@@ -981,7 +1004,7 @@ fn i32_div_s() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 i32) (div.checked v0 v1))
+            (let (v2 i32) (div.unchecked v0 v1))
         "#]],
     )
 }
@@ -998,7 +1021,7 @@ fn i64_div_s() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 i64) (div.checked v0 v1))
+            (let (v2 i64) (div.unchecked v0 v1))
         "#]],
     )
 }
@@ -1015,10 +1038,10 @@ fn i32_rem_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
             (let (v4 u32) (mod.checked v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (bitcast v4))
         "#]],
     )
 }
@@ -1035,10 +1058,10 @@ fn i64_rem_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u64) (bitcast v1))
             (let (v4 u64) (mod.checked v2 v3))
-            (let (v5 i64) (cast v4))
+            (let (v5 i64) (bitcast v4))
         "#]],
     )
 }
@@ -1089,10 +1112,10 @@ fn i32_lt_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
             (let (v4 i1) (lt v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -1109,10 +1132,10 @@ fn i64_lt_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u64) (bitcast v1))
             (let (v4 i1) (lt v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -1130,7 +1153,7 @@ fn i32_lt_s() {
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
             (let (v2 i1) (lt v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (sext v2))
         "#]],
     )
 }
@@ -1148,7 +1171,7 @@ fn i64_lt_s() {
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
             (let (v2 i1) (lt v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (sext v2))
         "#]],
     )
 }
@@ -1165,10 +1188,10 @@ fn i32_le_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
             (let (v4 i1) (lte v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -1185,10 +1208,10 @@ fn i64_le_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u64) (bitcast v1))
             (let (v4 i1) (lte v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -1206,7 +1229,7 @@ fn i32_le_s() {
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
             (let (v2 i1) (lte v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (sext v2))
         "#]],
     )
 }
@@ -1224,7 +1247,7 @@ fn i64_le_s() {
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
             (let (v2 i1) (lte v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (sext v2))
         "#]],
     )
 }
@@ -1241,10 +1264,10 @@ fn i32_gt_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
             (let (v4 i1) (gt v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -1261,10 +1284,10 @@ fn i64_gt_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u64) (bitcast v1))
             (let (v4 i1) (gt v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -1282,7 +1305,7 @@ fn i32_gt_s() {
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
             (let (v2 i1) (gt v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1300,7 +1323,7 @@ fn i64_gt_s() {
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
             (let (v2 i1) (gt v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1317,10 +1340,10 @@ fn i32_ge_u() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (cast v1))
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (bitcast v1))
             (let (v4 i1) (gte v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (zext v4))
         "#]],
     )
 }
@@ -1337,10 +1360,10 @@ fn i64_ge_u() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u64) (cast v0))
-            (let (v3 u64) (cast v1))
+            (let (v2 u64) (bitcast v0))
+            (let (v3 u64) (bitcast v1))
             (let (v4 i1) (gte v2 v3))
-            (let (v5 i32) (cast v4))
+            (let (v5 i32) (zext v4))
         "#]],
     )
 }
@@ -1358,7 +1381,7 @@ fn i32_ge_s() {
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
             (let (v2 i1) (gte v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1376,7 +1399,7 @@ fn i64_ge_s() {
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
             (let (v2 i1) (gte v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1392,7 +1415,7 @@ fn i32_eqz() {
         expect![[r#"
             (let (v0 i32) (const.i32 2))
             (let (v1 i1) (eq v0 0))
-            (let (v2 i32) (cast v1))
+            (let (v2 i32) (zext v1))
         "#]],
     )
 }
@@ -1408,7 +1431,7 @@ fn i64_eqz() {
         expect![[r#"
             (let (v0 i64) (const.i64 2))
             (let (v1 i1) (eq v0 0))
-            (let (v2 i32) (cast v1))
+            (let (v2 i32) (zext v1))
         "#]],
     )
 }
@@ -1426,7 +1449,7 @@ fn i32_eq() {
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
             (let (v2 i1) (eq v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1444,7 +1467,7 @@ fn i64_eq() {
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
             (let (v2 i1) (eq v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1462,7 +1485,7 @@ fn i32_ne() {
             (let (v0 i32) (const.i32 2))
             (let (v1 i32) (const.i32 1))
             (let (v2 i1) (neq v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }
@@ -1480,7 +1503,7 @@ fn i64_ne() {
             (let (v0 i64) (const.i64 2))
             (let (v1 i64) (const.i64 1))
             (let (v2 i1) (neq v0 v1))
-            (let (v3 i32) (cast v2))
+            (let (v3 i32) (zext v2))
         "#]],
     )
 }

@@ -1,16 +1,26 @@
-module noname
+(component 
+    ;; Modules
+    (module #test_rust_d7aa757365ea28f9212f6c02f3c66b808689f2ebcbf480919e5d4f46796057c4
+        ;; Constants
+        (const (id 0) 0x00100000)
 
-const $0 = 0x00100000;
+        ;; Global Variables
+        (global (export #__stack_pointer) (id 0) (type i32) (const 0))
+        (global (export #gv1) (id 1) (type i32) (const 0))
+        (global (export #gv2) (id 2) (type i32) (const 0))
 
-global external @__stack_pointer : i32 = $0 { id = 0 };
-global external @gv1 : i32 = $0 { id = 1 };
-global external @gv2 : i32 = $0 { id = 2 };
+        ;; Functions
+        (func (export #entrypoint) (param i64) (param i64) (result i32)
+            (block 0 (param v0 i64) (param v1 i64)
+                (let (v3 u64) (bitcast v0))
+                (let (v4 u64) (bitcast v1))
+                (let (v5 i1) (gte v3 v4))
+                (let (v6 i32) (zext v5))
+                (br (block 1 v6)))
 
-pub fn entrypoint(i64, i64) -> i32 {
-block0(v0: i64, v1: i64):
-    v3 = cast v0 : u64;
-    v4 = cast v1 : u64;
-    v5 = gte v3, v4 : i1;
-    v6 = cast v5 : i32;
-    ret v6;
-}
+            (block 1 (param v2 i32)
+                (ret v2))
+        )
+    )
+
+)

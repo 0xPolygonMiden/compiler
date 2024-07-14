@@ -1,0 +1,22 @@
+# mod test_rust_087594a87838a1cc38b5a90fd9df794436bb2f9a756e5f08d05946a400c9e019
+
+export.entrypoint
+    movdn.3
+    movdn.3
+    dup.0
+    push.2147483648
+    u32and
+    eq.2147483648
+    assertz
+    assertz
+    dup.0
+    push.4294967295
+    u32lte
+    assert
+    exec.::intrinsics::i64::checked_shr
+end
+
+
+begin
+    exec.::test_rust_087594a87838a1cc38b5a90fd9df794436bb2f9a756e5f08d05946a400c9e019::entrypoint
+end

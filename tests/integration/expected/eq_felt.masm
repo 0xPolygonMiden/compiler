@@ -6,5 +6,5 @@ end
 
 
 begin
-    exec.::eq_felt::entrypoint  
+    exec.::eq_felt::entrypoint
 end

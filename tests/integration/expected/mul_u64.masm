@@ -1,0 +1,10 @@
+# mod test_rust_873d7388fcc4ee534ec2730026c14ba8e8b6f0fcb2133a11b18c2b4c23407376
+
+export.entrypoint
+    exec.::intrinsics::i64::wrapping_mul
+end
+
+
+begin
+    exec.::test_rust_873d7388fcc4ee534ec2730026c14ba8e8b6f0fcb2133a11b18c2b4c23407376::entrypoint
+end

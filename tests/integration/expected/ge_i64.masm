@@ -1,0 +1,10 @@
+# mod test_rust_2ee6501ff8a77a19c4a25cd2840520d20a9e501f962168a16a1a108d1b3b4844
+
+export.entrypoint
+    movdn.3 movdn.3 exec.::intrinsics::i64::gte
+end
+
+
+begin
+    exec.::test_rust_2ee6501ff8a77a19c4a25cd2840520d20a9e501f962168a16a1a108d1b3b4844::entrypoint
+end

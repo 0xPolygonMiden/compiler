@@ -6,5 +6,5 @@ end
 
 
 begin
-    exec.::mul_felt::entrypoint  
+    exec.::mul_felt::entrypoint
 end

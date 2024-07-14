@@ -1,0 +1,10 @@
+# mod test_rust_117752e0a1737725f344ccfdf0b276478964ba6f83baa028adbb8709f99078ab
+
+export.entrypoint
+    exec.::std::math::u64::xor
+end
+
+
+begin
+    exec.::test_rust_117752e0a1737725f344ccfdf0b276478964ba6f83baa028adbb8709f99078ab::entrypoint
+end

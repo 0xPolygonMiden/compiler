@@ -1,0 +1,18 @@
+# mod test_rust_c98b7739945dc08395282d607729efe3ca4da8a1e950e1d84c04448a51a87b71
+
+export.entrypoint
+    movdn.3
+    movdn.3
+    exec.::std::math::u64::lt
+    push.0
+    push.0
+    push.4294967294
+    movup.2
+    cdrop
+    u32or
+end
+
+
+begin
+    exec.::test_rust_c98b7739945dc08395282d607729efe3ca4da8a1e950e1d84c04448a51a87b71::entrypoint
+end

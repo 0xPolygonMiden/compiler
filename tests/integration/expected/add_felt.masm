@@ -6,5 +6,5 @@ end
 
 
 begin
-    exec.::add_felt::entrypoint  
+    exec.::add_felt::entrypoint
 end
