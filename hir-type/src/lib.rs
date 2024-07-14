@@ -155,7 +155,7 @@ impl Type {
     }
 
     pub fn is_unsigned_integer(&self) -> bool {
-        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128)
+        matches!(self, Self::I1 | Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128)
     }
 
     /// Get this type as its unsigned integral twin, e.g. i32 becomes u32.

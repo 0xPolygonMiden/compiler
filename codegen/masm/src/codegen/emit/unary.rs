@@ -96,11 +96,6 @@ impl<'a> OpEmitter<'a> {
     pub fn zext(&mut self, dst: &Type) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
-        assert!(
-            src.is_unsigned_integer() && dst.is_integer(),
-            "invalid zero-extension of {src} to {dst}: only unsigned integer-to-integer casts are \
-             supported"
-        );
         let src_bits = src.size_in_bits() as u32;
         let dst_bits = dst.size_in_bits() as u32;
         assert!(
