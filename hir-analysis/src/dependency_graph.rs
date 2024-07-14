@@ -663,6 +663,29 @@ impl DependencyGraph {
         self.nodes.contains(node)
     }
 
+    /// Returns true if there is a path to `b` from `a` in the graph.
+    pub fn is_reachable_from(&self, a: NodeId, b: NodeId) -> bool {
+        if !self.nodes.contains(&a) || !self.nodes.contains(&b) {
+            return false;
+        }
+
+        let mut visited = BTreeSet::default();
+        let mut worklist = std::collections::VecDeque::from([a]);
+        while let Some(node_id) = worklist.pop_front() {
+            if !visited.insert(node_id) {
+                continue;
+            }
+
+            if node_id == b {
+                return true;
+            }
+
+            worklist.extend(self.successor_ids(node_id));
+        }
+
+        false
+    }
+
     /// Add a dependency from `a` to `b`
     pub fn add_dependency(&mut self, a: NodeId, b: NodeId) {
         assert_ne!(a, b, "cannot add a self-referential dependency");

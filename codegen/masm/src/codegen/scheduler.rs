@@ -1150,18 +1150,25 @@ fn build_dependency_graph(
     graph
 }
 
-/// Discover any instructions in the given block that have no predecessors, but that must be
-/// scheduled anyway, i.e. due to side effects - and make the block terminator dependent on them to
-/// ensure that they are scheduled.
+/// This function performs two primary tasks:
+///
+/// 1. Ensure that there are edges in the graph between instructions that must not be reordered
+/// past each other during scheduling. An obvious example is loads and stores: you might have two
+/// independent expression trees that read and write to the same memory location - but if the order
+/// in which the corresponding loads and stores are scheduled changes, it can change the behavior
+/// of the program. Other examples include function calls with side effects and inline assembly.
+///
+/// 2. Ensure that even if an instruction has no predecessors, it still gets scheduled if it has
+/// side effects. This can happen if there are no other effectful instructions in the same block.
+/// We add an edge from the block terminator to these instructions, which will guarantee that
+/// they are executed before leaving the block.
 ///
 /// We call these instruction->instruction dependencies "control dependencies", since control flow
-/// in the block depends on them being executed first. In a way these dependencies are control-flow
-/// sensitive, but because the instruction has no direct predecessors, we assume that we are free to
-/// schedule them anywhere in the block. For the time being, we choose to schedule them just prior
-/// to leaving the block, but in the future we may wish to do more intelligent scheduling of these
-/// items, either to reduce the live ranges of values which are used as instruction operands, or if
-/// we find that we must attempt to more faithfully preserve the original program ordering for some
-/// reason.
+/// in the block depends on them being executed first. If such instructions have no predecessors
+/// in the graph, then we assume that they can be scheduled anywhere in the block; but beyond that
+/// we ensure that any two effectful instructions are never reordered relative to each other,
+/// unless we can prove that they have no effect on each other (we don't actually try to prove this
+/// at the moment, but in the future we may).
 ///
 /// NOTE: This function only assigns control dependencies for instructions _with_ side effects. An
 /// instruction with no dependents, and no side effects, is treated as dead code, since by
@@ -1183,6 +1190,9 @@ fn assign_control_dependencies(
         }
     };
     let terminator_id = terminator.into();
+
+    let mut reads = vec![];
+    let mut writes = vec![];
     for (inst_index, inst) in function.dfg.block_insts(block_id).enumerate() {
         let opcode = function.dfg.inst(inst).opcode();
         // Skip the block terminator
@@ -1195,6 +1205,44 @@ fn assign_control_dependencies(
             pos: inst_index as u16,
         };
         let node_id = node.id();
+
+        // Does this instruction have memory effects?
+        //
+        // If it reads memory, ensure that there is an edge in the graph from the last observed
+        // store. In effect, this makes the read dependent on the most recent write, even if there
+        // is no direct connection between the two instructions otherwise.
+        //
+        // If it writes memory, ensure that there is an edge in the graph from the last observed
+        // load. In effect, this makes the write dependent on the most recent read, even if there
+        // is no direct connection between the two instructions otherwise.
+        //
+        // If it both reads and writes, ensure there are edges to both the last load and store.
+        let mem_read = opcode.reads_memory();
+        let mem_write = opcode.writes_memory();
+        // Ensure store-store ordering as well as load-store ordering
+        if mem_read || mem_write {
+            // Have there been any stores observed?
+            if let Some(last_store) = writes.last().copied() {
+                // Only add the dependency if there is no path from this instruction to that one
+                if !graph.is_reachable_from(node_id, last_store) {
+                    graph.add_dependency(node_id, last_store);
+                }
+            }
+            reads.push(node_id);
+        }
+        if mem_write {
+            // Have there been any loads observed?
+            if let Some(last_load) = reads.last().copied() {
+                if !graph.is_reachable_from(node_id, last_load) {
+                    graph.add_dependency(node_id, last_load);
+                }
+            }
+            writes.push(node_id);
+        }
+
+        // At this point, we want to handle adding a control dependency from the terminator to this
+        // instruction, if there are no other nodes on which to attach one, and if the instruction
+        // requires one.
 
         // Skip instructions with transitive dependents on at least one result, or a direct
         // dependent
@@ -1233,7 +1281,11 @@ fn assign_control_dependencies(
 
         // Instructions with side effects but no live results require a control dependency
         if opcode.has_side_effects() && !has_live_results {
-            graph.add_dependency(terminator_id, node_id);
+            // Only add one if there is no other transitive dependency that accomplishes
+            // the same goal
+            if !graph.is_reachable_from(terminator_id, node_id) {
+                graph.add_dependency(terminator_id, node_id);
+            }
             continue;
         }
     }

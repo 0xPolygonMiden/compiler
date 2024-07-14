@@ -499,6 +499,38 @@ impl Opcode {
         )
     }
 
+    pub fn is_assertion(&self) -> bool {
+        matches!(self, Self::Assert | Self::Assertz | Self::AssertEq)
+    }
+
+    pub fn reads_memory(&self) -> bool {
+        matches!(
+            self,
+            Self::MemGrow
+                | Self::MemCpy
+                | Self::MemSize
+                | Self::Load
+                | Self::Call
+                | Self::Syscall
+                | Self::InlineAsm
+                | Self::Reload
+        )
+    }
+
+    pub fn writes_memory(&self) -> bool {
+        matches!(
+            self,
+            Self::MemGrow
+                | Self::MemSet
+                | Self::MemCpy
+                | Self::Store
+                | Self::Call
+                | Self::Syscall
+                | Self::InlineAsm
+                | Self::Spill
+        )
+    }
+
     pub fn has_side_effects(&self) -> bool {
         match self {
             // These opcodes are all effectful
