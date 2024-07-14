@@ -93,21 +93,20 @@ pub fn return_via_pointer(
     assert_eq!(ptr_arg_ty, I32);
     let ptr_u32 = builder.ins().cast(ptr_arg, U32, span);
     for (idx, value) in results.iter().enumerate() {
-        let value_ty = builder.data_flow_graph().value_type(*value);
-        assert_eq!(value_ty, &Felt, "In return_via_pointer, expected only Felt value type returns");
+        let value_ty = builder.data_flow_graph().value_type(*value).clone();
+        let value_size = value_ty.aligned_size_in_bytes();
         let eff_ptr = if idx == 0 {
+            // We're assuming here that the base pointer is of the correct alignment
             ptr_u32
         } else {
-            // We're storing the stack-returned felts(64-bit) values in the
-            // memory that from the Rust "side" point of view is byte-addressed,
-            // meaning that for example in array of felts the second felt is
-            // expected to be +8 from the first and so on. So we need to
-            // multiply the index by 8 so that the subsequent Rust code finds
-            // the values in the expected locations.
-            let imm = Immediate::U32(idx as u32 * 8);
+            // We're computing the offset from Rust's perspective, so multiply the index by the
+            // aligned size in bytes to get the next aligned address. Note that this presumes
+            // that the pointer we have been given has the required minimum alignment, if it does
+            // not, then we'll be writing to the wrong locations in memory.
+            let offset = u32::try_from(idx * value_size).expect("offset overflow");
+            let imm = Immediate::U32(offset);
             builder.ins().add_imm_checked(ptr_u32, imm, span)
         };
-        let value_ty = builder.data_flow_graph().value_type(*value).clone();
         let addr = builder.ins().inttoptr(eff_ptr, Ptr(value_ty.into()), span);
         builder.ins().store(addr, *value, span);
     }

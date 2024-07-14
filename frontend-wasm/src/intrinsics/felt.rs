@@ -1,6 +1,6 @@
 use std::vec;
 
-use midenc_hir::{Felt, FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
+use midenc_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
 
@@ -108,12 +108,12 @@ pub(crate) fn convert_felt_intrinsics(
         // Assert operations
         "assert" => {
             assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
-            builder.ins().assert_eq_imm(Immediate::Felt(Felt::new(1)), args[0], span);
+            builder.ins().assert(args[0], span);
             vec![]
         }
         "assertz" => {
             assert_eq!(args.len(), 1, "{} takes exactly one argument", func_id);
-            builder.ins().assert_eq_imm(Immediate::Felt(Felt::new(0)), args[0], span);
+            builder.ins().assertz(args[0], span);
             vec![]
         }
         "assert_eq" => {

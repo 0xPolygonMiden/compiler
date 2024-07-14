@@ -16,7 +16,7 @@ pub enum ControlEffect {
     /// We jumped back to the start of a while loop
     Loopback,
     /// We started the `n`th iteration of a repeat block
-    Repeat(u8),
+    Repeat(u16),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

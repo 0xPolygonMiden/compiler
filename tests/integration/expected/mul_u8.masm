@@ -1,0 +1,10 @@
+# mod test_rust_e557e8c2e11bc35c8a219dc14251faf969af186526834f40cf61132c24bfdefe
+
+export.entrypoint
+    exec.::intrinsics::i32::wrapping_mul push.255 u32and
+end
+
+
+begin
+    exec.::test_rust_e557e8c2e11bc35c8a219dc14251faf969af186526834f40cf61132c24bfdefe::entrypoint
+end

@@ -1,0 +1,18 @@
+# mod test_rust_7dbe71f32e529d8482d0aa84e113b7e26e7d927fd65c6080de644d81c221a38e
+
+export.entrypoint
+    movdn.3
+    movdn.3
+    exec.::intrinsics::i64::lt
+    push.0
+    push.0
+    push.4294967294
+    movup.2
+    cdrop
+    u32or
+end
+
+
+begin
+    exec.::test_rust_7dbe71f32e529d8482d0aa84e113b7e26e7d927fd65c6080de644d81c221a38e::entrypoint
+end

@@ -82,6 +82,11 @@ impl<'a> MasmCompiler<'a> {
         let mut convert_to_masm = ConvertHirToMasm::<hir::Program>::default();
         let mut program = convert_to_masm.convert(input, &mut self.analyses, self.session)?;
 
+        // Ensure standard library is linked
+        for module in intrinsics::load_stdlib(&self.session.codemap) {
+            program.insert(Box::new(module.clone()));
+        }
+
         // Ensure intrinsics modules are linked
         program.insert(Box::new(
             intrinsics::load("intrinsics::mem", &self.session.codemap)
@@ -89,6 +94,10 @@ impl<'a> MasmCompiler<'a> {
         ));
         program.insert(Box::new(
             intrinsics::load("intrinsics::i32", &self.session.codemap)
+                .expect("undefined intrinsics module"),
+        ));
+        program.insert(Box::new(
+            intrinsics::load("intrinsics::i64", &self.session.codemap)
                 .expect("undefined intrinsics module"),
         ));
 

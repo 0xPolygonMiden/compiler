@@ -1,6 +1,6 @@
 use midenc_hir::{Felt, FieldElement, Overflow};
 
-use super::OpEmitter;
+use super::{felt, OpEmitter};
 use crate::masm::Op;
 
 pub const SIGN_BIT: u32 = 1 << 31;
@@ -366,6 +366,15 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::PushU32(i as u32));
     }
 
+    /// This is the inverse operation of the Miden VM `u32split` instruction.
+    ///
+    /// This takes two 32-bit limbs, and produces a felt.
+    ///
+    /// NOTE: It is expected that the caller has validated that the limbs are valid u32 values.
+    pub fn u32unsplit(&mut self) {
+        self.emit_all(&[Op::MulImm(felt::U32_FIELD_MODULUS), Op::Add]);
+    }
+
     /// Pops two u32 values off the stack, `b` and `a`, and performs `a + b`.
     ///
     /// See the [Overflow] type for how overflow semantics can change the operation.
@@ -386,10 +395,8 @@ impl<'a> OpEmitter<'a> {
     pub fn add_i32(&mut self, overflow: Overflow) {
         self.emit(match overflow {
             Overflow::Unchecked | Overflow::Wrapping => Op::U32WrappingAdd,
-            Overflow::Checked => Op::Exec("::intrinsics::i32::checked_add".parse().unwrap()),
-            Overflow::Overflowing => {
-                Op::Exec("::intrinsics::i32::overflowing_add".parse().unwrap())
-            }
+            Overflow::Checked => Op::Exec("intrinsics::i32::checked_add".parse().unwrap()),
+            Overflow::Overflowing => Op::Exec("intrinsics::i32::overflowing_add".parse().unwrap()),
         })
     }
 
@@ -429,12 +436,12 @@ impl<'a> OpEmitter<'a> {
             Overflow::Checked => {
                 self.emit_all(&[
                     Op::PushU32(imm as u32),
-                    Op::Exec("::intrinsics::i32::checked_add".parse().unwrap()),
+                    Op::Exec("intrinsics::i32::checked_add".parse().unwrap()),
                 ]);
             }
             Overflow::Overflowing => self.emit_all(&[
                 Op::PushU32(imm as u32),
-                Op::Exec("::intrinsics::i32::overflowing_add".parse().unwrap()),
+                Op::Exec("intrinsics::i32::overflowing_add".parse().unwrap()),
             ]),
         }
     }
@@ -460,10 +467,10 @@ impl<'a> OpEmitter<'a> {
         match overflow {
             Overflow::Unchecked | Overflow::Wrapping => self.sub_u32(overflow),
             Overflow::Checked => {
-                self.emit(Op::Exec("::intrinsics::i32::checked_sub".parse().unwrap()))
+                self.emit(Op::Exec("intrinsics::i32::checked_sub".parse().unwrap()))
             }
             Overflow::Overflowing => {
-                self.emit(Op::Exec("::intrinsics::i32::overflowing_sub".parse().unwrap()))
+                self.emit(Op::Exec("intrinsics::i32::overflowing_sub".parse().unwrap()))
             }
         }
     }
@@ -502,11 +509,11 @@ impl<'a> OpEmitter<'a> {
             Overflow::Unchecked | Overflow::Wrapping => self.sub_imm_u32(imm as u32, overflow),
             Overflow::Checked => self.emit_all(&[
                 Op::PushU32(imm as u32),
-                Op::Exec("::intrinsics::i32::checked_sub".parse().unwrap()),
+                Op::Exec("intrinsics::i32::checked_sub".parse().unwrap()),
             ]),
             Overflow::Overflowing => self.emit_all(&[
                 Op::PushU32(imm as u32),
-                Op::Exec("::intrinsics::i32::overflowing_sub".parse().unwrap()),
+                Op::Exec("intrinsics::i32::overflowing_sub".parse().unwrap()),
             ]),
         }
     }
@@ -529,13 +536,13 @@ impl<'a> OpEmitter<'a> {
     pub fn mul_i32(&mut self, overflow: Overflow) {
         match overflow {
             Overflow::Unchecked | Overflow::Wrapping => {
-                self.emit(Op::Exec("::intrinsics::i32::wrapping_mul".parse().unwrap()))
+                self.emit(Op::Exec("intrinsics::i32::wrapping_mul".parse().unwrap()))
             }
             Overflow::Checked => {
-                self.emit(Op::Exec("::intrinsics::i32::checked_mul".parse().unwrap()))
+                self.emit(Op::Exec("intrinsics::i32::checked_mul".parse().unwrap()))
             }
             Overflow::Overflowing => {
-                self.emit(Op::Exec("::intrinsics::i32::overflowing_mul".parse().unwrap()))
+                self.emit(Op::Exec("intrinsics::i32::overflowing_mul".parse().unwrap()))
             }
         }
     }
@@ -586,15 +593,15 @@ impl<'a> OpEmitter<'a> {
             imm => match overflow {
                 Overflow::Unchecked | Overflow::Wrapping => self.emit_all(&[
                     Op::PushU32(imm as u32),
-                    Op::Exec("::intrinsics::i32::wrapping_mul".parse().unwrap()),
+                    Op::Exec("intrinsics::i32::wrapping_mul".parse().unwrap()),
                 ]),
                 Overflow::Checked => self.emit_all(&[
                     Op::PushU32(imm as u32),
-                    Op::Exec("::intrinsics::i32::checked_mul".parse().unwrap()),
+                    Op::Exec("intrinsics::i32::checked_mul".parse().unwrap()),
                 ]),
                 Overflow::Overflowing => self.emit_all(&[
                     Op::PushU32(imm as u32),
-                    Op::Exec("::intrinsics::i32::overflowing_mul".parse().unwrap()),
+                    Op::Exec("intrinsics::i32::overflowing_mul".parse().unwrap()),
                 ]),
             },
         }
@@ -611,7 +618,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, so if the operands or result are not valid i32, execution traps.
     pub fn checked_div_i32(&mut self) {
-        self.emit(Op::Exec("::intrinsics::i32::checked_div".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::i32::checked_div".parse().unwrap()));
     }
 
     /// Pops a u32 value off the stack, `a`, and performs `a / <imm>`.
@@ -633,7 +640,7 @@ impl<'a> OpEmitter<'a> {
         assert_ne!(imm, 0, "division by zero is not allowed");
         self.emit_all(&[
             Op::PushU32(imm as u32),
-            Op::Exec("::intrinsics::i32::checked_div".parse().unwrap()),
+            Op::Exec("intrinsics::i32::checked_div".parse().unwrap()),
         ]);
     }
 
@@ -797,7 +804,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid i32, execution traps.
     pub fn shr_i32(&mut self) {
-        self.emit(Op::Exec("::intrinsics::i32::checked_shr".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::i32::checked_shr".parse().unwrap()));
     }
 
     /// Pops a u32 value off the stack, `a`, and performs `a >> <imm>`
@@ -811,11 +818,11 @@ impl<'a> OpEmitter<'a> {
     /// Pops a i32 value off the stack, `a`, and performs `a >> <imm>`
     ///
     /// This operation is checked, if the operand or result are not valid i32, execution traps.
-    pub fn shr_imm_i32(&mut self, imm: i32) {
+    pub fn shr_imm_i32(&mut self, imm: u32) {
         assert!(imm < 32, "invalid shift value: must be < 32, got {imm}");
         self.emit_all(&[
-            Op::PushU32(imm as u32),
-            Op::Exec("::intrinsics::i32::checked_shr".parse().unwrap()),
+            Op::PushU32(imm),
+            Op::Exec("intrinsics::i32::checked_shr".parse().unwrap()),
         ]);
     }
 
@@ -867,7 +874,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid i32, execution traps.
     pub fn min_i32(&mut self) {
-        self.emit(Op::Exec("::intrinsics::i32::min".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::i32::min".parse().unwrap()));
     }
 
     /// Pops a u32 value off the stack, `a`, and puts the result of `min(a, imm)` on the stack
@@ -883,7 +890,7 @@ impl<'a> OpEmitter<'a> {
     pub fn min_imm_i32(&mut self, imm: i32) {
         self.emit_all(&[
             Op::PushU32(imm as u32),
-            Op::Exec("::intrinsics::i32::min".parse().unwrap()),
+            Op::Exec("intrinsics::i32::min".parse().unwrap()),
         ]);
     }
 
@@ -900,7 +907,7 @@ impl<'a> OpEmitter<'a> {
     ///
     /// This operation is checked, if the operands or result are not valid i32, execution traps.
     pub fn max_i32(&mut self) {
-        self.emit(Op::Exec("::intrinsics::i32::max".parse().unwrap()));
+        self.emit(Op::Exec("intrinsics::i32::max".parse().unwrap()));
     }
 
     /// Pops a u32 value off the stack, `a`, and puts the result of `max(a, imm)` on the stack
@@ -916,7 +923,7 @@ impl<'a> OpEmitter<'a> {
     pub fn max_imm_i32(&mut self, imm: i32) {
         self.emit_all(&[
             Op::PushU32(imm as u32),
-            Op::Exec("::intrinsics::i32::max".parse().unwrap()),
+            Op::Exec("intrinsics::i32::max".parse().unwrap()),
         ]);
     }
 }

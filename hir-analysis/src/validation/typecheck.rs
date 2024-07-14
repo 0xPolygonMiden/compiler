@@ -1012,7 +1012,8 @@ impl<'a> InstTypeChecker<'a> {
             Opcode::ImmFelt => InstPattern::Unary(Type::Felt.into()),
             Opcode::ImmF64 => InstPattern::Unary(Type::F64.into()),
             Opcode::Alloca => InstPattern::Exact(vec![], vec![TypePattern::Pointer]),
-            Opcode::MemGrow => InstPattern::Unary(Type::U32.into()),
+            Opcode::MemGrow => InstPattern::Exact(vec![Type::U32.into()], vec![Type::I32.into()]),
+            Opcode::MemSize => InstPattern::Exact(vec![], vec![Type::U32.into()]),
             opcode @ Opcode::GlobalValue => match node.as_ref() {
                 Instruction::GlobalValue(GlobalValueOp { global, .. }) => {
                     match dfg.global_value(*global) {
@@ -1030,12 +1031,17 @@ impl<'a> InstTypeChecker<'a> {
             Opcode::Store => {
                 InstPattern::Exact(vec![TypePattern::Pointer, TypePattern::Any], vec![])
             }
+            Opcode::MemSet => InstPattern::Exact(
+                vec![TypePattern::Pointer, Type::U32.into(), TypePattern::Any],
+                vec![],
+            ),
             Opcode::MemCpy => InstPattern::Exact(
                 vec![TypePattern::Pointer, TypePattern::Pointer, Type::U32.into()],
                 vec![],
             ),
             Opcode::PtrToInt => InstPattern::UnaryMap(TypePattern::Pointer, TypePattern::Int),
             Opcode::IntToPtr => InstPattern::UnaryMap(TypePattern::Uint, TypePattern::Pointer),
+            Opcode::Bitcast => InstPattern::UnaryMap(TypePattern::Int, TypePattern::Int),
             Opcode::Cast => InstPattern::UnaryMap(TypePattern::Int, TypePattern::Int),
             Opcode::Trunc => InstPattern::UnaryNarrowingCast(TypePattern::Int, TypePattern::Int),
             Opcode::Zext => InstPattern::UnaryWideningCast(TypePattern::Int, TypePattern::Uint),

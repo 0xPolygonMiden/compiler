@@ -32,5 +32,5 @@ end
 
 
 begin
-    exec.::miden_integration_tests_rust_fib_wasm::fib  
+    exec.::miden_integration_tests_rust_fib_wasm::fib
 end

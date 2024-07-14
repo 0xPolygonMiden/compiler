@@ -2794,6 +2794,7 @@ dependencies = [
  "miden-assembly",
  "miden-core",
  "miden-diagnostics",
+ "miden-stdlib",
  "midenc-hir",
  "midenc-hir-analysis",
  "midenc-hir-transform",

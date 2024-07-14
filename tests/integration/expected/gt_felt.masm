@@ -6,5 +6,5 @@ end
 
 
 begin
-    exec.::gt_felt::entrypoint  
+    exec.::gt_felt::entrypoint
 end

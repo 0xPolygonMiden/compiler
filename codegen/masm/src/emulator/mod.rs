@@ -6,9 +6,7 @@ mod functions;
 use std::{cell::RefCell, cmp, rc::Rc, sync::Arc};
 
 use miden_assembly::{ast::ProcedureName, LibraryNamespace};
-use midenc_hir::{
-    assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack, Symbol,
-};
+use midenc_hir::{assert_matches, Felt, FieldElement, FunctionIdent, Ident, OperandStack, Stack};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use self::functions::{Activation, Stub};
@@ -870,6 +868,7 @@ macro_rules! pop_u32 {
 }
 
 /// Peeks a u32 value from the top of the stack, and asserts if it is out of range
+#[allow(unused)]
 macro_rules! peek_u32 {
     ($emu:ident) => {{
         let value = peek!($emu).as_int();
@@ -1552,18 +1551,6 @@ impl Emulator {
                     return Ok(EmulatorEvent::EnterLoop(body_blk));
                 }
                 Op::Exec(callee) => {
-                    // remove the `::` prefix (absolute path) if any from the
-                    // callee.module
-                    let callee = if callee.module.as_str().starts_with("::") {
-                        FunctionIdent {
-                            module: Ident::with_empty_span(Symbol::intern(
-                                &callee.module.as_str()[2..],
-                            )),
-                            function: callee.function,
-                        }
-                    } else {
-                        callee
-                    };
                     let fun = self
                         .functions
                         .get(&callee)
@@ -1817,20 +1804,20 @@ impl Emulator {
                     self.stack.push_u32(a.count_ones());
                 }
                 Op::U32Clz => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.leading_zeros());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.leading_zeros());
                 }
                 Op::U32Clo => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.leading_ones());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.leading_ones());
                 }
                 Op::U32Ctz => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.trailing_zeros());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.trailing_zeros());
                 }
                 Op::U32Cto => {
-                    let a = peek_u32!(self);
-                    self.advice_stack.push_u32(a.trailing_ones());
+                    let a = pop_u32!(self);
+                    self.stack.push_u32(a.trailing_ones());
                 }
                 Op::U32Gt => comparison!(self, gt),
                 Op::U32Gte => comparison!(self, ge),

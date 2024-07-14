@@ -155,7 +155,7 @@ impl Type {
     }
 
     pub fn is_unsigned_integer(&self) -> bool {
-        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128)
+        matches!(self, Self::I1 | Self::U8 | Self::U16 | Self::U32 | Self::U64 | Self::U128)
     }
 
     /// Get this type as its unsigned integral twin, e.g. i32 becomes u32.
@@ -168,10 +168,8 @@ impl Type {
             Self::I16 | Self::U16 => Self::U16,
             Self::I32 | Self::U32 => Self::U32,
             Self::I64 | Self::U64 => Self::U64,
+            Self::I128 | Self::U128 => Self::U128,
             Self::Felt => Self::Felt,
-            Self::I128 => panic!(
-                "invalid conversion to unsigned integer type: i128 has no unsigned equivalent"
-            ),
             ty => panic!("invalid conversion to unsigned integer type: {ty} is not an integer"),
         }
     }
@@ -185,7 +183,7 @@ impl Type {
             Self::I16 | Self::U16 => Self::I16,
             Self::I32 | Self::U32 => Self::I32,
             Self::I64 | Self::U64 => Self::I64,
-            Self::I128 => Self::I128,
+            Self::I128 | Self::U128 => Self::I128,
             Self::Felt => {
                 panic!("invalid conversion to signed integer type: felt has no signed equivalent")
             }
@@ -247,21 +245,10 @@ impl Type {
             (Type::I32, Type::I8 | Type::U8 | Type::I16 | Type::U16 | Type::I32) => true,
             (Type::U32, Type::U8 | Type::U16 | Type::U32) => true,
             (
-                Type::Felt,
-                Type::I8 | Type::U8 | Type::I16 | Type::U16 | Type::I32 | Type::U32 | Type::Felt,
-            ) => true,
-            (
                 Type::I64,
-                Type::I8
-                | Type::U8
-                | Type::I16
-                | Type::U16
-                | Type::I32
-                | Type::U32
-                | Type::Felt
-                | Type::I64,
+                Type::I8 | Type::U8 | Type::I16 | Type::U16 | Type::I32 | Type::U32 | Type::I64,
             ) => true,
-            (Type::U64, Type::U8 | Type::U16 | Type::U32 | Type::U64) => true,
+            (Type::U64, Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::Felt) => true,
             (
                 Type::I128,
                 Type::I8
@@ -270,13 +257,17 @@ impl Type {
                 | Type::U16
                 | Type::I32
                 | Type::U32
-                | Type::Felt
                 | Type::I64
                 | Type::U64
+                | Type::Felt
                 | Type::I128,
             ) => true,
-            (Type::U128, Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::U128) => true,
-            (Type::U256, rty) => rty.is_integer(),
+            (
+                Type::U128,
+                Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::Felt | Type::U128,
+            ) => true,
+            (Type::U256, rty) => rty.is_unsigned_integer(),
+            (Type::Felt, Type::U8 | Type::U16 | Type::U32 | Type::U64 | Type::Felt) => true,
             (Type::F64, Type::F64) => true,
             (Type::Ptr(_) | Type::NativePtr(..), Type::U8 | Type::U16 | Type::U32) => true,
             _ => false,

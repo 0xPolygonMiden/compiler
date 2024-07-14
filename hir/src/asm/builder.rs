@@ -412,7 +412,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// times.
     ///
     /// NOTE: The iteration count must be non-zero, or this function will panic.
-    pub fn repeat(self, n: u8) -> LoopBuilder<'a> {
+    pub fn repeat(self, n: u16) -> LoopBuilder<'a> {
         assert!(n > 0, "invalid iteration count for `repeat.n`, must be non-zero");
         let out_stack = self.stack.clone();
         let body = self.asm.create_block();
@@ -1268,7 +1268,7 @@ impl<'a> Drop for IfTrueBlockBuilder<'a> {
 #[doc(hidden)]
 enum LoopType {
     While,
-    Repeat(u8),
+    Repeat(u16),
 }
 
 /// This builder is used to construct both `while.true` and `repeat.n` loops, enforcing
@@ -1830,7 +1830,8 @@ fn apply_op_stack_effects(
         | MasmOp::AdvInjectPushMapValN
         | MasmOp::AdvInjectPushMapValNImm(_)
         | MasmOp::AdvInjectPushU64Div
-        | MasmOp::AdvInjectPushMTreeNode => (),
+        | MasmOp::AdvInjectPushMTreeNode
+        | MasmOp::AdvInjectPushSignature(_) => (),
         MasmOp::Hash => {
             assert!(stack.len() > 3, "expected at least 4 elements on the stack for hash");
         }

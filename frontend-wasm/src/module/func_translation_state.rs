@@ -283,6 +283,17 @@ impl FuncTranslationState {
         builder.ins().cast(val, ty.clone(), span)
     }
 
+    /// Pop one value and bitcast it to the specified type.
+    pub(crate) fn pop1_bitcasted(
+        &mut self,
+        ty: Type,
+        builder: &mut FunctionBuilderExt,
+        span: SourceSpan,
+    ) -> Value {
+        let val = self.stack.pop().expect("attempted to pop a value from an empty stack");
+        builder.ins().bitcast(val, ty.clone(), span)
+    }
+
     /// Peek at the top of the stack without popping it.
     pub(crate) fn peek1(&self) -> Value {
         *self.stack.last().expect("attempted to peek at a value on an empty stack")
@@ -306,6 +317,21 @@ impl FuncTranslationState {
         let v1 = self.stack.pop().unwrap();
         let v1_casted = builder.ins().cast(v1, ty.clone(), span);
         let v2_casted = builder.ins().cast(v2, ty, span);
+        (v1_casted, v2_casted)
+    }
+
+    /// Pop two values. Bitcast them to the specified type. Return them in the order they were
+    /// pushed.
+    pub(crate) fn pop2_bitcasted(
+        &mut self,
+        ty: Type,
+        builder: &mut FunctionBuilderExt,
+        span: SourceSpan,
+    ) -> (Value, Value) {
+        let v2 = self.stack.pop().unwrap();
+        let v1 = self.stack.pop().unwrap();
+        let v1_casted = builder.ins().bitcast(v1, ty.clone(), span);
+        let v2_casted = builder.ins().bitcast(v2, ty, span);
         (v1_casted, v2_casted)
     }
 

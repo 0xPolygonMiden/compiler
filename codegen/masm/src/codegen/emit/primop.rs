@@ -1,4 +1,6 @@
-use midenc_hir::{self as hir, ArgumentExtension, ArgumentPurpose, Felt, Immediate, Type};
+use midenc_hir::{
+    self as hir, ArgumentExtension, ArgumentPurpose, Felt, FieldElement, Immediate, Type,
+};
 
 use super::{int64, OpEmitter};
 use crate::masm::Op;
@@ -21,12 +23,10 @@ impl<'a> OpEmitter<'a> {
             | Type::I1 => {
                 self.emit(Op::AssertWithError(code));
             }
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.emit_all(&[
-                    Op::AssertzWithError(code),
-                    Op::AssertzWithError(code),
-                    Op::AssertzWithError(code),
-                    Op::AssertWithError(code),
+                    Op::Pushw([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ONE]),
+                    Op::AssertEqwWithError(code),
                 ]);
             }
             Type::U64 | Type::I64 => {
@@ -56,8 +56,11 @@ impl<'a> OpEmitter<'a> {
             | Type::I1 => {
                 self.emit(Op::AssertzWithError(code));
             }
-            ty @ (Type::I128 | Type::U64 | Type::I64) => {
-                self.emit_n(ty.size_in_bits() / 32, Op::AssertzWithError(code));
+            Type::U64 | Type::I64 => {
+                self.emit_all(&[Op::AssertzWithError(code), Op::AssertzWithError(code)]);
+            }
+            Type::U128 | Type::I128 => {
+                self.emit_all(&[Op::Pushw([Felt::ZERO; 4]), Op::AssertEqwWithError(code)]);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assertz: expected integer, got {ty}")
@@ -85,7 +88,7 @@ impl<'a> OpEmitter<'a> {
             | Type::I1 => {
                 self.emit(Op::AssertEq);
             }
-            Type::I128 => self.emit(Op::AssertEqw),
+            Type::U128 | Type::I128 => self.emit(Op::AssertEqw),
             Type::U64 | Type::I64 => {
                 self.emit_all(&[
                     // compare the hi bits
@@ -121,7 +124,7 @@ impl<'a> OpEmitter<'a> {
             | Type::I1 => {
                 self.emit_all(&[Op::EqImm(imm.as_felt().unwrap()), Op::Assert]);
             }
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.push_immediate(imm);
                 self.emit(Op::AssertEqw)
             }
@@ -173,7 +176,7 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => self.emit(Op::Cdrop),
-            Type::I128 => self.emit(Op::Cdropw),
+            Type::I128 | Type::U128 => self.emit(Op::Cdropw),
             Type::I64 | Type::U64 => {
                 // Perform two conditional drops, one for each 32-bit limb
                 // corresponding to the value which is being selected

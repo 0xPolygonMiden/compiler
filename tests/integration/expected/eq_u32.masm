@@ -6,5 +6,5 @@ end
 
 
 begin
-    exec.::test_rust_8fb01b80f31505a22343d7c26e3474f1160b5bf9f9048fa61561f108ac0be95e::entrypoint  
+    exec.::test_rust_8fb01b80f31505a22343d7c26e3474f1160b5bf9f9048fa61561f108ac0be95e::entrypoint
 end

@@ -10,5 +10,5 @@ end
 
 
 begin
-    exec.::test_rust_0321dd193a3848fd9694d83145f19dfd509077216649a5c8574ca9ef1fad1279::entrypoint  
+    exec.::test_rust_0321dd193a3848fd9694d83145f19dfd509077216649a5c8574ca9ef1fad1279::entrypoint
 end

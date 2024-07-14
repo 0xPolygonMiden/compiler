@@ -1,21 +1,28 @@
-module noname
+(component 
+    ;; Modules
+    (module #test_rust_f375c28fa7a7eb4019af213b30f4b291d676b6561c189149b599ddca30004add
+        ;; Constants
+        (const (id 0) 0x00100000)
 
-const $0 = 0x00100000;
+        ;; Global Variables
+        (global (export #__stack_pointer) (id 0) (type i32) (const 0))
+        (global (export #gv1) (id 1) (type i32) (const 0))
+        (global (export #gv2) (id 2) (type i32) (const 0))
 
-global external @__stack_pointer : i32 = $0 { id = 0 };
-global external @gv1 : i32 = $0 { id = 1 };
-global external @gv2 : i32 = $0 { id = 2 };
+        ;; Functions
+        (func (export #entrypoint) (param i32) (param i32) (result i32)
+            (block 0 (param v0 i32) (param v1 i32)
+                (let (v3 u32) (bitcast v0))
+                (let (v4 u32) (bitcast v1))
+                (let (v5 i1) (lt v3 v4))
+                (let (v6 i32) (sext v5))
+                (let (v7 i1) (neq v6 0))
+                (let (v8 i32) (select v7 v0 v1))
+                (br (block 1 v8)))
 
-pub fn entrypoint(i32, i32) -> i32 {
-block0(v0: i32, v1: i32):
-    v3 = cast v0 : u32;
-    v4 = cast v1 : u32;
-    v5 = lt v3, v4 : i1;
-    v6 = cast v5 : i32;
-    v7 = neq v6, 0 : i1;
-    v8 = select v7, v0, v1 : i32;
-    br block1(v8);
+            (block 1 (param v2 i32)
+                (ret v2))
+        )
+    )
 
-block1(v2: i32):
-    ret v2;
-}
+)

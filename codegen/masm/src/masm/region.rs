@@ -169,9 +169,10 @@ fn import_block(
             } => {
                 let body_blk = region.create_block();
                 import_block(current_module, region, body_blk, body);
-                region
-                    .block_mut(current_block_id)
-                    .push(Op::Repeat((*count).try_into().expect("too many repetitions"), body_blk));
+                let count = u16::try_from(*count).unwrap_or_else(|_| {
+                    panic!("invalid repeat count: expected {count} to be less than 255")
+                });
+                region.block_mut(current_block_id).push(Op::Repeat(count, body_blk));
             }
             ast::Op::While { ref body, .. } => {
                 let body_blk = region.create_block();

@@ -21,7 +21,7 @@ exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 
 [workspace.package]
 version = "0.0.0"
-rust-version = "1.73"
+rust-version = "1.76"
 authors = ["Miden contributors"]
 description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/compiler"
@@ -64,7 +64,7 @@ thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", b
 toml = { version = "0.5", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.1"
-# 2da11ad0a975d2e5d6a2582871f0c89b820b3ffa is the latest commit in 'next' that includes 
+# 2da11ad0a975d2e5d6a2582871f0c89b820b3ffa is the latest commit in 'next' that includes
 # the absolute paths support
 miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "2da11ad0a975d2e5d6a2582871f0c89b820b3ffa" }
 miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "2da11ad0a975d2e5d6a2582871f0c89b820b3ffa" }
@@ -112,6 +112,6 @@ opt-level = 3
 [profile.dev.package.expect-test]
 opt-level = 3
 
-# Build `dissimilar` with release optimizations even in dev mode to speed up the diffing 
+# Build `dissimilar` with release optimizations even in dev mode to speed up the diffing
 [profile.dev.package.dissimilar]
 opt-level = 3

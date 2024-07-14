@@ -9,8 +9,20 @@ use clap::Args;
 #[clap(disable_version_flag = true)]
 pub struct NewCommand {
     /// The path for the generated package.
-    #[clap(value_name = "path")]
+    #[clap()]
     pub path: PathBuf,
+    /// The path to the template to use to generate the package
+    #[clap(long, hide(true))]
+    pub template_path: Option<PathBuf>,
+    /// Use a locally cloned compiler in the generated package
+    #[clap(long, conflicts_with_all(["compiler_rev", "compiler_branch"]))]
+    pub compiler_path: Option<PathBuf>,
+    /// Use a specific revision of the compiler in the generated package
+    #[clap(long, conflicts_with("compiler_branch"))]
+    pub compiler_rev: Option<String>,
+    /// Use a specific branch of the compiler in the generated package
+    #[clap(long)]
+    pub compiler_branch: Option<String>,
 }
 
 impl NewCommand {
@@ -32,15 +44,43 @@ impl NewCommand {
             })?
             .to_string();
 
-        let generate_args = GenerateArgs {
-            template_path: TemplatePath {
-                git: Some("https://github.com/0xPolygonMiden/rust-templates".into()),
-                auto_path: Some("account".into()),
-                // Preparation for alpha release committed in
-                // https://github.com/0xPolygonMiden/rust-templates/pull/2
-                revision: Some("8d14bbb08a11d525f220e7fc8b831f22550f8989".to_string()),
+        let mut define = vec![];
+        if let Some(compiler_path) = self.compiler_path.as_deref() {
+            define.push(format!("compiler_path={}", compiler_path.display()));
+        }
+        if let Some(compiler_rev) = self.compiler_rev.as_deref() {
+            define.push(format!("compiler_rev={compiler_rev}"));
+        }
+        if let Some(compiler_branch) = self.compiler_branch.as_deref() {
+            define.push(format!("compiler_branch={compiler_branch}"));
+        }
+
+        // If we're running the test suite, and no specific options have been provided for what
+        // compiler to use - specify the path to current compiler directory
+        if cfg!(test) || std::env::var("TEST").is_ok() {
+            let use_local_compiler = self.compiler_path.is_none()
+                && self.compiler_rev.is_none()
+                && self.compiler_branch.is_none();
+            if use_local_compiler {
+                set_default_test_compiler(&mut define);
+            }
+        }
+
+        let template_path = match self.template_path.as_ref() {
+            Some(template_path) => TemplatePath {
+                path: Some(template_path.display().to_string()),
+                subfolder: Some("account".into()),
                 ..Default::default()
             },
+            None => TemplatePath {
+                git: Some("https://github.com/0xPolygonMiden/rust-templates".into()),
+                auto_path: Some("account".into()),
+                ..Default::default()
+            },
+        };
+
+        let generate_args = GenerateArgs {
+            template_path,
             destination: self
                 .path
                 .parent()
@@ -53,10 +93,19 @@ impl NewCommand {
             name: Some(name),
             force_git_init: true,
             verbose: true,
+            define,
             ..Default::default()
         };
         cargo_generate::generate(generate_args)
             .context("Failed to scaffold new Miden project from the template")?;
         Ok(self.path)
     }
+}
+
+fn set_default_test_compiler(define: &mut Vec<String>) {
+    use std::path::Path;
+
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let compiler_path = Path::new(&manifest_dir).parent().unwrap().parent().unwrap();
+    define.push(format!("compiler_path={}", compiler_path.display()));
 }

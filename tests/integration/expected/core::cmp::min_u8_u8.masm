@@ -1,0 +1,20 @@
+# mod test_rust_f375c28fa7a7eb4019af213b30f4b291d676b6561c189149b599ddca30004add
+
+export.entrypoint
+    dup.0
+    dup.2
+    u32lt
+    push.0
+    push.0
+    push.4294967294
+    movup.2
+    cdrop
+    u32or
+    neq.0
+    cdrop
+end
+
+
+begin
+    exec.::test_rust_f375c28fa7a7eb4019af213b30f4b291d676b6561c189149b599ddca30004add::entrypoint
+end

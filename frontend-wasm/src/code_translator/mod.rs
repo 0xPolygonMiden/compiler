@@ -13,12 +13,12 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::{collections::hash_map, u64};
+use std::collections::hash_map;
 
 use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use midenc_hir::{
-    cranelift_entity::packed_option::ReservedValue, Block, Immediate, Inst, InstBuilder, Type,
-    Type::*, Value,
+    cranelift_entity::packed_option::ReservedValue, Block, FieldElement, Immediate, Inst,
+    InstBuilder, Type, Type::*, Value,
 };
 use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
@@ -108,6 +108,24 @@ pub fn translate_operator(
             let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
             state.push1(builder.ins().select(cond_i1, arg1, arg2, span));
         }
+        Operator::TypedSelect { ty } => {
+            let (arg1, arg2, cond) = state.pop3();
+            match ty {
+                wasmparser::ValType::F32 => {
+                    let cond = builder.ins().gt_imm(cond, Immediate::Felt(midenc_hir::Felt::ZERO), span);
+                    state.push1(builder.ins().select(cond, arg1, arg2, span));
+                }
+                wasmparser::ValType::I32 => {
+                    let cond = builder.ins().neq_imm(cond, Immediate::I32(0), span);
+                    state.push1(builder.ins().select(cond, arg1, arg2, span));
+                }
+                wasmparser::ValType::I64 => {
+                    let cond = builder.ins().neq_imm(cond, Immediate::I64(0), span);
+                    state.push1(builder.ins().select(cond, arg1, arg2, span));
+                }
+                ty => panic!("unsupported value type for 'select': {ty}"),
+            }
+        }
         Operator::Unreachable => {
             builder.ins().unreachable(span);
             state.reachable = false;
@@ -141,18 +159,12 @@ pub fn translate_operator(
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            // let arg = state.pop1_casted(U32, builder, span);
-            // state.push1(builder.ins().mem_grow(arg, span));
-            // TODO: temporary workaround until we have this instruction
-            // properly implemented in codegen Wasm `memory.grow` instruction is
-            // expected to return -1 if the memory cannot grow and the old mem
-            // page count if it can grow. 
-            // Return total Miden memory size
-            state.push1(builder.ins().i32(mem_total_pages(), span));
+            let arg = state.pop1_casted(U32, builder, span);
+            state.push1(builder.ins().mem_grow(arg, span));
         }
         Operator::MemorySize { .. } => {
             // Return total Miden memory size
-            state.push1(builder.ins().i32(mem_total_pages(), span));
+            state.push1(builder.ins().mem_size(span));
         }
         /******************************* Bulk memory operations *********************************/
         Operator::MemoryCopy { dst_mem, src_mem } => {
@@ -170,22 +182,16 @@ pub fn translate_operator(
         }
         Operator::MemoryFill { mem } => {
             // See semantics at https://webassembly.github.io/spec/core/exec/instructions.html#exec-memory-fill
-
-            // This is a temporary workaround until we have this instruction
-            // properly implemented in IR. I encountered the Wasm `memory.fill`
-            // instruction in the `GlobalAlloc::alloc_zeroed` function, which is
-            // used to zero out the memory allocated by `GlobalAlloc::alloc`, but
-            // since the memory in Miden VM is guaranteed to be initialized to
-            // zeros we can ignore this instruction in this case for now
-            // see https://github.com/0xPolygonMiden/compiler/issues/156
             if *mem != 0 {
                 unsupported_diag!(diagnostics, "MemoryFill: only single memory is supported");
             }
-            let _num_bytes = state.pop1();
-            let val = state.pop1();
-            let _dst_i32 = state.pop1();
-            // Fail if the value is not zero, i.e. the memory is not zeroed
-            builder.ins().assert_eq_imm(Immediate::I32(0), val, span);
+            let num_bytes = state.pop1();
+            let value = state.pop1();
+            let dst_i32 = state.pop1();
+            let value = builder.ins().trunc(value, Type::U8, span);
+            let num_bytes = builder.ins().bitcast(num_bytes, Type::U32, span);
+            let dst = prepare_addr(dst_i32, &U8, None, builder, span);
+            builder.ins().memset(dst, num_bytes, value, span);
         }
         /******************************* Load instructions ***********************************/
         Operator::I32Load8U { memarg } => {
@@ -220,11 +226,11 @@ pub fn translate_operator(
         }
         Operator::I32Load { memarg } => translate_load(I32, memarg, state, builder, span),
         Operator::I64Load { memarg } => translate_load(I64, memarg, state, builder, span),
-        Operator::F64Load { memarg } => translate_load(Felt, memarg, state, builder, span),
+        Operator::F32Load { memarg } => translate_load(Felt, memarg, state, builder, span),
         /****************************** Store instructions ***********************************/
         Operator::I32Store { memarg } => translate_store(I32, memarg, state, builder, span),
         Operator::I64Store { memarg } => translate_store(I64, memarg, state, builder, span),
-        Operator::F64Store { memarg } => translate_store(Felt, memarg, state, builder, span),
+        Operator::F32Store { memarg } => translate_store(Felt, memarg, state, builder, span),
         Operator::I32Store8 { memarg } | Operator::I64Store8 { memarg } => {
             translate_store(U8, memarg, state, builder, span);
         }
@@ -259,9 +265,9 @@ pub fn translate_operator(
         }
         Operator::I64ExtendI32U => {
             let val = state.pop1();
-            let u32_val = builder.ins().cast(val, U32, span);
+            let u32_val = builder.ins().bitcast(val, U32, span);
             let u64_val = builder.ins().zext(u32_val, U64, span);
-            let i64_val = builder.ins().cast(u64_val, I64, span);
+            let i64_val = builder.ins().bitcast(u64_val, I64, span);
             state.push1(i64_val);
         }
         Operator::I32WrapI64 => {
@@ -287,38 +293,68 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             state.push1(builder.ins().bxor(arg1, arg2, span));
         }
-        Operator::I32Shl | Operator::I64Shl => {
+        Operator::I32Shl => {
             let (arg1, arg2) = state.pop2();
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            state.push1(builder.ins().shl_wrapping(arg1, arg2, span));
+            let arg2 = builder.ins().bitcast(arg2, U32, span);
+            state.push1(builder.ins().shl(arg1, arg2, span));
+        }
+        Operator::I64Shl => {
+            let (arg1, arg2) = state.pop2();
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            let arg2 = builder.ins().cast(arg2, U32, span);
+            state.push1(builder.ins().shl(arg1, arg2, span));
         }
         Operator::I32ShrU => {
-            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
+            let (arg1, arg2) = state.pop2_bitcasted(U32, builder, span);
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            let val = builder.ins().shr_wrapping(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            let val = builder.ins().shr(arg1, arg2, span);
+            state.push1(builder.ins().bitcast(val, I32, span));
         }
         Operator::I64ShrU => {
-            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
+            let (arg1, arg2) = state.pop2();
+            let arg1 = builder.ins().bitcast(arg1, U64, span);
+            let arg2 = builder.ins().cast(arg2, U32, span);
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            let val = builder.ins().shr_wrapping(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I64, span));
+            let val = builder.ins().shr(arg1, arg2, span);
+            state.push1(builder.ins().bitcast(val, I64, span));
         }
-        Operator::I32ShrS | Operator::I64ShrS => {
+        Operator::I32ShrS => {
             let (arg1, arg2) = state.pop2();
             // wrapping shift semantics drop any bits that would cause
             // the shift to exceed the bitwidth of the type
-            state.push1(builder.ins().shr_wrapping(arg1, arg2, span));
+            let arg2 = builder.ins().bitcast(arg2, Type::U32, span);
+            state.push1(builder.ins().shr(arg1, arg2, span));
         }
-        Operator::I32Rotl | Operator::I64Rotl => {
+        Operator::I64ShrS => {
             let (arg1, arg2) = state.pop2();
+            // wrapping shift semantics drop any bits that would cause
+            // the shift to exceed the bitwidth of the type
+            let arg2 = builder.ins().cast(arg2, Type::U32, span);
+            state.push1(builder.ins().shr(arg1, arg2, span));
+        }
+        Operator::I32Rotl => {
+            let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().bitcast(arg2, Type::U32, span);
             state.push1(builder.ins().rotl(arg1, arg2, span));
         }
-        Operator::I32Rotr | Operator::I64Rotr => {
+        Operator::I64Rotl => {
             let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().cast(arg2, Type::U32, span);
+            state.push1(builder.ins().rotl(arg1, arg2, span));
+        }
+        Operator::I32Rotr => {
+            let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().bitcast(arg2, Type::U32, span);
+            state.push1(builder.ins().rotr(arg1, arg2, span));
+        }
+        Operator::I64Rotr => {
+            let (arg1, arg2) = state.pop2();
+            let arg2 = builder.ins().cast(arg2, Type::U32, span);
             state.push1(builder.ins().rotr(arg1, arg2, span));
         }
         Operator::I32Sub | Operator::I64Sub => {
@@ -326,10 +362,6 @@ pub fn translate_operator(
             // wrapping because the result is mod 2^N
             // https://www.w3.org/TR/wasm-core-1/#op-isub
             state.push1(builder.ins().sub_wrapping(arg1, arg2, span));
-        }
-        Operator::F64Sub => {
-            let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().sub_checked(arg1, arg2, span));
         }
         Operator::I32Mul | Operator::I64Mul => {
             let (arg1, arg2) = state.pop2();
@@ -339,27 +371,27 @@ pub fn translate_operator(
         }
         Operator::I32DivS | Operator::I64DivS => {
             let (arg1, arg2) = state.pop2();
-            state.push1(builder.ins().div_checked(arg1, arg2, span));
+            state.push1(builder.ins().div_unchecked(arg1, arg2, span));
         }
         Operator::I32DivU => {
-            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
-            let val = builder.ins().div_checked(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            let (arg1, arg2) = state.pop2_bitcasted(U32, builder, span);
+            let val = builder.ins().div_unchecked(arg1, arg2, span);
+            state.push1(builder.ins().bitcast(val, I32, span));
         }
         Operator::I64DivU => {
-            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
-            let val = builder.ins().div_checked(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I64, span));
+            let (arg1, arg2) = state.pop2_bitcasted(U64, builder, span);
+            let val = builder.ins().div_unchecked(arg1, arg2, span);
+            state.push1(builder.ins().bitcast(val, I64, span));
         }
         Operator::I32RemU => {
-            let (arg1, arg2) = state.pop2_casted(U32, builder, span);
+            let (arg1, arg2) = state.pop2_bitcasted(U32, builder, span);
             let val = builder.ins().r#mod_checked(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().bitcast(val, I32, span));
         }
         Operator::I64RemU => {
-            let (arg1, arg2) = state.pop2_casted(U64, builder, span);
+            let (arg1, arg2) = state.pop2_bitcasted(U64, builder, span);
             let val = builder.ins().r#mod_checked(arg1, arg2, span);
-            state.push1(builder.ins().cast(val, I64, span));
+            state.push1(builder.ins().bitcast(val, I64, span));
         }
         Operator::I32RemS | Operator::I64RemS => {
             let (arg1, arg2) = state.pop2();
@@ -367,109 +399,109 @@ pub fn translate_operator(
         }
         /**************************** Comparison Operators **********************************/
         Operator::I32LtU => {
-            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U32, builder, span);
             let val = builder.ins().lt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I64LtU => {
-            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U64, builder, span);
             let val = builder.ins().lt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I32LtS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().lt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I64LtS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().lt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I32LeU => {
-            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U32, builder, span);
             let val = builder.ins().lte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I64LeU => {
-            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U64, builder, span);
             let val = builder.ins().lte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I32LeS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().lte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I64LeS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().lte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I32GtU => {
-            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U32, builder, span);
             let val = builder.ins().gt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I64GtU => {
-            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U64, builder, span);
             let val = builder.ins().gt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().sext(val, I32, span));
         }
         Operator::I32GtS | Operator::I64GtS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().gt(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I32GeU => {
-            let (arg0, arg1) = state.pop2_casted(U32, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U32, builder, span);
             let val = builder.ins().gte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I64GeU => {
-            let (arg0, arg1) = state.pop2_casted(U64, builder, span);
+            let (arg0, arg1) = state.pop2_bitcasted(U64, builder, span);
             let val = builder.ins().gte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I32GeS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().gte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I64GeS => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().gte(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I32Eqz => {
             let arg = state.pop1();
             let val = builder.ins().eq_imm(arg, Immediate::I32(0), span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I64Eqz => {
             let arg = state.pop1();
             let val = builder.ins().eq_imm(arg, Immediate::I64(0), span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I32Eq => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().eq(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I64Eq => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().eq(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I32Ne => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().neq(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         Operator::I64Ne => {
             let (arg0, arg1) = state.pop2();
             let val = builder.ins().neq(arg0, arg1, span);
-            state.push1(builder.ins().cast(val, I32, span));
+            state.push1(builder.ins().zext(val, I32, span));
         }
         op => {
             unsupported_diag!(diagnostics, "Wasm op {:?} is not supported", op);
@@ -572,15 +604,6 @@ fn translate_br_table(
     Ok(())
 }
 
-/// Return the total Miden VM memory size (2^32 addresses * word (4 felts) bytes) in 64KB pages
-const fn mem_total_pages() -> i32 {
-    const FELT_BYTES: u64 = 4; // felts are effectively 32 bits
-    const WORD_BYTES: u64 = 4 * FELT_BYTES; // 4 felts per word
-    const PAGE_SIZE: u64 = 64 * 1024;
-    const MEMORY_SIZE: u64 = u32::MAX as u64 * WORD_BYTES;
-    (MEMORY_SIZE / PAGE_SIZE) as i32
-}
-
 fn translate_load(
     ptr_ty: Type,
     memarg: &MemArg,
@@ -662,6 +685,17 @@ fn prepare_addr(
                 builder
                     .ins()
                     .add_imm_checked(addr_u32, Immediate::U32(memarg.offset as u32), span);
+        }
+        // TODO(pauls): For now, asserting alignment helps us catch mistakes/bugs, but we should
+        // probably make this something that can be disabled to avoid the overhead in release builds
+        if memarg.align > 1 {
+            // Generate alignment assertion - aligned addresses should always produce 0 here
+            let align_offset = builder.ins().mod_imm_unchecked(
+                full_addr_int,
+                Immediate::U32(memarg.align as u32),
+                span,
+            );
+            builder.ins().assertz(align_offset, span);
         }
     };
     builder.ins().inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)

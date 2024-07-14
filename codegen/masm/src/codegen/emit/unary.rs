@@ -36,20 +36,30 @@ impl<'a> OpEmitter<'a> {
             // If the types are equivalent, it's a no-op
             (src, dst) if src == dst => (),
             (Type::Felt, _) if n <= 32 => self.trunc_felt(n),
+            // Truncating i128 to u128, and vice versa is a bitcast
+            (Type::I128 | Type::U128, Type::U128 | Type::I128) => (),
             // Truncating to felt
-            (Type::I128, Type::Felt) => self.trunc_i128_to_felt(),
-            // Truncating an i128 to 64 bits or smaller
-            (Type::I128, _) if n <= 64 => self.trunc_i128(n),
+            (Type::U128 | Type::I128, Type::Felt) => self.trunc_i128_to_felt(),
+            // Truncating a 128-bit integer to 64 bits or smaller
+            (Type::U128 | Type::I128, _) if n <= 64 => self.trunc_i128(n),
             // Truncating i64/u64 to felt
             (Type::I64 | Type::U64, Type::Felt) => self.trunc_int64_to_felt(),
+            // Truncating i64 to u64, and vice versa is a bitcast
+            (Type::I64 | Type::U64, Type::U64 | Type::I64) => (),
             // Truncating a u64/i64 to 32 bits or smaller
             (Type::I64 | Type::U64, _) if n <= 32 => self.trunc_int64(n),
             // Truncating a felt to 32 bits or smaller
             (Type::Felt, _) if n <= 32 => self.trunc_felt(n),
+            // Truncating i32 to u32, and vice versa is a bitcast
+            (Type::I32 | Type::U32, Type::U32 | Type::I32) => (),
             // Truncating an i32/u32 to smaller than 32 bits
             (Type::I32 | Type::U32, _) if n <= 32 => self.trunc_int32(n),
+            // Truncating i16 to u16, and vice versa is a bitcast
+            (Type::I16 | Type::U16, Type::U16 | Type::I16) => (),
             // Truncating an i16/u16 to smaller than 16 bits
             (Type::I16 | Type::U16, _) if n <= 16 => self.trunc_int32(n),
+            // Truncating i8 to u8, and vice versa is a bitcast
+            (Type::I8 | Type::U8, Type::U8 | Type::I8) => (),
             // Truncating an i8/u8 to smaller than 8 bits
             (Type::I8 | Type::U8, _) if n <= 8 => self.trunc_int32(n),
             (src, dst) => unimplemented!("unsupported truncation of {src} to {dst}"),
@@ -86,11 +96,6 @@ impl<'a> OpEmitter<'a> {
     pub fn zext(&mut self, dst: &Type) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
-        assert!(
-            src.is_unsigned_integer() && dst.is_integer(),
-            "invalid zero-extension of {src} to {dst}: only unsigned integer-to-integer casts are \
-             supported"
-        );
         let src_bits = src.size_in_bits() as u32;
         let dst_bits = dst.size_in_bits() as u32;
         assert!(
@@ -101,10 +106,12 @@ impl<'a> OpEmitter<'a> {
             // If the types are equivalent, it's a no-op, but only if they are integers
             (src, dst) if src == dst => (),
             // Zero-extending a u64 to i128 simply requires pushing a 0u64 on the stack
-            (Type::U64, Type::I128) => self.push_u64(0),
-            (Type::Felt, Type::U64 | Type::I128) => self.zext_felt(dst_bits),
-            (Type::U32, Type::U64 | Type::I64 | Type::I128) => self.zext_int32(dst_bits),
-            (Type::I1 | Type::U8 | Type::U16, Type::U64 | Type::I64 | Type::I128) => {
+            (Type::U64, Type::U128 | Type::I128) => self.push_u64(0),
+            (Type::Felt, Type::U64 | Type::U128 | Type::I128) => self.zext_felt(dst_bits),
+            (Type::U32, Type::U64 | Type::I64 | Type::U128 | Type::I128) => {
+                self.zext_int32(dst_bits)
+            }
+            (Type::I1 | Type::U8 | Type::U16, Type::U64 | Type::I64 | Type::U128 | Type::I128) => {
                 self.zext_smallint(src_bits, dst_bits)
             }
             // Zero-extending to u32/i32 from smaller integers is a no-op
@@ -175,6 +182,16 @@ impl<'a> OpEmitter<'a> {
         self.stack.push(dst.clone());
     }
 
+    pub fn bitcast(&mut self, dst: &Type) {
+        let arg = self.stack.pop().expect("operand stack is empty");
+        let src = arg.ty();
+        assert!(
+            src.is_integer() && dst.is_integer(),
+            "invalid cast of {src} to {dst}: only integer-to-integer bitcasts are supported"
+        );
+        self.stack.push(dst.clone());
+    }
+
     /// Convert between two integral types, given as `src` and `dst`,
     /// indicating the direction of the conversion.
     ///
@@ -210,20 +227,33 @@ impl<'a> OpEmitter<'a> {
         let src_bits = src.size_in_bits() as u32;
         let dst_bits = dst.size_in_bits() as u32;
         match (&src, dst) {
+            // u128
+            (Type::U128, Type::I128) => self.assert_unsigned_int128(),
+            (Type::U128, Type::I64) => self.u128_to_i64(),
+            (Type::U128 | Type::I128, Type::U64) => self.int128_to_u64(),
+            (Type::U128 | Type::I128, Type::Felt) => self.int128_to_felt(),
+            (Type::U128 | Type::I128, Type::U32) => self.int128_to_u32(),
+            (Type::U128 | Type::I128, Type::U16 | Type::U8 | Type::I1) => {
+                self.int128_to_u32();
+                self.int32_to_uint(dst_bits);
+            }
+            (Type::U128, Type::I32) => {
+                self.int128_to_u32();
+                self.assert_unsigned_int32();
+            }
+            (Type::U128, Type::I16 | Type::I8) => {
+                self.int128_to_u32();
+                self.int32_to_int(dst_bits);
+            }
             // i128
             (Type::I128, Type::I64) => self.i128_to_i64(),
-            (Type::I128, Type::U64) => self.i128_to_u64(),
-            (Type::I128, Type::Felt) => self.i128_to_felt(),
-            (Type::I128, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
-                self.i128_to_u64();
-                self.u64_to_uint(dst_bits);
-            }
             (Type::I128, Type::I32 | Type::I16 | Type::I8) => {
                 self.i128_to_i64();
                 self.i64_to_int(dst_bits);
             }
             // i64
             (Type::I64, Type::I128) => self.sext_int64(128),
+            (Type::I64, Type::U128) => self.zext_int64(128),
             (Type::I64, Type::U64) => self.assert_unsigned_int64(),
             (Type::I64, Type::Felt) => self.i64_to_felt(),
             (Type::I64, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
@@ -234,6 +264,7 @@ impl<'a> OpEmitter<'a> {
                 self.i64_to_int(dst_bits);
             }
             // u64
+            (Type::U64, Type::I128 | Type::U128) => self.zext_int64(128),
             (Type::U64, Type::I64) => self.assert_i64(),
             (Type::U64, Type::Felt) => self.u64_to_felt(),
             (Type::U64, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
@@ -247,6 +278,7 @@ impl<'a> OpEmitter<'a> {
             }
             // felt
             (Type::Felt, Type::I64 | Type::I128) => self.sext_felt(dst_bits),
+            (Type::Felt, Type::U128) => self.zext_felt(dst_bits),
             (Type::Felt, Type::U64) => self.felt_to_u64(),
             (Type::Felt, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
                 self.felt_to_uint(dst_bits);
@@ -312,7 +344,8 @@ impl<'a> OpEmitter<'a> {
         // For now, we're strict about the types of values we'll allow casting from
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
-            Type::U32 => {
+            // We allow i32 here because Wasm uses it
+            Type::U32 | Type::I32 => {
                 self.stack.push(ty.clone());
             }
             Type::Felt => {
@@ -352,7 +385,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(&[Op::Drop, Op::IsOdd]);
             }
             // For i128, same as above, but more elements are dropped
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.emit_n(3, Op::Drop);
                 self.emit(Op::IsOdd);
             }
@@ -371,7 +404,8 @@ impl<'a> OpEmitter<'a> {
     pub fn ilog2(&mut self) {
         let ty = self.stack.peek().expect("operand stack is empty").ty();
         match &ty {
-            Type::I128 | Type::I64 | Type::U64 => {
+            Type::Felt => self.emit(Op::Ilog2),
+            Type::I128 | Type::U128 | Type::I64 | Type::U64 => {
                 // Compute the number of leading zeros
                 //
                 // NOTE: This function handles popping the input and pushing
@@ -420,7 +454,7 @@ impl<'a> OpEmitter<'a> {
     pub fn popcnt(&mut self) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
-            Type::I128 => {
+            Type::I128 | Type::U128 => {
                 self.emit_all(&[
                     // [x3, x2, x1, x0]
                     Op::U32Popcnt,
@@ -473,130 +507,40 @@ impl<'a> OpEmitter<'a> {
     pub fn clz(&mut self) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
-            Type::I128 => {
-                // See the implementation for i64 below to understand the approach here, this is
-                // just an extended form of the same approach.
-                //
-                // We have two 64-bit limbs, [hi, lo], each of which is composed of two 32-bit
-                // limbs, i.e. [hi_hi, hi_lo, lo_hi, lo_lo]. We compute the number of leading
-                // zeroes for all limbs, then fold them to the actual count, clamping the count
-                // for any limb that follows a limb with < 32 zeros, to zero.
-                //
-                // Some benchmarking may be required to determine if computing all the limbs, or
-                // having at tree of nested `if` branches is faster, but for now we're favoring
-                // the approach that discards values if they aren't needed
+            Type::I128 | Type::U128 => {
+                let u64_clz = "std::math::u64::clz".parse().unwrap();
+                // We decompose the 128-bit value into two 64-bit limbs, and use the standard
+                // library intrinsics to get the count for those limbs. We then add the count
+                // for the low bits to that of the high bits, if the high bits are all zero,
+                // otherwise we take just the high bit count.
                 self.emit_all(&[
-                    // Stage number of leading zeros in the hi bits
-                    //     adv_stack:     [hi_lo_lz, hi_hi_lz]
-                    //     operand_stack: [lo_hi, lo_lo]
-                    Op::U32Clz,
-                    Op::Drop,
-                    Op::U32Clz,
-                    Op::Drop,
-                    // Stage number of leading zeros in the low bits
-                    //     adv_stack:     [lo_lo_lz, lo_hi_lz, hi_lo_lz, hi_hi_lz]
-                    //     operand_stack: []
-                    Op::U32Clz,
-                    Op::Drop,
-                    Op::U32Clz,
-                    Op::Drop,
-                    // Move counts to operand stack
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_lo_lz, lo_hi_lz, hi_lo_lz, hi_hi_lz]
-                    Op::Padw,
-                    Op::AdvLoadw,
-                    // Fold counts of the low 32-bit limbs
-                    //     adv_stack:     []
-                    //     operand_stack: [0, lo_lo_lz, lo_hi_lz, hi_lo_lz, hi_hi_lz]
-                    Op::PushU8(0),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_hi_lz < 32, 0, lo_lo_lz, lo_hi_lz, hi_lo_lz,
-                    // hi_hi_lz]
-                    Op::Dup(2),
-                    Op::LtImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_lz, hi_lo_lz, hi_hi_lz]
-                    Op::Cdrop,
-                    Op::Add,
-                    // Fold in next lowest 32-bit limb
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_lo_lz < 32, 0, lo_lz, hi_lo_lz, hi_hi_lz]
-                    Op::PushU8(0),
-                    Op::Dup(2),
-                    Op::LtImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_96_lz, hi_hi_lz]
-                    Op::Cdrop,
-                    Op::Add,
-                    // Fold in the last limb
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_hi_lz, 0, lo_96_lz, hi_hi_lz]
-                    Op::PushU8(0),
-                    Op::Dup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_hi_lz < 32, 0, lo_96_lz, hi_hi_lz]
-                    Op::LtImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [lz]
-                    Op::Cdrop,
+                    // Count leading zeros in the high bits
+                    Op::Exec(u64_clz), // [hi_clz, lo_hi, lo_lo]
+                    // Count leading zeros in the low bits
+                    Op::Movup(2),      // [lo_lo, hi_clz, lo_hi]
+                    Op::Movup(2),      // [lo_hi, lo_lo, hi_clz]
+                    Op::Exec(u64_clz), // [lo_clz, hi_clz]
+                    // Add the low bit leading zeros to those of the high bits, if the high bits
+                    // are all zeros; otherwise return only the high bit count
+                    Op::PushU32(0),           // [0, lo_clz, hi_clz]
+                    Op::Dup(2),               // [hi_clz, 0, lo_clz, hi_clz]
+                    Op::LtImm(Felt::new(32)), // [hi_clz < 32, 0, lo_clz, hi_clz]
+                    Op::Cdrop,                // [hi_clz < 32 ? 0 : lo_clz, hi_clz]
                     Op::Add,
                 ]);
             }
             Type::I64 | Type::U64 => {
-                self.emit_all(&[
-                    // Stage number of leading zeros in the high bits
-                    //     adv_stack:     [hi_lz]
-                    //     operand_stack: [hi, lo]
-                    Op::U32Clz,
-                    // Stage number of leading zeros in the low bits
-                    //     adv_stack:     [lo_lz, hi_lz]
-                    //     operand_stack: []
-                    Op::Drop,
-                    Op::U32Clz,
-                    Op::Drop,
-                    // Move count for the low 32-bits to operand stack
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_lz, lo_lz]
-                    Op::AdvPush(2),
-                    // Push a zero on the stack, which is the actual number of leading zeros
-                    // in the low 32-bit limb if the high 32-bit limb has < 32 leading zeros
-                    //     adv_stack:     []
-                    //     operand_stack: [0, hi_lz, lo_lz]
-                    Op::PushU8(0),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_lz, 0, hi_lz]
-                    Op::Movup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_lz == 32, lo_lz, 0, hi_lz]
-                    Op::Dup(2),
-                    Op::EqImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [lz]
-                    Op::Cdrop,
-                    Op::Add,
-                ]);
+                self.emit(Op::Exec("std::math::u64::clz".parse().unwrap()));
             }
             Type::I32 | Type::U32 => {
-                self.emit_all(&[
-                    // Push the count on the advice stack
-                    Op::U32Clz,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
-                ]);
+                self.emit(Op::U32Clz);
             }
             Type::I16 | Type::U16 => {
                 // There are always 16 leading zeroes from the perspective of the
                 // MASM u32clz instruction for values of (i|u)16 type, so subtract
                 // that from the count
                 self.emit_all(&[
-                    // Push the count on the advice stack
                     Op::U32Clz,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
                     // Subtract the excess bits from the count
                     Op::U32WrappingSubImm(16),
                 ]);
@@ -606,12 +550,7 @@ impl<'a> OpEmitter<'a> {
                 // MASM u32clz instruction for values of (i|u)8 type, so subtract
                 // that from the count
                 self.emit_all(&[
-                    // Push the count on the advice stack
                     Op::U32Clz,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
                     // Subtract the excess bits from the count
                     Op::U32WrappingSubImm(24),
                 ]);
@@ -636,136 +575,31 @@ impl<'a> OpEmitter<'a> {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             // The implementation here is effectively the same as `clz`, just with minor adjustments
-            Type::I128 => {
-                // See the implementation for i64 below to understand the approach here, this is
-                // just an extended form of the same approach.
-                //
-                // We have two 64-bit limbs, [hi, lo], each of which is composed of two 32-bit
-                // limbs, i.e. [hi_hi, hi_lo, lo_hi, lo_lo]. We compute the number of leading
-                // ones for all limbs, then fold them to the actual count, clamping the count
-                // for any limb that is preceded by a limb of anything other than all ones,
-                // to zero.
-                //
-                // Some benchmarking may be required to determine if computing all the limbs, or
-                // having at tree of nested `if` branches is faster, but for now we're favoring
-                // the approach that discards values if they aren't needed
+            Type::I128 | Type::U128 => {
+                let u64_clo = "std::math::u64::clo".parse().unwrap();
+                // We decompose the 128-bit value into two 64-bit limbs, and use the standard
+                // library intrinsics to get the count for those limbs. We then add the count
+                // for the low bits to that of the high bits, if the high bits are all one,
+                // otherwise we take just the high bit count.
                 self.emit_all(&[
-                    // Stage number of leading ones in the hi bits
-                    //     adv_stack:     [hi_lo_clo, hi_hi_clo]
-                    //     operand_stack: [lo_hi, lo_lo]
-                    Op::U32Clo,
-                    Op::Drop,
-                    Op::U32Clo,
-                    Op::Drop,
-                    // Stage number of leading ones in the low bits
-                    //     adv_stack:     [lo_lo_clo, lo_hi_clo, hi_lo_clo, hi_hi_clo]
-                    //     operand_stack: []
-                    Op::U32Clo,
-                    Op::Drop,
-                    Op::U32Clo,
-                    Op::Drop,
-                    // Move counts to the operand stack
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_lo_clo, lo_hi_clo, hi_lo_clo, hi_hi_clo]
-                    Op::Padw,
-                    Op::AdvLoadw,
-                    // Push a zero on the stack, which is the number of leading ones
-                    // in the lo-lo limb if the lo-hi limb has fewer than 64 ones
-                    //     adv_stack:     []
-                    //     operand_stack: [0, lo_lo_clo, lo_hi_clo, hi_lo_clo, hi_hi_clo]
-                    Op::PushU8(0),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_hi_clo, 0, lo_lo_clo, lo_hi_clo, hi_lo_clo,
-                    // hi_hi_clo]
-                    Op::Dup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_hi_clo < 32, 0, lo_lo_clo, lo_hi_clo, hi_lo_clo,
-                    // hi_hi_clo]
-                    Op::LtImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [corrected_lo_lo_clo, lo_hi_clo, hi_lo_clo, hi_hi_clo]
-                    Op::Cdrop,
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_clo, hi_lo_clo, hi_hi_clo]
-                    Op::Add,
-                    // Repeat with the hi-lo limb
-                    //     adv_stack:     []
-                    //     operand_stack: [0, lo_clo, hi_lo_clo, hi_hi_clo]
-                    Op::PushU8(0),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_lo_clo, 0, lo_clo, hi_lo_clo, hi_hi_clo]
-                    Op::Dup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_lo_clo < 32, 0, lo_clo, hi_lo_clo, hi_hi_clo]
-                    Op::LtImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_96_clo, hi_hi_clo]
-                    Op::Cdrop,
-                    Op::Add,
-                    // Fold in to highest 32-bit limb
-                    //     adv_stack:     []
-                    //     operand_stack: [0, lo_96_clo, hi_hi_clo]
-                    Op::PushU8(0),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_hi_clo, 0, lo_96_clo, hi_hi_clo]
-                    Op::Dup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_hi_clo < 32, 0, lo_96_clo, hi_hi_clo]
-                    Op::LtImm(Felt::new(32)),
-                    Op::Cdrop,
-                    //     adv_stack:     []
-                    //     operand_stack: [clo]
+                    // Count leading ones in the high bits
+                    Op::Exec(u64_clo), // [hi_clo, lo_hi, lo_lo]
+                    // Count leading ones in the low bits
+                    Op::Movup(2),      // [lo_lo, hi_clo, lo_hi]
+                    Op::Movup(2),      // [lo_hi, lo_lo, hi_clo]
+                    Op::Exec(u64_clo), // [lo_clo, hi_clo]
+                    // Add the low bit leading ones to those of the high bits, if the high bits
+                    // are all one; otherwise return only the high bit count
+                    Op::PushU32(0),           // [0, lo_clo, hi_clo]
+                    Op::Dup(2),               // [hi_clo, 0, lo_clo, hi_clo]
+                    Op::LtImm(Felt::new(32)), // [hi_clo < 32, 0, lo_clo, hi_clo]
+                    Op::Cdrop,                // [hi_clo < 32 ? 0 : lo_clo, hi_clo]
                     Op::Add,
                 ]);
             }
-            Type::I64 | Type::U64 => {
-                self.emit_all(&[
-                    // Stage number of leading ones in the high bits
-                    //     adv_stack:     [hi_clo]
-                    //     operand_stack: [hi, lo]
-                    Op::U32Clo,
-                    // Stage number of leading ones in the low bits
-                    //     adv_stack:     [lo_clo, hi_clo]
-                    //     operand_stack: []
-                    Op::Drop,
-                    Op::U32Clo,
-                    Op::Drop,
-                    // Move number of leading ones in both limbs to the operand stack
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_clo, lo_clo]
-                    Op::AdvPush(2),
-                    // Push a zero on the stack, which is the actual number of leading ones
-                    // in the low 32-bit limb if the high 32-bit limb has fewer than 32
-                    // leading ones.
-                    //     adv_stack:     []
-                    //     operand_stack: [0, hi_clo, lo_clo]
-                    Op::PushU8(0),
-                    //     adv_stack:     []
-                    //     operand_stack: [lo_clo, 0, hi_clo]
-                    Op::Movup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_clo, lo_clo, 0, hi_clo]
-                    Op::Dup(2),
-                    //     adv_stack:     []
-                    //     operand_stack: [hi_clo == 32, lo_clo, 0, hi_clo]
-                    Op::EqImm(Felt::new(32)),
-                    //     adv_stack:     []
-                    //     operand_stack: [corrected_lo_clo, hi_clo]
-                    Op::Cdrop,
-                    //     adv_stack:     []
-                    //     operand_stack: [clo]
-                    Op::Add,
-                ]);
-            }
+            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::clo".parse().unwrap())),
             Type::I32 | Type::U32 => {
-                self.emit_all(&[
-                    // Push the count on the advice stack
-                    Op::U32Clo,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
-                ]);
+                self.emit(Op::U32Clo);
             }
             Type::I16 | Type::U16 => {
                 // There are always 16 leading zeroes from the perspective of the
@@ -776,12 +610,8 @@ impl<'a> OpEmitter<'a> {
                     // OR in the leading 16 ones
                     Op::PushU32(u32::MAX << 16),
                     Op::U32Or,
-                    // Push the count on the advice stack
+                    // Obtain the count
                     Op::U32Clo,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
                     // Subtract the leading bits we added from the count
                     Op::U32WrappingSubImm(16),
                 ]);
@@ -795,12 +625,8 @@ impl<'a> OpEmitter<'a> {
                     // OR in the leading 24 ones
                     Op::PushU32(u32::MAX << 8),
                     Op::U32Or,
-                    // Push the count on the advice stack
+                    // Obtain the count
                     Op::U32Clo,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
                     // Subtract the excess bits from the count
                     Op::U32WrappingSubImm(24),
                 ]);
@@ -824,169 +650,36 @@ impl<'a> OpEmitter<'a> {
     pub fn ctz(&mut self) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
-            Type::I128 => {
-                // Same process as below with the 64-bit types, just with more limbs
+            Type::I128 | Type::U128 => {
+                let u64_ctz = "std::math::u64::ctz".parse().unwrap();
+                // We decompose the 128-bit value into two 64-bit limbs, and use the standard
+                // library intrinsics to get the count for those limbs. We then add the count
+                // for the low bits to that of the high bits, if the high bits are all one,
+                // otherwise we take just the high bit count.
                 self.emit_all(&[
-                    // Swap the 64-bit limbs
-                    //    advice_stack:  []
-                    //    operand_stack: [hi_lo, lo_hi, lo_lo, hi_hi]
-                    Op::Movdn(3),
-                    // NOTE: We take this opportunity to also swap the two 32-bit limbs
-                    // of the high 64-bits
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_hi, lo_lo, hi_lo, hi_hi]
-                    Op::Movdn(2),
-                    // Swap the 32-bit limbs of the low 64-bits
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_lo, lo_hi, hi_lo, hi_hi]
+                    // Count trailing zeros in the high bits
+                    Op::Exec(u64_ctz), // [hi_ctz, lo_hi, lo_lo]
+                    // Count trailing zeros in the low bits
+                    Op::Movup(2),      // [lo_lo, hi_ctz, lo_hi]
+                    Op::Movup(2),      // [lo_hi, lo_lo, hi_ctz]
+                    Op::Exec(u64_ctz), // [lo_ctz, hi_ctz]
+                    // Add the high bit trailing zeros to those of the low bits, if the low bits
+                    // are all zero; otherwise return only the low bit count
                     Op::Swap(1),
-                    // Compute the trailing zeros of the lo-lo bits
-                    //    advice_stack:  [lo_lo_ctz]
-                    //    operand_stack: [lo_lo, lo_hi, hi_lo, hi_hi]
-                    Op::U32Ctz,
-                    // Compute the trailing zeros of the lo-hi bits
-                    //    advice_stack:  [lo_hi_ctz, lo_lo_ctz]
-                    //    operand_stack: [hi_lo, hi_hi]
-                    Op::Drop,
-                    Op::U32Ctz,
-                    Op::Drop,
-                    // Compute the trailing zeros of the high 64-bits
-                    //    advice_stack:  [hi_hi_ctz, hi_lo_ctz, lo_hi_ctz, lo_lo_ctz]
-                    //    operand_stack: []
-                    Op::U32Ctz,
-                    Op::Drop,
-                    Op::U32Ctz,
-                    Op::Drop,
-                    // Move the hi counts to the operand stack from the advice stack
-                    //    advice_stack:  []
-                    //    operand_stack: [hi_hi_ctz, hi_lo_ctz, lo_hi_ctz, lo_lo_ctz]
-                    Op::Padw,
-                    Op::AdvLoadw,
-                    // If the low 32-bits == 32, add in the count of the high 32-bits, or zero
-                    // otherwise
-                    //    advice_stack:   []
-                    //    operand_stack:  [0, hi_hi_ctz, hi_lo_ctz, lo_hi_ctz, lo_lo_ctz]
-                    Op::PushU8(0),
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_lo_ctz, 0, hi_hi_ctz, hi_lo_ctz, lo_hi_ctz,
-                    // lo_lo_ctz]
-                    Op::Dup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_lo_ctz < 32, 0, hi_hi_ctz, hi_lo_ctz, lo_hi_ctz,
-                    // lo_lo_ctz]
-                    Op::LtImm(Felt::new(32)),
-                    //    advice_stack:   []
-                    //    operand_stack:  [corrected_hi_hi_ctz, hi_lo_ctz, lo_hi_ctz, lo_lo_ctz]
-                    Op::Cdrop,
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_ctz, lo_hi_ctz, lo_lo_ctz]
-                    Op::Add,
-                    // Repeat with low 64-bits
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_hi_ctz, lo_lo_ctz, hi_ctz]
-                    Op::Movdn(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [0, lo_hi_ctz, lo_lo_ctz, hi_ctz]
-                    Op::PushU8(0),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_lo_ctz, 0, lo_hi_ctz, lo_lo_ctz, hi_ctz]
-                    Op::Dup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_lo_ctz < 32, 0, lo_hi_ctz, lo_lo_ctz, hi_ctz]
-                    Op::LtImm(Felt::new(32)),
-                    //    advice_stack:   []
-                    //    operand_stack:  [corrected_lo_hi_ctz, lo_lo_ctz, hi_ctz]
-                    Op::Cdrop,
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_ctz, hi_ctz]
-                    Op::Add,
-                    // Fold the counts of the two limbs, based on whether the lower limb had 64
-                    // trailing zeros
-                    //    advice_stack:   []
-                    //    operand_stack:  [0, lo_ctz, hi_ctz]
-                    Op::PushU8(0),
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_ctz, 0, lo_ctz]
-                    Op::Movup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_ctz, hi_ctz, 0, lo_ctz]
-                    Op::Dup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_ctz == 64, hi_ctz, 0, lo_ctz]
-                    Op::EqImm(Felt::new(64)),
-                    //    advice_stack:   []
-                    //    operand_stack:  [corrected_hi_ctz, lo_ctz]
-                    Op::Cdrop,
-                    //    advice_stack:   []
-                    //    operand_stack:  [ctz]
+                    Op::PushU32(0),           // [0, hi_ctz, lo_ctz]
+                    Op::Dup(2),               // [lo_ctz, 0, hi_ctz, lo_ctz]
+                    Op::LtImm(Felt::new(32)), // [lo_ctz < 32, 0, hi_ctz, lo_ctz]
+                    Op::Cdrop,                // [lo_ctz < 32 ? 0 : hi_ctz, lo_ctz]
                     Op::Add,
                 ]);
             }
-            Type::I64 | Type::U64 => {
-                // Similar to the `clz` instruction, we must evaluate each limb independently.
-                // However, since this is _trailing_ not leading zeros, we work low bits to high,
-                // rather than high bits to low.
-                self.emit_all(&[
-                    // Swap the limbs
-                    //    advice_stack:  []
-                    //    operand_stack: [lo, hi]
-                    Op::Swap(1),
-                    // Compute the trailing zeros of the low bits
-                    //    advice_stack:  [lo_ctz]
-                    //    operand_stack: [lo, hi]
-                    Op::U32Ctz,
-                    // Compute the trailing zeros of the high bits
-                    //    advice_stack:  [hi_ctz, lo_ctz]
-                    //    operand_stack: []
-                    Op::Drop,
-                    Op::U32Ctz,
-                    Op::Drop,
-                    // Pop the counts from the advice stack
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_ctz, hi_ctz]
-                    Op::AdvPush(2),
-                    // If the number of trailing zeros is 32, add in the trailing zeros
-                    // of the high bits, otherwise ignore that limb, we use a value of
-                    // zero to represent that case
-                    //    advice_stack:  []
-                    //    operand_stack: [0, lo_ctz, hi_ctz]
-                    Op::PushU8(0),
-                    //    advice_stack:  []
-                    //    operand_stack: [hi_ctz, 0, lo_ctz]
-                    Op::Movup(2),
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_ctz, hi_ctz, 0, lo_ctz]
-                    Op::Dup(2),
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_ctz == 32, hi_ctz, 0, lo_ctz]
-                    Op::EqImm(Felt::new(32)),
-                    //    advice_stack:  []
-                    //    operand_stack: [corrected_hi_ctz, lo_ctz]
-                    Op::Cdrop,
-                    //    advice_stack:  []
-                    //    operand_stack: [ctz]
-                    Op::Add,
-                ])
-            }
-            Type::I32 | Type::U32 => {
-                self.emit_all(&[
-                    // Push the count on the advice stack
-                    Op::U32Ctz,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
-                ]);
-            }
+            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::ctz".parse().unwrap())),
+            Type::I32 | Type::U32 => self.emit(Op::U32Ctz),
             Type::I16 | Type::U16 => {
                 // Clamp the total number of trailing zeros to 16
                 self.emit_all(&[
-                    // Push the count on the advice stack
+                    // Obtain the count
                     Op::U32Ctz,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
                     // Clamp to 16
                     //   operand_stack: [16, ctz]
                     Op::PushU8(16),
@@ -1001,12 +694,8 @@ impl<'a> OpEmitter<'a> {
             Type::I8 | Type::U8 => {
                 // Clamp the total number of trailing zeros to 8
                 self.emit_all(&[
-                    // Push the count on the advice stack
+                    // Obtain the count
                     Op::U32Ctz,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
                     // Clamp to 8
                     //   operand_stack: [8, ctz]
                     Op::PushU8(8),
@@ -1037,159 +726,34 @@ impl<'a> OpEmitter<'a> {
     pub fn cto(&mut self) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
-            Type::I128 => {
-                // Same process as below with the 64-bit types, just with more limbs
+            Type::I128 | Type::U128 => {
+                let u64_cto = "std::math::u64::cto".parse().unwrap();
+                // We decompose the 128-bit value into two 64-bit limbs, and use the standard
+                // library intrinsics to get the count for those limbs. We then add the count
+                // for the low bits to that of the high bits, if the high bits are all one,
+                // otherwise we take just the high bit count.
                 self.emit_all(&[
-                    // Swap the 64-bit limbs
-                    //    advice_stack:  []
-                    //    operand_stack: [hi_lo, lo_hi, lo_lo, hi_hi]
-                    Op::Movdn(3),
-                    // NOTE: We take this opportunity to also swap the two 32-bit limbs
-                    // of the high 64-bits
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_hi, lo_lo, hi_lo, hi_hi]
-                    Op::Movdn(2),
-                    // Swap the 32-bit limbs of the low 64-bits
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_lo, lo_hi, hi_lo, hi_hi]
+                    // Count trailing ones in the high bits
+                    Op::Exec(u64_cto), // [hi_cto, lo_hi, lo_lo]
+                    // Count trailing ones in the low bits
+                    Op::Movup(2),      // [lo_lo, hi_cto, lo_hi]
+                    Op::Movup(2),      // [lo_hi, lo_lo, hi_cto]
+                    Op::Exec(u64_cto), // [lo_cto, hi_cto]
+                    // Add the high bit trailing ones to those of the low bits, if the low bits
+                    // are all one; otherwise return only the low bit count
                     Op::Swap(1),
-                    // Compute the trailing ones of the lo-lo bits
-                    //    advice_stack:  [lo_lo_cto]
-                    //    operand_stack: [lo_lo, lo_hi, hi_lo, hi_hi]
-                    Op::U32Cto,
-                    // Compute the trailing ones of the lo-hi bits
-                    //    advice_stack:  [lo_hi_cto, lo_lo_cto]
-                    //    operand_stack: [hi_lo, hi_hi]
-                    Op::Drop,
-                    Op::U32Cto,
-                    Op::Drop,
-                    // Compute the trailing ones of the high 64-bits
-                    //    advice_stack:  [hi_hi_cto, hi_lo_cto, lo_hi_cto, lo_lo_cto]
-                    //    operand_stack: []
-                    Op::U32Cto,
-                    Op::Drop,
-                    Op::U32Cto,
-                    Op::Drop,
-                    // Move the hi counts to the operand stack from the advice stack
-                    //    advice_stack:  []
-                    //    operand_stack: [hi_hi_cto, hi_lo_cto, lo_hi_cto, lo_lo_cto]
-                    Op::Padw,
-                    Op::AdvLoadw,
-                    // If the count from the low 32-bits == 32, add in the count of the high
-                    // 32-bits, or zero otherwise
-                    //    advice_stack:   []
-                    //    operand_stack:  [0, hi_hi_cto, hi_lo_cto, lo_hi_cto, lo_lo_cto]
-                    Op::PushU8(0),
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_lo_cto, 0, hi_hi_cto, hi_lo_cto, lo_hi_cto,
-                    // lo_lo_cto]
-                    Op::Dup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_lo_cto < 32, 0, hi_hi_cto, hi_lo_cto, lo_hi_cto,
-                    // lo_lo_cto]
-                    Op::LtImm(Felt::new(32)),
-                    //    advice_stack:   []
-                    //    operand_stack:  [corrected_hi_hi_cto, hi_lo_cto, lo_hi_cto, lo_lo_cto]
-                    Op::Cdrop,
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_cto, lo_hi_cto, lo_lo_cto]
-                    Op::Add,
-                    // Repeat with low 64-bits
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_hi_cto, lo_lo_cto, hi_cto]
-                    Op::Movdn(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [0, lo_hi_cto, lo_lo_cto, hi_cto]
-                    Op::PushU8(0),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_lo_cto, 0, lo_hi_cto, lo_lo_cto, hi_cto]
-                    Op::Dup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_lo_cto < 32, 0, lo_hi_cto, lo_lo_cto, hi_cto]
-                    Op::LtImm(Felt::new(32)),
-                    //    advice_stack:   []
-                    //    operand_stack:  [corrected_lo_hi_cto, lo_lo_cto, hi_cto]
-                    Op::Cdrop,
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_cto, hi_cto]
-                    Op::Add,
-                    // Fold the counts of the two limbs, based on whether the lower limb had 64
-                    // trailing ones
-                    //    advice_stack:   []
-                    //    operand_stack:  [0, lo_cto, hi_cto]
-                    Op::PushU8(0),
-                    //    advice_stack:   []
-                    //    operand_stack:  [hi_cto, 0, lo_cto]
-                    Op::Movup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_cto, hi_cto, 0, lo_cto]
-                    Op::Dup(2),
-                    //    advice_stack:   []
-                    //    operand_stack:  [lo_cto == 64, hi_cto, 0, lo_cto]
-                    Op::EqImm(Felt::new(64)),
-                    //    advice_stack:   []
-                    //    operand_stack:  [corrected_hi_cto, lo_cto]
-                    Op::Cdrop,
-                    //    advice_stack:   []
-                    //    operand_stack:  [cto]
+                    Op::PushU32(0),           // [0, hi_cto, lo_cto]
+                    Op::Dup(2),               // [lo_cto, 0, hi_cto, lo_cto]
+                    Op::LtImm(Felt::new(32)), // [lo_cto < 32, 0, hi_cto, lo_cto]
+                    Op::Cdrop,                // [lo_cto < 32 ? 0 : hi_cto, lo_cto]
                     Op::Add,
                 ]);
             }
-            Type::I64 | Type::U64 => {
-                // Same exact logic as `ctz`, just the op changes
-                self.emit_all(&[
-                    // Swap the limbs
-                    //    advice_stack:  []
-                    //    operand_stack: [lo, hi]
-                    Op::Swap(1),
-                    // Compute the trailing ones of the low bits
-                    //    advice_stack:  [lo_cto]
-                    //    operand_stack: [lo, hi]
-                    Op::U32Cto,
-                    // Compute the trailing ones of the high bits
-                    //    advice_stack:  [hi_cto, lo_cto]
-                    //    operand_stack: []
-                    Op::Drop,
-                    Op::U32Cto,
-                    Op::Drop,
-                    // Pop the counts from the advice stack
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_cto, hi_cto]
-                    Op::AdvPush(2),
-                    // If the number of trailing ones is 32, add in the trailing ones
-                    // of the high bits, otherwise ignore that limb, we use a value of
-                    // zero to represent that case
-                    //    advice_stack:  []
-                    //    operand_stack: [0, lo_cto, hi_cto]
-                    Op::PushU8(0),
-                    //    advice_stack:  []
-                    //    operand_stack: [hi_cto, 0, lo_cto]
-                    Op::Movup(2),
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_cto, hi_cto, 0, lo_cto]
-                    Op::Dup(2),
-                    //    advice_stack:  []
-                    //    operand_stack: [lo_cto == 32, hi_cto, 0, lo_cto]
-                    Op::EqImm(Felt::new(32)),
-                    //    advice_stack:  []
-                    //    operand_stack: [corrected_hi_cto, lo_cto]
-                    Op::Cdrop,
-                    //    advice_stack:  []
-                    //    operand_stack: [cto]
-                    Op::Add,
-                ])
-            }
+            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::cto".parse().unwrap())),
             Type::I32 | Type::U32 | Type::I16 | Type::U16 | Type::I8 | Type::U8 => {
                 // The number of trailing ones is de-facto clamped by the bitwidth of
                 // the value, since all of the padding bits are leading zeros.
-                self.emit_all(&[
-                    // Push the count on the advice stack
-                    Op::U32Cto,
-                    // "Consume" the operand
-                    Op::Drop,
-                    // Move the count from the advice stack to the operand stack
-                    Op::AdvPush(1),
-                ]);
+                self.emit(Op::U32Cto)
             }
             Type::I1 => {
                 // There is exactly one trailing one if true, or zero if false
@@ -1221,7 +785,8 @@ impl<'a> OpEmitter<'a> {
             | Type::U32
             | Type::I64
             | Type::U64
-            | Type::I128 => {
+            | Type::I128
+            | Type::U128 => {
                 let num_elements = ty.size_in_bits() / 32;
                 match num_elements {
                     0 | 1 => {
@@ -1273,6 +838,9 @@ impl<'a> OpEmitter<'a> {
                     Op::U32Split,
                 ]);
             }
+            Type::I64 => {
+                self.emit(Op::Exec("intrinsics::i64::pow2".parse().unwrap()));
+            }
             Type::Felt => {
                 self.emit(Op::Pow2);
             }
@@ -1280,7 +848,7 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);
             }
             Type::I32 => {
-                self.emit(Op::Exec("::intrinsics::i32::pow2".parse().unwrap()));
+                self.emit(Op::Exec("intrinsics::i32::pow2".parse().unwrap()));
             }
             Type::U8 | Type::U16 => {
                 self.emit_all(&[Op::Pow2, Op::U32Assert]);

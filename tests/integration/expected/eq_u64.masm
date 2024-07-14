@@ -1,16 +1,10 @@
 # mod test_rust_23a27398cbfb7447cb610e7b877565f4e43d633b55f98504051b93381d40740f
 
 export.entrypoint
-    movdn.3
-    movdn.3
-    movup.2
-    eq
-    movdn.3
-    eq
-    and
+    movdn.3 movdn.3 exec.::std::math::u64::eq
 end
 
 
 begin
-    exec.::test_rust_23a27398cbfb7447cb610e7b877565f4e43d633b55f98504051b93381d40740f::entrypoint  
+    exec.::test_rust_23a27398cbfb7447cb610e7b877565f4e43d633b55f98504051b93381d40740f::entrypoint
 end

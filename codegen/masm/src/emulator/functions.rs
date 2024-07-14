@@ -84,9 +84,9 @@ pub struct RepeatState {
     /// The instruction pointer in the repeat block
     pub ip: InstructionPointer,
     /// Corresponds to `n` in `repeat.n`, i.e. the number of iterations to perform
-    pub n: u8,
+    pub n: u16,
     /// The number of iterations completed so far
-    pub iterations: u8,
+    pub iterations: u16,
 }
 
 #[derive(Debug)]
@@ -120,7 +120,7 @@ impl ControlStack {
     /// Push a new control frame for a repeat loop on the stack, and move the instruction
     /// pointer so that the pending instruction is the first instruction of the body
     #[inline]
-    pub fn enter_repeat(&mut self, block: BlockId, n: u8) {
+    pub fn enter_repeat(&mut self, block: BlockId, n: u16) {
         let ip = InstructionPointer::new(block);
         let pending_frame = self.pending_frame.replace(ControlFrame::Repeat(RepeatState {
             ip,
@@ -477,7 +477,7 @@ impl Activation {
     /// than `enter_while_loop`, but has the same effect. The state we track is used to determine
     /// when we've executed `count` iterations of the loop and should exit to the next instruction
     /// following the `repeat.N`.
-    pub(super) fn repeat_block(&mut self, block: BlockId, count: u8) {
+    pub(super) fn repeat_block(&mut self, block: BlockId, count: u16) {
         self.control_stack.enter_repeat(block, count);
     }
 }

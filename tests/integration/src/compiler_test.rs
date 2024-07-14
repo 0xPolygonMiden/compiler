@@ -565,7 +565,10 @@ impl CompilerTest {
         if self.ir_masm_program.is_none() {
             self.compile_wasm_to_masm_program();
         }
-        self.ir_masm_program.as_ref().unwrap().as_ref().unwrap().clone()
+        match self.ir_masm_program.as_ref().unwrap().as_ref() {
+            Ok(prog) => prog.clone(),
+            Err(msg) => panic!("{msg}"),
+        }
     }
 
     /// Get the compiled MASM as [`miden_core::Program`]
@@ -573,7 +576,10 @@ impl CompilerTest {
         if self.vm_masm_program.is_none() {
             self.compile_wasm_to_masm_program();
         }
-        self.vm_masm_program.as_ref().unwrap().as_ref().unwrap().clone()
+        match self.vm_masm_program.as_ref().unwrap().as_ref() {
+            Ok(prog) => prog.clone(),
+            Err(msg) => panic!("{msg}"),
+        }
     }
 
     /// Get the MASM source code
@@ -605,13 +611,19 @@ impl CompilerTest {
                 self.masm_src = Some(src);
                 let vm_prog =
                     vm_masm_prog_from_modules(&modules, self.entrypoint, &self.link_masm_modules);
-                self.vm_masm_program = Some(vm_prog.map_err(|e| format!("{:?}", e)));
+                self.vm_masm_program = Some(vm_prog.map_err(format_report));
                 let ir_prog =
                     ir_masm_prog_from_modules(modules, self.entrypoint, &self.link_masm_modules);
-                self.ir_masm_program = Some(ir_prog.map_err(|e| format!("{:?}", e)));
+                self.ir_masm_program = Some(ir_prog.map_err(format_report));
             }
         }
     }
+}
+
+fn format_report(report: miden_assembly::diagnostics::Report) -> String {
+    use miden_assembly::diagnostics::reporting::PrintDiagnostic;
+
+    PrintDiagnostic::new(report).to_string()
 }
 
 fn wasm_artifact_path(cargo_project_folder: &Path, artifact_name: &str) -> PathBuf {
@@ -668,7 +680,8 @@ fn vm_masm_prog_from_modules(
     }
     for module in modules {
         let module_src = format!("{}", module);
-        // eprintln!("{}", &module_src);
+        //eprintln!("### {}\n", module.id);
+        //eprintln!("{}", &module_src);
         let path = module.id.as_str().to_string();
         let library_path = LibraryPath::new(path).unwrap();
         // dbg!(&library_path);
@@ -723,7 +736,7 @@ fn masm_prog_source(entrypoint: FunctionIdent) -> String {
     format!(
         r#"
 begin
-    exec.::{module_name}::{function_name}  
+    exec.::{module_name}::{function_name}
 end"#,
     )
 }

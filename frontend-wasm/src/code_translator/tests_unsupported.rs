@@ -51,7 +51,7 @@ fn check_unsupported(op: &Operator) {
 // Wasm Spec v1.0
 const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     /****************************** Memory Operators *********************************** */
-    F32Load {
+    F64Load {
         memarg: MemArg {
             align: 0,
             max_align: 0,
@@ -59,7 +59,7 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
             memory: 0,
         },
     },
-    F32Store {
+    F64Store {
         memarg: MemArg {
             align: 0,
             max_align: 0,
@@ -132,6 +132,7 @@ const UNSUPPORTED_WASM_V1_OPS: &[Operator] = &[
     F32Copysign,
     F64Copysign,
     F64Add,
+    F64Sub,
     F64Mul,
     F64Div,
     F64Min,

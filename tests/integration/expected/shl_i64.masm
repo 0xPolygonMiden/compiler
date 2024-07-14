@@ -1,0 +1,22 @@
+# mod test_rust_5daeb206dcf172633a3952fa7cdfecf35c6015e5d0a99a46308f39387d96320e
+
+export.entrypoint
+    movdn.3
+    movdn.3
+    dup.0
+    push.2147483648
+    u32and
+    eq.2147483648
+    assertz
+    assertz
+    dup.0
+    push.4294967295
+    u32lte
+    assert
+    exec.::std::math::u64::shl
+end
+
+
+begin
+    exec.::test_rust_5daeb206dcf172633a3952fa7cdfecf35c6015e5d0a99a46308f39387d96320e::entrypoint
+end

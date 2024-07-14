@@ -56,5 +56,6 @@ fn required_intrinsics_modules(session: &Session) -> Vec<masm::Module> {
     vec![
         intrinsics::load("intrinsics::mem", &session.codemap).expect("undefined intrinsics module"),
         intrinsics::load("intrinsics::i32", &session.codemap).expect("undefined intrinsics module"),
+        intrinsics::load("intrinsics::i64", &session.codemap).expect("undefined intrinsics module"),
     ]
 }
