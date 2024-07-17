@@ -3,8 +3,9 @@ use std::fmt::Write;
 use expect_test::expect_file;
 use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
+use miden_processor::ExecutionError;
 
-use crate::CompilerTest;
+use crate::{exec_vm::execute_vm_tracing, execute_emulator, execute_vm, CompilerTest};
 
 #[allow(unused)]
 fn setup_log() {
@@ -48,8 +49,11 @@ fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
-    let _vm_program = test.vm_masm_program();
-    // let _vm_out = execute_vm(&vm_program, &[]);
+    let vm_program = test.vm_masm_program();
+    // let vm_out = execute_vm_tracing(&vm_program, &[]).unwrap();
+
+    // let ir_program = test.ir_masm_program();
+    // let emul_out = execute_emulator(ir_program.clone(), &[]);
 }
 
 #[test]
