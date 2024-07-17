@@ -570,7 +570,7 @@ impl Emulator {
     pub fn stop(&mut self) {
         self.callstack.clear();
         self.stack.clear();
-        self.memory.clear();
+        self.memory = vec![Self::EMPTY_WORD; self.memory.len()];
         self.hp = self.hp_start;
         self.lp = self.lp_start;
         self.step_over = None;
