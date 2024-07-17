@@ -399,7 +399,7 @@ impl<'a, 'b> std::ops::BitXor<&'b NextUseSet> for &'a NextUseSet {
 }
 
 // The distance penalty applied to an edge which exits a loop
-const LOOP_EXIT_DISTANCE: u32 = 100_000;
+pub const LOOP_EXIT_DISTANCE: u32 = 100_000;
 
 /// This function computes global next-use distances/liveness until a fixpoint is reached.
 ///

@@ -13,6 +13,58 @@ use midenc_hir_analysis::{
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
 
+/// This pass handles orchestrating the [InsertSpills]  and [RewriteSpills] passes, and should be
+/// preferred over using those two passes directly. See their respective documentation to better
+/// understand what this pass does.
+///
+/// In addition to running the two passes, and maintaining the [AnalysisManager] state between them,
+/// this pass also handles applying an additional run of [crate::InlineBlocks] if spills were
+/// introduced, so as to ensure that the output of the spills transformation is cleaned up. As
+/// applying a pass conditionally like that is a bit tricky, we handle that here to ensure that is
+/// a detail downstream users do not have to deal with.
+#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
+pub struct ApplySpills;
+impl RewritePass for ApplySpills {
+    type Entity = hir::Function;
+
+    fn apply(
+        &mut self,
+        function: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> RewriteResult {
+        use midenc_hir::pass::{RewriteFn, RewriteSet};
+
+        let mut rewrites = RewriteSet::pair(InsertSpills, RewriteSpills);
+
+        // If the spills transformation is run, we want to run the block inliner again to
+        // clean up the output, but _only_ if there were actually spills, otherwise running
+        // the inliner again will have no effect. To avoid that case, we wrap the second run
+        // in a closure which will only apply the pass if there were spills
+        let maybe_rerun_block_inliner: Box<RewriteFn<hir::Function>> = Box::new(
+            |function: &mut hir::Function,
+             analyses: &mut AnalysisManager,
+             session: &Session|
+             -> RewriteResult {
+                let has_spills = analyses
+                    .get::<SpillAnalysis>(&function.id)
+                    .map(|spills| spills.has_spills())
+                    .unwrap_or(false);
+                if has_spills {
+                    let mut inliner = crate::InlineBlocks;
+                    inliner.apply(function, analyses, session)
+                } else {
+                    Ok(())
+                }
+            },
+        );
+        rewrites.push(maybe_rerun_block_inliner);
+
+        // Apply the above collectively
+        rewrites.apply(function, analyses, session)
+    }
+}
+
 /// This pass inserts spills and reloads as computed by running a [SpillAnalysis] on the given
 /// function, recording materialized splits, spills, and reloads in the analysis results.
 ///
@@ -209,7 +261,7 @@ impl RewritePass for InsertSpills {
 /// **NOTE:** This pass is intended to be combined with the [InsertSpills] pass. If run on its own,
 /// it is effectively a no-op, so it is safe to do, but nonsensical. In a normal compilation
 /// pipeline, this pass is run immediately after [InsertSpills]. It is _not_ safe to run other
-/// passes betweeen [InsertSpills] and [RewriteSpills], unless that pass specifically is designed to
+/// passes between [InsertSpills] and [RewriteSpills], unless that pass specifically is designed to
 /// preserve the results of the [SpillAnalysis] computed and used by [InsertSpills] to place spills
 /// and reloads. Conversely, you can't just run [InsertSpills] without this pass, or the resulting
 /// IR will fail to codegen.
@@ -287,7 +339,7 @@ impl RewritePass for RewriteSpills {
         //     found that is responsible for that use. If an iterated dominance frontier is passed,
         //     a block argument is inserted such that appropriate definitions from each predecessor
         //     are wired up to that block argument, which is then the definition of `v` responsible
-        //     for subsequent uses. The predececessor instructions which branch to it are new uses
+        //     for subsequent uses. The predecessor instructions which branch to it are new uses
         //     which we visit in the same manner as described above. After visiting all uses, any
         //     definitions (reloads) which are dead will have no uses of the reloaded value, and can
         //     thus be eliminated.
@@ -304,44 +356,10 @@ impl RewritePass for RewriteSpills {
         let domtree = analyses.get_or_compute::<DominatorTree>(function, session).unwrap();
         let domf = DominanceFrontier::compute(&domtree, &cfg, function);
 
-        // Insert additional phi nodes as follows:
-        //
-        // 1. For each spilled value V
-        // 2. Obtain the set of blocks, R, containing a reload of V
-        // 3. For each block B in the iterated dominance frontier of R, insert a phi in B for V
-        // 4. For every predecessor of B, append a new block argument to B, passing V initially
-        // 5. Traverse the CFG bottom-up, finding uses of V, until we reach an inserted phi, a
-        //    reload, or the original definition. Rewrite all found uses of V up to that point, to
-        //    use this definition.
-        let mut required_phis = BTreeMap::<Value, SmallSet<Block, 2>>::default();
-        for info in spills.reloads() {
-            let r_block = function.dfg.inst_block(info.inst.unwrap()).unwrap();
-            let r = required_phis.entry(info.value).or_default();
-            r.insert(r_block);
-        }
-
-        let mut inserted_phis = BTreeMap::<Block, SmallMap<Value, Value, 2>>::default();
-        for (value, domf_r) in required_phis {
-            // Compute the iterated dominance frontier, DF+(R)
-            let idf_r = domf.iterate_all(domf_r);
-            // Add phi to each B in DF+(R)
-            let data = function.dfg.value_data(value);
-            let ty = data.ty().clone();
-            let span = data.span();
-            for b in idf_r {
-                // Allocate new block parameter/phi, if one is not already present
-                let phis = inserted_phis.entry(b).or_default();
-                if let adt::smallmap::Entry::Vacant(entry) = phis.entry(value) {
-                    let phi = function.dfg.append_block_param(b, ty.clone(), span);
-                    entry.insert(phi);
-
-                    // Append `value` as new argument to every predecessor to satisfy new parameter
-                    for pred in cfg.pred_iter(b) {
-                        function.dfg.append_branch_destination_argument(pred.inst, b, value);
-                    }
-                }
-            }
-        }
+        // Make sure that any block in the iterated dominance frontier of a spilled value, has
+        // a new phi (block argument) inserted, if one is not already present. These must be in
+        // the CFG before we search for dominating definitions.
+        let inserted_phis = insert_required_phis(&spills, function, &cfg, &domf);
 
         // Traverse the CFG bottom-up, doing the following along the way:
         //
@@ -373,7 +391,7 @@ impl RewritePass for RewriteSpills {
         let mut used_sets = BTreeMap::<Block, BTreeMap<Value, FxHashSet<User>>>::default();
         let mut block_q = VecDeque::from_iter(domtree.cfg_postorder().iter().copied());
         while let Some(block_id) = block_q.pop_front() {
-            // Compute the "used" set for this block
+            // Compute the initial "used" set for this block
             let mut used = BTreeMap::<Value, FxHashSet<User>>::default();
             for succ in cfg.succ_iter(block_id) {
                 if let Some(succ_used) = used_sets.get_mut(&succ) {
@@ -388,121 +406,7 @@ impl RewritePass for RewriteSpills {
             // definitions
             let mut insts = function.dfg.block(block_id).insts().collect::<Vec<_>>();
             while let Some(current_inst) = insts.pop() {
-                // If `current_inst` is a branch or terminator, it cannot define a value, so
-                // we simply record any uses, and move on.
-                match function.dfg.analyze_branch(current_inst) {
-                    BranchInfo::SingleDest(_, args) => {
-                        for (index, arg) in args.iter().enumerate() {
-                            if spills.is_spilled(arg) {
-                                used.entry(*arg).or_default().insert(User::new(
-                                    current_inst,
-                                    *arg,
-                                    Use::BlockArgument {
-                                        succ: 0,
-                                        index: index as u16,
-                                    },
-                                ));
-                            }
-                        }
-                    }
-                    BranchInfo::MultiDest(ref jts) => {
-                        for (succ_index, jt) in jts.iter().enumerate() {
-                            for (index, arg) in jt.args.iter().enumerate() {
-                                if spills.is_spilled(arg) {
-                                    used.entry(*arg).or_default().insert(User::new(
-                                        current_inst,
-                                        *arg,
-                                        Use::BlockArgument {
-                                            succ: succ_index as u16,
-                                            index: index as u16,
-                                        },
-                                    ));
-                                }
-                            }
-                        }
-                    }
-                    BranchInfo::NotABranch => {
-                        // Does this instruction provide a definition for any spilled values?
-                        let ix = function.dfg.inst(current_inst);
-
-                        let is_reload = matches!(ix.opcode(), Opcode::Reload);
-                        if is_reload {
-                            // We have found a new definition for a spilled value, we must rewrite
-                            // all uses of the spilled value found so
-                            // far, with the reloaded value
-                            let spilled = ix.arguments(&function.dfg.value_lists)[0];
-                            let reloaded = function.dfg.first_result(current_inst);
-
-                            if let Some(to_rewrite) = used.remove(&spilled) {
-                                debug_assert!(
-                                    !to_rewrite.is_empty(),
-                                    "expected empty use sets to be removed"
-                                );
-
-                                for user in to_rewrite.iter() {
-                                    match user.ty {
-                                        Use::BlockArgument {
-                                            succ: succ_succ,
-                                            index,
-                                        } => {
-                                            function.dfg.replace_successor_argument(
-                                                user.inst,
-                                                succ_succ as usize,
-                                                index as usize,
-                                                reloaded,
-                                            );
-                                        }
-                                        Use::Operand { index } => {
-                                            function.dfg.replace_argument(
-                                                user.inst,
-                                                index as usize,
-                                                reloaded,
-                                            );
-                                        }
-                                    }
-                                }
-                            } else {
-                                // This reload is unused, so remove it entirely, and move to the
-                                // next instruction
-                                //let mut cursor = function
-                                //.dfg
-                                //.block_mut(block_id)
-                                //.cursor_mut_at_inst(current_inst);
-                                //cursor.remove();
-                                continue;
-                            }
-                        }
-
-                        for spilled in function
-                            .dfg
-                            .inst_results(current_inst)
-                            .iter()
-                            .filter(|result| spills.is_spilled(result))
-                        {
-                            // This op is the original definition for `spilled`, so remove any uses
-                            // of it we've accumulated so far, as they
-                            // do not need to be rewritten
-                            used.remove(spilled);
-                        }
-                    }
-                }
-
-                // Record any uses of spilled values in the argument list for `current_inst` (except
-                // reloads)
-                let ignored = matches!(function.dfg.inst(current_inst).opcode(), Opcode::Reload);
-                if !ignored {
-                    for (index, arg) in function.dfg.inst_args(current_inst).iter().enumerate() {
-                        if spills.is_spilled(arg) {
-                            used.entry(*arg).or_default().insert(User::new(
-                                current_inst,
-                                *arg,
-                                Use::Operand {
-                                    index: index as u16,
-                                },
-                            ));
-                        }
-                    }
-                }
+                find_inst_uses(current_inst, &mut used, function, &spills);
             }
 
             // At the top of the block, if any of the block parameters are in the "used" set, remove
@@ -512,96 +416,266 @@ impl RewritePass for RewriteSpills {
                 used.remove(arg);
             }
 
-            // If we have inserted any phis in this block, rewrite uses of the spilled values they
-            // represent.
-            if let Some(phis) = inserted_phis.get(&block_id) {
-                for (spilled, phi) in phis.iter() {
-                    if let Some(to_rewrite) = used.remove(spilled) {
-                        debug_assert!(
-                            !to_rewrite.is_empty(),
-                            "expected empty use sets to be removed"
-                        );
-
-                        for user in to_rewrite.iter() {
-                            match user.ty {
-                                Use::BlockArgument {
-                                    succ: succ_succ,
-                                    index,
-                                } => {
-                                    function.dfg.replace_successor_argument(
-                                        user.inst,
-                                        succ_succ as usize,
-                                        index as usize,
-                                        *phi,
-                                    );
-                                }
-                                Use::Operand { index } => {
-                                    function.dfg.replace_argument(user.inst, index as usize, *phi);
-                                }
-                            }
-                        }
-                    } else {
-                        // TODO(pauls): This phi is unused, we should be able to remove it
-                        continue;
-                    }
-                }
-            }
+            rewrite_inserted_phi_uses(&inserted_phis, block_id, &mut used, function);
 
             // What remains are the unsatisfied uses of spilled values for this block and its
             // successors
             used_sets.insert(block_id, used);
         }
 
-        // For each spilled value, allocate a procedure local, rewrite the spill instruction as a
-        // `local.store`, unless the spill is dead, in which case we remove the spill entirely.
-        //
-        // Dead spills can occur because the spills analysis must conservatively place them to
-        // ensure that all paths to a block where a value has been spilled along at least one
-        // of those paths, gets spilled on all of them, by inserting extra spills along those
-        // edges where a spill hasn't occurred yet.
-        //
-        // However, this produces dead spills on some paths through the function, which are not
-        // needed once rewrites have been performed. So we eliminate dead spills by identifying
-        // those spills which do not dominate any reloads - if a store to a spill slot can never
-        // be read, then the store can be elided.
-        let mut locals = BTreeMap::<Value, LocalId>::default();
-        for spill_info in spills.spills() {
-            let spill = spill_info.inst.expect("expected spill to have been materialized");
-            let spilled = spill_info.value;
-            let stored = function.dfg.inst_args(spill)[0];
-            let is_used = spills.reloads().iter().any(|info| {
-                if info.value == spilled {
-                    let reload = info.inst.unwrap();
-                    let dominates = domtree.dominates(spill, reload, &function.dfg);
-                    dbg!(spill, reload);
-                    dominates
-                } else {
-                    false
-                }
-            });
-            if is_used {
-                let local = *locals
-                    .entry(spilled)
-                    .or_insert_with(|| function.dfg.alloc_local(spill_info.ty.clone()));
-                let builder = ReplaceBuilder::new(&mut function.dfg, spill);
-                builder.store_local(local, stored, spill_info.span);
-            } else {
-                let spill_block = function.dfg.inst_block(spill).unwrap();
-                let block = function.dfg.block_mut(spill_block);
-                block.cursor_mut_at_inst(spill).remove();
-            }
-        }
-
-        // Rewrite all used reload instructions as `local.load` instructions from the corresponding
-        // procedure local
-        for reload_info in spills.reloads() {
-            let inst = reload_info.inst.expect("expected reload to have been materialized");
-            let spilled = function.dfg.inst_args(inst)[0];
-            let builder = ReplaceBuilder::new(&mut function.dfg, inst);
-            builder.load_local(locals[&spilled], reload_info.span);
-        }
+        rewrite_spill_pseudo_instructions(function, &domtree, &spills);
 
         Ok(())
+    }
+}
+
+// Insert additional phi nodes as follows:
+//
+// 1. For each spilled value V
+// 2. Obtain the set of blocks, R, containing a reload of V
+// 3. For each block B in the iterated dominance frontier of R, insert a phi in B for V
+// 4. For every predecessor of B, append a new block argument to B, passing V initially
+// 5. Traverse the CFG bottom-up, finding uses of V, until we reach an inserted phi, a reload, or
+//    the original definition. Rewrite all found uses of V up to that point, to use this definition.
+fn insert_required_phis(
+    spills: &SpillAnalysis,
+    function: &mut hir::Function,
+    cfg: &ControlFlowGraph,
+    domf: &DominanceFrontier,
+) -> BTreeMap<Block, SmallMap<Value, Value, 2>> {
+    let mut required_phis = BTreeMap::<Value, SmallSet<Block, 2>>::default();
+    for info in spills.reloads() {
+        let r_block = function.dfg.inst_block(info.inst.unwrap()).unwrap();
+        let r = required_phis.entry(info.value).or_default();
+        r.insert(r_block);
+    }
+
+    let mut inserted_phis = BTreeMap::<Block, SmallMap<Value, Value, 2>>::default();
+    for (value, domf_r) in required_phis {
+        // Compute the iterated dominance frontier, DF+(R)
+        let idf_r = domf.iterate_all(domf_r);
+        // Add phi to each B in DF+(R)
+        let data = function.dfg.value_data(value);
+        let ty = data.ty().clone();
+        let span = data.span();
+        for b in idf_r {
+            // Allocate new block parameter/phi, if one is not already present
+            let phis = inserted_phis.entry(b).or_default();
+            if let adt::smallmap::Entry::Vacant(entry) = phis.entry(value) {
+                let phi = function.dfg.append_block_param(b, ty.clone(), span);
+                entry.insert(phi);
+
+                // Append `value` as new argument to every predecessor to satisfy new parameter
+                for pred in cfg.pred_iter(b) {
+                    function.dfg.append_branch_destination_argument(pred.inst, b, value);
+                }
+            }
+        }
+    }
+
+    inserted_phis
+}
+
+fn find_inst_uses(
+    current_inst: Inst,
+    used: &mut BTreeMap<Value, FxHashSet<User>>,
+    function: &mut hir::Function,
+    spills: &SpillAnalysis,
+) {
+    // If `current_inst` is a branch or terminator, it cannot define a value, so
+    // we simply record any uses, and move on.
+    match function.dfg.analyze_branch(current_inst) {
+        BranchInfo::SingleDest(_, args) => {
+            for (index, arg) in args.iter().enumerate() {
+                if spills.is_spilled(arg) {
+                    used.entry(*arg).or_default().insert(User::new(
+                        current_inst,
+                        *arg,
+                        Use::BlockArgument {
+                            succ: 0,
+                            index: index as u16,
+                        },
+                    ));
+                }
+            }
+        }
+        BranchInfo::MultiDest(ref jts) => {
+            for (succ_index, jt) in jts.iter().enumerate() {
+                for (index, arg) in jt.args.iter().enumerate() {
+                    if spills.is_spilled(arg) {
+                        used.entry(*arg).or_default().insert(User::new(
+                            current_inst,
+                            *arg,
+                            Use::BlockArgument {
+                                succ: succ_index as u16,
+                                index: index as u16,
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+        BranchInfo::NotABranch => {
+            // Does this instruction provide a definition for any spilled values?
+            let ix = function.dfg.inst(current_inst);
+
+            let is_reload = matches!(ix.opcode(), Opcode::Reload);
+            if is_reload {
+                // We have found a new definition for a spilled value, we must rewrite
+                // all uses of the spilled value found so
+                // far, with the reloaded value
+                let spilled = ix.arguments(&function.dfg.value_lists)[0];
+                let reloaded = function.dfg.first_result(current_inst);
+
+                if let Some(to_rewrite) = used.remove(&spilled) {
+                    debug_assert!(!to_rewrite.is_empty(), "expected empty use sets to be removed");
+
+                    for user in to_rewrite.iter() {
+                        match user.ty {
+                            Use::BlockArgument {
+                                succ: succ_succ,
+                                index,
+                            } => {
+                                function.dfg.replace_successor_argument(
+                                    user.inst,
+                                    succ_succ as usize,
+                                    index as usize,
+                                    reloaded,
+                                );
+                            }
+                            Use::Operand { index } => {
+                                function.dfg.replace_argument(user.inst, index as usize, reloaded);
+                            }
+                        }
+                    }
+                } else {
+                    // This reload is unused, so remove it entirely, and move to the
+                    // next instruction
+                    return;
+                }
+            }
+
+            for spilled in function
+                .dfg
+                .inst_results(current_inst)
+                .iter()
+                .filter(|result| spills.is_spilled(result))
+            {
+                // This op is the original definition for `spilled`, so remove any uses
+                // of it we've accumulated so far, as they
+                // do not need to be rewritten
+                used.remove(spilled);
+            }
+        }
+    }
+
+    // Record any uses of spilled values in the argument list for `current_inst` (except
+    // reloads)
+    let ignored = matches!(function.dfg.inst(current_inst).opcode(), Opcode::Reload);
+    if !ignored {
+        for (index, arg) in function.dfg.inst_args(current_inst).iter().enumerate() {
+            if spills.is_spilled(arg) {
+                used.entry(*arg).or_default().insert(User::new(
+                    current_inst,
+                    *arg,
+                    Use::Operand {
+                        index: index as u16,
+                    },
+                ));
+            }
+        }
+    }
+}
+
+fn rewrite_inserted_phi_uses(
+    inserted_phis: &BTreeMap<Block, SmallMap<Value, Value, 2>>,
+    block_id: Block,
+    used: &mut BTreeMap<Value, FxHashSet<User>>,
+    function: &mut hir::Function,
+) {
+    // If we have inserted any phis in this block, rewrite uses of the spilled values they
+    // represent.
+    if let Some(phis) = inserted_phis.get(&block_id) {
+        for (spilled, phi) in phis.iter() {
+            if let Some(to_rewrite) = used.remove(spilled) {
+                debug_assert!(!to_rewrite.is_empty(), "expected empty use sets to be removed");
+
+                for user in to_rewrite.iter() {
+                    match user.ty {
+                        Use::BlockArgument {
+                            succ: succ_succ,
+                            index,
+                        } => {
+                            function.dfg.replace_successor_argument(
+                                user.inst,
+                                succ_succ as usize,
+                                index as usize,
+                                *phi,
+                            );
+                        }
+                        Use::Operand { index } => {
+                            function.dfg.replace_argument(user.inst, index as usize, *phi);
+                        }
+                    }
+                }
+            } else {
+                // TODO(pauls): This phi is unused, we should be able to remove it
+                continue;
+            }
+        }
+    }
+}
+
+/// For each spilled value, allocate a procedure local, rewrite the spill instruction as a
+/// `local.store`, unless the spill is dead, in which case we remove the spill entirely.
+///
+/// Dead spills can occur because the spills analysis must conservatively place them to
+/// ensure that all paths to a block where a value has been spilled along at least one
+/// of those paths, gets spilled on all of them, by inserting extra spills along those
+/// edges where a spill hasn't occurred yet.
+///
+/// However, this produces dead spills on some paths through the function, which are not
+/// needed once rewrites have been performed. So we eliminate dead spills by identifying
+/// those spills which do not dominate any reloads - if a store to a spill slot can never
+/// be read, then the store can be elided.
+fn rewrite_spill_pseudo_instructions(
+    function: &mut hir::Function,
+    domtree: &DominatorTree,
+    spills: &SpillAnalysis,
+) {
+    let mut locals = BTreeMap::<Value, LocalId>::default();
+    for spill_info in spills.spills() {
+        let spill = spill_info.inst.expect("expected spill to have been materialized");
+        let spilled = spill_info.value;
+        let stored = function.dfg.inst_args(spill)[0];
+        let is_used = spills.reloads().iter().any(|info| {
+            if info.value == spilled {
+                let reload = info.inst.unwrap();
+                domtree.dominates(spill, reload, &function.dfg)
+            } else {
+                false
+            }
+        });
+        if is_used {
+            let local = *locals
+                .entry(spilled)
+                .or_insert_with(|| function.dfg.alloc_local(spill_info.ty.clone()));
+            let builder = ReplaceBuilder::new(&mut function.dfg, spill);
+            builder.store_local(local, stored, spill_info.span);
+        } else {
+            let spill_block = function.dfg.inst_block(spill).unwrap();
+            let block = function.dfg.block_mut(spill_block);
+            block.cursor_mut_at_inst(spill).remove();
+        }
+    }
+
+    // Rewrite all used reload instructions as `local.load` instructions from the corresponding
+    // procedure local
+    for reload_info in spills.reloads() {
+        let inst = reload_info.inst.expect("expected reload to have been materialized");
+        let spilled = function.dfg.inst_args(inst)[0];
+        let builder = ReplaceBuilder::new(&mut function.dfg, inst);
+        builder.load_local(locals[&spilled], reload_info.span);
     }
 }
 

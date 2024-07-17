@@ -12,7 +12,7 @@ mod validation;
 pub use self::{
     control_flow::{BlockPredecessor, ControlFlowGraph},
     data::{GlobalVariableAnalysis, GlobalVariableLayout},
-    def_use::{DefUseGraph, Use, User, UserList, Users, ValueDef},
+    def_use::{DefUseGraph, Use, User, UserList, Users},
     dependency_graph::DependencyGraph,
     dominance::{DominanceFrontier, DominatorTree, DominatorTreePreorder},
     liveness::LivenessAnalysis,

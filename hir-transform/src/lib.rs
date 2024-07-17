@@ -6,7 +6,7 @@ mod treeify;
 
 pub use self::{
     inline_blocks::InlineBlocks,
-    spill::{InsertSpills, RewriteSpills},
+    spill::{ApplySpills, InsertSpills, RewriteSpills},
     split_critical_edges::SplitCriticalEdges,
     treeify::Treeify,
 };

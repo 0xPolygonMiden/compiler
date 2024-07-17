@@ -10,7 +10,8 @@ use midenc_session::Session;
 use smallvec::SmallVec;
 
 use crate::{
-    BlockPredecessor, ControlFlowGraph, DominatorTree, LivenessAnalysis, Loop, LoopAnalysis,
+    liveness::LOOP_EXIT_DISTANCE, BlockPredecessor, ControlFlowGraph, DominatorTree,
+    LivenessAnalysis, Loop, LoopAnalysis,
 };
 
 /// This analysis is responsible for simulating the state of the operand stack at each program
@@ -18,17 +19,18 @@ use crate::{
 /// insert spills/reloads of values which would cause the operand stack depth to exceed 16 elements,
 /// the maximum addressable depth.
 ///
-/// The algorithm here is based on the paper _Register Spilling and Live-Range Splitting for
-/// SSA-form Programs_ by Matthias Braun and Sebastian Hack, which also happens to describe the
-/// algorithm we based our liveness analysis on. While the broad strokes are the same, various
-/// modifications/tweaks to the algorithm they describe are needed in order to be suitable for our
-/// use case. In particular, we must distinguish between the SSA values which uniquely identify each
-/// operand, from the raw elements on the operand stack which represent those values. The need for
-/// spills is determined solely on the low-level operand stack representation, _not_ the number of
-/// live SSA values (although there can be a correspondance in cases where each SSA value has an
-/// effective size of 1 stack element). As this is a type-sensitive analysis, it differs from the
-/// algorithm in the paper, which is based on an assumption that all operands are machine-word
-/// sized, and thus each value only requires a single register to hold.
+/// The algorithm here is based on the paper [_Register Spilling and Live-Range Splitting for
+/// SSA-form Programs_ by Matthias Braun and Sebastian Hack](https://pp.ipd.kit.edu/uploads/publikationen/braun09cc.pdf),
+/// which also happens to describe the algorithm we based our liveness analysis on. While the broad
+/// strokes are the same, various modifications/tweaks to the algorithm they describe are needed in
+/// order to be suitable for our use case. In particular, we must distinguish between the SSA values
+/// which uniquely identify each operand, from the raw elements on the operand stack which represent
+/// those values. The need for spills is determined solely on the low-level operand stack
+/// representation, _not_ the number of live SSA values (although there can be a correspondence in
+/// cases where each SSA value has an effective size of 1 stack element). As this is a type-
+/// sensitive analysis, it differs from the algorithm in the paper, which is based on an assumption
+/// that all operands are machine-word sized, and thus each value only requires a single register to
+/// hold.
 ///
 /// Despite these differences, the overall approach is effectively identical. We still are largely
 /// concerned with the SSA values, the primary difference being that we are computing spills based
@@ -119,7 +121,7 @@ use crate::{
 /// of a given [Value], our IR does not permit representing that. Instead, we represent reloads as
 /// an instruction which takes the spilled SSA value we want to reload as an argument, and produces
 /// a new SSA value representing the reloaded spill. As a result of this representation, our program
-/// always remains tecnically in SSA form, but the essence of the problem remains the same: When a
+/// always remains technically in SSA form, but the essence of the problem remains the same: When a
 /// value is spilled, its live range is terminated; a reload effectively brings the spilled value
 /// back to life, starting a new live range. Thus references to the spilled value which are now
 /// dominated by a reload in the control flow graph, are no longer semantically correct - they must
@@ -519,7 +521,7 @@ impl SpillAnalysis {
             };
 
             // For each predecessor P of B, insert spills/reloads along the inbound control flow
-            // edge as follwos:
+            // edge as follows:
             //
             // * All variables in W^entry(B) \ W^exit(P) need to be reloaded
             // * All variables in (S^entry(B) \ S^exit(P)) ∩ W^exit(P) need to be spilled
@@ -607,7 +609,7 @@ impl SpillAnalysis {
             };
 
             // For each predecessor P of B, insert spills/reloads along the inbound control flow
-            // edge as follwos:
+            // edge as follows:
             //
             // * All variables in W^entry(B) \ W^exit(P) need to be reloaded
             // * All variables in (S^entry(B) \ S^exit(P)) ∩ W^exit(P) need to be spilled
@@ -819,8 +821,6 @@ fn compute_w_entry_loop(
     loops: &LoopAnalysis,
     liveness: &LivenessAnalysis,
 ) {
-    const LOOP_EXIT_DISTANCE: u32 = 100_000;
-
     let entry = ProgramPoint::Inst(function.dfg.block_insts(block_id).next().unwrap());
 
     let params = function.dfg.block_params(block_id);

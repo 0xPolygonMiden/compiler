@@ -1,39 +1,8 @@
 use cranelift_entity::SecondaryMap;
 use intrusive_collections::{intrusive_adapter, LinkedListLink};
-use midenc_hir::{Block, BranchInfo, DataFlowGraph, Inst, Instruction, Value, ValueData};
+use midenc_hir::{BranchInfo, DataFlowGraph, Inst, Instruction, Value, ValueData};
 
 use crate::DominatorTree;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum ValueDef {
-    /// This corresponds to the original definition of a value as an instruction result
-    Inst {
-        /// The result index
-        num: u16,
-        /// The defining instruction
-        inst: Inst,
-    },
-    /// This corresponds to the original definition of a value as a block parameter
-    Param {
-        /// The parameter index
-        num: u16,
-        /// The defining block
-        block: Block,
-    },
-    /// This represents a reload of a spilled value
-    Reload {
-        /// The reload instruction
-        inst: Inst,
-    },
-    /// This definition corresponds to an implicit phi node in the dataflow graph.
-    ///
-    /// Specifically, this is like `Param`, but for a block parameter that doesn't yet exist,
-    /// but _must_ be created in order for SSA form to be preserved.
-    Phi {
-        /// The block in which this phi must be materialized as a block parameter
-        block: Block,
-    },
-}
 
 /// The def-use graph provides us with three useful pieces of information:
 ///
@@ -102,7 +71,7 @@ impl DefUseGraph {
         // 1. Find the immediate dominator of the current block, and get a cursor to the end of the
         //   instruction list of that block
         // 2. Walk up the block from the end, looking for a valid definition of `value`
-        // 3. If we reach the block header, check if `value` is defined as a block paramter in that
+        // 3. If we reach the block header, check if `value` is defined as a block parameter in that
         //   block, and if not, go back to step 1.
         //
         // TODO(pauls): If we observe that the value we're interested in, is passed as a block
@@ -312,6 +281,7 @@ intrusive_adapter!(pub UserAdapter = Box<User>: User { link: LinkedListLink });
 pub type UserList = intrusive_collections::LinkedList<UserAdapter>;
 pub type UserCursorMut<'a> = intrusive_collections::linked_list::CursorMut<'a, UserAdapter>;
 
+/// An intrusively-linked list of [User] records
 #[derive(Default)]
 pub struct Users {
     list: intrusive_collections::LinkedList<UserAdapter>,
@@ -324,26 +294,32 @@ impl Clone for Users {
     }
 }
 impl Users {
+    /// Returns true if there are no users
     pub fn is_empty(&self) -> bool {
         self.list.is_empty()
     }
 
+    /// Append a [User] to the end of the list
     pub fn push_back(&mut self, user: Box<User>) {
         self.list.push_back(user);
     }
 
+    /// Pop a [User] from the front of the list
     pub fn pop_front(&mut self) -> Option<Box<User>> {
         self.list.pop_front()
     }
 
+    /// Get an iterator over the [User]s in this list
     pub fn iter(&self) -> impl Iterator<Item = &User> + '_ {
         self.list.iter()
     }
 
+    /// Get a cursor to the front of this list
     pub fn cursor_mut(&mut self) -> UserCursorMut<'_> {
         self.list.front_mut()
     }
 
+    /// Steal the [User]s from this list, as a new [Users] list
     pub fn take(&mut self) -> Self {
         Self {
             list: self.list.take(),
@@ -351,6 +327,11 @@ impl Users {
     }
 }
 
+/// A [User] represents information about the source of a [Use] of a [Value].
+///
+/// More specifically, it tells us what instruction is the user, what value is used, and the type
+/// of use. An instruction can be a [User] of multiple values, and can be a [User] of the same
+/// value multiple times, once for each [Use].
 #[derive(Debug, Clone)]
 pub struct User {
     link: LinkedListLink,
@@ -362,6 +343,7 @@ pub struct User {
     pub ty: Use,
 }
 impl User {
+    /// Construct a new [User] from its constituent parts
     #[inline]
     pub fn new(inst: Inst, value: Value, ty: Use) -> Self {
         Self {
@@ -386,6 +368,8 @@ impl core::hash::Hash for User {
     }
 }
 
+/// A [Use] describes how a specific value is used within an [Instruction], i.e. what type of
+/// argument and the index of that argument.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Use {
     /// The value is used as an operand at `index`
@@ -408,14 +392,17 @@ pub enum Use {
     },
 }
 impl Use {
+    /// Returns true if the use is as an instruction operand
     pub fn is_operand(&self) -> bool {
         matches!(self, Use::Operand { .. })
     }
 
+    /// Returns true if the use is as a successor block argument
     pub fn is_block_argument(&self) -> bool {
         matches!(self, Use::BlockArgument { .. })
     }
 
+    /// Returns the index of the use in its respective argument list
     pub fn index(&self) -> usize {
         match self {
             Self::Operand { index } | Self::BlockArgument { index, .. } => *index as usize,
