@@ -1255,8 +1255,8 @@ impl Emulator {
         let ix_with_op = state.next();
         if let Some(ix_with_op) = ix_with_op {
             if self.print_trace {
-                eprintln!("stk: {}", self.stack.debug().pretty());
                 eprintln!("mem: {:?}", self.memory);
+                eprintln!("stk: {}", self.stack.debug());
                 eprintln!("op>: {:?}", ix_with_op.op);
             }
             match ix_with_op.op {

@@ -49,7 +49,7 @@ impl<'a> OpEmitter<'a> {
         let ptr = self.stack.pop().expect("operand stack is empty");
         match ptr.ty() {
             Type::Ptr(_) => {
-                // Converet the pointer to a native pointer representation
+                // Convert the pointer to a native pointer representation
                 self.emit_native_ptr();
                 match &ty {
                     Type::I128 => self.load_quad_word(None),

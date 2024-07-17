@@ -1,17 +1,17 @@
 use std::{
+    collections::BTreeSet,
     fmt::Debug,
     ops::{Index, IndexMut},
 };
 
 use miden_core::FieldElement;
 use midenc_hir::Felt;
-use rustc_hash::FxHashSet;
 
 const EMPTY_WORD: [Felt; 4] = [Felt::ZERO; 4];
 
 pub struct Memory {
     memory: Vec<[Felt; 4]>,
-    set_memory_addrs: FxHashSet<usize>,
+    set_memory_addrs: BTreeSet<usize>,
 }
 
 impl Memory {
