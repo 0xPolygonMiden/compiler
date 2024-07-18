@@ -126,7 +126,7 @@ export.load_sw # [waddr, index, offset]
                     dup.0  # [waddr, waddr, offset]
                     u32overflowing_add.1 assertz # [waddr + 1, waddr, offset]
                     # load the word and drop the unused elements
-                    padw movup.4 mem_loadw movdn.4 drop drop drop # [w0, waddr, offset]
+                    padw movup.4 mem_loadw movdn.3 drop drop drop # [w0, waddr, offset]
                     # shift the low bits
                     push.32 dup.3  # [offset, 32, w0, waddr, offset]
                     u32overflowing_sub assertz # [32 - offset, w0, waddr, offset]
@@ -364,12 +364,11 @@ proc.store_felt_unchecked # [waddr, index, value]
     mem_loadw  # [w0, w1, w2, w3, waddr, index, value]
 
     # rewrite the desired element
-    movup.6
-    movup.5
-    exec.replace_element
+    movup.6 # [value, w0, w1, w2, w3, waddr, index]
+    movup.6 # [index, value, w0, w1, w2, w3, waddr]
+    exec.replace_element # [w0', w1', w2', w3', waddr]
 
     # store the updated word
-    movup.4
     mem_storew
     dropw
 end
