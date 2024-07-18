@@ -1,4 +1,4 @@
-use midenc_hir::{Felt, FieldElement, StructType, Type};
+use midenc_hir::{self as hir, Felt, FieldElement, StructType, Type};
 
 use super::OpEmitter;
 use crate::masm::{NativePtr, Op};
@@ -40,7 +40,19 @@ impl<'a> OpEmitter<'a> {
 
 /// Loads
 impl<'a> OpEmitter<'a> {
-    /// Load a value of corresponding to the pointee type of a pointer operand on the stack.
+    /// Load a value corresponding to the type of the given local, from the memory allocated for
+    /// that local.
+    ///
+    /// Internally, this pushes the address of the local on the stack, then delegates to
+    /// [OpEmitter::load]
+    pub fn load_local(&mut self, local: hir::LocalId) {
+        let ty = self.function.local(local).ty.clone();
+        self.emit(Op::LocAddr(local));
+        self.stack.push(Type::Ptr(Box::new(ty.clone())));
+        self.load(ty)
+    }
+
+    /// Load a value corresponding to the pointee type of a pointer operand on the stack.
     ///
     /// The type of the pointer determines what address space the pointer value represents;
     /// either the Miden-native address space (word-addressable), or the IR's byte-addressable
@@ -832,6 +844,18 @@ impl<'a> OpEmitter<'a> {
 
 /// Stores
 impl<'a> OpEmitter<'a> {
+    /// Store a value of the type given by the specified [hir::LocalId], using the memory allocated
+    /// for that local.
+    ///
+    /// Internally, this pushes the address of the given local on the stack, and delegates to
+    /// [OpEmitter::store] to perform the actual store.
+    pub fn store_local(&mut self, local: hir::LocalId) {
+        let ty = self.function.local(local).ty.clone();
+        self.emit(Op::LocAddr(local));
+        self.stack.push(Type::Ptr(Box::new(ty)));
+        self.store()
+    }
+
     /// Store a value of type `value` to the address in the Miden address space
     /// which corresponds to a pointer in the IR's byte-addressable address space.
     ///

@@ -1,12 +1,12 @@
 use crate::{Block, Function, ProgramPoint};
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Insert {
     Before,
     After,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct InsertionPoint {
     pub at: ProgramPoint,
     pub action: Insert,

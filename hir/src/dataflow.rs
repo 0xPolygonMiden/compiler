@@ -17,6 +17,7 @@ pub struct DataFlowGraph {
     pub value_lists: ValueListPool,
     pub imports: FxHashMap<FunctionIdent, ExternalFunction>,
     pub globals: PrimaryMap<GlobalValue, GlobalValueData>,
+    pub locals: PrimaryMap<LocalId, Local>,
     pub constants: ConstantPool,
 }
 impl Default for DataFlowGraph {
@@ -41,6 +42,7 @@ impl DataFlowGraph {
             value_lists: ValueListPool::new(),
             imports: Default::default(),
             globals: PrimaryMap::new(),
+            locals: PrimaryMap::new(),
             constants: ConstantPool::default(),
         }
     }
@@ -184,6 +186,15 @@ impl DataFlowGraph {
 
     pub fn get_value(&self, v: Value) -> ValueData {
         self.values[v].clone()
+    }
+
+    pub fn value_block(&self, v: Value) -> Block {
+        match self.value_data(v) {
+            ValueData::Inst { inst, .. } => self
+                .inst_block(*inst)
+                .expect("invalid value reference: instruction is not attached to a block"),
+            ValueData::Param { block, .. } => *block,
+        }
     }
 
     /// Get a reference to the metadata for an instruction
@@ -454,6 +465,50 @@ impl DataFlowGraph {
         }
     }
 
+    /// Replace argument at `index` in the argument list of `inst`
+    ///
+    /// NOTE: This should not be used for successor arguments, as each successor gets its
+    /// own distinct argument list, separate from the instruction argument list.
+    pub fn replace_argument(&mut self, inst: Inst, index: usize, replacement: Value) {
+        self.insts[inst].data.arguments_mut(&mut self.value_lists)[index] = replacement;
+    }
+
+    /// Replace the block argument at `index`, for the successor argument list of the
+    /// successor at `succ_index`, in the set of successors for `inst`.
+    pub fn replace_successor_argument(
+        &mut self,
+        inst: Inst,
+        succ_index: usize,
+        index: usize,
+        replacement: Value,
+    ) {
+        let ix = &mut self.insts[inst];
+        match ix.data.as_mut() {
+            Instruction::Br(Br { ref mut args, .. }) => {
+                debug_assert_eq!(succ_index, 0);
+                args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+            }
+            Instruction::CondBr(CondBr {
+                then_dest: (_, ref mut then_args),
+                else_dest: (_, ref mut else_args),
+                ..
+            }) => match succ_index {
+                0 => {
+                    then_args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                }
+                1 => {
+                    else_args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                }
+                _ => unreachable!("expected valid successor index for cond_br, got {succ_index}"),
+            },
+            Instruction::Switch(_) => unimplemented!(
+                "invalid instruction: cannot replace successor arguments for 'switch': arms \
+                 cannot have arguments yet"
+            ),
+            ix => panic!("invalid instruction: expected branch instruction, got {ix:#?}"),
+        }
+    }
+
     pub fn pp_block(&self, pp: ProgramPoint) -> Block {
         match pp {
             ProgramPoint::Block(block) => block,
@@ -549,6 +604,17 @@ impl DataFlowGraph {
 
     pub fn block_insts(&self, block: Block) -> impl Iterator<Item = Inst> + '_ {
         self.blocks[block].insts()
+    }
+
+    pub fn block_cursor(&self, block: Block) -> InstructionCursor<'_> {
+        self.blocks[block].front()
+    }
+
+    pub fn block_cursor_at(&self, inst: Inst) -> InstructionCursor<'_> {
+        let block = self.inst_block(inst).expect("instruction is not linked to a block");
+        let cursor = self.blocks[block].cursor_at_inst(inst);
+        assert!(!cursor.is_null());
+        cursor
     }
 
     pub fn last_inst(&self, block: Block) -> Option<Inst> {
@@ -684,12 +750,13 @@ impl DataFlowGraph {
         dest: Block,
         value: Value,
     ) {
-        match self.insts[branch_inst].data.item {
+        match self.insts[branch_inst].data.as_mut() {
             Instruction::Br(Br {
                 destination,
                 ref mut args,
                 ..
-            }) if destination == dest => {
+            }) => {
+                debug_assert_eq!(*destination, dest);
                 args.push(value, &mut self.value_lists);
             }
             Instruction::CondBr(CondBr {
@@ -697,18 +764,14 @@ impl DataFlowGraph {
                 else_dest: (else_dest, ref mut else_args),
                 ..
             }) => {
-                if then_dest == dest {
+                if *then_dest == dest {
                     then_args.push(value, &mut self.value_lists);
-                } else if else_dest == dest {
+                }
+                if *else_dest == dest {
                     else_args.push(value, &mut self.value_lists);
                 }
             }
-            Instruction::Switch(Switch {
-                op: _,
-                arg: _,
-                arms: _,
-                default: _,
-            }) => {
+            Instruction::Switch(_) => {
                 panic!(
                     "cannot append argument {value} to Switch destination block {dest}, since it \
                      has no block arguments support"
@@ -716,6 +779,58 @@ impl DataFlowGraph {
             }
             _ => panic!("{} must be a branch instruction", branch_inst),
         }
+    }
+
+    /// Try to locate a valid definition of `value` in the current block, looking up the block from
+    /// `user`
+    pub fn nearest_definition_in_block(&self, user: Inst, value: Value) -> Option<Value> {
+        let mut cursor = self.block_cursor_at(user);
+        // Move to the first instruction preceding this one, or the null cursor if this
+        // is the first instruction in its containing block
+        cursor.move_prev();
+
+        while let Some(current_inst) = cursor.get() {
+            match self.inst(current_inst.key) {
+                Instruction::PrimOp(PrimOp {
+                    op: Opcode::Reload,
+                    args,
+                }) => {
+                    if args.as_slice(&self.value_lists).contains(&value) {
+                        // We have found the closest definition of `value`, which
+                        // is a reload from a spill slot
+                        return Some(self.first_result(current_inst.key));
+                    }
+                }
+                _ => {
+                    if self.inst_results(current_inst.key).contains(&value) {
+                        // We have reached the original definition of `value`
+                        return Some(value);
+                    }
+                }
+            }
+
+            cursor.move_prev();
+        }
+
+        // Search block parameter list
+        let current_block = self.inst_block(user).unwrap();
+        match self.value_data(value) {
+            ValueData::Param { block, .. } if block == &current_block => Some(value),
+            _ => None,
+        }
+    }
+
+    pub fn alloc_local(&mut self, ty: Type) -> LocalId {
+        let id = self.locals.next_key();
+        self.locals.push(Local { id, ty })
+    }
+
+    pub fn local_type(&self, id: LocalId) -> &Type {
+        &self.locals[id].ty
+    }
+
+    pub fn locals(&self) -> impl Iterator<Item = &Local> + '_ {
+        self.locals.values()
     }
 }
 impl Index<Inst> for DataFlowGraph {

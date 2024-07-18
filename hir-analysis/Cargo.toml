@@ -16,9 +16,13 @@ anyhow.workspace = true
 cranelift-entity.workspace = true
 cranelift-bforest.workspace = true
 inventory.workspace = true
+intrusive-collections.workspace = true
 miden-diagnostics.workspace = true
 midenc-hir.workspace = true
 midenc-session.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

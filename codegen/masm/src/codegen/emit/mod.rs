@@ -280,6 +280,7 @@ impl<'a> OpEmitter<'a> {
             Immediate::I32(i) => self.emit(Op::PushU32(i as u32)),
             Immediate::U64(i) => self.push_u64(i),
             Immediate::I64(i) => self.push_i64(i),
+            Immediate::U128(i) => self.push_u128(i),
             Immediate::I128(i) => self.push_i128(i),
             Immediate::Felt(i) => self.emit(Op::Push(i)),
             Immediate::F64(_) => unimplemented!("floating-point immediates are not supported"),

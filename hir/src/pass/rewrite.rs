@@ -16,6 +16,9 @@ pub enum RewriteError {
 /// A convenient type alias for `Result<(), RewriteError>`
 pub type RewriteResult = Result<(), RewriteError>;
 
+/// A convenient type alias for closures which can be used as rewrite passes
+pub type RewriteFn<T> = dyn FnMut(&mut T, &mut AnalysisManager, &Session) -> RewriteResult;
+
 /// This is a marker trait for [RewritePass] impls which also implement [PassInfo]
 ///
 /// It is automatically implemented for you.
@@ -90,6 +93,38 @@ where
         let mut rewrites = RewriteSet::from(self);
         rewrites.push(next);
         rewrites
+    }
+}
+impl<T> RewritePass for Box<dyn RewritePass<Entity = T>>
+where
+    T: AnalysisKey,
+{
+    type Entity = T;
+
+    #[inline]
+    fn apply(
+        &mut self,
+        entity: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> RewriteResult {
+        (**self).apply(entity, analyses, session)
+    }
+}
+impl<T> RewritePass for Box<dyn FnMut(&mut T, &mut AnalysisManager, &Session) -> RewriteResult>
+where
+    T: AnalysisKey,
+{
+    type Entity = T;
+
+    #[inline]
+    fn apply(
+        &mut self,
+        entity: &mut Self::Entity,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> RewriteResult {
+        self(entity, analyses, session)
     }
 }
 impl<T> RewritePass for dyn FnMut(&mut T, &mut AnalysisManager, &Session) -> RewriteResult
@@ -218,6 +253,18 @@ where
     /// Extend this rewrite set with rewrites from `iter`
     pub fn extend(&mut self, iter: impl IntoIterator<Item = Box<dyn RewritePass<Entity = T>>>) {
         self.rewrites.extend(iter);
+    }
+}
+impl<T> IntoIterator for RewriteSet<T>
+where
+    T: AnalysisKey,
+{
+    type IntoIter = alloc::vec::IntoIter<Self::Item>;
+    type Item = Box<dyn RewritePass<Entity = T>>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.rewrites.into_iter()
     }
 }
 impl<T> From<Box<dyn RewritePass<Entity = T>>> for RewriteSet<T>

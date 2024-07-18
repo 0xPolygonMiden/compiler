@@ -248,7 +248,7 @@ pub enum MasmOp {
     AdvLoadw,
     /// Push the result of u64 division on the advice stack
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [b_hi, b_lo, a_hi, a_lo]
     /// ```
     AdvInjectPushU64Div,
@@ -256,7 +256,7 @@ pub enum MasmOp {
     ///
     /// The list is looked up in the advice map using the word on top of the operand stack.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [K]
     /// ```
     AdvInjectPushMapVal,
@@ -265,7 +265,7 @@ pub enum MasmOp {
     /// The list is looked up in the advice map using the word starting at `index` on the operand
     /// stack.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [K]
     /// ```
     AdvInjectPushMapValImm(u8),
@@ -273,7 +273,7 @@ pub enum MasmOp {
     ///
     /// The list is looked up in the advice map using the word on top of the operand stack.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [K]
     /// ```
     AdvInjectPushMapValN,
@@ -282,20 +282,20 @@ pub enum MasmOp {
     /// The list is looked up in the advice map using the word starting at `index` on the operand
     /// stack.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [K]
     /// ```
     AdvInjectPushMapValNImm(u8),
     /// Pushes a node of a Merkle tree with root `R` at depth `d` and index `i` from the Merkle
     /// store onto the advice stack
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [d, i, R]
     /// ```
     AdvInjectPushMTreeNode,
     /// Reads words `mem[a]..mem[b]` from memory, and saves the data into the advice map under `K`
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [K, a, b]
     /// ```
     AdvInjectInsertMem,
@@ -303,7 +303,7 @@ pub enum MasmOp {
     ///
     /// The two words that were hashed are then saved into the advice map under `K`.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [B, A]
     /// ```
     AdvInjectInsertHdword,
@@ -313,7 +313,7 @@ pub enum MasmOp {
     ///
     /// The two words that were hashed are then saved into the advice map under `K` as `[A, B]`.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [B, A]
     /// ```
     AdvInjectInsertHdwordImm(u8),
@@ -322,7 +322,7 @@ pub enum MasmOp {
     ///
     /// The words `A` and `B` are saved into the advice map under `K` as `[A, B]`
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [B, A, C]
     /// ```
     AdvInjectInsertHperm,
@@ -345,7 +345,7 @@ pub enum MasmOp {
     ///
     /// The digest output is the word E.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [C, B, A] => [F, E, D]
     /// ```
     Hperm,
@@ -353,7 +353,7 @@ pub enum MasmOp {
     /// the advice provider, and runs a verification equivalent to `mtree_verify`, returning
     /// the value if successful.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [d, i, R] => [V, R]
     /// ```
     MtreeGet,
@@ -366,7 +366,7 @@ pub enum MasmOp {
     ///
     /// Both trees are in the advice provider upon return.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [d, i, R, V'] => [V, R']
     /// ```
     MtreeSet,
@@ -374,7 +374,7 @@ pub enum MasmOp {
     ///
     /// Both the new tree and the input trees are in the advice provider upon return.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [R, L] => [M]
     /// ```
     MtreeMerge,
@@ -383,7 +383,7 @@ pub enum MasmOp {
     /// The Merkle tree with root `R` must be present in the advice provider or the operation
     /// fails.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [V, d, i, R] => [V, d, i, R]
     /// ```
     MtreeVerify,
@@ -392,7 +392,7 @@ pub enum MasmOp {
     /// The Merkle tree with root `R` must be present in the advice provider or the operation
     /// fails.
     ///
-    /// ```ignore
+    /// ```text,ignore
     /// [V, d, i, R] => [V, d, i, R]
     /// ```
     /// Raise the given error code if the verification fails

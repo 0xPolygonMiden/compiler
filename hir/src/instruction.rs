@@ -87,10 +87,14 @@ intrusive_adapter!(pub InstAdapter = UnsafeRef<InstNode>: InstNode { link: Linke
 /// A type alias for `LinkedList<InstAdapter>`
 pub type InstructionList = intrusive_collections::LinkedList<InstAdapter>;
 
+pub type InstructionCursor<'a> = intrusive_collections::linked_list::Cursor<'a, InstAdapter>;
+pub type InstructionCursorMut<'a> = intrusive_collections::linked_list::CursorMut<'a, InstAdapter>;
+
 /// Represents the type of instruction associated with a particular opcode
 #[derive(Debug)]
 pub enum Instruction {
     GlobalValue(GlobalValueOp),
+    LocalVar(LocalVarOp),
     BinaryOp(BinaryOp),
     BinaryOpImm(BinaryOpImm),
     UnaryOp(UnaryOp),
@@ -111,6 +115,7 @@ impl Instruction {
     pub fn deep_clone(&self, value_lists: &mut ValueListPool) -> Self {
         match self {
             Self::GlobalValue(gv) => Self::GlobalValue(gv.clone()),
+            Self::LocalVar(lv) => Self::LocalVar(lv.clone()),
             Self::BinaryOp(op) => Self::BinaryOp(op.clone()),
             Self::BinaryOpImm(op) => Self::BinaryOpImm(op.clone()),
             Self::UnaryOp(op) => Self::UnaryOp(op.clone()),
@@ -154,6 +159,7 @@ impl Instruction {
     pub fn opcode(&self) -> Opcode {
         match self {
             Self::GlobalValue(GlobalValueOp { ref op, .. })
+            | Self::LocalVar(LocalVarOp { ref op, .. })
             | Self::BinaryOp(BinaryOp { ref op, .. })
             | Self::BinaryOpImm(BinaryOpImm { ref op, .. })
             | Self::UnaryOp(UnaryOp { ref op, .. })
@@ -223,6 +229,7 @@ impl Instruction {
             Self::PrimOpImm(PrimOpImm { ref args, .. }) => args.as_slice(pool),
             Self::Test(Test { ref arg, .. }) => core::slice::from_ref(arg),
             Self::InlineAsm(InlineAsm { ref args, .. }) => args.as_slice(pool),
+            Self::LocalVar(LocalVarOp { ref args, .. }) => args.as_slice(pool),
             Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &[],
         }
     }
@@ -241,6 +248,7 @@ impl Instruction {
             Self::PrimOpImm(PrimOpImm { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::Test(Test { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::InlineAsm(InlineAsm { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::LocalVar(LocalVarOp { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &mut [],
         }
     }
@@ -327,6 +335,10 @@ pub enum Opcode {
     ImmU64,
     /// Represents an immediate signed 64-bit integer value
     ImmI64,
+    /// Represents an immediate unsigned 128-bit integer value
+    ImmU128,
+    /// Represents an immediate signed 128-bit integer value
+    ImmI128,
     /// Represents an immediate field element
     ImmFelt,
     /// Represents an immediate 64-bit floating-point value
@@ -446,6 +458,15 @@ pub enum Opcode {
     Ret,
     Unreachable,
     InlineAsm,
+    /// NOTE: Internal Use Only!
+    /// This is used during the spill pass to record spilling a value to temporary memory,
+    /// which will eventually be allocated to a local variable slot and rewritten as store.local
+    /// before that pass completes
+    Spill,
+    /// NOTE: Internal Use Only!
+    /// This is used during the spill pass to record reloading a spilled value as a new copy.
+    /// This is rewritten to a load.local before the pass completes.
+    Reload,
 }
 impl Opcode {
     pub fn is_terminator(&self) -> bool {
@@ -496,7 +517,9 @@ impl Opcode {
             | Self::Switch
             | Self::Ret
             | Self::Unreachable
-            | Self::InlineAsm => true,
+            | Self::InlineAsm
+            | Self::Spill
+            | Self::Reload => true,
             // These opcodes are not
             Self::ImmI1
             | Self::ImmU8
@@ -507,6 +530,8 @@ impl Opcode {
             | Self::ImmI32
             | Self::ImmU64
             | Self::ImmI64
+            | Self::ImmU128
+            | Self::ImmI128
             | Self::ImmFelt
             | Self::ImmF64
             | Self::MemSize
@@ -576,6 +601,8 @@ impl Opcode {
             | Self::ImmI32
             | Self::ImmU64
             | Self::ImmI64
+            | Self::ImmU128
+            | Self::ImmI128
             | Self::ImmFelt
             | Self::ImmF64 => 0,
             // Binary ops always have two
@@ -650,6 +677,8 @@ impl Opcode {
             | Self::Alloca
             | Self::Unreachable
             | Self::InlineAsm => 0,
+            // Spills/reloads take a single argument
+            Self::Spill | Self::Reload => 1,
         }
     }
 
@@ -668,7 +697,8 @@ impl Opcode {
             | Self::CondBr
             | Self::Switch
             | Self::Ret
-            | Self::Unreachable => smallvec![],
+            | Self::Unreachable
+            | Self::Spill => smallvec![],
             // These ops have fixed result types
             Self::Test
             | Self::IsOdd
@@ -692,6 +722,8 @@ impl Opcode {
             | Self::ImmI32
             | Self::ImmU64
             | Self::ImmI64
+            | Self::ImmU128
+            | Self::ImmI128
             | Self::ImmFelt
             | Self::ImmF64
             | Self::GlobalValue
@@ -720,7 +752,8 @@ impl Opcode {
             | Self::Rotl
             | Self::Rotr
             | Self::MemGrow
-            | Self::MemSize => {
+            | Self::MemSize
+            | Self::Reload => {
                 smallvec![ctrl_ty]
             }
             // These ops always return a usize/u32 type
@@ -758,6 +791,8 @@ impl fmt::Display for Opcode {
             Self::ImmI32 => f.write_str("const.i32"),
             Self::ImmU64 => f.write_str("const.u64"),
             Self::ImmI64 => f.write_str("const.i64"),
+            Self::ImmU128 => f.write_str("const.u128"),
+            Self::ImmI128 => f.write_str("const.i128"),
             Self::ImmFelt => f.write_str("const.felt"),
             Self::ImmF64 => f.write_str("const.f64"),
             Self::GlobalValue => f.write_str("global"),
@@ -823,6 +858,8 @@ impl fmt::Display for Opcode {
             Self::Max => f.write_str("max"),
             Self::Unreachable => f.write_str("unreachable"),
             Self::InlineAsm => f.write_str("asm"),
+            Self::Spill => f.write_str("spill"),
+            Self::Reload => f.write_str("reload"),
         }
     }
 }
@@ -886,6 +923,13 @@ impl fmt::Display for Overflow {
 pub struct GlobalValueOp {
     pub op: Opcode,
     pub global: GlobalValue,
+}
+
+#[derive(Debug, Clone)]
+pub struct LocalVarOp {
+    pub op: Opcode,
+    pub local: LocalId,
+    pub args: ValueList,
 }
 
 #[derive(Debug, Clone)]
@@ -1325,6 +1369,12 @@ impl<'a> formatter::PrettyPrint for InstPrettyPrinter<'a> {
                     None => inner,
                     Some(wrapper) => wrapper + inner + const_text(")"),
                 };
+            }
+            Instruction::LocalVar(LocalVarOp { local, args, .. }) => {
+                let args = core::iter::once(display(local))
+                    .chain(args.as_slice(&self.dfg.value_lists).iter().copied().map(display))
+                    .collect();
+                (vec![const_text("local")], args)
             }
             Instruction::GlobalValue(GlobalValueOp { global, .. }) => {
                 let inner = self.dfg.global_value(*global).render(self.dfg);

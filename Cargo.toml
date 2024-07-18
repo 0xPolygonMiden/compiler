@@ -21,7 +21,7 @@ exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
 
 [workspace.package]
 version = "0.0.0"
-rust-version = "1.76"
+rust-version = "1.78"
 authors = ["Miden contributors"]
 description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/compiler"
@@ -36,11 +36,11 @@ publish = false
 
 [workspace.dependencies]
 anyhow = "1.0"
-bitflags = "1.3"
+bitflags = "2.4"
 clap = { version = "4.1", features = ["derive", "env"] }
-cranelift-entity = "0.100"
-cranelift-bforest = "0.100"
-env_logger = "0.9"
+cranelift-entity = "0.108"
+cranelift-bforest = "0.108"
+env_logger = "0.11"
 either = { version = "1.10", default-features = false }
 Inflector = "0.11"
 intrusive-collections = "0.9"
@@ -54,14 +54,15 @@ petgraph = "0.6"
 pretty_assertions = "1.0"
 proptest = "1.4"
 rustc-hash = "1.1"
-smallvec = { version = "1.9", features = [
+smallvec = { version = "1.13", features = [
     "union",
     "const_generics",
     "const_new",
+    "drain_filter",
 ] }
 smallstr = { version = "0.3", features = ["union"] }
 thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
-toml = { version = "0.5", features = ["preserve_order"] }
+toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.1"
 # 2da11ad0a975d2e5d6a2582871f0c89b820b3ffa is the latest commit in 'next' that includes

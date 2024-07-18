@@ -845,14 +845,16 @@ end
 
 
 export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
+    swap.1
+    drop
     push.3
-    movup.4
+    movup.3
     swap.1
     u32shl
     push.512
     u32wrapping_add
     push.2
-    movup.4
+    movup.3
     swap.1
     u32shl
     dup.0
@@ -883,8 +885,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
     neq
     neq.0
     if.true
-        movup.3
-        drop
         push.16
         u32shl
         dup.2
@@ -981,8 +981,6 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         assertz.err=0
     else
         drop
-        drop
-        swap.1
         drop
         dup.0
         dup.0

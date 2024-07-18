@@ -1,10 +1,8 @@
-use cranelift_entity::packed_option::PackedOption;
-
 use super::*;
 
 pub struct FunctionBuilder<'f> {
     pub func: &'f mut Function,
-    position: PackedOption<Block>,
+    ip: InsertionPoint,
 }
 impl<'f> FunctionBuilder<'f> {
     pub fn new(func: &'f mut Function) -> Self {
@@ -13,8 +11,12 @@ impl<'f> FunctionBuilder<'f> {
 
         Self {
             func,
-            position: position.into(),
+            ip: InsertionPoint::after(ProgramPoint::Block(position)),
         }
+    }
+
+    pub fn at(func: &'f mut Function, ip: InsertionPoint) -> Self {
+        Self { func, ip }
     }
 
     pub fn entry_block(&self) -> Block {
@@ -23,12 +25,12 @@ impl<'f> FunctionBuilder<'f> {
 
     #[inline]
     pub fn current_block(&self) -> Block {
-        self.position.expand().unwrap()
+        self.ip.block(self.func)
     }
 
     #[inline]
     pub fn switch_to_block(&mut self, block: Block) {
-        self.position = PackedOption::from(block);
+        self.ip = InsertionPoint::after(ProgramPoint::Block(block));
     }
 
     pub fn create_block(&mut self) -> Block {
@@ -64,6 +66,10 @@ impl<'f> FunctionBuilder<'f> {
         self.func.dfg.create_global_value(data)
     }
 
+    pub fn create_local(&mut self, ty: Type) -> LocalId {
+        self.func.dfg.alloc_local(ty)
+    }
+
     pub fn get_import(&self, id: &FunctionIdent) -> Option<&ExternalFunction> {
         self.func.dfg.get_import(id)
     }
@@ -82,8 +88,7 @@ impl<'f> FunctionBuilder<'f> {
     }
 
     pub fn ins<'a, 'b: 'a>(&'b mut self) -> DefaultInstBuilder<'a> {
-        let block = self.position.expect("must be in a block to insert instructions");
-        DefaultInstBuilder::new(&mut self.func.dfg, block)
+        DefaultInstBuilder::at(&mut self.func.dfg, self.ip)
     }
 }
 
@@ -101,7 +106,7 @@ impl<'f> DefaultInstBuilder<'f> {
         }
     }
 
-    fn at(dfg: &'f mut DataFlowGraph, ip: InsertionPoint) -> Self {
+    pub fn at(dfg: &'f mut DataFlowGraph, ip: InsertionPoint) -> Self {
         Self { dfg, ip }
     }
 }
@@ -630,6 +635,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     integer_literal!(16);
     integer_literal!(32);
     integer_literal!(64);
+    integer_literal!(128);
 
     fn felt(self, i: Felt, span: SourceSpan) -> Value {
         into_first_result!(self.UnaryImm(Opcode::ImmFelt, Type::Felt, Immediate::Felt(i), span))
@@ -854,6 +860,18 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         into_first_result!(self.build(data, Type::Ptr(Box::new(ty)), span))
     }
 
+    /// Loads a value from the given temporary (local variable), of the type associated with that
+    /// local.
+    fn load_local(self, local: LocalId, span: SourceSpan) -> Value {
+        let data = Instruction::LocalVar(LocalVarOp {
+            op: Opcode::Load,
+            local,
+            args: ValueList::default(),
+        });
+        let ty = self.data_flow_graph().local_type(local).clone();
+        into_first_result!(self.build(data, Type::Ptr(Box::new(ty)), span))
+    }
+
     /// Stores `value` to the address given by `ptr`
     ///
     /// NOTE: This function will panic if the pointer and pointee types do not match
@@ -867,6 +885,27 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
             vlist.extend([ptr, value], &mut dfg.value_lists);
         }
         self.PrimOp(Opcode::Store, Type::Unit, vlist, span).0
+    }
+
+    /// Stores `value` to the given temporary (local variable).
+    ///
+    /// NOTE: This function will panic if the type of `value` does not match the type of the local
+    /// variable.
+    fn store_local(mut self, local: LocalId, value: Value, span: SourceSpan) -> Inst {
+        let mut vlist = ValueList::default();
+        {
+            let dfg = self.data_flow_graph_mut();
+            let local_ty = dfg.local_type(local);
+            let value_ty = dfg.value_type(value);
+            assert_eq!(local_ty, value_ty, "expected value to be a {}, got {}", local_ty, value_ty);
+            vlist.push(value, &mut dfg.value_lists);
+        }
+        let data = Instruction::LocalVar(LocalVarOp {
+            op: Opcode::Store,
+            local,
+            args: vlist,
+        });
+        self.build(data, Type::Unit, span).0
     }
 
     /// Writes `count` copies of `value` to memory starting at address `dst`.

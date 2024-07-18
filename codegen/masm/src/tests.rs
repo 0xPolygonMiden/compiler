@@ -29,10 +29,31 @@ right: `{}`"#,
     }};
 }
 
-#[derive(Default)]
 struct TestByEmulationHarness {
     context: TestContext,
     emulator: Emulator,
+}
+impl Default for TestByEmulationHarness {
+    fn default() -> Self {
+        let mut harness = Self {
+            context: Default::default(),
+            emulator: Default::default(),
+        };
+        // Ensure we request all codegen outputs
+        harness
+            .context
+            .session
+            .options
+            .output_types
+            .insert(midenc_session::OutputType::Masm, None);
+        harness
+            .context
+            .session
+            .options
+            .output_types
+            .insert(midenc_session::OutputType::Mast, None);
+        harness
+    }
 }
 #[allow(unused)]
 impl TestByEmulationHarness {
@@ -45,6 +66,22 @@ impl TestByEmulationHarness {
                 lp.try_into().expect("invalid address"),
             ),
         };
+
+        // Ensure we request all codegen outputs
+        harness
+            .context
+            .session
+            .options
+            .output_types
+            .insert(midenc_session::OutputType::Masm, None);
+        harness
+            .context
+            .session
+            .options
+            .output_types
+            .insert(midenc_session::OutputType::Mast, None);
+
+        // Set a default, reasonable, execution limit
         harness.set_cycle_budget(2000);
         harness
     }
@@ -73,9 +110,7 @@ impl TestByEmulationHarness {
         analyses.insert(ProgramAnalysisKey, global_analysis);
 
         // Apply pre-codegen transformations
-        let mut rewrites = transform::SplitCriticalEdges
-            .chain(transform::Treeify)
-            .chain(transform::InlineBlocks);
+        let mut rewrites = crate::default_function_rewrites(&self.context.session);
         rewrites.apply(function, &mut analyses, &self.context.session)?;
 
         println!("{}", function);

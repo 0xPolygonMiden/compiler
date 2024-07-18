@@ -681,7 +681,7 @@ dependencies = [
  "serde",
  "tempfile",
  "thiserror",
- "toml 0.8.8",
+ "toml",
  "walkdir",
 ]
 
@@ -695,7 +695,7 @@ dependencies = [
  "cargo-generate",
  "cargo_metadata",
  "clap",
- "env_logger 0.9.3",
+ "env_logger 0.11.2",
  "log",
  "miden-diagnostics",
  "midenc-compile",
@@ -951,18 +951,18 @@ dependencies = [
 
 [[package]]
 name = "cranelift-bforest"
-version = "0.100.1"
+version = "0.108.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "751cbf89e513f283c0641eb7f95dc72fda5051dd95ca203d1dc45e26bc89dba8"
+checksum = "29daf137addc15da6bab6eae2c4a11e274b1d270bf2759508e62f6145e863ef6"
 dependencies = [
  "cranelift-entity",
 ]
 
 [[package]]
 name = "cranelift-entity"
-version = "0.100.1"
+version = "0.108.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc619b86fe3c72f43fc417c9fd67a04ec0c98296e5940922d9fd9e6eedf72521"
+checksum = "7eabb8d36b0ca8906bec93c78ea516741cac2d7e6b266fa7b0ffddcc09004990"
 
 [[package]]
 name = "crossbeam-deque"
@@ -1284,19 +1284,6 @@ checksum = "a009aa4810eb158359dda09d0c87378e4bbb89b5a801f016885a4707ba24f7ea"
 dependencies = [
  "log",
  "regex",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
 ]
 
 [[package]]
@@ -2056,9 +2043,9 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
 name = "human-panic"
-version = "1.2.3"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4f016c89920bbb30951a8405ecacbb4540db5524313b9445736e7e1855cf370"
+checksum = "a4c5d0e9120f6bca6120d142c7ede1ba376dd6bf276d69dd3dbe6cbeb7824179"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2066,7 +2053,7 @@ dependencies = [
  "os_info",
  "serde",
  "serde_derive",
- "toml 0.8.8",
+ "toml",
  "uuid",
 ]
 
@@ -2714,7 +2701,7 @@ dependencies = [
  "cargo_metadata",
  "concat-idents",
  "derive_more",
- "env_logger 0.9.3",
+ "env_logger 0.11.2",
  "expect-test",
  "filetime",
  "glob",
@@ -2776,7 +2763,7 @@ name = "midenc"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "env_logger 0.9.3",
+ "env_logger 0.11.2",
  "human-panic",
  "midenc-driver",
 ]
@@ -2787,7 +2774,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cranelift-entity",
- "env_logger 0.9.3",
+ "env_logger 0.11.2",
  "intrusive-collections",
  "inventory",
  "log",
@@ -2820,6 +2807,7 @@ dependencies = [
  "midenc-codegen-masm",
  "midenc-frontend-wasm",
  "midenc-hir",
+ "midenc-hir-analysis",
  "midenc-hir-transform",
  "midenc-session",
  "rustc-hash",
@@ -2902,10 +2890,12 @@ dependencies = [
  "anyhow",
  "cranelift-bforest",
  "cranelift-entity",
+ "intrusive-collections",
  "inventory",
  "miden-diagnostics",
  "midenc-hir",
  "midenc-session",
+ "pretty_assertions",
  "rustc-hash",
  "smallvec",
  "thiserror",
@@ -2927,7 +2917,7 @@ version = "0.0.0"
 dependencies = [
  "Inflector",
  "rustc-hash",
- "toml 0.5.11",
+ "toml",
 ]
 
 [[package]]
@@ -4789,16 +4779,6 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
-dependencies = [
- "indexmap 1.9.3",
- "serde",
-]
-
-[[package]]
-name = "toml"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1a195ec8c9da26928f773888e0742ca3ca1040c6cd859c919c9f59c1954ab35"
@@ -4899,7 +4879,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "termcolor",
- "toml 0.8.8",
+ "toml",
 ]
 
 [[package]]
