@@ -1,7 +1,7 @@
 [package]
 name = "miden-tx-kernel-sys"
 description = "Miden SDK transaction kernel"
-version = "0.0.0"
+version = "0.0.1"
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
