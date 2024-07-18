@@ -288,7 +288,7 @@ impl<'a> OpEmitter<'a> {
             }
             // u32
             (Type::U32, Type::I64 | Type::U64 | Type::I128) => self.zext_int32(dst_bits),
-            (Type::U32, Type::I32) => self.assert_unsigned_int32(),
+            (Type::U32, Type::I32) => self.assert_i32(),
             (Type::U32, Type::U16 | Type::U8 | Type::I1) => {
                 self.int32_to_uint(dst_bits);
             }
@@ -296,11 +296,11 @@ impl<'a> OpEmitter<'a> {
             // i32
             (Type::I32, Type::I64 | Type::I128) => self.sext_int32(dst_bits),
             (Type::I32, Type::U64) => {
-                self.assert_unsigned_int32();
+                self.assert_i32();
                 self.emit(Op::PushU32(0));
             }
             (Type::I32, Type::U32) => {
-                self.assert_unsigned_int32();
+                self.assert_i32();
             }
             (Type::I32, Type::U16 | Type::U8 | Type::I1) => {
                 self.int32_to_uint(dst_bits);
