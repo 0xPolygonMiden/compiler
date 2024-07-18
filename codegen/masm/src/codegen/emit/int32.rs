@@ -118,6 +118,18 @@ impl<'a> OpEmitter<'a> {
         self.emit(Op::Assertz);
     }
 
+    /// Assert that the 32-bit value on the stack is a valid i32 value
+    pub fn assert_i32(&mut self) {
+        // Copy the value on top of the stack
+        self.emit(Op::Dup(0));
+        // Assert the value does not overflow i32::MAX or underflow i32::MIN
+        // This can be checked by validating that when interpreted as a u32,
+        // the value is <= i32::MIN, which is 1 more than i32::MAX.
+        self.push_i32(i32::MIN);
+        self.emit(Op::U32Lte);
+        self.emit(Op::Assert);
+    }
+
     /// Emits code to assert that a 32-bit value on the operand stack is equal to the given constant
     /// value.
     ///
