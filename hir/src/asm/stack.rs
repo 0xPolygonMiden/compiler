@@ -488,7 +488,22 @@ impl<'a, E: StackElement, T: ?Sized + Stack<Element = E>> fmt::Debug for DebugSt
             .finish()
     }
 }
-
+impl<'a, E: StackElement + fmt::Debug, T: ?Sized + Stack<Element = E>> fmt::Display
+    for DebugStack<'a, T>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(
+                self.stack
+                    .stack()
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .take(self.limit.unwrap_or(self.stack.len())),
+            )
+            .finish()
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
