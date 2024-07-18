@@ -158,6 +158,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d301b3b94cb4b2f23d7917810addbbaff90738e0ca2be692bd027e70d7e0330c"
 
 [[package]]
+name = "arbitrary"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d5a26814d8dcb93b0e5a0ff3c6d80a8843bafb21b39e8e18a6f05471870e110"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1094,6 +1103,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive_arbitrary"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67e77553c4162a157adbf834ebae5b415acbecbeafc7a74b0e886657506a7611"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1430,6 +1450,12 @@ name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
+
+[[package]]
+name = "flagset"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdeb3aa5e95cf9aabc17f060cfa0ced7b83f042390760ca53bf09df9968acaa1"
 
 [[package]]
 name = "flurry"
@@ -2696,6 +2722,7 @@ name = "miden-integration-tests"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "arbitrary",
  "blake3",
  "cargo-util",
  "cargo_metadata",
@@ -2722,6 +2749,7 @@ dependencies = [
  "rustc-demangle",
  "sha2",
  "walkdir",
+ "wasm-smith",
  "wasmprinter",
 ]
 
@@ -5276,6 +5304,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-encoder"
+version = "0.211.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e7d931a1120ef357f32b74547646b6fa68ea25e377772b72874b131a9ed70d4"
+dependencies = [
+ "leb128",
+]
+
+[[package]]
 name = "wasm-metadata"
 version = "0.10.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5289,6 +5326,20 @@ dependencies = [
  "spdx",
  "wasm-encoder 0.39.0",
  "wasmparser 0.119.0",
+]
+
+[[package]]
+name = "wasm-smith"
+version = "0.211.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94ae0d1bd7d17e7ae175f9e3cf646d9b39b7115240ed8d40141c4670bab49f96"
+dependencies = [
+ "anyhow",
+ "arbitrary",
+ "flagset",
+ "indexmap 2.1.0",
+ "leb128",
+ "wasm-encoder 0.211.1",
 ]
 
 [[package]]
