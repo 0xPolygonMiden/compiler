@@ -687,7 +687,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-miden"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "cargo-component",
@@ -2760,7 +2760,7 @@ dependencies = [
 
 [[package]]
 name = "midenc"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "env_logger 0.11.2",
@@ -2770,7 +2770,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-codegen-masm"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "cranelift-entity",
@@ -2796,7 +2796,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-compile"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2817,7 +2817,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-driver"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2830,7 +2830,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-frontend-wasm"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -2852,7 +2852,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "cranelift-entity",
@@ -2885,7 +2885,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-analysis"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "cranelift-bforest",
@@ -2913,7 +2913,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-symbol"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "Inflector",
  "rustc-hash",
@@ -2922,7 +2922,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-transform"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "inventory",
@@ -2937,14 +2937,14 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-type"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "smallvec",
 ]
 
 [[package]]
 name = "midenc-session"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "atty",
  "clap",
