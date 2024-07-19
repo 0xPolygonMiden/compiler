@@ -75,7 +75,7 @@ midenc-codegen-masm = { version = "0.0.1", path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }
 midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }
-midenc-hir-macros = { version = "0.0.0", path = "hir-macros" }
+midenc-hir-macros = { version = "0.0.1", path = "hir-macros" }
 midenc-hir-symbol = { version = "0.0.1", path = "hir-symbol" }
 midenc-hir-transform = { version = "0.0.1", path = "hir-transform" }
 midenc-hir-type = { version = "0.0.1", path = "hir-type" }
