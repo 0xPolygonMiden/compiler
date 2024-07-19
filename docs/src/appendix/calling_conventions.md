@@ -253,7 +253,7 @@ in MASM parlance), but no function signature, i.e. given a MASM procedure, there
 many values it returns, let alone the types of arguments/return values. Instead, we're going to specify calling conventions in terms of
 Miden IR, which has a fairly expressive type system more or less equivalent to that of LLVM, and how that translates to Miden primitives.
 
-Functions in Miden IR always have a signature, which specify the following:
+Functions in Miden IR always have a signature, which specifies the following:
 
 * The calling convention required to call the function
 * The number and types of the function arguments
