@@ -22,10 +22,9 @@ fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     let mut main_fn = String::new();
     writeln!(main_fn, "() -> Vec<Felt> {{\n").unwrap();
     writeln!(main_fn, "    let inputs = get_inputs();").unwrap();
-    // for (_i, _expected_input) in expected_inputs.iter().enumerate() {
-    // TODO: use miden asserts once they are implemented
-    // writeln!(main_fn, "    assert_eq!(inputs[{i}], {expected_input});").unwrap();
-    // }
+    for (i, expected_input) in expected_inputs.iter().enumerate() {
+        writeln!(main_fn, "    assert_eq(inputs[{i}], felt!({expected_input}));").unwrap();
+    }
     writeln!(main_fn, "    inputs").unwrap();
     writeln!(main_fn, "}}").unwrap();
 
@@ -50,7 +49,8 @@ fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
     let vm_program = test.vm_masm_program();
-    // let vm_out = execute_vm_tracing(&vm_program, &[]).unwrap();
+    let vm_out = execute_vm_tracing(&vm_program, &[]).unwrap();
+    // let vm_out = execute_vm(&vm_program, &[]);
 
     // let ir_program = test.ir_masm_program();
     // let emul_out = execute_emulator(ir_program.clone(), &[]);
