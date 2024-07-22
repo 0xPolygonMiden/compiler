@@ -27,7 +27,7 @@ description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/compiler"
 homepage = "https://github.com/0xPolygonMiden/compiler"
 documentation = "https://github.com/0xPolygonMiden/compiler"
-categories = ["Compilers"]
+categories = ["compilers"]
 keywords = ["compiler", "miden"]
 license = "MIT"
 readme = "README.md"
@@ -71,20 +71,20 @@ miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "2d
 miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "2da11ad0a975d2e5d6a2582871f0c89b820b3ffa" }
 miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "2da11ad0a975d2e5d6a2582871f0c89b820b3ffa" }
 miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "2da11ad0a975d2e5d6a2582871f0c89b820b3ffa" }
-midenc-codegen-masm = { path = "codegen/masm" }
+midenc-codegen-masm = { version = "0.0.1", path = "codegen/masm" }
 miden-diagnostics = "0.1"
-midenc-hir = { path = "hir" }
-midenc-hir-analysis = { path = "hir-analysis" }
-midenc-hir-macros = { path = "hir-macros" }
-midenc-hir-symbol = { path = "hir-symbol" }
-midenc-hir-transform = { path = "hir-transform" }
-midenc-hir-type = { path = "hir-type" }
+midenc-hir = { version = "0.0.1", path = "hir" }
+midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }
+midenc-hir-macros = { version = "0.0.1", path = "hir-macros" }
+midenc-hir-symbol = { version = "0.0.1", path = "hir-symbol" }
+midenc-hir-transform = { version = "0.0.1", path = "hir-transform" }
+midenc-hir-type = { version = "0.0.1", path = "hir-type" }
 miden-parsing = "0.1"
-midenc-frontend-wasm = { path = "frontend-wasm" }
-midenc-compile = { path = "midenc-compile" }
-midenc-driver = { path = "midenc-driver" }
-midenc-session = { path = "midenc-session" }
-miden-integration-tests = { path = "tests/integration" }
+midenc-frontend-wasm = { version = "0.0.1", path = "frontend-wasm" }
+midenc-compile = { version = "0.0.1", path = "midenc-compile" }
+midenc-driver = { version = "0.0.1", path = "midenc-driver" }
+midenc-session = { version = "0.0.1", path = "midenc-session" }
+miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
 
