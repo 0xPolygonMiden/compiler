@@ -18,12 +18,23 @@ export.entrypoint
     mem_load.0x00000000
     push.16
     u32wrapping_sub
+    dup.0
+    dup.0
+    push.2147483648
+    u32and
+    eq.2147483648
+    assertz
+    add.12
+    u32assert
+    dup.0
+    u32mod.2
+    assertz.err=0
     push.4
-    dup.1
+    dup.2
     swap.1
     u32wrapping_add
     exec."miden_tx_kernel_sys::get_inputs"
-    dup.1
+    dup.2
     swap.1
     dup.0
     u32mod.16
@@ -34,9 +45,6 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::store_sw
-    dup.0
-    add.12
-    u32assert
     dup.0
     u32mod.16
     dup.0
@@ -53,8 +61,14 @@ export.entrypoint
         push.0 assert
     else
         dup.1
+        dup.0
+        push.2147483648
+        u32and
+        eq.2147483648
+        assertz
         add.8
         u32assert
+        dup.0
         dup.0
         u32mod.16
         dup.0
@@ -64,6 +78,12 @@ export.entrypoint
         movup.2
         u32div.16
         exec.::intrinsics::mem::load_sw
+        dup.0
+        dup.0
+        push.2147483648
+        u32and
+        eq.2147483648
+        assertz
         dup.0
         dup.0
         u32mod.16
@@ -78,10 +98,16 @@ export.entrypoint
         dup.1
         dup.1
         push.4294967295.1
-        exec.::std::math::u64::lte
+        exec.::std::math::u64::lt
         assert
-        mul
+        mul.4294967296
+        add
         assert_eq
+        u32mod.2
+        assertz.err=0
+        swap.1
+        u32mod.2
+        assertz.err=0
         push.1
         dup.2
         swap.1
@@ -91,8 +117,14 @@ export.entrypoint
             push.0 assert
         else
             dup.0
-            add.8
+            dup.0
+            push.2147483648
+            u32and
+            eq.2147483648
+            assertz
+            add.4
             u32assert
+            dup.0
             dup.0
             u32mod.16
             dup.0
@@ -106,20 +138,35 @@ export.entrypoint
             dup.1
             dup.1
             push.4294967295.1
-            exec.::std::math::u64::lte
+            exec.::std::math::u64::lt
             assert
-            mul
+            mul.4294967296
+            add
             assert_eq
+            u32mod.2
+            assertz.err=0
             dup.1
             push.2
             u32lte
+            push.0
+            push.0
+            push.4294967294
+            movup.2
+            cdrop
+            u32or
             neq.0
             if.true
                 push.0 assert
             else
                 dup.0
-                add.16
+                dup.0
+                push.2147483648
+                u32and
+                eq.2147483648
+                assertz
+                add.8
                 u32assert
+                dup.0
                 dup.0
                 u32mod.16
                 dup.0
@@ -133,10 +180,13 @@ export.entrypoint
                 dup.1
                 dup.1
                 push.4294967295.1
-                exec.::std::math::u64::lte
+                exec.::std::math::u64::lt
                 assert
-                mul
+                mul.4294967296
+                add
                 assert_eq
+                u32mod.2
+                assertz.err=0
                 push.3
                 movup.2
                 swap.1
@@ -145,8 +195,50 @@ export.entrypoint
                 if.true
                     push.0 assert
                 else
-                    push.16
                     dup.2
+                    dup.0
+                    push.2147483648
+                    u32and
+                    eq.2147483648
+                    assertz
+                    dup.2
+                    dup.0
+                    push.2147483648
+                    u32and
+                    eq.2147483648
+                    assertz
+                    add.4
+                    u32assert
+                    push.8
+                    movup.5
+                    swap.1
+                    u32wrapping_add
+                    dup.0
+                    push.2147483648
+                    u32and
+                    eq.2147483648
+                    assertz
+                    push.4
+                    dup.5
+                    swap.1
+                    u32wrapping_add
+                    push.8
+                    u32wrapping_add
+                    dup.0
+                    push.2147483648
+                    u32and
+                    eq.2147483648
+                    assertz
+                    movup.4
+                    dup.0
+                    push.2147483648
+                    u32and
+                    eq.2147483648
+                    assertz
+                    add.12
+                    u32assert
+                    push.16
+                    movup.6
                     swap.1
                     u32wrapping_add
                     dup.0
@@ -158,9 +250,7 @@ export.entrypoint
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::store_sw
-                    dup.1
-                    add.4
-                    u32assert
+                    dup.3
                     dup.0
                     u32mod.16
                     dup.0
@@ -170,7 +260,7 @@ export.entrypoint
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::load_dw
-                    dup.4
+                    dup.6
                     dup.0
                     u32mod.16
                     dup.0
@@ -180,12 +270,13 @@ export.entrypoint
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::store_dw
-                    push.4
-                    movup.2
-                    swap.1
-                    u32wrapping_add
-                    push.8
-                    u32wrapping_add
+                    movup.4
+                    u32mod.2
+                    assertz.err=0
+                    movup.3
+                    u32mod.2
+                    assertz.err=0
+                    dup.1
                     dup.0
                     u32mod.16
                     dup.0
@@ -195,10 +286,7 @@ export.entrypoint
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::load_sw
-                    push.8
-                    movup.3
-                    swap.1
-                    u32wrapping_add
+                    dup.3
                     dup.0
                     u32mod.16
                     dup.0
@@ -208,8 +296,13 @@ export.entrypoint
                     movup.2
                     u32div.16
                     exec.::intrinsics::mem::store_sw
-                    add.24
-                    u32assert
+                    movup.2
+                    u32mod.2
+                    assertz.err=0
+                    swap.1
+                    u32mod.2
+                    assertz.err=0
+                    dup.0
                     dup.0
                     u32mod.16
                     dup.0
@@ -223,10 +316,13 @@ export.entrypoint
                     dup.1
                     dup.1
                     push.4294967295.1
-                    exec.::std::math::u64::lte
+                    exec.::std::math::u64::lt
                     assert
-                    mul
+                    mul.4294967296
+                    add
                     assert_eq
+                    u32mod.2
+                    assertz.err=0
                 end
             end
         end

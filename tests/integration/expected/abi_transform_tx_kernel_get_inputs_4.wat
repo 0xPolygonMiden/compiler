@@ -1,6 +1,6 @@
 (module $abi_transform_tx_kernel_get_inputs_4.wasm
-  (type (;0;) (func (param i64) (result f64)))
-  (type (;1;) (func (param f64 f64)))
+  (type (;0;) (func (param i64) (result f32)))
+  (type (;1;) (func (param f32 f32)))
   (type (;2;) (func (param i32) (result i32)))
   (type (;3;) (func (param i32)))
   (type (;4;) (func (param i32 i32) (result i32)))
@@ -32,7 +32,7 @@
       local.get 1
       i32.load offset=8
       local.tee 3
-      f64.load
+      f32.load
       i64.const 4294967295
       call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
       call $miden_stdlib_sys::intrinsics::felt::extern_assert_eq
@@ -41,7 +41,7 @@
       i32.eq
       br_if 0 (;@1;)
       local.get 3
-      f64.load offset=8
+      f32.load offset=4
       i64.const 1
       call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
       call $miden_stdlib_sys::intrinsics::felt::extern_assert_eq
@@ -50,7 +50,7 @@
       i32.le_u
       br_if 0 (;@1;)
       local.get 3
-      f64.load offset=16
+      f32.load offset=8
       i64.const 0
       call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
       call $miden_stdlib_sys::intrinsics::felt::extern_assert_eq
@@ -59,7 +59,7 @@
       i32.eq
       br_if 0 (;@1;)
       local.get 3
-      f64.load offset=24
+      f32.load offset=12
       i64.const 4294967295
       call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
       call $miden_stdlib_sys::intrinsics::felt::extern_assert_eq
