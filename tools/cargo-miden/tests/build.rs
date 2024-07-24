@@ -25,7 +25,7 @@ fn build_new_project_from_template() {
     let restore_dir = env::current_dir().unwrap();
     let temp_dir = env::temp_dir();
     env::set_current_dir(&temp_dir).unwrap();
-    let project_name = "test-proj";
+    let project_name = "test_proj_underscore";
     let expected_new_project_dir = &temp_dir.join(project_name);
     dbg!(&expected_new_project_dir);
     if expected_new_project_dir.exists() {
