@@ -17,8 +17,8 @@ mod rewrite;
 mod sema;
 
 pub use self::{
-    codegen::{CodegenStage, Compiled},
-    link::{LinkerStage, MaybeLinked},
+    codegen::CodegenStage,
+    link::{LinkerInput, LinkerOutput, LinkerStage, MaybeLinked},
     parse::{ParseOutput, ParseStage},
     rewrite::ApplyRewritesStage,
     sema::SemanticAnalysisStage,

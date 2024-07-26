@@ -7,7 +7,7 @@ use super::*;
 pub struct SemanticAnalysisStage;
 impl Stage for SemanticAnalysisStage {
     type Input = ParseOutput;
-    type Output = Box<hir::Module>;
+    type Output = LinkerInput;
 
     fn enabled(&self, session: &Session) -> bool {
         !session.parse_only()
@@ -24,12 +24,13 @@ impl Stage for SemanticAnalysisStage {
                 let mut convert_to_hir = ast::ConvertAstToHir;
                 let module = Box::new(convert_to_hir.convert(ast, analyses, session)?);
                 session.emit(&module)?;
-                Ok(module)
+                Ok(LinkerInput::Hir(module))
             }
             ParseOutput::Hir(module) => {
                 session.emit(&module)?;
-                Ok(module)
+                Ok(LinkerInput::Hir(module))
             }
+            ParseOutput::Masm(masm) => Ok(LinkerInput::Masm(masm)),
         }
     }
 }

@@ -1,4 +1,5 @@
 #![feature(array_windows)]
+#![feature(iter_array_chunks)]
 #![feature(is_sorted)]
 
 mod codegen;

@@ -52,10 +52,6 @@ impl ProjectType {
 /// This struct provides access to all of the metadata and configuration
 /// needed during a single compilation session.
 pub struct Session {
-    /// The type of project we're compiling this session
-    pub project_type: ProjectType,
-    /// The current target environment for this session
-    pub target: TargetEnv,
     /// Configuration for the current compiler session
     pub options: Options,
     /// The current source map
@@ -64,19 +60,15 @@ pub struct Session {
     pub diagnostics: Arc<DiagnosticsHandler>,
     /// The location of all libraries shipped with the compiler
     pub sysroot: PathBuf,
-    /// The input being compiled
-    pub input: InputFile,
+    /// The inputs being compiled
+    pub inputs: Vec<InputFile>,
     /// The outputs to be produced by the compiler during compilation
     pub output_files: OutputFiles,
     /// Statistics gathered from the current compiler session
     pub statistics: Statistics,
-    /// We store any leftover argument matches in the session for use
-    /// by any downstream crates that register custom flags
-    arg_matches: clap::ArgMatches,
 }
 impl Session {
     pub fn new(
-        target: TargetEnv,
         input: InputFile,
         output_dir: Option<PathBuf>,
         output_file: Option<OutputFile>,
@@ -113,61 +105,62 @@ impl Session {
             ),
         };
 
-        let project_type = ProjectType::default_for_target(target);
         Self {
-            project_type,
-            target,
             options,
             codemap,
             diagnostics,
             sysroot,
-            input,
+            inputs: vec![input],
             output_files,
             statistics: Default::default(),
-            arg_matches: Default::default(),
         }
     }
 
     pub fn with_project_type(mut self, ty: ProjectType) -> Self {
-        self.project_type = ty;
+        self.options.project_type = ty;
         self
     }
 
     #[doc(hidden)]
     pub fn with_arg_matches(mut self, matches: clap::ArgMatches) -> Self {
-        self.arg_matches = matches;
+        self.options.set_arg_matches(matches);
         self
     }
 
     /// Get the value of a custom flag with action `FlagAction::SetTrue` or `FlagAction::SetFalse`
+    #[inline]
     pub fn get_flag(&self, name: &str) -> bool {
-        self.arg_matches.get_flag(name)
+        self.options.get_flag(name)
     }
 
     /// Get the count of a specific custom flag with action `FlagAction::Count`
+    #[inline]
     pub fn get_flag_count(&self, name: &str) -> usize {
-        self.arg_matches.get_count(name) as usize
+        self.options.get_flag_count(name)
     }
 
     /// Get the value of a specific custom flag
+    #[inline]
     pub fn get_flag_value<T>(&self, name: &str) -> Option<&T>
     where
         T: core::any::Any + Clone + Send + Sync + 'static,
     {
-        self.arg_matches.get_one(name)
+        self.options.get_flag_value(name)
     }
 
     /// Iterate over values of a specific custom flag
+    #[inline]
     pub fn get_flag_values<T>(&self, name: &str) -> Option<clap::parser::ValuesRef<'_, T>>
     where
         T: core::any::Any + Clone + Send + Sync + 'static,
     {
-        self.arg_matches.get_many(name)
+        self.options.get_flag_values(name)
     }
 
     /// Get the remaining [clap::ArgMatches] left after parsing the base session configuration
+    #[inline]
     pub fn matches(&self) -> &clap::ArgMatches {
-        &self.arg_matches
+        self.options.matches()
     }
 
     /// The name of this session (used as the name of the project, output file, etc.)
@@ -176,8 +169,8 @@ impl Session {
             .name
             .clone()
             .or_else(|| {
-                if self.input.is_real() {
-                    Some(self.input.filestem().to_string())
+                if self.inputs[0].is_real() {
+                    Some(self.inputs[0].filestem().to_string())
                 } else {
                     None
                 }
@@ -187,13 +180,14 @@ impl Session {
             })
     }
 
-    pub fn out_filename(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
-        let default_filename = self.filename_for_input(outputs, progname);
-        let out_filename = outputs
+    pub fn out_filename(&self, progname: Symbol) -> OutputFile {
+        let default_filename = self.filename_for_input(progname);
+        let out_filename = self
+            .output_files
             .outputs
             .get(&OutputType::Mast)
             .and_then(|s| s.to_owned())
-            .or_else(|| outputs.out_file.clone())
+            .or_else(|| self.output_files.out_file.clone())
             .unwrap_or(default_filename);
 
         if let OutputFile::Real(ref path) = out_filename {
@@ -203,10 +197,11 @@ impl Session {
         out_filename
     }
 
-    pub fn filename_for_input(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
-        match self.project_type {
+    pub fn filename_for_input(&self, progname: Symbol) -> OutputFile {
+        match self.options.project_type {
             ProjectType::Program => {
-                let out_filename = outputs.path(OutputType::Mast);
+                let out_filename =
+                    self.output_files.path(Some(progname.as_str()), OutputType::Mast);
                 if let OutputFile::Real(ref path) = out_filename {
                     OutputFile::Real(path.with_extension(OutputType::Mast.extension()))
                 } else {
@@ -214,7 +209,9 @@ impl Session {
                 }
             }
             ProjectType::Library => OutputFile::Real(
-                outputs.out_dir.join(format!("{progname}.{}", OutputType::Mast.extension())),
+                self.output_files
+                    .out_dir
+                    .join(format!("{progname}.{}", OutputType::Mast.extension())),
             ),
         }
     }
@@ -248,10 +245,8 @@ impl Session {
     /// Get the path to emit the given [OutputType] to
     pub fn emit_to(&self, ty: OutputType, name: Option<Symbol>) -> Option<PathBuf> {
         if self.should_emit(ty) {
-            match self.output_files.path(ty) {
-                OutputFile::Real(path) => name
-                    .map(|name| path.with_file_name(name.as_str()).with_extension(ty.extension()))
-                    .or(Some(path)),
+            match self.output_files.path(name.map(|n| n.as_str()), ty) {
+                OutputFile::Real(path) => Some(path),
                 OutputFile::Stdout => None,
             }
         } else {
@@ -263,16 +258,10 @@ impl Session {
     pub fn emit<E: Emit>(&self, item: &E) -> std::io::Result<()> {
         let output_type = item.output_type();
         if self.should_emit(output_type) {
-            match self.output_files.path(output_type) {
+            let name = item.name().map(|n| n.as_str());
+            match self.output_files.path(name, output_type) {
                 OutputFile::Real(path) => {
-                    let file_path = if path.is_dir() {
-                        let item_name =
-                            item.name().map(|s| s.to_string()).unwrap_or("noname".to_string());
-                        path.join(item_name.as_str()).with_extension(output_type.extension())
-                    } else {
-                        path
-                    };
-                    item.write_to_file(&file_path)?;
+                    item.write_to_file(&path)?;
                 }
                 OutputFile::Stdout => {
                     item.write_to_stdout()?;

@@ -1,6 +1,17 @@
-use midenc_session::ProjectType;
-
 use super::*;
+
+pub enum LinkerInput {
+    Hir(Box<hir::Module>),
+    Masm(Box<midenc_codegen_masm::Module>),
+}
+
+pub struct LinkerOutput {
+    /// The possibly-linked HIR program
+    pub program: MaybeLinked,
+    /// The set of MASM inputs to the linker
+    #[allow(clippy::vec_box)]
+    pub masm: Vec<Box<midenc_codegen_masm::Module>>,
+}
 
 /// This type is used to represent the fact that depending on
 /// flags provided to the compiler, we may or may not perform
@@ -15,30 +26,36 @@ pub enum MaybeLinked {
 /// Link together one or more HIR modules into an HIR program
 pub struct LinkerStage;
 impl Stage for LinkerStage {
-    type Input = Vec<Box<hir::Module>>;
-    type Output = MaybeLinked;
+    type Input = Vec<LinkerInput>;
+    type Output = LinkerOutput;
 
     fn run(
         &mut self,
-        input: Self::Input,
+        inputs: Self::Input,
         _analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        // Temporary workaround for the issue that backend builds only Program for all
-        // OutputType::Masm output types. In case we need a library, we should not link the modules.
-        match session.project_type {
-            ProjectType::Program => {
-                if session.should_link() {
-                    let mut builder = hir::ProgramBuilder::new(&session.diagnostics);
-                    for module in input.into_iter() {
-                        builder.add_module(module)?;
-                    }
-                    Ok(MaybeLinked::Linked(builder.link()?))
-                } else {
-                    Ok(MaybeLinked::Unlinked(input.into_iter().collect()))
+        let mut ir = Vec::with_capacity(inputs.len());
+        let mut masm = vec![];
+        for input in inputs {
+            match input {
+                LinkerInput::Hir(module) => {
+                    ir.push(module);
+                }
+                LinkerInput::Masm(module) => {
+                    masm.push(module);
                 }
             }
-            ProjectType::Library => Ok(MaybeLinked::Unlinked(input.into_iter().collect())),
         }
+        let program = if session.should_link() {
+            let mut builder = hir::ProgramBuilder::new(&session.diagnostics);
+            for module in ir.into_iter() {
+                builder.add_module(module)?;
+            }
+            MaybeLinked::Linked(builder.link()?)
+        } else {
+            MaybeLinked::Unlinked(ir)
+        };
+        Ok(LinkerOutput { program, masm })
     }
 }

@@ -33,7 +33,6 @@ impl TestContext {
         use midenc_session::InputFile;
 
         let session = Session::new(
-            Default::default(),
             InputFile::from_path("test.hir").unwrap(),
             None,
             None,

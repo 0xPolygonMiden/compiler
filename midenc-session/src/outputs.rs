@@ -135,12 +135,19 @@ impl OutputFiles {
         }
     }
 
-    pub fn path(&self, ty: OutputType) -> OutputFile {
-        self.outputs
+    pub fn path(&self, name: Option<&str>, ty: OutputType) -> OutputFile {
+        let mut output = self
+            .outputs
             .get(&ty)
             .and_then(|p| p.to_owned())
             .or_else(|| self.out_file.clone())
-            .unwrap_or_else(|| OutputFile::Real(self.output_path(ty)))
+            .unwrap_or_else(|| OutputFile::Real(self.output_path(ty)));
+        if let OutputFile::Real(ref mut path) = output {
+            if let Some(name) = name {
+                path.set_file_name(name);
+            }
+        }
+        output
     }
 
     pub fn output_path(&self, ty: OutputType) -> PathBuf {

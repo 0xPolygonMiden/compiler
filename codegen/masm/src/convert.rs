@@ -56,13 +56,14 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
-        let mut masm_program = Box::new(masm::Program::from_hir(&program));
+        // Ensure global variable analysis is computed
+        let globals =
+            analyses.get_or_compute::<ProgramGlobalVariableAnalysis>(&program, session)?;
+
+        let mut masm_program = Box::new(masm::Program::from_hir(&program, &globals));
 
         // Remove the set of modules to compile from the program
         let modules = program.modules_mut().take();
-
-        // Ensure global variable analysis is computed
-        analyses.get_or_compute::<ProgramGlobalVariableAnalysis>(&program, session)?;
 
         for module in modules.into_iter() {
             // Convert the module
@@ -152,6 +153,8 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
         session: &Session,
     ) -> ConversionResult<Self::To> {
         use midenc_hir::ProgramAnalysisKey;
+
+        println!("{f}");
 
         let mut f_prime = masm::Function::new(f.id, f.signature.clone());
 

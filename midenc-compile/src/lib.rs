@@ -8,7 +8,7 @@ use midenc_codegen_masm as masm;
 use midenc_hir::pass::AnalysisManager;
 use midenc_session::{OutputType, Session};
 
-pub use self::{compiler::Compiler, stages::Compiled};
+pub use self::compiler::{Compiler, CompilerOptions};
 use self::{stage::Stage, stages::*};
 
 pub type CompilerResult<T> = Result<T, CompilerError>;
@@ -51,6 +51,8 @@ pub enum CompilerError {
     /// An error occurred while compiling a program
     #[error(transparent)]
     Failed(#[from] anyhow::Error),
+    #[error(transparent)]
+    Report(#[from] miden_assembly::diagnostics::RelatedError),
     /// An error was emitted as a diagnostic, so we don't need to emit info to stdout
     #[error("exited due to error: see diagnostics for details")]
     Reported,
@@ -119,27 +121,11 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
 
 /// Run the compiler using the provided [Session]
 pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
-    let inputs = vec![session.input.clone()];
     let mut analyses = AnalysisManager::new();
-    match compile_inputs(inputs, &mut analyses, &session) {
-        Ok(Compiled::Program(ref program)) => {
-            if let Some(path) = session.emit_to(OutputType::Mast, None) {
-                log::warn!(
-                    "skipping emission of MAST to {} as output type is not fully supported yet",
-                    path.display()
-                );
-            }
-            if session.should_emit(OutputType::Masm) {
-                for module in program.modules() {
-                    session.emit(module)?;
-                }
-            }
-        }
-        Ok(Compiled::Modules(modules)) => {
-            let mut program = masm::Program::empty();
-            for module in modules.into_iter() {
-                program.insert(module);
-            }
+    match compile_inputs(session.inputs.clone(), &mut analyses, &session) {
+        // No outputs, generally due to skipping codegen
+        Ok(None) => return Ok(()),
+        Ok(Some(program)) => {
             if let Some(path) = session.emit_to(OutputType::Mast, None) {
                 log::warn!(
                     "skipping emission of MAST to {} as output type is not fully supported yet",
@@ -154,6 +140,12 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
         }
         Err(CompilerError::Stopped) => return Ok(()),
         Err(CompilerError::Reported) => return Err(CompilerError::Reported),
+        Err(CompilerError::Report(report)) => {
+            let diag =
+                miden_assembly::diagnostics::reporting::PrintDiagnostic::new(report.into_report());
+            session.diagnostics.error(diag);
+            session.diagnostics.abort_if_errors();
+        }
         Err(err) => {
             session.diagnostics.error(err);
             session.diagnostics.abort_if_errors();
@@ -164,10 +156,9 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
 }
 
 /// Same as `compile`, but return compiled artifacts to the caller
-pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Compiled> {
-    let inputs = vec![session.input.clone()];
+pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Option<Box<masm::Program>>> {
     let mut analyses = AnalysisManager::new();
-    match compile_inputs(inputs, &mut analyses, &session) {
+    match compile_inputs(session.inputs.clone(), &mut analyses, &session) {
         Ok(output) => Ok(output),
         Err(err) => {
             session.diagnostics.error(err.to_string());
@@ -181,7 +172,7 @@ fn compile_inputs(
     inputs: Vec<midenc_session::InputFile>,
     analyses: &mut AnalysisManager,
     session: &Session,
-) -> CompilerResult<Compiled> {
+) -> CompilerResult<Option<Box<masm::Program>>> {
     let mut stages = ParseStage
         .next(SemanticAnalysisStage)
         .next_optional(ApplyRewritesStage)
