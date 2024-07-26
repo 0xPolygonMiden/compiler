@@ -1,4 +1,6 @@
-use miden_diagnostics::SourceSpan;
+use std::sync::Arc;
+
+use miden_diagnostics::{CodeMap, SourceSpan};
 use midenc_hir::{CallConv, Linkage, ModuleBuilder, Signature};
 use wasmparser::{MemArg, Operator, Operator::*};
 
@@ -14,7 +16,8 @@ use crate::{
 };
 
 fn check_unsupported(op: &Operator) {
-    let diagnostics = test_diagnostics();
+    let codemap = Arc::new(CodeMap::new());
+    let diagnostics = test_diagnostics(codemap);
     let mod_name = "noname";
     let module_info = Module::new();
     let mut module_builder = ModuleBuilder::new(mod_name);

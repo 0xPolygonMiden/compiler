@@ -1,4 +1,4 @@
-use miden_diagnostics::DiagnosticsHandler;
+use miden_diagnostics::{CodeMap, DiagnosticsHandler};
 use wasmparser::WasmFeatures;
 
 use super::{
@@ -11,13 +11,15 @@ use crate::{component::ComponentParser, error::WasmResult, WasmTranslationConfig
 pub fn translate_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,
+    codemap: &CodeMap,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<midenc_hir::Component> {
     let (mut component_types_builder, parsed_component) = parse(config, wasm, diagnostics)?;
     let linearized_component_translation = inline(&mut component_types_builder, &parsed_component)?;
     let component_types = component_types_builder.finish();
     let parsed_modules = parsed_component.static_modules;
-    let translator = ComponentTranslator::new(component_types, parsed_modules, config, diagnostics);
+    let translator =
+        ComponentTranslator::new(component_types, parsed_modules, config, codemap, diagnostics);
     translator.translate(linearized_component_translation)
 }
 
@@ -61,6 +63,8 @@ fn inline(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use miden_core::crypto::hash::RpoDigest;
     use midenc_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol};
     use midenc_hir_type::Type;
@@ -97,7 +101,8 @@ mod tests {
         "#
         .to_string();
         let wasm = wat::parse_str(wat).unwrap();
-        let diagnostics = test_diagnostics();
+        let codemap = Arc::new(CodeMap::new());
+        let diagnostics = test_diagnostics(codemap.clone());
         let config = Default::default();
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &diagnostics).unwrap();
@@ -119,6 +124,7 @@ mod tests {
             component_types,
             parsed_component.static_modules,
             &config,
+            &codemap,
             &diagnostics,
         );
         let ir = translator.translate(component_translation).unwrap();
@@ -176,7 +182,8 @@ mod tests {
             )
         "#.to_string();
         let wasm = wat::parse_str(wat).unwrap();
-        let diagnostics = test_diagnostics();
+        let codemap = Arc::new(CodeMap::new());
+        let diagnostics = test_diagnostics(codemap.clone());
         let interface_function_ident = InterfaceFunctionIdent {
             interface: InterfaceIdent::from_full_ident("miden:add/add@1.0.0".to_string()),
             function: Symbol::intern("add"),
@@ -224,6 +231,7 @@ mod tests {
             component_types,
             parsed_component.static_modules,
             &config,
+            &codemap,
             &diagnostics,
         );
         let ir = translator.translate(component_translation).unwrap();
