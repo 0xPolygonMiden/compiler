@@ -60,6 +60,9 @@ pub struct ParsedModule<'data> {
     /// module, or those that can possibly be called.
     pub exported_signatures: Vec<SignatureIndex>,
 
+    /// Metadata about the source Wasm file
+    pub wasm_file: WasmFileInfo,
+
     /// DWARF debug information, if enabled, parsed from the module.
     pub debuginfo: DebugInfoData<'data>,
 
@@ -83,19 +86,18 @@ pub struct FunctionBodyData<'a> {
     pub validator: FuncToValidate<ValidatorResources>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct DebugInfoData<'a> {
     pub dwarf: Dwarf<'a>,
-    pub wasm_file: WasmFileInfo,
-    debug_loc: gimli::DebugLoc<Reader<'a>>,
-    debug_loclists: gimli::DebugLocLists<Reader<'a>>,
-    pub debug_ranges: gimli::DebugRanges<Reader<'a>>,
-    pub debug_rnglists: gimli::DebugRngLists<Reader<'a>>,
+    debug_loc: gimli::DebugLoc<DwarfReader<'a>>,
+    debug_loclists: gimli::DebugLocLists<DwarfReader<'a>>,
+    pub debug_ranges: gimli::DebugRanges<DwarfReader<'a>>,
+    pub debug_rnglists: gimli::DebugRngLists<DwarfReader<'a>>,
 }
 
-pub type Dwarf<'input> = gimli::Dwarf<Reader<'input>>;
+pub type Dwarf<'input> = gimli::Dwarf<DwarfReader<'input>>;
 
-type Reader<'input> = gimli::EndianSlice<'input, gimli::LittleEndian>;
+pub type DwarfReader<'input> = gimli::EndianSlice<'input, gimli::LittleEndian>;
 
 #[derive(Debug, Default)]
 pub struct WasmFileInfo {
@@ -262,7 +264,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     let index = TypeIndex::from_u32(index);
                     let sig_index = self.result.module.types[index].unwrap_function();
                     self.result.module.num_imported_funcs += 1;
-                    self.result.debuginfo.wasm_file.imported_func_count += 1;
+                    self.result.wasm_file.imported_func_count += 1;
                     EntityType::Function(sig_index)
                 }
                 TypeRef::Memory(ty) => {
@@ -517,7 +519,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.code_section_start(count, &range)?;
         let cnt = usize::try_from(count).unwrap();
         self.result.function_body_inputs.reserve_exact(cnt);
-        self.result.debuginfo.wasm_file.code_section_offset = range.start as u64;
+        self.result.wasm_file.code_section_offset = range.start as u64;
         Ok(())
     }
 
@@ -534,7 +536,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 let ty = convert_valtype(ty);
                 locals.push((cnt, ty));
             }
-            self.result.debuginfo.wasm_file.funcs.push(FunctionMetadata {
+            self.result.wasm_file.funcs.push(FunctionMetadata {
                 locals: locals.into_boxed_slice(),
                 params: sig.params().into(),
             });
@@ -696,7 +698,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             return;
         }
         let info = &mut self.result.debuginfo;
-        let dwarf = &mut info.dwarf;
+        let mut dwarf = Dwarf::default();
         let endian = gimli::LittleEndian;
         let data = section.data();
         let slice = gimli::EndianSlice::new(data, endian);

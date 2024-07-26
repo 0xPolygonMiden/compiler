@@ -1,6 +1,8 @@
 use core::fmt::Write;
+use std::sync::Arc;
 
 use expect_test::expect;
+use miden_diagnostics::CodeMap;
 use midenc_hir::Ident;
 
 use crate::{test_utils::test_diagnostics, translate, WasmTranslationConfig};
@@ -18,8 +20,9 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
         )"#,
     );
     let wasm = wat::parse_str(wat).unwrap();
-    let diagnostics = test_diagnostics();
-    let module = translate(&wasm, &WasmTranslationConfig::default(), &diagnostics)
+    let codemap = Arc::new(CodeMap::new());
+    let diagnostics = test_diagnostics(codemap.clone());
+    let module = translate(&wasm, &WasmTranslationConfig::default(), &codemap, &diagnostics)
         .unwrap()
         .unwrap_one_module();
     let func = module.function(Ident::from("test_wrapper")).unwrap();

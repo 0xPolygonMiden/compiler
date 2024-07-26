@@ -1,6 +1,6 @@
 use core::mem;
 
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
+use miden_diagnostics::{CodeMap, DiagnosticsHandler, SourceSpan};
 use midenc_hir::{CallConv, ConstantData, Linkage, MidenAbiImport, ModuleBuilder, Symbol};
 use wasmparser::{Validator, WasmFeatures};
 
@@ -26,6 +26,7 @@ use crate::{
 pub fn translate_module_as_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,
+    codemap: &CodeMap,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<midenc_hir::Component> {
     let wasm_features = WasmFeatures::default();
@@ -46,8 +47,14 @@ pub fn translate_module_as_component(
 
     let mut module_state =
         ModuleTranslationState::new(&parsed_module.module, &module_types, vec![]);
-    let module =
-        build_ir_module(&mut parsed_module, &module_types, &mut module_state, config, diagnostics)?;
+    let module = build_ir_module(
+        &mut parsed_module,
+        &module_types,
+        &mut module_state,
+        config,
+        codemap,
+        diagnostics,
+    )?;
     let mut cb = midenc_hir::ComponentBuilder::new(diagnostics);
     let module_imports = module.imports();
     for import_module_id in module_imports.iter_module_names() {
@@ -82,12 +89,29 @@ pub fn build_ir_module(
     module_types: &ModuleTypes,
     module_state: &mut ModuleTranslationState,
     _config: &WasmTranslationConfig,
+    codemap: &CodeMap,
     diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<midenc_hir::Module> {
     let name = parsed_module.module.name();
     let mut module_builder = ModuleBuilder::new(name.as_str());
     build_globals(&parsed_module.module, &mut module_builder, diagnostics)?;
     build_data_segments(parsed_module, &mut module_builder, diagnostics)?;
+    let addr2line = addr2line::Context::from_dwarf(gimli::Dwarf {
+        debug_abbrev: parsed_module.debuginfo.dwarf.debug_abbrev,
+        debug_addr: parsed_module.debuginfo.dwarf.debug_addr,
+        debug_aranges: parsed_module.debuginfo.dwarf.debug_aranges,
+        debug_info: parsed_module.debuginfo.dwarf.debug_info,
+        debug_line: parsed_module.debuginfo.dwarf.debug_line,
+        debug_line_str: parsed_module.debuginfo.dwarf.debug_line_str,
+        debug_str: parsed_module.debuginfo.dwarf.debug_str,
+        debug_str_offsets: parsed_module.debuginfo.dwarf.debug_str_offsets,
+        debug_types: parsed_module.debuginfo.dwarf.debug_types,
+        locations: parsed_module.debuginfo.dwarf.locations,
+        ranges: parsed_module.debuginfo.dwarf.ranges,
+        file_type: parsed_module.debuginfo.dwarf.file_type,
+        sup: parsed_module.debuginfo.dwarf.sup.clone(),
+        ..Default::default()
+    })?;
     let mut func_translator = FuncTranslator::new();
     // Although this renders this parsed module invalid(without functiong
     // bodies), we don't support multiple module instances. Thus, this
@@ -107,8 +131,10 @@ pub fn build_ir_module(
             &body,
             &mut module_func_builder,
             module_state,
-            &parsed_module.module,
+            parsed_module,
             module_types,
+            &addr2line,
+            codemap,
             diagnostics,
             &mut func_validator,
         )?;

@@ -6,17 +6,18 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
+use miden_diagnostics::{CodeMap, DiagnosticsHandler, SourceSpan};
 use midenc_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
-use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
+use wasmparser::{FuncValidator, FunctionBody, WasmModuleResources};
 
-use super::{module_translation_state::ModuleTranslationState, Module};
+use super::{module_env::ParsedModule, module_translation_state::ModuleTranslationState};
 use crate::{
     code_translator::translate_operator,
     error::WasmResult,
     module::{
         func_translation_state::FuncTranslationState,
         function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
+        module_env::DwarfReader,
         types::{convert_valtype, ir_type, ModuleTypes},
     },
     ssa::Variable,
@@ -49,13 +50,13 @@ impl FuncTranslator {
         body: &FunctionBody<'_>,
         mod_func_builder: &mut ModuleFunctionBuilder,
         module_state: &mut ModuleTranslationState,
-        module: &Module,
+        module: &ParsedModule<'_>,
         mod_types: &ModuleTypes,
+        addr2line: &addr2line::Context<DwarfReader<'_>>,
+        codemap: &CodeMap,
         diagnostics: &DiagnosticsHandler,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
-        let mut reader = body.get_binary_reader();
-
         let mut builder = FunctionBuilderExt::new(mod_func_builder, &mut self.func_ctx);
         let entry_block = builder.current_block();
         builder.seal_block(entry_block); // Declare all predecessors known.
@@ -68,14 +69,20 @@ impl FuncTranslator {
         builder.append_block_params_for_function_returns(exit_block);
         self.state.initialize(builder.signature(), exit_block);
 
+        let mut reader = body.get_locals_reader()?;
+
         parse_local_decls(&mut reader, &mut builder, num_params, func_validator)?;
+
+        let mut reader = body.get_operators_reader()?;
         parse_function_body(
-            reader,
+            &mut reader,
             &mut builder,
             &mut self.state,
             module_state,
             module,
             mod_types,
+            addr2line,
+            codemap,
             diagnostics,
             func_validator,
         )?;
@@ -107,18 +114,17 @@ fn declare_parameters(builder: &mut FunctionBuilderExt, entry_block: Block) -> u
 ///
 /// Declare local variables, starting from `num_params`.
 fn parse_local_decls(
-    reader: &mut BinaryReader,
+    reader: &mut wasmparser::LocalsReader<'_>,
     builder: &mut FunctionBuilderExt,
     num_params: usize,
     validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
     let mut next_local = num_params;
-    let local_count = reader.read_var_u32()?;
+    let local_count = reader.get_count();
 
     for _ in 0..local_count {
         let pos = reader.original_position();
-        let count = reader.read_var_u32()?;
-        let ty = reader.read()?;
+        let (count, ty) = reader.read()?;
         validator.define_locals(pos, count, ty)?;
         declare_locals(builder, count, ty, &mut next_local)?;
     }
@@ -153,12 +159,14 @@ fn declare_locals(
 /// arguments and locals are declared in the builder.
 #[allow(clippy::too_many_arguments)]
 fn parse_function_body(
-    mut reader: BinaryReader,
+    reader: &mut wasmparser::OperatorsReader<'_>,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     module_state: &mut ModuleTranslationState,
-    module: &Module,
+    module: &ParsedModule<'_>,
     mod_types: &ModuleTypes,
+    addr2line: &addr2line::Context<DwarfReader<'_>>,
+    codemap: &CodeMap,
     diagnostics: &DiagnosticsHandler,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
@@ -167,17 +175,47 @@ fn parse_function_body(
 
     while !reader.eof() {
         let pos = reader.original_position();
-        let op = reader.read_operator()?;
+        let (op, offset) = reader.read_with_offset()?;
+        dbg!(pos, offset);
         func_validator.op(pos, &op)?;
+
+        let offset = (offset as u64)
+            .checked_sub(module.wasm_file.code_section_offset)
+            .expect("offset occurs before start of code section");
+        let mut span = SourceSpan::default();
+        if let Some(loc) = addr2line
+            .find_location(offset)
+            .inspect(|result| match result {
+                Some(loc) => {
+                    dbg!(loc.file, loc.line, loc.column);
+                }
+                None => (),
+            })
+            .map_err(|err| crate::WasmError::Unexpected(err.to_string()))?
+        {
+            if let Some(file) = loc.file {
+                let path = std::path::Path::new(file);
+                if path.exists() {
+                    let source_id = codemap.add_file(path)?;
+                    let line = loc.line.unwrap_or(1);
+                    let column = loc.line.unwrap_or(1);
+                    span = codemap
+                        .line_column_to_span(source_id, line, column)
+                        .ok()
+                        .unwrap_or_default();
+                }
+            }
+        }
+
         translate_operator(
             &op,
             builder,
             state,
             module_state,
-            module,
+            &module.module,
             mod_types,
             diagnostics,
-            SourceSpan::default(),
+            span,
         )?;
     }
     let pos = reader.original_position();

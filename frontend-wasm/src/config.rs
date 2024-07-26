@@ -41,7 +41,7 @@ impl Default for WasmTranslationConfig {
             source_name: Cow::Borrowed("noname"),
             override_name: None,
             generate_native_debuginfo: false,
-            parse_wasm_debuginfo: false,
+            parse_wasm_debuginfo: true,
             import_metadata: Default::default(),
         }
     }

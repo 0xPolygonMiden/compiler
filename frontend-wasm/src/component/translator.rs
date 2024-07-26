@@ -1,4 +1,4 @@
-use miden_diagnostics::DiagnosticsHandler;
+use miden_diagnostics::{CodeMap, DiagnosticsHandler};
 use midenc_hir::{
     cranelift_entity::PrimaryMap, CanonAbiImport, ComponentBuilder, ComponentExport, FunctionIdent,
     FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
@@ -42,6 +42,7 @@ pub struct ComponentTranslator<'a, 'data> {
     reallocs: FxHashMap<RuntimeReallocIndex, FunctionIdent>,
     /// The post return functions used in CanonicalOptions in this component
     post_returns: FxHashMap<RuntimePostReturnIndex, FunctionIdent>,
+    codemap: &'a CodeMap,
     diagnostics: &'a DiagnosticsHandler,
 }
 
@@ -50,12 +51,14 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         component_types: ComponentTypes,
         parsed_modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
         config: &'a WasmTranslationConfig,
+        codemap: &'a CodeMap,
         diagnostics: &'a DiagnosticsHandler,
     ) -> Self {
         Self {
             component_types,
             parsed_modules,
             config,
+            codemap,
             diagnostics,
             module_instances_source: PrimaryMap::new(),
             lower_imports: FxHashMap::default(),
@@ -167,6 +170,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     module_types,
                     &mut module_state,
                     self.config,
+                    self.codemap,
                     self.diagnostics,
                 )?;
                 component_builder.add_module(ir_module.into()).expect("module is already added");

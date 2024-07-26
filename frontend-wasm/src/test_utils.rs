@@ -9,9 +9,7 @@ pub fn default_emitter(color: ColorChoice) -> Arc<dyn Emitter> {
     Arc::new(NullEmitter::new(color))
 }
 
-pub fn test_diagnostics() -> DiagnosticsHandler {
-    let codemap = Arc::new(CodeMap::new());
-
+pub fn test_diagnostics(codemap: Arc<CodeMap>) -> DiagnosticsHandler {
     DiagnosticsHandler::new(
         DiagnosticsConfig {
             verbosity: Verbosity::Debug,

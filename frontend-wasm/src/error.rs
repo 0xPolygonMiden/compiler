@@ -50,6 +50,12 @@ pub enum WasmError {
 
     #[error("Export metadata is missing: {0}")]
     MissingExportMetadata(String),
+
+    #[error(transparent)]
+    DwarfError(#[from] gimli::Error),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl From<wasmparser::BinaryReaderError> for WasmError {

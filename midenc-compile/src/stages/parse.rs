@@ -120,7 +120,8 @@ impl ParseStage {
         session: &Session,
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
-        let module = wasm::translate(bytes, config, &session.diagnostics)?.unwrap_one_module();
+        let module = wasm::translate(bytes, config, &session.codemap, &session.diagnostics)?
+            .unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -136,7 +137,8 @@ impl ParseStage {
             ..Default::default()
         };
         let wasm = wat::parse_file(path)?;
-        let module = wasm::translate(&wasm, &config, &session.diagnostics)?.unwrap_one_module();
+        let module = wasm::translate(&wasm, &config, &session.codemap, &session.diagnostics)?
+            .unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -148,7 +150,8 @@ impl ParseStage {
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
         let wasm = wat::parse_bytes(bytes)?;
-        let module = wasm::translate(&wasm, config, &session.diagnostics)?.unwrap_one_module();
+        let module = wasm::translate(&wasm, config, &session.codemap, &session.diagnostics)?
+            .unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
