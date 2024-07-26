@@ -694,7 +694,7 @@ fn vm_masm_prog_from_modules(
     }
     if let Some(entrypoint) = entrypoint {
         let prog_source = masm_prog_source(entrypoint);
-        assembler.assemble_program(prog_source).map(Arc::new)
+        assembler.assemble(prog_source).map(Arc::new)
     } else {
         todo!()
     }
