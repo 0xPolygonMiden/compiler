@@ -210,6 +210,8 @@ pub struct DataSegment {
     init: ConstantData,
     /// Whether or not this segment is intended to be read-only data
     readonly: bool,
+    /// Whether or not this segment starts as all zeros
+    zeroed: bool,
 }
 impl fmt::Debug for DataSegment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -218,6 +220,7 @@ impl fmt::Debug for DataSegment {
             .field("size", &self.size)
             .field("init", &format_args!("{}", &self.init))
             .field("readonly", &self.readonly)
+            .field("zeroed", &self.zeroed)
             .finish()
     }
 }
@@ -288,12 +291,15 @@ impl DataSegment {
         let size = core::cmp::max(size, init_size);
         offset.checked_add(size).ok_or(DataSegmentError::OutOfBounds { offset, size })?;
 
+        let zeroed = init.is_empty() || init.as_slice().iter().all(|byte| byte == &0u8);
+
         Ok(Self {
             link: Default::default(),
             offset,
             size,
             init,
             readonly,
+            zeroed,
         })
     }
 
@@ -315,6 +321,11 @@ impl DataSegment {
     /// Returns true if this segment is intended to be read-only
     pub const fn is_readonly(&self) -> bool {
         self.readonly
+    }
+
+    /// Returns true if this segment is zeroed at initialization
+    pub const fn is_zeroed(&self) -> bool {
+        self.zeroed
     }
 }
 impl Eq for DataSegment {}

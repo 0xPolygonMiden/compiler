@@ -21,7 +21,7 @@ macro_rules! test_bin_op {
                 let b_ty_str = stringify!($b_ty);
                 let res_ty_str = stringify!($res_ty);
                 let main_fn = format!("(a: {a_ty_str}, b: {b_ty_str}) -> {res_ty_str} {{ a {op_str} b }}");
-                let mut test = CompilerTest::rust_fn_body(&main_fn);
+                let mut test = CompilerTest::rust_fn_body(&main_fn, &[]);
                 // Test expected compilation artifacts
                 let artifact_name = format!("{}_{}", stringify!($name), stringify!($a_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
@@ -62,7 +62,7 @@ macro_rules! test_unary_op {
                 let op_ty_str = stringify!($op_ty);
                 let res_ty_str = stringify!($op_ty);
                 let main_fn = format!("(a: {op_ty_str}) -> {res_ty_str} {{ {op_str}a }}");
-                let mut test = CompilerTest::rust_fn_body(&main_fn);
+                let mut test = CompilerTest::rust_fn_body(&main_fn, &[]);
                 // Test expected compilation artifacts
                 let artifact_name = format!("{}_{}", stringify!($name), stringify!($op_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
@@ -102,7 +102,7 @@ macro_rules! test_func_two_arg {
                 let b_ty_str = stringify!($b_ty);
                 let res_ty_str = stringify!($res_ty);
                 let main_fn = format!("(a: {a_ty_str}, b: {b_ty_str}) -> {res_ty_str} {{ {func_name_str}(a, b) }}");
-                let mut test = CompilerTest::rust_fn_body(&main_fn);
+                let mut test = CompilerTest::rust_fn_body(&main_fn, &[]);
                 // Test expected compilation artifacts
                 let artifact_name = format!("{}_{}_{}", stringify!($func), stringify!($a_ty), stringify!($b_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);

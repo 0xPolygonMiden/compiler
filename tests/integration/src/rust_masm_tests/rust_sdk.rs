@@ -12,6 +12,7 @@ fn account() {
         artifact_name,
         true,
         None,
+        &[],
     );
     test.expect_wasm(expect_file![format!(
         "../../expected/rust_sdk_account_test/{artifact_name}.wat"
@@ -86,7 +87,7 @@ fn basic_wallet() {
         )
         .build();
 
-    let mut test = CompilerTest::rust_source_cargo_lib(proj.root(), project_name, true, None);
+    let mut test = CompilerTest::rust_source_cargo_lib(proj.root(), project_name, true, None, &[]);
     let artifact_name = test.source.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/{project_name}/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/{project_name}/{artifact_name}.hir")]);

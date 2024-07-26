@@ -1064,8 +1064,16 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             }
             // Entering a top-level loop, set the controlling loop
             (None, controlling_loop @ Some(_)) => {
+                for l in self.function.loops.loops() {
+                    dbg!(l, self.function.loops.loop_header(l));
+                    dbg!(self.function.loops.is_in_loop(current_block, l));
+                    dbg!(self.function.loops.is_in_loop(target_block, l));
+                }
                 assert!(is_first_visit);
-                assert_eq!(self.controlling_loop, None);
+                assert_eq!(
+                    self.controlling_loop, None,
+                    "expected no controlling loop entering {target_block} from {current_block}"
+                );
                 controlling_loop
             }
             // Escaping a loop

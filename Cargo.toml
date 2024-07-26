@@ -65,13 +65,11 @@ thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", b
 toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.1"
-# a993b72e3fd5d209e017461b62ef2054d9120f01 is the commit that sets the `v0.10.0`
-# version to all the VM crates in the 'next' branch
-miden-assembly = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-miden-core = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-miden-processor = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-miden-stdlib = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-midenc-codegen-masm = { version = "0.0.1", path = "codegen/masm" }
+miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "f194eb4e25f568b370164b8cb1bcdd7bb972f427" }
+miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "f194eb4e25f568b370164b8cb1bcdd7bb972f427" }
+miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "f194eb4e25f568b370164b8cb1bcdd7bb972f427" }
+miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "f194eb4e25f568b370164b8cb1bcdd7bb972f427" }
+midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }
 midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }

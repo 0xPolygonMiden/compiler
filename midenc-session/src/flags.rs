@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct CompileFlag {
     pub name: &'static str,
     pub short: Option<char>,

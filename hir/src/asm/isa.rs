@@ -1780,15 +1780,15 @@ impl MasmOp {
             Self::U32GtImm(imm) => return smallvec![Instruction::PushU32(imm), Instruction::U32Gt],
             Self::U32Gte => Instruction::U32Gte,
             Self::U32GteImm(imm) => {
-                return smallvec![Instruction::PushU32(imm), Instruction::U32Gte]
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Gte];
             }
             Self::U32Min => Instruction::U32Min,
             Self::U32MinImm(imm) => {
-                return smallvec![Instruction::PushU32(imm), Instruction::U32Min]
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Min];
             }
             Self::U32Max => Instruction::U32Max,
             Self::U32MaxImm(imm) => {
-                return smallvec![Instruction::PushU32(imm), Instruction::U32Max]
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Max];
             }
             Self::Breakpoint => Instruction::Breakpoint,
             Self::DebugStack => Instruction::Debug(DebugOptions::StackAll),

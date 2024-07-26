@@ -15,8 +15,10 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-wit-bindgen = { version = "0.17.0", default-features = false, features = ["realloc"] }
-wee_alloc = { version = "0.4.5", default-features = false}
+wit-bindgen = { version = "0.17.0", default-features = false, features = [
+    "realloc",
+] }
+wee_alloc = { version = "0.4.5", default-features = false }
 
 [package.metadata.component]
 package = "miden:basic-wallet-p2id-note"
@@ -32,3 +34,4 @@ derives = ["PartialEq"]
 
 [profile.release]
 panic = "abort"
+debug = true

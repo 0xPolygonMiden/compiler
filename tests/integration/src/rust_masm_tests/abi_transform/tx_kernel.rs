@@ -5,7 +5,7 @@ use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
 
-use crate::{exec_vm::execute_vm_tracing, execute_emulator, execute_vm, CompilerTest};
+use crate::{exec_vm::execute_vm_tracing, execute_emulator, CompilerTest, MidenExecutor};
 
 #[allow(unused)]
 fn setup_log() {
@@ -19,29 +19,25 @@ fn setup_log() {
 
 fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     assert!(expected_inputs.len() == 4, "for now only word-sized inputs are supported");
-    let mut main_fn = String::new();
-    writeln!(main_fn, "() -> Vec<Felt> {{\n").unwrap();
-    writeln!(main_fn, "    let inputs = get_inputs();").unwrap();
-    // for (_i, _expected_input) in expected_inputs.iter().enumerate() {
-    // TODO: use miden asserts once they are implemented
-    // writeln!(main_fn, "    assert_eq!(inputs[{i}], {expected_input});").unwrap();
-    // }
-    writeln!(main_fn, "    inputs").unwrap();
-    writeln!(main_fn, "}}").unwrap();
-
+    let main_fn = "() -> Vec<Felt> { get_inputs() }";
     let artifact_name = format!("abi_transform_tx_kernel_get_inputs_{}", test_name);
-    let mut test = CompilerTest::rust_fn_body_with_sdk(&artifact_name, &main_fn, true);
-    let mut masm = String::new();
-    writeln!(masm, "export.get_inputs").unwrap();
-    for expected_input in expected_inputs.iter() {
-        writeln!(masm, "    push.{expected_input}").unwrap();
-    }
-    // copy the pointer to the top of the stack
-    writeln!(masm, "    dup.4").unwrap();
-    writeln!(masm, "    mem_storew").unwrap();
-    // push the inputs len on the stack
-    writeln!(masm, "    push.{}", expected_inputs.len()).unwrap();
-    writeln!(masm, "    end").unwrap();
+    let mut test = CompilerTest::rust_fn_body_with_sdk(&artifact_name, main_fn, true, &[]);
+    let masm = format!(
+        "
+export.get_inputs
+    push.{expect1}.{expect2}.{expect3}.{expect4}
+    # copy pointer to top of the stack
+    dup.4
+    mem_storew
+    # push the inputs len on the stack
+    push.4
+end
+",
+        expect1 = expected_inputs.first().map(|i| i.as_int()).unwrap_or(0),
+        expect2 = expected_inputs.get(1).map(|i| i.as_int()).unwrap_or(0),
+        expect3 = expected_inputs.get(2).map(|i| i.as_int()).unwrap_or(0),
+        expect4 = expected_inputs.get(3).map(|i| i.as_int()).unwrap_or(0),
+    );
     test.link_masm_modules = vec![(LibraryPath::new("miden::note").unwrap(), masm)];
 
     // Test expected compilation artifacts
@@ -50,7 +46,11 @@ fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
     let vm_program = test.vm_masm_program();
-    // let vm_out = execute_vm_tracing(&vm_program, &[]).unwrap();
+
+    let exec = MidenExecutor::new(vec![]);
+    let trace = exec.execute(&vm_program);
+    let vm_out = trace.into_outputs();
+    dbg!(&vm_out);
 
     // let ir_program = test.ir_masm_program();
     // let emul_out = execute_emulator(ir_program.clone(), &[]);

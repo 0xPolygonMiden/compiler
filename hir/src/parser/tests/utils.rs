@@ -61,10 +61,13 @@ pub struct ParseTest {
 impl ParseTest {
     /// Creates a new test, from the source string.
     pub fn new() -> Self {
+        use midenc_session::{ProjectType, TargetEnv};
+
         let emitter = Arc::new(SplitEmitter::new());
-        let options = Options::new(std::env::current_dir().unwrap())
-            .with_verbosity(Verbosity::Warning)
-            .with_warnings(Warnings::Error);
+        let options =
+            Options::new(TargetEnv::Base, ProjectType::Library, std::env::current_dir().unwrap())
+                .with_verbosity(Verbosity::Warning)
+                .with_warnings(Warnings::Error);
         let context = TestContext::default_with_opts_and_emitter(options, Some(emitter.clone()));
         Self { context, emitter }
     }

@@ -2,7 +2,6 @@
 
 use core::panic;
 use std::{
-    fmt::Write,
     fs,
     io::Read,
     path::{Path, PathBuf},
@@ -10,14 +9,11 @@ use std::{
     sync::Arc,
 };
 
-use miden_assembly::{ast::ModuleKind, diagnostics::Report, Assembler, LibraryPath};
+use miden_assembly::LibraryPath;
 use miden_diagnostics::SourceSpan;
-use miden_stdlib::StdLibrary;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
 use midenc_hir::{FunctionIdent, Ident, Symbol};
-use midenc_session::{
-    InputFile, InputType, Options, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session,
-};
+use midenc_session::{InputFile, InputType, OutputType, Session};
 
 use crate::cargo_proj::project;
 
@@ -108,7 +104,7 @@ impl Default for CompilerTest {
     fn default() -> Self {
         Self {
             config: WasmTranslationConfig::default(),
-            session: Arc::new(dummy_session()),
+            session: dummy_session(&[]),
             source: CompilerTestSource::Rust(String::new()),
             entrypoint: None,
             link_masm_modules: Vec::new(),
@@ -177,7 +173,7 @@ impl CompilerTest {
         let input_file = InputFile::from_path(wasm_comp_path).unwrap();
         Self {
             config,
-            session: default_session(input_file),
+            session: default_session(input_file, &[]),
             source: CompilerTestSource::RustCargoComponent { artifact_name },
             ..Default::default()
         }
@@ -189,6 +185,7 @@ impl CompilerTest {
         artifact_name: &str,
         is_build_std: bool,
         entry_func_name: Option<String>,
+        midenc_flags: &[&str],
     ) -> Self {
         let expected_wasm_artifact_path = wasm_artifact_path(&cargo_project_folder, artifact_name);
         // dbg!(&wasm_artifact_path);
@@ -264,7 +261,7 @@ impl CompilerTest {
         let input_file = InputFile::from_path(wasm_artifact_path).unwrap();
         Self {
             config: WasmTranslationConfig::default(),
-            session: default_session(input_file),
+            session: default_session(input_file, midenc_flags),
             source: CompilerTestSource::RustCargoLib {
                 artifact_name: artifact_name.to_string(),
             },
@@ -314,7 +311,7 @@ impl CompilerTest {
             .with_extension("wasm");
 
         let input_file = InputFile::from_path(target_bin_file_path).unwrap();
-        let session = default_session(input_file);
+        let session = default_session(input_file, &[]);
         let entrypoint = FunctionIdent {
             module: Ident::new(Symbol::intern(artifact_name), SourceSpan::default()),
             function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
@@ -333,7 +330,7 @@ impl CompilerTest {
     /// Set the Rust source code to compile
     pub fn rust_source_program(rust_source: &str) -> Self {
         let wasm_file = compile_rust_file(rust_source);
-        let session = default_session(wasm_file);
+        let session = default_session(wasm_file, &[]);
         CompilerTest {
             session,
             source: CompilerTestSource::Rust(rust_source.to_string()),
@@ -342,7 +339,7 @@ impl CompilerTest {
     }
 
     /// Set the Rust source code to compile and add a binary operation test
-    pub fn rust_fn_body(rust_source: &str) -> Self {
+    pub fn rust_fn_body(rust_source: &str, midenc_flags: &[&str]) -> Self {
         let rust_source = format!(
             r#"
             #![no_std]
@@ -360,7 +357,7 @@ impl CompilerTest {
         );
         let wasm_file = compile_rust_file(&rust_source);
         let wasm_filestem = wasm_file.filestem().to_string();
-        let session = default_session(wasm_file);
+        let session = default_session(wasm_file, midenc_flags);
         let entrypoint = FunctionIdent {
             module: Ident {
                 name: Symbol::intern(wasm_filestem),
@@ -381,7 +378,12 @@ impl CompilerTest {
     }
 
     /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
-    pub fn rust_fn_body_with_stdlib_sys(name: &str, rust_source: &str, is_build_std: bool) -> Self {
+    pub fn rust_fn_body_with_stdlib_sys(
+        name: &str,
+        rust_source: &str,
+        is_build_std: bool,
+        midenc_flags: &[&str],
+    ) -> Self {
         let miden_stdlib_sys_path_str = stdlib_sys_crate_path();
         let proj = project(name)
             .file(
@@ -405,6 +407,7 @@ impl CompilerTest {
                 panic = "abort"
                 # optimize for size
                 opt-level = "z"
+                debug = true
             "#
                 )
                 .as_str(),
@@ -436,11 +439,22 @@ impl CompilerTest {
                 .as_str(),
             )
             .build();
-        Self::rust_source_cargo_lib(proj.root(), name, is_build_std, Some("entrypoint".to_string()))
+        Self::rust_source_cargo_lib(
+            proj.root(),
+            name,
+            is_build_std,
+            Some("entrypoint".to_string()),
+            midenc_flags,
+        )
     }
 
     /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
-    pub fn rust_fn_body_with_sdk(name: &str, rust_source: &str, is_build_std: bool) -> Self {
+    pub fn rust_fn_body_with_sdk(
+        name: &str,
+        rust_source: &str,
+        is_build_std: bool,
+        midenc_flags: &[&str],
+    ) -> Self {
         let cwd = std::env::current_dir().unwrap();
         let miden_sdk_path = cwd.parent().unwrap().parent().unwrap().join("sdk").join("sdk");
         let miden_sdk_path_str = miden_sdk_path.to_str().unwrap();
@@ -466,6 +480,7 @@ impl CompilerTest {
                 panic = "abort"
                 # optimize for size
                 opt-level = "z"
+                debug = true
             "#
                 )
                 .as_str(),
@@ -501,7 +516,13 @@ impl CompilerTest {
             )
             .build();
 
-        Self::rust_source_cargo_lib(proj.root(), name, is_build_std, Some("entrypoint".to_string()))
+        Self::rust_source_cargo_lib(
+            proj.root(),
+            name,
+            is_build_std,
+            Some("entrypoint".to_string()),
+            midenc_flags,
+        )
     }
 
     /// Compare the compiled Wasm against the expected output
@@ -529,18 +550,22 @@ impl CompilerTest {
     pub fn expect_ir(&mut self, expected_hir_file: expect_test::ExpectFile) {
         match self.hir() {
             HirArtifact::Program(hir_program) => {
-                // Program does not implement pretty printer yet, use the first module
-                let ir_module = demangle(
-                    hir_program
-                        .modules()
-                        .iter()
-                        .take(1)
-                        .collect::<Vec<&midenc_hir::Module>>()
-                        .first()
-                        .expect("no module in IR program")
-                        .to_string()
-                        .as_str(),
-                );
+                // Program does not implement pretty printer yet, use the module containing the
+                // entrypoint function, or the first module found if no entrypoint is set
+                let ir_module = hir_program
+                    .entrypoint()
+                    .map(|entry| {
+                        hir_program
+                            .modules()
+                            .find(&entry.module)
+                            .get()
+                            .expect("missing entrypoint module")
+                    })
+                    .unwrap_or_else(|| {
+                        hir_program.modules().iter().next().expect("expected at least one module")
+                    })
+                    .to_string();
+                let ir_module = demangle(&ir_module);
                 expected_hir_file.assert_eq(&ir_module);
             }
             HirArtifact::Component(hir_component) => {
@@ -592,7 +617,7 @@ impl CompilerTest {
 
     /// The compiled Wasm component/module
     fn wasm_bytes(&self) -> Vec<u8> {
-        match &self.session.input.file {
+        match &self.session.inputs[0].file {
             InputType::Real(file_path) => fs::read(file_path)
                 .unwrap_or_else(|_| panic!("Failed to read Wasm file: {}", file_path.display())),
             InputType::Stdin { name: _, input } => input.clone(),
@@ -600,23 +625,15 @@ impl CompilerTest {
     }
 
     pub(crate) fn compile_wasm_to_masm_program(&mut self) {
-        match midenc_compile::compile_to_memory(self.session.clone()).unwrap() {
-            midenc_compile::Compiled::Program(_p) => todo!("Program compilation not yet supported"),
-            midenc_compile::Compiled::Modules(modules) => {
-                let src = expected_masm_prog_source_from_modules(
-                    &modules,
-                    self.entrypoint,
-                    &self.link_masm_modules,
-                );
-                self.masm_src = Some(src);
-                let vm_prog =
-                    vm_masm_prog_from_modules(&modules, self.entrypoint, &self.link_masm_modules);
-                self.vm_masm_program = Some(vm_prog.map_err(format_report));
-                let ir_prog =
-                    ir_masm_prog_from_modules(modules, self.entrypoint, &self.link_masm_modules);
-                self.ir_masm_program = Some(ir_prog.map_err(format_report));
-            }
-        }
+        let mut program = midenc_compile::compile_to_memory(self.session.clone())
+            .unwrap()
+            .expect("no codegen outputs produced, was linking disabled?");
+        program.entrypoint = self.entrypoint;
+        let src = program.to_string();
+        let vm_prog = program.assemble(&self.session).map_err(format_report);
+        self.masm_src = Some(src);
+        self.ir_masm_program = Some(Ok(program.into()));
+        self.vm_masm_program = Some(vm_prog);
     }
 }
 
@@ -644,101 +661,6 @@ pub fn skip_rust_compilation(cargo_project_folder: &Path, artifact_name: &str) -
         eprintln!("Skipping Rust compilation");
     };
     skip_rust
-}
-
-#[allow(clippy::vec_box)]
-fn ir_masm_prog_from_modules(
-    modules: Vec<Box<midenc_codegen_masm::Module>>,
-    entrypoint: Option<FunctionIdent>,
-    link_masm_modules: &LinkMasmModules,
-) -> Result<Arc<midenc_codegen_masm::Program>, Report> {
-    let mut p = midenc_codegen_masm::Program::empty();
-    for (_path, _src) in link_masm_modules {
-        // TODO: implement linking of MASM source code
-    }
-    for module in modules.into_iter() {
-        p.insert(module);
-    }
-    p.entrypoint = entrypoint;
-    Ok(Box::new(p).freeze())
-}
-
-// Assemble the VM MASM program from the compiled IR MASM modules
-fn vm_masm_prog_from_modules(
-    modules: &[Box<midenc_codegen_masm::Module>],
-    entrypoint: Option<FunctionIdent>,
-    link_masm_modules: &LinkMasmModules,
-) -> Result<Arc<miden_core::Program>, Report> {
-    let mut assembler = Assembler::default().with_library(&StdLibrary::default())?;
-    for (path, src) in link_masm_modules {
-        let options = miden_assembly::CompileOptions {
-            kind: ModuleKind::Library,
-            warnings_as_errors: false,
-            path: Some(path.clone()),
-        };
-        assembler.add_module_with_options(src, options)?;
-    }
-    for module in modules {
-        let module_src = format!("{}", module);
-        //eprintln!("### {}\n", module.id);
-        //eprintln!("{}", &module_src);
-        let path = module.id.as_str().to_string();
-        let library_path = LibraryPath::new(path).unwrap();
-        // dbg!(&library_path);
-        let options = miden_assembly::CompileOptions {
-            kind: ModuleKind::Library,
-            warnings_as_errors: false,
-            path: Some(library_path),
-        };
-        assembler.add_module_with_options(module_src, options)?;
-    }
-    if let Some(entrypoint) = entrypoint {
-        let prog_source = masm_prog_source(entrypoint);
-        assembler.assemble(prog_source).map(Arc::new)
-    } else {
-        todo!()
-    }
-}
-
-// Generate the MASM program source code from the compiled IR MASM modules
-fn expected_masm_prog_source_from_modules(
-    modules: &[Box<midenc_codegen_masm::Module>],
-    entrypoint: Option<FunctionIdent>,
-    link_masm_modules: &LinkMasmModules,
-) -> String {
-    let mut src = String::new();
-    for (path, module_src) in link_masm_modules {
-        writeln!(src, "# mod {path}\n").unwrap();
-        writeln!(src, "{module_src}").unwrap();
-    }
-    for module in modules {
-        let module_src = format!("{}", module);
-        let path = module.id.as_str().to_string();
-        if !path.contains("intrinsic") {
-            // print only user modules and not intrinsic modules
-            writeln!(src, "# mod {path}\n").unwrap();
-            write!(src, "{module_src}").unwrap();
-        }
-    }
-    if let Some(entrypoint) = entrypoint {
-        let prog_source = masm_prog_source(entrypoint);
-        src.push_str(&prog_source);
-    } else {
-        todo!()
-    }
-    src
-}
-
-// Generate the MASM program source code (call the entrypoint function)
-fn masm_prog_source(entrypoint: FunctionIdent) -> String {
-    let module_name = entrypoint.module.as_str();
-    let function_name = entrypoint.function.as_str();
-    format!(
-        r#"
-begin
-    exec.::{module_name}::{function_name}
-end"#,
-    )
 }
 
 fn stdlib_sys_crate_path() -> String {
@@ -853,39 +775,17 @@ fn compile_rust_file(rust_source: &str) -> InputFile {
     InputFile::from_path(output_file).unwrap()
 }
 
-fn dummy_session() -> Session {
-    let output_type = OutputType::Masm;
-    let output_types = OutputTypes::new(vec![OutputTypeSpec {
-        output_type,
-        path: None,
-    }]);
-    let options = Options::default().with_output_types(output_types);
-    Session::new(
-        Default::default(),
-        InputFile::from_path(PathBuf::from("dummy.wasm")).unwrap(),
-        None,
-        None,
-        None,
-        options,
-        None,
-    )
-    .with_project_type(ProjectType::Library)
+fn dummy_session(flags: &[&str]) -> Arc<Session> {
+    default_session(InputFile::from_path(PathBuf::from("dummy.wasm")).unwrap(), flags)
 }
 
 /// Create a default session for testing
-pub fn default_session(input_file: InputFile) -> Arc<Session> {
-    let default_session = dummy_session();
-    let session = Session::new(
-        Default::default(),
-        input_file,
-        None,
-        None,
-        None,
-        default_session.options,
-        None,
-    )
-    .with_project_type(ProjectType::Library);
-    Arc::new(session)
+pub fn default_session(input_file: InputFile, extra_flags: &[&str]) -> Arc<Session> {
+    let mut flags = vec!["--lib", "--debug=full"];
+    flags.extend_from_slice(extra_flags);
+    let mut options = midenc_compile::CompilerOptions::parse_options(&flags);
+    options.output_types.insert(OutputType::Masm, None);
+    Arc::new(Session::new(input_file, None, None, None, options, None))
 }
 
 fn hash_string(inputs: &str) -> String {
