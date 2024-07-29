@@ -188,7 +188,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         // Continue normally, by emitting the contents of the block based on the given schedule
         for op in block_schedule.iter() {
             match op {
-                ScheduleOp::Init(_) | ScheduleOp::Enter(_) | ScheduleOp::Exit => continue,
+                ScheduleOp::Exit => continue,
                 ScheduleOp::Inst(inst_info) => self.emit_inst(inst_info, tasks),
                 ScheduleOp::Drop(value) => {
                     let mut emitter = self.emitter();

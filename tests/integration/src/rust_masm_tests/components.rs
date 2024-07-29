@@ -20,7 +20,7 @@ fn wcm_no_imports() {
             authors = []
 
             [dependencies]
-            wit-bindgen = { version = "0.17.0", default-features = false, features = ["realloc"] }
+            wit-bindgen-rt = "0.28"
             wee_alloc = { version = "0.4.5", default-features = false}
 
             [lib]
@@ -46,7 +46,7 @@ fn wcm_no_imports() {
                 loop {}
             }
 
-            extern crate wit_bindgen;
+            bindings::export!(Component with_types_in bindings);
 
             mod bindings;
 
@@ -136,7 +136,7 @@ fn wcm_import() {
             authors = []
 
             [dependencies]
-            wit-bindgen = { version = "0.17.0", default-features = false, features = ["realloc"] }
+            wit-bindgen-rt = "0.28"
             wee_alloc = { version = "0.4.5", default-features = false}
 
             [lib]
@@ -165,7 +165,7 @@ fn wcm_import() {
                 loop {}
             }
 
-            extern crate wit_bindgen;
+            bindings::export!(Component with_types_in bindings);
 
             mod bindings;
 

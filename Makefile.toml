@@ -212,7 +212,7 @@ args = ["component", "add", "rust-src"]
 category = "Test"
 description = "Install cargo-component extension"
 command = "cargo"
-args = ["install", "cargo-component@0.7.0"]
+args = ["install", "cargo-component@0.14.0"]
 
 [tasks.install-cargo-tarpaulin]
 category = "Test"

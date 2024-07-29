@@ -331,6 +331,7 @@ impl<'a> fmt::Display for DisplayOp<'a> {
     }
 }
 
+#[allow(unused)]
 struct Address(u32);
 impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

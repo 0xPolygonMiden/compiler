@@ -7,13 +7,13 @@ This crate provides a cargo extension that allows you to compile Rust code to Mi
 In order to install(build) the extension, you need to have the nightly Rust toolchain installed:
 
 ```bash
-rustup toolchain install nightly-2024-03-10
+rustup toolchain install nightly-2024-05-15
 ```
 
 To install the extension, run:
 
 ```bash
-cargo +nightly-2024-03-10 install cargo-miden
+cargo +nightly-2024-05-15 install cargo-miden
 ```
 
 ## Usage

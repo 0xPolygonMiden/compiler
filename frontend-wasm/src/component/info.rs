@@ -60,6 +60,7 @@ pub struct LinearComponentTranslation {
 ///
 /// NB: Lots of the component model is not yet implemented in the runtime so
 /// this is going to undergo a lot of churn.
+#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct LinearComponent {
     /// A list of typed values that this component imports.
@@ -213,6 +214,7 @@ pub enum GlobalInitializer {
     /// Declares a new defined resource within this component.
     ///
     /// Contains information about the destructor, for example.
+    #[allow(dead_code)]
     Resource(Resource),
 }
 
@@ -223,6 +225,7 @@ pub struct ExtractMemory {
     /// The index of the memory being defined.
     pub index: RuntimeMemoryIndex,
     /// Where this memory is being extracted from.
+    #[allow(dead_code)]
     pub export: CoreExport<MemoryIndex>,
 }
 
@@ -260,6 +263,7 @@ pub enum InstantiateModule {
     /// This is similar to `Upvar` but notably the imports are provided as a
     /// two-level named map since import resolution order needs to happen at
     /// runtime.
+    #[allow(dead_code)]
     Import(RuntimeImportIndex, IndexMap<String, IndexMap<String, CoreDef>>),
 }
 
@@ -344,6 +348,7 @@ pub enum ExportItem<T> {
 }
 
 /// Possible exports from a component.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Export {
     /// A lifted function being exported which is an adaptation of a core wasm
@@ -369,6 +374,7 @@ pub enum Export {
 }
 
 /// Canonical ABI options associated with a lifted or lowered function.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CanonicalOptions {
     /// The component instance that this bundle was associated with.
@@ -402,6 +408,7 @@ pub enum StringEncoding {
 ///
 /// This will have the effect of initializing runtime state for this resource,
 /// namely the destructor is fetched and stored.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Resource {
     /// The local index of the resource being defined.
@@ -419,6 +426,7 @@ pub struct Resource {
 ///
 /// All trampolines have a core wasm function signature associated with them
 /// which is stored in the `Component::trampolines` array.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Trampoline {
     /// Description of a lowered import used in conjunction with
