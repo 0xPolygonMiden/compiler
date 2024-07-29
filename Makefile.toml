@@ -214,6 +214,12 @@ description = "Install cargo-component extension"
 command = "cargo"
 args = ["install", "cargo-component@0.7.0"]
 
+[tasks.install-cargo-tarpaulin]
+category = "Test"
+description = "Install cargo-tarpaulin extension"
+command = "cargo"
+args = ["install", "cargo-tarpaulin"]
+
 [tasks.test-rust]
 category = "Test"
 description = "Runs tests written in Rust"
@@ -245,6 +251,24 @@ args = [
     "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/tests/lit/wasm-translation",
 ]
 dependencies = ["litcheck"]
+
+[tasks.test-rust-cov]
+category = "Test"
+description = "Runs tests written in Rust and generates code coverage report"
+command = "cargo"
+args = [
+    "tarpaulin",
+    "--timeout=360",
+    "--out",
+    "lcov",
+]
+dependencies = [
+    "install-wasm-target",
+    "install-wasm-wasi-target",
+    "install-rust-src",
+    "install-cargo-component",
+    "install-cargo-tarpaulin",
+]
 
 [tasks.litcheck]
 category = "Test"
