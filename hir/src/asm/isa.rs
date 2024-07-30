@@ -1182,13 +1182,9 @@ impl MasmOp {
             Instruction::NeqImm(imm) => Self::NeqImm(unwrap_imm!(imm)),
             Instruction::Eqw => Self::Eqw,
             Instruction::Lt => Self::Lt,
-            Instruction::LtImm(imm) => Self::LtImm(unwrap_imm!(imm)),
             Instruction::Lte => Self::Lte,
-            Instruction::LteImm(imm) => Self::LteImm(unwrap_imm!(imm)),
             Instruction::Gt => Self::Gt,
-            Instruction::GtImm(imm) => Self::GtImm(unwrap_imm!(imm)),
             Instruction::Gte => Self::Gte,
-            Instruction::GteImm(imm) => Self::GteImm(unwrap_imm!(imm)),
             Instruction::IsOdd => Self::IsOdd,
             Instruction::Hash => Self::Hash,
             Instruction::HMerge => Self::Hmerge,
@@ -1258,17 +1254,11 @@ impl MasmOp {
             Instruction::U32Clo => Self::U32Clo,
             Instruction::U32Cto => Self::U32Cto,
             Instruction::U32Lt => Self::U32Lt,
-            Instruction::U32LtImm(imm) => Self::U32LtImm(unwrap_u32!(imm)),
             Instruction::U32Lte => Self::U32Lte,
-            Instruction::U32LteImm(imm) => Self::U32LteImm(unwrap_u32!(imm)),
             Instruction::U32Gt => Self::U32Gt,
-            Instruction::U32GtImm(imm) => Self::U32GtImm(unwrap_u32!(imm)),
             Instruction::U32Gte => Self::U32Gte,
-            Instruction::U32GteImm(imm) => Self::U32GteImm(unwrap_u32!(imm)),
             Instruction::U32Min => Self::U32Min,
-            Instruction::U32MinImm(imm) => Self::U32MinImm(unwrap_u32!(imm)),
             Instruction::U32Max => Self::U32Max,
-            Instruction::U32MaxImm(imm) => Self::U32MaxImm(unwrap_u32!(imm)),
             Instruction::Drop => Self::Drop,
             Instruction::DropW => Self::Dropw,
             Instruction::PadW => Self::Padw,
@@ -1781,17 +1771,25 @@ impl MasmOp {
             Self::U32Clo => Instruction::U32Clo,
             Self::U32Cto => Instruction::U32Cto,
             Self::U32Lt => Instruction::U32Lt,
-            Self::U32LtImm(imm) => Instruction::U32LtImm(imm.into()),
+            Self::U32LtImm(imm) => return smallvec![Instruction::PushU32(imm), Instruction::U32Lt],
             Self::U32Lte => Instruction::U32Lte,
-            Self::U32LteImm(imm) => Instruction::U32LteImm(imm.into()),
+            Self::U32LteImm(imm) => {
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Lte]
+            }
             Self::U32Gt => Instruction::U32Gt,
-            Self::U32GtImm(imm) => Instruction::U32GtImm(imm.into()),
+            Self::U32GtImm(imm) => return smallvec![Instruction::PushU32(imm), Instruction::U32Gt],
             Self::U32Gte => Instruction::U32Gte,
-            Self::U32GteImm(imm) => Instruction::U32GteImm(imm.into()),
+            Self::U32GteImm(imm) => {
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Gte]
+            }
             Self::U32Min => Instruction::U32Min,
-            Self::U32MinImm(imm) => Instruction::U32MinImm(imm.into()),
+            Self::U32MinImm(imm) => {
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Min]
+            }
             Self::U32Max => Instruction::U32Max,
-            Self::U32MaxImm(imm) => Instruction::U32MaxImm(imm.into()),
+            Self::U32MaxImm(imm) => {
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Max]
+            }
             Self::Breakpoint => Instruction::Breakpoint,
             Self::DebugStack => Instruction::Debug(DebugOptions::StackAll),
             Self::DebugStackN(n) => Instruction::Debug(DebugOptions::StackTop(n.into())),
