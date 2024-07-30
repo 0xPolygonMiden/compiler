@@ -13,7 +13,7 @@ fn sdk() {
         PathBuf::from_str("../rust-apps-wasm/wit-sdk/sdk").unwrap(),
         Default::default(),
     );
-    let artifact_name = test.source.artifact_name();
+    let artifact_name = test.artifact_name();
     test.expect_wasm(expect_file![format!(
         "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
     )]);
@@ -67,7 +67,7 @@ fn sdk_basic_wallet() {
         PathBuf::from_str("../rust-apps-wasm/wit-sdk/basic-wallet").unwrap(),
         config,
     );
-    let artifact_name = test.source.artifact_name();
+    let artifact_name = test.artifact_name();
     test.expect_wasm(expect_file![format!(
         "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
     )]);
@@ -148,7 +148,7 @@ fn sdk_basic_wallet_p2id_note() {
         PathBuf::from_str("../rust-apps-wasm/wit-sdk/p2id-note").unwrap(),
         config,
     );
-    let artifact_name = test.source.artifact_name();
+    let artifact_name = test.artifact_name();
     test.expect_wasm(expect_file![format!(
         "../../expected/wit_sdk_basic_wallet/{artifact_name}.wat"
     )]);
