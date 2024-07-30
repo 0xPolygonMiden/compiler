@@ -1,10 +1,18 @@
-use std::{env, fs};
+use std::{env, fs, vec};
 
 use cargo_component_core::terminal;
 use cargo_miden::run;
 
 // NOTE: This test sets the current working directory so don't run it in parallel with tests
 // that depend on the current directory
+
+fn new_project_args(project_name: &str, template_path: Option<&str>) -> Vec<String> {
+    let mut args = vec!["cargo", "miden", "new", project_name];
+    if let Some(template_path) = template_path {
+        args.extend(["--template-path", template_path]);
+    };
+    args.into_iter().map(|s| s.to_string()).collect()
+}
 
 #[test]
 fn build_new_project_from_template() {
@@ -17,14 +25,26 @@ fn build_new_project_from_template() {
     let restore_dir = env::current_dir().unwrap();
     let temp_dir = env::temp_dir();
     env::set_current_dir(&temp_dir).unwrap();
-    let project_name = "test-proj";
+    let project_name = "test_proj_underscore";
     let expected_new_project_dir = &temp_dir.join(project_name);
+    dbg!(&expected_new_project_dir);
     if expected_new_project_dir.exists() {
         fs::remove_dir_all(expected_new_project_dir).unwrap();
     }
-    let args = ["cargo", "miden", "new", project_name].into_iter().map(|s| s.to_string());
+
+    let args = new_project_args(project_name, None);
+    // let args = new_project_args(
+    //     project_name,
+    //     Some(
+    //         &(format!(
+    //             "{}/../../../rust-templates/account",
+    //             std::env::var("CARGO_MANIFEST_DIR").unwrap()
+    //         )),
+    //     ),
+    // );
+
     let terminal = terminal::Terminal::new(terminal::Verbosity::Verbose, terminal::Color::Auto);
-    let outputs = run(args, &terminal).expect("Failed to create new project");
+    let outputs = run(args.into_iter(), &terminal).expect("Failed to create new project");
     let new_project_path = outputs.first().unwrap().canonicalize().unwrap();
     dbg!(&new_project_path);
     assert!(new_project_path.exists());

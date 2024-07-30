@@ -74,23 +74,27 @@ impl NewCommand {
             },
             None => TemplatePath {
                 git: Some("https://github.com/0xPolygonMiden/rust-templates".into()),
+                tag: Some("v0.2.0".into()),
                 auto_path: Some("account".into()),
                 ..Default::default()
             },
         };
 
+        let destination = self
+            .path
+            .parent()
+            .map(|p| {
+                use path_absolutize::Absolutize;
+                p.absolutize().map(|p| p.to_path_buf())
+            })
+            .transpose()
+            .context("Failed to convert destination path to an absolute path")?;
         let generate_args = GenerateArgs {
             template_path,
-            destination: self
-                .path
-                .parent()
-                .map(|p| {
-                    use path_absolutize::Absolutize;
-                    p.absolutize().map(|p| p.to_path_buf())
-                })
-                .transpose()
-                .context("Failed to convert destination path to an absolute path")?,
+            destination,
             name: Some(name),
+            // Force the `name` to not be kebab-cased
+            force: true,
             force_git_init: true,
             verbose: true,
             define,
