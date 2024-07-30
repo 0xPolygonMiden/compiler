@@ -14,7 +14,7 @@ use miden_assembly::{
 use miden_diagnostics::{CodeMap, SourceFile, SourceIndex, SourceSpan};
 use midenc_hir::{formatter::PrettyPrint, FunctionIdent, Ident, Symbol};
 
-use super::{function::Functions, FrozenFunctionList, Function, ModuleImportInfo};
+use super::{function::Functions, utils, FrozenFunctionList, Function, ModuleImportInfo};
 
 #[derive(Debug, thiserror::Error)]
 pub enum LoadModuleError {
@@ -117,7 +117,6 @@ impl Module {
         name: LibraryPath,
         kind: ModuleKind,
         source_file: Arc<SourceFile>,
-        codemap: &CodeMap,
     ) -> Result<Self, LoadModuleError> {
         let filename = source_file.name().as_str().expect("invalid source file name");
         let module = ast::Module::parse(
@@ -126,7 +125,7 @@ impl Module {
             Arc::new(MasmSourceFile::new(filename, source_file.source().to_string())),
         )?;
         let span = source_file.source_span();
-        Ok(Self::from_ast(&module, span, codemap))
+        Ok(Self::from_ast(&module, span))
     }
 
     /// Parse a [Module] from the given file path
@@ -148,10 +147,10 @@ impl Module {
         let module_path = LibraryPath::new_from_components(ns, [name]);
         let module = ast::Module::parse_file(module_path, kind, path)?;
         let span = source_file.source_span();
-        Ok(Self::from_ast(&module, span, codemap))
+        Ok(Self::from_ast(&module, span))
     }
 
-    pub fn from_ast(ast: &ast::Module, span: SourceSpan, _codemap: &CodeMap) -> Self {
+    pub fn from_ast(ast: &ast::Module, span: SourceSpan) -> Self {
         use miden_assembly::Spanned as MasmSpanned;
 
         let source_id = span.source_id();
@@ -180,7 +179,7 @@ impl Module {
                     module.reexports.push(alias.clone());
                 }
                 ast::Export::Procedure(ref proc) => {
-                    let function = Function::from_ast(module.id, proc);
+                    let function = Function::from_ast(module.id, source_id, proc);
                     module.functions.push_back(function);
                 }
             }
@@ -217,18 +216,8 @@ impl Module {
 
     /// Convert this module into its [miden_assembly::ast::Module] representation.
     pub fn to_ast(&self, codemap: &miden_diagnostics::CodeMap) -> Result<ast::Module, Report> {
-        let source_id = self.span.source_id();
-        let source_file = if let Ok(source_file) = codemap.get(source_id) {
-            let file = miden_assembly::diagnostics::SourceFile::new(
-                source_file.name().as_str().unwrap(),
-                source_file.source().to_string(),
-            );
-            Some(Arc::new(file))
-        } else {
-            None
-        };
-        let span =
-            miden_assembly::SourceSpan::new(self.span.start_index().0..self.span.end_index().0);
+        let source_file = utils::source_file_for_span(self.span, codemap);
+        let span = utils::translate_span(self.span);
         let mut ast = ast::Module::new(self.kind, self.name.clone())
             .with_source_file(source_file)
             .with_span(span);
@@ -236,9 +225,7 @@ impl Module {
 
         // Create module import table
         for ir_import in self.imports.iter() {
-            let ir_span = ir_import.span;
-            let span =
-                miden_assembly::SourceSpan::new(ir_span.start_index().0..ir_span.end_index().0);
+            let span = utils::translate_span(ir_import.span);
             let name =
                 ast::Ident::new_with_span(span, ir_import.alias.as_str()).map_err(Report::msg)?;
             let path = LibraryPath::new(ir_import.name.as_str()).expect("invalid import path");

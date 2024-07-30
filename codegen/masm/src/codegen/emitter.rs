@@ -1,8 +1,8 @@
 use std::{collections::BTreeMap, rc::Rc};
 
 use cranelift_entity::SecondaryMap;
-use hir::Type;
-use midenc_hir::{self as hir, adt::SparseMap, assert_matches};
+use miden_diagnostics::{Span, Spanned};
+use midenc_hir::{self as hir, adt::SparseMap, assert_matches, SourceSpan, Type};
 use midenc_hir_analysis::{
     DominatorTree, GlobalVariableLayout, LivenessAnalysis, Loop, LoopAnalysis,
 };
@@ -196,7 +196,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                         .stack()
                         .find(value)
                         .expect("could not find value on the operand stack");
-                    emitter.drop_operand_at_position(pos);
+                    emitter.drop_operand_at_position(pos, SourceSpan::default());
                 }
             }
         }
@@ -210,17 +210,19 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         // NOTE: This does not include block arguments for control flow instructions, those are
         // handled separately within the specific handlers for those instructions
         let args = self.function.f.dfg.inst_args(inst_info.inst);
-        self.schedule_operands(args, inst_info.plain_arguments()).unwrap_or_else(|err| {
-            panic!(
-                "failed to schedule operands: {:?} \n for inst: {} {:?}\n with error: {err:?}\n \
-                 constraints: {:?}\n stack: {:?}",
-                args,
-                inst_info.inst,
-                self.function.f.dfg.inst(inst_info.inst),
-                inst_info.plain_arguments(),
-                self.stack,
-            )
-        });
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
+        self.schedule_operands(args, inst_info.plain_arguments(), span)
+            .unwrap_or_else(|err| {
+                panic!(
+                    "failed to schedule operands: {:?} \n for inst: {} {:?}\n with error: \
+                     {err:?}\n constraints: {:?}\n stack: {:?}",
+                    args,
+                    inst_info.inst,
+                    self.function.f.dfg.inst(inst_info.inst),
+                    inst_info.plain_arguments(),
+                    self.stack,
+                )
+            });
 
         match self.function.f.dfg.inst(inst_info.inst) {
             ix @ (Instruction::RetImm(_) | Instruction::Ret(_)) => self.emit_ret(inst_info, ix),
@@ -241,16 +243,17 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                 panic!("expected switch instructions to have been rewritten before stackification")
             }
             Instruction::LocalVar(ref op) => {
+                let span = self.function.f.dfg.inst_span(inst_info.inst);
                 let local = self.function.locals[&op.local];
                 let args = op.args.as_slice(&self.function.f.dfg.value_lists);
                 let mut emitter = self.inst_emitter(inst_info.inst);
                 match op.op {
                     hir::Opcode::Store => {
                         assert_eq!(args.len(), 1);
-                        emitter.store_local(local);
+                        emitter.store_local(local, span);
                     }
                     hir::Opcode::Load => {
-                        emitter.load_local(local);
+                        emitter.load_local(local, span);
                     }
                     opcode => unimplemented!("unrecognized local variable op '{opcode}'"),
                 }
@@ -266,22 +269,23 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             self.function.f.dfg.inst_block(inst_info.inst).unwrap(),
         );
 
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let num_args = self.function.f.dfg.inst_args(inst_info.inst).len();
         let level = self.controlling_loop_level().unwrap_or(0);
 
         let mut emitter = self.emitter();
         // Upon return, the operand stack should only contain the function result(s),
         // so empty the stack before proceeding.
-        emitter.truncate_stack(num_args);
+        emitter.truncate_stack(num_args, span);
         // If this instruction is the immediate variant, we need to push the return
         // value on the stack at this point.
         if let Instruction::RetImm(hir::RetImm { arg, .. }) = ix {
-            emitter.literal(*arg);
+            emitter.literal(*arg, span);
         }
 
         // If we're in a loop, push N zeroes on the stack, where N is the current loop depth
         for _ in 0..level {
-            emitter.literal(false);
+            emitter.literal(false, span);
         }
     }
 
@@ -306,8 +310,9 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         let in_loop_header = self.block_info.is_loop_header();
 
         // Move block arguments into position
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let args = op.args.as_slice(&self.function.f.dfg.value_lists);
-        self.schedule_operands(args, inst_info.block_arguments(destination))
+        self.schedule_operands(args, inst_info.block_arguments(destination), span)
             .unwrap_or_else(|err| {
                 panic!("failed to schedule operands for {}: {err:?}", inst_info.inst)
             });
@@ -322,7 +327,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             if in_loop_header {
                 // We're in a loop header, emit the target block inside a while loop
                 let body_blk = self.masm_block_id(destination);
-                self.emit_ops([Op::PushU8(1), Op::While(body_blk)]);
+                self.emit_ops([Op::PushU8(1), Op::While(body_blk)], span);
                 tasks.push(Task::Block {
                     block: destination,
                     controlling_loop,
@@ -348,9 +353,9 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             });
             let target_level = self.loop_level(self.block_info.source);
             let mut emitter = self.emitter();
-            emitter.literal(true);
+            emitter.literal(true, span);
             for _ in 0..(current_level - target_level) {
-                emitter.literal(false);
+                emitter.literal(false, span);
             }
         }
     }
@@ -368,6 +373,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             cond
         );
 
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         if !self.visited {
             let then_blk = self.masm_block_id(then_dest);
             let else_blk = self.masm_block_id(else_dest);
@@ -377,10 +383,10 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             if self.block_info.is_loop_header() {
                 let body_blk = self.function.f_prime.create_block();
                 // We always unconditionally enter the loop the first time
-                self.emit_ops([Op::PushU8(1), Op::While(body_blk)]);
-                self.emit_op_to(body_blk, Op::If(then_blk, else_blk));
+                self.emit_ops([Op::PushU8(1), Op::While(body_blk)], span);
+                self.emit_op_to(body_blk, Op::If(then_blk, else_blk), span);
             } else {
-                self.emit_op(Op::If(then_blk, else_blk));
+                self.emit_op(Op::If(then_blk, else_blk), span);
             }
 
             let successors =
@@ -400,6 +406,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     inst_info.block_arguments(block),
                     masm_block,
                     &mut stack,
+                    span,
                 )
                 .unwrap_or_else(|err| {
                     panic!(
@@ -440,9 +447,9 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             // prior to this push.1 instruction holds the actual conditional, which
             // will be evaluated by the `if.true` nested inside the target `while.true`
             let mut emitter = self.emitter();
-            emitter.literal(true);
+            emitter.literal(true, span);
             for _ in 0..(current_level - target_level) {
-                emitter.literal(false);
+                emitter.literal(false, span);
             }
         }
     }
@@ -460,15 +467,16 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     self.function.f.id, op.global
                 )
             });
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         match self.function.f.dfg.global_value(op.global) {
             hir::GlobalValueData::Load { ref ty, .. } => {
                 let mut emitter = self.inst_emitter(inst_info.inst);
-                emitter.load_imm(addr, ty.clone());
+                emitter.load_imm(addr, ty.clone(), span);
             }
             hir::GlobalValueData::IAddImm { .. } | hir::GlobalValueData::Symbol { .. } => {
                 let mut emitter = self.inst_emitter(inst_info.inst);
                 emitter.stack_mut().push(addr);
-                emitter.inttoptr(&Type::Ptr(Type::U8.into()));
+                emitter.inttoptr(&Type::Ptr(Type::U8.into()), span);
             }
         }
     }
@@ -476,51 +484,52 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     fn emit_unary_imm_op(&mut self, inst_info: &InstInfo, op: &hir::UnaryOpImm) {
         use midenc_hir::Immediate;
 
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
         match op.op {
             hir::Opcode::ImmI1 => {
                 assert_matches!(op.imm, Immediate::I1(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmI8 => {
                 assert_matches!(op.imm, Immediate::I8(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmU8 => {
                 assert_matches!(op.imm, Immediate::U8(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmI16 => {
                 assert_matches!(op.imm, Immediate::I16(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmU16 => {
                 assert_matches!(op.imm, Immediate::U16(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmI32 => {
                 assert_matches!(op.imm, Immediate::I32(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmU32 => {
                 assert_matches!(op.imm, Immediate::U32(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmI64 => {
                 assert_matches!(op.imm, Immediate::I64(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmU64 => {
                 assert_matches!(op.imm, Immediate::U64(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmFelt => {
                 assert_matches!(op.imm, Immediate::Felt(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             hir::Opcode::ImmF64 => {
                 assert_matches!(op.imm, Immediate::F64(_));
-                emitter.literal(op.imm);
+                emitter.literal(op.imm, span);
             }
             opcode => unimplemented!("unrecognized unary with immediate opcode: '{opcode}'"),
         }
@@ -529,20 +538,21 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     fn emit_unary_op(&mut self, inst_info: &InstInfo, op: &hir::UnaryOp) {
         let inst = inst_info.inst;
         let result = self.function.f.dfg.first_result(inst);
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst);
         match op.op {
-            hir::Opcode::Neg => emitter.neg(),
-            hir::Opcode::Inv => emitter.inv(),
-            hir::Opcode::Incr => emitter.incr(),
-            hir::Opcode::Ilog2 => emitter.ilog2(),
-            hir::Opcode::Pow2 => emitter.pow2(),
-            hir::Opcode::Not => emitter.not(),
-            hir::Opcode::Bnot => emitter.bnot(),
-            hir::Opcode::Popcnt => emitter.popcnt(),
-            hir::Opcode::Clz => emitter.clz(),
-            hir::Opcode::Ctz => emitter.ctz(),
-            hir::Opcode::Clo => emitter.clo(),
-            hir::Opcode::Cto => emitter.cto(),
+            hir::Opcode::Neg => emitter.neg(span),
+            hir::Opcode::Inv => emitter.inv(span),
+            hir::Opcode::Incr => emitter.incr(span),
+            hir::Opcode::Ilog2 => emitter.ilog2(span),
+            hir::Opcode::Pow2 => emitter.pow2(span),
+            hir::Opcode::Not => emitter.not(span),
+            hir::Opcode::Bnot => emitter.bnot(span),
+            hir::Opcode::Popcnt => emitter.popcnt(span),
+            hir::Opcode::Clz => emitter.clz(span),
+            hir::Opcode::Ctz => emitter.ctz(span),
+            hir::Opcode::Clo => emitter.clo(span),
+            hir::Opcode::Cto => emitter.cto(span),
             // This opcode is a no-op
             hir::Opcode::PtrToInt => {
                 let result_ty = emitter.value_type(result).clone();
@@ -553,32 +563,32 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             // We lower this cast to an assertion, to ensure the value is a valid pointer
             hir::Opcode::IntToPtr => {
                 let ptr_ty = emitter.value_type(result).clone();
-                emitter.inttoptr(&ptr_ty);
+                emitter.inttoptr(&ptr_ty, span);
             }
             // The semantics of cast for now are basically your standard integer coercion rules
             //
             // We may eliminate this in favor of more specific casts in the future
             hir::Opcode::Cast => {
                 let dst_ty = emitter.value_type(result).clone();
-                emitter.cast(&dst_ty);
+                emitter.cast(&dst_ty, span);
             }
             hir::Opcode::Bitcast => {
                 let dst_ty = emitter.value_type(result).clone();
-                emitter.bitcast(&dst_ty);
+                emitter.bitcast(&dst_ty, span);
             }
             hir::Opcode::Trunc => {
                 let dst_ty = emitter.value_type(result).clone();
-                emitter.trunc(&dst_ty);
+                emitter.trunc(&dst_ty, span);
             }
             hir::Opcode::Zext => {
                 let dst_ty = emitter.value_type(result).clone();
-                emitter.zext(&dst_ty);
+                emitter.zext(&dst_ty, span);
             }
             hir::Opcode::Sext => {
                 let dst_ty = emitter.value_type(result).clone();
-                emitter.sext(&dst_ty);
+                emitter.sext(&dst_ty, span);
             }
-            hir::Opcode::IsOdd => emitter.is_odd(),
+            hir::Opcode::IsOdd => emitter.is_odd(span),
             opcode => unimplemented!("unrecognized unary opcode: '{opcode}'"),
         }
     }
@@ -586,37 +596,40 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     fn emit_binary_imm_op(&mut self, inst_info: &InstInfo, op: &hir::BinaryOpImm) {
         use midenc_hir::Overflow;
 
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
         let overflow = op.overflow.unwrap_or(Overflow::Checked);
         match op.op {
-            hir::Opcode::Eq => emitter.eq_imm(op.imm),
-            hir::Opcode::Neq => emitter.neq_imm(op.imm),
-            hir::Opcode::Gt => emitter.gt_imm(op.imm),
-            hir::Opcode::Gte => emitter.gte_imm(op.imm),
-            hir::Opcode::Lt => emitter.lt_imm(op.imm),
-            hir::Opcode::Lte => emitter.lte_imm(op.imm),
-            hir::Opcode::Add => emitter.add_imm(op.imm, overflow),
-            hir::Opcode::Sub => emitter.sub_imm(op.imm, overflow),
-            hir::Opcode::Mul => emitter.mul_imm(op.imm, overflow),
-            hir::Opcode::Div if overflow.is_checked() => emitter.checked_div_imm(op.imm),
-            hir::Opcode::Div => emitter.unchecked_div_imm(op.imm),
-            hir::Opcode::Min => emitter.min_imm(op.imm),
-            hir::Opcode::Max => emitter.max_imm(op.imm),
-            hir::Opcode::Mod if overflow.is_checked() => emitter.checked_mod_imm(op.imm),
-            hir::Opcode::Mod => emitter.unchecked_mod_imm(op.imm),
-            hir::Opcode::DivMod if overflow.is_checked() => emitter.checked_divmod_imm(op.imm),
-            hir::Opcode::DivMod => emitter.unchecked_divmod_imm(op.imm),
-            hir::Opcode::Exp => emitter.exp_imm(op.imm),
-            hir::Opcode::And => emitter.and_imm(op.imm),
-            hir::Opcode::Band => emitter.band_imm(op.imm),
-            hir::Opcode::Or => emitter.or_imm(op.imm),
-            hir::Opcode::Bor => emitter.bor_imm(op.imm),
-            hir::Opcode::Xor => emitter.xor_imm(op.imm),
-            hir::Opcode::Bxor => emitter.bxor_imm(op.imm),
-            hir::Opcode::Shl => emitter.shl_imm(op.imm),
-            hir::Opcode::Shr => emitter.shr_imm(op.imm),
-            hir::Opcode::Rotl => emitter.rotl_imm(op.imm),
-            hir::Opcode::Rotr => emitter.rotr_imm(op.imm),
+            hir::Opcode::Eq => emitter.eq_imm(op.imm, span),
+            hir::Opcode::Neq => emitter.neq_imm(op.imm, span),
+            hir::Opcode::Gt => emitter.gt_imm(op.imm, span),
+            hir::Opcode::Gte => emitter.gte_imm(op.imm, span),
+            hir::Opcode::Lt => emitter.lt_imm(op.imm, span),
+            hir::Opcode::Lte => emitter.lte_imm(op.imm, span),
+            hir::Opcode::Add => emitter.add_imm(op.imm, overflow, span),
+            hir::Opcode::Sub => emitter.sub_imm(op.imm, overflow, span),
+            hir::Opcode::Mul => emitter.mul_imm(op.imm, overflow, span),
+            hir::Opcode::Div if overflow.is_checked() => emitter.checked_div_imm(op.imm, span),
+            hir::Opcode::Div => emitter.unchecked_div_imm(op.imm, span),
+            hir::Opcode::Min => emitter.min_imm(op.imm, span),
+            hir::Opcode::Max => emitter.max_imm(op.imm, span),
+            hir::Opcode::Mod if overflow.is_checked() => emitter.checked_mod_imm(op.imm, span),
+            hir::Opcode::Mod => emitter.unchecked_mod_imm(op.imm, span),
+            hir::Opcode::DivMod if overflow.is_checked() => {
+                emitter.checked_divmod_imm(op.imm, span)
+            }
+            hir::Opcode::DivMod => emitter.unchecked_divmod_imm(op.imm, span),
+            hir::Opcode::Exp => emitter.exp_imm(op.imm, span),
+            hir::Opcode::And => emitter.and_imm(op.imm, span),
+            hir::Opcode::Band => emitter.band_imm(op.imm, span),
+            hir::Opcode::Or => emitter.or_imm(op.imm, span),
+            hir::Opcode::Bor => emitter.bor_imm(op.imm, span),
+            hir::Opcode::Xor => emitter.xor_imm(op.imm, span),
+            hir::Opcode::Bxor => emitter.bxor_imm(op.imm, span),
+            hir::Opcode::Shl => emitter.shl_imm(op.imm, span),
+            hir::Opcode::Shr => emitter.shr_imm(op.imm, span),
+            hir::Opcode::Rotl => emitter.rotl_imm(op.imm, span),
+            hir::Opcode::Rotr => emitter.rotr_imm(op.imm, span),
             opcode => unimplemented!("unrecognized binary with immediate opcode: '{opcode}'"),
         }
     }
@@ -624,37 +637,38 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     fn emit_binary_op(&mut self, inst_info: &InstInfo, op: &hir::BinaryOp) {
         use midenc_hir::Overflow;
 
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
         let overflow = op.overflow.unwrap_or(Overflow::Checked);
         match op.op {
-            hir::Opcode::Eq => emitter.eq(),
-            hir::Opcode::Neq => emitter.neq(),
-            hir::Opcode::Gt => emitter.gt(),
-            hir::Opcode::Gte => emitter.gte(),
-            hir::Opcode::Lt => emitter.lt(),
-            hir::Opcode::Lte => emitter.lte(),
-            hir::Opcode::Add => emitter.add(overflow),
-            hir::Opcode::Sub => emitter.sub(overflow),
-            hir::Opcode::Mul => emitter.mul(overflow),
-            hir::Opcode::Div if overflow.is_checked() => emitter.checked_div(),
-            hir::Opcode::Div => emitter.unchecked_div(),
-            hir::Opcode::Min => emitter.min(),
-            hir::Opcode::Max => emitter.max(),
-            hir::Opcode::Mod if overflow.is_checked() => emitter.checked_mod(),
-            hir::Opcode::Mod => emitter.unchecked_mod(),
-            hir::Opcode::DivMod if overflow.is_checked() => emitter.checked_divmod(),
-            hir::Opcode::DivMod => emitter.unchecked_divmod(),
-            hir::Opcode::Exp => emitter.exp(),
-            hir::Opcode::And => emitter.and(),
-            hir::Opcode::Band => emitter.band(),
-            hir::Opcode::Or => emitter.or(),
-            hir::Opcode::Bor => emitter.bor(),
-            hir::Opcode::Xor => emitter.xor(),
-            hir::Opcode::Bxor => emitter.bxor(),
-            hir::Opcode::Shl => emitter.shl(),
-            hir::Opcode::Shr => emitter.shr(),
-            hir::Opcode::Rotl => emitter.rotl(),
-            hir::Opcode::Rotr => emitter.rotr(),
+            hir::Opcode::Eq => emitter.eq(span),
+            hir::Opcode::Neq => emitter.neq(span),
+            hir::Opcode::Gt => emitter.gt(span),
+            hir::Opcode::Gte => emitter.gte(span),
+            hir::Opcode::Lt => emitter.lt(span),
+            hir::Opcode::Lte => emitter.lte(span),
+            hir::Opcode::Add => emitter.add(overflow, span),
+            hir::Opcode::Sub => emitter.sub(overflow, span),
+            hir::Opcode::Mul => emitter.mul(overflow, span),
+            hir::Opcode::Div if overflow.is_checked() => emitter.checked_div(span),
+            hir::Opcode::Div => emitter.unchecked_div(span),
+            hir::Opcode::Min => emitter.min(span),
+            hir::Opcode::Max => emitter.max(span),
+            hir::Opcode::Mod if overflow.is_checked() => emitter.checked_mod(span),
+            hir::Opcode::Mod => emitter.unchecked_mod(span),
+            hir::Opcode::DivMod if overflow.is_checked() => emitter.checked_divmod(span),
+            hir::Opcode::DivMod => emitter.unchecked_divmod(span),
+            hir::Opcode::Exp => emitter.exp(span),
+            hir::Opcode::And => emitter.and(span),
+            hir::Opcode::Band => emitter.band(span),
+            hir::Opcode::Or => emitter.or(span),
+            hir::Opcode::Bor => emitter.bor(span),
+            hir::Opcode::Xor => emitter.xor(span),
+            hir::Opcode::Bxor => emitter.bxor(span),
+            hir::Opcode::Shl => emitter.shl(span),
+            hir::Opcode::Shr => emitter.shr(span),
+            hir::Opcode::Rotl => emitter.rotl(span),
+            hir::Opcode::Rotr => emitter.rotr(span),
             opcode => unimplemented!("unrecognized binary opcode: '{opcode}'"),
         }
     }
@@ -664,32 +678,39 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_load_op(&mut self, inst_info: &InstInfo, op: &hir::LoadOp) {
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
-        emitter.load(op.ty.clone());
+        emitter.load(op.ty.clone(), span);
     }
 
     fn emit_primop_imm(&mut self, inst_info: &InstInfo, op: &hir::PrimOpImm) {
         let args = op.args.as_slice(&self.function.f.dfg.value_lists);
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
         match op.op {
             hir::Opcode::Assert => {
                 assert_eq!(args.len(), 1);
-                emitter
-                    .assert(Some(op.imm.as_u32().expect("invalid assertion error code immediate")));
+                emitter.assert(
+                    Some(op.imm.as_u32().expect("invalid assertion error code immediate")),
+                    span,
+                );
             }
             hir::Opcode::Assertz => {
                 assert_eq!(args.len(), 1);
-                emitter.assertz(Some(
-                    op.imm.as_u32().expect("invalid assertion error code immediate"),
-                ));
+                emitter.assertz(
+                    Some(op.imm.as_u32().expect("invalid assertion error code immediate")),
+                    span,
+                );
             }
             hir::Opcode::AssertEq => {
-                emitter.assert_eq_imm(op.imm);
+                emitter.assert_eq_imm(op.imm, span);
             }
             // Store a value at a constant address
             hir::Opcode::Store => {
-                emitter
-                    .store_imm(op.imm.as_u32().expect("invalid address immediate: out of range"));
+                emitter.store_imm(
+                    op.imm.as_u32().expect("invalid address immediate: out of range"),
+                    span,
+                );
             }
             opcode => unimplemented!("unrecognized primop with immediate opcode: '{opcode}'"),
         }
@@ -697,65 +718,66 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
 
     fn emit_primop(&mut self, inst_info: &InstInfo, op: &hir::PrimOp) {
         let args = op.args.as_slice(&self.function.f.dfg.value_lists);
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
         match op.op {
             // Pop a value of the given type off the stack and assert it's value is one
             hir::Opcode::Assert => {
                 assert_eq!(args.len(), 1);
-                emitter.assert(None);
+                emitter.assert(None, span);
             }
             // Pop a value of the given type off the stack and assert it's value is zero
             hir::Opcode::Assertz => {
                 assert_eq!(args.len(), 1);
-                emitter.assertz(None);
+                emitter.assertz(None, span);
             }
             // Pop two values of the given type off the stack and assert equality
             hir::Opcode::AssertEq => {
                 assert_eq!(args.len(), 2);
-                emitter.assert_eq();
+                emitter.assert_eq(span);
             }
             // Allocate a local and push its address on the operand stack
             hir::Opcode::Alloca => {
                 assert!(args.is_empty());
                 let result = emitter.dfg().first_result(inst_info.inst);
                 let ty = emitter.value_type(result).clone();
-                emitter.alloca(&ty);
+                emitter.alloca(&ty, span);
             }
             // Store a value at a given pointer
             hir::Opcode::Store => {
                 assert_eq!(args.len(), 2);
-                emitter.store();
+                emitter.store(span);
             }
             // Grow the heap by `num_pages` pages
             hir::Opcode::MemGrow => {
                 assert_eq!(args.len(), 1);
-                emitter.mem_grow();
+                emitter.mem_grow(span);
             }
             // Return the size of the heap in pages
             hir::Opcode::MemSize => {
                 assert_eq!(args.len(), 0);
-                emitter.mem_size();
+                emitter.mem_size(span);
             }
             // Write `count` copies of `value` starting at the destination address
             hir::Opcode::MemSet => {
                 assert_eq!(args.len(), 3);
-                emitter.memset();
+                emitter.memset(span);
             }
             // Copy `count * sizeof(ctrl_ty)` bytes from source to destination address
             hir::Opcode::MemCpy => {
                 assert_eq!(args.len(), 3);
-                emitter.memcpy();
+                emitter.memcpy(span);
             }
             // Conditionally select between two values
             hir::Opcode::Select => {
                 assert_eq!(args.len(), 3);
-                emitter.select();
+                emitter.select(span);
             }
             // This instruction should not be reachable at runtime, so we emit an assertion
             // that will always fail if for some reason it is reached
             hir::Opcode::Unreachable => {
                 // assert(false)
-                emitter.emit_all(&[Op::PushU32(0), Op::Assert]);
+                emitter.emit_all(&[Op::PushU32(0), Op::Assert], span);
             }
             opcode => unimplemented!("unrecognized primop with immediate opcode: '{opcode}'"),
         }
@@ -764,10 +786,11 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     fn emit_call_op(&mut self, inst_info: &InstInfo, op: &hir::Call) {
         assert_ne!(op.callee, self.function.f.id, "unexpected recursive call");
 
+        let span = self.function.f.dfg.inst_span(inst_info.inst);
         let mut emitter = self.inst_emitter(inst_info.inst);
         match op.op {
-            hir::Opcode::Syscall => emitter.syscall(op.callee),
-            hir::Opcode::Call => emitter.exec(op.callee),
+            hir::Opcode::Syscall => emitter.syscall(op.callee, span),
+            hir::Opcode::Call => emitter.exec(op.callee, span),
             opcode => unimplemented!("unrecognized procedure call opcode: '{opcode}'"),
         }
     }
@@ -811,7 +834,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     ) {
         while let Some((prev, new)) = rewrites.pop() {
             for mut op in asm.blocks[prev].ops.iter().cloned() {
-                match op {
+                let span = op.span();
+                match &mut op.item {
                     Op::If(ref mut then_blk, ref mut else_blk) => {
                         let prev_then_blk = *then_blk;
                         let prev_else_blk = *else_blk;
@@ -828,19 +852,19 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     Op::Exec(id) => {
                         self.function.f_prime.register_absolute_invocation_target(
                             miden_assembly::ast::InvokeKind::Exec,
-                            id,
+                            *id,
                         );
                     }
                     Op::Call(id) => {
                         self.function.f_prime.register_absolute_invocation_target(
                             miden_assembly::ast::InvokeKind::Call,
-                            id,
+                            *id,
                         );
                     }
                     Op::Syscall(id) => {
                         self.function.f_prime.register_absolute_invocation_target(
                             miden_assembly::ast::InvokeKind::SysCall,
-                            id,
+                            *id,
                         );
                     }
                     Op::LocAddr(_)
@@ -854,7 +878,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     }
                     _ => (),
                 }
-                self.function.f_prime.body.block_mut(new).push(op);
+                self.function.f_prime.body.block_mut(new).push(op.item, span);
             }
         }
     }
@@ -940,7 +964,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     // we've found so far, and then reset our cursor to the top
                     if unused_batch {
                         let mut emitter = self.emitter();
-                        emitter.dropn(batch_size);
+                        emitter.dropn(batch_size, SourceSpan::default());
                         batch_size = 0;
                         current_index = 0;
                         continue;
@@ -971,33 +995,34 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                                 .count();
                             let mut emitter = self.emitter();
                             if unused_chunk_size > 1 {
-                                emitter.movdn(unused_chunk_size as u8);
-                                emitter.dropn(unused_chunk_size);
+                                emitter.movdn(unused_chunk_size as u8, SourceSpan::default());
+                                emitter.dropn(unused_chunk_size, SourceSpan::default());
                             } else {
-                                emitter.swap(1);
-                                emitter.drop();
+                                emitter.swap(1, SourceSpan::default());
+                                emitter.drop(SourceSpan::default());
                             }
                         }
                         // We've got multiple unused values together, so choose instead
                         // to move the unused value to the top and drop it
                         _ => {
                             let mut emitter = self.emitter();
-                            emitter.movup(current_index as u8);
-                            emitter.drop();
+                            emitter.movup(current_index as u8, SourceSpan::default());
+                            emitter.drop(SourceSpan::default());
                         }
                     }
                     batch_size = 0;
                     current_index = 0;
                 }
             } else {
-                self.schedule_operands(&unused, &constraints).unwrap_or_else(|err| {
-                    panic!(
-                        "failed to schedule unused operands for {}: {err:?}",
-                        self.block_info.source
-                    )
-                });
+                self.schedule_operands(&unused, &constraints, SourceSpan::default())
+                    .unwrap_or_else(|err| {
+                        panic!(
+                            "failed to schedule unused operands for {}: {err:?}",
+                            self.block_info.source
+                        )
+                    });
                 let mut emitter = self.emitter();
-                emitter.dropn(unused.len());
+                emitter.dropn(unused.len(), SourceSpan::default());
             }
         }
     }
@@ -1006,11 +1031,12 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         &mut self,
         expected: &[hir::Value],
         constraints: &[Constraint],
+        span: SourceSpan,
     ) -> Result<(), SolverError> {
         match OperandMovementConstraintSolver::new(expected, constraints, &self.stack) {
             Ok(solver) => {
                 let mut emitter = self.emitter();
-                solver.solve_and_apply(&mut emitter)
+                solver.solve_and_apply(&mut emitter, span)
             }
             Err(SolverError::AlreadySolved) => Ok(()),
             Err(err) => {
@@ -1025,11 +1051,12 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         constraints: &[Constraint],
         block: masm::BlockId,
         stack: &mut OperandStack,
+        span: SourceSpan,
     ) -> Result<(), SolverError> {
         match OperandMovementConstraintSolver::new(expected, constraints, stack) {
             Ok(solver) => {
                 let mut emitter = OpEmitter::new(self.function.f_prime, block, stack);
-                solver.solve_and_apply(&mut emitter)
+                solver.solve_and_apply(&mut emitter, span)
             }
             Err(SolverError::AlreadySolved) => Ok(()),
             Err(err) => {
@@ -1147,18 +1174,18 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     #[inline]
-    fn emit_op(&mut self, op: Op) {
-        self.current_block().push(op);
+    fn emit_op(&mut self, op: Op, span: SourceSpan) {
+        self.current_block().push(op, span);
     }
 
     #[inline]
-    fn emit_op_to(&mut self, block: masm::BlockId, op: Op) {
-        self.block(block).push(op);
+    fn emit_op_to(&mut self, block: masm::BlockId, op: Op, span: SourceSpan) {
+        self.block(block).push(op, span);
     }
 
     #[inline]
-    fn emit_ops(&mut self, ops: impl IntoIterator<Item = Op>) {
-        self.current_block().extend(ops);
+    fn emit_ops(&mut self, ops: impl IntoIterator<Item = Op>, span: SourceSpan) {
+        self.current_block().extend(ops.into_iter().map(|op| Span::new(span, op)));
     }
 
     fn controlling_loop_level(&self) -> Option<usize> {

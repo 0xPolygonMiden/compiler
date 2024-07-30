@@ -43,7 +43,7 @@ macro_rules! test_bin_op {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         PushToStack::try_push(&b, &mut args);
                         PushToStack::try_push(&a, &mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session.codemap)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {

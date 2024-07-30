@@ -2,6 +2,7 @@ use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::entity_impl;
 pub use miden_assembly::ast::{AdviceInjectorNode, DebugOptions};
+use miden_diagnostics::{SourceSpan, Span};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{Felt, FunctionIdent, Ident, LocalId};
@@ -15,7 +16,7 @@ entity_impl!(MasmBlockId, "blk");
 #[derive(Debug, Clone, PartialEq)]
 pub struct MasmBlock {
     pub id: MasmBlockId,
-    pub ops: SmallVec<[MasmOp; 4]>,
+    pub ops: SmallVec<[Span<MasmOp>; 4]>,
 }
 impl MasmBlock {
     /// Returns true if there are no instructions in this block
@@ -26,19 +27,20 @@ impl MasmBlock {
 
     /// Returns the instructions contained in this block as a slice
     #[inline(always)]
-    pub fn ops(&self) -> &[MasmOp] {
+    pub fn ops(&self) -> &[Span<MasmOp>] {
         self.ops.as_slice()
     }
 
     /// Appends `op` to this code block
     #[inline(always)]
-    pub fn push(&mut self, op: MasmOp) {
-        self.ops.push(op);
+    pub fn push(&mut self, op: MasmOp, span: SourceSpan) {
+        self.ops.push(Span::new(span, op));
     }
 
     /// Append `n` copies of `op` to the current block
     #[inline]
-    pub fn push_n(&mut self, count: usize, op: MasmOp) {
+    pub fn push_n(&mut self, count: usize, op: MasmOp, span: SourceSpan) {
+        let op = Span::new(span, op);
         for _ in 0..count {
             self.ops.push(op);
         }
@@ -46,7 +48,7 @@ impl MasmBlock {
 
     /// Append `n` copies of the sequence `ops` to this block
     #[inline]
-    pub fn push_repeat(&mut self, ops: &[MasmOp], count: usize) {
+    pub fn push_repeat(&mut self, ops: &[Span<MasmOp>], count: usize) {
         for _ in 0..count {
             self.ops.extend_from_slice(ops);
         }
@@ -56,7 +58,7 @@ impl MasmBlock {
     #[inline]
     pub fn push_template<const N: usize, F>(&mut self, count: usize, template: F)
     where
-        F: Fn(usize) -> [MasmOp; N],
+        F: Fn(usize) -> [Span<MasmOp>; N],
     {
         for n in 0..count {
             self.ops.extend_from_slice(&template(n));
@@ -65,13 +67,13 @@ impl MasmBlock {
 
     /// Appends instructions from `slice` to the end of this block
     #[inline]
-    pub fn extend_from_slice(&mut self, slice: &[MasmOp]) {
+    pub fn extend_from_slice(&mut self, slice: &[Span<MasmOp>]) {
         self.ops.extend_from_slice(slice);
     }
 
     /// Appends instructions from `slice` to the end of this block
     #[inline]
-    pub fn extend(&mut self, ops: impl IntoIterator<Item = MasmOp>) {
+    pub fn extend(&mut self, ops: impl IntoIterator<Item = Span<MasmOp>>) {
         self.ops.extend(ops);
     }
 
@@ -79,7 +81,7 @@ impl MasmBlock {
     #[inline]
     pub fn append<B>(&mut self, other: &mut SmallVec<B>)
     where
-        B: smallvec::Array<Item = MasmOp>,
+        B: smallvec::Array<Item = Span<MasmOp>>,
     {
         self.ops.append(other);
     }

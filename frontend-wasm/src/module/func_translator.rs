@@ -173,10 +173,10 @@ fn parse_function_body(
     // The control stack is initialized with a single block representing the whole function.
     debug_assert_eq!(state.control_stack.len(), 1, "State not initialized");
 
+    let mut end_span = SourceSpan::default();
     while !reader.eof() {
         let pos = reader.original_position();
         let (op, offset) = reader.read_with_offset()?;
-        dbg!(pos, offset);
         func_validator.op(pos, &op)?;
 
         let offset = (offset as u64)
@@ -185,26 +185,26 @@ fn parse_function_body(
         let mut span = SourceSpan::default();
         if let Some(loc) = addr2line
             .find_location(offset)
-            .inspect(|result| match result {
-                Some(loc) => {
-                    dbg!(loc.file, loc.line, loc.column);
-                }
-                None => (),
-            })
             .map_err(|err| crate::WasmError::Unexpected(err.to_string()))?
         {
             if let Some(file) = loc.file {
                 let path = std::path::Path::new(file);
                 if path.exists() {
                     let source_id = codemap.add_file(path)?;
-                    let line = loc.line.unwrap_or(1);
-                    let column = loc.line.unwrap_or(1);
+                    let line = loc.line.and_then(|line| line.checked_sub(1)).unwrap_or(0);
+                    let column = loc.column.and_then(|col| col.checked_sub(1)).unwrap_or(0);
                     span = codemap
                         .line_column_to_span(source_id, line, column)
                         .ok()
                         .unwrap_or_default();
                 }
             }
+        }
+
+        // Track the span of every END we observe, so we have a span to assign to the return we
+        // place in the final exit block
+        if let wasmparser::Operator::End = op {
+            end_span = span;
         }
 
         translate_operator(
@@ -227,7 +227,7 @@ fn parse_function_body(
     // If the exit block is unreachable, it may not have the correct arguments, so we would
     // generate a return instruction that doesn't match the signature.
     if state.reachable && !builder.is_unreachable() {
-        builder.ins().ret(state.stack.first().cloned(), SourceSpan::default());
+        builder.ins().ret(state.stack.first().cloned(), end_span);
     }
 
     // Discard any remaining values on the stack. Either we just returned them,

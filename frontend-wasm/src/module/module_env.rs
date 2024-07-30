@@ -698,7 +698,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             return;
         }
         let info = &mut self.result.debuginfo;
-        let mut dwarf = Dwarf::default();
+        let dwarf = &mut info.dwarf;
         let endian = gimli::LittleEndian;
         let data = section.data();
         let slice = gimli::EndianSlice::new(data, endian);

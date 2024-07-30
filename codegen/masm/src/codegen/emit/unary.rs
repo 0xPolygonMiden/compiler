@@ -24,7 +24,7 @@ impl<'a> OpEmitter<'a> {
     /// This function assumes that an integer value of type `src` is on top of the operand stack,
     /// and will ensure a value of type `dst` is on the operand stack after truncation, or that
     /// execution traps.
-    pub fn trunc(&mut self, dst: &Type) {
+    pub fn trunc(&mut self, dst: &Type, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
         assert!(
@@ -35,33 +35,33 @@ impl<'a> OpEmitter<'a> {
         match (&src, dst) {
             // If the types are equivalent, it's a no-op
             (src, dst) if src == dst => (),
-            (Type::Felt, _) if n <= 32 => self.trunc_felt(n),
+            (Type::Felt, _) if n <= 32 => self.trunc_felt(n, span),
             // Truncating i128 to u128, and vice versa is a bitcast
             (Type::I128 | Type::U128, Type::U128 | Type::I128) => (),
             // Truncating to felt
-            (Type::U128 | Type::I128, Type::Felt) => self.trunc_i128_to_felt(),
+            (Type::U128 | Type::I128, Type::Felt) => self.trunc_i128_to_felt(span),
             // Truncating a 128-bit integer to 64 bits or smaller
-            (Type::U128 | Type::I128, _) if n <= 64 => self.trunc_i128(n),
+            (Type::U128 | Type::I128, _) if n <= 64 => self.trunc_i128(n, span),
             // Truncating i64/u64 to felt
-            (Type::I64 | Type::U64, Type::Felt) => self.trunc_int64_to_felt(),
+            (Type::I64 | Type::U64, Type::Felt) => self.trunc_int64_to_felt(span),
             // Truncating i64 to u64, and vice versa is a bitcast
             (Type::I64 | Type::U64, Type::U64 | Type::I64) => (),
             // Truncating a u64/i64 to 32 bits or smaller
-            (Type::I64 | Type::U64, _) if n <= 32 => self.trunc_int64(n),
+            (Type::I64 | Type::U64, _) if n <= 32 => self.trunc_int64(n, span),
             // Truncating a felt to 32 bits or smaller
-            (Type::Felt, _) if n <= 32 => self.trunc_felt(n),
+            (Type::Felt, _) if n <= 32 => self.trunc_felt(n, span),
             // Truncating i32 to u32, and vice versa is a bitcast
             (Type::I32 | Type::U32, Type::U32 | Type::I32) => (),
             // Truncating an i32/u32 to smaller than 32 bits
-            (Type::I32 | Type::U32, _) if n <= 32 => self.trunc_int32(n),
+            (Type::I32 | Type::U32, _) if n <= 32 => self.trunc_int32(n, span),
             // Truncating i16 to u16, and vice versa is a bitcast
             (Type::I16 | Type::U16, Type::U16 | Type::I16) => (),
             // Truncating an i16/u16 to smaller than 16 bits
-            (Type::I16 | Type::U16, _) if n <= 16 => self.trunc_int32(n),
+            (Type::I16 | Type::U16, _) if n <= 16 => self.trunc_int32(n, span),
             // Truncating i8 to u8, and vice versa is a bitcast
             (Type::I8 | Type::U8, Type::U8 | Type::I8) => (),
             // Truncating an i8/u8 to smaller than 8 bits
-            (Type::I8 | Type::U8, _) if n <= 8 => self.trunc_int32(n),
+            (Type::I8 | Type::U8, _) if n <= 8 => self.trunc_int32(n, span),
             (src, dst) => unimplemented!("unsupported truncation of {src} to {dst}"),
         }
         self.stack.push(dst.clone());
@@ -93,7 +93,7 @@ impl<'a> OpEmitter<'a> {
     /// This function assumes that an integer value of type `src` is on top of the operand stack,
     /// and will ensure a value of type `dst` is on the operand stack after truncation, or that
     /// execution traps.
-    pub fn zext(&mut self, dst: &Type) {
+    pub fn zext(&mut self, dst: &Type, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
         let src_bits = src.size_in_bits() as u32;
@@ -106,13 +106,13 @@ impl<'a> OpEmitter<'a> {
             // If the types are equivalent, it's a no-op, but only if they are integers
             (src, dst) if src == dst => (),
             // Zero-extending a u64 to i128 simply requires pushing a 0u64 on the stack
-            (Type::U64, Type::U128 | Type::I128) => self.push_u64(0),
-            (Type::Felt, Type::U64 | Type::U128 | Type::I128) => self.zext_felt(dst_bits),
+            (Type::U64, Type::U128 | Type::I128) => self.push_u64(0, span),
+            (Type::Felt, Type::U64 | Type::U128 | Type::I128) => self.zext_felt(dst_bits, span),
             (Type::U32, Type::U64 | Type::I64 | Type::U128 | Type::I128) => {
-                self.zext_int32(dst_bits)
+                self.zext_int32(dst_bits, span)
             }
             (Type::I1 | Type::U8 | Type::U16, Type::U64 | Type::I64 | Type::U128 | Type::I128) => {
-                self.zext_smallint(src_bits, dst_bits)
+                self.zext_smallint(src_bits, dst_bits, span)
             }
             // Zero-extending to u32/i32 from smaller integers is a no-op
             (Type::I1 | Type::U8 | Type::U16, Type::U32 | Type::I32) => (),
@@ -153,7 +153,7 @@ impl<'a> OpEmitter<'a> {
     /// This function assumes that an integer value of type `src` is on top of the operand stack,
     /// and will ensure a value of type `dst` is on the operand stack after truncation, or that
     /// execution traps.
-    pub fn sext(&mut self, dst: &Type) {
+    pub fn sext(&mut self, dst: &Type, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
         assert!(
@@ -170,19 +170,19 @@ impl<'a> OpEmitter<'a> {
         match (&src, dst) {
             // If the types are equivalent, it's a no-op
             (src, dst) if src == dst => (),
-            (Type::U64 | Type::I64, Type::I128) => self.sext_int64(128),
-            (Type::Felt, Type::I64 | Type::I128) => self.sext_felt(dst_bits),
-            (Type::I32 | Type::U32, Type::I64 | Type::I128) => self.sext_int32(dst_bits),
+            (Type::U64 | Type::I64, Type::I128) => self.sext_int64(128, span),
+            (Type::Felt, Type::I64 | Type::I128) => self.sext_felt(dst_bits, span),
+            (Type::I32 | Type::U32, Type::I64 | Type::I128) => self.sext_int32(dst_bits, span),
             (
                 Type::I1 | Type::I8 | Type::U8 | Type::I16 | Type::U16,
                 Type::I32 | Type::I64 | Type::I128,
-            ) => self.sext_smallint(src_bits, dst_bits),
+            ) => self.sext_smallint(src_bits, dst_bits, span),
             (src, dst) => panic!("unsupported sign-extension from {src} to {dst}"),
         }
         self.stack.push(dst.clone());
     }
 
-    pub fn bitcast(&mut self, dst: &Type) {
+    pub fn bitcast(&mut self, dst: &Type, _span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
         assert!(
@@ -216,7 +216,7 @@ impl<'a> OpEmitter<'a> {
     /// This function assumes that an integer value of type `src` is on top of the operand stack,
     /// and will ensure a value of type `dst` is on the operand stack after truncation, or that
     /// execution traps.
-    pub fn cast(&mut self, dst: &Type) {
+    pub fn cast(&mut self, dst: &Type, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let src = arg.ty();
         assert!(
@@ -228,118 +228,121 @@ impl<'a> OpEmitter<'a> {
         let dst_bits = dst.size_in_bits() as u32;
         match (&src, dst) {
             // u128
-            (Type::U128, Type::I128) => self.assert_unsigned_int128(),
-            (Type::U128, Type::I64) => self.u128_to_i64(),
-            (Type::U128 | Type::I128, Type::U64) => self.int128_to_u64(),
-            (Type::U128 | Type::I128, Type::Felt) => self.int128_to_felt(),
-            (Type::U128 | Type::I128, Type::U32) => self.int128_to_u32(),
+            (Type::U128, Type::I128) => self.assert_unsigned_int128(span),
+            (Type::U128, Type::I64) => self.u128_to_i64(span),
+            (Type::U128 | Type::I128, Type::U64) => self.int128_to_u64(span),
+            (Type::U128 | Type::I128, Type::Felt) => self.int128_to_felt(span),
+            (Type::U128 | Type::I128, Type::U32) => self.int128_to_u32(span),
             (Type::U128 | Type::I128, Type::U16 | Type::U8 | Type::I1) => {
-                self.int128_to_u32();
-                self.int32_to_uint(dst_bits);
+                self.int128_to_u32(span);
+                self.int32_to_uint(dst_bits, span);
             }
             (Type::U128, Type::I32) => {
-                self.int128_to_u32();
-                self.assert_unsigned_int32();
+                self.int128_to_u32(span);
+                self.assert_unsigned_int32(span);
             }
             (Type::U128, Type::I16 | Type::I8) => {
-                self.int128_to_u32();
-                self.int32_to_int(dst_bits);
+                self.int128_to_u32(span);
+                self.int32_to_int(dst_bits, span);
             }
             // i128
-            (Type::I128, Type::I64) => self.i128_to_i64(),
+            (Type::I128, Type::I64) => self.i128_to_i64(span),
             (Type::I128, Type::I32 | Type::I16 | Type::I8) => {
-                self.i128_to_i64();
-                self.i64_to_int(dst_bits);
+                self.i128_to_i64(span);
+                self.i64_to_int(dst_bits, span);
             }
             // i64
-            (Type::I64, Type::I128) => self.sext_int64(128),
-            (Type::I64, Type::U128) => self.zext_int64(128),
-            (Type::I64, Type::U64) => self.assert_unsigned_int64(),
-            (Type::I64, Type::Felt) => self.i64_to_felt(),
+            (Type::I64, Type::I128) => self.sext_int64(128, span),
+            (Type::I64, Type::U128) => self.zext_int64(128, span),
+            (Type::I64, Type::U64) => self.assert_unsigned_int64(span),
+            (Type::I64, Type::Felt) => self.i64_to_felt(span),
             (Type::I64, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
-                self.assert_unsigned_int64();
-                self.u64_to_uint(dst_bits);
+                self.assert_unsigned_int64(span);
+                self.u64_to_uint(dst_bits, span);
             }
             (Type::I64, Type::I32 | Type::I16 | Type::I8) => {
-                self.i64_to_int(dst_bits);
+                self.i64_to_int(dst_bits, span);
             }
             // u64
-            (Type::U64, Type::I128 | Type::U128) => self.zext_int64(128),
-            (Type::U64, Type::I64) => self.assert_i64(),
-            (Type::U64, Type::Felt) => self.u64_to_felt(),
+            (Type::U64, Type::I128 | Type::U128) => self.zext_int64(128, span),
+            (Type::U64, Type::I64) => self.assert_i64(span),
+            (Type::U64, Type::Felt) => self.u64_to_felt(span),
             (Type::U64, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
-                self.u64_to_uint(dst_bits);
+                self.u64_to_uint(dst_bits, span);
             }
             (Type::U64, Type::I32 | Type::I16 | Type::I8) => {
                 // Convert to N bits as unsigned
-                self.u64_to_uint(dst_bits);
+                self.u64_to_uint(dst_bits, span);
                 // Verify that the input value is still unsigned
-                self.assert_unsigned_smallint(dst_bits);
+                self.assert_unsigned_smallint(dst_bits, span);
             }
             // felt
-            (Type::Felt, Type::I64 | Type::I128) => self.sext_felt(dst_bits),
-            (Type::Felt, Type::U128) => self.zext_felt(dst_bits),
-            (Type::Felt, Type::U64) => self.felt_to_u64(),
+            (Type::Felt, Type::I64 | Type::I128) => self.sext_felt(dst_bits, span),
+            (Type::Felt, Type::U128) => self.zext_felt(dst_bits, span),
+            (Type::Felt, Type::U64) => self.felt_to_u64(span),
             (Type::Felt, Type::U32 | Type::U16 | Type::U8 | Type::I1) => {
-                self.felt_to_uint(dst_bits);
+                self.felt_to_uint(dst_bits, span);
             }
             (Type::Felt, Type::I32 | Type::I16 | Type::I8) => {
-                self.felt_to_int(dst_bits);
+                self.felt_to_int(dst_bits, span);
             }
             // u32
-            (Type::U32, Type::I64 | Type::U64 | Type::I128) => self.zext_int32(dst_bits),
-            (Type::U32, Type::I32) => self.assert_i32(),
+            (Type::U32, Type::I64 | Type::U64 | Type::I128) => self.zext_int32(dst_bits, span),
+            (Type::U32, Type::I32) => self.assert_i32(span),
             (Type::U32, Type::U16 | Type::U8 | Type::I1) => {
-                self.int32_to_uint(dst_bits);
+                self.int32_to_uint(dst_bits, span);
             }
-            (Type::U32, Type::I16 | Type::I8) => self.int32_to_int(dst_bits),
+            (Type::U32, Type::I16 | Type::I8) => self.int32_to_int(dst_bits, span),
             // i32
-            (Type::I32, Type::I64 | Type::I128) => self.sext_int32(dst_bits),
+            (Type::I32, Type::I64 | Type::I128) => self.sext_int32(dst_bits, span),
             (Type::I32, Type::U64) => {
-                self.assert_i32();
-                self.emit(Op::PushU32(0));
+                self.assert_i32(span);
+                self.emit(Op::PushU32(0), span);
             }
             (Type::I32, Type::U32) => {
-                self.assert_i32();
+                self.assert_i32(span);
             }
             (Type::I32, Type::U16 | Type::U8 | Type::I1) => {
-                self.int32_to_uint(dst_bits);
+                self.int32_to_uint(dst_bits, span);
             }
-            (Type::I32, Type::I16 | Type::I8) => self.int32_to_int(dst_bits),
+            (Type::I32, Type::I16 | Type::I8) => self.int32_to_int(dst_bits, span),
             // i8/i16
             (Type::I8 | Type::I16, Type::I32 | Type::I64 | Type::I128) => {
-                self.sext_smallint(src_bits, dst_bits);
+                self.sext_smallint(src_bits, dst_bits, span);
             }
             (Type::I8 | Type::I16, Type::U32 | Type::U64) => {
-                self.assert_unsigned_smallint(src_bits);
-                self.zext_smallint(src_bits, dst_bits);
+                self.assert_unsigned_smallint(src_bits, span);
+                self.zext_smallint(src_bits, dst_bits, span);
             }
             (Type::I16, Type::U16) | (Type::I8, Type::U8) => {
-                self.assert_unsigned_smallint(src_bits);
+                self.assert_unsigned_smallint(src_bits, span);
             }
-            (Type::I16, Type::U8 | Type::I1) => self.int32_to_int(dst_bits),
-            (Type::I16, Type::I8) => self.int32_to_int(dst_bits),
+            (Type::I16, Type::U8 | Type::I1) => self.int32_to_int(dst_bits, span),
+            (Type::I16, Type::I8) => self.int32_to_int(dst_bits, span),
             (Type::I8, Type::I1) => {
-                self.emit_all(&[
-                    // Assert that input is either 0 or 1
-                    //
-                    // NOTE: The comparison here is unsigned, so the sign
-                    // bit being set will make the i8 larger than 0 or 1
-                    Op::Dup(0),
-                    Op::PushU32(2),
-                    Op::Lt,
-                    Op::Assert,
-                ]);
+                self.emit_all(
+                    &[
+                        // Assert that input is either 0 or 1
+                        //
+                        // NOTE: The comparison here is unsigned, so the sign
+                        // bit being set will make the i8 larger than 0 or 1
+                        Op::Dup(0),
+                        Op::PushU32(2),
+                        Op::Lt,
+                        Op::Assert,
+                    ],
+                    span,
+                );
             }
             // i1
-            (Type::I1, _) => self.zext_smallint(src_bits, dst_bits),
+            (Type::I1, _) => self.zext_smallint(src_bits, dst_bits, span),
             (src, dst) => unimplemented!("unsupported cast from {src} to {dst}"),
         }
         self.stack.push(dst.clone());
     }
 
     /// Cast `arg` to a pointer value
-    pub fn inttoptr(&mut self, ty: &Type) {
+    pub fn inttoptr(&mut self, ty: &Type, span: SourceSpan) {
         assert!(ty.is_pointer(), "exected pointer typed argument");
         // For now, we're strict about the types of values we'll allow casting from
         let arg = self.stack.pop().expect("operand stack is empty");
@@ -349,7 +352,7 @@ impl<'a> OpEmitter<'a> {
                 self.stack.push(ty.clone());
             }
             Type::Felt => {
-                self.emit(Op::U32Assert);
+                self.emit(Op::U32Assert, span);
                 self.stack.push(ty.clone());
             }
             int => panic!("invalid inttoptr cast: cannot cast value of type {int} to {ty}"),
@@ -361,7 +364,7 @@ impl<'a> OpEmitter<'a> {
     /// The result is placed on the stack as a boolean value.
     ///
     /// This operation consumes the input operand.
-    pub fn is_odd(&mut self) {
+    pub fn is_odd(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             // For both signed and unsigned types,
@@ -377,17 +380,17 @@ impl<'a> OpEmitter<'a> {
             | Type::U32
             | Type::I32
             | Type::Felt => {
-                self.emit(Op::IsOdd);
+                self.emit(Op::IsOdd, span);
             }
             // For i64/u64, we use the native instruction
             // on the lower limb to check for odd/even
             Type::I64 | Type::U64 => {
-                self.emit_all(&[Op::Drop, Op::IsOdd]);
+                self.emit_all(&[Op::Drop, Op::IsOdd], span);
             }
             // For i128, same as above, but more elements are dropped
             Type::I128 | Type::U128 => {
-                self.emit_n(3, Op::Drop);
-                self.emit(Op::IsOdd);
+                self.emit_n(3, Op::Drop, span);
+                self.emit(Op::IsOdd, span);
             }
             Type::F64 => {
                 unimplemented!("is_odd support for floating-point values is not yet implemented")
@@ -401,43 +404,49 @@ impl<'a> OpEmitter<'a> {
     /// place the result back on the operand stack as a u32 value.
     ///
     /// This operation consumes the input operand.
-    pub fn ilog2(&mut self) {
+    pub fn ilog2(&mut self, span: SourceSpan) {
         let ty = self.stack.peek().expect("operand stack is empty").ty();
         match &ty {
-            Type::Felt => self.emit(Op::Ilog2),
+            Type::Felt => self.emit(Op::Ilog2, span),
             Type::I128 | Type::U128 | Type::I64 | Type::U64 => {
                 // Compute the number of leading zeros
                 //
                 // NOTE: This function handles popping the input and pushing
                 // a u32 result on the stack for us, so we can omit any stack
                 // manipulation here.
-                self.clz();
+                self.clz(span);
                 let bits = ty.size_in_bits();
                 // ilog2 is bits - clz - 1
-                self.emit_all(&[
-                    Op::PushU8(bits as u8),
-                    Op::Swap(1),
-                    Op::Sub,
-                    Op::U32OverflowingSubImm(1),
-                    Op::Assertz,
-                ]);
+                self.emit_all(
+                    &[
+                        Op::PushU8(bits as u8),
+                        Op::Swap(1),
+                        Op::Sub,
+                        Op::U32OverflowingSubImm(1),
+                        Op::Assertz,
+                    ],
+                    span,
+                );
             }
             Type::I32 | Type::U32 | Type::I16 | Type::U16 | Type::I8 | Type::U8 => {
                 let _ = self.stack.pop();
-                self.emit_all(&[
-                    // Compute ilog2 on the advice stack
-                    Op::Ilog2,
-                    // Drop the operand
-                    Op::Drop,
-                    // Move the result to the operand stack
-                    Op::AdvPush(1),
-                ]);
+                self.emit_all(
+                    &[
+                        // Compute ilog2 on the advice stack
+                        Op::Ilog2,
+                        // Drop the operand
+                        Op::Drop,
+                        // Move the result to the operand stack
+                        Op::AdvPush(1),
+                    ],
+                    span,
+                );
                 self.stack.push(Type::U32);
             }
             Type::I1 => {
                 // 2^0 == 1
                 let _ = self.stack.pop();
-                self.emit_all(&[Op::Drop, Op::PushU8(0)]);
+                self.emit_all(&[Op::Drop, Op::PushU8(0)], span);
                 self.stack.push(Type::U32);
             }
             ty if !ty.is_integer() => {
@@ -451,46 +460,52 @@ impl<'a> OpEmitter<'a> {
     /// and place the count back on the stack as a u32 value.
     ///
     /// This operation consumes the input operand.
-    pub fn popcnt(&mut self) {
+    pub fn popcnt(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
-                self.emit_all(&[
-                    // [x3, x2, x1, x0]
-                    Op::U32Popcnt,
-                    // [popcnt3, x2, x1, x0]
-                    Op::Swap(1),
-                    // [x2, popcnt3, x1, x0]
-                    Op::U32Popcnt,
-                    // [popcnt2, popcnt3, x1, x0]
-                    Op::Add,
-                    // [popcnt_hi, x1, x0]
-                    Op::Movdn(2),
-                    // [x1, x0, popcnt]
-                    Op::U32Popcnt,
-                    // [popcnt1, x0, popcnt]
-                    Op::Swap(1),
-                    // [x0, popcnt1, popcnt]
-                    Op::U32Popcnt,
-                    // [popcnt0, popcnt1, popcnt]
-                    //
-                    // This last instruction adds all three values together mod 2^32
-                    Op::U32WrappingAdd3,
-                ]);
+                self.emit_all(
+                    &[
+                        // [x3, x2, x1, x0]
+                        Op::U32Popcnt,
+                        // [popcnt3, x2, x1, x0]
+                        Op::Swap(1),
+                        // [x2, popcnt3, x1, x0]
+                        Op::U32Popcnt,
+                        // [popcnt2, popcnt3, x1, x0]
+                        Op::Add,
+                        // [popcnt_hi, x1, x0]
+                        Op::Movdn(2),
+                        // [x1, x0, popcnt]
+                        Op::U32Popcnt,
+                        // [popcnt1, x0, popcnt]
+                        Op::Swap(1),
+                        // [x0, popcnt1, popcnt]
+                        Op::U32Popcnt,
+                        // [popcnt0, popcnt1, popcnt]
+                        //
+                        // This last instruction adds all three values together mod 2^32
+                        Op::U32WrappingAdd3,
+                    ],
+                    span,
+                );
             }
             Type::I64 | Type::U64 => {
-                self.emit_all(&[
-                    // Get popcnt of high bits
-                    Op::U32Popcnt,
-                    // Swap to low bits and repeat
-                    Op::Swap(1),
-                    Op::U32Popcnt,
-                    // Add both counts to get the total count
-                    Op::Add,
-                ]);
+                self.emit_all(
+                    &[
+                        // Get popcnt of high bits
+                        Op::U32Popcnt,
+                        // Swap to low bits and repeat
+                        Op::Swap(1),
+                        Op::U32Popcnt,
+                        // Add both counts to get the total count
+                        Op::Add,
+                    ],
+                    span,
+                );
             }
             Type::I32 | Type::U32 | Type::I16 | Type::U16 | Type::I8 | Type::U8 | Type::I1 => {
-                self.emit(Op::U32Popcnt);
+                self.emit(Op::U32Popcnt, span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid popcnt on {ty}: only integral types are supported")
@@ -504,7 +519,7 @@ impl<'a> OpEmitter<'a> {
     /// and place the count back on the stack as a u32 value.
     ///
     /// This operation is implemented so that it consumes the input operand.
-    pub fn clz(&mut self) {
+    pub fn clz(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
@@ -513,51 +528,61 @@ impl<'a> OpEmitter<'a> {
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all zero,
                 // otherwise we take just the high bit count.
-                self.emit_all(&[
-                    // Count leading zeros in the high bits
-                    Op::Exec(u64_clz), // [hi_clz, lo_hi, lo_lo]
-                    // Count leading zeros in the low bits
-                    Op::Movup(2),      // [lo_lo, hi_clz, lo_hi]
-                    Op::Movup(2),      // [lo_hi, lo_lo, hi_clz]
-                    Op::Exec(u64_clz), // [lo_clz, hi_clz]
-                    // Add the low bit leading zeros to those of the high bits, if the high bits
-                    // are all zeros; otherwise return only the high bit count
-                    Op::PushU32(0),           // [0, lo_clz, hi_clz]
-                    Op::Dup(2),               // [hi_clz, 0, lo_clz, hi_clz]
-                    Op::LtImm(Felt::new(32)), // [hi_clz < 32, 0, lo_clz, hi_clz]
-                    Op::Cdrop,                // [hi_clz < 32 ? 0 : lo_clz, hi_clz]
-                    Op::Add,
-                ]);
+                self.emit_all(
+                    &[
+                        // Count leading zeros in the high bits
+                        Op::Exec(u64_clz), // [hi_clz, lo_hi, lo_lo]
+                        // Count leading zeros in the low bits
+                        Op::Movup(2),      // [lo_lo, hi_clz, lo_hi]
+                        Op::Movup(2),      // [lo_hi, lo_lo, hi_clz]
+                        Op::Exec(u64_clz), // [lo_clz, hi_clz]
+                        // Add the low bit leading zeros to those of the high bits, if the high
+                        // bits are all zeros; otherwise return only the
+                        // high bit count
+                        Op::PushU32(0),           // [0, lo_clz, hi_clz]
+                        Op::Dup(2),               // [hi_clz, 0, lo_clz, hi_clz]
+                        Op::LtImm(Felt::new(32)), // [hi_clz < 32, 0, lo_clz, hi_clz]
+                        Op::Cdrop,                // [hi_clz < 32 ? 0 : lo_clz, hi_clz]
+                        Op::Add,
+                    ],
+                    span,
+                );
             }
             Type::I64 | Type::U64 => {
-                self.emit(Op::Exec("std::math::u64::clz".parse().unwrap()));
+                self.emit(Op::Exec("std::math::u64::clz".parse().unwrap()), span);
             }
             Type::I32 | Type::U32 => {
-                self.emit(Op::U32Clz);
+                self.emit(Op::U32Clz, span);
             }
             Type::I16 | Type::U16 => {
                 // There are always 16 leading zeroes from the perspective of the
                 // MASM u32clz instruction for values of (i|u)16 type, so subtract
                 // that from the count
-                self.emit_all(&[
-                    Op::U32Clz,
-                    // Subtract the excess bits from the count
-                    Op::U32WrappingSubImm(16),
-                ]);
+                self.emit_all(
+                    &[
+                        Op::U32Clz,
+                        // Subtract the excess bits from the count
+                        Op::U32WrappingSubImm(16),
+                    ],
+                    span,
+                );
             }
             Type::I8 | Type::U8 => {
                 // There are always 24 leading zeroes from the perspective of the
                 // MASM u32clz instruction for values of (i|u)8 type, so subtract
                 // that from the count
-                self.emit_all(&[
-                    Op::U32Clz,
-                    // Subtract the excess bits from the count
-                    Op::U32WrappingSubImm(24),
-                ]);
+                self.emit_all(
+                    &[
+                        Op::U32Clz,
+                        // Subtract the excess bits from the count
+                        Op::U32WrappingSubImm(24),
+                    ],
+                    span,
+                );
             }
             Type::I1 => {
                 // There is exactly one leading zero if false, or zero if true
-                self.emit(Op::EqImm(Felt::ZERO));
+                self.emit(Op::EqImm(Felt::ZERO), span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid clz on {ty}: only integral types are supported")
@@ -571,7 +596,7 @@ impl<'a> OpEmitter<'a> {
     /// and place the count back on the stack as a u32 value.
     ///
     /// This operation is implemented so that it consumes the input operand.
-    pub fn clo(&mut self) {
+    pub fn clo(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             // The implementation here is effectively the same as `clz`, just with minor adjustments
@@ -581,59 +606,70 @@ impl<'a> OpEmitter<'a> {
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all one,
                 // otherwise we take just the high bit count.
-                self.emit_all(&[
-                    // Count leading ones in the high bits
-                    Op::Exec(u64_clo), // [hi_clo, lo_hi, lo_lo]
-                    // Count leading ones in the low bits
-                    Op::Movup(2),      // [lo_lo, hi_clo, lo_hi]
-                    Op::Movup(2),      // [lo_hi, lo_lo, hi_clo]
-                    Op::Exec(u64_clo), // [lo_clo, hi_clo]
-                    // Add the low bit leading ones to those of the high bits, if the high bits
-                    // are all one; otherwise return only the high bit count
-                    Op::PushU32(0),           // [0, lo_clo, hi_clo]
-                    Op::Dup(2),               // [hi_clo, 0, lo_clo, hi_clo]
-                    Op::LtImm(Felt::new(32)), // [hi_clo < 32, 0, lo_clo, hi_clo]
-                    Op::Cdrop,                // [hi_clo < 32 ? 0 : lo_clo, hi_clo]
-                    Op::Add,
-                ]);
+                self.emit_all(
+                    &[
+                        // Count leading ones in the high bits
+                        Op::Exec(u64_clo), // [hi_clo, lo_hi, lo_lo]
+                        // Count leading ones in the low bits
+                        Op::Movup(2),      // [lo_lo, hi_clo, lo_hi]
+                        Op::Movup(2),      // [lo_hi, lo_lo, hi_clo]
+                        Op::Exec(u64_clo), // [lo_clo, hi_clo]
+                        // Add the low bit leading ones to those of the high bits, if the high bits
+                        // are all one; otherwise return only the high bit count
+                        Op::PushU32(0),           // [0, lo_clo, hi_clo]
+                        Op::Dup(2),               // [hi_clo, 0, lo_clo, hi_clo]
+                        Op::LtImm(Felt::new(32)), // [hi_clo < 32, 0, lo_clo, hi_clo]
+                        Op::Cdrop,                // [hi_clo < 32 ? 0 : lo_clo, hi_clo]
+                        Op::Add,
+                    ],
+                    span,
+                );
             }
-            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::clo".parse().unwrap())),
+            Type::I64 | Type::U64 => {
+                self.emit(Op::Exec("std::math::u64::clo".parse().unwrap()), span)
+            }
             Type::I32 | Type::U32 => {
-                self.emit(Op::U32Clo);
+                self.emit(Op::U32Clo, span);
             }
             Type::I16 | Type::U16 => {
                 // There are always 16 leading zeroes from the perspective of the
                 // MASM u32clo instruction for values of (i|u)16 type, so to get
                 // the correct count, we need to bitwise-OR in a 16 bits of leading
                 // ones, then subtract that from the final count.
-                self.emit_all(&[
-                    // OR in the leading 16 ones
-                    Op::PushU32(u32::MAX << 16),
-                    Op::U32Or,
-                    // Obtain the count
-                    Op::U32Clo,
-                    // Subtract the leading bits we added from the count
-                    Op::U32WrappingSubImm(16),
-                ]);
+                self.emit_all(
+                    &[
+                        // OR in the leading 16 ones
+                        Op::PushU32(u32::MAX << 16),
+                        Op::U32Or,
+                        // Obtain the count
+                        Op::U32Clo,
+                        // Subtract the leading bits we added from the count
+                        Op::U32WrappingSubImm(16),
+                    ],
+                    span,
+                );
             }
             Type::I8 | Type::U8 => {
                 // There are always 24 leading zeroes from the perspective of the
                 // MASM u32clo instruction for values of (i|u)8 type, so as with the
                 // 16-bit values, we need to bitwise-OR in 24 bits of leading ones,
                 // then subtract them from the final count.
-                self.emit_all(&[
-                    // OR in the leading 24 ones
-                    Op::PushU32(u32::MAX << 8),
-                    Op::U32Or,
-                    // Obtain the count
-                    Op::U32Clo,
-                    // Subtract the excess bits from the count
-                    Op::U32WrappingSubImm(24),
-                ]);
+                self.emit_all(
+                    &[
+                        // OR in the leading 24 ones
+                        Op::PushU32(u32::MAX << 8),
+                        Op::U32Or,
+                        // Obtain the count
+                        Op::U32Clo,
+                        // Subtract the excess bits from the count
+                        Op::U32WrappingSubImm(24),
+                    ],
+                    span,
+                );
             }
             Type::I1 => {
                 // There is exactly one leading one if true, or zero if false
-                self.emit(Op::EqImm(Felt::ONE));
+                self.emit(Op::EqImm(Felt::ONE), span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid clo on {ty}: only integral types are supported")
@@ -647,7 +683,7 @@ impl<'a> OpEmitter<'a> {
     /// and place the count back on the stack as a u32 value.
     ///
     /// This operation is implemented so that it consumes the input operand.
-    pub fn ctz(&mut self) {
+    pub fn ctz(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
@@ -656,60 +692,72 @@ impl<'a> OpEmitter<'a> {
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all one,
                 // otherwise we take just the high bit count.
-                self.emit_all(&[
-                    // Count trailing zeros in the high bits
-                    Op::Exec(u64_ctz), // [hi_ctz, lo_hi, lo_lo]
-                    // Count trailing zeros in the low bits
-                    Op::Movup(2),      // [lo_lo, hi_ctz, lo_hi]
-                    Op::Movup(2),      // [lo_hi, lo_lo, hi_ctz]
-                    Op::Exec(u64_ctz), // [lo_ctz, hi_ctz]
-                    // Add the high bit trailing zeros to those of the low bits, if the low bits
-                    // are all zero; otherwise return only the low bit count
-                    Op::Swap(1),
-                    Op::PushU32(0),           // [0, hi_ctz, lo_ctz]
-                    Op::Dup(2),               // [lo_ctz, 0, hi_ctz, lo_ctz]
-                    Op::LtImm(Felt::new(32)), // [lo_ctz < 32, 0, hi_ctz, lo_ctz]
-                    Op::Cdrop,                // [lo_ctz < 32 ? 0 : hi_ctz, lo_ctz]
-                    Op::Add,
-                ]);
+                self.emit_all(
+                    &[
+                        // Count trailing zeros in the high bits
+                        Op::Exec(u64_ctz), // [hi_ctz, lo_hi, lo_lo]
+                        // Count trailing zeros in the low bits
+                        Op::Movup(2),      // [lo_lo, hi_ctz, lo_hi]
+                        Op::Movup(2),      // [lo_hi, lo_lo, hi_ctz]
+                        Op::Exec(u64_ctz), // [lo_ctz, hi_ctz]
+                        // Add the high bit trailing zeros to those of the low bits, if the low
+                        // bits are all zero; otherwise return only the low
+                        // bit count
+                        Op::Swap(1),
+                        Op::PushU32(0),           // [0, hi_ctz, lo_ctz]
+                        Op::Dup(2),               // [lo_ctz, 0, hi_ctz, lo_ctz]
+                        Op::LtImm(Felt::new(32)), // [lo_ctz < 32, 0, hi_ctz, lo_ctz]
+                        Op::Cdrop,                // [lo_ctz < 32 ? 0 : hi_ctz, lo_ctz]
+                        Op::Add,
+                    ],
+                    span,
+                );
             }
-            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::ctz".parse().unwrap())),
-            Type::I32 | Type::U32 => self.emit(Op::U32Ctz),
+            Type::I64 | Type::U64 => {
+                self.emit(Op::Exec("std::math::u64::ctz".parse().unwrap()), span)
+            }
+            Type::I32 | Type::U32 => self.emit(Op::U32Ctz, span),
             Type::I16 | Type::U16 => {
                 // Clamp the total number of trailing zeros to 16
-                self.emit_all(&[
-                    // Obtain the count
-                    Op::U32Ctz,
-                    // Clamp to 16
-                    //   operand_stack: [16, ctz]
-                    Op::PushU8(16),
-                    //   operand_stack: [ctz, 16, ctz]
-                    Op::Dup(1),
-                    //   operand_stack: [ctz >= 16, 16, ctz]
-                    Op::GteImm(Felt::new(16)),
-                    //   operand_stack: [actual_ctz]
-                    Op::Cdrop,
-                ]);
+                self.emit_all(
+                    &[
+                        // Obtain the count
+                        Op::U32Ctz,
+                        // Clamp to 16
+                        //   operand_stack: [16, ctz]
+                        Op::PushU8(16),
+                        //   operand_stack: [ctz, 16, ctz]
+                        Op::Dup(1),
+                        //   operand_stack: [ctz >= 16, 16, ctz]
+                        Op::GteImm(Felt::new(16)),
+                        //   operand_stack: [actual_ctz]
+                        Op::Cdrop,
+                    ],
+                    span,
+                );
             }
             Type::I8 | Type::U8 => {
                 // Clamp the total number of trailing zeros to 8
-                self.emit_all(&[
-                    // Obtain the count
-                    Op::U32Ctz,
-                    // Clamp to 8
-                    //   operand_stack: [8, ctz]
-                    Op::PushU8(8),
-                    //   operand_stack: [ctz, 8, ctz]
-                    Op::Dup(1),
-                    //   operand_stack: [ctz >= 8, 8, ctz]
-                    Op::GteImm(Felt::new(8)),
-                    //   operand_stack: [actual_ctz]
-                    Op::Cdrop,
-                ]);
+                self.emit_all(
+                    &[
+                        // Obtain the count
+                        Op::U32Ctz,
+                        // Clamp to 8
+                        //   operand_stack: [8, ctz]
+                        Op::PushU8(8),
+                        //   operand_stack: [ctz, 8, ctz]
+                        Op::Dup(1),
+                        //   operand_stack: [ctz >= 8, 8, ctz]
+                        Op::GteImm(Felt::new(8)),
+                        //   operand_stack: [actual_ctz]
+                        Op::Cdrop,
+                    ],
+                    span,
+                );
             }
             Type::I1 => {
                 // There is exactly one trailing zero if false, or zero if true
-                self.emit(Op::EqImm(Felt::ZERO));
+                self.emit(Op::EqImm(Felt::ZERO), span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid ctz on {ty}: only integral types are supported")
@@ -723,7 +771,7 @@ impl<'a> OpEmitter<'a> {
     /// and place the count back on the stack as a u32 value.
     ///
     /// This operation is implemented so that it consumes the input operand.
-    pub fn cto(&mut self) {
+    pub fn cto(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         match arg.ty() {
             Type::I128 | Type::U128 => {
@@ -732,32 +780,37 @@ impl<'a> OpEmitter<'a> {
                 // library intrinsics to get the count for those limbs. We then add the count
                 // for the low bits to that of the high bits, if the high bits are all one,
                 // otherwise we take just the high bit count.
-                self.emit_all(&[
-                    // Count trailing ones in the high bits
-                    Op::Exec(u64_cto), // [hi_cto, lo_hi, lo_lo]
-                    // Count trailing ones in the low bits
-                    Op::Movup(2),      // [lo_lo, hi_cto, lo_hi]
-                    Op::Movup(2),      // [lo_hi, lo_lo, hi_cto]
-                    Op::Exec(u64_cto), // [lo_cto, hi_cto]
-                    // Add the high bit trailing ones to those of the low bits, if the low bits
-                    // are all one; otherwise return only the low bit count
-                    Op::Swap(1),
-                    Op::PushU32(0),           // [0, hi_cto, lo_cto]
-                    Op::Dup(2),               // [lo_cto, 0, hi_cto, lo_cto]
-                    Op::LtImm(Felt::new(32)), // [lo_cto < 32, 0, hi_cto, lo_cto]
-                    Op::Cdrop,                // [lo_cto < 32 ? 0 : hi_cto, lo_cto]
-                    Op::Add,
-                ]);
+                self.emit_all(
+                    &[
+                        // Count trailing ones in the high bits
+                        Op::Exec(u64_cto), // [hi_cto, lo_hi, lo_lo]
+                        // Count trailing ones in the low bits
+                        Op::Movup(2),      // [lo_lo, hi_cto, lo_hi]
+                        Op::Movup(2),      // [lo_hi, lo_lo, hi_cto]
+                        Op::Exec(u64_cto), // [lo_cto, hi_cto]
+                        // Add the high bit trailing ones to those of the low bits, if the low bits
+                        // are all one; otherwise return only the low bit count
+                        Op::Swap(1),
+                        Op::PushU32(0),           // [0, hi_cto, lo_cto]
+                        Op::Dup(2),               // [lo_cto, 0, hi_cto, lo_cto]
+                        Op::LtImm(Felt::new(32)), // [lo_cto < 32, 0, hi_cto, lo_cto]
+                        Op::Cdrop,                // [lo_cto < 32 ? 0 : hi_cto, lo_cto]
+                        Op::Add,
+                    ],
+                    span,
+                );
             }
-            Type::I64 | Type::U64 => self.emit(Op::Exec("std::math::u64::cto".parse().unwrap())),
+            Type::I64 | Type::U64 => {
+                self.emit(Op::Exec("std::math::u64::cto".parse().unwrap()), span)
+            }
             Type::I32 | Type::U32 | Type::I16 | Type::U16 | Type::I8 | Type::U8 => {
                 // The number of trailing ones is de-facto clamped by the bitwidth of
                 // the value, since all of the padding bits are leading zeros.
-                self.emit(Op::U32Cto)
+                self.emit(Op::U32Cto, span)
             }
             Type::I1 => {
                 // There is exactly one trailing one if true, or zero if false
-                self.emit(Op::EqImm(Felt::ONE));
+                self.emit(Op::EqImm(Felt::ONE), span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid cto on {ty}: only integral types are supported")
@@ -772,11 +825,11 @@ impl<'a> OpEmitter<'a> {
     /// This has the effect of changing all 1 bits to 0s, and all 0 bits to 1s.
     ///
     /// This operation consumes the input operand.
-    pub fn bnot(&mut self) {
+    pub fn bnot(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let ty = arg.ty();
         match &ty {
-            Type::I1 => self.emit(Op::Not),
+            Type::I1 => self.emit(Op::Not, span),
             Type::I8
             | Type::U8
             | Type::I16
@@ -790,13 +843,18 @@ impl<'a> OpEmitter<'a> {
                 let num_elements = ty.size_in_bits() / 32;
                 match num_elements {
                     0 | 1 => {
-                        self.emit(Op::U32Not);
+                        self.emit(Op::U32Not, span);
                     }
                     2 => {
-                        self.emit_repeat(2, &[Op::Swap(1), Op::U32Not]);
+                        self.emit_repeat(
+                            2,
+                            &[Span::new(span, Op::Swap(1)), Span::new(span, Op::U32Not)],
+                        );
                     }
                     n => {
-                        self.emit_template(n, |n| [Op::Movup(n as u8), Op::U32Not]);
+                        self.emit_template(n, |n| {
+                            [Span::new(span, Op::Movup(n as u8)), Span::new(span, Op::U32Not)]
+                        });
                     }
                 }
             }
@@ -811,10 +869,10 @@ impl<'a> OpEmitter<'a> {
     /// Invert the boolean value on top of the operand stack.
     ///
     /// This operation consumes the input operand.
-    pub fn not(&mut self) {
+    pub fn not(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         assert_eq!(arg.ty(), Type::I1, "logical NOT requires a boolean value");
-        self.emit(Op::Not);
+        self.emit(Op::Not, span);
         self.stack.push(Type::I1);
     }
 
@@ -824,36 +882,39 @@ impl<'a> OpEmitter<'a> {
     /// The input value must be < 64, or execution will trap.
     ///
     /// This operation consumes the input operand.
-    pub fn pow2(&mut self) {
+    pub fn pow2(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let ty = arg.ty();
         match &ty {
             Type::U64 => {
-                self.emit_all(&[
-                    // Assert that the high bits are zero
-                    Op::Assertz,
-                    // This asserts if value > 63, thus result is guaranteed to fit in u64
-                    Op::Pow2,
-                    // Obtain the u64 representation by splitting the felt result
-                    Op::U32Split,
-                ]);
+                self.emit_all(
+                    &[
+                        // Assert that the high bits are zero
+                        Op::Assertz,
+                        // This asserts if value > 63, thus result is guaranteed to fit in u64
+                        Op::Pow2,
+                        // Obtain the u64 representation by splitting the felt result
+                        Op::U32Split,
+                    ],
+                    span,
+                );
             }
             Type::I64 => {
-                self.emit(Op::Exec("intrinsics::i64::pow2".parse().unwrap()));
+                self.emit(Op::Exec("intrinsics::i64::pow2".parse().unwrap()), span);
             }
             Type::Felt => {
-                self.emit(Op::Pow2);
+                self.emit(Op::Pow2, span);
             }
             Type::U32 => {
-                self.emit_all(&[Op::Pow2, Op::U32Assert]);
+                self.emit_all(&[Op::Pow2, Op::U32Assert], span);
             }
             Type::I32 => {
-                self.emit(Op::Exec("intrinsics::i32::pow2".parse().unwrap()));
+                self.emit(Op::Exec("intrinsics::i32::pow2".parse().unwrap()), span);
             }
             Type::U8 | Type::U16 => {
-                self.emit_all(&[Op::Pow2, Op::U32Assert]);
+                self.emit_all(&[Op::Pow2, Op::U32Assert], span);
                 // Cast u32 to u8/u16
-                self.int32_to_uint(ty.size_in_bits() as u32);
+                self.int32_to_uint(ty.size_in_bits() as u32, span);
             }
             ty if !ty.is_unsigned_integer() => {
                 panic!(
@@ -870,27 +931,27 @@ impl<'a> OpEmitter<'a> {
     /// The input value must be an integer, and overflow has wrapping semantics.
     ///
     /// This operation consumes the input operand.
-    pub fn incr(&mut self) {
+    pub fn incr(&mut self, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let ty = arg.ty();
         match &ty {
             // For this specific case, wrapping u64 arithmetic works for both i64/u64
             Type::I64 | Type::U64 => {
-                self.push_u64(1);
-                self.add_u64(Overflow::Wrapping);
+                self.push_u64(1, span);
+                self.add_u64(Overflow::Wrapping, span);
             }
             Type::Felt => {
-                self.emit(Op::Incr);
+                self.emit(Op::Incr, span);
             }
             // For this specific case, wrapping u32 arithmetic works for both i32/u32
             Type::I32 | Type::U32 => {
-                self.add_imm_u32(1, Overflow::Wrapping);
+                self.add_imm_u32(1, Overflow::Wrapping, span);
             }
             // We need to wrap the result for smallint types
             Type::I8 | Type::U8 | Type::I16 | Type::U16 => {
                 let bits = ty.size_in_bits() as u32;
-                self.add_imm_u32(1, Overflow::Wrapping);
-                self.unchecked_mod_imm_u32(2u32.pow(bits));
+                self.add_imm_u32(1, Overflow::Wrapping, span);
+                self.unchecked_mod_imm_u32(2u32.pow(bits), span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid unary operand: incr requires an integer operand, got {ty}")
@@ -904,12 +965,12 @@ impl<'a> OpEmitter<'a> {
     /// `n^-1 mod P`.
     ///
     /// This operation consumes the input operand.
-    pub fn inv(&mut self) {
+    pub fn inv(&mut self, span: SourceSpan) {
         let arg = self.pop().expect("operand stack is empty");
         let ty = arg.ty();
         match &ty {
             Type::Felt => {
-                self.emit(Op::Inv);
+                self.emit(Op::Inv, span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid unary operand: inv requires an integer, got {ty}")
@@ -922,12 +983,12 @@ impl<'a> OpEmitter<'a> {
     /// Compute the modular negation of the operand on top of the stack, `n`, i.e. `-n mod P`.
     ///
     /// This operation consumes the input operand.
-    pub fn neg(&mut self) {
+    pub fn neg(&mut self, span: SourceSpan) {
         let arg = self.pop().expect("operand stack is empty");
         let ty = arg.ty();
         match &ty {
             Type::Felt => {
-                self.emit(Op::Neg);
+                self.emit(Op::Neg, span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid unary operand: neg requires an integer, got {ty}")

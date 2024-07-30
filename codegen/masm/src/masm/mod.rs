@@ -3,6 +3,7 @@ pub mod intrinsics;
 mod module;
 mod program;
 mod region;
+pub mod utils;
 
 pub use midenc_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,

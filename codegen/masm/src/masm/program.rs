@@ -7,7 +7,9 @@ use miden_assembly::{
     LibraryNamespace,
 };
 use miden_core::crypto::hash::Rpo256;
-use midenc_hir::{self as hir, DataSegmentTable, Felt, FieldElement, FunctionIdent, Ident};
+use midenc_hir::{
+    self as hir, DataSegmentTable, Felt, FieldElement, FunctionIdent, Ident, SourceSpan,
+};
 use midenc_hir_analysis::GlobalVariableAnalysis;
 use midenc_session::Session;
 
@@ -117,7 +119,7 @@ impl Program {
             if emit_test_harness {
                 self.emit_test_harness(body);
             }
-            body.push(Op::Exec(entrypoint));
+            body.push(Op::Exec(entrypoint), SourceSpan::default());
         }
         exe.push_back(start);
         exe
@@ -142,7 +144,7 @@ impl Program {
             if emit_test_harness {
                 self.emit_test_harness(body);
             }
-            body.push(Op::DynExec);
+            body.push(Op::DynExec, SourceSpan::default());
         }
 
         exe.push_back(start);
@@ -150,11 +152,13 @@ impl Program {
     }
 
     fn emit_test_harness(&self, block: &mut Block) {
+        let span = SourceSpan::default();
+
         // Advice Stack: [dest_ptr, num_words, ...]
-        block.push(Op::AdvPush(2)); // => [num_words, dest_ptr] on operand stack
-        block.push(Op::Exec("std::mem::pipe_words_to_memory".parse().unwrap()));
+        block.push(Op::AdvPush(2), span); // => [num_words, dest_ptr] on operand stack
+        block.push(Op::Exec("std::mem::pipe_words_to_memory".parse().unwrap()), span);
         // Drop the commitment
-        block.push(Op::Drop);
+        block.push(Op::Drop, span);
         // If we know the stack pointer address, update it to the value of `'write_ptr`, but cast
         // into the Rust address space (multiplying it by 16). So a word address of 1, is equal to
         // a byte address of 16, because each field element holds 4 bytes, and there are 4 elements
@@ -162,14 +166,14 @@ impl Program {
         //
         // If we don't know the stack pointer, just drop the `'write_ptr` value
         if let Some(sp) = self.stack_pointer {
-            block.push(Op::U32OverflowingMulImm(16));
-            block.push(Op::Assertz);
+            block.push(Op::U32OverflowingMulImm(16), span);
+            block.push(Op::Assertz, span);
             // Align the stack pointer to a word boundary
             let elem_addr = (sp / 4) + (sp % 4 > 0) as u32;
             let word_addr = (elem_addr / 4) + (elem_addr % 4 > 0) as u32;
-            block.push(Op::MemStoreImm(word_addr));
+            block.push(Op::MemStoreImm(word_addr), span);
         } else {
-            block.push(Op::Drop);
+            block.push(Op::Drop, span);
         }
     }
 
@@ -234,17 +238,18 @@ impl Program {
             }
             elements.resize(num_elements as usize, Felt::ZERO);
             let digest = Rpo256::hash_elements(&elements);
+            let span = SourceSpan::default();
 
             // COM
-            block.push(Op::Pushw(digest.into()));
+            block.push(Op::Pushw(digest.into()), span);
             // write_ptr
-            block.push(Op::PushU32(base.waddr));
+            block.push(Op::PushU32(base.waddr), span);
             // num_words
-            block.push(Op::PushU32(num_words));
+            block.push(Op::PushU32(num_words), span);
             // [num_words, write_ptr, COM, ..] -> [write_ptr']
-            block.push(Op::Exec(pipe_preimage_to_memory));
+            block.push(Op::Exec(pipe_preimage_to_memory), span);
             // drop write_ptr'
-            block.push(Op::Drop);
+            block.push(Op::Drop, span);
         }
     }
 
@@ -363,7 +368,7 @@ impl Program {
         use miden_stdlib::StdLibrary;
 
         let mut assembler = Assembler::default()
-            .with_debug_mode(dbg!(session.options.emit_debug_decorators()))
+            .with_debug_mode(session.options.emit_debug_decorators())
             .with_library(&StdLibrary::default())?;
         for module in self.modules.iter() {
             let kind = module.kind;
@@ -388,16 +393,7 @@ impl Program {
         };
         let main = main.to_ast(&session.codemap).map(Box::new)?;
         println!("{main}");
-        assembler
-            .assemble_with_options(
-                main,
-                CompileOptions {
-                    kind: ModuleKind::Executable,
-                    warnings_as_errors: false,
-                    path: None,
-                },
-            )
-            .map(Arc::new)
+        assembler.assemble_program(main).map(Arc::new)
     }
 }
 impl fmt::Display for Program {

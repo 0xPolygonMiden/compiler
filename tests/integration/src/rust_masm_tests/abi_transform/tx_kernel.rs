@@ -48,7 +48,7 @@ end
     let vm_program = test.vm_masm_program();
 
     let exec = MidenExecutor::new(vec![]);
-    let trace = exec.execute(&vm_program);
+    let trace = exec.execute(&vm_program, &test.session.codemap);
     let vm_out = trace.into_outputs();
     dbg!(&vm_out);
 
