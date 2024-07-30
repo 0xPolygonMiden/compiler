@@ -2,6 +2,7 @@
 
 use core::panic;
 use std::{
+    borrow::Cow,
     fs,
     io::Read,
     path::{Path, PathBuf},
@@ -18,34 +19,6 @@ use midenc_session::{InputFile, InputType, OutputType, Session};
 use crate::cargo_proj::project;
 
 type LinkMasmModules = Vec<(LibraryPath, String)>;
-
-pub enum CompilerTestSource {
-    Rust(String),
-    RustCargo {
-        cargo_project_folder_name: String,
-        artifact_name: String,
-    },
-    RustCargoLib {
-        artifact_name: String,
-    },
-    RustCargoComponent {
-        artifact_name: String,
-    },
-}
-
-impl CompilerTestSource {
-    pub fn artifact_name(&self) -> String {
-        match self {
-            CompilerTestSource::RustCargo {
-                cargo_project_folder_name: _,
-                artifact_name,
-            } => artifact_name.clone(),
-            CompilerTestSource::RustCargoLib { artifact_name } => artifact_name.clone(),
-            CompilerTestSource::RustCargoComponent { artifact_name } => artifact_name.clone(),
-            _ => panic!("Not a Rust Cargo project"),
-        }
-    }
-}
 
 #[derive(derive_more::From)]
 pub enum HirArtifact {
@@ -77,106 +50,499 @@ impl HirArtifact {
     }
 }
 
-/// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected
-/// output
-pub struct CompilerTest {
-    /// The Wasm translation configuration
-    pub config: WasmTranslationConfig,
-    /// The compiler session
-    pub session: Arc<Session>,
-    /// The source code used to compile the test
-    pub source: CompilerTestSource,
-    /// The entrypoint function to use when building the IR
-    entrypoint: Option<FunctionIdent>,
-    /// The extra MASM modules to link to the compiled MASM program
-    pub link_masm_modules: LinkMasmModules,
-    /// The compiled IR
-    hir: Option<HirArtifact>,
-    /// The MASM source code
-    masm_src: Option<String>,
-    /// The compiled IR MASM program
-    ir_masm_program: Option<Result<Arc<midenc_codegen_masm::Program>, String>>,
-    /// The compiled VM program
-    vm_masm_program: Option<Result<Arc<miden_core::Program>, String>>,
+/// Configuration for tests which use as input, the artifact produced by a Cargo build
+pub struct CargoTest {
+    project_dir: PathBuf,
+    manifest_path: Option<Cow<'static, str>>,
+    target_dir: Option<PathBuf>,
+    name: Cow<'static, str>,
+    target: Cow<'static, str>,
+    entrypoint: Option<Cow<'static, str>>,
+    build_std: bool,
+    build_alloc: bool,
+}
+impl CargoTest {
+    /// Create a new `cargo` test with the given name, and project directory
+    pub fn new(name: impl Into<Cow<'static, str>>, project_dir: PathBuf) -> Self {
+        Self {
+            project_dir,
+            manifest_path: None,
+            target_dir: None,
+            name: name.into(),
+            target: "wasm32-wasi".into(),
+            entrypoint: None,
+            build_std: false,
+            build_alloc: false,
+        }
+    }
+
+    /// Specify whether to build the entire standard library as part of the crate graph
+    #[inline]
+    pub fn with_build_std(mut self, build_std: bool) -> Self {
+        self.build_std = build_std;
+        self
+    }
+
+    /// Specify whether to build libcore and liballoc as part of the crate graph (implied by
+    /// `with_build_std`)
+    #[inline]
+    pub fn with_build_alloc(mut self, build_alloc: bool) -> Self {
+        self.build_alloc = build_alloc;
+        self
+    }
+
+    /// Specify the target triple to pass to Cargo
+    #[inline]
+    pub fn with_target(mut self, target: impl Into<Cow<'static, str>>) -> Self {
+        self.target = target.into();
+        self
+    }
+
+    /// Specify the target directory for Cargo
+    #[inline]
+    pub fn with_target_dir(mut self, target_dir: impl Into<PathBuf>) -> Self {
+        self.target_dir = Some(target_dir.into());
+        self
+    }
+
+    /// Specify the name of the entrypoint function (just the function name, no namespace)
+    #[inline]
+    pub fn with_entrypoint(mut self, entrypoint: impl Into<Cow<'static, str>>) -> Self {
+        self.entrypoint = Some(entrypoint.into());
+        self
+    }
+
+    /// Override the Cargo manifest path
+    #[inline]
+    pub fn with_manifest_path(mut self, manifest_path: impl Into<Cow<'static, str>>) -> Self {
+        self.manifest_path = Some(manifest_path.into());
+        self
+    }
+
+    /// Get a [PathBuf] representing the path to the expected Cargo artifact
+    pub fn wasm_artifact_path(&self) -> PathBuf {
+        self.project_dir
+            .join("target")
+            .join(self.target.as_ref())
+            .join("release")
+            .join(self.name.as_ref())
+            .with_extension("wasm")
+    }
 }
 
-impl Default for CompilerTest {
-    fn default() -> Self {
+/// Configuration for tests which use as input, the artifact produced by an invocation of `rustc`
+pub struct RustcTest {
+    target_dir: Option<PathBuf>,
+    name: Cow<'static, str>,
+    target: Cow<'static, str>,
+    output_name: Option<Cow<'static, str>>,
+    source_code: Cow<'static, str>,
+}
+impl RustcTest {
+    /// Construct a new `rustc` input with the given name and source code content
+    pub fn new(
+        name: impl Into<Cow<'static, str>>,
+        source_code: impl Into<Cow<'static, str>>,
+    ) -> Self {
         Self {
-            config: WasmTranslationConfig::default(),
-            session: dummy_session(&[]),
-            source: CompilerTestSource::Rust(String::new()),
-            entrypoint: None,
-            link_masm_modules: Vec::new(),
-            hir: None,
-            masm_src: None,
-            ir_masm_program: None,
-            vm_masm_program: None,
+            target_dir: None,
+            name: name.into(),
+            target: "wasm32-unknown-unknown".into(),
+            output_name: None,
+            source_code: source_code.into(),
         }
     }
 }
 
-impl CompilerTest {
+/// The various types of input artifacts that can be used to drive compiler tests
+pub enum CompilerTestInputType {
+    /// A project that uses `cargo component build` to produce a Wasm module to use as input
+    CargoComponent(CargoTest),
+    /// A project that uses `cargo build` to produce a core Wasm module to use as input
+    Cargo(CargoTest),
+    /// A project that uses `rustc` to produce a core Wasm module to use as input
+    Rustc(RustcTest),
+}
+impl From<CargoTest> for CompilerTestInputType {
+    fn from(config: CargoTest) -> Self {
+        Self::Cargo(config)
+    }
+}
+impl From<RustcTest> for CompilerTestInputType {
+    fn from(config: RustcTest) -> Self {
+        Self::Rustc(config)
+    }
+}
+
+/// [CompilerTestBuilder] is used to obtain a [CompilerTest], and subsequently run that test.
+///
+/// Testing the compiler involves orchestrating a number of complex components. First, we must
+/// obtain the input we wish to feed into `midenc` for the test. Typically, we have some Rust
+/// source code, or a Cargo project, and we must compile that first, in order to get the Wasm
+/// module/component which will be passed to `midenc`. This first phase requires some configuration,
+/// and that configuration affects later phases (such as the name of the artifact produced).
+///
+/// Secondly, we need to prepare the [midenc_session::Session] object for the compiler. This is
+/// where we specify inputs, and various bits of configuration that are important to the test, or
+/// which are needed in order to obtain useful diagnostic output. This phase requires us to
+/// construct the base configuration here, but make it possible to extend/alter in each specific
+/// test.
+///
+/// Lastly, we must run the test, and in order to do this, we must know where our inputs and outputs
+/// are, so that we can fetch files/data/etc. as needed; know the names of things to be called, and
+/// more.
+pub struct CompilerTestBuilder {
+    /// The Wasm translation configuration
+    config: WasmTranslationConfig,
+    /// The source code used to compile the test
+    source: CompilerTestInputType,
+    /// The entrypoint function to use when building the IR
+    entrypoint: Option<FunctionIdent>,
+    /// The extra MASM modules to link to the compiled MASM program
+    link_masm_modules: LinkMasmModules,
+    /// Extra flags to pass to the midenc driver
+    midenc_flags: Vec<Cow<'static, str>>,
+    /// Extra RUSTFLAGS to set when compiling Rust code
+    rustflags: Vec<Cow<'static, str>>,
+    /// The cargo workspace directory of the compiler
+    workspace_dir: String,
+}
+impl CompilerTestBuilder {
+    /// Construct a new [CompilerTestBuilder] for the given source type configuration
+    pub fn new(source: impl Into<CompilerTestInputType>) -> Self {
+        let workspace_dir = get_workspace_dir();
+        Self {
+            config: Default::default(),
+            source: source.into(),
+            entrypoint: None,
+            link_masm_modules: vec![],
+            midenc_flags: vec![],
+            // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy`
+            // import) Remap the compiler workspace directory to `~` to have a
+            // reproducible build that does not have the absolute local path baked into
+            // the Wasm binary
+            rustflags: vec![
+                "-C".into(),
+                "target-feature=+bulk-memory".into(),
+                "--remap-path-prefix".into(),
+                format!("{workspace_dir}=~").into(),
+            ],
+            workspace_dir,
+        }
+    }
+
+    /// Override the default [WasmTranslationConfig] for the test
+    pub fn with_wasm_translation_config(&mut self, config: WasmTranslationConfig) -> &mut Self {
+        self.config = config;
+        self
+    }
+
+    /// Specify the entrypoint function to call during the test
+    pub fn with_entrypoint(&mut self, entrypoint: FunctionIdent) -> &mut Self {
+        self.entrypoint = Some(entrypoint);
+        self
+    }
+
+    /// Append additional `midenc` compiler flags
+    pub fn with_midenc_flags<I, S>(&mut self, flags: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<Cow<'static, str>>,
+    {
+        self.midenc_flags.extend(flags.into_iter().map(|flag| flag.into()));
+        self
+    }
+
+    /// Append additional flags to the value of `RUSTFLAGS` used when invoking `cargo` or `rustc`
+    pub fn with_rustflags<I, S>(&mut self, flags: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<Cow<'static, str>>,
+    {
+        self.rustflags.extend(flags.into_iter().map(|flag| flag.into()));
+        self
+    }
+
+    /// Add additional Miden Assembly module sources, to be linked with the program under test.
+    pub fn link_with_masm_module(
+        &mut self,
+        fully_qualified_name: impl AsRef<str>,
+        source: impl Into<String>,
+    ) -> &mut Self {
+        let name = fully_qualified_name.as_ref();
+        let path = LibraryPath::new(name)
+            .unwrap_or_else(|err| panic!("invalid miden assembly module name '{name}': {err}"));
+        self.link_masm_modules.push((path, source.into()));
+        self
+    }
+
+    /// Consume the builder, invoke any tools required to obtain the inputs for the test, and if
+    /// successful, return a [CompilerTest], ready for evaluation.
+    pub fn build(self) -> CompilerTest {
+        // Set up the command used to compile the test inputs (typically Rust -> Wasm)
+        let mut command = match self.source {
+            CompilerTestInputType::CargoComponent(_) => {
+                let mut cmd = Command::new("cargo");
+                cmd.arg("component").arg("build");
+                cmd
+            }
+            CompilerTestInputType::Cargo(_) => {
+                let mut cmd = Command::new("cargo");
+                cmd.arg("build");
+                cmd
+            }
+            CompilerTestInputType::Rustc(_) => Command::new("rustc"),
+        };
+
+        // Extract the directory in which source code is presumed to exist (or will be placed)
+        let project_dir = match self.source {
+            CompilerTestInputType::CargoComponent(CargoTest {
+                ref project_dir, ..
+            })
+            | CompilerTestInputType::Cargo(CargoTest {
+                ref project_dir, ..
+            }) => Cow::Borrowed(project_dir.as_path()),
+            CompilerTestInputType::Rustc(RustcTest { ref target_dir, .. }) => target_dir
+                .as_deref()
+                .map(Cow::Borrowed)
+                .unwrap_or_else(|| Cow::Owned(std::env::temp_dir())),
+        };
+
+        // Cargo-based source types share a lot of configuration in common
+        match self.source {
+            CompilerTestInputType::CargoComponent(ref config)
+            | CompilerTestInputType::Cargo(ref config) => {
+                let manifest_path = project_dir.join("Cargo.toml");
+                command
+                    .arg("--manifest-path")
+                    .arg(manifest_path)
+                    .arg("--release")
+                    .arg("--target")
+                    .arg(config.target.as_ref());
+
+                if config.build_std {
+                    // compile std as part of crate graph compilation
+                    // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+                    command.arg("-Z").arg("build-std=core,alloc,std,panic_abort");
+
+                    // abort on panic without message formatting (core::fmt uses call_indirect)
+                    command.arg("-Z").arg("build-std-features=panic_immediate_abort");
+                } else if config.build_alloc {
+                    // compile libcore and liballoc as part of crate graph compilation
+                    // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+                    command.arg("-Z").arg("build-std=core,alloc");
+
+                    // abort on panic without message formatting (core::fmt uses call_indirect)
+                    command.arg("-Z").arg("build-std-features=panic_immediate_abort");
+                }
+
+                // Render Cargo output as JSON
+                command.arg("--message-format=json-render-diagnostics");
+            }
+            _ => (),
+        }
+
+        // All test source types support custom RUSTFLAGS
+        if !self.rustflags.is_empty() {
+            let mut flags = String::with_capacity(
+                self.rustflags.iter().map(|flag| flag.len()).sum::<usize>() + self.rustflags.len(),
+            );
+            for (i, flag) in self.rustflags.iter().enumerate() {
+                if i > 0 {
+                    flags.push(' ');
+                }
+                flags.push_str(flag.as_ref());
+            }
+            command.env("RUSTFLAGS", flags);
+        }
+
+        // Pipe output of command to terminal
+        command.stdout(Stdio::piped());
+
+        // Build test
+        match self.source {
+            CompilerTestInputType::CargoComponent(_) => {
+                let mut child = command.spawn().unwrap_or_else(|_| {
+                    panic!(
+                        "Failed to execute command: {}",
+                        command
+                            .get_args()
+                            .map(|arg| format!("'{}'", arg.to_str().unwrap()))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                });
+
+                let wasm_artifacts = find_wasm_artifacts(&mut child);
+                let output = child.wait().expect("Couldn't get cargo's exit status");
+                if !output.success() {
+                    report_cargo_error(child);
+                }
+                assert!(output.success());
+                assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
+                let wasm_comp_path = &wasm_artifacts.first().unwrap();
+                let artifact_name =
+                    wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
+                let input_file = InputFile::from_path(wasm_comp_path).unwrap();
+                let mut inputs = vec![input_file];
+                inputs.extend(self.link_masm_modules.into_iter().map(|(path, content)| {
+                    let path = path.to_string();
+                    InputFile::new(
+                        midenc_session::FileType::Masm,
+                        InputType::Stdin {
+                            name: path.into(),
+                            input: content.into_bytes(),
+                        },
+                    )
+                }));
+
+                CompilerTest {
+                    config: self.config,
+                    session: default_session(inputs, &self.midenc_flags),
+                    artifact_name: artifact_name.into(),
+                    entrypoint: self.entrypoint,
+                    ..Default::default()
+                }
+            }
+            CompilerTestInputType::Cargo(config) => {
+                let expected_wasm_artifact_path = config.wasm_artifact_path();
+                let skip_rust_compilation =
+                    std::env::var("SKIP_RUST").is_ok() && expected_wasm_artifact_path.exists();
+                let wasm_artifact_path = if !skip_rust_compilation {
+                    let mut child = command.spawn().unwrap_or_else(|_| {
+                        panic!(
+                            "Failed to execute command: {}",
+                            command
+                                .get_args()
+                                .map(|arg| format!("'{}'", arg.to_str().unwrap()))
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        )
+                    });
+                    // Find the Wasm artifacts from the cargo build output for debugging purposes
+                    let mut wasm_artifacts = find_wasm_artifacts(&mut child);
+                    let output = child.wait().expect("Couldn't get cargo's exit status");
+                    if !output.success() {
+                        report_cargo_error(child);
+                    }
+                    assert!(output.success());
+                    // filter out dependencies
+                    wasm_artifacts.retain(|path| {
+                        let path_str = path.to_str().unwrap();
+                        !path_str.contains("release/deps")
+                    });
+                    dbg!(&wasm_artifacts);
+                    assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
+                    wasm_artifacts.swap_remove(0)
+                } else {
+                    drop(command);
+                    expected_wasm_artifact_path
+                };
+
+                let entrypoint = config
+                    .entrypoint
+                    .as_deref()
+                    .map(|entry| FunctionIdent {
+                        module: Ident::new(
+                            Symbol::intern(config.name.as_ref()),
+                            SourceSpan::default(),
+                        ),
+                        function: Ident::new(Symbol::intern(entry), SourceSpan::default()),
+                    })
+                    .or(self.entrypoint);
+                let input_file = InputFile::from_path(wasm_artifact_path).unwrap();
+                let mut inputs = vec![input_file];
+                inputs.extend(self.link_masm_modules.into_iter().map(|(path, content)| {
+                    let path = path.to_string();
+                    InputFile::new(
+                        midenc_session::FileType::Masm,
+                        InputType::Stdin {
+                            name: path.into(),
+                            input: content.into_bytes(),
+                        },
+                    )
+                }));
+                CompilerTest {
+                    config: self.config,
+                    session: default_session(inputs, &self.midenc_flags),
+                    artifact_name: config.name,
+                    entrypoint,
+                    ..Default::default()
+                }
+            }
+            CompilerTestInputType::Rustc(config) => {
+                // Ensure we have a fresh working directory prepared
+                let working_dir = config
+                    .target_dir
+                    .clone()
+                    .unwrap_or_else(|| std::env::temp_dir().join(config.name.as_ref()));
+                if working_dir.exists() {
+                    fs::remove_dir_all(&working_dir).unwrap();
+                }
+                fs::create_dir_all(&working_dir).unwrap();
+
+                // Prepare inputs
+                let basename = working_dir.join(config.name.as_ref());
+                let input_file = basename.with_extension("rs");
+                fs::write(&input_file, config.source_code.as_ref()).unwrap();
+
+                // Output is the same name as the input, just with a different extension
+                let output_file = basename.with_extension("wasm");
+
+                let output = command
+                    .args(["-C", "opt-level=z"]) // optimize for size
+                    .arg("--target")
+                    .arg(config.target.as_ref())
+                    .arg("-o")
+                    .arg(&output_file)
+                    .arg(&input_file)
+                    .output()
+                    .expect("rustc invocation failed");
+                if !output.status.success() {
+                    eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
+                    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+                    panic!("Rust to Wasm compilation failed!");
+                }
+                let input_file = InputFile::from_path(output_file).unwrap();
+                let mut inputs = vec![input_file];
+                inputs.extend(self.link_masm_modules.into_iter().map(|(path, content)| {
+                    let path = path.to_string();
+                    InputFile::new(
+                        midenc_session::FileType::Masm,
+                        InputType::Stdin {
+                            name: path.into(),
+                            input: content.into_bytes(),
+                        },
+                    )
+                }));
+                CompilerTest {
+                    config: self.config,
+                    session: default_session(inputs, &self.midenc_flags),
+                    artifact_name: config.name,
+                    entrypoint: self.entrypoint,
+                    ..Default::default()
+                }
+            }
+        }
+    }
+}
+
+/// Convenience builders
+impl CompilerTestBuilder {
     /// Compile the Wasm component from a Rust Cargo project using cargo-component
     pub fn rust_source_cargo_component(
         cargo_project_folder: PathBuf,
         config: WasmTranslationConfig,
     ) -> Self {
-        let manifest_path = cargo_project_folder.join("Cargo.toml");
-        let mut cargo_build_cmd = Command::new("cargo");
-        let compiler_workspace_dir = get_workspace_dir();
-        // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy` import)
-        // Remap the compiler workspace directory to `~` to have a reproducible build that does not
-        // have the absolute local path baked into the Wasm binary
-        cargo_build_cmd.env(
-            "RUSTFLAGS",
-            format!(
-                "-C target-feature=+bulk-memory --remap-path-prefix {compiler_workspace_dir}=~"
-            ),
-        );
-        cargo_build_cmd
-            .arg("component")
-            .arg("build")
-            .arg("--manifest-path")
-            .arg(manifest_path)
-            .arg("--release")
-            // compile std as part of crate graph compilation
-            // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-            .arg("-Z")
-            .arg("build-std=std,core,alloc,panic_abort")
-            .arg("-Z")
-            // abort on panic without message formatting (core::fmt uses call_indirect)
-            .arg("build-std-features=panic_immediate_abort");
-        let mut child = cargo_build_cmd
-            .arg("--message-format=json-render-diagnostics")
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to execute cargo build {}.",
-                    cargo_build_cmd
-                        .get_args()
-                        .map(|arg| format!("'{}'", arg.to_str().unwrap()))
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                )
-            });
-        let wasm_artifacts = find_wasm_artifacts(&mut child);
-        let output = child.wait().expect("Couldn't get cargo's exit status");
-        if !output.success() {
-            report_cargo_error(child);
-        }
-        assert!(output.success());
-        assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
-        let wasm_comp_path = &wasm_artifacts.first().unwrap();
-        let artifact_name = wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
-        let input_file = InputFile::from_path(wasm_comp_path).unwrap();
-        Self {
-            config,
-            session: default_session(input_file, &[]),
-            source: CompilerTestSource::RustCargoComponent { artifact_name },
-            ..Default::default()
-        }
+        let name = cargo_project_folder
+            .file_stem()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or("".to_string());
+        let mut builder = CompilerTestBuilder::new(CompilerTestInputType::CargoComponent(
+            CargoTest::new(name, cargo_project_folder),
+        ));
+        builder.with_wasm_translation_config(config);
+        builder
     }
 
     /// Set the Rust source code to compile a library Cargo project to Wasm module
@@ -187,87 +553,14 @@ impl CompilerTest {
         entry_func_name: Option<String>,
         midenc_flags: &[&str],
     ) -> Self {
-        let expected_wasm_artifact_path = wasm_artifact_path(&cargo_project_folder, artifact_name);
-        // dbg!(&wasm_artifact_path);
-        let wasm_artifact_path = if !skip_rust_compilation(&cargo_project_folder, artifact_name)
-            || !expected_wasm_artifact_path.exists()
-        {
-            let manifest_path = cargo_project_folder.join("Cargo.toml");
-            let mut cargo_build_cmd = Command::new("cargo");
-            let compiler_workspace_dir = get_workspace_dir();
-            // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy`
-            // import) Remap the compiler workspace directory to `~` to have a
-            // reproducible build that does not have the absolute local path baked into
-            // the Wasm binary
-            cargo_build_cmd.env(
-                "RUSTFLAGS",
-                format!(
-                    "-C target-feature=+bulk-memory --remap-path-prefix {compiler_workspace_dir}=~"
-                ),
-            );
-            cargo_build_cmd
-                .arg("build")
-                .arg("--manifest-path")
-                .arg(manifest_path)
-                .arg("--release")
-                .arg("--target=wasm32-wasi");
-            if is_build_std {
-                // compile std as part of crate graph compilation
-                // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-                cargo_build_cmd.arg("-Z")
-            .arg("build-std=std,core,alloc,panic_abort")
-            .arg("-Z")
-            // abort on panic without message formatting (core::fmt uses call_indirect)
-            .arg("build-std-features=panic_immediate_abort");
-            }
-            let mut child = cargo_build_cmd
-                .arg("--message-format=json-render-diagnostics")
-                .stdout(Stdio::piped())
-                .spawn()
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "Failed to execute cargo build {}.",
-                        cargo_build_cmd
-                            .get_args()
-                            .map(|arg| format!("'{}'", arg.to_str().unwrap()))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    )
-                });
-
-            // Find the Wasm artifacts from the cargo build output for debugging purposes
-            let mut wasm_artifacts = find_wasm_artifacts(&mut child);
-            let output = child.wait().expect("Couldn't get cargo's exit status");
-            if !output.success() {
-                report_cargo_error(child);
-            }
-            assert!(output.success());
-            // filter out dependencies
-            wasm_artifacts.retain(|path| {
-                let path_str = path.to_str().unwrap();
-                !path_str.contains("release/deps")
-            });
-            dbg!(&wasm_artifacts);
-            assert_eq!(wasm_artifacts.len(), 1, "Expected one Wasm artifact");
-            wasm_artifacts.first().unwrap().to_path_buf()
-        } else {
-            expected_wasm_artifact_path
-        };
-
-        let entrypoint = entry_func_name.map(|func_name| FunctionIdent {
-            module: Ident::new(Symbol::intern(artifact_name), SourceSpan::default()),
-            function: Ident::new(Symbol::intern(func_name.to_string()), SourceSpan::default()),
+        let config = CargoTest::new(artifact_name.to_string(), cargo_project_folder)
+            .with_build_std(is_build_std);
+        let mut builder = CompilerTestBuilder::new(match entry_func_name {
+            Some(entry) => config.with_entrypoint(entry),
+            None => config,
         });
-        let input_file = InputFile::from_path(wasm_artifact_path).unwrap();
-        Self {
-            config: WasmTranslationConfig::default(),
-            session: default_session(input_file, midenc_flags),
-            source: CompilerTestSource::RustCargoLib {
-                artifact_name: artifact_name.to_string(),
-            },
-            entrypoint,
-            ..Default::default()
-        }
+        builder.with_midenc_flags(midenc_flags.iter().map(|flag| flag.to_string()));
+        builder
     }
 
     /// Set the Rust source code to compile using a Cargo project and binary bundle name
@@ -276,66 +569,26 @@ impl CompilerTest {
         artifact_name: &str,
         entrypoint: &str,
     ) -> Self {
-        let manifest_path = format!("../rust-apps-wasm/{}/Cargo.toml", cargo_project_folder);
-        // dbg!(&pwd);
         let temp_dir = std::env::temp_dir();
         let target_dir = temp_dir.join(cargo_project_folder);
-        let output = Command::new("cargo")
-            .arg("build")
-            .arg("--manifest-path")
-            .arg(manifest_path)
-            .arg("--release")
-            // .arg("--bins")
-            .arg("--target=wasm32-unknown-unknown")
-            // .arg("--features=wasm-target")
-            .arg("--target-dir")
-            .arg(target_dir.clone())
-            // compile std as part of crate graph compilation
-            // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
-            .arg("-Z")
-            .arg("build-std=core,alloc")
-            .arg("-Z")
-            // abort on panic without message formatting (core::fmt uses call_indirect)
-            .arg("build-std-features=panic_immediate_abort")
-            .output()
-            .expect("Failed to execute cargo build.");
-        if !output.status.success() {
-            eprintln!("pwd: {:?}", std::env::current_dir().unwrap());
-            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-            panic!("Rust to Wasm compilation failed!");
-        }
-        let target_bin_file_path = Path::new(&target_dir)
-            .join("wasm32-unknown-unknown")
-            .join("release")
-            .join(artifact_name)
-            .with_extension("wasm");
-
-        let input_file = InputFile::from_path(target_bin_file_path).unwrap();
-        let session = default_session(input_file, &[]);
-        let entrypoint = FunctionIdent {
-            module: Ident::new(Symbol::intern(artifact_name), SourceSpan::default()),
-            function: Ident::new(Symbol::intern(entrypoint.to_string()), SourceSpan::default()),
-        };
-        CompilerTest {
-            session,
-            source: CompilerTestSource::RustCargo {
-                cargo_project_folder_name: cargo_project_folder.to_string(),
-                artifact_name: artifact_name.to_string(),
-            },
-            entrypoint: Some(entrypoint),
-            ..Default::default()
-        }
+        let project_dir = Path::new(&format!("../rust-apps-wasm/{cargo_project_folder}"))
+            .canonicalize()
+            .unwrap_or_else(|_| {
+                panic!("unknown project folder: ../rust-apps-wasm/{cargo_project_folder}")
+            });
+        let config = CargoTest::new(artifact_name.to_string(), project_dir)
+            .with_build_alloc(true)
+            .with_target_dir(target_dir)
+            .with_target("wasm32-unknown-unknown")
+            .with_entrypoint(entrypoint.to_string());
+        CompilerTestBuilder::new(config)
     }
 
     /// Set the Rust source code to compile
-    pub fn rust_source_program(rust_source: &str) -> Self {
-        let wasm_file = compile_rust_file(rust_source);
-        let session = default_session(wasm_file, &[]);
-        CompilerTest {
-            session,
-            source: CompilerTestSource::Rust(rust_source.to_string()),
-            ..Default::default()
-        }
+    pub fn rust_source_program(rust_source: impl Into<Cow<'static, str>>) -> Self {
+        let rust_source = rust_source.into();
+        let name = format!("test_rust_{}", hash_string(&rust_source));
+        CompilerTestBuilder::new(RustcTest::new(name, rust_source))
     }
 
     /// Set the Rust source code to compile and add a binary operation test
@@ -355,26 +608,16 @@ impl CompilerTest {
             "#,
             rust_source
         );
-        let wasm_file = compile_rust_file(&rust_source);
-        let wasm_filestem = wasm_file.filestem().to_string();
-        let session = default_session(wasm_file, midenc_flags);
-        let entrypoint = FunctionIdent {
-            module: Ident {
-                name: Symbol::intern(wasm_filestem),
-                span: SourceSpan::default(),
-            },
-            function: Ident {
-                name: Symbol::intern("entrypoint"),
-                span: SourceSpan::default(),
-            },
-        };
-
-        CompilerTest {
-            session,
-            source: CompilerTestSource::Rust(rust_source.to_string()),
-            entrypoint: Some(entrypoint),
-            ..Default::default()
-        }
+        let name = format!("test_rust_{}", hash_string(&rust_source));
+        let module_name = Ident::with_empty_span(Symbol::intern(&name));
+        let mut builder = CompilerTestBuilder::new(RustcTest::new(name, rust_source));
+        builder
+            .with_midenc_flags(midenc_flags.iter().map(|flag| flag.to_string()))
+            .with_entrypoint(FunctionIdent {
+                module: module_name,
+                function: Ident::with_empty_span(Symbol::intern("entrypoint")),
+            });
+        builder
     }
 
     /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
@@ -524,6 +767,122 @@ impl CompilerTest {
             midenc_flags,
         )
     }
+}
+
+/// Compile to different stages (e.g. Wasm, IR, MASM) and compare the results against expected
+/// output
+pub struct CompilerTest {
+    /// The Wasm translation configuration
+    pub config: WasmTranslationConfig,
+    /// The compiler session
+    pub session: Arc<Session>,
+    /// The artifact name from which this test is derived
+    artifact_name: Cow<'static, str>,
+    /// The entrypoint function to use when building the IR
+    entrypoint: Option<FunctionIdent>,
+    /// The compiled IR
+    hir: Option<HirArtifact>,
+    /// The MASM source code
+    masm_src: Option<String>,
+    /// The compiled IR MASM program
+    ir_masm_program: Option<Result<Arc<midenc_codegen_masm::Program>, String>>,
+    /// The compiled VM program
+    vm_masm_program: Option<Result<Arc<miden_core::Program>, String>>,
+}
+
+impl Default for CompilerTest {
+    fn default() -> Self {
+        Self {
+            config: WasmTranslationConfig::default(),
+            session: dummy_session(&[]),
+            artifact_name: Cow::Borrowed("unknown"),
+            entrypoint: None,
+            hir: None,
+            masm_src: None,
+            ir_masm_program: None,
+            vm_masm_program: None,
+        }
+    }
+}
+
+impl CompilerTest {
+    /// Return the name of the artifact this test is derived from
+    pub fn artifact_name(&self) -> &str {
+        self.artifact_name.as_ref()
+    }
+
+    /// Compile the Wasm component from a Rust Cargo project using cargo-component
+    pub fn rust_source_cargo_component(
+        cargo_project_folder: PathBuf,
+        config: WasmTranslationConfig,
+    ) -> Self {
+        CompilerTestBuilder::rust_source_cargo_component(cargo_project_folder, config).build()
+    }
+
+    /// Set the Rust source code to compile a library Cargo project to Wasm module
+    pub fn rust_source_cargo_lib(
+        cargo_project_folder: PathBuf,
+        artifact_name: &str,
+        is_build_std: bool,
+        entry_func_name: Option<String>,
+        midenc_flags: &[&str],
+    ) -> Self {
+        CompilerTestBuilder::rust_source_cargo_lib(
+            cargo_project_folder,
+            artifact_name,
+            is_build_std,
+            entry_func_name,
+            midenc_flags,
+        )
+        .build()
+    }
+
+    /// Set the Rust source code to compile using a Cargo project and binary bundle name
+    pub fn rust_source_cargo(
+        cargo_project_folder: &str,
+        artifact_name: &str,
+        entrypoint: &str,
+    ) -> Self {
+        CompilerTestBuilder::rust_source_cargo(cargo_project_folder, artifact_name, entrypoint)
+            .build()
+    }
+
+    /// Set the Rust source code to compile
+    pub fn rust_source_program(rust_source: impl Into<Cow<'static, str>>) -> Self {
+        CompilerTestBuilder::rust_source_program(rust_source).build()
+    }
+
+    /// Set the Rust source code to compile and add a binary operation test
+    pub fn rust_fn_body(rust_source: &str, midenc_flags: &[&str]) -> Self {
+        CompilerTestBuilder::rust_fn_body(rust_source, midenc_flags).build()
+    }
+
+    /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
+    pub fn rust_fn_body_with_stdlib_sys(
+        name: &str,
+        rust_source: &str,
+        is_build_std: bool,
+        midenc_flags: &[&str],
+    ) -> Self {
+        CompilerTestBuilder::rust_fn_body_with_stdlib_sys(
+            name,
+            rust_source,
+            is_build_std,
+            midenc_flags,
+        )
+        .build()
+    }
+
+    /// Set the Rust source code to compile with `miden-stdlib-sys` (stdlib + intrinsics)
+    pub fn rust_fn_body_with_sdk(
+        name: &str,
+        rust_source: &str,
+        is_build_std: bool,
+        midenc_flags: &[&str],
+    ) -> Self {
+        CompilerTestBuilder::rust_fn_body_with_sdk(name, rust_source, is_build_std, midenc_flags)
+            .build()
+    }
 
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&self, expected_wat_file: expect_test::ExpectFile) {
@@ -643,26 +1002,6 @@ fn format_report(report: miden_assembly::diagnostics::Report) -> String {
     PrintDiagnostic::new(report).to_string()
 }
 
-fn wasm_artifact_path(cargo_project_folder: &Path, artifact_name: &str) -> PathBuf {
-    cargo_project_folder
-        .to_path_buf()
-        .join("target")
-        .join("wasm32-wasi")
-        .join("release")
-        .join(artifact_name)
-        .with_extension("wasm")
-}
-
-/// Directs if we should do the Rust compilation step or not
-pub fn skip_rust_compilation(cargo_project_folder: &Path, artifact_name: &str) -> bool {
-    let expected_wasm_artifact_path = wasm_artifact_path(cargo_project_folder, artifact_name);
-    let skip_rust = std::env::var("SKIP_RUST").is_ok() && expected_wasm_artifact_path.exists();
-    if skip_rust {
-        eprintln!("Skipping Rust compilation");
-    };
-    skip_rust
-}
-
 fn stdlib_sys_crate_path() -> String {
     let cwd = std::env::current_dir().unwrap();
     cwd.parent()
@@ -743,49 +1082,29 @@ fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
     let wat = wasm_printer.print(wasm_bytes.as_ref()).unwrap();
     wat
 }
-fn compile_rust_file(rust_source: &str) -> InputFile {
-    let rustc_opts = [
-        "-C",
-        "opt-level=z", // optimize for size
-        "--target",
-        "wasm32-unknown-unknown",
-    ];
-    let file_name = format!("test_rust_{}", hash_string(rust_source));
-    let proj_dir = std::env::temp_dir().join(&file_name);
-    if proj_dir.exists() {
-        fs::remove_dir_all(&proj_dir).unwrap();
-        fs::create_dir_all(&proj_dir).unwrap();
-    } else {
-        fs::create_dir_all(&proj_dir).unwrap();
-    }
-    let input_file = proj_dir.join(format!("{file_name}.rs"));
-    let output_file = proj_dir.join(format!("{file_name}.wasm"));
-    fs::write(&input_file, rust_source).unwrap();
-    let output = Command::new("rustc")
-        .args(rustc_opts)
-        .arg(&input_file)
-        .arg("-o")
-        .arg(&output_file)
-        .output()
-        .expect("Failed to execute rustc.");
-    if !output.status.success() {
-        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-        panic!("Rust to Wasm compilation failed!");
-    }
-    InputFile::from_path(output_file).unwrap()
-}
 
 fn dummy_session(flags: &[&str]) -> Arc<Session> {
-    default_session(InputFile::from_path(PathBuf::from("dummy.wasm")).unwrap(), flags)
+    let dummy = InputFile::from_path(PathBuf::from("dummy.wasm")).unwrap();
+    default_session([dummy], flags)
 }
 
 /// Create a default session for testing
-pub fn default_session(input_file: InputFile, extra_flags: &[&str]) -> Arc<Session> {
+pub fn default_session<S, I>(inputs: I, extra_flags: &[S]) -> Arc<Session>
+where
+    I: IntoIterator<Item = InputFile>,
+    S: AsRef<str>,
+{
+    let mut inputs = inputs.into_iter();
+    let input_file = inputs.next().expect("must provide at least one input file");
     let mut flags = vec!["--lib", "--debug=full"];
-    flags.extend_from_slice(extra_flags);
+    flags.extend(extra_flags.iter().map(|flag| flag.as_ref()));
     let mut options = midenc_compile::CompilerOptions::parse_options(&flags);
     options.output_types.insert(OutputType::Masm, None);
-    Arc::new(Session::new(input_file, None, None, None, options, None))
+    let mut session = Session::new(input_file, None, None, None, options, None);
+    for extra_input in inputs {
+        session.inputs.push(extra_input);
+    }
+    Arc::new(session)
 }
 
 fn hash_string(inputs: &str) -> String {

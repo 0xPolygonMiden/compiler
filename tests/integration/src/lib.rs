@@ -9,7 +9,7 @@ mod exec_emulator;
 mod exec_vm;
 pub(crate) mod felt_conversion;
 
-pub use compiler_test::{default_session, CompilerTest};
+pub use compiler_test::{default_session, CargoTest, CompilerTest, CompilerTestBuilder, RustcTest};
 pub use exec_emulator::execute_emulator;
 pub use exec_vm::MidenExecutor;
 

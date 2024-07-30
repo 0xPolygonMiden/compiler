@@ -77,7 +77,7 @@ fn wcm_no_imports() {
         )
         .build();
     let mut test = CompilerTest::rust_source_cargo_component(proj.root(), config);
-    let artifact_name = test.source.artifact_name();
+    let artifact_name = test.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/components/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/components/{artifact_name}.hir")]);
 }
@@ -196,7 +196,7 @@ fn wcm_import() {
         .build();
 
     let mut test = CompilerTest::rust_source_cargo_component(proj.root(), config);
-    let artifact_name = test.source.artifact_name();
+    let artifact_name = test.artifact_name();
     test.expect_wasm(expect_file![format!("../../expected/components/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/components/{artifact_name}.hir")]);
 

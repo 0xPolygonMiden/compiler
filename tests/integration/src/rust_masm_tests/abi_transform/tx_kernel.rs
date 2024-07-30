@@ -5,7 +5,7 @@ use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
 
-use crate::{exec_vm::execute_vm_tracing, execute_emulator, CompilerTest, MidenExecutor};
+use crate::{exec_vm::execute_vm_tracing, execute_emulator, CompilerTestBuilder, MidenExecutor};
 
 #[allow(unused)]
 fn setup_log() {
@@ -19,9 +19,6 @@ fn setup_log() {
 
 fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     assert!(expected_inputs.len() == 4, "for now only word-sized inputs are supported");
-    let main_fn = "() -> Vec<Felt> { get_inputs() }";
-    let artifact_name = format!("abi_transform_tx_kernel_get_inputs_{}", test_name);
-    let mut test = CompilerTest::rust_fn_body_with_sdk(&artifact_name, main_fn, true, &[]);
     let masm = format!(
         "
 export.get_inputs
@@ -38,7 +35,12 @@ end
         expect3 = expected_inputs.get(2).map(|i| i.as_int()).unwrap_or(0),
         expect4 = expected_inputs.get(3).map(|i| i.as_int()).unwrap_or(0),
     );
-    test.link_masm_modules = vec![(LibraryPath::new("miden::note").unwrap(), masm)];
+    let main_fn = "() -> Vec<Felt> { get_inputs() }";
+    let artifact_name = format!("abi_transform_tx_kernel_get_inputs_{}", test_name);
+    let mut test_builder =
+        CompilerTestBuilder::rust_fn_body_with_sdk(&artifact_name, main_fn, true, &[]);
+    test_builder.link_with_masm_module("miden::note", masm);
+    let mut test = test_builder.build();
 
     // Test expected compilation artifacts
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
