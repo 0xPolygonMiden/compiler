@@ -133,7 +133,7 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> WasmResult<Valu
     })
 }
 
-pub fn sig_from_funct_type(
+pub fn sig_from_func_type(
     func_type: &FunctionType,
     call_conv: CallConv,
     linkage: Linkage,

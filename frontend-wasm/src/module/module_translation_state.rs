@@ -8,7 +8,7 @@ use crate::{
     error::WasmResult,
     intrinsics::is_miden_intrinsics_module,
     miden_abi::{is_miden_abi_module, miden_abi_function_type, parse_import_function_digest},
-    translation_utils::sig_from_funct_type,
+    translation_utils::sig_from_func_type,
     WasmError,
 };
 
@@ -52,7 +52,7 @@ impl ModuleTranslationState {
         for (index, func_type) in &module.functions {
             let wasm_func_type = mod_types[func_type.signature].clone();
             let ir_func_type = ir_func_type(&wasm_func_type).unwrap();
-            let sig = sig_from_funct_type(&ir_func_type, CallConv::SystemV, Linkage::External);
+            let sig = sig_from_func_type(&ir_func_type, CallConv::SystemV, Linkage::External);
             if let Some(subst) = function_import_subst.get(&index) {
                 functions.insert(index, (*subst, sig));
             } else if module.is_imported_function(index) {
