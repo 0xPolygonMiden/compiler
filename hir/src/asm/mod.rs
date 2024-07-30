@@ -5,6 +5,7 @@ mod isa;
 mod stack;
 
 use cranelift_entity::PrimaryMap;
+use miden_diagnostics::SourceSpan;
 use smallvec::smallvec;
 
 pub use self::{
@@ -78,8 +79,8 @@ impl InlineAsm {
     }
 
     /// Appends `op` to the end of `block`
-    pub fn push(&mut self, block: MasmBlockId, op: MasmOp) {
-        self.blocks[block].push(op);
+    pub fn push(&mut self, block: MasmBlockId, op: MasmOp, span: SourceSpan) {
+        self.blocks[block].push(op, span);
     }
 
     pub fn display<'a, 'b: 'a>(

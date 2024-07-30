@@ -28,7 +28,7 @@ fn fib() {
             PushToStack::try_push(&a, &mut args);
 
             let exec = MidenExecutor::new(args);
-            let output: u32 = exec.execute_into(vm_program);
+            let output: u32 = exec.execute_into(vm_program, &test.session.codemap);
             dbg!(output);
             prop_assert_eq!(rust_out, output);
             // args.reverse();

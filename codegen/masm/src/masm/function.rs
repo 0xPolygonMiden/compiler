@@ -6,7 +6,7 @@ use miden_assembly::{
     ast::{self, ProcedureName},
     LibraryNamespace, LibraryPath,
 };
-use miden_diagnostics::{SourceSpan, Spanned};
+use miden_diagnostics::{SourceId, SourceSpan, Spanned};
 use midenc_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
 use smallvec::SmallVec;
 
@@ -187,12 +187,15 @@ impl Function {
         }
     }
 
-    pub fn from_ast(module: Ident, proc: &ast::Procedure) -> Box<Self> {
+    pub fn from_ast(module: Ident, source_id: SourceId, proc: &ast::Procedure) -> Box<Self> {
+        use miden_assembly::Spanned;
         use midenc_hir::{Linkage, Symbol};
 
+        let proc_span = utils::from_masm_span(source_id, proc.name().span());
+        let proc_name = Symbol::intern(AsRef::<str>::as_ref(proc.name()));
         let id = FunctionIdent {
             module,
-            function: Ident::with_empty_span(Symbol::intern(AsRef::<str>::as_ref(proc.name()))),
+            function: Ident::new(proc_name, proc_span),
         };
 
         let mut signature = Signature::new(vec![], vec![]);
@@ -211,7 +214,7 @@ impl Function {
         function.alloc_n_locals(proc.num_locals());
 
         function.invoked.extend(proc.invoked().cloned());
-        function.body = Region::from_block(module, proc.body());
+        function.body = Region::from_block(module, source_id, proc.body());
 
         function
     }
@@ -229,22 +232,11 @@ impl Function {
         } else {
             ast::Visibility::Private
         };
-        let source_id = self.span.source_id();
-        let span =
-            miden_assembly::SourceSpan::new(self.span.start_index().0..self.span.end_index().0);
-        let source_file = codemap.get(source_id).ok().map(|sf| {
-            let nf = miden_assembly::diagnostics::SourceFile::new(
-                sf.name().as_str().unwrap(),
-                sf.source().to_string(),
-            );
-            Arc::new(nf)
-        });
+        let source_file = utils::source_file_for_span(self.span, codemap);
+        let span = utils::translate_span(self.span);
 
-        let name_span = miden_assembly::SourceSpan::new(
-            self.name.function.span.start_index().0..self.name.function.span.end_index().0,
-        );
         let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
-            name_span,
+            utils::translate_span(self.name.function.span),
             Arc::from(self.name.function.as_str().to_string().into_boxed_str()),
         ));
         let name = ast::ProcedureName::new_unchecked(id);

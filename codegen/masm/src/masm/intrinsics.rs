@@ -26,7 +26,7 @@ pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
     let id = codemap.add(FileName::Virtual(filename.into()), source.to_string());
     let source_file = codemap.get(id).unwrap();
     let path = LibraryPath::new(name).expect("invalid module name");
-    match Module::parse_source_file(path, ModuleKind::Library, source_file, codemap) {
+    match Module::parse_source_file(path, ModuleKind::Library, source_file) {
         Ok(module) => Some(module),
         Err(err) => match err {
             crate::LoadModuleError::Report(report) => {
@@ -41,25 +41,25 @@ pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
 }
 
 /// This helper loads the Miden Standard Library modules from the current miden-stdlib crate
-pub fn load_stdlib(codemap: &CodeMap) -> &'static [Module] {
-    use std::sync::OnceLock;
-
+pub fn load_stdlib(codemap: &CodeMap) -> Vec<Module> {
     use miden_assembly::Library;
     use miden_diagnostics::SourceSpan;
     use miden_stdlib::StdLibrary;
 
-    static LOADED: OnceLock<Vec<Module>> = OnceLock::new();
+    let library = StdLibrary::default();
 
-    LOADED
-        .get_or_init(|| {
-            let library = StdLibrary::default();
-
-            let mut loaded = Vec::with_capacity(library.modules().len());
-            for module in library.modules() {
-                let ir_module = Module::from_ast(module, SourceSpan::UNKNOWN, codemap);
-                loaded.push(ir_module);
+    let mut loaded = Vec::with_capacity(library.modules().len());
+    for module in library.modules() {
+        let span = match module.source_file() {
+            Some(source_file) => {
+                let source = source_file.inner().as_str();
+                let source_id = codemap.add(source_file.name().to_string(), source.to_string());
+                codemap.source_span(source_id).ok().unwrap_or(SourceSpan::UNKNOWN)
             }
-            loaded
-        })
-        .as_slice()
+            None => SourceSpan::UNKNOWN,
+        };
+        let ir_module = Module::from_ast(module, span);
+        loaded.push(ir_module);
+    }
+    loaded
 }

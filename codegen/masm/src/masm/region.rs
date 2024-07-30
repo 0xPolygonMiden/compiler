@@ -2,6 +2,7 @@ use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::PrimaryMap;
 use miden_assembly::ast;
+use miden_diagnostics::{SourceId, Span};
 use midenc_hir::{formatter::PrettyPrint, FunctionIdent, Ident};
 use smallvec::smallvec;
 
@@ -53,7 +54,7 @@ impl Region {
     }
 
     /// Get the instruction under `ip`, if valid
-    pub fn get(&self, ip: InstructionPointer) -> Option<Op> {
+    pub fn get(&self, ip: InstructionPointer) -> Option<Span<Op>> {
         self.blocks[ip.block].ops.get(ip.index).copied()
     }
 
@@ -95,11 +96,11 @@ impl Region {
     /// Create a [Region] from a [miden_assembly::ast::CodeBody] and the set of imports
     /// and local procedures which will be used to map references to procedures to their
     /// fully-qualified names.
-    pub fn from_block(current_module: Ident, code: &ast::Block) -> Self {
+    pub fn from_block(current_module: Ident, source_id: SourceId, code: &ast::Block) -> Self {
         let mut region = Self::default();
 
         let body = region.body;
-        import_block(current_module, &mut region, body, code);
+        import_block(current_module, source_id, &mut region, body, code);
 
         region
     }
@@ -142,6 +143,7 @@ impl<'a> fmt::Display for DisplayRegion<'a> {
 /// Import code from a [miden_assembly::ast::Block] into the specified [Block] in `region`.
 fn import_block(
     current_module: Ident,
+    source_id: SourceId,
     region: &mut Region,
     current_block_id: BlockId,
     block: &ast::Block,
@@ -149,35 +151,43 @@ fn import_block(
     for op in block.iter() {
         match op {
             ast::Op::Inst(ix) => {
+                let span = utils::from_masm_span(source_id, ix.span());
                 let current_block = region.block_mut(current_block_id);
-                let mut ops = Op::from_masm(current_module, (**ix).clone());
-                current_block.append(&mut ops);
+                let ops = Op::from_masm(current_module, (**ix).clone());
+                current_block.extend(ops.into_iter().map(|op| Span::new(span, op)));
             }
             ast::Op::If {
+                span,
                 ref then_blk,
                 ref else_blk,
                 ..
             } => {
+                let span = utils::from_masm_span(source_id, *span);
                 let then_blk_id = region.create_block();
                 let else_blk_id = region.create_block();
-                import_block(current_module, region, then_blk_id, then_blk);
-                import_block(current_module, region, else_blk_id, else_blk);
-                region.block_mut(current_block_id).push(Op::If(then_blk_id, else_blk_id));
+                import_block(current_module, source_id, region, then_blk_id, then_blk);
+                import_block(current_module, source_id, region, else_blk_id, else_blk);
+                region.block_mut(current_block_id).push(Op::If(then_blk_id, else_blk_id), span);
             }
             ast::Op::Repeat {
-                count, ref body, ..
+                span,
+                count,
+                ref body,
+                ..
             } => {
+                let span = utils::from_masm_span(source_id, *span);
                 let body_blk = region.create_block();
-                import_block(current_module, region, body_blk, body);
+                import_block(current_module, source_id, region, body_blk, body);
                 let count = u16::try_from(*count).unwrap_or_else(|_| {
                     panic!("invalid repeat count: expected {count} to be less than 255")
                 });
-                region.block_mut(current_block_id).push(Op::Repeat(count, body_blk));
+                region.block_mut(current_block_id).push(Op::Repeat(count, body_blk), span);
             }
-            ast::Op::While { ref body, .. } => {
+            ast::Op::While { span, ref body, .. } => {
+                let span = utils::from_masm_span(source_id, *span);
                 let body_blk = region.create_block();
-                import_block(current_module, region, body_blk, body);
-                region.block_mut(current_block_id).push(Op::While(body_blk));
+                import_block(current_module, source_id, region, body_blk, body);
+                region.block_mut(current_block_id).push(Op::While(body_blk), span);
             }
         }
     }
@@ -193,30 +203,30 @@ fn emit_block(
     imports: &ModuleImportInfo,
     locals: &BTreeSet<FunctionIdent>,
 ) -> ast::Block {
+    use miden_diagnostics::Spanned;
+
     let current_block = &blocks[block_id];
     let mut ops = Vec::with_capacity(current_block.ops.len());
     for op in current_block.ops.iter().copied() {
-        match op {
+        let span = utils::translate_span(op.span());
+        match op.item {
             Op::If(then_blk, else_blk) => {
                 let then_blk = emit_block(then_blk, blocks, codemap, imports, locals);
                 let else_blk = emit_block(else_blk, blocks, codemap, imports, locals);
                 ops.push(ast::Op::If {
-                    span: Default::default(),
+                    span,
                     then_blk,
                     else_blk,
                 });
             }
             Op::While(blk) => {
                 let body = emit_block(blk, blocks, codemap, imports, locals);
-                ops.push(ast::Op::While {
-                    span: Default::default(),
-                    body,
-                });
+                ops.push(ast::Op::While { span, body });
             }
             Op::Repeat(n, blk) => {
                 let body = emit_block(blk, blocks, codemap, imports, locals);
                 ops.push(ast::Op::Repeat {
-                    span: Default::default(),
+                    span,
                     count: n as u32,
                     body,
                 });
@@ -225,7 +235,7 @@ fn emit_block(
                 ops.extend(
                     op.into_masm(imports, locals)
                         .into_iter()
-                        .map(|inst| ast::Op::Inst(miden_assembly::Span::unknown(inst))),
+                        .map(|inst| ast::Op::Inst(miden_assembly::Span::new(span, inst))),
                 );
             }
         }

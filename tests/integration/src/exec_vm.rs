@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use miden_core::{Program, StackInputs};
+use miden_diagnostics::{CodeMap, FileName};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Process};
 use midenc_hir::Felt;
 
@@ -26,7 +27,7 @@ impl MidenExecutor {
     }
 
     /// Execute the given program, producing a trace
-    pub fn execute(self, program: &Program) -> MidenExecutionTrace {
+    pub fn execute(self, program: &Program, codemap: &CodeMap) -> MidenExecutionTrace {
         use std::collections::BTreeSet;
 
         use miden_processor::{MemAdviceProvider, ProcessState, VmStateIterator};
@@ -151,36 +152,7 @@ impl MidenExecutor {
                     last_state = Some(state);
                 }
                 Err(err) => {
-                    if let Some(last_state) = last_state {
-                        let last_op;
-                        let last_context_name;
-                        match last_state.asmop.as_ref() {
-                            Some(op) => {
-                                last_op = op.op().to_string();
-                                last_context_name = op.context_name();
-                            }
-                            None => {
-                                last_op = last_state
-                                    .op
-                                    .map(|op| op.to_string())
-                                    .unwrap_or_else(|| "N/A".to_string());
-                                last_context_name = "N/A";
-                            }
-                        }
-                        let stack = last_state.stack.iter().map(|elem| elem.as_int());
-                        let stack = midenc_hir::DisplayValues::new(stack);
-                        panic!(
-                            "progam execution failed at step {i} (cycle {cycle}): {err}
-    last known context:       {last_context_name}
-    last known op:            {last_op}
-    last known frame pointer: {fmp} (frame pointer starts at 2^30)
-    last known operand stack: [{stack}]\n",
-                            cycle = last_state.clk,
-                            fmp = last_state.fmp.as_int(),
-                        );
-                    } else {
-                        panic!("program execution failed at step {i}: {err}");
-                    }
+                    render_execution_error(err, i, last_state.as_ref(), codemap);
                 }
             }
         }
@@ -200,11 +172,11 @@ impl MidenExecutor {
     }
 
     /// Execute a program, parsing the operand stack outputs as a value of type `T`
-    pub fn execute_into<T>(self, program: &Program) -> T
+    pub fn execute_into<T>(self, program: &Program, codemap: &CodeMap) -> T
     where
         T: PopFromStack + PartialEq,
     {
-        let out = self.execute(program);
+        let out = self.execute(program, codemap);
         out.parse_result().expect("invalid result")
     }
 }
@@ -365,4 +337,75 @@ pub fn execute_vm_tracing(
         last_stack.clone_from(&vm_state.stack);
     }
     Ok(last_stack.into_iter().map(TestFelt).collect())
+}
+
+fn render_execution_error(
+    err: ExecutionError,
+    step: usize,
+    last_state: Option<&miden_processor::VmState>,
+    codemap: &CodeMap,
+) -> ! {
+    use miden_assembly::diagnostics::{
+        miette::miette, reporting::PrintDiagnostic, LabeledSpan, SourceFile,
+    };
+
+    if let Some(last_state) = last_state {
+        let mut source_code = None;
+        let mut labels = vec![];
+        let last_op;
+        let last_context_name;
+        match last_state.asmop.as_ref() {
+            Some(op) => {
+                last_op = op.op().to_string();
+                last_context_name = op.context_name();
+                let asmop = op.as_ref();
+                if let Some(loc) = asmop.location() {
+                    let path = loc.source_file.as_path();
+                    let source = if path.exists() {
+                        codemap.add_file(path).ok().and_then(|id| codemap.get(id).ok())
+                    } else {
+                        let name: &str = loc.source_file.as_ref();
+                        codemap.get_by_name(&FileName::virtual_(name.to_string()))
+                    };
+                    source_code = source.map(|source| {
+                        SourceFile::new(source.name().to_string(), source.source().to_string())
+                    });
+                    labels.push(LabeledSpan::new_with_span(
+                        None,
+                        (loc.start as usize)..(loc.end as usize),
+                    ));
+                }
+            }
+            None => {
+                last_op =
+                    last_state.op.map(|op| op.to_string()).unwrap_or_else(|| "N/A".to_string());
+                last_context_name = "N/A";
+            }
+        };
+        let stack = last_state.stack.iter().map(|elem| elem.as_int());
+        let stack = midenc_hir::DisplayValues::new(stack);
+        let help = format!(
+            "
+last known context:       {last_context_name}
+last known op:            {last_op}
+last known frame pointer: {fmp} (frame pointer starts at 2^30)
+last known operand stack: [{stack}]",
+            fmp = last_state.fmp.as_int()
+        );
+        let report = miette!(
+            help = help,
+            labels = labels,
+            "program execution failed at step {step} (cycle {cycle}): {err}",
+            step = step,
+            cycle = last_state.clk,
+        );
+        let report = match source_code {
+            Some(source) => report.with_source_code(source),
+            None => report,
+        };
+
+        panic!("{}", PrintDiagnostic::new(report));
+    } else {
+        panic!("program execution failed at step {step}: {err}");
+    }
 }

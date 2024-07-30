@@ -1,9 +1,8 @@
+use miden_diagnostics::{Span, Spanned};
 use smallvec::smallvec;
 
 use super::*;
-use crate::{
-    CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, SourceSpan, Value,
-};
+use crate::{CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, Value};
 
 /// Used to construct an [InlineAsm] instruction, while checking the input/output types,
 /// and enforcing various safety invariants.
@@ -137,43 +136,43 @@ pub struct MasmOpBuilder<'a> {
 }
 impl<'a> MasmOpBuilder<'a> {
     /// Pads the stack with four zero elements
-    pub fn padw(mut self) {
-        self.build(self.ip, MasmOp::Padw);
+    pub fn padw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Padw, span);
     }
 
     /// Pushes an element on the stack
-    pub fn push(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::Push(imm));
+    pub fn push(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Push(imm), span);
     }
 
     /// Pushes a word on the stack
-    pub fn pushw(mut self, word: [Felt; 4]) {
-        self.build(self.ip, MasmOp::Pushw(word));
+    pub fn pushw(mut self, word: [Felt; 4], span: SourceSpan) {
+        self.build(self.ip, MasmOp::Pushw(word), span);
     }
 
     /// Pushes an element representing an unsigned 8-bit integer on the stack
-    pub fn push_u8(mut self, imm: u8) {
-        self.build(self.ip, MasmOp::PushU8(imm));
+    pub fn push_u8(mut self, imm: u8, span: SourceSpan) {
+        self.build(self.ip, MasmOp::PushU8(imm), span);
     }
 
     /// Pushes an element representing an unsigned 16-bit integer on the stack
-    pub fn push_u16(mut self, imm: u16) {
-        self.build(self.ip, MasmOp::PushU16(imm));
+    pub fn push_u16(mut self, imm: u16, span: SourceSpan) {
+        self.build(self.ip, MasmOp::PushU16(imm), span);
     }
 
     /// Pushes an element representing an unsigned 32-bit integer on the stack
-    pub fn push_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::PushU32(imm));
+    pub fn push_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::PushU32(imm), span);
     }
 
     /// Drops the element on the top of the stack
-    pub fn drop(mut self) {
-        self.build(self.ip, MasmOp::Drop);
+    pub fn drop(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Drop, span);
     }
 
     /// Drops the word (first four elements) on the top of the stack
-    pub fn dropw(mut self) {
-        self.build(self.ip, MasmOp::Dropw);
+    pub fn dropw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Dropw, span);
     }
 
     /// Duplicates the `n`th element from the top of the stack, to the top of the stack
@@ -181,8 +180,8 @@ impl<'a> MasmOpBuilder<'a> {
     /// A `n` of zero, duplicates the element on top of the stack
     ///
     /// The valid range for `n` is 0..=15
-    pub fn dup(mut self, n: usize) {
-        self.build(self.ip, MasmOp::Dup(n as u8));
+    pub fn dup(mut self, n: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Dup(n as u8), span);
     }
 
     /// Duplicates the `n`th word from the top of the stack, to the top of the stack
@@ -190,156 +189,156 @@ impl<'a> MasmOpBuilder<'a> {
     /// A `n` of zero, duplicates the word on top of the stack
     ///
     /// The valid range for `n` is 0..=3
-    pub fn dupw(mut self, n: usize) {
-        self.build(self.ip, MasmOp::Dupw(n as u8));
+    pub fn dupw(mut self, n: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Dupw(n as u8), span);
     }
 
     /// Swaps the `n`th element and the element on top of the stack
     ///
     /// The valid range for `n` is 1..=15
-    pub fn swap(mut self, n: usize) {
-        self.build(self.ip, MasmOp::Swap(n as u8));
+    pub fn swap(mut self, n: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Swap(n as u8), span);
     }
 
     /// Swaps the `n`th word and the word on top of the stack
     ///
     /// The valid range for `n` is 1..=3
-    pub fn swapw(mut self, n: usize) {
-        self.build(self.ip, MasmOp::Swapw(n as u8));
+    pub fn swapw(mut self, n: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Swapw(n as u8), span);
     }
 
     /// Swaps the top 2 and bottom 2 words on the stack
-    pub fn swapdw(mut self) {
-        self.build(self.ip, MasmOp::Swapdw);
+    pub fn swapdw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Swapdw, span);
     }
 
     /// Moves the `n`th element to the top of the stack
     ///
     /// The valid range for `n` is 2..=15
-    pub fn movup(mut self, idx: usize) {
-        self.build(self.ip, MasmOp::Movup(idx as u8));
+    pub fn movup(mut self, idx: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Movup(idx as u8), span);
     }
 
     /// Moves the `n`th word to the top of the stack
     ///
     /// The valid range for `n` is 2..=3
-    pub fn movupw(mut self, idx: usize) {
-        self.build(self.ip, MasmOp::Movupw(idx as u8));
+    pub fn movupw(mut self, idx: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Movupw(idx as u8), span);
     }
 
     /// Moves the element on top of the stack, making it the `n`th element
     ///
     /// The valid range for `n` is 2..=15
-    pub fn movdn(mut self, idx: usize) {
-        self.build(self.ip, MasmOp::Movdn(idx as u8));
+    pub fn movdn(mut self, idx: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Movdn(idx as u8), span);
     }
 
     /// Moves the word on top of the stack, making it the `n`th word
     ///
     /// The valid range for `n` is 2..=3
-    pub fn movdnw(mut self, idx: usize) {
-        self.build(self.ip, MasmOp::Movdnw(idx as u8));
+    pub fn movdnw(mut self, idx: usize, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Movdnw(idx as u8), span);
     }
 
     /// Pops a boolean element off the stack, and swaps the top two elements
     /// on the stack if that boolean is true.
     ///
     /// Traps if the conditional is not 0 or 1.
-    pub fn cswap(mut self) {
-        self.build(self.ip, MasmOp::Cswap);
+    pub fn cswap(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Cswap, span);
     }
 
     /// Pops a boolean element off the stack, and swaps the top two words
     /// on the stack if that boolean is true.
     ///
     /// Traps if the conditional is not 0 or 1.
-    pub fn cswapw(mut self) {
-        self.build(self.ip, MasmOp::Cswapw);
+    pub fn cswapw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Cswapw, span);
     }
 
     /// Pops a boolean element off the stack, and drops the top element on the
     /// stack if the boolean is true, otherwise it drops the next element down.
     ///
     /// Traps if the conditional is not 0 or 1.
-    pub fn cdrop(mut self) {
-        self.build(self.ip, MasmOp::Cdrop);
+    pub fn cdrop(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Cdrop, span);
     }
 
     /// Pops a boolean element off the stack, and drops the top word on the
     /// stack if the boolean is true, otherwise it drops the next word down.
     ///
     /// Traps if the conditional is not 0 or 1.
-    pub fn cdropw(mut self) {
-        self.build(self.ip, MasmOp::Cdropw);
+    pub fn cdropw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Cdropw, span);
     }
 
     /// Pops the top element on the stack, and traps if that element is != 1.
-    pub fn assert(mut self, error_code: Option<u32>) {
+    pub fn assert(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::AssertWithError).unwrap_or(MasmOp::Assert);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Pops the top element on the stack, and traps if that element is != 0.
-    pub fn assertz(mut self, error_code: Option<u32>) {
+    pub fn assertz(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::AssertzWithError).unwrap_or(MasmOp::Assertz);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Pops the top two elements on the stack, and traps if they are not equal.
-    pub fn assert_eq(mut self, error_code: Option<u32>) {
+    pub fn assert_eq(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::AssertEqWithError).unwrap_or(MasmOp::AssertEq);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Pops the top two words on the stack, and traps if they are not equal.
-    pub fn assert_eqw(mut self, error_code: Option<u32>) {
+    pub fn assert_eqw(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::AssertEqwWithError).unwrap_or(MasmOp::AssertEqw);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Pops an element containing a memory address from the top of the stack,
     /// and loads the first element of the word at that address to the top of the stack.
-    pub fn load(mut self) {
-        self.build(self.ip, MasmOp::MemLoad);
+    pub fn load(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemLoad, span);
     }
 
     /// Loads the first element of the word at the given address to the top of the stack.
-    pub fn load_imm(mut self, addr: u32) {
-        self.build(self.ip, MasmOp::MemLoadImm(addr));
+    pub fn load_imm(mut self, addr: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemLoadImm(addr), span);
     }
 
     /// Pops an element containing a memory address from the top of the stack,
     /// and loads the word at that address to the top of the stack.
-    pub fn loadw(mut self) {
-        self.build(self.ip, MasmOp::MemLoadw);
+    pub fn loadw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemLoadw, span);
     }
 
     /// Loads the word at the given address to the top of the stack.
-    pub fn loadw_imm(mut self, addr: u32) {
-        self.build(self.ip, MasmOp::MemLoadwImm(addr));
+    pub fn loadw_imm(mut self, addr: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemLoadwImm(addr), span);
     }
 
     /// Pops two elements, the first containing a memory address from the top of the stack,
     /// the second the value to be stored as the first element of the word at that address.
-    pub fn store(mut self) {
-        self.build(self.ip, MasmOp::MemStore);
+    pub fn store(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemStore, span);
     }
 
     /// Pops an element from the top of the stack, and stores it as the first element of
     /// the word at the given address.
-    pub fn store_imm(mut self, addr: u32) {
-        self.build(self.ip, MasmOp::MemStoreImm(addr));
+    pub fn store_imm(mut self, addr: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemStoreImm(addr), span);
     }
 
     /// Pops an element containing a memory address from the top of the stack,
     /// and then pops a word from the stack and stores it as the word at that address.
-    pub fn storew(mut self) {
-        self.build(self.ip, MasmOp::MemStorew);
+    pub fn storew(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemStorew, span);
     }
 
     /// Pops a word from the stack and stores it as the word at the given address.
-    pub fn storew_imm(mut self, addr: u32) {
-        self.build(self.ip, MasmOp::MemStorewImm(addr));
+    pub fn storew_imm(mut self, addr: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MemStorewImm(addr), span);
     }
 
     /// Begins construction of a `if.true` statement.
@@ -355,7 +354,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// in the same abstract state, so that when control resumes after the `if.true`, the remaining
     /// program is well-formed. This will be validated automatically for you, but if validation
     /// fails, the builder will panic.
-    pub fn if_true(self) -> IfTrueBuilder<'a> {
+    pub fn if_true(self, span: SourceSpan) -> IfTrueBuilder<'a> {
         let cond = self.stack.pop().expect("operand stack is empty");
         assert_eq!(cond, Type::I1, "expected while.true condition to be a boolean value");
         let out_stack = self.stack.clone();
@@ -364,6 +363,7 @@ impl<'a> MasmOpBuilder<'a> {
             asm: self.asm,
             in_stack: self.stack,
             out_stack,
+            span,
             ip: self.ip,
             then_blk: None,
             else_blk: None,
@@ -390,7 +390,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// on the operand stack.
     ///
     /// Both of these are validated by [LoopBuilder], and a panic is raised if validation fails.
-    pub fn while_true(self) -> LoopBuilder<'a> {
+    pub fn while_true(self, span: SourceSpan) -> LoopBuilder<'a> {
         let cond = self.stack.pop().expect("operand stack is empty");
         assert_eq!(cond, Type::I1, "expected while.true condition to be a boolean value");
         let out_stack = self.stack.clone();
@@ -400,6 +400,7 @@ impl<'a> MasmOpBuilder<'a> {
             asm: self.asm,
             in_stack: self.stack,
             out_stack,
+            span,
             ip: self.ip,
             body,
             style: LoopType::While,
@@ -412,7 +413,7 @@ impl<'a> MasmOpBuilder<'a> {
     /// times.
     ///
     /// NOTE: The iteration count must be non-zero, or this function will panic.
-    pub fn repeat(self, n: u16) -> LoopBuilder<'a> {
+    pub fn repeat(self, n: u16, span: SourceSpan) -> LoopBuilder<'a> {
         assert!(n > 0, "invalid iteration count for `repeat.n`, must be non-zero");
         let out_stack = self.stack.clone();
         let body = self.asm.create_block();
@@ -421,6 +422,7 @@ impl<'a> MasmOpBuilder<'a> {
             asm: self.asm,
             in_stack: self.stack,
             out_stack,
+            span,
             ip: self.ip,
             body,
             style: LoopType::Repeat(n),
@@ -428,315 +430,315 @@ impl<'a> MasmOpBuilder<'a> {
     }
 
     /// Executes the named procedure as a regular function.
-    pub fn exec(mut self, id: FunctionIdent) {
-        self.build(self.ip, MasmOp::Exec(id));
+    pub fn exec(mut self, id: FunctionIdent, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Exec(id), span);
     }
 
     /// Execute a procedure indirectly.
     ///
     /// Expects the hash of a function's MAST root on the stack, see `procref`
-    pub fn dynexec(mut self) {
-        self.build(self.ip, MasmOp::DynExec)
+    pub fn dynexec(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::DynExec, span)
     }
 
     /// Call a procedure indirectly.
     ///
     /// Expects the hash of a function's MAST root on the stack, see `procref`
-    pub fn dyncall(mut self) {
-        self.build(self.ip, MasmOp::DynCall)
+    pub fn dyncall(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::DynCall, span)
     }
 
     /// Executes the named procedure as a call.
-    pub fn call(mut self, id: FunctionIdent) {
-        self.build(self.ip, MasmOp::Call(id));
+    pub fn call(mut self, id: FunctionIdent, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Call(id), span);
     }
 
     /// Executes the named procedure as a syscall.
-    pub fn syscall(mut self, id: FunctionIdent) {
-        self.build(self.ip, MasmOp::Syscall(id));
+    pub fn syscall(mut self, id: FunctionIdent, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Syscall(id), span);
     }
 
     /// Push the hash of the named function on the stack for use with dyn(exec|call)
-    pub fn procref(mut self, id: FunctionIdent) {
-        self.build(self.ip, MasmOp::ProcRef(id))
+    pub fn procref(mut self, id: FunctionIdent, span: SourceSpan) {
+        self.build(self.ip, MasmOp::ProcRef(id), span)
     }
 
     /// Pops two field elements from the stack, adds them, and places the result on the stack.
-    pub fn add(mut self) {
-        self.build(self.ip, MasmOp::Add);
+    pub fn add(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Add, span);
     }
 
     /// Pops a field element from the stack, adds the given value to it, and places the result on
     /// the stack.
-    pub fn add_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::AddImm(imm));
+    pub fn add_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::AddImm(imm), span);
     }
 
     /// Pops two field elements from the stack, subtracts the second from the first, and places the
     /// result on the stack.
-    pub fn sub(mut self) {
-        self.build(self.ip, MasmOp::Sub);
+    pub fn sub(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Sub, span);
     }
 
     /// Pops a field element from the stack, subtracts the given value from it, and places the
     /// result on the stack.
-    pub fn sub_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::SubImm(imm));
+    pub fn sub_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::SubImm(imm), span);
     }
 
     /// Pops two field elements from the stack, multiplies them, and places the result on the stack.
-    pub fn mul(mut self) {
-        self.build(self.ip, MasmOp::Mul);
+    pub fn mul(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Mul, span);
     }
 
     /// Pops a field element from the stack, multiplies it by the given value, and places the result
     /// on the stack.
-    pub fn mul_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::MulImm(imm));
+    pub fn mul_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::MulImm(imm), span);
     }
 
     /// Pops two field elements from the stack, divides the first by the second, and places the
     /// result on the stack.
-    pub fn div(mut self) {
-        self.build(self.ip, MasmOp::Div);
+    pub fn div(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Div, span);
     }
 
     /// Pops a field element from the stack, divides it by the given value, and places the result on
     /// the stack.
-    pub fn div_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::DivImm(imm));
+    pub fn div_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::DivImm(imm), span);
     }
 
     /// Negates the field element on top of the stack
-    pub fn neg(mut self) {
-        self.build(self.ip, MasmOp::Neg);
+    pub fn neg(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Neg, span);
     }
 
     /// Replaces the field element on top of the stack with it's multiplicative inverse, i.e. `a^-1
     /// mod p`
-    pub fn inv(mut self) {
-        self.build(self.ip, MasmOp::Inv);
+    pub fn inv(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Inv, span);
     }
 
     /// Increments the field element on top of the stack
-    pub fn incr(mut self) {
-        self.build(self.ip, MasmOp::Incr);
+    pub fn incr(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Incr, span);
     }
 
     /// Pops an element, `a`, from the top of the stack, and places the integral base 2 logarithm
     /// of that value on the stack.
     ///
     /// Traps if `a` is 0.
-    pub fn ilog2(mut self) {
-        self.build(self.ip, MasmOp::Ilog2);
+    pub fn ilog2(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Ilog2, span);
     }
 
     /// Pops an element, `a`, from the top of the stack, and places the result of `2^a` on the
     /// stack.
     ///
     /// Traps if `a` is not in the range 0..=63
-    pub fn pow2(mut self) {
-        self.build(self.ip, MasmOp::Pow2);
+    pub fn pow2(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Pow2, span);
     }
 
     /// Pops two elements from the stack, `b` and `a` respectively, and places the result of `a^b`
     /// on the stack.
     ///
     /// Traps if `b` is not in the range 0..=63
-    pub fn exp(mut self) {
-        self.build(self.ip, MasmOp::Exp);
+    pub fn exp(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Exp, span);
     }
 
     /// Pops an element from the stack, `a`, and places the result of `a^b` on the stack, where `b`
     /// is the given immediate value.
     ///
     /// Traps if `b` is not in the range 0..=63
-    pub fn exp_imm(mut self, exponent: u8) {
-        self.build(self.ip, MasmOp::ExpImm(exponent));
+    pub fn exp_imm(mut self, exponent: u8, span: SourceSpan) {
+        self.build(self.ip, MasmOp::ExpImm(exponent), span);
     }
 
     /// Pops a value off the stack, and applies logical NOT, and places the result back on the
     /// stack.
     ///
     /// Traps if the value is not 0 or 1.
-    pub fn not(mut self) {
-        self.build(self.ip, MasmOp::Not);
+    pub fn not(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Not, span);
     }
 
     /// Pops two values off the stack, applies logical AND, and places the result back on the stack.
     ///
     /// Traps if either value is not 0 or 1.
-    pub fn and(mut self) {
-        self.build(self.ip, MasmOp::And);
+    pub fn and(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::And, span);
     }
 
     /// Pops a value off the stack, applies logical AND with the given immediate, and places the
     /// result back on the stack.
     ///
     /// Traps if the value is not 0 or 1.
-    pub fn and_imm(mut self, imm: bool) {
-        self.build(self.ip, MasmOp::AndImm(imm));
+    pub fn and_imm(mut self, imm: bool, span: SourceSpan) {
+        self.build(self.ip, MasmOp::AndImm(imm), span);
     }
 
     /// Pops two values off the stack, applies logical OR, and places the result back on the stack.
     ///
     /// Traps if either value is not 0 or 1.
-    pub fn or(mut self) {
-        self.build(self.ip, MasmOp::Or);
+    pub fn or(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Or, span);
     }
 
     /// Pops a value off the stack, applies logical OR with the given immediate, and places the
     /// result back on the stack.
     ///
     /// Traps if the value is not 0 or 1.
-    pub fn or_imm(mut self, imm: bool) {
-        self.build(self.ip, MasmOp::OrImm(imm));
+    pub fn or_imm(mut self, imm: bool, span: SourceSpan) {
+        self.build(self.ip, MasmOp::OrImm(imm), span);
     }
 
     /// Pops two values off the stack, applies logical XOR, and places the result back on the stack.
     ///
     /// Traps if either value is not 0 or 1.
-    pub fn xor(mut self) {
-        self.build(self.ip, MasmOp::Xor);
+    pub fn xor(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Xor, span);
     }
 
     /// Pops a value off the stack, applies logical XOR with the given immediate, and places the
     /// result back on the stack.
     ///
     /// Traps if the value is not 0 or 1.
-    pub fn xor_imm(mut self, imm: bool) {
-        self.build(self.ip, MasmOp::XorImm(imm));
+    pub fn xor_imm(mut self, imm: bool, span: SourceSpan) {
+        self.build(self.ip, MasmOp::XorImm(imm), span);
     }
 
     /// Pops two elements off the stack, and pushes 1 on the stack if they are equal, else 0.
-    pub fn eq(mut self) {
-        self.build(self.ip, MasmOp::Eq);
+    pub fn eq(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Eq, span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value and the given
     /// immediate are equal, else 0.
-    pub fn eq_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::EqImm(imm));
+    pub fn eq_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::EqImm(imm), span);
     }
 
     /// Pops two words off the stack, and pushes 1 on the stack if they are equal, else 0.
-    pub fn eqw(mut self) {
-        self.build(self.ip, MasmOp::Eqw);
+    pub fn eqw(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Eqw, span);
     }
 
     /// Pops two elements off the stack, and pushes 1 on the stack if they are not equal, else 0.
-    pub fn neq(mut self) {
-        self.build(self.ip, MasmOp::Neq);
+    pub fn neq(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Neq, span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value and the given
     /// immediate are not equal, else 0.
-    pub fn neq_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::NeqImm(imm));
+    pub fn neq_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::NeqImm(imm), span);
     }
 
     /// Pops two elements off the stack, and pushes 1 on the stack if the first is greater than the
     /// second, else 0.
-    pub fn gt(mut self) {
-        self.build(self.ip, MasmOp::Gt);
+    pub fn gt(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Gt, span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value is greater than the
     /// given immediate, else 0.
-    pub fn gt_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::GtImm(imm));
+    pub fn gt_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::GtImm(imm), span);
     }
 
     /// Pops two elements off the stack, and pushes 1 on the stack if the first is greater than or
     /// equal to the second, else 0.
-    pub fn gte(mut self) {
-        self.build(self.ip, MasmOp::Gte);
+    pub fn gte(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Gte, span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value is greater than or
     /// equal to the given immediate, else 0.
-    pub fn gte_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::GteImm(imm));
+    pub fn gte_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::GteImm(imm), span);
     }
 
     /// Pops two elements off the stack, and pushes 1 on the stack if the first is less than the
     /// second, else 0.
-    pub fn lt(mut self) {
-        self.build(self.ip, MasmOp::Lt);
+    pub fn lt(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Lt, span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value is less than the
     /// given immediate, else 0.
-    pub fn lt_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::LtImm(imm));
+    pub fn lt_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::LtImm(imm), span);
     }
 
     /// Pops two elements off the stack, and pushes 1 on the stack if the first is less than or
     /// equal to the second, else 0.
-    pub fn lte(mut self) {
-        self.build(self.ip, MasmOp::Lte);
+    pub fn lte(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Lte, span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value is less than or equal
     /// to the given immediate, else 0.
-    pub fn lte_imm(mut self, imm: Felt) {
-        self.build(self.ip, MasmOp::LteImm(imm));
+    pub fn lte_imm(mut self, imm: Felt, span: SourceSpan) {
+        self.build(self.ip, MasmOp::LteImm(imm), span);
     }
 
     /// Pops an element off the stack, and pushes 1 on the stack if that value is an odd number,
     /// else 0.
-    pub fn is_odd(mut self) {
-        self.build(self.ip, MasmOp::IsOdd);
+    pub fn is_odd(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::IsOdd, span);
     }
 
     /// Pushes the current value of the cycle counter (clock) on the stack
-    pub fn clk(mut self) {
-        self.build(self.ip, MasmOp::Clk);
+    pub fn clk(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Clk, span);
     }
 
     /// Pushes the hash of the caller on the stack
-    pub fn caller(mut self) {
-        self.build(self.ip, MasmOp::Caller);
+    pub fn caller(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Caller, span);
     }
 
     /// Pushes the current stack depth on the stack
-    pub fn current_stack_depth(mut self) {
-        self.build(self.ip, MasmOp::Sdepth);
+    pub fn current_stack_depth(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::Sdepth, span);
     }
 
     /// Pushes 1 on the stack if the element on top of the stack is less than 2^32, else 0.
-    pub fn test_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Test);
+    pub fn test_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Test, span);
     }
 
     /// Pushes 1 on the stack if every element of the word on top of the stack is less than 2^32,
     /// else 0.
-    pub fn testw_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Testw);
+    pub fn testw_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Testw, span);
     }
 
     /// Traps if the element on top of the stack is greater than or equal to 2^32
-    pub fn assert_u32(mut self, error_code: Option<u32>) {
+    pub fn assert_u32(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::U32AssertWithError).unwrap_or(MasmOp::U32Assert);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Traps if either of the first two elements on top of the stack are greater than or equal to
     /// 2^32
-    pub fn assert2_u32(mut self, error_code: Option<u32>) {
+    pub fn assert2_u32(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::U32Assert2WithError).unwrap_or(MasmOp::U32Assert2);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Traps if any element of the first word on the stack are greater than or equal to 2^32
-    pub fn assertw_u32(mut self, error_code: Option<u32>) {
+    pub fn assertw_u32(mut self, error_code: Option<u32>, span: SourceSpan) {
         let op = error_code.map(MasmOp::U32AssertwWithError).unwrap_or(MasmOp::U32Assertw);
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Casts the element on top of the stack, `a`, to a valid u32 value, by computing `a mod 2^32`
-    pub fn cast_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Cast);
+    pub fn cast_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Cast, span);
     }
 
     /// Pops an element, `a`, from the stack, and splits it into two elements, `b` and `c`, each of
@@ -744,136 +746,166 @@ impl<'a> MasmOpBuilder<'a> {
     ///
     /// The value for `b` is given by `a mod 2^32`, and the value for `c` by `a / 2^32`. They are
     /// pushed on the stack in that order, i.e. `c` will be on top of the stack afterwards.
-    pub fn split_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Split);
+    pub fn split_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Split, span);
     }
 
     /// Performs unsigned addition of the top two elements on the stack, `b` and `a` respectively,
     /// which are expected to be valid u32 values.
     ///
     /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
-    pub fn add_u32(mut self, overflow: Overflow) {
+    pub fn add_u32(mut self, overflow: Overflow, span: SourceSpan) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Add,
             Overflow::Checked => {
-                return self
-                    .build_many(self.ip, [MasmOp::U32Assert2, MasmOp::Add, MasmOp::U32Assert]);
+                return self.build_many(
+                    self.ip,
+                    [
+                        Span::new(span, MasmOp::U32Assert2),
+                        Span::new(span, MasmOp::Add),
+                        Span::new(span, MasmOp::U32Assert),
+                    ],
+                );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingAdd,
             Overflow::Wrapping => MasmOp::U32WrappingAdd,
         };
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Same as above, but `a` is provided by the given immediate.
-    pub fn add_imm_u32(mut self, imm: u32, overflow: Overflow) {
+    pub fn add_imm_u32(mut self, imm: u32, overflow: Overflow, span: SourceSpan) {
         let op = match overflow {
             Overflow::Unchecked if imm == 1 => MasmOp::Incr,
             Overflow::Unchecked => MasmOp::AddImm(Felt::new(imm as u64)),
             Overflow::Checked => {
                 return self.build_many(
                     self.ip,
-                    [MasmOp::U32Assert, MasmOp::AddImm(Felt::new(imm as u64)), MasmOp::U32Assert],
+                    [
+                        Span::new(span, MasmOp::U32Assert),
+                        Span::new(span, MasmOp::AddImm(Felt::new(imm as u64))),
+                        Span::new(span, MasmOp::U32Assert),
+                    ],
                 );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingAddImm(imm),
             Overflow::Wrapping => MasmOp::U32WrappingAddImm(imm),
         };
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Pops three elements from the stack, `c`, `b`, and `a`, and computes `a + b + c` using the
     /// overflowing semantics of `add_u32`. The first two elements on the stack after this
     /// instruction will be a boolean indicating whether addition overflowed, and the result
     /// itself, mod 2^32.
-    pub fn add3_overflowing_u32(mut self) {
-        self.build(self.ip, MasmOp::U32OverflowingAdd3);
+    pub fn add3_overflowing_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32OverflowingAdd3, span);
     }
 
     /// Pops three elements from the stack, `c`, `b`, and `a`, and computes `a + b + c` using the
     /// wrapping semantics of `add_u32`. The result will be on top of the stack afterwards, mod
     /// 2^32.
-    pub fn add3_wrapping_u32(mut self) {
-        self.build(self.ip, MasmOp::U32WrappingAdd3);
+    pub fn add3_wrapping_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32WrappingAdd3, span);
     }
 
     /// Performs unsigned subtraction of the top two elements on the stack, `b` and `a`
     /// respectively, which are expected to be valid u32 values.
     ///
     /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
-    pub fn sub_u32(mut self, overflow: Overflow) {
+    pub fn sub_u32(mut self, overflow: Overflow, span: SourceSpan) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Sub,
             Overflow::Checked => {
-                return self
-                    .build_many(self.ip, [MasmOp::U32Assert2, MasmOp::Sub, MasmOp::U32Assert]);
+                return self.build_many(
+                    self.ip,
+                    [
+                        Span::new(span, MasmOp::U32Assert2),
+                        Span::new(span, MasmOp::Sub),
+                        Span::new(span, MasmOp::U32Assert),
+                    ],
+                );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingSub,
             Overflow::Wrapping => MasmOp::U32WrappingSub,
         };
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Same as above, but `a` is provided by the given immediate.
-    pub fn sub_imm_u32(mut self, imm: u32, overflow: Overflow) {
+    pub fn sub_imm_u32(mut self, imm: u32, overflow: Overflow, span: SourceSpan) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::SubImm(Felt::new(imm as u64)),
             Overflow::Checked => {
                 return self.build_many(
                     self.ip,
-                    [MasmOp::U32Assert, MasmOp::SubImm(Felt::new(imm as u64)), MasmOp::U32Assert],
+                    [
+                        Span::new(span, MasmOp::U32Assert),
+                        Span::new(span, MasmOp::SubImm(Felt::new(imm as u64))),
+                        Span::new(span, MasmOp::U32Assert),
+                    ],
                 );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingSubImm(imm),
             Overflow::Wrapping => MasmOp::U32WrappingSubImm(imm),
         };
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Performs unsigned multiplication of the top two elements on the stack, `b` and `a`
     /// respectively, which are expected to be valid u32 values.
     ///
     /// See the [Overflow] enum for how `overflow` modifies the semantics of this instruction.
-    pub fn mul_u32(mut self, overflow: Overflow) {
+    pub fn mul_u32(mut self, overflow: Overflow, span: SourceSpan) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::Mul,
             Overflow::Checked => {
-                return self
-                    .build_many(self.ip, [MasmOp::U32Assert2, MasmOp::Mul, MasmOp::U32Assert]);
+                return self.build_many(
+                    self.ip,
+                    [
+                        Span::new(span, MasmOp::U32Assert2),
+                        Span::new(span, MasmOp::Mul),
+                        Span::new(span, MasmOp::U32Assert),
+                    ],
+                );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingMul,
             Overflow::Wrapping => MasmOp::U32WrappingMul,
         };
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Same as above, but `a` is provided by the given immediate.
-    pub fn mul_imm_u32(mut self, imm: u32, overflow: Overflow) {
+    pub fn mul_imm_u32(mut self, imm: u32, overflow: Overflow, span: SourceSpan) {
         let op = match overflow {
             Overflow::Unchecked => MasmOp::MulImm(Felt::new(imm as u64)),
             Overflow::Checked => {
                 return self.build_many(
                     self.ip,
-                    [MasmOp::U32Assert, MasmOp::MulImm(Felt::new(imm as u64)), MasmOp::U32Assert],
+                    [
+                        Span::new(span, MasmOp::U32Assert),
+                        Span::new(span, MasmOp::MulImm(Felt::new(imm as u64))),
+                        Span::new(span, MasmOp::U32Assert),
+                    ],
                 );
             }
             Overflow::Overflowing => MasmOp::U32OverflowingMulImm(imm),
             Overflow::Wrapping => MasmOp::U32WrappingMulImm(imm),
         };
-        self.build(self.ip, op);
+        self.build(self.ip, op, span);
     }
 
     /// Pops three elements from the stack, `b`, `a`, and `c`, and computes `a * b + c`, using
     /// overflowing semantics, i.e. the result is wrapped mod 2^32, and a flag is pushed on the
     /// stack if the result overflowed the u32 range.
-    pub fn madd_overflowing_u32(mut self) {
-        self.build(self.ip, MasmOp::U32OverflowingMadd);
+    pub fn madd_overflowing_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32OverflowingMadd, span);
     }
 
     /// Pops three elements from the stack, `b`, `a`, and `c`, and computes `a * b + c`, using
     /// wrapping semantics, i.e. the result is wrapped mod 2^32.
-    pub fn madd_wrapping_u32(mut self) {
-        self.build(self.ip, MasmOp::U32WrappingMadd);
+    pub fn madd_wrapping_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32WrappingMadd, span);
     }
 
     /// Performs unsigned division of the top two elements on the stack, `b` and `a` respectively,
@@ -882,13 +914,13 @@ impl<'a> MasmOpBuilder<'a> {
     /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
     ///
     /// Traps if `b` is 0.
-    pub fn div_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Div);
+    pub fn div_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Div, span);
     }
 
     /// Same as above, but `b` is provided by the given immediate
-    pub fn div_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32DivImm(imm));
+    pub fn div_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32DivImm(imm), span);
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and computes `a mod b`.
@@ -896,13 +928,13 @@ impl<'a> MasmOpBuilder<'a> {
     /// This operation is unchecked, so if either operand is >= 2^32, the result is undefined.
     ///
     /// Traps if `b` is 0.
-    pub fn mod_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Mod);
+    pub fn mod_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Mod, span);
     }
 
     /// Same as above, but `b` is provided by the given immediate
-    pub fn mod_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32ModImm(imm));
+    pub fn mod_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32ModImm(imm), span);
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and computes `a / b`, and `a mod
@@ -911,192 +943,192 @@ impl<'a> MasmOpBuilder<'a> {
     /// This operation is unchecked, so if either operand is >= 2^32, the results are undefined.
     ///
     /// Traps if `b` is 0.
-    pub fn divmod_u32(mut self) {
-        self.build(self.ip, MasmOp::U32DivMod);
+    pub fn divmod_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32DivMod, span);
     }
 
     /// Same as above, but `b` is provided by the given immediate
-    pub fn divmod_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32DivModImm(imm));
+    pub fn divmod_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32DivModImm(imm), span);
     }
 
     /// Pops two elements off the stack, and computes the bitwise AND of those values, placing the
     /// result on the stack.
     ///
     /// Traps if either element is not a valid u32 value.
-    pub fn band_u32(mut self) {
-        self.build(self.ip, MasmOp::U32And);
+    pub fn band_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32And, span);
     }
 
     /// Pops two elements off the stack, and computes the bitwise OR of those values, placing the
     /// result on the stack.
     ///
     /// Traps if either element is not a valid u32 value.
-    pub fn bor_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Or);
+    pub fn bor_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Or, span);
     }
 
     /// Pops two elements off the stack, and computes the bitwise XOR of those values, placing the
     /// result on the stack.
     ///
     /// Traps if either element is not a valid u32 value.
-    pub fn bxor_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Xor);
+    pub fn bxor_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Xor, span);
     }
 
     /// Pops an element off the stack, and computes the bitwise NOT of that value, placing the
     /// result on the stack.
     ///
     /// Traps if the element is not a valid u32 value.
-    pub fn bnot_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Not);
+    pub fn bnot_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Not, span);
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` left by `b` bits.
     /// More precisely, the result is computed as `(a * 2^b) mod 2^32`.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn shl_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Shl);
+    pub fn shl_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Shl, span);
     }
 
     /// Same as `shl_u32`, but `b` is provided by immediate.
-    pub fn shl_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32ShlImm(imm));
+    pub fn shl_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32ShlImm(imm), span);
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and shifts `a` right by `b` bits.
     /// More precisely, the result is computed as `a / 2^b`.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn shr_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Shr);
+    pub fn shr_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Shr, span);
     }
 
     /// Same as `shr_u32`, but `b` is provided by immediate.
-    pub fn shr_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32ShrImm(imm));
+    pub fn shr_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32ShrImm(imm), span);
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary
     /// representation of `a` left by `b` bits.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn rotl_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Rotl);
+    pub fn rotl_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Rotl, span);
     }
 
     /// Same as `rotl_u32`, but `b` is provided by immediate.
-    pub fn rotl_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32RotlImm(imm));
+    pub fn rotl_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32RotlImm(imm), span);
     }
 
     /// Pops two elements off the stack, `b` and `a` respectively, and rotates the binary
     /// representation of `a` right by `b` bits.
     ///
     /// The result is undefined if `a` is not a valid u32, or `b` is > 31.
-    pub fn rotr_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Rotr);
+    pub fn rotr_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Rotr, span);
     }
 
     /// Same as `rotr_u32`, but `b` is provided by immediate.
-    pub fn rotr_imm_u32(mut self, imm: u32) {
-        self.build(self.ip, MasmOp::U32RotrImm(imm));
+    pub fn rotr_imm_u32(mut self, imm: u32, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32RotrImm(imm), span);
     }
 
     /// Pops an element off the stack, and computes the number of set bits in its binary
     /// representation, i.e. its hamming weight, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
-    pub fn popcnt_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Popcnt);
+    pub fn popcnt_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Popcnt, span);
     }
 
     /// Pops an element off the stack, and computes the number of leading zeros in its binary
     /// representation, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
-    pub fn clz_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Clz);
+    pub fn clz_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Clz, span);
     }
 
     /// Pops an element off the stack, and computes the number of trailing zeros in its binary
     /// representation, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
-    pub fn ctz_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Ctz);
+    pub fn ctz_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Ctz, span);
     }
 
     /// Pops an element off the stack, and computes the number of leading ones in its binary
     /// representation, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
-    pub fn clo_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Clo);
+    pub fn clo_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Clo, span);
     }
 
     /// Pops an element off the stack, and computes the number of trailing ones in its binary
     /// representation, and places the result on the stack.
     ///
     /// The result is undefined if the input value is not a valid u32.
-    pub fn cto_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Cto);
+    pub fn cto_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Cto, span);
     }
 
     /// Pushes a boolean on the stack by computing `a < b` for `[b, a]`
     ///
     /// The result is undefined if either operand is not a valid u32 value.
-    pub fn lt_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Lt);
+    pub fn lt_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Lt, span);
     }
 
     /// Pushes a boolean on the stack by computing `a <= b` for `[b, a]`
     ///
     /// The result is undefined if either operand is not a valid u32 value.
-    pub fn lte_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Lte);
+    pub fn lte_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Lte, span);
     }
 
     /// Pushes a boolean on the stack by computing `a > b` for `[b, a]`
     ///
     /// The result is undefined if either operand is not a valid u32 value.
-    pub fn gt_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Gt);
+    pub fn gt_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Gt, span);
     }
 
     /// Pushes a boolean on the stack by computing `a >= b` for `[b, a]`
     ///
     /// The result is undefined if either operand is not a valid u32 value.
-    pub fn gte_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Gte);
+    pub fn gte_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Gte, span);
     }
 
     /// Computes the minimum of the two elements on top of the stack.
     ///
     /// The result is undefined if either operand is not a valid u32 value.
-    pub fn min_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Min);
+    pub fn min_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Min, span);
     }
 
     /// Computes the maximum of the two elements on top of the stack.
     ///
     /// The result is undefined if either operand is not a valid u32 value.
-    pub fn max_u32(mut self) {
-        self.build(self.ip, MasmOp::U32Max);
+    pub fn max_u32(mut self, span: SourceSpan) {
+        self.build(self.ip, MasmOp::U32Max, span);
     }
 
     #[inline(never)]
-    fn build(&mut self, ip: MasmBlockId, op: MasmOp) {
+    fn build(&mut self, ip: MasmBlockId, op: MasmOp, span: SourceSpan) {
         apply_op_stack_effects(&op, self.stack, self.dfg, self.asm);
-        self.asm.push(ip, op);
+        self.asm.push(ip, op, span);
     }
 
     #[inline(never)]
-    fn build_many(&mut self, ip: MasmBlockId, ops: impl IntoIterator<Item = MasmOp>) {
+    fn build_many(&mut self, ip: MasmBlockId, ops: impl IntoIterator<Item = Span<MasmOp>>) {
         for op in ops.into_iter() {
             apply_op_stack_effects(&op, self.stack, self.dfg, self.asm);
-            self.asm.push(ip, op);
+            self.asm.push(ip, op.item, op.span());
         }
     }
 }
@@ -1159,6 +1191,8 @@ pub struct IfTrueBuilder<'a> {
     /// will be used as the expected state of the operand stack when we finish
     /// constructing the second branch and validate the `if.true`.
     out_stack: OperandStack<Type>,
+    /// The source span associated with the conditional
+    span: SourceSpan,
     /// This is the block to which the `if.true` will be appended
     ip: MasmBlockId,
     /// The block id for the then branch, unset until it has been finalized
@@ -1202,7 +1236,7 @@ impl<'f> IfTrueBuilder<'f> {
     pub fn build(mut self) {
         let then_blk = self.then_blk.expect("missing 'then' block");
         let else_blk = self.else_blk.expect("missing 'else' block");
-        self.asm.push(self.ip, MasmOp::If(then_blk, else_blk));
+        self.asm.push(self.ip, MasmOp::If(then_blk, else_blk), self.span);
         // Update the operand stack to represent the state after execution of the `if.true`
         let in_stack = self.in_stack.stack_mut();
         in_stack.clear();
@@ -1380,6 +1414,8 @@ pub struct LoopBuilder<'a> {
     /// as otherwise program behavior is undefined based on whether the loop is
     /// entered or not.
     out_stack: OperandStack<Type>,
+    /// The source span associated with the loop
+    span: SourceSpan,
     /// The block to which the loop instruction will be appended
     ip: MasmBlockId,
     /// The top-level block for the loop
@@ -1419,7 +1455,7 @@ impl<'f> LoopBuilder<'f> {
                     "expected the operand stack to be in the same abstract state whether the \
                      while.true loop is taken or skipped"
                 );
-                self.asm.push(self.ip, MasmOp::While(self.body));
+                self.asm.push(self.ip, MasmOp::While(self.body), self.span);
             }
             LoopType::Repeat(1) => {
                 // This is an edge case, but a single iteration `repeat` is no different than
@@ -1461,7 +1497,7 @@ impl<'f> LoopBuilder<'f> {
                         apply_op_stack_effects(op, &mut self.out_stack, self.dfg, self.asm);
                     }
                 }
-                self.asm.push(self.ip, MasmOp::Repeat(n, self.body));
+                self.asm.push(self.ip, MasmOp::Repeat(n, self.body), self.span);
             }
         }
 

@@ -187,11 +187,7 @@ impl ParseStage {
         let ast = ast::Module::parse_file(name, ModuleKind::Library, path)
             .map_err(miden_assembly::diagnostics::RelatedError::new)
             .map_err(CompilerError::Report)?;
-        Ok(ParseOutput::Masm(Box::new(masm::Module::from_ast(
-            &ast,
-            span,
-            &session.codemap,
-        ))))
+        Ok(ParseOutput::Masm(Box::new(masm::Module::from_ast(&ast, span))))
     }
 
     fn parse_masm_from_bytes(
@@ -228,10 +224,6 @@ impl ParseStage {
         let ast = ast::Module::parse_str(name, ModuleKind::Library, source)
             .map_err(miden_assembly::diagnostics::RelatedError::new)
             .map_err(CompilerError::Report)?;
-        Ok(ParseOutput::Masm(Box::new(masm::Module::from_ast(
-            &ast,
-            span,
-            &session.codemap,
-        ))))
+        Ok(ParseOutput::Masm(Box::new(masm::Module::from_ast(&ast, span))))
     }
 }

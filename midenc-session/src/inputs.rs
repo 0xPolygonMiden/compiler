@@ -33,6 +33,13 @@ pub struct InputFile {
     file_type: FileType,
 }
 impl InputFile {
+    pub fn new(ty: FileType, file: InputType) -> Self {
+        Self {
+            file,
+            file_type: ty,
+        }
+    }
+
     /// Returns an [InputFile] representing an empty WebAssembly module binary
     pub fn empty() -> Self {
         Self {

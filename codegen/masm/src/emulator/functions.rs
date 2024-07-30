@@ -341,7 +341,7 @@ impl Instruction {
 
     #[inline(always)]
     pub fn op(&self, function: &Function) -> Option<Op> {
-        function.body.get(self.ip)
+        function.body.get(self.ip).map(|op| op.item)
     }
 }
 
@@ -484,7 +484,7 @@ impl Activation {
 
 #[cfg(test)]
 mod tests {
-    use midenc_hir::{assert_matches, Signature};
+    use midenc_hir::{assert_matches, Signature, SourceSpan};
 
     use super::*;
 
@@ -736,6 +736,7 @@ mod tests {
     }
 
     fn test_function() -> Arc<Function> {
+        let span = SourceSpan::default();
         let mut function =
             Function::new("test::main".parse().unwrap(), Signature::new(vec![], vec![]));
         let then_blk = function.create_block();
@@ -743,29 +744,29 @@ mod tests {
         let while_blk = function.create_block();
         {
             let body = function.block_mut(function.body.id());
-            body.push(Op::PushU8(2));
-            body.push(Op::PushU8(1));
-            body.push(Op::Dup(1));
-            body.push(Op::Dup(1));
-            body.push(Op::U32Lt);
-            body.push(Op::If(then_blk, else_blk));
-            body.push(Op::Exec("test::foo".parse().unwrap()));
+            body.push(Op::PushU8(2), span);
+            body.push(Op::PushU8(1), span);
+            body.push(Op::Dup(1), span);
+            body.push(Op::Dup(1), span);
+            body.push(Op::U32Lt, span);
+            body.push(Op::If(then_blk, else_blk), span);
+            body.push(Op::Exec("test::foo".parse().unwrap()), span);
         }
         {
             let then_body = function.block_mut(then_blk);
-            then_body.push(Op::PushU8(1));
-            then_body.push(Op::While(while_blk));
+            then_body.push(Op::PushU8(1), span);
+            then_body.push(Op::While(while_blk), span);
         }
         {
             let else_body = function.block_mut(else_blk);
-            else_body.push(Op::U32Max);
+            else_body.push(Op::U32Max, span);
         }
         {
             let while_body = function.block_mut(while_blk);
-            while_body.push(Op::Dup(1));
-            while_body.push(Op::Dup(1));
-            while_body.push(Op::Incr);
-            while_body.push(Op::U32Lt);
+            while_body.push(Op::Dup(1), span);
+            while_body.push(Op::Dup(1), span);
+            while_body.push(Op::Incr, span);
+            while_body.push(Op::U32Lt, span);
         }
 
         Arc::new(function)
