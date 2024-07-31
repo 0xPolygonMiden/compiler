@@ -253,25 +253,25 @@ export.load_dw # [waddr, index, offset]
     # if the pointer is naturally aligned..
     if.true
         # drop byte offset
-        movup.2 drop
+        movup.2 drop # [waddr, index]
         # check which element to start at
         dup.1 eq.0
         if.true
             # drop index
-            swap.1 drop
+            swap.1 drop # [waddr]
             # load first two elements
-            padw movup.4 mem_loadw
+            padw movup.4 mem_loadw # [w0, w1, w2, w3]
             # drop last two elements, and we're done
-            movup.4 movup.4 drop drop
+            movup.3 movup.3 drop drop # [w0, w1]
         else
           dup.1 eq.1
           if.true
               # drop index
-              swap.1 drop
+              swap.1 drop # [waddr]
               # load second and third elements
-              padw movup.4 mem_loadw
+              padw movup.4 mem_loadw # [w0, w1, w2, w3]
               # drop unused elements, and we're done
-              drop movup.3 drop
+              drop movup.2 drop # [w1, w2]
           else
               swap.1 eq.2
               if.true
@@ -279,11 +279,13 @@ export.load_dw # [waddr, index, offset]
                 padw movup.4 mem_loadw drop drop
               else
                 # load first element of next word, drop the rest
-                dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
-                movup.4 movup.4 movup.4
-                drop drop drop
+                dup.0 u32overflowing_add.1 assertz padw movup.4 # [waddr + 1, 0, 0, 0, 0, waddr]
+                mem_loadw # [w0, w1, w2, w3, waddr]
+                movup.3 movup.3 movup.3 # [w1, w2, w3, w0, waddr]
+                drop drop drop # [w0, waddr]
                 # load fourth element, and we're done
-                movup.4 padw movup.4 mem_loadw drop drop drop
+                swap.1 padw movup.4 # [waddr, 0, 0, 0, 0, w0]
+                mem_loadw drop drop drop
               end
           end
         end
@@ -568,8 +570,54 @@ end
 # start of the data; an element index, which indicates which element of
 # the word the data starts in; and a byte offset, which indicates which
 # byte is the start of the data.
-export.store_dw # [waddr, index, offset, value]
-    # TODO: implement
-    # cleanup the operand stack
-    dropw
+export.store_dw # [waddr, index, offset, value_hi, value_lo]
+    # check for alignment and offset validity
+    dup.2 eq.0
+    dup.3 push.8 u32lt assert # offset must be < 8
+    # if the pointer is naturally aligned..
+    if.true
+        # drop byte offset
+        movup.2 drop # [waddr, index, value_hi, value_lo]
+        # check which element to start at
+        dup.1 eq.0
+        if.true
+            # drop index
+            swap.1 drop # [waddr, value_hi, value_lo]
+            push.0 movdn.3 push.0 movdn.3 # [waddr, value_hi, value_lo, 0, 0]
+            mem_storew 
+            # cleanup the operand stack
+            dropw
+        else
+            dup.1 eq.1
+            if.true
+                # drop index
+                swap.1 drop # [waddr, value_hi, value_lo]
+                # store as the second and third elements of the word
+                push.0 swap.1 push.0 movdn.4 # [waddr, 0, value_hi, value_lo, 0]
+                mem_storew 
+                # cleanup the operand stack
+                dropw
+            else
+                swap.1 eq.2
+                if.true
+                    # store as the third and fourth elements of the word
+                    push.0 swap.1 push.0 swap.1 # [waddr, 0, 0, value_hi, value_lo]
+                    mem_storew 
+                    # cleanup the operand stack
+                    dropw
+                else
+                    # store the first element of the next word
+                    dup.0 u32overflowing_add.1 assertz # [waddr + 1, waddr, value_hi, value_lo]
+                    padw drop movup.6 movup.4 # [waddr + 1, value_lo, 0, 0, 0, waddr, value_hi]
+                    mem_storew dropw # [waddr, value_hi]
+                    # store the forth element
+                    padw drop movup.3 # [waddr, 0, 0, 0, value_hi]
+                    mem_storew dropw
+                end
+            end
+        end
+    else # unaligned; an unaligned double-word spans three elements
+        # TODO: implement
+        push.1 assertz
+    end  
 end

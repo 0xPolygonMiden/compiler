@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, sync::Arc, u64};
 
 use midenc_hir::{
     pass::{AnalysisManager, ConversionPass},
@@ -11,6 +11,9 @@ use proptest::prelude::*;
 use smallvec::{smallvec, SmallVec};
 
 use super::*;
+
+const MEMORY_SIZE_BYTES: u32 = 1048576 * 2; // Twice the size of the default Rust shadow stack size
+const MEMORY_SIZE_VM_WORDS: u32 = MEMORY_SIZE_BYTES / 16;
 
 #[cfg(test)]
 #[allow(unused_macros)]
@@ -495,8 +498,6 @@ fn i32_checked_neg() {
 
 #[test]
 fn codegen_mem_store_sw_load_sw() {
-    const MEMORY_SIZE_BYTES: u32 = 1048576 * 2; // Twice the size of the default Rust shadow stack size
-    const MEMORY_SIZE_VM_WORDS: u32 = MEMORY_SIZE_BYTES / 16;
     let context = TestContext::default();
     let mut builder = ProgramBuilder::new(&context.session.diagnostics);
     let mut mb = builder.module("test");
@@ -531,7 +532,7 @@ fn codegen_mem_store_sw_load_sw() {
 
     // eprintln!("{}", program);
 
-    fn test(program: Arc<Program>, ptr: u32, value: u32) -> u32 {
+    fn roundtrip(program: Arc<Program>, ptr: u32, value: u32) -> u32 {
         eprintln!("---------------------------------");
         eprintln!("testing store_sw/load_sw ptr: {ptr}, value: {value}");
         eprintln!("---------------------------------");
@@ -549,11 +550,103 @@ fn codegen_mem_store_sw_load_sw() {
 
     TestRunner::new(Config::with_cases(1024))
         .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u32>()), move |(ptr, value)| {
-            let out = test(program.clone(), ptr, value);
+            let out = roundtrip(program.clone(), ptr, value);
             prop_assert_eq!(out, value);
             Ok(())
         })
         .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_dw_load_dw() {
+    let context = TestContext::default();
+    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
+    let mut mb = builder.module("test");
+    let id = {
+        let mut fb = mb
+            .function(
+                "store_load_dw",
+                Signature::new(
+                    [AbiParam::new(Type::U32), AbiParam::new(Type::U64)],
+                    [AbiParam::new(Type::U32)],
+                ),
+            )
+            .expect("unexpected symbol conflict");
+        let entry = fb.current_block();
+        let (ptr_u32, value) = {
+            let args = fb.block_params(entry);
+            (args[0], args[1])
+        };
+        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::U64.into()), SourceSpan::UNKNOWN);
+        fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
+        let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
+        fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
+        fb.build().expect("unexpected error building function")
+    };
+
+    mb.build().expect("unexpected error constructing test module");
+
+    let program = builder.with_entrypoint(id).link().expect("failed to link program");
+
+    let ir_module = program
+        .modules()
+        .iter()
+        .take(1)
+        .collect::<Vec<&midenc_hir::Module>>()
+        .first()
+        .expect("no module in IR program")
+        .to_string();
+
+    eprintln!("{}", ir_module.as_str());
+
+    let mut compiler = MasmCompiler::new(&context.session);
+    let program = compiler.compile(program).expect("compilation failed").freeze();
+
+    eprintln!("{}", program);
+
+    fn roundtrip(program: Arc<Program>, ptr: u32, value: u64) -> u64 {
+        eprintln!("---------------------------------");
+        eprintln!("testing store_dw/load_dw ptr: {ptr}, value: {value}");
+        eprintln!("---------------------------------");
+        let mut harness = TestByEmulationHarness::with_emulator_config(
+            MEMORY_SIZE_VM_WORDS as usize,
+            Emulator::DEFAULT_HEAP_START as usize,
+            Emulator::DEFAULT_LOCALS_START as usize,
+            true,
+        );
+        let mut args: SmallVec<[Felt; 4]> = smallvec!(Felt::new(ptr as u64));
+        args.extend(value.canonicalize());
+        let mut stack = harness.execute_program(program.clone(), &args).expect("execution failed");
+        u64::from_stack(&mut stack)
+    }
+
+    fn test(program: Arc<Program>, ptr: u32, value: u64) {
+        let out = roundtrip(program.clone(), ptr, value);
+        assert_eq!(out, value);
+    }
+
+    // test zero address
+    test(program.clone(), 0, 42);
+    // test first and second element
+    test(program.clone(), 16, 42);
+    test(program.clone(), 16, u64::MAX);
+    // test second and third element
+    test(program.clone(), 20, 42);
+    test(program.clone(), 20, u64::MAX);
+    // test third and fourth element
+    test(program.clone(), 24, 42);
+    test(program.clone(), 24, u64::MAX);
+    // test fourth element and first element of the next word
+    test(program.clone(), 28, 42);
+    test(program.clone(), 28, u64::MAX);
+
+    // TestRunner::new(Config::with_cases(1024))
+    //     .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u64>()), move |(ptr, value)| {
+    //         let out = test(program.clone(), ptr, value);
+    //         prop_assert_eq!(out, value);
+    //         Ok(())
+    //     })
+    //     .unwrap();
 }
 
 macro_rules! proptest_unary_numeric_op {
