@@ -5,7 +5,7 @@ using one or more components of the Miden compiler suite. Which components you u
 and how you use them is likely to differ depending on the project, but we've tried
 to provide good coverage regardless. 
 
-There are a set of guides which are focused on documenting the workflows for specific 
+There is a set of guides which are focused on documenting the workflows for specific 
 use cases that we wish to ensure are well supported, or have encountered so far, but
 if you feel there is anything missing, feel free to open an issue and we will try to
 address the missing docs as soon as possible!

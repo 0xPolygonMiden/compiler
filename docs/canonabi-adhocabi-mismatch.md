@@ -2,7 +2,7 @@ TL;DR: The compiler will recognize the functions with a mismatch between the can
 
 # Canonical ABI vs Miden (tx kernel) ABI mismatch and how to resolve it.
 
-From the analisys of all the functions in the tx kernel API the Canonical ABI rule that mostly causes the mismatch between the Canonical ABI and the Miden ABI is that anything larger than 8 bytes (i64) is returned via a pointer passed as an argument.
+From the analysis of all the functions in the tx kernel API the Canonical ABI rule that mostly causes the mismatch between the Canonical ABI and the Miden ABI is that anything larger than 8 bytes (i64) is returned via a pointer passed as an argument.
 
 We want to recognize the functions with a mismatch between the Canonical ABI and the Miden ABI and make the compiler generate an adapter function that will call the tx kernel function and convert function arguments and result. 
 
