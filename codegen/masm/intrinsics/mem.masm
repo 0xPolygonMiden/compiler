@@ -286,7 +286,7 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     dup.3 u32shl # [x_hi_hi, chunk_mid, chunk__lo, offset]
 
     # Move the value below the other chunks temporarily
-    movdn.2 # [chunk_mid, chunk_lo, x_hi_hi, offset]
+    movdn.3 # [chunk_mid, chunk_lo, offset, x_hi_hi]
 
     # We must split the middle chunk into two parts,
     # one containing the bits to be combined with the
@@ -301,7 +301,7 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     # Then, we shift the chunk right by 32 - offset bits,
     # re-aligning the low bits of the first word, and
     # isolating them.
-    push.32 dup.4 u32shr  # [x_hi_lo, chunk_mid, chunk_lo, offset, x_hi_hi]
+    push.32 dup.4 u32wrapping_sub u32shr  # [x_hi_lo, chunk_mid, chunk_lo, offset, x_hi_hi]
 
     # Move the high bits back to the top
     #
@@ -327,7 +327,7 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     swap.1
 
     # Shift the value right, as done previously for the middle chunk
-    push.32 movup.4 u32shr # [x_lo_lo, x_lo_hi, x_hi]
+    push.32 movup.4 u32wrapping_sub u32shr # [x_lo_lo, x_lo_hi, x_hi]
 
     # OR the two halves together, giving us our second word, `x_lo`
     u32or # [x_lo, x_hi]
@@ -336,34 +336,54 @@ export.realign_dw # [chunk_hi, chunk_mid, chunk_lo, offset]
     swap.1 # [x_hi, x_lo]
 end
 
+# Shift a double-word (64-bit, in two 32-bit chunks) value by the given offset 
+# Returns three 32-bit chunks [chunk_hi, chunk_mid, chunk_lo]
+export.offset_dw # [value_hi, value_lo, offset]
+    dup.0
+    dup.3 u32shr # [chunk_hi, value_hi, value_lo, offset]
+    movdn.3 # [value_hi, value_lo, offset, chunk_hi]
+    push.32 dup.3 u32wrapping_sub # [32 - offset, value_hi, value_lo, offset, chunk_hi]
+    u32shl # [ chunk_mid_hi, value_lo, offset, chunk_hi]
+    dup.1 # [ value_lo, chunk_mid_hi, value_lo, offset, chunk_hi]
+    dup.3 # [ offset, value_lo, chunk_mid_hi, value_lo, offset, chunk_hi]
+    u32shr # [ chunk_mid_lo, chunk_mid_hi, value_lo, offset, chunk_hi]
+    u32or # [ chunk_mid, value_lo, offset, chunk_hi]
+    movdn.2 # [ value_lo, offset, chunk_mid, chunk_hi]
+    push.32 movup.2 u32wrapping_sub # [32 - offset, value_lo, offset, chunk_mid, chunk_hi]
+    u32shl # [ chunk_lo, chunk_mid, chunk_hi]
+    swap.2 # [ chunk_hi, chunk_mid, chunk_lo]
+end
+
 
 # Load a pair of machine words (32-bit elements) to the operand stack
 export.load_dw # [waddr, index, offset]
     # check for alignment and offset validity
     dup.2 eq.0
     dup.3 push.8 u32lt assert # offset must be < 8
+    # convert offset from bytes to bits 
+    movup.3 push.8 u32wrapping_mul movdn.3 # [waddr, index, offset, value_hi, value_lo]
     # if the pointer is naturally aligned..
     if.true
         # drop byte offset
-        movup.2 drop
+        movup.2 drop # [waddr, index]
         # check which element to start at
         dup.1 eq.0
         if.true
             # drop index
-            swap.1 drop
+            swap.1 drop # [waddr]
             # load first two elements
-            padw movup.4 mem_loadw
+            padw movup.4 mem_loadw # [w0, w1, w2, w3]
             # drop last two elements, and we're done
-            movup.4 movup.4 drop drop
+            movup.3 movup.3 drop drop # [w0, w1]
         else
           dup.1 eq.1
           if.true
               # drop index
-              swap.1 drop
+              swap.1 drop # [waddr]
               # load second and third elements
-              padw movup.4 mem_loadw
+              padw movup.4 mem_loadw # [w0, w1, w2, w3]
               # drop unused elements, and we're done
-              drop movup.3 drop
+              drop movup.2 drop # [w1, w2]
           else
               swap.1 eq.2
               if.true
@@ -371,11 +391,13 @@ export.load_dw # [waddr, index, offset]
                 padw movup.4 mem_loadw drop drop
               else
                 # load first element of next word, drop the rest
-                dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
-                movup.4 movup.4 movup.4
-                drop drop drop
+                dup.0 u32overflowing_add.1 assertz padw movup.4 # [waddr + 1, 0, 0, 0, 0, waddr]
+                mem_loadw # [w0, w1, w2, w3, waddr]
+                movup.3 movup.3 movup.3 # [w1, w2, w3, w0, waddr]
+                drop drop drop # [w0, waddr]
                 # load fourth element, and we're done
-                movup.4 padw movup.4 mem_loadw drop drop drop
+                swap.1 padw movup.4 # [waddr, 0, 0, 0, 0, w0]
+                mem_loadw drop drop drop
               end
           end
         end
@@ -383,16 +405,19 @@ export.load_dw # [waddr, index, offset]
         # check if we start in the first element
         dup.1 eq.0
         if.true
+            # memory layout: [hi, mid, lo, 0]
             # drop the index
-            swap.1 drop
+            swap.1 drop # [waddr, offset]
             # load three elements containing the double-word on the stack
-            padw movup.4 mem_loadw movup.4 drop
+            padw movup.4 # [waddr, 0, 0, 0, 0, offset]
+            mem_loadw movup.3 drop
             # re-align it, and we're done; realign_dw gets [w0, w1, w2, offset]
             exec.realign_dw
         else
             # check if we start in the second element
             dup.1 eq.1
             if.true
+                # memory layout: [0, hi, mid, lo]
                 # drop the index
                 swap.1 drop
                 # load three elements containing the double-word on the stack
@@ -401,22 +426,30 @@ export.load_dw # [waddr, index, offset]
                 exec.realign_dw
             else
                 # check if we start in the third element
-                swap.1 eq.2
+                swap.1 eq.2 # [waddr, offset]
                 if.true
+                    # memory layout: [0, 0, 0, hi], [ mid, lo, 0, 0]
                     # load one element from the next word
-                    dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
-                    movup.4 movup.4 movup.4 drop drop drop
+                    dup.0 u32overflowing_add.1 assertz # [waddr + 1, waddr, offset]
+                    padw movup.4 # [waddr + 1, 0, 0, 0, 0, waddr, offset]
+                    mem_loadw # [chunk_lo, 0, 0, 0, waddr, offset]
+                    movup.3 movup.3 movup.3 drop drop drop # [chunk_lo, waddr, offset]
                     # load two elements from the first word
-                    swap.1 padw movup.4 mem_loadw drop drop
-                    # re-align it, and we're done; realign_dw gets [w2, w3, w0, offset]
+                    swap.1 padw movup.4 # [waddr, 0, 0, 0, 0, chunk_lo, offset]
+                    mem_loadw drop drop # [chunk_hi, chunk_mid, chunk_lo, offset]
+                    # re-align it, and we're done 
                     exec.realign_dw
                 else
+                    # memory layout: [0, 0, hi, mid], [lo, 0, 0, 0]
                     # load the two least-significant elements from the next word first
-                    dup.0 u32overflowing_add.1 assertz padw movup.4 mem_loadw
-                    movup.4 movup.4 drop drop
+                    dup.0 u32overflowing_add.1 assertz # [waddr + 1, waddr, offset]
+                    padw movup.4 # [waddr + 1, 0, 0, 0, 0, waddr, offset]
+                    mem_loadw # [chunk_mid, chunk_lo, 0, 0, waddr, offset]
+                    movup.3 movup.3 drop drop # [chunk_mid, chunk_lo, waddr, offset]
                     # load the most significant element from the first word
-                    movup.2 padw movup.4 mem_loadw drop drop drop
-                    # re-align it, and we're done; realign_dw gets [w3, w1, w0, offset]
+                    movup.2 padw movup.4 # [waddr, 0, 0, 0, 0, chunk_mid, chunk_lo, offset]
+                    mem_loadw drop drop drop # [chunk_hi, chunk_mid, chunk_lo, offset]
+                    # re-align it, and we're done
                     exec.realign_dw
                 end
             end
@@ -660,8 +693,107 @@ end
 # start of the data; an element index, which indicates which element of
 # the word the data starts in; and a byte offset, which indicates which
 # byte is the start of the data.
-export.store_dw # [waddr, index, offset, value]
-    # TODO: implement
-    # cleanup the operand stack
-    dropw
+export.store_dw # [waddr, index, offset, value_hi, value_lo]
+    # check for alignment and offset validity
+    dup.2 eq.0
+    dup.3 push.8 u32lt assert # offset must be < 8
+    # convert offset from bytes to bits 
+    movup.3 push.8 u32wrapping_mul movdn.3 # [offset == 0, waddr, index, offset, value_hi, value_lo]
+    # if the pointer is naturally aligned..
+    if.true
+        # drop byte offset
+        movup.2 drop # [waddr, index, value_hi, value_lo]
+        # check which element to start at
+        dup.1 eq.0
+        if.true
+            # drop index
+            swap.1 drop # [waddr, value_hi, value_lo]
+            push.0 movdn.3 push.0 movdn.3 # [waddr, value_hi, value_lo, 0, 0]
+            mem_storew 
+            # cleanup the operand stack
+            dropw
+        else
+            dup.1 eq.1
+            if.true
+                # drop index
+                swap.1 drop # [waddr, value_hi, value_lo]
+                # store as the second and third elements of the word
+                push.0 swap.1 push.0 movdn.4 # [waddr, 0, value_hi, value_lo, 0]
+                mem_storew 
+                # cleanup the operand stack
+                dropw
+            else
+                swap.1 eq.2
+                if.true
+                    # store as the third and fourth elements of the word
+                    push.0 swap.1 push.0 swap.1 # [waddr, 0, 0, value_hi, value_lo]
+                    mem_storew 
+                    # cleanup the operand stack
+                    dropw
+                else
+                    # store the first element of the next word
+                    dup.0 u32overflowing_add.1 assertz # [waddr + 1, waddr, value_hi, value_lo]
+                    padw drop movup.6 movup.4 # [waddr + 1, value_lo, 0, 0, 0, waddr, value_hi]
+                    mem_storew dropw # [waddr, value_hi]
+                    # store the forth element
+                    padw drop movup.3 # [waddr, 0, 0, 0, value_hi]
+                    mem_storew dropw
+                end
+            end
+        end
+    else # unaligned; an unaligned double-word spans three elements
+        # [waddr, index, offset, value_hi, value_lo]
+        movup.2 # [offset, waddr, index, value_hi, value_lo]
+        movup.4 # [value_lo, offset, waddr, index, value_hi]
+        movup.4 # [value_hi, value_lo, offset, waddr, index]
+        exec.offset_dw # [chunk_hi, chunk_mid, chunk_lo, waddr, index]
+        movup.4 # [index, chunk_hi, chunk_mid, chunk_lo, waddr]
+        # check if we start in the first element
+        dup.0 eq.0
+        if.true
+            # target memory layout: [hi, mid, lo, 0]
+            # drop the index
+            drop 
+            push.0 swap.4 # [waddr, chunk_hi, chunk_mid, chunk_lo, 0]
+            mem_storew
+            dropw
+        else
+            # check if we start in the second element
+            dup.0 eq.1
+            if.true
+                # target memory layout: [0, hi, mid, lo]
+                # drop the index
+                drop # [chunk_hi, chunk_mid, chunk_lo, waddr]
+                push.0 movup.4 # [waddr, 0, chunk_hi, chunk_mid, chunk_lo]
+                mem_storew
+                dropw
+            else 
+                # check if we start in the third element
+                eq.2 # [chunk_hi, chunk_mid, chunk_lo, waddr]
+                if.true 
+                    # target memory layout: [0, 0, hi, mid], [lo, 0, 0, 0]
+                    push.0 push.0 dup.5 # [waddr, 0, 0, chunk_hi, chunk_mid, chunk_lo, waddr]
+                    mem_storew
+                    dropw # [chunk_lo, waddr]
+                    swap.1 # [waddr, chunk_lo]
+                    push.1 u32overflowing_add assertz # [waddr + 1, chunk_lo]
+                    padw movup.5 movup.5 # [waddr + 1, chunk_lo, 0, 0, 0, 0]
+                    mem_storew
+                    dropw # [0]
+                    drop
+                else 
+                    # target memory layout: [0, 0, 0, hi], [mid, lo, 0, 0]
+                    push.0 push.0 push.0 dup.6 # [waddr, 0, 0, 0, chunk_hi, chunk_mid, chunk_lo, waddr]
+                    mem_storew
+                    dropw # [chunk_mid, chunk_lo, waddr]
+                    movup.2 # [waddr, chunk_mid, chunk_lo]
+                    push.1 u32overflowing_add assertz # [waddr + 1, chunk_mid, chunk_lo]
+                    padw movup.6 movup.6 movup.6 # [waddr + 1, chunk_mid, chunk_lo, 0, 0, 0, 0]
+                    mem_storew
+                    dropw # [0, 0]
+                    drop drop
+                end
+            end
+        end 
+    end  
 end
