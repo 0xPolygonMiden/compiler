@@ -1778,7 +1778,11 @@
     unreachable
     unreachable
   )
-  (func $core::slice::<impl [T]>::copy_from_slice (;64;) (type 27) (param i32 i32 i32 i32 i32)
+  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;64;) (type 19) (param i32 i32 i32)
+    unreachable
+    unreachable
+  )
+  (func $core::slice::<impl [T]>::copy_from_slice (;65;) (type 27) (param i32 i32 i32 i32 i32)
     block ;; label = @1
       local.get 1
       local.get 3
@@ -1794,10 +1798,6 @@
     local.get 1
     local.get 1
     call $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail
-    unreachable
-  )
-  (func $core::slice::<impl [T]>::copy_from_slice::len_mismatch_fail (;65;) (type 19) (param i32 i32 i32)
-    unreachable
     unreachable
   )
   (func $get_wallet_magic_number.command_export (;66;) (type 11) (result f32)

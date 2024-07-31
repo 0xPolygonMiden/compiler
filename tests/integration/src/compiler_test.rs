@@ -23,6 +23,8 @@ use crate::cargo_proj::project;
 
 type LinkMasmModules = Vec<(LibraryPath, String)>;
 
+pub const WASM32_WASI_TARGET: &str = "wasm32-wasip1";
+
 pub enum CompilerTestSource {
     Rust(String),
     RustCargo {
@@ -213,7 +215,7 @@ impl CompilerTest {
                 .arg("--manifest-path")
                 .arg(manifest_path)
                 .arg("--release")
-                .arg("--target=wasm32-wasi");
+                .arg(format!("--target={}", WASM32_WASI_TARGET));
             if is_build_std {
                 // compile std as part of crate graph compilation
                 // https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
@@ -630,7 +632,7 @@ fn wasm_artifact_path(cargo_project_folder: &Path, artifact_name: &str) -> PathB
     cargo_project_folder
         .to_path_buf()
         .join("target")
-        .join("wasm32-wasi")
+        .join(WASM32_WASI_TARGET)
         .join("release")
         .join(artifact_name)
         .with_extension("wasm")

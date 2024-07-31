@@ -200,7 +200,9 @@ args = ["target", "add", "wasm32-unknown-unknown"]
 category = "Test"
 description = "Install wasm32-wasi target"
 command = "rustup"
-args = ["target", "add", "wasm32-wasi"]
+# `wasm32-wasi` target is renamed to `wasm32-wasip1` 
+# https://blog.rust-lang.org/2024/04/09/updates-to-rusts-wasi-targets.html
+args = ["target", "add", "wasm32-wasip1"]
 
 [tasks.install-rust-src]
 category = "Test"
