@@ -179,9 +179,9 @@ test_int_op!(sub, -, i64, i64::MIN/2..=i64::MAX/2, -1..=i64::MAX/2);
 test_int_op!(sub, -, u32, u32::MAX/2..=u32::MAX, 0..=u32::MAX/2);
 test_int_op!(sub, -, u16, u16::MAX/2..=u16::MAX, 0..=u16::MAX/2);
 test_int_op!(sub, -, u8, u8::MAX/2..=u8::MAX, 0..=u8::MAX/2);
-test_int_op!(sub, -, i32, i32::MIN..=0, i32::MIN..=0);
-test_int_op!(sub, -, i16, i16::MIN..=0, i16::MIN..=0);
-test_int_op!(sub, -, i8, i8::MIN..=0, i8::MIN..=0);
+test_int_op!(sub, -, i32, i32::MIN+1..=0, i32::MIN+1..=0);
+test_int_op!(sub, -, i16, i16::MIN+1..=0, i16::MIN+1..=0);
+test_int_op!(sub, -, i8, i8::MIN+1..=0, i8::MIN+1..=0);
 
 test_int_op!(mul, *, u64, 0u64..=16656, 0u64..=16656);
 test_int_op!(mul, *, i64, -65656i64..=65656, -65656i64..=65656);
