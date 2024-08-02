@@ -1,9 +1,11 @@
 use std::{fmt, path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::ValueEnum;
-use miden_diagnostics::{term::termcolor::ColorChoice, DiagnosticsConfig, Emitter, Verbosity};
 
-use crate::{OutputTypes, ProjectType, TargetEnv};
+use crate::{
+    diagnostics::{ColorChoice, DiagnosticsConfig, Emitter},
+    OutputTypes, ProjectType, TargetEnv,
+};
 
 /// This struct contains all of the configuration options for the compiler
 #[derive(Debug)]
@@ -91,20 +93,7 @@ impl Options {
     }
 
     pub fn with_warnings(mut self, warnings: Warnings) -> Self {
-        match warnings {
-            Warnings::None => {
-                self.diagnostics.warnings_as_errors = false;
-                self.diagnostics.no_warn = true;
-            }
-            Warnings::All => {
-                self.diagnostics.warnings_as_errors = false;
-                self.diagnostics.no_warn = false;
-            }
-            Warnings::Error => {
-                self.diagnostics.warnings_as_errors = true;
-                self.diagnostics.no_warn = false;
-            }
-        }
+        self.diagnostics.warnings = warnings;
         self
     }
 
@@ -125,9 +114,9 @@ impl Options {
         self.arg_matches = matches;
     }
 
-    /// Get a new [miden_diagnostics::Emitter] based on the current options.
+    /// Get a new [Emitter] based on the current options.
     pub fn default_emitter(&self) -> Arc<dyn Emitter> {
-        use miden_diagnostics::{DefaultEmitter, NullEmitter};
+        use crate::diagnostics::{DefaultEmitter, NullEmitter};
 
         match self.diagnostics.verbosity {
             Verbosity::Silent => Arc::new(NullEmitter::new(self.color)),
@@ -216,7 +205,7 @@ pub enum DebugInfo {
 }
 
 /// This enum represents the behavior of the compiler with regard to warnings
-#[derive(Debug, Copy, Clone, Default, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, ValueEnum)]
 pub enum Warnings {
     /// Disable all warnings
     None,
@@ -249,8 +238,8 @@ impl FromStr for Warnings {
 }
 
 /// This enum represents the type of messages produced by the compiler during execution
-#[derive(Debug, Copy, Clone, Default, ValueEnum)]
-pub enum VerbosityFlag {
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum Verbosity {
     /// Emit additional debug/trace information during compilation
     Debug,
     /// Emit the standard informational, warning, and error messages
@@ -262,26 +251,4 @@ pub enum VerbosityFlag {
     Error,
     /// Do not emit anything to stdout/stderr
     Silent,
-}
-impl From<Verbosity> for VerbosityFlag {
-    fn from(v: Verbosity) -> Self {
-        match v {
-            Verbosity::Debug => Self::Debug,
-            Verbosity::Info => Self::Info,
-            Verbosity::Warning => Self::Warning,
-            Verbosity::Error => Self::Error,
-            Verbosity::Silent => Self::Silent,
-        }
-    }
-}
-impl From<VerbosityFlag> for Verbosity {
-    fn from(flag: VerbosityFlag) -> Self {
-        match flag {
-            VerbosityFlag::Debug => Self::Debug,
-            VerbosityFlag::Info => Self::Info,
-            VerbosityFlag::Warning => Self::Warning,
-            VerbosityFlag::Error => Self::Error,
-            VerbosityFlag::Silent => Self::Silent,
-        }
-    }
 }

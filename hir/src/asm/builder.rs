@@ -1,8 +1,10 @@
-use miden_diagnostics::{Span, Spanned};
 use smallvec::smallvec;
 
 use super::*;
-use crate::{CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, Value};
+use crate::{
+    diagnostics::{SourceSpan, Span},
+    CallConv, Felt, FunctionIdent, Inst, InstBuilder, Instruction, Overflow, Value,
+};
 
 /// Used to construct an [InlineAsm] instruction, while checking the input/output types,
 /// and enforcing various safety invariants.
@@ -1128,7 +1130,7 @@ impl<'a> MasmOpBuilder<'a> {
     fn build_many(&mut self, ip: MasmBlockId, ops: impl IntoIterator<Item = Span<MasmOp>>) {
         for op in ops.into_iter() {
             apply_op_stack_effects(&op, self.stack, self.dfg, self.asm);
-            self.asm.push(ip, op.item, op.span());
+            self.asm.push(ip, op.into_inner(), op.span());
         }
     }
 }

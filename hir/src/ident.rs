@@ -6,9 +6,9 @@ use core::{
 };
 
 use anyhow::anyhow;
-use miden_diagnostics::{SourceSpan, Spanned};
 
-use super::{
+use crate::{
+    diagnostics::{SourceSpan, Spanned},
     formatter::{self, PrettyPrint},
     symbols, Symbol,
 };

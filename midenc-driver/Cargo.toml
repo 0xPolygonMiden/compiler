@@ -17,7 +17,6 @@ edition.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 midenc-hir.workspace = true
-miden-diagnostics.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true
 thiserror.workspace = true

@@ -1,20 +1,24 @@
 mod error;
+mod scanner;
 mod token;
 
 use core::{num::IntErrorKind, ops::Range};
 
-use miden_diagnostics::{SourceIndex, SourceSpan};
-use miden_parsing::{Scanner, Source};
 use num_traits::Num;
 
 pub use self::{
     error::{InvalidEscapeKind, LexicalError},
+    scanner::Scanner,
     token::Token,
 };
-use crate::{parser::ParseError, Symbol, Value};
+use crate::{
+    diagnostics::{ByteIndex, ByteOffset, SourceId, SourceSpan},
+    parser::ParseError,
+    Symbol, Value,
+};
 
 /// The value produced by the [Lexer] when iterated
-pub type Lexed = Result<(SourceIndex, Token, SourceIndex), ParseError>;
+pub type Lexed = Result<(ByteIndex, Token, ByteIndex), ParseError>;
 
 /// Pops a single token from the [Lexer]
 macro_rules! pop {
@@ -53,10 +57,12 @@ macro_rules! pop2 {
 /// If an error is unrecoverable, the lexer will continue to produce tokens, but there is no
 /// guarantee that parsing them will produce meaningful results, it is primarily to assist in
 /// gathering as many errors as possible.
-pub struct Lexer<S> {
+pub struct Lexer<'a> {
+    source_id: SourceId,
+
     /// The scanner produces a sequence of chars + location, and can be controlled
     /// The location type is SourceIndex
-    scanner: Scanner<S>,
+    scanner: Scanner<'a>,
 
     /// The most recent token to be lexed.
     /// At the start and end, this should be Token::Eof
@@ -64,32 +70,28 @@ pub struct Lexer<S> {
 
     /// The position in the input where the current token starts
     /// At the start this will be the byte index of the beginning of the input
-    token_start: SourceIndex,
+    token_start: ByteIndex,
 
     /// The position in the input where the current token ends
     /// At the start this will be the byte index of the beginning of the input
-    token_end: SourceIndex,
+    token_end: ByteIndex,
 
     /// When we have reached true Eof, this gets set to true, and the only token
     /// produced after that point is Token::Eof, or None, depending on how you are
     /// consuming the lexer
     eof: bool,
 }
-impl<S> Lexer<S>
-where
-    S: Source,
-{
+impl<'a> Lexer<'a> {
     /// Produces an instance of the lexer with the lexical analysis to be performed on the `input`
     /// string. Note that no lexical analysis occurs until the lexer has been iterated over.
-    pub fn new(scanner: Scanner<S>) -> Self {
-        use miden_diagnostics::ByteOffset;
-
-        let start = scanner.start();
+    pub fn new(source_id: SourceId, source: &'a str) -> Self {
+        let scanner = Scanner::new(source);
         let mut lexer = Lexer {
+            source_id,
             scanner,
             token: Token::Eof,
-            token_start: start + ByteOffset(0),
-            token_end: start + ByteOffset(0),
+            token_start: 0.into(),
+            token_end: 0.into(),
             eof: false,
         };
         lexer.advance();
@@ -118,9 +120,9 @@ where
 
     #[inline]
     fn advance_start(&mut self) {
-        let mut position: SourceIndex;
+        let mut position: ByteIndex = self.scanner.position();
         loop {
-            let (pos, c) = self.scanner.read();
+            let (pos, c) = self.scanner.read().unwrap_or((position, '\0'));
 
             position = pos;
 
@@ -130,7 +132,7 @@ where
             }
 
             if c.is_whitespace() {
-                self.scanner.advance();
+                self.scanner.next();
                 continue;
             }
 
@@ -142,26 +144,22 @@ where
 
     #[inline]
     fn pop(&mut self) -> char {
-        use miden_diagnostics::ByteOffset;
-
-        let (pos, c) = self.scanner.pop();
+        let (pos, c) = self.scanner.next().unwrap_or((self.token_start, '\0'));
         self.token_end = pos + ByteOffset::from_char_len(c);
         c
     }
 
     #[inline]
     fn peek(&mut self) -> char {
-        let (_, c) = self.scanner.peek();
-        c
+        self.scanner.peek().map(|(_, c)| c).unwrap_or('\0')
     }
 
     #[inline]
     fn read(&mut self) -> char {
-        let (_, c) = self.scanner.read();
-        c
+        self.scanner.read().map(|(_, c)| c).unwrap_or('\0')
     }
 
-    #[inline]
+    #[inline(always)]
     fn skip(&mut self) {
         self.pop();
     }
@@ -169,7 +167,7 @@ where
     /// Get the span for the current token in `Source`.
     #[inline]
     fn span(&self) -> SourceSpan {
-        SourceSpan::new(self.token_start, self.token_end)
+        SourceSpan::new(self.source_id, self.token_start..self.token_end)
     }
 
     #[inline]
@@ -239,7 +237,7 @@ where
             'a'..='z' => self.lex_keyword_or_special_ident(),
             '_' => pop!(self, Token::Underscore),
             c => Token::Error(LexicalError::UnexpectedCharacter {
-                start: self.span().start(),
+                start: self.span(),
                 found: c,
             }),
         }
@@ -349,7 +347,10 @@ where
                                 Some(escaped) => buf.push(escaped),
                                 None => {
                                     break Token::Error(LexicalError::InvalidHexEscape {
-                                        span: SourceSpan::new(start, self.token_end),
+                                        span: SourceSpan::new(
+                                            self.source_id,
+                                            start..self.token_end,
+                                        ),
                                         kind: InvalidEscapeKind::Invalid,
                                     });
                                 }
@@ -361,7 +362,7 @@ where
                             self.skip();
                             if self.read() == '}' {
                                 break Token::Error(LexicalError::InvalidUnicodeEscape {
-                                    span: SourceSpan::new(start, self.token_end),
+                                    span: SourceSpan::new(self.source_id, start..self.token_end),
                                     kind: InvalidEscapeKind::Empty,
                                 });
                             }
@@ -381,8 +382,8 @@ where
                                             return Token::Error(
                                                 LexicalError::InvalidUnicodeEscape {
                                                     span: SourceSpan::new(
-                                                        self.token_end - 1,
-                                                        self.token_end,
+                                                        self.source_id,
+                                                        (self.token_end - 1)..self.token_end,
                                                     ),
                                                     kind: InvalidEscapeKind::InvalidChars,
                                                 },
@@ -398,7 +399,10 @@ where
                                 Some(escaped) => buf.push(escaped),
                                 None => {
                                     break Token::Error(LexicalError::InvalidUnicodeEscape {
-                                        span: SourceSpan::new(start, self.token_end),
+                                        span: SourceSpan::new(
+                                            self.source_id,
+                                            start..self.token_end,
+                                        ),
                                         kind: InvalidEscapeKind::Invalid,
                                     });
                                 }
@@ -406,7 +410,7 @@ where
                         }
                         _ => {
                             break Token::Error(LexicalError::InvalidHexEscape {
-                                span: SourceSpan::new(start, self.token_end),
+                                span: SourceSpan::new(self.source_id, start..self.token_end),
                                 kind: InvalidEscapeKind::InvalidChars,
                             });
                         }
@@ -494,10 +498,7 @@ where
     }
 }
 
-impl<S> Iterator for Lexer<S>
-where
-    S: Source,
-{
+impl<'a> Iterator for Lexer<'a> {
     type Item = Lexed;
 
     fn next(&mut self) -> Option<Self::Item> {

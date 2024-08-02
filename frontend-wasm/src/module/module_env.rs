@@ -1,14 +1,14 @@
 use std::{ops::Range, path::PathBuf, sync::Arc};
 
-use miden_diagnostics::DiagnosticsHandler;
 use midenc_hir::{
     cranelift_entity::{packed_option::ReservedValue, PrimaryMap},
+    diagnostics::{DiagnosticsHandler, IntoDiagnostic, Report, Severity},
     Ident, Symbol,
 };
 use wasmparser::{
-    types::CoreTypeId, CompositeType, CustomSectionReader, DataKind, ElementItems, ElementKind,
-    Encoding, ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator,
-    Parser, Payload, TypeRef, Validator, ValidatorResources,
+    types::CoreTypeId, CustomSectionReader, DataKind, ElementItems, ElementKind, Encoding,
+    ExternalKind, FuncToValidate, FunctionBody, NameSectionReader, Naming, Operator, Parser,
+    Payload, TypeRef, Validator, ValidatorResources,
 };
 
 use super::{
@@ -27,7 +27,7 @@ use crate::{
         },
         FuncRefIndex, Module, ModuleType, TableSegment,
     },
-    unsupported_diag, WasmError, WasmTranslationConfig,
+    unsupported_diag, WasmTranslationConfig,
 };
 
 /// Object containing the standalone environment information.
@@ -142,7 +142,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<ParsedModule<'data>> {
         for payload in parser.parse_all(data) {
-            self.parse_payload(payload?, diagnostics)?;
+            self.parse_payload(payload.into_diagnostic()?, diagnostics)?;
         }
         Ok(self.result)
     }
@@ -159,11 +159,14 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 encoding,
                 range,
             } => {
-                self.validator.version(num, encoding, &range)?;
+                self.validator.version(num, encoding, &range).into_diagnostic()?;
                 match encoding {
                     Encoding::Module => {}
                     Encoding::Component => {
-                        return Err(WasmError::Unsupported("component model".to_string()));
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("wasm error: component model is not supported")
+                            .into_report());
                     }
                 }
             }
@@ -171,25 +174,25 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             Payload::TypeSection(types) => self.type_section(types)?,
             Payload::ImportSection(imports) => self.import_section(imports)?,
             Payload::FunctionSection(functions) => self.function_section(functions)?,
-            Payload::TableSection(tables) => self.table_section(tables)?,
+            Payload::TableSection(tables) => self.table_section(tables, diagnostics)?,
             Payload::MemorySection(memories) => self.memory_section(memories)?,
             Payload::TagSection(tags) => {
-                self.validator.tag_section(&tags)?;
+                self.validator.tag_section(&tags).into_diagnostic()?;
                 // This feature isn't enabled at this time, so we should
                 // never get here.
                 unreachable!();
             }
-            Payload::GlobalSection(globals) => self.global_section(globals)?,
+            Payload::GlobalSection(globals) => self.global_section(globals, diagnostics)?,
             Payload::ExportSection(exports) => self.export_section(exports)?,
             Payload::StartSection { func, range } => self.start_section(func, range)?,
-            Payload::ElementSection(elements) => self.element_section(elements)?,
+            Payload::ElementSection(elements) => self.element_section(elements, diagnostics)?,
             Payload::CodeSectionStart { count, range, .. } => {
                 self.code_section_start(count, range)?
             }
             Payload::CodeSectionEntry(body) => self.code_section_entry(body)?,
             Payload::DataSection(data) => self.data_section(data, diagnostics)?,
             Payload::DataCountSection { count, range } => {
-                self.validator.data_count_section(count, &range)?;
+                self.validator.data_count_section(count, &range).into_diagnostic()?;
                 // Note: the count passed in here is the *total* segment count
                 // There is no way to reserve for just the passive segments as
                 // they are discovered when iterating the data section entries
@@ -197,7 +200,12 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 // the passive count, do not reserve anything here.
             }
             Payload::CustomSection(s) if s.name() == "name" => {
-                let result = self.name_section(NameSectionReader::new(s.data(), s.data_offset()));
+                let reader = wasmparser::BinaryReader::new(
+                    s.data(),
+                    s.data_offset(),
+                    *self.validator.features(),
+                );
+                let result = self.name_section(NameSectionReader::new(reader));
                 if let Err(e) = result {
                     log::warn!("failed to parse name section {:?}", e);
                 }
@@ -207,15 +215,15 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
             // payloads such as `UnknownSection` or those related to the
             // component model.
             other => {
-                self.validator.payload(&other)?;
-                unsupported_diag!(diagnostics, "unsupported section in wasm file {:?}", other);
+                self.validator.payload(&other).into_diagnostic()?;
+                unsupported_diag!(diagnostics, "wasm error: unsupported section {:?}", other);
             }
         }
         Ok(())
     }
 
-    fn payload_end(&mut self, offset: usize) -> Result<(), WasmError> {
-        self.validator.end(offset)?;
+    fn payload_end(&mut self, offset: usize) -> Result<(), Report> {
+        self.validator.end(offset).into_diagnostic()?;
         self.result.exported_signatures = self
             .result
             .module
@@ -234,11 +242,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         Ok(())
     }
 
-    fn type_section(
-        &mut self,
-        types: wasmparser::TypeSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.type_section(&types)?;
+    fn type_section(&mut self, types: wasmparser::TypeSectionReader<'data>) -> Result<(), Report> {
+        self.validator.type_section(&types).into_diagnostic()?;
         let num = usize::try_from(types.count()).unwrap();
         self.result.module.types.reserve(num);
         self.types.reserve_wasm_signatures(num);
@@ -253,12 +258,12 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn import_section(
         &mut self,
         imports: wasmparser::ImportSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.import_section(&imports)?;
+    ) -> Result<(), Report> {
+        self.validator.import_section(&imports).into_diagnostic()?;
         let cnt = usize::try_from(imports.count()).unwrap();
         self.result.module.imports.reserve(cnt);
         for entry in imports {
-            let import = entry?;
+            let import = entry.into_diagnostic()?;
             let ty = match import.ty {
                 TypeRef::Func(index) => {
                     let index = TypeIndex::from_u32(index);
@@ -291,12 +296,12 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn function_section(
         &mut self,
         functions: wasmparser::FunctionSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.function_section(&functions)?;
+    ) -> Result<(), Report> {
+        self.validator.function_section(&functions).into_diagnostic()?;
         let cnt = usize::try_from(functions.count()).unwrap();
         self.result.module.functions.reserve_exact(cnt);
         for entry in functions {
-            let sigindex = entry?;
+            let sigindex = entry.into_diagnostic()?;
             let ty = TypeIndex::from_u32(sigindex);
             let sig_index = self.result.module.types[ty].unwrap_function();
             self.result.module.push_function(sig_index);
@@ -307,12 +312,13 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn table_section(
         &mut self,
         tables: wasmparser::TableSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.table_section(&tables)?;
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), Report> {
+        self.validator.table_section(&tables).into_diagnostic()?;
         let cnt = usize::try_from(tables.count()).unwrap();
         self.result.module.tables.reserve_exact(cnt);
         for entry in tables {
-            let wasmparser::Table { ty, init } = entry?;
+            let wasmparser::Table { ty, init } = entry.into_diagnostic()?;
             let table = convert_table_type(&ty);
             self.result.module.tables.push(table);
             let init = match init {
@@ -321,7 +327,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 },
                 wasmparser::TableInit::Expr(cexpr) => {
                     let mut init_expr_reader = cexpr.get_binary_reader();
-                    match init_expr_reader.read_operator()? {
+                    match init_expr_reader.read_operator().into_diagnostic()? {
                         Operator::RefNull { hty: _ } => TableInitialValue::Null {
                             precomputed: Vec::new(),
                         },
@@ -331,10 +337,11 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                             TableInitialValue::FuncRef(index)
                         }
                         s => {
-                            return Err(WasmError::Unsupported(format!(
-                                "unsupported init expr in table section: {:?}",
+                            unsupported_diag!(
+                                diagnostics,
+                                "wasm error: unsupported init expr in table section: {:?}",
                                 s
-                            )));
+                            );
                         }
                     }
                 }
@@ -347,8 +354,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn memory_section(
         &mut self,
         memories: wasmparser::MemorySectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.memory_section(&memories)?;
+    ) -> Result<(), Report> {
+        self.validator.memory_section(&memories).into_diagnostic()?;
         let cnt = usize::try_from(memories.count()).unwrap();
         assert_eq!(cnt, 1, "only one memory per module is supported");
         Ok(())
@@ -357,14 +364,15 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn global_section(
         &mut self,
         globals: wasmparser::GlobalSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.global_section(&globals)?;
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), Report> {
+        self.validator.global_section(&globals).into_diagnostic()?;
         let cnt = usize::try_from(globals.count()).unwrap();
         self.result.module.globals.reserve_exact(cnt);
         for entry in globals {
-            let wasmparser::Global { ty, init_expr } = entry?;
+            let wasmparser::Global { ty, init_expr } = entry.into_diagnostic()?;
             let mut init_expr_reader = init_expr.get_binary_reader();
-            let initializer = match init_expr_reader.read_operator()? {
+            let initializer = match init_expr_reader.read_operator().into_diagnostic()? {
                 Operator::I32Const { value } => GlobalInit::I32Const(value),
                 Operator::I64Const { value } => GlobalInit::I64Const(value),
                 Operator::F32Const { value } => GlobalInit::F32Const(value.bits()),
@@ -376,10 +384,11 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     GlobalInit::GetGlobal(GlobalIndex::from_u32(global_index))
                 }
                 s => {
-                    return Err(WasmError::Unsupported(format!(
-                        "unsupported init expr in global section: {:?}",
+                    unsupported_diag!(
+                        diagnostics,
+                        "wasm error: unsupported init expr in global section: {:?}",
                         s
-                    )));
+                    );
                 }
             };
             let ty = convert_global_type(&ty);
@@ -392,12 +401,12 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn export_section(
         &mut self,
         exports: wasmparser::ExportSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.export_section(&exports)?;
+    ) -> Result<(), Report> {
+        self.validator.export_section(&exports).into_diagnostic()?;
         let cnt = usize::try_from(exports.count()).unwrap();
         self.result.module.exports.reserve(cnt);
         for entry in exports {
-            let wasmparser::Export { name, kind, index } = entry?;
+            let wasmparser::Export { name, kind, index } = entry.into_diagnostic()?;
             let entity = match kind {
                 ExternalKind::Func => {
                     let index = FuncIndex::from_u32(index);
@@ -416,8 +425,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         Ok(())
     }
 
-    fn start_section(&mut self, func: u32, range: Range<usize>) -> Result<(), WasmError> {
-        self.validator.start_section(func, &range)?;
+    fn start_section(&mut self, func: u32, range: Range<usize>) -> Result<(), Report> {
+        self.validator.start_section(func, &range).into_diagnostic()?;
         let func_index = FuncIndex::from_u32(func);
         self.flag_func_escaped(func_index);
         debug_assert!(self.result.module.start_func.is_none());
@@ -428,14 +437,15 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     fn element_section(
         &mut self,
         elements: wasmparser::ElementSectionReader<'data>,
-    ) -> Result<(), WasmError> {
-        self.validator.element_section(&elements)?;
+        diagnostics: &DiagnosticsHandler,
+    ) -> Result<(), Report> {
+        self.validator.element_section(&elements).into_diagnostic()?;
         for (index, entry) in elements.into_iter().enumerate() {
             let wasmparser::Element {
                 kind,
                 items,
                 range: _,
-            } = entry?;
+            } = entry.into_diagnostic()?;
 
             // Build up a list of `FuncIndex` corresponding to all the
             // entries listed in this segment. Note that it's not
@@ -447,7 +457,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 ElementItems::Functions(funcs) => {
                     elements.reserve(usize::try_from(funcs.count()).unwrap());
                     for func in funcs {
-                        let func = FuncIndex::from_u32(func?);
+                        let func = FuncIndex::from_u32(func.into_diagnostic()?);
                         self.flag_func_escaped(func);
                         elements.push(func);
                     }
@@ -455,7 +465,12 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 ElementItems::Expressions(_ty, funcs) => {
                     elements.reserve(usize::try_from(funcs.count()).unwrap());
                     for func in funcs {
-                        let func = match func?.get_binary_reader().read_operator()? {
+                        let func = match func
+                            .into_diagnostic()?
+                            .get_binary_reader()
+                            .read_operator()
+                            .into_diagnostic()?
+                        {
                             Operator::RefNull { .. } => FuncIndex::reserved_value(),
                             Operator::RefFunc { function_index } => {
                                 let func = FuncIndex::from_u32(function_index);
@@ -463,10 +478,11 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                                 func
                             }
                             s => {
-                                return Err(WasmError::Unsupported(format!(
-                                    "unsupported init expr in element section: {:?}",
+                                unsupported_diag!(
+                                    diagnostics,
+                                    "wasm error: unsupported init expr in element section: {:?}",
                                     s
-                                )));
+                                );
                             }
                         };
                         elements.push(func);
@@ -481,18 +497,20 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 } => {
                     let table_index = TableIndex::from_u32(table_index.unwrap_or(0));
                     let mut offset_expr_reader = offset_expr.get_binary_reader();
-                    let (base, offset) = match offset_expr_reader.read_operator()? {
-                        Operator::I32Const { value } => (None, value as u32),
-                        Operator::GlobalGet { global_index } => {
-                            (Some(GlobalIndex::from_u32(global_index)), 0)
-                        }
-                        ref s => {
-                            return Err(WasmError::Unsupported(format!(
-                                "unsupported init expr in element section: {:?}",
-                                s
-                            )));
-                        }
-                    };
+                    let (base, offset) =
+                        match offset_expr_reader.read_operator().into_diagnostic()? {
+                            Operator::I32Const { value } => (None, value as u32),
+                            Operator::GlobalGet { global_index } => {
+                                (Some(GlobalIndex::from_u32(global_index)), 0)
+                            }
+                            ref s => {
+                                unsupported_diag!(
+                                    diagnostics,
+                                    "wasm error: unsupported init expr in element section: {:?}",
+                                    s
+                                );
+                            }
+                        };
 
                     self.result.module.table_initialization.segments.push(TableSegment {
                         table_index,
@@ -515,24 +533,24 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         Ok(())
     }
 
-    fn code_section_start(&mut self, count: u32, range: Range<usize>) -> Result<(), WasmError> {
-        self.validator.code_section_start(count, &range)?;
+    fn code_section_start(&mut self, count: u32, range: Range<usize>) -> Result<(), Report> {
+        self.validator.code_section_start(count, &range).into_diagnostic()?;
         let cnt = usize::try_from(count).unwrap();
         self.result.function_body_inputs.reserve_exact(cnt);
         self.result.wasm_file.code_section_offset = range.start as u64;
         Ok(())
     }
 
-    fn code_section_entry(&mut self, mut body: FunctionBody<'data>) -> Result<(), WasmError> {
-        let validator = self.validator.code_section_entry(&body)?;
+    fn code_section_entry(&mut self, body: FunctionBody<'data>) -> Result<(), Report> {
+        let validator = self.validator.code_section_entry(&body).into_diagnostic()?;
         let func_index = self.result.code_index + self.result.module.num_imported_funcs as u32;
         let func_index = FuncIndex::from_u32(func_index);
         if self.config.generate_native_debuginfo {
             let sig_index = self.result.module.functions[func_index].signature;
             let sig = &self.types[sig_index];
             let mut locals = Vec::new();
-            for pair in body.get_locals_reader()? {
-                let (cnt, ty) = pair?;
+            for pair in body.get_locals_reader().into_diagnostic()? {
+                let (cnt, ty) = pair.into_diagnostic()?;
                 let ty = convert_valtype(ty);
                 locals.push((cnt, ty));
             }
@@ -541,7 +559,6 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 params: sig.params().into(),
             });
         }
-        body.allow_memarg64(false);
         self.result.function_body_inputs.push(FunctionBodyData { validator, body });
         self.result.code_index += 1;
         Ok(())
@@ -552,7 +569,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         data_section: wasmparser::DataSectionReader<'data>,
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<()> {
-        self.validator.data_section(&data_section)?;
+        self.validator.data_section(&data_section).into_diagnostic()?;
         let cnt = usize::try_from(data_section.count()).unwrap();
         self.result.data_segments.reserve_exact(cnt);
         for entry in data_section.into_iter() {
@@ -560,7 +577,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 kind,
                 data,
                 range: _,
-            } = entry?;
+            } = entry.into_diagnostic()?;
             match kind {
                 DataKind::Active {
                     memory_index,
@@ -572,7 +589,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                          supported)"
                     );
                     let mut offset_expr_reader = offset_expr.get_binary_reader();
-                    let offset = match offset_expr_reader.read_operator()? {
+                    let offset = match offset_expr_reader.read_operator().into_diagnostic()? {
                         Operator::I32Const { value } => DataSegmentOffset::I32Const(value),
                         Operator::GlobalGet { global_index } => {
                             DataSegmentOffset::GetGlobal(GlobalIndex::from_u32(global_index))
@@ -580,7 +597,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         ref s => {
                             unsupported_diag!(
                                 diagnostics,
-                                "unsupported init expr in data section offset: {:?}",
+                                "wasm error: unsupported init expr in data section offset: {:?}",
                                 s
                             );
                         }
@@ -589,9 +606,10 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     self.result.data_segments.push(segment);
                 }
                 DataKind::Passive => {
-                    return Err(WasmError::Unsupported(
-                        "unsupported passive data segment in data section".to_string(),
-                    ));
+                    unsupported_diag!(
+                        diagnostics,
+                        "wasm error: unsupported passive data segment in data section"
+                    );
                 }
             }
         }
@@ -601,10 +619,10 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     /// Parses the Name section of the wasm module.
     fn name_section(&mut self, names: NameSectionReader<'data>) -> WasmResult<()> {
         for subsection in names {
-            match subsection? {
+            match subsection.into_diagnostic()? {
                 wasmparser::Name::Function(names) => {
                     for name in names {
-                        let Naming { index, name } = name?;
+                        let Naming { index, name } = name.into_diagnostic()?;
                         // Skip this naming if it's naming a function that
                         // doesn't actually exist.
                         if (index as usize) >= self.result.module.functions.len() {
@@ -634,14 +652,14 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                         continue;
                     }
                     for f in reader {
-                        let f = f?;
+                        let f = f.into_diagnostic()?;
                         // Skip this naming if it's naming a function that
                         // doesn't actually exist.
                         if (f.index as usize) >= self.result.module.functions.len() {
                             continue;
                         }
                         for name in f.names {
-                            let Naming { index, name } = name?;
+                            let Naming { index, name } = name.into_diagnostic()?;
 
                             self.result
                                 .module
@@ -655,7 +673,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 }
                 wasmparser::Name::Global(names) => {
                     for name in names {
-                        let Naming { index, name } = name?;
+                        let Naming { index, name } = name.into_diagnostic()?;
                         if index != u32::max_value() {
                             self.result
                                 .module
@@ -667,7 +685,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 }
                 wasmparser::Name::Data(names) => {
                     for name in names {
-                        let Naming { index, name } = name?;
+                        let Naming { index, name } = name.into_diagnostic()?;
                         if index != u32::max_value() {
                             self.result
                                 .module
@@ -682,6 +700,8 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 | wasmparser::Name::Table(_)
                 | wasmparser::Name::Memory(_)
                 | wasmparser::Name::Element(_)
+                | wasmparser::Name::Field(_)
+                | wasmparser::Name::Tag(_)
                 | wasmparser::Name::Unknown { .. } => {}
             }
         }
@@ -772,17 +792,19 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
     }
 
     fn declare_type(&mut self, id: CoreTypeId) -> WasmResult<()> {
+        use wasmparser::CompositeInnerType;
+
         let types = self.validator.types(0).unwrap();
         let ty = &types[id];
         assert!(ty.is_final);
         assert!(ty.supertype_idx.is_none());
-        match &ty.composite_type {
-            CompositeType::Func(ty) => {
+        match &ty.composite_type.inner {
+            CompositeInnerType::Func(ty) => {
                 let wasm = convert_func_type(ty);
                 let sig_index = self.types.wasm_func_type(id, wasm);
                 self.result.module.types.push(ModuleType::Function(sig_index));
             }
-            CompositeType::Array(_) | CompositeType::Struct(_) => unimplemented!(),
+            CompositeInnerType::Array(_) | CompositeInnerType::Struct(_) => unimplemented!(),
         }
         Ok(())
     }

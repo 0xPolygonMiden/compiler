@@ -7,20 +7,10 @@ pub enum LinkerInput {
 
 pub struct LinkerOutput {
     /// The possibly-linked HIR program
-    pub program: MaybeLinked,
+    pub program: Option<Box<hir::Program>>,
     /// The set of MASM inputs to the linker
     #[allow(clippy::vec_box)]
     pub masm: Vec<Box<midenc_codegen_masm::Module>>,
-}
-
-/// This type is used to represent the fact that depending on
-/// flags provided to the compiler, we may or may not perform
-/// the link, in which case we will just have a loose collection
-/// of modules, not a [Program]
-#[allow(clippy::vec_box)]
-pub enum MaybeLinked {
-    Linked(Box<hir::Program>),
-    Unlinked(Vec<Box<hir::Module>>),
 }
 
 /// Link together one or more HIR modules into an HIR program
@@ -52,9 +42,13 @@ impl Stage for LinkerStage {
             for module in ir.into_iter() {
                 builder.add_module(module)?;
             }
-            MaybeLinked::Linked(builder.link()?)
+            for module in masm.iter() {
+                builder
+                    .add_extern_module(module.id, module.functions().map(|f| f.name.function))?;
+            }
+            Some(builder.link()?)
         } else {
-            MaybeLinked::Unlinked(ir)
+            None
         };
         Ok(LinkerOutput { program, masm })
     }

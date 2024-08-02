@@ -1,5 +1,9 @@
-use miden_diagnostics::DiagnosticsHandler;
-use midenc_hir::{FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
+use midenc_hir::{
+    diagnostics::{DiagnosticsHandler, SourceSpan},
+    FunctionIdent, Immediate, InstBuilder,
+    Type::*,
+    Value,
+};
 
 use super::{stdlib, tx_kernel};
 use crate::module::function_builder_ext::FunctionBuilderExt;

@@ -1,9 +1,13 @@
 use std::env;
 
 use anyhow::anyhow;
-use midenc_driver::{self as driver, DriverError};
+use midenc_driver::{
+    self as driver,
+    diagnostics::{Report, WrapErr},
+    ClapError,
+};
 
-pub fn main() -> Result<(), DriverError> {
+pub fn main() -> Result<(), Report> {
     if cfg!(not(debug_assertions)) && env::var_os("MIDENC_TRACE").is_none() {
         human_panic::setup_panic!();
     }
@@ -18,11 +22,11 @@ pub fn main() -> Result<(), DriverError> {
             "us" => builder.format_timestamp_micros(),
             "ns" => builder.format_timestamp_nanos(),
             other => {
-                return Err(DriverError::Failed(anyhow!(
+                return Err(Report::msg(format!(
                     "invalid MIDENC_TRACE_TIMING precision, expected one of [s, ms, us, ns], got \
                      '{}'",
                     other
-                )))
+                )));
             }
         };
     } else {
@@ -31,10 +35,13 @@ pub fn main() -> Result<(), DriverError> {
     builder.init();
 
     // Get current working directory
-    let cwd = env::current_dir()?;
+    let cwd = env::current_dir().wrap_err("could not read current working directory")?;
 
     match driver::run(cwd, env::args_os()) {
-        Err(DriverError::Clap(err)) => err.exit(),
+        Err(report) => match report.downcast::<ClapError>() {
+            Ok(err) => err.exit(),
+            Err(report) => Err(report),
+        },
         result => result,
     }
 }

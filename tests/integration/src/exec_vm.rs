@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use miden_core::{Program, StackInputs};
-use miden_diagnostics::{CodeMap, FileName};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Process};
 use midenc_hir::Felt;
+use midenc_session::Session;
 
 use crate::felt_conversion::{PopFromStack, TestFelt};
 
@@ -27,7 +27,7 @@ impl MidenExecutor {
     }
 
     /// Execute the given program, producing a trace
-    pub fn execute(self, program: &Program, codemap: &CodeMap) -> MidenExecutionTrace {
+    pub fn execute(self, program: &Program, session: &Session) -> MidenExecutionTrace {
         use std::collections::BTreeSet;
 
         use miden_processor::{MemAdviceProvider, ProcessState, VmStateIterator};
@@ -152,7 +152,7 @@ impl MidenExecutor {
                     last_state = Some(state);
                 }
                 Err(err) => {
-                    render_execution_error(err, i, last_state.as_ref(), codemap);
+                    render_execution_error(err, i, last_state.as_ref(), session);
                 }
             }
         }
@@ -172,11 +172,11 @@ impl MidenExecutor {
     }
 
     /// Execute a program, parsing the operand stack outputs as a value of type `T`
-    pub fn execute_into<T>(self, program: &Program, codemap: &CodeMap) -> T
+    pub fn execute_into<T>(self, program: &Program, session: &Session) -> T
     where
         T: PopFromStack + PartialEq,
     {
-        let out = self.execute(program, codemap);
+        let out = self.execute(program, session);
         out.parse_result().expect("invalid result")
     }
 }
@@ -343,10 +343,10 @@ fn render_execution_error(
     err: ExecutionError,
     step: usize,
     last_state: Option<&miden_processor::VmState>,
-    codemap: &CodeMap,
+    session: &Session,
 ) -> ! {
-    use miden_assembly::diagnostics::{
-        miette::miette, reporting::PrintDiagnostic, LabeledSpan, SourceFile,
+    use midenc_hir::diagnostics::{
+        miette::miette, reporting::PrintDiagnostic, LabeledSpan, SourceManagerExt,
     };
 
     if let Some(last_state) = last_state {
@@ -359,20 +359,16 @@ fn render_execution_error(
                 last_op = op.op().to_string();
                 last_context_name = op.context_name();
                 let asmop = op.as_ref();
-                if let Some(loc) = asmop.location() {
-                    let path = loc.source_file.as_path();
-                    let source = if path.exists() {
-                        codemap.add_file(path).ok().and_then(|id| codemap.get(id).ok())
+                if let Some(loc) = dbg!(asmop.location()) {
+                    let path = std::path::Path::new(loc.path.as_ref());
+                    source_code = if path.exists() {
+                        session.source_manager.load_file(path).ok()
                     } else {
-                        let name: &str = loc.source_file.as_ref();
-                        codemap.get_by_name(&FileName::virtual_(name.to_string()))
+                        session.source_manager.get_by_path(loc.path.as_ref())
                     };
-                    source_code = source.map(|source| {
-                        SourceFile::new(source.name().to_string(), source.source().to_string())
-                    });
                     labels.push(LabeledSpan::new_with_span(
                         None,
-                        (loc.start as usize)..(loc.end as usize),
+                        loc.start.to_usize()..loc.end.to_usize(),
                     ));
                 }
             }

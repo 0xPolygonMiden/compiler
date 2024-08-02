@@ -1,11 +1,13 @@
-use std::ops::{Deref, Index, IndexMut};
+use core::ops::{Deref, DerefMut, Index, IndexMut};
 
 use cranelift_entity::{PrimaryMap, SecondaryMap};
-use miden_diagnostics::{Span, Spanned};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
-use super::*;
+use crate::{
+    diagnostics::{SourceSpan, Span, Spanned},
+    *,
+};
 
 pub struct DataFlowGraph {
     pub entry: Block,
@@ -424,7 +426,7 @@ impl DataFlowGraph {
     /// Replace uses of `value` with `replacement` in the arguments of `inst`
     pub fn replace_uses(&mut self, inst: Inst, value: Value, replacement: Value) {
         let ix = &mut self.insts[inst];
-        match &mut ix.data.item {
+        match ix.data.deref_mut() {
             Instruction::Br(Br { ref mut args, .. }) => {
                 let args = args.as_mut_slice(&mut self.value_lists);
                 for arg in args.iter_mut() {
@@ -483,7 +485,7 @@ impl DataFlowGraph {
         replacement: Value,
     ) {
         let ix = &mut self.insts[inst];
-        match ix.data.as_mut() {
+        match ix.data.deref_mut() {
             Instruction::Br(Br { ref mut args, .. }) => {
                 debug_assert_eq!(succ_index, 0);
                 args.as_mut_slice(&mut self.value_lists)[index] = replacement;
@@ -750,7 +752,7 @@ impl DataFlowGraph {
         dest: Block,
         value: Value,
     ) {
-        match self.insts[branch_inst].data.as_mut() {
+        match self.insts[branch_inst].data.deref_mut() {
             Instruction::Br(Br {
                 destination,
                 ref mut args,

@@ -1,7 +1,6 @@
 use core::fmt;
 
-use miden_diagnostics::{SourceSpan, Spanned};
-
+use super::{SourceSpan, Spanned};
 use crate::{ConstantData, Ident, Linkage, Type};
 
 /// This represents the declaration of a global variable

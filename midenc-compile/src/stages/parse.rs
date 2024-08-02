@@ -1,6 +1,9 @@
 use std::path::Path;
 
-use midenc_session::InputFile;
+use midenc_session::{
+    diagnostics::{IntoDiagnostic, Spanned, WrapErr},
+    InputFile,
+};
 use wasm::WasmTranslationConfig;
 
 use super::*;
@@ -69,30 +72,25 @@ impl ParseStage {
     fn parse_ast_from_file(&self, path: &Path, session: &Session) -> CompilerResult<ParseOutput> {
         use std::io::Read;
 
-        let mut file = std::fs::File::open(path)?;
+        let mut file = std::fs::File::open(path).into_diagnostic()?;
         let mut bytes = Vec::with_capacity(1024);
-        file.read_to_end(&mut bytes)?;
+        file.read_to_end(&mut bytes).into_diagnostic()?;
         self.parse_ast_from_bytes(&bytes, session)
     }
 
     fn parse_ast_from_bytes(&self, bytes: &[u8], session: &Session) -> CompilerResult<ParseOutput> {
-        use std::io::{Error, ErrorKind};
-
         use midenc_hir::parser::Parser;
 
-        let source = core::str::from_utf8(bytes).map_err(|_| {
-            CompilerError::Io(Error::new(ErrorKind::InvalidInput, "input is not valid utf-8"))
-        })?;
+        let source = core::str::from_utf8(bytes)
+            .into_diagnostic()
+            .wrap_err("input is not valid utf-8")?;
         let parser = Parser::new(session);
         match parser.parse_str(source).map(Box::new) {
             Ok(ast) => {
-                session.emit(&ast)?;
+                session.emit(&ast).into_diagnostic()?;
                 Ok(ParseOutput::Ast(ast))
             }
-            Err(err) => {
-                session.diagnostics.emit(err);
-                Err(CompilerError::Reported)
-            }
+            Err(err) => Err(err),
         }
     }
 
@@ -103,9 +101,11 @@ impl ParseStage {
     ) -> CompilerResult<ParseOutput> {
         use std::io::Read;
 
-        let mut file = std::fs::File::open(path)?;
+        let mut file = std::fs::File::open(path)
+            .into_diagnostic()
+            .wrap_err("could not open input for reading")?;
         let mut bytes = Vec::with_capacity(1024);
-        file.read_to_end(&mut bytes)?;
+        file.read_to_end(&mut bytes).into_diagnostic()?;
         let file_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
         let config = wasm::WasmTranslationConfig {
             source_name: file_name.into(),
@@ -120,8 +120,7 @@ impl ParseStage {
         session: &Session,
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
-        let module = wasm::translate(bytes, config, &session.codemap, &session.diagnostics)?
-            .unwrap_one_module();
+        let module = wasm::translate(bytes, config, &session)?.unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -136,9 +135,8 @@ impl ParseStage {
             source_name: file_name.into(),
             ..Default::default()
         };
-        let wasm = wat::parse_file(path)?;
-        let module = wasm::translate(&wasm, &config, &session.codemap, &session.diagnostics)?
-            .unwrap_one_module();
+        let wasm = wat::parse_file(path).into_diagnostic().wrap_err("failed to parse wat")?;
+        let module = wasm::translate(&wasm, &config, &session)?.unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -149,9 +147,8 @@ impl ParseStage {
         session: &Session,
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
-        let wasm = wat::parse_bytes(bytes)?;
-        let module = wasm::translate(&wasm, config, &session.codemap, &session.diagnostics)?
-            .unwrap_one_module();
+        let wasm = wat::parse_bytes(bytes).into_diagnostic().wrap_err("failed to parse wat")?;
+        let module = wasm::translate(&wasm, config, &session)?.unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -164,13 +161,9 @@ impl ParseStage {
         use midenc_codegen_masm as masm;
 
         // Construct library path for MASM module
-        let module_name = match Ident::new(path.file_stem().unwrap().to_str().unwrap()) {
-            Ok(id) => id,
-            Err(err) => {
-                session.diagnostics.error(err);
-                return Err(CompilerError::Reported);
-            }
-        };
+        let module_name = Ident::new(path.file_stem().unwrap().to_str().unwrap())
+            .into_diagnostic()
+            .wrap_err_with(|| format!("failed to construct valid module identifier from path"))?;
         let namespace = path
             .parent()
             .map(|dir| {
@@ -179,14 +172,12 @@ impl ParseStage {
             .unwrap_or(LibraryNamespace::Anon);
         let name = LibraryPath::new_from_components(namespace, [module_name]);
 
-        // Make sure sources are in codemap for error reporting
-        let source_id = session.codemap.add_file(path).map_err(CompilerError::Io)?;
-        let span = session.codemap.source_span(source_id).unwrap();
+        // Parse AST
+        let mut parser = ast::Module::parser(ModuleKind::Library);
+        let ast = parser.parse_file(name, path, &session.source_manager)?;
+        let span = ast.span();
 
-        // Parse AST, then convert to IR representation
-        let ast = ast::Module::parse_file(name, ModuleKind::Library, path)
-            .map_err(miden_assembly::diagnostics::RelatedError::new)
-            .map_err(CompilerError::Report)?;
+        // Convert to MASM IR representation
         Ok(ParseOutput::Masm(Box::new(masm::Module::from_ast(&ast, span))))
     }
 
@@ -196,34 +187,25 @@ impl ParseStage {
         bytes: &[u8],
         session: &Session,
     ) -> CompilerResult<ParseOutput> {
-        use std::io::{Error, ErrorKind};
-
         use miden_assembly::{
             ast::{self, ModuleKind},
             LibraryPath,
         };
-        use miden_diagnostics::FileName;
         use midenc_codegen_masm as masm;
 
-        // Make sure sources are in codemap for error reporting
-        let source = core::str::from_utf8(bytes).map_err(|_| {
-            CompilerError::Io(Error::new(ErrorKind::InvalidInput, "input is not valid utf-8"))
-        })?;
-        let source_id = session
-            .codemap
-            .add(FileName::Virtual(name.to_string().into()), source.to_string());
-        let span = session.codemap.source_span(source_id).unwrap();
+        let source = core::str::from_utf8(bytes)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("input '{name}' contains invalid utf-8"))?;
 
         // Construct library path for MASM module
-        let name = LibraryPath::new(name).map_err(|err| {
-            session.diagnostics.error(err);
-            CompilerError::Reported
-        })?;
+        let name = LibraryPath::new(name).into_diagnostic()?;
 
-        // Parse AST, then convert to IR representation
-        let ast = ast::Module::parse_str(name, ModuleKind::Library, source)
-            .map_err(miden_assembly::diagnostics::RelatedError::new)
-            .map_err(CompilerError::Report)?;
+        // Parse AST
+        let mut parser = ast::Module::parser(ModuleKind::Library);
+        let ast = parser.parse_str(name, source, &session.source_manager)?;
+        let span = ast.span();
+
+        // Convert to MASM IR representation
         Ok(ParseOutput::Masm(Box::new(masm::Module::from_ast(&ast, span))))
     }
 }

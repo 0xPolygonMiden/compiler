@@ -6,8 +6,11 @@ use miden_assembly::{
     ast::{self, ProcedureName},
     LibraryNamespace, LibraryPath,
 };
-use miden_diagnostics::{SourceId, SourceSpan, Spanned};
-use midenc_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
+use midenc_hir::{
+    diagnostics::{SourceSpan, Span, Spanned},
+    formatter::PrettyPrint,
+    AttributeSet, FunctionIdent, Ident, Signature, Type,
+};
 use smallvec::SmallVec;
 
 use super::*;
@@ -158,17 +161,13 @@ impl Function {
         kind: ast::InvokeKind,
         target: FunctionIdent,
     ) {
-        let module_name_span = miden_assembly::SourceSpan::new(
-            target.module.span.start_index().0..target.module.span.end_index().0,
-        );
-        let module_id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+        let module_name_span = target.module.span;
+        let module_id = ast::Ident::new_unchecked(Span::new(
             module_name_span,
             Arc::from(target.module.as_str().to_string().into_boxed_str()),
         ));
-        let name_span = miden_assembly::SourceSpan::new(
-            target.function.span.start_index().0..target.function.span.end_index().0,
-        );
-        let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+        let name_span = target.function.span;
+        let id = ast::Ident::new_unchecked(Span::new(
             name_span,
             Arc::from(target.function.as_str().to_string().into_boxed_str()),
         ));
@@ -187,11 +186,10 @@ impl Function {
         }
     }
 
-    pub fn from_ast(module: Ident, source_id: SourceId, proc: &ast::Procedure) -> Box<Self> {
-        use miden_assembly::Spanned;
+    pub fn from_ast(module: Ident, proc: &ast::Procedure) -> Box<Self> {
         use midenc_hir::{Linkage, Symbol};
 
-        let proc_span = utils::from_masm_span(source_id, proc.name().span());
+        let proc_span = proc.name().span();
         let proc_name = Symbol::intern(AsRef::<str>::as_ref(proc.name()));
         let id = FunctionIdent {
             module,
@@ -214,14 +212,13 @@ impl Function {
         function.alloc_n_locals(proc.num_locals());
 
         function.invoked.extend(proc.invoked().cloned());
-        function.body = Region::from_block(module, source_id, proc.body());
+        function.body = Region::from_block(module, proc.body());
 
         function
     }
 
     pub fn to_ast(
         &self,
-        codemap: &miden_diagnostics::CodeMap,
         imports: &midenc_hir::ModuleImportInfo,
         locals: &BTreeSet<FunctionIdent>,
     ) -> ast::Procedure {
@@ -232,20 +229,17 @@ impl Function {
         } else {
             ast::Visibility::Private
         };
-        let source_file = utils::source_file_for_span(self.span, codemap);
-        let span = utils::translate_span(self.span);
 
-        let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
-            utils::translate_span(self.name.function.span),
+        let id = ast::Ident::new_unchecked(Span::new(
+            self.name.function.span,
             Arc::from(self.name.function.as_str().to_string().into_boxed_str()),
         ));
         let name = ast::ProcedureName::new_unchecked(id);
 
-        let body = self.body.to_block(codemap, imports, locals);
+        let body = self.body.to_block(imports, locals);
 
         let num_locals = u16::try_from(self.locals.len()).expect("too many locals");
-        let mut proc = ast::Procedure::new(span, visibility, name, num_locals, body)
-            .with_source_file(source_file);
+        let mut proc = ast::Procedure::new(self.span, visibility, name, num_locals, body);
         proc.extend_invoked(self.invoked().cloned());
         proc
     }

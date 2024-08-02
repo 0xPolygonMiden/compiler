@@ -11,9 +11,8 @@ use std::{
 };
 
 use miden_assembly::LibraryPath;
-use miden_diagnostics::SourceSpan;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
-use midenc_hir::{FunctionIdent, Ident, Symbol};
+use midenc_hir::{FunctionIdent, Ident, SourceSpan, Symbol};
 use midenc_session::{InputFile, InputType, OutputType, Session};
 
 use crate::cargo_proj::project;
@@ -137,6 +136,7 @@ pub struct RustcTest {
     target: Cow<'static, str>,
     output_name: Option<Cow<'static, str>>,
     source_code: Cow<'static, str>,
+    rustflags: Vec<Cow<'static, str>>,
 }
 impl RustcTest {
     /// Construct a new `rustc` input with the given name and source code content
@@ -150,6 +150,8 @@ impl RustcTest {
             target: "wasm32-unknown-unknown".into(),
             output_name: None,
             source_code: source_code.into(),
+            // Always use spec-compliant C ABI behavior
+            rustflags: vec!["-Z".into(), "wasm_c_abi=spec".into()],
         }
     }
 }
@@ -211,22 +213,27 @@ impl CompilerTestBuilder {
     /// Construct a new [CompilerTestBuilder] for the given source type configuration
     pub fn new(source: impl Into<CompilerTestInputType>) -> Self {
         let workspace_dir = get_workspace_dir();
+        let mut source = source.into();
+        let mut rustflags = match source {
+            CompilerTestInputType::Rustc(ref mut config) => core::mem::take(&mut config.rustflags),
+            _ => vec![],
+        };
+        rustflags.extend([
+            // Enable bulk-memory features (e.g. native memcpy/memset instructions)
+            "-C".into(),
+            "target-feature=+bulk-memory".into(),
+            // Remap the compiler workspace to `.` so that build outputs do not embed user-
+            // specific paths, which would cause expect tests to break
+            "--remap-path-prefix".into(),
+            format!("{workspace_dir}=../../").into(),
+        ]);
         Self {
             config: Default::default(),
-            source: source.into(),
+            source,
             entrypoint: None,
             link_masm_modules: vec![],
             midenc_flags: vec![],
-            // Enable Wasm bulk-memory proposal (uses Wasm `memory.copy` op instead of `memcpy`
-            // import) Remap the compiler workspace directory to `~` to have a
-            // reproducible build that does not have the absolute local path baked into
-            // the Wasm binary
-            rustflags: vec![
-                "-C".into(),
-                "target-feature=+bulk-memory".into(),
-                "--remap-path-prefix".into(),
-                format!("{workspace_dir}=~").into(),
-            ],
+            rustflags,
             workspace_dir,
         }
     }
@@ -600,7 +607,7 @@ impl CompilerTestBuilder {
 
             #[panic_handler]
             fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
-                loop {{}}
+                core::arch::wasm32::unreachable()
             }}
 
             #[no_mangle]
@@ -664,7 +671,7 @@ impl CompilerTestBuilder {
 
                 #[panic_handler]
                 fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
-                    loop {{}}
+                    core::arch::wasm32::unreachable()
                 }}
 
 
@@ -709,7 +716,7 @@ impl CompilerTestBuilder {
                 [package]
                 name = "{name}"
                 version = "0.0.1"
-                edition = "2015"
+                edition = "2021"
                 authors = []
 
                 [dependencies]
@@ -737,7 +744,7 @@ impl CompilerTestBuilder {
 
                 #[panic_handler]
                 fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
-                    loop {{}}
+                    core::arch::wasm32::unreachable()
                 }}
 
 
@@ -892,7 +899,7 @@ impl CompilerTest {
     }
 
     fn wasm_to_ir(&self) -> HirArtifact {
-        let ir_component = translate(&self.wasm_bytes(), &self.config, &self.session.diagnostics)
+        let ir_component = translate(&self.wasm_bytes(), &self.config, &self.session)
             .expect("Failed to translate Wasm binary to IR component");
         Box::new(ir_component).into()
     }
@@ -1094,13 +1101,24 @@ where
     I: IntoIterator<Item = InputFile>,
     S: AsRef<str>,
 {
+    use midenc_hir::diagnostics::{
+        reporting::{self, ReportHandlerOpts},
+        SingleThreadedSourceManager,
+    };
+
+    let result = reporting::set_hook(Box::new(|_| Box::new(ReportHandlerOpts::new().build())));
+    if result.is_ok() {
+        reporting::set_panic_hook();
+    }
+
     let mut inputs = inputs.into_iter();
     let input_file = inputs.next().expect("must provide at least one input file");
     let mut flags = vec!["--lib", "--debug=full"];
     flags.extend(extra_flags.iter().map(|flag| flag.as_ref()));
+    let source_manager = Arc::new(SingleThreadedSourceManager::default());
     let mut options = midenc_compile::CompilerOptions::parse_options(&flags);
     options.output_types.insert(OutputType::Masm, None);
-    let mut session = Session::new(input_file, None, None, None, options, None);
+    let mut session = Session::new(input_file, None, None, None, options, None, source_manager);
     for extra_input in inputs {
         session.inputs.push(extra_input);
     }

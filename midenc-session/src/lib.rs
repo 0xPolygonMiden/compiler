@@ -1,3 +1,6 @@
+extern crate alloc;
+
+pub mod diagnostics;
 mod duration;
 mod emit;
 mod flags;
@@ -13,10 +16,10 @@ use std::{
 };
 
 use clap::ValueEnum;
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, Emitter};
 use midenc_hir_symbol::Symbol;
 
 pub use self::{
+    diagnostics::{DiagnosticsHandler, Emitter, SourceManager},
     duration::HumanDuration,
     emit::Emit,
     flags::{CompileFlag, FlagAction},
@@ -54,8 +57,8 @@ impl ProjectType {
 pub struct Session {
     /// Configuration for the current compiler session
     pub options: Options,
-    /// The current source map
-    pub codemap: Arc<CodeMap>,
+    /// The current source manager
+    pub source_manager: Arc<dyn SourceManager>,
     /// The current diagnostics handler
     pub diagnostics: Arc<DiagnosticsHandler>,
     /// The location of all libraries shipped with the compiler
@@ -75,17 +78,17 @@ impl Session {
         tmp_dir: Option<PathBuf>,
         options: Options,
         emitter: Option<Arc<dyn Emitter>>,
+        source_manager: Arc<dyn SourceManager>,
     ) -> Self {
         // TODO: Make sure we pin this down when we need to ship stuff with compiler
         let sysroot = match &options.sysroot {
             Some(sysroot) => sysroot.clone(),
             None => std::env::current_dir().unwrap(),
         };
-        let codemap = Arc::new(CodeMap::new());
 
         let diagnostics = Arc::new(DiagnosticsHandler::new(
             options.diagnostics.clone(),
-            codemap.clone(),
+            source_manager.clone(),
             emitter.unwrap_or_else(|| options.default_emitter()),
         ));
 
@@ -107,7 +110,7 @@ impl Session {
 
         Self {
             options,
-            codemap,
+            source_manager,
             diagnostics,
             sysroot,
             inputs: vec![input],

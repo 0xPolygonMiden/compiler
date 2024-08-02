@@ -2,11 +2,13 @@ use core::ops::{Deref, DerefMut};
 
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedListLink};
-use miden_diagnostics::{Span, Spanned};
 use smallvec::SmallVec;
 
 use self::formatter::PrettyPrint;
-use super::*;
+use crate::{
+    diagnostics::{Span, Spanned},
+    *,
+};
 
 /// A handle to a single instruction
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

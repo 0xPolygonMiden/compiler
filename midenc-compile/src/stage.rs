@@ -1,7 +1,7 @@
 use midenc_hir::pass::AnalysisManager;
 use midenc_session::Session;
 
-use crate::{CompilerError, CompilerResult};
+use crate::{CompilerResult, CompilerStopped};
 
 /// This trait is implemented by a stage in the compiler
 pub trait Stage {
@@ -72,11 +72,11 @@ where
         session: &Session,
     ) -> CompilerResult<Self::Output> {
         if !self.a.enabled(session) {
-            return Err(CompilerError::Stopped);
+            return Err(CompilerStopped.into());
         }
         let output = self.a.run(input, analyses, session)?;
         if !self.b.enabled(session) {
-            return Err(CompilerError::Stopped);
+            return Err(CompilerStopped.into());
         }
         self.b.run(output, analyses, session)
     }
@@ -107,7 +107,7 @@ where
         session: &Session,
     ) -> CompilerResult<Self::Output> {
         if !self.a.enabled(session) {
-            return Err(CompilerError::Stopped);
+            return Err(CompilerStopped.into());
         }
         let output = self.a.run(input, analyses, session)?;
         if !self.b.enabled(session) {

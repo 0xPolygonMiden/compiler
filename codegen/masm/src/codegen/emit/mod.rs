@@ -1,4 +1,4 @@
-use miden_diagnostics::Span;
+use midenc_hir::diagnostics::Span;
 
 /// The field modulus for Miden's prime field
 pub const P: u64 = (2u128.pow(64) - 2u128.pow(32) + 1) as u64;
@@ -90,7 +90,7 @@ pub mod unary;
 use core::ops::{Deref, DerefMut};
 
 use miden_assembly::ast::InvokeKind;
-use midenc_hir::{self as hir, Immediate, SourceSpan, Type};
+use midenc_hir::{self as hir, diagnostics::SourceSpan, Immediate, Type};
 
 use super::{Operand, OperandStack};
 use crate::masm::{self as masm, Op};

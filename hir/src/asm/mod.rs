@@ -3,9 +3,9 @@ mod display;
 mod import;
 mod isa;
 mod stack;
+pub mod utils;
 
 use cranelift_entity::PrimaryMap;
-use miden_diagnostics::SourceSpan;
 use smallvec::smallvec;
 
 pub use self::{
@@ -15,7 +15,7 @@ pub use self::{
     isa::*,
     stack::{OperandStack, Stack, StackElement},
 };
-use super::{DataFlowGraph, Opcode, Type, ValueList};
+use crate::{diagnostics::SourceSpan, DataFlowGraph, Opcode, Type, ValueList};
 
 /// Represents Miden Assembly (MASM) directly in the IR
 ///

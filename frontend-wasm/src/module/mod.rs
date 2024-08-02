@@ -6,9 +6,9 @@
 use std::{borrow::Cow, collections::BTreeMap, ops::Range};
 
 use indexmap::IndexMap;
-use miden_diagnostics::DiagnosticsHandler;
 use midenc_hir::{
     cranelift_entity::{packed_option::ReservedValue, EntityRef, PrimaryMap},
+    diagnostics::{DiagnosticsHandler, Severity},
     Ident, Symbol,
 };
 use rustc_hash::FxHashMap;
@@ -179,11 +179,6 @@ pub struct ModuleImport {
 }
 
 impl Module {
-    /// Allocates the module data structures.
-    pub fn new() -> Self {
-        Module::default()
-    }
-
     /// Convert a `DefinedFuncIndex` into a `FuncIndex`.
     #[inline]
     pub fn func_index(&self, defined_func: DefinedFuncIndex) -> FuncIndex {

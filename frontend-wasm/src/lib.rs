@@ -22,8 +22,9 @@ mod test_utils;
 
 use component::build_ir::translate_component;
 use error::WasmResult;
-use miden_diagnostics::{CodeMap, DiagnosticsHandler};
+use midenc_session::Session;
 use module::build_ir::translate_module_as_component;
+use wasmparser::WasmFeatures;
 
 pub use self::{config::*, error::WasmError};
 
@@ -32,14 +33,31 @@ pub use self::{config::*, error::WasmError};
 pub fn translate(
     wasm: &[u8],
     config: &WasmTranslationConfig,
-    codemap: &CodeMap,
-    diagnostics: &DiagnosticsHandler,
+    session: &Session,
 ) -> WasmResult<midenc_hir::Component> {
     if wasm[4..8] == [0x01, 0x00, 0x00, 0x00] {
         // Wasm core module
         // see https://github.com/WebAssembly/component-model/blob/main/design/mvp/Binary.md#component-definitions
-        translate_module_as_component(wasm, config, codemap, diagnostics)
+        translate_module_as_component(wasm, config, session)
     } else {
-        translate_component(wasm, config, codemap, diagnostics)
+        translate_component(wasm, config, session)
     }
+}
+
+/// The set of core WebAssembly features which we need to or wish to support
+pub(crate) fn supported_features() -> WasmFeatures {
+    WasmFeatures::BULK_MEMORY
+        | WasmFeatures::FLOATS
+        | WasmFeatures::FUNCTION_REFERENCES
+        | WasmFeatures::MULTI_VALUE
+        | WasmFeatures::MUTABLE_GLOBAL
+        | WasmFeatures::SATURATING_FLOAT_TO_INT
+        | WasmFeatures::SIGN_EXTENSION
+        | WasmFeatures::TAIL_CALL
+}
+
+/// The extended set of WebAssembly features which are enabled when working with the Wasm Component
+/// Model
+pub(crate) fn supported_component_model_features() -> WasmFeatures {
+    supported_features() | WasmFeatures::COMPONENT_MODEL
 }

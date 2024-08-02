@@ -2,10 +2,12 @@ use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::entity_impl;
 pub use miden_assembly::ast::{AdviceInjectorNode, DebugOptions};
-use miden_diagnostics::{SourceSpan, Span};
 use smallvec::{smallvec, SmallVec};
 
-use crate::{Felt, FunctionIdent, Ident, LocalId};
+use crate::{
+    diagnostics::{SourceSpan, Span},
+    Felt, FunctionIdent, Ident, LocalId,
+};
 
 /// A handle that refers to a MASM code block
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1457,7 +1459,6 @@ impl MasmOp {
         locals: &BTreeSet<FunctionIdent>,
     ) -> SmallVec<[miden_assembly::ast::Instruction; 2]> {
         use miden_assembly::{
-            self as masm,
             ast::{Instruction, InvocationTarget, ProcedureName},
             LibraryPath,
         };
@@ -1624,19 +1625,23 @@ impl MasmOp {
             | Self::Syscall(ref callee)
             | Self::ProcRef(ref callee)) => {
                 let target = if locals.contains(callee) {
-                    let callee = ProcedureName::new(callee.function.as_str())
-                        .expect("invalid procedure name");
+                    let callee = ProcedureName::new_unchecked(super::utils::translate_ident(
+                        callee.function,
+                    ));
                     InvocationTarget::ProcedureName(callee)
                 } else if let Some(alias) = imports.alias(&callee.module) {
-                    let name = ProcedureName::new(callee.function.as_str())
-                        .expect("invalid procedure name");
+                    let alias = super::utils::translate_ident(alias);
+                    let name = ProcedureName::new_unchecked(super::utils::translate_ident(
+                        callee.function,
+                    ));
                     InvocationTarget::ProcedurePath {
                         name,
-                        module: masm::ast::Ident::new(alias.as_str()).expect("invalid module path"),
+                        module: alias,
                     }
                 } else {
-                    let name = ProcedureName::new(callee.function.as_str())
-                        .expect("invalid procedure name");
+                    let name = ProcedureName::new_unchecked(super::utils::translate_ident(
+                        callee.function,
+                    ));
                     let path =
                         LibraryPath::new(callee.module.as_str()).expect("invalid procedure path");
                     InvocationTarget::AbsoluteProcedurePath { name, path }

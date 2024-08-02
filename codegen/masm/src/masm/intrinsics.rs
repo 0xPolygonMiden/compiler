@@ -1,5 +1,5 @@
 use miden_assembly::{ast::ModuleKind, LibraryPath};
-use miden_diagnostics::{CodeMap, FileName};
+use midenc_hir::diagnostics::{PrintDiagnostic, SourceManager, Spanned};
 
 use super::Module;
 
@@ -20,46 +20,31 @@ const INTRINSICS: [(&str, &str, &str); 3] = [
 /// This helper loads the named module from the set of intrinsics modules defined in this crate.
 ///
 /// Expects the fully-qualified name to be given, e.g. `intrinsics::mem`
-pub fn load<N: AsRef<str>>(name: N, codemap: &CodeMap) -> Option<Module> {
+pub fn load<N: AsRef<str>>(name: N, source_manager: &dyn SourceManager) -> Option<Module> {
     let name = name.as_ref();
     let (name, source, filename) = INTRINSICS.iter().copied().find(|(n, ..)| *n == name)?;
-    let id = codemap.add(FileName::Virtual(filename.into()), source.to_string());
-    let source_file = codemap.get(id).unwrap();
+    let source_file = source_manager.load(filename, source.to_string());
     let path = LibraryPath::new(name).expect("invalid module name");
-    match Module::parse_source_file(path, ModuleKind::Library, source_file) {
+    match Module::parse(ModuleKind::Library, path, source_file.clone()) {
         Ok(module) => Some(module),
-        Err(err) => match err {
-            crate::LoadModuleError::Report(report) => {
-                let report = miden_assembly::diagnostics::reporting::PrintDiagnostic::new(
-                    report.into_report(),
-                );
-                panic!("failed to parse intrinsic module: {report}");
-            }
-            other => panic!("unexpected syntax error in intrinsic module: {other}"),
-        },
+        Err(err) => {
+            let err = PrintDiagnostic::new(err);
+            panic!("failed to parse intrinsic module: {err}");
+        }
     }
 }
 
 /// This helper loads the Miden Standard Library modules from the current miden-stdlib crate
-pub fn load_stdlib(codemap: &CodeMap) -> Vec<Module> {
+pub fn load_stdlib() -> Vec<Module> {
     use miden_assembly::Library;
-    use miden_diagnostics::SourceSpan;
     use miden_stdlib::StdLibrary;
 
     let library = StdLibrary::default();
 
     let mut loaded = Vec::with_capacity(library.modules().len());
     for module in library.modules() {
-        let span = match module.source_file() {
-            Some(source_file) => {
-                let source = source_file.inner().as_str();
-                let source_id = codemap.add(source_file.name().to_string(), source.to_string());
-                codemap.source_span(source_id).ok().unwrap_or(SourceSpan::UNKNOWN)
-            }
-            None => SourceSpan::UNKNOWN,
-        };
-        let ir_module = Module::from_ast(module, span);
-        loaded.push(ir_module);
+        let span = module.span();
+        loaded.push(Module::from_ast(&module, span));
     }
     loaded
 }

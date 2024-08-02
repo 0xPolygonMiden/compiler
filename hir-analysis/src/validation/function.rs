@@ -1,9 +1,9 @@
-use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
-use midenc_hir::*;
-
-use super::{
-    BlockValidator, DefsDominateUses, NamingConventions, Rule, TypeCheck, ValidationError,
+use midenc_hir::{
+    diagnostics::{DiagnosticsHandler, Report, Severity, Spanned},
+    *,
 };
+
+use super::{BlockValidator, DefsDominateUses, NamingConventions, Rule, TypeCheck};
 use crate::{ControlFlowGraph, DominatorTree};
 
 /// This validation rule ensures that function-local invariants are upheld:
@@ -26,7 +26,7 @@ impl Rule<Function> for FunctionValidator {
         &mut self,
         function: &Function,
         diagnostics: &DiagnosticsHandler,
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Report> {
         // Validate the function declaration
         let mut rules = NamingConventions.chain(CoherentSignature::new(self.in_kernel_module));
         rules.validate(function, diagnostics)?;
@@ -76,18 +76,21 @@ impl Rule<Function> for CoherentSignature {
         &mut self,
         function: &Function,
         diagnostics: &DiagnosticsHandler,
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Report> {
         let span = function.id.span();
 
         // 1
         let linkage = function.signature.linkage;
         if !matches!(linkage, Linkage::External | Linkage::Internal) {
-            invalid_function!(
-                diagnostics,
-                function.id,
-                "the signature of this function specifies '{linkage}' linkage, but only \
-                 'external' or 'internal' are valid"
-            );
+            return Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("invalid function signature")
+                .with_primary_label(
+                    span,
+                    "the signature of this function specifies '{linkage}' linkage, but only \
+                     'external' or 'internal' are valid",
+                )
+                .into_report());
         }
 
         // 2
@@ -96,34 +99,48 @@ impl Rule<Function> for CoherentSignature {
         if self.in_kernel_module {
             let is_public = function.signature.is_public();
             if is_public && !is_kernel_function {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    function.id.span(),
-                    "the '{cc}' calling convention may only be used with 'internal' linkage in \
-                     kernel modules",
-                    "This function is declared with 'external' linkage in a kernel module, so it \
-                     must use the 'kernel' calling convention"
-                );
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        span,
+                        format!(
+                            "the '{cc}' calling convention may only be used with 'internal' \
+                             linkage in kernel modules",
+                        ),
+                    )
+                    .with_help(
+                        "This function is declared with 'external' linkage in a kernel module, so \
+                         it must use the 'kernel' calling convention",
+                    )
+                    .into_report());
             } else if !is_public && is_kernel_function {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    function.id.span(),
-                    "the 'kernel' calling convention may only be used with 'external' linkage",
-                    "This function has 'internal' linkage, so it must either be made 'external', \
-                     or a different calling convention must be used"
-                );
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        span,
+                        "the 'kernel' calling convention may only be used with 'external' linkage",
+                    )
+                    .with_help(
+                        "This function has 'internal' linkage, so it must either be made \
+                         'external', or a different calling convention must be used",
+                    )
+                    .into_report());
             }
         } else if is_kernel_function {
-            invalid_function!(
-                diagnostics,
-                function.id,
-                function.id.span(),
-                "the 'kernel' calling convention may only be used in kernel modules",
-                "Kernel functions may only be declared in kernel modules, so you must either \
-                 change the module type, or change the calling convention of this function"
-            );
+            return Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("invalid function signature")
+                .with_primary_label(
+                    span,
+                    "the 'kernel' calling convention may only be used in kernel modules",
+                )
+                .with_help(
+                    "Kernel functions may only be declared in kernel modules, so you must either \
+                     change the module type, or change the calling convention of this function",
+                )
+                .into_report());
         }
 
         // 3
@@ -147,15 +164,19 @@ impl Rule<Function> for CoherentSignature {
         let mut effective_stack_usage = 0;
         let params = function.dfg.block_args(function.dfg.entry_block());
         if params.len() != function.signature.arity() {
-            invalid_function!(
-                diagnostics,
-                function.id,
-                function.id.span(),
-                "function signature and entry block have different arities",
-                "This happens if the signature or entry block are modified without updating the \
-                 other, make sure the number and types of all parameters are the same in both the \
-                 signature and the entry block"
-            );
+            return Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("invalid function signature")
+                .with_primary_label(
+                    span,
+                    "function signature and entry block have different arities",
+                )
+                .with_help(
+                    "This happens if the signature or entry block are modified without updating \
+                     the other, make sure the number and types of all parameters are the same in \
+                     both the signature and the entry block",
+                )
+                .into_report());
         }
         for (i, param) in function.signature.params.iter().enumerate() {
             let is_first = i == 0;
@@ -165,40 +186,50 @@ impl Rule<Function> for CoherentSignature {
             let value_ty = function.dfg.value_type(value);
 
             if param_ty != value_ty {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    span,
-                    "parameter type mismatch between signature and entry block",
-                    format!(
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        span,
+                        "parameter type mismatch between signature and entry block",
+                    )
+                    .with_help(format!(
                         "The function declares this parameter as having type {param_ty}, but the \
                          actual type is {value_ty}"
-                    )
-                );
+                    ))
+                    .into_report());
             }
 
             let is_integer = param_ty.is_integer();
             let is_signed_integer = param_ty.is_signed_integer();
             match param.extension {
                 ArgumentExtension::Zext if is_signed_integer => {
-                    invalid_function!(
-                        diagnostics,
-                        function.id,
-                        span,
-                        "signed integer parameters may not be combined with zero-extension",
-                        "Zero-extending a signed-integer loses the signedness, you should use \
-                         signed-extension instead"
-                    );
+                    return Err(diagnostics
+                        .diagnostic(Severity::Error)
+                        .with_message("invalid function signature")
+                        .with_primary_label(
+                            span,
+                            "signed integer parameters may not be combined with zero-extension",
+                        )
+                        .with_help(
+                            "Zero-extending a signed-integer loses the signedness, you should use \
+                             signed-extension instead",
+                        )
+                        .into_report());
                 }
                 ArgumentExtension::Sext | ArgumentExtension::Zext if !is_integer => {
-                    invalid_function!(
-                        diagnostics,
-                        function.id,
-                        span,
-                        "non-integer parameters may not be combined with argument extension \
-                         attributes",
-                        "Argument extension has no meaning for types other than integers"
-                    );
+                    return Err(diagnostics
+                        .diagnostic(Severity::Error)
+                        .with_message("invalid function signature")
+                        .with_primary_label(
+                            span,
+                            "non-integer parameters may not be combined with argument extension \
+                             attributes",
+                        )
+                        .with_help(
+                            "Argument extension has no meaning for types other than integers",
+                        )
+                        .into_report());
                 }
                 _ => (),
             }
@@ -210,69 +241,85 @@ impl Rule<Function> for CoherentSignature {
             }
 
             if is_kernel_function && (is_sret || is_pointer) {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    span,
-                    "functions using the 'kernel' calling convention may not use sret or \
-                     pointer-typed parameters",
-                    "Kernel functions are invoked in a different memory context, so they may not \
-                     pass or return values by reference"
-                );
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        span,
+                        "functions using the 'kernel' calling convention may not use sret or \
+                         pointer-typed parameters",
+                    )
+                    .with_help(
+                        "Kernel functions are invoked in a different memory context, so they may \
+                         not pass or return values by reference",
+                    )
+                    .into_report());
             }
 
             if !is_kernel_function {
                 if is_sret {
                     if sret_count > 1 || !is_first {
-                        invalid_function!(
-                            diagnostics,
-                            function.id,
-                            span,
-                            "a function may only have a single sret parameter, and it must be the \
-                             first parameter",
-                            "The sret parameter type is used to return a large value from a \
-                             function, but it may only be used for functions with a single return \
-                             value"
-                        );
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid function signature")
+                            .with_primary_label(
+                                span,
+                                "a function may only have a single sret parameter, and it must be \
+                                 the first parameter",
+                            )
+                            .with_help(
+                                "The sret parameter type is used to return a large value from a \
+                                 function, but it may only be used for functions with a single \
+                                 return value",
+                            )
+                            .into_report());
                     }
                     if !is_pointer {
-                        invalid_function!(
-                            diagnostics,
-                            function.id,
-                            span,
-                            "sret parameters must be pointer-typed, but got {param_ty}",
-                            format!(
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid function signature")
+                            .with_primary_label(
+                                span,
+                                "sret parameters must be pointer-typed, but got {param_ty}",
+                            )
+                            .with_help(format!(
                                 "Did you mean to define this parameter with type {}?",
                                 &Type::Ptr(Box::new(param_ty.clone()))
-                            )
-                        );
+                            ))
+                            .into_report());
                     }
 
                     if !function.signature.results.is_empty() {
-                        invalid_function!(
-                            diagnostics,
-                            function.id,
-                            span,
-                            "functions with an sret parameter must have no results",
-                            "An sret parameter is used in place of normal return values, but this \
-                             function uses both, which is not valid. You should remove the \
-                             results from the function signature."
-                        );
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid function signature")
+                            .with_primary_label(
+                                span,
+                                "functions with an sret parameter must have no results",
+                            )
+                            .with_help(
+                                "An sret parameter is used in place of normal return values, but \
+                                 this function uses both, which is not valid. You should remove \
+                                 the results from the function signature.",
+                            )
+                            .into_report());
                     }
                 }
 
                 let size_in_bytes = param_ty.size_in_bytes();
                 if !is_pointer && size_in_bytes > 8 {
-                    invalid_function!(
-                        diagnostics,
-                        function.id,
-                        span,
-                        "this parameter type is too large to pass by value",
-                        format!(
+                    return Err(diagnostics
+                        .diagnostic(Severity::Error)
+                        .with_message("invalid function signature")
+                        .with_primary_label(
+                            span,
+                            "this parameter type is too large to pass by value",
+                        )
+                        .with_help(format!(
                             "This parameter has type {param_ty}, you must refactor this function \
                              to pass it by reference instead"
-                        )
-                    );
+                        ))
+                        .into_report());
                 }
             }
 
@@ -281,49 +328,59 @@ impl Rule<Function> for CoherentSignature {
         }
 
         if effective_stack_usage > 16 {
-            invalid_function!(
-                diagnostics,
-                function.id,
-                span,
-                "this function has a signature with too many parameters",
-                "Due to the constraints of the Miden VM, all function parameters must fit on the \
-                 operand stack, which is 16 elements (each of which is effectively 4 bytes, a \
-                 maximum of 64 bytes). The layout of the parameter list of this function requires \
-                 more than this limit. You should either remove parameters, or combine some of \
-                 them into a struct which is then passed by reference."
-            );
+            return Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("invalid function signature")
+                .with_primary_label(span, "this function has a signature with too many parameters")
+                .with_help(
+                    "Due to the constraints of the Miden VM, all function parameters must fit on \
+                     the operand stack, which is 16 elements (each of which is effectively 4 \
+                     bytes, a maximum of 64 bytes). The layout of the parameter list of this \
+                     function requires more than this limit. You should either remove parameters, \
+                     or combine some of them into a struct which is then passed by reference.",
+                )
+                .into_report());
         }
 
         for (i, result) in function.signature.results.iter().enumerate() {
             if result.purpose == ArgumentPurpose::StructReturn {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    "the sret attribute is only permitted on function parameters"
-                );
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        span,
+                        "the sret attribute is only permitted on function parameters",
+                    )
+                    .into_report());
             }
 
             if result.extension != ArgumentExtension::None {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    "the argument extension attributes are only permitted on function parameters"
-                );
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        span,
+                        "the argument extension attributes are only permitted on function \
+                         parameters",
+                    )
+                    .into_report());
             }
 
             let size_in_bytes = result.ty.size_in_bytes();
             if !result.ty.is_pointer() && size_in_bytes > 8 {
-                invalid_function!(
-                    diagnostics,
-                    function.id,
-                    function.id.span(),
-                    "This function specifies a result type which is too large to pass by value",
-                    format!(
+                return Err(diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid function signature")
+                    .with_primary_label(
+                        function.id.span(),
+                        "This function specifies a result type which is too large to pass by value",
+                    )
+                    .with_help(format!(
                         "The parameter at index {} has type {}, you must refactor this function \
                          to pass it by reference instead",
                         i, &result.ty
-                    )
-                );
+                    ))
+                    .into_report());
             }
         }
 
