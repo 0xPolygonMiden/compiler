@@ -158,8 +158,16 @@ impl fmt::Display for Program {
             if module.name.is_exec_path() {
                 continue;
             }
-            writeln!(f, "mod {}\n", &module.name)?;
-            writeln!(f, "{}", module)?;
+            if ["intrinsics", "std"].contains(&module.name.namespace().as_str()) {
+                // Skip printing the standard library modules and intrinsics
+                // modules to focus on the user-defined modules and avoid the
+                // stack overflow error when printing large programs
+                // https://github.com/0xPolygonMiden/miden-formatting/issues/4
+                continue;
+            } else {
+                writeln!(f, "mod {}\n", &module.name)?;
+                writeln!(f, "{}", module)?;
+            }
         }
 
         if let Some(module) = self.modules.iter().find(|m| m.name.is_exec_path()) {
