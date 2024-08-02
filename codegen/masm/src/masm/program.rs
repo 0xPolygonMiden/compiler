@@ -602,11 +602,17 @@ impl fmt::Display for Library {
             if module.id.as_str().starts_with("intrinsics::") {
                 continue;
             }
-
-            writeln!(f, "# mod {}\n", &module.name)?;
-            writeln!(f, "{}", module)?;
+            if ["intrinsics", "std"].contains(&module.name.namespace().as_str()) {
+                // Skip printing the standard library modules and intrinsics
+                // modules to focus on the user-defined modules and avoid the
+                // stack overflow error when printing large programs
+                // https://github.com/0xPolygonMiden/miden-formatting/issues/4
+                continue;
+            } else {
+                writeln!(f, "# mod {}\n", &module.name)?;
+                writeln!(f, "{}", module)?;
+            }
         }
-
         Ok(())
     }
 }
