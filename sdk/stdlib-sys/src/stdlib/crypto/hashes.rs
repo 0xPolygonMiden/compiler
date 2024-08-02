@@ -1,7 +1,6 @@
 //! Contains procedures for computing hashes using BLAKE3 and SHA256 hash
 //! functions. The input and output elements are assumed to contain one 32-bit
 //! value per element.
-use crate::Felt;
 
 #[link(wasm_import_module = "std::crypto::hashes::blake3")]
 extern "C" {

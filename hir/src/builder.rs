@@ -1,4 +1,4 @@
-use super::*;
+use crate::{diagnostics::Span, *};
 
 pub struct FunctionBuilder<'f> {
     pub func: &'f mut Function,
@@ -181,8 +181,6 @@ impl<'f> InstBuilderBase<'f> for ReplaceBuilder<'f> {
         ctrl_typevar: Type,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        use miden_diagnostics::Span;
-
         // Splat the new instruction on top of the old one.
         self.dfg.insts[self.inst].replace(Span::new(span, data));
         // The old result values, if any, were either detached or non-existent.

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{AttributeSet, Signature};
+use crate::{diagnostics::DiagnosticsHandler, AttributeSet, Signature};
 
 /// Represents the declaration of a function in a [Module]
 #[derive(Spanned)]
@@ -29,10 +29,7 @@ impl FunctionDeclaration {
     }
 
     /// Returns true if the entry block and signature match for this declaration
-    pub fn is_declaration_valid(
-        &self,
-        diagnostics: &miden_diagnostics::DiagnosticsHandler,
-    ) -> bool {
+    pub fn is_declaration_valid(&self, diagnostics: &DiagnosticsHandler) -> bool {
         let entry_block = &self.blocks[0];
         if entry_block.params.len() != self.signature.arity() {
             let num_expected = entry_block.params.len();
@@ -82,7 +79,7 @@ impl FunctionDeclaration {
 
     pub(super) fn populate_block_map(
         &mut self,
-        diagnostics: &miden_diagnostics::DiagnosticsHandler,
+        diagnostics: &DiagnosticsHandler,
     ) -> Result<BlocksById, BlocksById> {
         use alloc::collections::btree_map::Entry;
 

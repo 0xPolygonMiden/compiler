@@ -8,7 +8,7 @@
 //! For signed smallint operations, we implement them in terms of a two's complement representation,
 //! using a set of common primitives. The only thing that changes are which bits are considered by
 //! those primitives.
-use midenc_hir::{Overflow, SourceSpan};
+use midenc_hir::{diagnostics::SourceSpan, Overflow};
 
 use super::OpEmitter;
 use crate::masm::Op;

@@ -1,41 +1,18 @@
-use std::{
-    collections::BTreeSet,
-    fmt,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::BTreeSet, fmt, path::Path, sync::Arc};
 
 use intrusive_collections::{intrusive_adapter, RBTree, RBTreeAtomicLink};
 use miden_assembly::{
     ast::{self, ModuleKind},
-    diagnostics::{RelatedError, Report, SourceFile as MasmSourceFile},
-    LibraryNamespace, LibraryPath,
+    LibraryPath,
 };
-use miden_diagnostics::{CodeMap, SourceFile, SourceIndex, SourceSpan};
-use midenc_hir::{formatter::PrettyPrint, FunctionIdent, Ident, Symbol};
+use midenc_hir::{
+    diagnostics::{Report, SourceFile, SourceSpan, Span, Spanned},
+    formatter::PrettyPrint,
+    FunctionIdent, Ident, Symbol,
+};
+use midenc_session::Emit;
 
-use super::{function::Functions, utils, FrozenFunctionList, Function, ModuleImportInfo};
-
-#[derive(Debug, thiserror::Error)]
-pub enum LoadModuleError {
-    #[error("failed to load module from disk: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("invalid path to module: '{}' is not a file", .0.display())]
-    InvalidPath(PathBuf),
-    #[error(transparent)]
-    InvalidIdent(#[from] miden_assembly::ast::IdentError),
-    #[error(transparent)]
-    InvalidModulePath(#[from] miden_assembly::PathError),
-    #[error(transparent)]
-    InvalidNamespace(#[from] miden_assembly::library::LibraryNamespaceError),
-    #[error(transparent)]
-    Report(#[from] RelatedError),
-}
-impl From<Report> for LoadModuleError {
-    fn from(report: Report) -> Self {
-        Self::Report(RelatedError::new(report))
-    }
-}
+use super::{function::Functions, FrozenFunctionList, Function, ModuleImportInfo};
 
 /// This represents a single compiled Miden Assembly module in a form that is
 /// designed to integrate well with the rest of our IR. You can think of this
@@ -81,6 +58,18 @@ impl Module {
         }
     }
 
+    /// Parse a [Module] from `source` using the given [ModuleKind] and [LibraryPath]
+    pub fn parse(
+        kind: ModuleKind,
+        path: LibraryPath,
+        source: Arc<SourceFile>,
+    ) -> Result<Self, Report> {
+        let span = source.source_span();
+        let mut parser = ast::Module::parser(kind);
+        let ast = parser.parse(path, source)?;
+        Ok(Self::from_ast(&ast, span))
+    }
+
     /// Returns true if this module is a kernel module
     pub fn is_kernel(&self) -> bool {
         self.kind.is_kernel()
@@ -112,48 +101,7 @@ impl Module {
         self.functions.iter().any(|f| f.name.function == name)
     }
 
-    /// Parse a [Module] from the given string
-    pub fn parse_source_file(
-        name: LibraryPath,
-        kind: ModuleKind,
-        source_file: Arc<SourceFile>,
-    ) -> Result<Self, LoadModuleError> {
-        let filename = source_file.name().as_str().expect("invalid source file name");
-        let module = ast::Module::parse(
-            name,
-            kind,
-            Arc::new(MasmSourceFile::new(filename, source_file.source().to_string())),
-        )?;
-        let span = source_file.source_span();
-        Ok(Self::from_ast(&module, span))
-    }
-
-    /// Parse a [Module] from the given file path
-    pub fn parse_file<P: AsRef<Path>>(
-        ns: Option<LibraryNamespace>,
-        kind: ModuleKind,
-        path: P,
-        codemap: &CodeMap,
-    ) -> Result<Self, LoadModuleError> {
-        let path = path.as_ref();
-        let id = codemap.add_file(path)?;
-        let source_file = codemap.get(id).unwrap();
-        let fallback_ns = match path.parent().and_then(|p| p.to_str()) {
-            None => LibraryNamespace::Anon,
-            Some(parent_dirname) => parent_dirname.parse::<LibraryNamespace>()?,
-        };
-        let ns = ns.unwrap_or(fallback_ns);
-        let name = ast::Ident::new(path.file_stem().unwrap().to_str().unwrap())?;
-        let module_path = LibraryPath::new_from_components(ns, [name]);
-        let module = ast::Module::parse_file(module_path, kind, path)?;
-        let span = source_file.source_span();
-        Ok(Self::from_ast(&module, span))
-    }
-
     pub fn from_ast(ast: &ast::Module, span: SourceSpan) -> Self {
-        use miden_assembly::Spanned as MasmSpanned;
-
-        let source_id = span.source_id();
         let mut module = Self::new(ast.path().clone(), ast.kind());
         module.span = span;
         module.docs = ast.docs().map(|s| s.to_string());
@@ -161,9 +109,6 @@ impl Module {
         let mut imports = ModuleImportInfo::default();
         for import in ast.imports() {
             let span = import.name.span();
-            let start = SourceIndex::new(source_id, (span.start() as u32).into());
-            let end = SourceIndex::new(source_id, (span.end() as u32).into());
-            let span = SourceSpan::new(start, end);
             let alias = Symbol::intern(import.name.as_str());
             let name = if import.is_aliased() {
                 Symbol::intern(import.path.last())
@@ -179,7 +124,7 @@ impl Module {
                     module.reexports.push(alias.clone());
                 }
                 ast::Export::Procedure(ref proc) => {
-                    let function = Function::from_ast(module.id, source_id, proc);
+                    let function = Function::from_ast(module.id, proc);
                     module.functions.push_back(function);
                 }
             }
@@ -215,17 +160,13 @@ impl Module {
     }
 
     /// Convert this module into its [miden_assembly::ast::Module] representation.
-    pub fn to_ast(&self, codemap: &miden_diagnostics::CodeMap) -> Result<ast::Module, Report> {
-        let source_file = utils::source_file_for_span(self.span, codemap);
-        let span = utils::translate_span(self.span);
-        let mut ast = ast::Module::new(self.kind, self.name.clone())
-            .with_source_file(source_file)
-            .with_span(span);
-        ast.set_docs(self.docs.clone().map(miden_assembly::Span::unknown));
+    pub fn to_ast(&self) -> Result<ast::Module, Report> {
+        let mut ast = ast::Module::new(self.kind, self.name.clone()).with_span(self.span);
+        ast.set_docs(self.docs.clone().map(Span::unknown));
 
         // Create module import table
         for ir_import in self.imports.iter() {
-            let span = utils::translate_span(ir_import.span);
+            let span = ir_import.span;
             let name =
                 ast::Ident::new_with_span(span, ir_import.alias.as_str()).map_err(Report::msg)?;
             let path = LibraryPath::new(ir_import.name.as_str()).expect("invalid import path");
@@ -246,11 +187,7 @@ impl Module {
         }
 
         for function in self.functions.iter() {
-            ast.define_procedure(ast::Export::Procedure(function.to_ast(
-                codemap,
-                &self.imports,
-                &locals,
-            )))?;
+            ast.define_procedure(ast::Export::Procedure(function.to_ast(&self.imports, &locals)))?;
         }
 
         Ok(ast)
@@ -261,11 +198,7 @@ impl Module {
     ///
     /// For example, if this module is named `std::math::u64`, then it will be written to
     /// `<dir>/std/math/u64.masm`
-    pub fn write_to_directory<P: AsRef<Path>>(
-        &self,
-        codemap: &miden_diagnostics::CodeMap,
-        dir: P,
-    ) -> std::io::Result<()> {
+    pub fn write_to_directory<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
         use std::fs::File;
 
         let mut path = dir.as_ref().to_path_buf();
@@ -276,17 +209,7 @@ impl Module {
         assert!(path.set_extension("masm"));
 
         let mut out = File::create(&path)?;
-        self.emit(codemap, &mut out)
-    }
-
-    /// Write this module as Miden Assembly text to `out`
-    pub fn emit(
-        &self,
-        codemap: &miden_diagnostics::CodeMap,
-        out: &mut dyn std::io::Write,
-    ) -> std::io::Result<()> {
-        let ast = self.to_ast(codemap).map_err(std::io::Error::other)?;
-        out.write_fmt(format_args!("{}", &ast))
+        self.write_to(&mut out)
     }
 }
 impl midenc_hir::formatter::PrettyPrint for Module {
@@ -362,7 +285,8 @@ impl midenc_session::Emit for Module {
     }
 
     fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
-        writer.write_fmt(format_args!("{}", self))
+        let ast = self.to_ast().map_err(std::io::Error::other)?;
+        writer.write_fmt(format_args!("{}", &ast))
     }
 }
 

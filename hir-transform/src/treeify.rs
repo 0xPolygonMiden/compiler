@@ -5,6 +5,7 @@ use std::{
 
 use midenc_hir::{
     self as hir,
+    diagnostics::Report,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     Block as BlockId, Value as ValueId, *,
 };
@@ -443,7 +444,7 @@ fn treeify(
     block_q: &mut VecDeque<CopyBlock>,
     mut value_map: ScopedMap<ValueId, ValueId>,
     mut block_map: ScopedMap<BlockId, BlockId>,
-) -> anyhow::Result<()> {
+) -> Result<(), Report> {
     // Check if we're dealing with a loop header
     let is_loop = block_infos.is_loop_header(b).is_some();
 
@@ -517,7 +518,7 @@ fn copy_children(
     block_q: &mut VecDeque<CopyBlock>,
     value_map: ScopedMap<ValueId, ValueId>,
     block_map: ScopedMap<BlockId, BlockId>,
-) -> anyhow::Result<()> {
+) -> Result<(), Report> {
     let pred = BlockPredecessor {
         inst: function.dfg.last_inst(b_prime).expect("expected non-empty block"),
         block: b_prime,
@@ -671,7 +672,7 @@ fn update_predecessor<F>(function: &mut hir::Function, p: &BlockPredecessor, mut
 where
     F: FnMut(&mut BlockId, &mut ValueList, &mut ValueListPool),
 {
-    match &mut function.dfg.insts[p.inst].data.item {
+    match &mut *function.dfg.insts[p.inst].data {
         Instruction::Br(hir::Br {
             ref mut destination,
             ref mut args,

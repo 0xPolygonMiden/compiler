@@ -9,10 +9,9 @@ pub mod resources;
 use core::{hash::Hash, ops::Index};
 
 use anyhow::{bail, Result};
-use indexmap::IndexSet;
 use midenc_hir::cranelift_entity::{EntityRef, PrimaryMap};
 use rustc_hash::FxHashMap;
-use wasmparser::{names::KebabString, types};
+use wasmparser::{collections::IndexSet, names::KebabString, types};
 
 use self::resources::ResourcesBuilder;
 use crate::{
@@ -1030,8 +1029,8 @@ impl From<&wasmparser::PrimitiveValType> for InterfaceType {
             wasmparser::PrimitiveValType::U32 => InterfaceType::U32,
             wasmparser::PrimitiveValType::S64 => InterfaceType::S64,
             wasmparser::PrimitiveValType::U64 => InterfaceType::U64,
-            wasmparser::PrimitiveValType::Float32 => InterfaceType::Float32,
-            wasmparser::PrimitiveValType::Float64 => InterfaceType::Float64,
+            wasmparser::PrimitiveValType::F32 => InterfaceType::Float32,
+            wasmparser::PrimitiveValType::F64 => InterfaceType::Float64,
             wasmparser::PrimitiveValType::Char => InterfaceType::Char,
             wasmparser::PrimitiveValType::String => InterfaceType::String,
         }

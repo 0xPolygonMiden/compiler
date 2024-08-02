@@ -1,6 +1,6 @@
 use midenc_hir::{
-    self as hir, ArgumentExtension, ArgumentPurpose, Felt, FieldElement, Immediate, SourceSpan,
-    Type,
+    self as hir, diagnostics::SourceSpan, ArgumentExtension, ArgumentPurpose, Felt, FieldElement,
+    Immediate, Type,
 };
 
 use super::{int64, OpEmitter};

@@ -1,4 +1,5 @@
-use std::{borrow::Borrow, collections::BTreeMap, fmt};
+use alloc::collections::BTreeMap;
+use core::{borrow::Borrow, fmt};
 
 use crate::Symbol;
 

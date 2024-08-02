@@ -18,9 +18,10 @@ impl Stage for CodegenStage {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        let MaybeLinked::Linked(program) = linker_output.program else {
+        let Some(program) = linker_output.program else {
             return Ok(None);
         };
+
         let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();
         let mut program = convert_to_masm.convert(program, analyses, session)?;
         // Ensure intrinsics modules are linked
@@ -38,8 +39,11 @@ impl Stage for CodegenStage {
 
 fn required_intrinsics_modules(session: &Session) -> Vec<masm::Module> {
     vec![
-        intrinsics::load("intrinsics::mem", &session.codemap).expect("undefined intrinsics module"),
-        intrinsics::load("intrinsics::i32", &session.codemap).expect("undefined intrinsics module"),
-        intrinsics::load("intrinsics::i64", &session.codemap).expect("undefined intrinsics module"),
+        intrinsics::load("intrinsics::mem", &session.source_manager)
+            .expect("undefined intrinsics module"),
+        intrinsics::load("intrinsics::i32", &session.source_manager)
+            .expect("undefined intrinsics module"),
+        intrinsics::load("intrinsics::i64", &session.source_manager)
+            .expect("undefined intrinsics module"),
     ]
 }

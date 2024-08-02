@@ -256,11 +256,6 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use miden_diagnostics::{
-        term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler,
-    };
     use midenc_hir::*;
 
     use super::*;
@@ -294,9 +289,7 @@ mod tests {
 
     #[test]
     fn cfg_branches_and_jumps() {
-        let codemap = Arc::new(CodeMap::new());
-        let emitter = Arc::new(DefaultEmitter::new(ColorChoice::Auto));
-        let diagnostics = DiagnosticsHandler::new(Default::default(), codemap.clone(), emitter);
+        let diagnostics = diagnostics::DiagnosticsHandler::default();
 
         // Define the 'test' module
         let mut builder = ModuleBuilder::new("test");

@@ -11,11 +11,11 @@
 
 use core::mem;
 
-use miden_diagnostics::SourceSpan;
 use midenc_hir::{
     cranelift_entity::{
         entity_impl, packed_option::PackedOption, EntityList, EntitySet, ListPool, SecondaryMap,
     },
+    diagnostics::SourceSpan,
     Block, DataFlowGraph, Inst, Value,
 };
 use midenc_hir_type::Type;

@@ -1,6 +1,8 @@
 use miden_core::crypto::hash::RpoDigest;
-use miden_diagnostics::DiagnosticsHandler;
-use midenc_hir::{AbiParam, CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature};
+use midenc_hir::{
+    diagnostics::{DiagnosticsHandler, Severity},
+    AbiParam, CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature,
+};
 use rustc_hash::FxHashMap;
 
 use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Module, ModuleTypes};
@@ -9,7 +11,6 @@ use crate::{
     intrinsics::is_miden_intrinsics_module,
     miden_abi::{is_miden_abi_module, miden_abi_function_type, parse_import_function_digest},
     translation_utils::sig_from_funct_type,
-    WasmError,
 };
 
 pub struct ModuleTranslationState {
@@ -24,7 +25,12 @@ pub struct ModuleTranslationState {
 }
 
 impl ModuleTranslationState {
-    pub fn new(module: &Module, mod_types: &ModuleTypes, module_args: Vec<ModuleArgument>) -> Self {
+    pub fn new(
+        module: &Module,
+        mod_types: &ModuleTypes,
+        module_args: Vec<ModuleArgument>,
+        diagnostics: &DiagnosticsHandler,
+    ) -> Self {
         let mut function_import_subst = FxHashMap::default();
         if module.imports.len() == module_args.len() {
             for (import, arg) in module.imports.iter().zip(module_args) {
@@ -51,7 +57,7 @@ impl ModuleTranslationState {
         let mut digests = FxHashMap::default();
         for (index, func_type) in &module.functions {
             let wasm_func_type = mod_types[func_type.signature].clone();
-            let ir_func_type = ir_func_type(&wasm_func_type).unwrap();
+            let ir_func_type = ir_func_type(&wasm_func_type, diagnostics).unwrap();
             let sig = sig_from_funct_type(&ir_func_type, CallConv::SystemV, Linkage::External);
             if let Some(subst) = function_import_subst.get(&index) {
                 functions.insert(index, (*subst, sig));
@@ -135,11 +141,7 @@ impl ModuleTranslationState {
                          imported (function call) with a different signature",
                         func_id.function, func_id.module
                     );
-                    diagnostics
-                        .diagnostic(miden_diagnostics::Severity::Error)
-                        .with_message(message.clone())
-                        .emit();
-                    WasmError::Unexpected(message)
+                    diagnostics.diagnostic(Severity::Error).with_message(message).into_report()
                 })?;
         }
         Ok(func_id)

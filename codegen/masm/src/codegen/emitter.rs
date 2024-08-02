@@ -1,8 +1,13 @@
 use std::{collections::BTreeMap, rc::Rc};
 
 use cranelift_entity::SecondaryMap;
-use miden_diagnostics::{Span, Spanned};
-use midenc_hir::{self as hir, adt::SparseMap, assert_matches, SourceSpan, Type};
+use midenc_hir::{
+    self as hir,
+    adt::SparseMap,
+    assert_matches,
+    diagnostics::{SourceSpan, Span},
+    Type,
+};
 use midenc_hir_analysis::{
     DominatorTree, GlobalVariableLayout, LivenessAnalysis, Loop, LoopAnalysis,
 };
@@ -188,7 +193,6 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         // Continue normally, by emitting the contents of the block based on the given schedule
         for op in block_schedule.iter() {
             match op {
-                ScheduleOp::Init(_) | ScheduleOp::Enter(_) | ScheduleOp::Exit => continue,
                 ScheduleOp::Inst(inst_info) => self.emit_inst(inst_info, tasks),
                 ScheduleOp::Drop(value) => {
                     let mut emitter = self.emitter();
@@ -835,7 +839,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
         while let Some((prev, new)) = rewrites.pop() {
             for mut op in asm.blocks[prev].ops.iter().cloned() {
                 let span = op.span();
-                match &mut op.item {
+                match &mut *op {
                     Op::If(ref mut then_blk, ref mut else_blk) => {
                         let prev_then_blk = *then_blk;
                         let prev_else_blk = *else_blk;
@@ -878,7 +882,7 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                     }
                     _ => (),
                 }
-                self.function.f_prime.body.block_mut(new).push(op.item, span);
+                self.function.f_prime.body.block_mut(new).push(op.into_inner(), span);
             }
         }
     }

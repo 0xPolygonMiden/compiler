@@ -3,12 +3,12 @@ use std::{fmt, path::Path, sync::Arc};
 use hir::{Signature, Symbol};
 use miden_assembly::{
     ast::{ModuleKind, ProcedureName},
-    diagnostics::Report,
     LibraryNamespace,
 };
 use miden_core::crypto::hash::Rpo256;
 use midenc_hir::{
-    self as hir, DataSegmentTable, Felt, FieldElement, FunctionIdent, Ident, SourceSpan,
+    self as hir, diagnostics::Report, DataSegmentTable, Felt, FieldElement, FunctionIdent, Ident,
+    SourceSpan,
 };
 use midenc_hir_analysis::GlobalVariableAnalysis;
 use midenc_session::Session;
@@ -342,21 +342,17 @@ impl Program {
     /// Write this [Program] to the given output directory.
     ///
     /// The provided [miden_diagnostics::CodeMap] is used for computing source locations.
-    pub fn write_to_directory<P: AsRef<Path>>(
-        &self,
-        codemap: &miden_diagnostics::CodeMap,
-        path: P,
-    ) -> std::io::Result<()> {
+    pub fn write_to_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
         let path = path.as_ref();
         assert!(path.is_dir());
 
         for module in self.modules.iter() {
-            module.write_to_directory(codemap, path)?;
+            module.write_to_directory(path)?;
         }
 
         if let Some(entry) = self.entrypoint {
             let main = self.generate_main(entry, /* test_harness= */ false);
-            main.write_to_directory(codemap, path)?;
+            main.write_to_directory(path)?;
         }
 
         Ok(())
@@ -367,12 +363,12 @@ impl Program {
         use miden_assembly::{Assembler, CompileOptions};
         use miden_stdlib::StdLibrary;
 
-        let mut assembler = Assembler::default()
+        let mut assembler = Assembler::new(session.source_manager.clone())
             .with_debug_mode(session.options.emit_debug_decorators())
             .with_library(&StdLibrary::default())?;
         for module in self.modules.iter() {
             let kind = module.kind;
-            let module = module.to_ast(&session.codemap).map(Box::new)?;
+            let module = module.to_ast().map(Box::new)?;
             assembler.add_module_with_options(
                 module,
                 CompileOptions {
@@ -391,7 +387,7 @@ impl Program {
             // the operand stack
             self.generate_dyn_main(emit_test_harness)
         };
-        let main = main.to_ast(&session.codemap).map(Box::new)?;
+        let main = main.to_ast().map(Box::new)?;
         println!("{main}");
         assembler.assemble_program(main).map(Arc::new)
     }

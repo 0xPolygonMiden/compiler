@@ -11,6 +11,7 @@ mod tests;
 
 use midenc_hir::{
     self as hir,
+    diagnostics::Report,
     pass::{RewritePass, RewriteSet},
 };
 use midenc_session::Session;
@@ -24,27 +25,7 @@ pub use self::{
     masm::*,
 };
 
-/// This error type represents all of the errors produced by [MasmCompiler]
-#[derive(Debug, thiserror::Error)]
-pub enum CompilerError {
-    /// Two or more modules conflict with each other
-    #[error(transparent)]
-    ModuleConflict(#[from] hir::ModuleConflictError),
-    /// An error occurred at link-time
-    #[error(transparent)]
-    Linker(#[from] hir::LinkerError),
-    /// An error occurred during analysis
-    #[error(transparent)]
-    Analysis(#[from] hir::pass::AnalysisError),
-    /// An error occurred during application of a rewrite
-    #[error(transparent)]
-    Rewrite(#[from] hir::pass::RewriteError),
-    /// An error occurred during application of a conversion
-    #[error(transparent)]
-    Conversion(#[from] hir::pass::ConversionError),
-}
-
-pub type CompilerResult<T> = Result<T, CompilerError>;
+pub type CompilerResult<T> = Result<T, Report>;
 
 /// [MasmCompiler] is a compiler from Miden IR to MASM IR, an intermediate representation
 /// of Miden Assembly which is used within the Miden compiler framework for various purposes,
@@ -83,21 +64,21 @@ impl<'a> MasmCompiler<'a> {
         let mut program = convert_to_masm.convert(input, &mut self.analyses, self.session)?;
 
         // Ensure standard library is linked
-        for module in intrinsics::load_stdlib(&self.session.codemap) {
+        for module in intrinsics::load_stdlib() {
             program.insert(Box::new(module.clone()));
         }
 
         // Ensure intrinsics modules are linked
         program.insert(Box::new(
-            intrinsics::load("intrinsics::mem", &self.session.codemap)
+            intrinsics::load("intrinsics::mem", &self.session.source_manager)
                 .expect("undefined intrinsics module"),
         ));
         program.insert(Box::new(
-            intrinsics::load("intrinsics::i32", &self.session.codemap)
+            intrinsics::load("intrinsics::i32", &self.session.source_manager)
                 .expect("undefined intrinsics module"),
         ));
         program.insert(Box::new(
-            intrinsics::load("intrinsics::i64", &self.session.codemap)
+            intrinsics::load("intrinsics::i64", &self.session.source_manager)
                 .expect("undefined intrinsics module"),
         ));
 

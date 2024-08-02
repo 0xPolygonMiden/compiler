@@ -1,6 +1,6 @@
-use miden_diagnostics::SourceSpan;
 use midenc_hir::{
     cranelift_entity::{EntitySet, SecondaryMap},
+    diagnostics::SourceSpan,
     Block, Br, CondBr, DataFlowGraph, InsertionPoint, Inst, InstBuilderBase, Instruction,
     ModuleFunctionBuilder, ProgramPoint, Switch, Value,
 };
@@ -68,6 +68,10 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
 
     pub fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
         self.inner.data_flow_graph_mut()
+    }
+
+    pub fn id(&self) -> midenc_hir::FunctionIdent {
+        self.inner.id()
     }
 
     pub fn signature(&self) -> &midenc_hir::Signature {
@@ -341,7 +345,7 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
     /// other jump instructions.
     pub fn change_jump_destination(&mut self, inst: Inst, old_block: Block, new_block: Block) {
         self.func_ctx.ssa.remove_block_predecessor(old_block, inst);
-        match self.data_flow_graph_mut().insts[inst].data.item {
+        match &mut *self.data_flow_graph_mut().insts[inst].data {
             Instruction::Br(Br {
                 ref mut destination,
                 ..
@@ -445,7 +449,7 @@ impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> 
         let opcode = data.opcode();
         let inst = self.builder.data_flow_graph_mut().insert_inst(self.ip, data, ty, span);
 
-        match &self.builder.inner.data_flow_graph().insts[inst].data.item {
+        match self.builder.inner.data_flow_graph().insts[inst].data.inner() {
             Instruction::Br(Br { destination, .. }) => {
                 // If the user has supplied jump arguments we must adapt the arguments of
                 // the destination block

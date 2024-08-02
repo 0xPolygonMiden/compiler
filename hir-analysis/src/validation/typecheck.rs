@@ -1,13 +1,15 @@
 use core::fmt;
 
-use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
-use midenc_hir::*;
+use midenc_hir::{
+    diagnostics::{DiagnosticsHandler, Report, Severity, Spanned},
+    *,
+};
 use rustc_hash::FxHashMap;
 
-use super::{Rule, ValidationError};
+use super::Rule;
 
 /// This error is produced when type checking the IR for function or module
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+#[derive(Debug, thiserror::Error)]
 pub enum TypeError {
     /// The number of arguments given does not match what is expected by the instruction
     #[error("expected {expected} arguments, but {actual} are given")]
@@ -26,22 +28,6 @@ pub enum TypeError {
     #[error("expected result of {expected} type at index {index}, got {actual}")]
     InvalidResultType {
         expected: TypePattern,
-        actual: Type,
-        index: usize,
-    },
-    /// The number of arguments given to a successor block does not match what is expected by the
-    /// block
-    #[error("{successor} expected {expected} arguments, but {actual} are given")]
-    IncorrectSuccessorArgumentCount {
-        successor: Block,
-        expected: usize,
-        actual: usize,
-    },
-    /// One of the arguments to a successor block is not of the correct type
-    #[error("{successor} expected argument of {expected} type at index {index}, got {actual}")]
-    IncorrectSuccessorArgumentType {
-        successor: Block,
-        expected: Type,
         actual: Type,
         index: usize,
     },
@@ -86,7 +72,7 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
         &mut self,
         block_data: &BlockData,
         diagnostics: &DiagnosticsHandler,
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Report> {
         // Traverse the block, checking each instruction in turn
         for node in block_data.insts.iter() {
             let span = node.span();
@@ -106,36 +92,51 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     | Opcode::ImmU64
                     | Opcode::ImmI64
                     | Opcode::ImmFelt
-                    | Opcode::ImmF64 => invalid_instruction!(
-                        diagnostics,
-                        node.key,
-                        span,
-                        "immediate opcode '{opcode}' cannot be used with non-immediate argument"
-                    ),
+                    | Opcode::ImmF64 => {
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "immediate opcode '{opcode}' cannot be used with \
+                                     non-immediate argument"
+                                ),
+                            )
+                            .into_report());
+                    }
                     _ => {
                         typechecker.check(&[*arg], results)?;
                     }
                 },
                 Instruction::UnaryOpImm(UnaryOpImm { imm, .. }) => match opcode {
-                    Opcode::PtrToInt => invalid_instruction!(
-                        diagnostics,
-                        node.key,
-                        span,
-                        "'{opcode}' cannot be used with an immediate value"
-                    ),
+                    Opcode::PtrToInt => {
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!("'{opcode}' cannot be used with an immediate value"),
+                            )
+                            .into_report());
+                    }
                     _ => {
                         typechecker.check_immediate(&[], imm, results)?;
                     }
                 },
                 Instruction::Load(LoadOp { ref ty, addr, .. }) => {
                     if ty.size_in_felts() > 4 {
-                        invalid_instruction!(
-                            diagnostics,
-                            node.key,
-                            span,
-                            "cannot load a value of type {ty} on the stack, as it is larger than \
-                             16 bytes"
-                        );
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "cannot load a value of type {ty} on the stack, as it is \
+                                     larger than 16 bytes"
+                                ),
+                            )
+                            .into_report());
                     }
                     typechecker.check(&[*addr], results)?;
                 }
@@ -153,60 +154,80 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                             let expected_ty = self.dfg.local_type(*local);
                             let actual_ty = self.dfg.value_type(args[0]);
                             if actual_ty != expected_ty {
-                                return Err(ValidationError::TypeError(
-                                    TypeError::IncorrectArgumentType {
-                                        expected: expected_ty.clone().into(),
-                                        actual: actual_ty.clone(),
-                                        index: 0,
-                                    },
-                                ));
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("type error")
+                                    .with_primary_label(
+                                        span,
+                                        format!(
+                                            "local type is {expected_ty}, but argument is \
+                                             {actual_ty}"
+                                        ),
+                                    )
+                                    .into_report());
                             }
                             typechecker.check(args, results)?;
                         }
                         Opcode::Load => {
                             if !args.is_empty() {
-                                invalid_instruction!(
-                                    diagnostics,
-                                    node.key,
-                                    span,
-                                    "local.load does not accept any arguments"
-                                );
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("invalid instruction")
+                                    .with_primary_label(
+                                        span,
+                                        "local.load does not accept any arguments",
+                                    )
+                                    .into_report());
                             }
                             if results.len() != 1 {
-                                invalid_instruction!(
-                                    diagnostics,
-                                    node.key,
-                                    span,
-                                    "local.load should have exactly one result"
-                                );
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("invalid instruction")
+                                    .with_primary_label(
+                                        span,
+                                        "local.load should have exactly one result",
+                                    )
+                                    .into_report());
                             }
                             let local_ty = self.dfg.local_type(*local);
                             if local_ty.size_in_felts() > 4 {
-                                invalid_instruction!(
-                                    diagnostics,
-                                    node.key,
-                                    span,
-                                    "cannot load a value of type {local_ty} on the stack, as it \
-                                     is larger than 16 bytes"
-                                );
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("invalid instruction")
+                                    .with_primary_label(
+                                        span,
+                                        "cannot load a value of type {local_ty} on the stack, as \
+                                         it is larger than 16 bytes",
+                                    )
+                                    .into_report());
                             }
                             let result_ty = self.dfg.value_type(results[0]);
                             if local_ty != result_ty {
-                                return Err(ValidationError::TypeError(
-                                    TypeError::IncorrectArgumentType {
-                                        expected: local_ty.clone().into(),
-                                        actual: result_ty.clone(),
-                                        index: 0,
-                                    },
-                                ));
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("type error")
+                                    .with_primary_label(
+                                        span,
+                                        format!(
+                                            "local type is {local_ty}, but result of load is \
+                                             {result_ty}"
+                                        ),
+                                    )
+                                    .into_report());
                             }
                         }
-                        opcode => invalid_instruction!(
-                            diagnostics,
-                            node.key,
-                            span,
-                            "opcode '{opcode}' cannot be used with local variables"
-                        ),
+                        opcode => {
+                            return Err(diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("invalid instruction")
+                                .with_primary_label(
+                                    span,
+                                    format!(
+                                        "opcode '{opcode}' cannot be used with local variables"
+                                    ),
+                                )
+                                .into_report());
+                        }
                     }
                 }
                 Instruction::GlobalValue(_)
@@ -221,45 +242,69 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                 Instruction::Ret(Ret { ref args, .. }) => {
                     let args = args.as_slice(&self.dfg.value_lists);
                     if args.len() != self.signature.results.len() {
-                        return Err(ValidationError::TypeError(
-                            TypeError::IncorrectArgumentCount {
-                                expected: self.signature.results.len(),
-                                actual: args.len(),
-                            },
-                        ));
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "the function signature states that {} results should be \
+                                     returned, but {} were given",
+                                    self.signature.results.len(),
+                                    args.len()
+                                ),
+                            )
+                            .into_report());
                     }
                     for (index, (expected, arg)) in
                         self.signature.results.iter().zip(args.iter().copied()).enumerate()
                     {
                         let actual = self.dfg.value_type(arg);
                         if actual != &expected.ty {
-                            return Err(ValidationError::TypeError(
-                                TypeError::IncorrectArgumentType {
-                                    expected: expected.ty.clone().into(),
-                                    actual: actual.clone(),
-                                    index,
-                                },
-                            ));
+                            return Err(diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("type error")
+                                .with_primary_label(
+                                    span,
+                                    format!(
+                                        "result at index {index} is {actual}, but function \
+                                         signature expects {}",
+                                        &expected.ty
+                                    ),
+                                )
+                                .into_report());
                         }
                     }
                 }
                 Instruction::RetImm(RetImm { ref arg, .. }) => {
                     if self.signature.results.len() != 1 {
-                        return Err(ValidationError::TypeError(
-                            TypeError::IncorrectArgumentCount {
-                                expected: self.signature.results.len(),
-                                actual: 1,
-                            },
-                        ));
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "the function signature states that {} results should be \
+                                     returned, but {} were given",
+                                    self.signature.results.len(),
+                                    1
+                                ),
+                            )
+                            .into_report());
                     }
                     let expected = &self.signature.results[0].ty;
                     let actual = arg.ty();
                     if &actual != expected {
-                        return Err(ValidationError::TypeError(TypeError::IncorrectArgumentType {
-                            expected: expected.clone().into(),
-                            actual,
-                            index: 0,
-                        }));
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("type error")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "result is {actual}, but function signature expects {expected}"
+                                ),
+                            )
+                            .into_report());
                     }
                 }
                 Instruction::Br(Br {
@@ -271,13 +316,18 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     let expected = self.dfg.block_args(successor);
                     let args = args.as_slice(&self.dfg.value_lists);
                     if args.len() != expected.len() {
-                        return Err(ValidationError::TypeError(
-                            TypeError::IncorrectSuccessorArgumentCount {
-                                successor,
-                                expected: expected.len(),
-                                actual: args.len(),
-                            },
-                        ));
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "{successor} expects {} arguments, but is being given {}",
+                                    expected.len(),
+                                    args.len()
+                                ),
+                            )
+                            .into_report());
                     }
                     for (index, (param, arg)) in
                         expected.iter().copied().zip(args.iter().copied()).enumerate()
@@ -285,14 +335,17 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                         let expected = self.dfg.value_type(param);
                         let actual = self.dfg.value_type(arg);
                         if actual != expected {
-                            return Err(ValidationError::TypeError(
-                                TypeError::IncorrectSuccessorArgumentType {
-                                    successor,
-                                    expected: expected.clone(),
-                                    actual: actual.clone(),
-                                    index,
-                                },
-                            ));
+                            return Err(diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("type error")
+                                .with_primary_label(
+                                    span,
+                                    format!(
+                                        "{successor} argument at index {index} is expected to be \
+                                         {expected}, but got {actual}"
+                                    ),
+                                )
+                                .into_report());
                         }
                     }
                 }
@@ -312,13 +365,18 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                         let expected = self.dfg.block_args(successor);
                         let args = dest_args.as_slice(&self.dfg.value_lists);
                         if args.len() != expected.len() {
-                            return Err(ValidationError::TypeError(
-                                TypeError::IncorrectSuccessorArgumentCount {
-                                    successor,
-                                    expected: expected.len(),
-                                    actual: args.len(),
-                                },
-                            ));
+                            return Err(diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("invalid instruction")
+                                .with_primary_label(
+                                    span,
+                                    format!(
+                                        "{successor} expects {} arguments, but is being given {}",
+                                        expected.len(),
+                                        args.len()
+                                    ),
+                                )
+                                .into_report());
                         }
                         for (index, (param, arg)) in
                             expected.iter().copied().zip(args.iter().copied()).enumerate()
@@ -326,14 +384,17 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                             let expected = self.dfg.value_type(param);
                             let actual = self.dfg.value_type(arg);
                             if actual != expected {
-                                return Err(ValidationError::TypeError(
-                                    TypeError::IncorrectSuccessorArgumentType {
-                                        successor,
-                                        expected: expected.clone(),
-                                        actual: actual.clone(),
-                                        index,
-                                    },
-                                ));
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("type error")
+                                    .with_primary_label(
+                                        span,
+                                        format!(
+                                            "{successor} argument at index {index} is expected to \
+                                             be {expected}, but got {actual}"
+                                        ),
+                                    )
+                                    .into_report());
                             }
                         }
                     }
@@ -349,42 +410,51 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     let mut seen = FxHashMap::<u32, usize>::default();
                     for (i, (key, successor)) in arms.iter().enumerate() {
                         if let Some(prev) = seen.insert(*key, i) {
-                            return Err(ValidationError::InvalidInstruction {
-                                span,
-                                inst: node.key,
-                                reason: format!(
-                                    "all arms of a 'switch' must have a unique discriminant, but \
-                                     the arm at index {i} has the same discriminant as the arm at \
-                                     {prev}"
-                                ),
-                            });
+                            return Err(diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("invalid instruction")
+                                .with_primary_label(
+                                    span,
+                                    format!(
+                                        "all arms of a 'switch' must have a unique discriminant, \
+                                         but the arm at index {i} has the same discriminant as \
+                                         the arm at {prev}"
+                                    ),
+                                )
+                                .into_report());
                         }
 
                         let expected = self.dfg.block_args(*successor);
                         if !expected.is_empty() {
-                            return Err(ValidationError::InvalidInstruction {
-                                span,
-                                inst: node.key,
-                                reason: format!(
-                                    "all successors of a 'switch' must not have block parameters, \
-                                     but {successor}, the successor for discriminant {key}, has \
-                                     {} arguments",
-                                    expected.len()
-                                ),
-                            });
+                            return Err(diagnostics
+                                .diagnostic(Severity::Error)
+                                .with_message("invalid instruction")
+                                .with_primary_label(
+                                    span,
+                                    format!(
+                                        "all successors of a 'switch' must not have block \
+                                         parameters, but {successor}, the successor for \
+                                         discriminant {key}, has {} arguments",
+                                        expected.len()
+                                    ),
+                                )
+                                .into_report());
                         }
                     }
                     let expected = self.dfg.block_args(*fallback);
                     if !expected.is_empty() {
-                        return Err(ValidationError::InvalidInstruction {
-                            span,
-                            inst: node.key,
-                            reason: format!(
-                                "all successors of a 'switch' must not have block parameters, but \
-                                 {fallback}, the default successor, has {} arguments",
-                                expected.len()
-                            ),
-                        });
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!(
+                                    "all successors of a 'switch' must not have block parameters, \
+                                     but {fallback}, the default successor, has {} arguments",
+                                    expected.len()
+                                ),
+                            )
+                            .into_report());
                     }
                 }
             }
@@ -407,6 +477,7 @@ pub enum TypePattern {
     /// Matches any unsigned integer type
     Uint,
     /// Matches any signed integer type
+    #[allow(dead_code)]
     Sint,
     /// Matches any pointer type
     Pointer,
@@ -1048,7 +1119,6 @@ struct InstTypeChecker<'a> {
     diagnostics: &'a DiagnosticsHandler,
     dfg: &'a DataFlowGraph,
     span: SourceSpan,
-    opcode: Opcode,
     pattern: InstPattern,
 }
 impl<'a> InstTypeChecker<'a> {
@@ -1057,10 +1127,10 @@ impl<'a> InstTypeChecker<'a> {
         diagnostics: &'a DiagnosticsHandler,
         dfg: &'a DataFlowGraph,
         node: &InstNode,
-    ) -> Result<Self, ValidationError> {
+    ) -> Result<Self, Report> {
         let span = node.span();
         let opcode = node.opcode();
-        let is_local_op = matches!(node.data.as_ref(), Instruction::LocalVar(_));
+        let is_local_op = matches!(&*node.data, Instruction::LocalVar(_));
         let pattern = match opcode {
             Opcode::Assert | Opcode::Assertz => InstPattern::UnaryNoResult(Type::I1.into()),
             Opcode::AssertEq => InstPattern::BinaryMatchingNoResult(Type::I1.into()),
@@ -1164,13 +1234,17 @@ impl<'a> InstTypeChecker<'a> {
                             .collect();
                         InstPattern::Exact(args, results)
                     } else {
-                        invalid_instruction!(
-                            diagnostics,
-                            node.key,
-                            span,
-                            "no signature is available for {callee}",
-                            "Make sure you import functions before building calls to them."
-                        );
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid instruction")
+                            .with_primary_label(
+                                span,
+                                format!("no signature is available for {callee}"),
+                            )
+                            .with_help(
+                                "Make sure you import functions before building calls to them.",
+                            )
+                            .into_report());
                     }
                 }
                 inst => panic!("invalid opcode '{opcode}' for {inst:#?}"),
@@ -1187,28 +1261,22 @@ impl<'a> InstTypeChecker<'a> {
             diagnostics,
             dfg,
             span: node.span(),
-            opcode,
             pattern,
         })
     }
 
     /// Checks that the given `operands` and `results` match the types represented by this
     /// [InstTypeChecker]
-    pub fn check(self, operands: &[Value], results: &[Value]) -> Result<(), ValidationError> {
+    pub fn check(self, operands: &[Value], results: &[Value]) -> Result<(), Report> {
         let diagnostics = self.diagnostics;
         let dfg = self.dfg;
         match self.pattern.into_match(dfg, operands, results) {
             Ok(_) => Ok(()),
-            Err(err) => {
-                let opcode = self.opcode;
-                let message = format!("validation failed for {opcode} instruction");
-                diagnostics
-                    .diagnostic(Severity::Error)
-                    .with_message(message.as_str())
-                    .with_primary_label(self.span, format!("{err}"))
-                    .emit();
-                Err(ValidationError::TypeError(err))
-            }
+            Err(err) => Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("type error")
+                .with_primary_label(self.span, err)
+                .into_report()),
         }
     }
 
@@ -1219,21 +1287,16 @@ impl<'a> InstTypeChecker<'a> {
         operands: &[Value],
         imm: &Immediate,
         results: &[Value],
-    ) -> Result<(), ValidationError> {
+    ) -> Result<(), Report> {
         let diagnostics = self.diagnostics;
         let dfg = self.dfg;
         match self.pattern.into_match_with_immediate(dfg, operands, imm, results) {
             Ok(_) => Ok(()),
-            Err(err) => {
-                let opcode = self.opcode;
-                let message = format!("validation failed for {opcode} instruction");
-                diagnostics
-                    .diagnostic(Severity::Error)
-                    .with_message(message.as_str())
-                    .with_primary_label(self.span, format!("{err}"))
-                    .emit();
-                Err(ValidationError::TypeError(err))
-            }
+            Err(err) => Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("type error")
+                .with_primary_label(self.span, err)
+                .into_report()),
         }
     }
 }

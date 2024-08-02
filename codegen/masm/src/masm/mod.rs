@@ -3,7 +3,6 @@ pub mod intrinsics;
 mod module;
 mod program;
 mod region;
-pub mod utils;
 
 pub use midenc_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,
@@ -12,7 +11,7 @@ pub use midenc_hir::{
 
 pub use self::{
     function::{FrozenFunctionList, Function, FunctionList},
-    module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree},
+    module::{FrozenModuleTree, Module, ModuleTree},
     program::Program,
     region::Region,
 };

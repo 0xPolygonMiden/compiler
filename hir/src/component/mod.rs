@@ -5,7 +5,10 @@ use indexmap::IndexMap;
 use miden_core::crypto::hash::RpoDigest;
 
 use self::formatter::PrettyPrint;
-use super::*;
+use crate::{
+    diagnostics::{DiagnosticsHandler, Report},
+    *,
+};
 
 mod interface;
 
@@ -255,10 +258,10 @@ pub struct ComponentBuilder<'a> {
     imports: BTreeMap<FunctionIdent, ComponentImport>,
     exports: BTreeMap<FunctionExportName, ComponentExport>,
     entry: Option<FunctionIdent>,
-    diagnostics: &'a miden_diagnostics::DiagnosticsHandler,
+    diagnostics: &'a DiagnosticsHandler,
 }
 impl<'a> ComponentBuilder<'a> {
-    pub fn new(diagnostics: &'a miden_diagnostics::DiagnosticsHandler) -> Self {
+    pub fn new(diagnostics: &'a DiagnosticsHandler) -> Self {
         Self {
             modules: Default::default(),
             entry: None,
@@ -291,7 +294,7 @@ impl<'a> ComponentBuilder<'a> {
     pub fn add_module(&mut self, module: Box<Module>) -> Result<(), ModuleConflictError> {
         let module_name = module.name;
         if self.modules.contains_key(&module_name) {
-            return Err(ModuleConflictError(module_name));
+            return Err(ModuleConflictError::new(module_name));
         }
 
         self.modules.insert(module_name, module);
@@ -394,15 +397,15 @@ impl<'a, 'b: 'a> AsMut<ModuleBuilder> for ComponentModuleBuilder<'a, 'b> {
 /// This is used to build a [Function] from a [ComponentModuleBuilder].
 ///
 /// It is basically just a wrapper around [ModuleFunctionBuilder], but overrides
-/// `build` to use the [miden_diagnostics::DiagnosticsHandler] of the parent
+/// `build` to use the [DiagnosticsHandler] of the parent
 /// [ComponentBuilder].
 pub struct ComponentFunctionBuilder<'a, 'b: 'a> {
-    diagnostics: &'b miden_diagnostics::DiagnosticsHandler,
+    diagnostics: &'b DiagnosticsHandler,
     fb: ModuleFunctionBuilder<'a>,
 }
 impl<'a, 'b: 'a> ComponentFunctionBuilder<'a, 'b> {
     /// Build the current function
-    pub fn build(self) -> Result<FunctionIdent, InvalidFunctionError> {
+    pub fn build(self) -> Result<FunctionIdent, Report> {
         let diagnostics = self.diagnostics;
         self.fb.build(diagnostics)
     }

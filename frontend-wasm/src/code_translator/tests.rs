@@ -1,15 +1,15 @@
 use core::fmt::Write;
-use std::sync::Arc;
 
 use expect_test::expect;
-use miden_diagnostics::CodeMap;
 use midenc_hir::Ident;
 
-use crate::{test_utils::test_diagnostics, translate, WasmTranslationConfig};
+use crate::{test_utils::test_context, translate, WasmTranslationConfig};
 
 /// Check IR generated for a Wasm op(s).
 /// Wrap Wasm ops in a function and check the IR generated for the entry block of that function.
 fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
+    let context = test_context();
+
     let wat = format!(
         r#"
         (module
@@ -20,9 +20,7 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
         )"#,
     );
     let wasm = wat::parse_str(wat).unwrap();
-    let codemap = Arc::new(CodeMap::new());
-    let diagnostics = test_diagnostics(codemap.clone());
-    let module = translate(&wasm, &WasmTranslationConfig::default(), &codemap, &diagnostics)
+    let module = translate(&wasm, &WasmTranslationConfig::default(), &context.session)
         .unwrap()
         .unwrap_one_module();
     let func = module.function(Ident::from("test_wrapper")).unwrap();

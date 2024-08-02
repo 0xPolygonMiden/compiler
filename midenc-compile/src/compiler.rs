@@ -1,10 +1,10 @@
 use std::{path::PathBuf, sync::Arc};
 
 use clap::{Args, ColorChoice, Parser};
-use miden_diagnostics::{term::termcolor::ColorChoice as MDColorChoice, Emitter};
 use midenc_session::{
+    diagnostics::{ColorChoice as MDColorChoice, Emitter, MultiThreadedSourceManager},
     DebugInfo, InputFile, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec, OutputTypes,
-    ProjectType, Session, TargetEnv, VerbosityFlag, Warnings,
+    ProjectType, Session, TargetEnv, Verbosity, Warnings,
 };
 
 /// Compile a program from WebAssembly or Miden IR, to Miden Assembly.
@@ -66,11 +66,11 @@ pub struct CompilerOptions {
         value_enum,
         value_name = "LEVEL",
         next_line_help(true),
-        default_value_t = VerbosityFlag::Info,
+        default_value_t = Verbosity::Info,
         default_missing_value = "debug",
         help_heading = "Diagnostics"
     )]
-    pub verbosity: VerbosityFlag,
+    pub verbosity: Verbosity,
     /// Specify how warnings should be treated by the compiler.
     #[arg(
         long,
@@ -148,6 +148,7 @@ pub struct CompilerOptions {
 impl Compiler {
     /// Use this configuration to obtain a [Session] used for compilation
     pub fn into_session(self, emitter: Option<Arc<dyn Emitter>>) -> Session {
+        let source_manager = Arc::new(MultiThreadedSourceManager::default());
         let tmp_dir = self.target_dir.unwrap_or_else(std::env::temp_dir);
         let output_file = match self.output_file {
             Some(path) => Some(OutputFile::Real(path)),
@@ -157,7 +158,15 @@ impl Compiler {
         let cwd = self.working_dir;
         let options = self.options.into_options(cwd);
 
-        Session::new(self.input, self.output_dir, output_file, Some(tmp_dir), options, emitter)
+        Session::new(
+            self.input,
+            self.output_dir,
+            output_file,
+            Some(tmp_dir),
+            options,
+            emitter,
+            source_manager,
+        )
     }
 }
 

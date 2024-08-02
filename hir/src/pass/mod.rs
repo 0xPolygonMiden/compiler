@@ -12,7 +12,7 @@ macro_rules! register_function_rewrite {
         impl $ty {
             fn new(
                 _options: std::sync::Arc<midenc_session::Options>,
-                _diagnostics: std::sync::Arc<miden_diagnostics::DiagnosticsHandler>,
+                _diagnostics: std::sync::Arc<DiagnosticsHandler>,
             ) -> Box<dyn crate::ModuleRewritePass> {
                 Box::new(crate::ModuleRewritePassAdapter(Self))
             }

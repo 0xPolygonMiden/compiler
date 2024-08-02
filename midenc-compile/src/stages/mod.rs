@@ -8,7 +8,7 @@ use midenc_hir::{
 use midenc_session::Session;
 
 use super::Stage;
-use crate::{CompilerError, CompilerResult};
+use crate::CompilerResult;
 
 mod codegen;
 mod link;
@@ -18,7 +18,7 @@ mod sema;
 
 pub use self::{
     codegen::CodegenStage,
-    link::{LinkerInput, LinkerOutput, LinkerStage, MaybeLinked},
+    link::{LinkerInput, LinkerOutput, LinkerStage},
     parse::{ParseOutput, ParseStage},
     rewrite::ApplyRewritesStage,
     sema::SemanticAnalysisStage,

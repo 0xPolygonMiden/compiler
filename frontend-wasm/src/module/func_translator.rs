@@ -6,8 +6,12 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, SourceSpan};
-use midenc_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
+use midenc_hir::{
+    cranelift_entity::EntityRef,
+    diagnostics::{DiagnosticsHandler, IntoDiagnostic, SourceManagerExt, SourceSpan},
+    Block, InstBuilder, ModuleFunctionBuilder,
+};
+use midenc_session::Session;
 use wasmparser::{FuncValidator, FunctionBody, WasmModuleResources};
 
 use super::{module_env::ParsedModule, module_translation_state::ModuleTranslationState};
@@ -53,8 +57,7 @@ impl FuncTranslator {
         module: &ParsedModule<'_>,
         mod_types: &ModuleTypes,
         addr2line: &addr2line::Context<DwarfReader<'_>>,
-        codemap: &CodeMap,
-        diagnostics: &DiagnosticsHandler,
+        session: &Session,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
         let mut builder = FunctionBuilderExt::new(mod_func_builder, &mut self.func_ctx);
@@ -69,11 +72,17 @@ impl FuncTranslator {
         builder.append_block_params_for_function_returns(exit_block);
         self.state.initialize(builder.signature(), exit_block);
 
-        let mut reader = body.get_locals_reader()?;
+        let mut reader = body.get_locals_reader().into_diagnostic()?;
 
-        parse_local_decls(&mut reader, &mut builder, num_params, func_validator)?;
+        parse_local_decls(
+            &mut reader,
+            &mut builder,
+            num_params,
+            func_validator,
+            &session.diagnostics,
+        )?;
 
-        let mut reader = body.get_operators_reader()?;
+        let mut reader = body.get_operators_reader().into_diagnostic()?;
         parse_function_body(
             &mut reader,
             &mut builder,
@@ -82,8 +91,7 @@ impl FuncTranslator {
             module,
             mod_types,
             addr2line,
-            codemap,
-            diagnostics,
+            session,
             func_validator,
         )?;
 
@@ -118,15 +126,16 @@ fn parse_local_decls(
     builder: &mut FunctionBuilderExt,
     num_params: usize,
     validator: &mut FuncValidator<impl WasmModuleResources>,
+    diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
     let mut next_local = num_params;
     let local_count = reader.get_count();
 
     for _ in 0..local_count {
         let pos = reader.original_position();
-        let (count, ty) = reader.read()?;
-        validator.define_locals(pos, count, ty)?;
-        declare_locals(builder, count, ty, &mut next_local)?;
+        let (count, ty) = reader.read().into_diagnostic()?;
+        validator.define_locals(pos, count, ty).into_diagnostic()?;
+        declare_locals(builder, count, ty, &mut next_local, diagnostics)?;
     }
 
     Ok(())
@@ -140,10 +149,11 @@ fn declare_locals(
     count: u32,
     wasm_type: wasmparser::ValType,
     next_local: &mut usize,
+    diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let ty = ir_type(convert_valtype(wasm_type))?;
+    let ty = ir_type(convert_valtype(wasm_type), diagnostics)?;
     // All locals are initialized to 0.
-    let init = emit_zero(&ty, builder)?;
+    let init = emit_zero(&ty, builder, diagnostics)?;
     for _ in 0..count {
         let local = Variable::new(*next_local);
         builder.declare_var(local, ty.clone());
@@ -166,8 +176,7 @@ fn parse_function_body(
     module: &ParsedModule<'_>,
     mod_types: &ModuleTypes,
     addr2line: &addr2line::Context<DwarfReader<'_>>,
-    codemap: &CodeMap,
-    diagnostics: &DiagnosticsHandler,
+    session: &Session,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
     // The control stack is initialized with a single block representing the whole function.
@@ -176,30 +185,36 @@ fn parse_function_body(
     let mut end_span = SourceSpan::default();
     while !reader.eof() {
         let pos = reader.original_position();
-        let (op, offset) = reader.read_with_offset()?;
-        func_validator.op(pos, &op)?;
+        let (op, offset) = reader.read_with_offset().into_diagnostic()?;
+        func_validator.op(pos, &op).into_diagnostic()?;
 
         let offset = (offset as u64)
             .checked_sub(module.wasm_file.code_section_offset)
             .expect("offset occurs before start of code section");
         let mut span = SourceSpan::default();
-        if let Some(loc) = addr2line
-            .find_location(offset)
-            .map_err(|err| crate::WasmError::Unexpected(err.to_string()))?
-        {
+        if let Some(loc) = addr2line.find_location(offset).into_diagnostic()? {
             if let Some(file) = loc.file {
                 let path = std::path::Path::new(file);
+                let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
                 if path.exists() {
-                    let source_id = codemap.add_file(path)?;
+                    let source_file = session.source_manager.load_file(&path).into_diagnostic()?;
                     let line = loc.line.and_then(|line| line.checked_sub(1)).unwrap_or(0);
                     let column = loc.column.and_then(|col| col.checked_sub(1)).unwrap_or(0);
-                    span = codemap
-                        .line_column_to_span(source_id, line, column)
-                        .ok()
-                        .unwrap_or_default();
+                    span = source_file.line_column_to_span(line, column).unwrap_or_default();
+                } else {
+                    eprintln!(
+                        "failed to locate span for instruction at offset {offset} in function {}",
+                        builder.id()
+                    );
                 }
             }
+        } else {
+            eprintln!(
+                "failed to locate span for instruction at offset {offset} in function {}",
+                builder.id()
+            );
         }
+        dbg!(span);
 
         // Track the span of every END we observe, so we have a span to assign to the return we
         // place in the final exit block
@@ -214,12 +229,12 @@ fn parse_function_body(
             module_state,
             &module.module,
             mod_types,
-            diagnostics,
+            &session.diagnostics,
             span,
         )?;
     }
     let pos = reader.original_position();
-    func_validator.finish(pos)?;
+    func_validator.finish(pos).into_diagnostic()?;
 
     // The final `End` operator left us in the exit block where we need to manually add a return
     // instruction.

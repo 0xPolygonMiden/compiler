@@ -1,11 +1,15 @@
 //! Helper functions and structures for the translation.
 
-use miden_diagnostics::SourceSpan;
-use midenc_hir::{AbiParam, CallConv, Felt, FieldElement, InstBuilder, Linkage, Signature, Value};
+use midenc_hir::{
+    diagnostics::{DiagnosticsHandler, Severity, SourceSpan},
+    AbiParam, CallConv, Felt, FieldElement, InstBuilder, Linkage, Signature, Value,
+};
 use midenc_hir_type::{FunctionType, Type};
 use rustc_hash::FxHasher;
 
-use crate::{error::WasmResult, module::function_builder_ext::FunctionBuilderExt, WasmError};
+use crate::{
+    error::WasmResult, module::function_builder_ext::FunctionBuilderExt, unsupported_diag,
+};
 
 pub type BuildFxHasher = std::hash::BuildHasherDefault<FxHasher>;
 
@@ -101,7 +105,11 @@ const fn ceiling_divide(n: usize, d: usize) -> usize {
 }
 
 /// Emit instructions to produce a zero value in the given type.
-pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> WasmResult<Value> {
+pub fn emit_zero(
+    ty: &Type,
+    builder: &mut FunctionBuilderExt,
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<Value> {
     Ok(match ty {
         Type::I1 => builder.ins().i1(false, SourceSpan::default()),
         Type::I8 => builder.ins().i8(0, SourceSpan::default()),
@@ -125,10 +133,7 @@ pub fn emit_zero(ty: &Type, builder: &mut FunctionBuilderExt) -> WasmResult<Valu
         | Type::Unknown
         | Type::Unit
         | Type::Never => {
-            return Err(WasmError::Unsupported(format!(
-                "cannot emit zero value for type: {:?}",
-                ty
-            )));
+            unsupported_diag!(diagnostics, "cannot emit zero value for type: {:?}", ty);
         }
     })
 }

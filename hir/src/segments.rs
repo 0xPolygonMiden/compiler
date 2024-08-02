@@ -7,17 +7,21 @@ use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, Unsaf
 
 intrusive_adapter!(pub DataSegmentAdapter = UnsafeRef<DataSegment>: DataSegment { link: LinkedListLink });
 
-use crate::{formatter, Alignable, ConstantData, Offset};
+use crate::{
+    diagnostics::{miette, Diagnostic},
+    formatter, Alignable, ConstantData, Offset,
+};
 
 /// This error is raised when attempting to declare a [DataSegment]
 /// that in some way conflicts with previously declared data segments.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum DataSegmentError {
     /// The current segment overlaps with a previously allocated segment
     #[error(
         "invalid data segment: segment of {size1} bytes at {offset1:#x} overlaps with segment of \
          {size2} bytes at {offset2:#x}"
     )]
+    #[diagnostic()]
     OverlappingSegments {
         offset1: Offset,
         size1: u32,
@@ -31,6 +35,7 @@ pub enum DataSegmentError {
         "invalid data segment: segment at {0:#x} conflicts with a previous segment declaration at \
          this address"
     )]
+    #[diagnostic()]
     Mismatch(Offset),
     /// The current segment and size do not fall in the boundaries of the heap
     /// which is allocatable to globals and other heap allocations.
@@ -42,18 +47,21 @@ pub enum DataSegmentError {
         "invalid data segment: segment of {size} bytes at {offset:#x} would extend beyond the end \
          of the usable heap"
     )]
+    #[diagnostic()]
     OutOfBounds { offset: Offset, size: u32 },
     /// The initializer for the current segment has a size greater than `u32::MAX` bytes
     #[error(
         "invalid data segment: segment at {0:#x} was declared with an initializer larger than \
          2^32 bytes"
     )]
+    #[diagnostic()]
     InitTooLarge(Offset),
     /// The initializer for the current segment has a size greater than the declared segment size
     #[error(
         "invalid data segment: segment of {size} bytes at {offset:#x} has an initializer of \
          {actual} bytes"
     )]
+    #[diagnostic()]
     InitOutOfBounds {
         offset: Offset,
         size: u32,

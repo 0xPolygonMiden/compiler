@@ -341,7 +341,7 @@ impl Instruction {
 
     #[inline(always)]
     pub fn op(&self, function: &Function) -> Option<Op> {
-        function.body.get(self.ip).map(|op| op.item)
+        function.body.get(self.ip).map(|op| op.into_inner())
     }
 }
 

@@ -1,20 +1,10 @@
 use midenc_session::Session;
 
-use super::{AnalysisError, AnalysisManager, Chain, PassInfo};
-
-/// This error is produced when a [ConversionPass] fails
-#[derive(Debug, thiserror::Error)]
-pub enum ConversionError {
-    /// Conversion failed due to an analysis error
-    #[error(transparent)]
-    Analysis(#[from] AnalysisError),
-    /// An unexpected error occurred during conversion
-    #[error(transparent)]
-    Failed(#[from] anyhow::Error),
-}
+use super::{AnalysisManager, Chain, PassInfo};
+use crate::diagnostics::Report;
 
 /// A convenient type alias for `Result<T, ConversionError>`
-pub type ConversionResult<T> = Result<T, ConversionError>;
+pub type ConversionResult<T> = Result<T, Report>;
 
 /// This is a marker trait for [ConversionPass] impls which also implement [PassInfo]
 ///

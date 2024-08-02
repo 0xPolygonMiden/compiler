@@ -1,3 +1,5 @@
+use midenc_hir::diagnostics::IntoDiagnostic;
+
 use super::*;
 
 /// This stage of compilation takes the output of the parsing
@@ -23,11 +25,11 @@ impl Stage for SemanticAnalysisStage {
             ParseOutput::Ast(ast) => {
                 let mut convert_to_hir = ast::ConvertAstToHir;
                 let module = Box::new(convert_to_hir.convert(ast, analyses, session)?);
-                session.emit(&module)?;
+                session.emit(&module).into_diagnostic()?;
                 Ok(LinkerInput::Hir(module))
             }
             ParseOutput::Hir(module) => {
-                session.emit(&module)?;
+                session.emit(&module).into_diagnostic()?;
                 Ok(LinkerInput::Hir(module))
             }
             ParseOutput::Masm(masm) => Ok(LinkerInput::Masm(masm)),

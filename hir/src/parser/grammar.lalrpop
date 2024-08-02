@@ -1,9 +1,8 @@
-use alloc::sync::Arc;
 use core::num::NonZeroU16;
 
 use either::Either::{self, Left, Right};
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, Span, Spanned, SourceSpan};
 
+use crate::diagnostics::{Span, SourceId, SourceSpan, ByteIndex};
 use crate::{AbiParam, ArgumentExtension, ArgumentPurpose};
 use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
 use crate::{Ident, Linkage, Opcode, Overflow, Signature, symbols, Symbol};
@@ -85,7 +84,7 @@ use crate::parser::{
 ///  BARE_NAME ::= [^[[:cntrl:]]:;,'"\s\\]+
 
 
-grammar(diagnostics: &DiagnosticsHandler, codemap: &Arc<CodeMap>, next_var: &mut usize);
+grammar(source_id: SourceId, next_var: &mut usize);
 
 // MACROS
 // ================================================================================================
@@ -116,7 +115,7 @@ CommaOpt<T>: Vec<T> = {
 pub Module: Module = {
     <l:@L> "(" "module" <name:Id> <attrs:ModuleAttr*> <forms:ModuleForm*> ")" <r:@R> => {
         let is_kernel = attrs.iter().any(|attr| attr.name == symbols::Kernel && attr.value.as_bool().unwrap_or_default());
-        Module::new(span!(l, r), name, is_kernel, forms)
+        Module::new(span!(source_id, l, r), name, is_kernel, forms)
     },
 }
 
@@ -136,13 +135,13 @@ ModuleForm: Form = {
 
 ConstantDeclaration: ConstantDeclaration = {
     <l:@L> "(" "const" <id:Index> <init:HexString> ")" <r:@R>
-        => ConstantDeclaration::new(span!(l, r), crate::Constant::from_u32(id), init),
+        => ConstantDeclaration::new(span!(source_id, l, r), crate::Constant::from_u32(id), init),
 }
 
 GlobalVarDeclaration: GlobalVarDeclaration = {
     <l:@L> "(" "global" <name_and_linkage:GlobalId> <id:Index> <ty:Type> <init:GlobalInit?> ")" <r:@R> => {
         let (name, linkage) = name_and_linkage;
-        GlobalVarDeclaration::new(span!(l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init)
+        GlobalVarDeclaration::new(span!(source_id, l, r), crate::GlobalVariable::from_u32(id), name, ty, linkage, init)
     }
 }
 
@@ -150,7 +149,7 @@ DataSegmentDeclaration: DataSegmentDeclaration = {
     <l:@L> "(" "data" <is_mut:("(" "mut" ")")?> <offset:("(" "offset" <U32> ")")> <size:("(" "size" <U32> ")")?> <data:DataSegmentValue> ")" <r:@R> => {
         let readonly = is_mut.is_none();
         let size = size.unwrap_or(data.len().try_into().expect("invalid data segment: data cannot be more than 2^32 bytes"));
-        DataSegmentDeclaration::new(span!(l, r), offset, size, readonly, data)
+        DataSegmentDeclaration::new(span!(source_id, l, r), offset, size, readonly, data)
     }
 }
 
@@ -232,7 +231,7 @@ AddressSpace: AddressSpace = {
         match u16::try_from(i) {
             Ok(0) => Ok(AddressSpace::Root),
             Ok(v) => Ok(AddressSpace::Id(unsafe { NonZeroU16::new_unchecked(v) })),
-            Err(_) => Err(ParseError::InvalidAddrSpace { span: span!(l, r), value: i }.into()),
+            Err(_) => Err(ParseError::InvalidAddrSpace { span: span!(source_id, l, r), value: i }.into()),
         }
     }
 }
@@ -279,13 +278,13 @@ FunctionDeclaration: Form = {
             linkage,
         };
         match name {
-            Left(name) if blocks.is_empty() =>  Err(ParseError::EmptyFunction { span: span!(l, r) }.into()),
+            Left(name) if blocks.is_empty() =>  Err(ParseError::EmptyFunction { span: span!(source_id, l, r) }.into()),
             Left(name) => {
-                Ok(Form::Function(FunctionDeclaration::new(span!(l, r), name, signature, blocks, AttributeSet::default())))
+                Ok(Form::Function(FunctionDeclaration::new(span!(source_id, l, r), name, signature, blocks, AttributeSet::default())))
             }
-            Right(id) if !blocks.is_empty() => Err(ParseError::ImportedFunctionWithBody { span: span!(l, r) }.into()),
+            Right(id) if !blocks.is_empty() => Err(ParseError::ImportedFunctionWithBody { span: span!(source_id, l, r) }.into()),
             Right(id) => {
-                Ok(Form::ExternalFunction(Span::new(span!(l, r), ExternalFunction {
+                Ok(Form::ExternalFunction(Span::new(span!(source_id, l, r), ExternalFunction {
                     id,
                     signature,
                 })))
@@ -335,19 +334,19 @@ ArgumentExtension: ArgumentExtension = {
 Block: Block = {
     <l:@L> "(" "block" <id:U32> <params:BlockParam*> <insts:Inst+> ")" <r:@R> => {
         let id = crate::Block::from_u32(id);
-        Block::new(span!(l, r), id, params, insts)
+        Block::new(span!(source_id, l, r), id, params, insts)
     }
 }
 
 BlockParam: TypedValue = {
-    <l:@L> "(" "param" <id:ValueId> <ty:TypeName> ")" <r:@R> => TypedValue::new(span!(l, r), id, ty),
+    <l:@L> "(" "param" <id:ValueId> <ty:TypeName> ")" <r:@R> => TypedValue::new(span!(source_id, l, r), id, ty),
 }
 
 // INSTRUCTIONS
 // ================================================================================================
 
 TypedValueId: TypedValue = {
-    "(" <value:SpannedValueId> <ty:TypeName> ")" => TypedValue::new(value.span(), value.item, ty),
+    "(" <value:SpannedValueId> <ty:TypeName> ")" => TypedValue::new(value.span(), value.into_inner(), ty),
 }
 
 Let: (TypedValue, Span<InstType>) = {
@@ -365,37 +364,37 @@ LetMany: (Vec<TypedValue>, Span<InstType>) = {
 Inst: Inst = {
     <l:@L> <let_expr:Let> <r:@R> => {
         let (value, inst_ty) = let_expr;
-        Inst::new(span!(l, r), inst_ty.item, vec![value])
+        Inst::new(span!(source_id, l, r), inst_ty.into_inner(), vec![value])
     },
 
     <l:@L> <let_expr:LetMany> <r:@R> => {
         let (values, inst_ty) = let_expr;
-        Inst::new(span!(l, r), inst_ty.item, values)
+        Inst::new(span!(source_id, l, r), inst_ty.into_inner(), values)
     },
 
     <l:@L> "(" "call" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
-        Inst::new(span!(l, r), InstType::Call { opcode: Opcode::Call, callee, operands }, vec![])
+        Inst::new(span!(source_id, l, r), InstType::Call { opcode: Opcode::Call, callee, operands }, vec![])
     },
 
     <l:@L> "(" "syscall" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
-        Inst::new(span!(l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands }, vec![])
+        Inst::new(span!(source_id, l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands }, vec![])
     },
 
     <l:@L> "(" "unreachable" ")" <r:@R> => {
-        Inst::new(span!(l, r), InstType::PrimOp { opcode: Opcode::Unreachable, operands: vec![] }, vec![])
+        Inst::new(span!(source_id, l, r), InstType::PrimOp { opcode: Opcode::Unreachable, operands: vec![] }, vec![])
     },
 
     <l:@L> "(" "ret" <operand:Operand?> ")" <r:@R> => {
         let operands = operand.map(|operand| vec![operand]).unwrap_or_default();
-        Inst::new(span!(l, r), InstType::Ret { opcode: Opcode::Ret, operands }, vec![])
+        Inst::new(span!(source_id, l, r), InstType::Ret { opcode: Opcode::Ret, operands }, vec![])
     },
 
     <l:@L> "(" "br" <successor:Successor> ")" <r:@R> => {
-        Inst::new(span!(l, r), InstType::Br { opcode: Opcode::Br, successor }, vec![])
+        Inst::new(span!(source_id, l, r), InstType::Br { opcode: Opcode::Br, successor }, vec![])
     },
 
     <l:@L> "(" "condbr" <cond:SpannedValueId> <then_dest:Successor> <else_dest:Successor> ")" <r:@R> => {
-        Inst::new(span!(l, r), InstType::CondBr { opcode: Opcode::CondBr, cond, then_dest, else_dest }, vec![])
+        Inst::new(span!(source_id, l, r), InstType::CondBr { opcode: Opcode::CondBr, cond, then_dest, else_dest }, vec![])
     },
 
     <l:@L> "(" "switch" <selector:SpannedValueId> <arms:SwitchArm+> ")" <r:@R> =>? {
@@ -411,27 +410,27 @@ Inst: Inst = {
                 (None, _, _) => panic!("invalid switch: only one default arm is allowed"),
             }
         }
-        Ok(Inst::new(span!(l, r), InstType::Switch { opcode: Opcode::Switch, selector, successors, fallback }, vec![]))
+        Ok(Inst::new(span!(source_id, l, r), InstType::Switch { opcode: Opcode::Switch, selector, successors, fallback }, vec![]))
     },
 }
 
 InstWithResult: Span<InstType> = {
     <l:@L> "(" <op_and_overflow:UnaryOpcode> <operand:Operand> ")" <r:@R> => {
         let (opcode, overflow) = op_and_overflow;
-        Span::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand })
+        Span::new(span!(source_id, l, r), InstType::UnaryOp { opcode, overflow, operand })
     },
 
     <l:@L> "(" <op_and_overflow:BinaryOpcode> <lhs:Operand> <rhs:Operand> ")" <r:@R> => {
         let (opcode, overflow) = op_and_overflow;
-        Span::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] })
+        Span::new(span!(source_id, l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] })
     },
 
     <l:@L> "(" "call" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
-        Span::new(span!(l, r), InstType::Call { opcode: Opcode::Call, callee, operands })
+        Span::new(span!(source_id, l, r), InstType::Call { opcode: Opcode::Call, callee, operands })
     },
 
     <l:@L> "(" "syscall" <callee:CalleeId> <operands:SpannedValueId*> ")" <r:@R> => {
-        Span::new(span!(l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands })
+        Span::new(span!(source_id, l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands })
     },
 
     <expr:GlobalValueExpr> => Span::new(expr.span(), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }),
@@ -440,27 +439,27 @@ InstWithResult: Span<InstType> = {
 InstWithManyResults: Span<InstType> = {
     <l:@L> "(" <opcode:OverflowingUnaryOpcode> <operand:Operand> ")" <r:@R> => {
         let overflow = Some(Overflow::Overflowing);
-        Span::new(span!(l, r), InstType::UnaryOp { opcode, overflow, operand })
+        Span::new(span!(source_id, l, r), InstType::UnaryOp { opcode, overflow, operand })
     },
 
     <l:@L> "(" <opcode:OverflowingBinaryOpcode> <lhs:Operand> <rhs:Operand> ")" <r:@R> => {
         let overflow = Some(Overflow::Overflowing);
-        Span::new(span!(l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] })
+        Span::new(span!(source_id, l, r), InstType::BinaryOp { opcode, overflow, operands: [lhs, rhs] })
     },
 
     <l:@L> "(" <opcode:PrimOpOpcode> <operands:Operand*> ")" <r:@R> => {
-        Span::new(span!(l, r), InstType::PrimOp { opcode, operands })
+        Span::new(span!(source_id, l, r), InstType::PrimOp { opcode, operands })
     }
 }
 
 Successor: Successor = {
     <l:@L> "(" "block" <id:U32> <args:SpannedValueId*> ")" <r:@R>
-        => Successor { span: span!(l, r), id: crate::Block::from_u32(id), args },
+        => Successor { span: span!(source_id, l, r), id: crate::Block::from_u32(id), args },
 }
 
 SwitchArm: (Option<u32>, Successor, SourceSpan) = {
-    <l:@L> "(" <value:U32> "." <successor:Successor> ")" <r:@R> => (Some(value), successor, span!(l, r)),
-    <l:@L> "(" "_" "." <successor:Successor> ")" <r:@R> => (None, successor, span!(l, r)),
+    <l:@L> "(" <value:U32> "." <successor:Successor> ")" <r:@R> => (Some(value), successor, span!(source_id, l, r)),
+    <l:@L> "(" "_" "." <successor:Successor> ")" <r:@R> => (None, successor, span!(source_id, l, r)),
 }
 
 UnaryOpcode: (Opcode, Option<Overflow>) = {
@@ -563,23 +562,23 @@ PrimOpOpcode: Opcode = {
 }
 
 Operand: Operand = {
-    <l:@L> <v:value_id> <r:@R> => Operand::Value(Span::new(span!(l, r), v)),
-    <l:@L> <i:int> <r:@R> => Operand::Int(Span::new(span!(l, r), i)),
-    <l:@L> <i:bigint> <r:@R> => Operand::BigInt(Span::new(span!(l, r), i)),
+    <l:@L> <v:value_id> <r:@R> => Operand::Value(Span::new(span!(source_id, l, r), v)),
+    <l:@L> <i:int> <r:@R> => Operand::Int(Span::new(span!(source_id, l, r), i)),
+    <l:@L> <i:bigint> <r:@R> => Operand::BigInt(Span::new(span!(source_id, l, r), i)),
 }
 
 GlobalValueExpr: GlobalValueExpr = {
     <l:@L> "(" "global.symbol" <symbol:NameOrId> <offset:Offset?> ")" <r:@R> => {
-        GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(l, r) }
+        GlobalValueExpr::Symbol { symbol, offset: offset.unwrap_or(0), span: span!(source_id, l, r) }
     },
 
     <l:@L> "(" "global.load" <ty:TypeName> <offset:Offset?> <base:GlobalValueExpr> ")" <r:@R> => {
         let offset = offset.unwrap_or(0);
-        GlobalValueExpr::Load { base: Box::new(base), offset, ty: Some(ty), span: span!(l, r) }
+        GlobalValueExpr::Load { base: Box::new(base), offset, ty: Some(ty), span: span!(source_id, l, r) }
     },
 
     <l:@L> "(" "global.iadd" "(" "offset" <offset:RawOffset> "." <ty:TypeName> ")" <base:GlobalValueExpr> ")" <r:@R> => {
-        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty, span: span!(l, r) }
+        GlobalValueExpr::IAddImm { base: Box::new(base), offset, ty, span: span!(source_id, l, r) }
     }
 }
 
@@ -605,9 +604,9 @@ Index: u32 = {
 Align: NonZeroU16 = {
     <l:@L> <i:int> <r:@R> =>? {
         match u16::try_from(i) {
-            Ok(0) => Err(ParseError::InvalidAlignment { span: span!(l, r), value: i }.into()),
+            Ok(0) => Err(ParseError::InvalidAlignment { span: span!(source_id, l, r), value: i }.into()),
             Ok(v) => Ok(unsafe { NonZeroU16::new_unchecked(v) }),
-            Err(_) => Err(ParseError::InvalidAlignment { span: span!(l, r), value: i }.into()),
+            Err(_) => Err(ParseError::InvalidAlignment { span: span!(source_id, l, r), value: i }.into()),
         }
     }
 }
@@ -616,7 +615,7 @@ U32: u32 = {
     <l:@L> <i:int> <r:@R> =>? {
         match u32::try_from(i) {
             Ok(v) => Ok(v),
-            Err(_) => Err(ParseError::InvalidU32 { span: span!(l, r), value: i }.into()),
+            Err(_) => Err(ParseError::InvalidU32 { span: span!(source_id, l, r), value: i }.into()),
         }
     }
 }
@@ -625,17 +624,17 @@ RawOffset: i32 = {
     <l:@L> <i:int> <r:@R> =>? {
         match i32::try_from(i) {
             Ok(v) => Ok(v),
-            Err(_) => Err(ParseError::InvalidOffset { span: span!(l, r), value: i }.into()),
+            Err(_) => Err(ParseError::InvalidOffset { span: span!(source_id, l, r), value: i }.into()),
         }
     }
 }
 
 Name: Ident = {
-    <l:@L> <id:string> <r:@R> => Ident::new(id, span!(l, r)),
+    <l:@L> <id:string> <r:@R> => Ident::new(id, span!(source_id, l, r)),
 }
 
 Id: Ident = {
-    <l:@L> <id:ident> <r:@R> => Ident::new(id, span!(l, r)),
+    <l:@L> <id:ident> <r:@R> => Ident::new(id, span!(source_id, l, r)),
 }
 
 NameOrId: Ident = {
@@ -649,7 +648,7 @@ CalleeId: Either<Ident, FunctionIdent> = {
 }
 
 SpannedValueId: Span<crate::Value> = {
-    <l:@L> <v:value_id> <r:@R> => Span::new(span!(l, r), v),
+    <l:@L> <v:value_id> <r:@R> => Span::new(span!(source_id, l, r), v),
 }
 
 ValueId: crate::Value = {
@@ -661,7 +660,7 @@ ValueId: crate::Value = {
 
 extern {
     type Error = ParseError;
-    type Location = miden_diagnostics::SourceIndex;
+    type Location = ByteIndex;
 
     enum Token {
         ident => Token::Ident(<Symbol>),

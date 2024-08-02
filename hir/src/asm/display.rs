@@ -330,14 +330,3 @@ impl<'a> fmt::Display for DisplayOp<'a> {
         self.pretty_print(f)
     }
 }
-
-struct Address(u32);
-impl fmt::Display for Address {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "0x")?;
-        for byte in self.0.to_be_bytes() {
-            write!(f, "{:02x}", byte)?;
-        }
-        Ok(())
-    }
-}

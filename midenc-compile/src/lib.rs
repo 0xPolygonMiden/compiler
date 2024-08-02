@@ -5,63 +5,22 @@ mod stages;
 use std::sync::Arc;
 
 use midenc_codegen_masm as masm;
-use midenc_hir::pass::AnalysisManager;
+use midenc_hir::{
+    diagnostics::{miette, Diagnostic, IntoDiagnostic, Report},
+    pass::AnalysisManager,
+};
 use midenc_session::{OutputType, Session};
 
 pub use self::compiler::{Compiler, CompilerOptions};
 use self::{stage::Stage, stages::*};
 
-pub type CompilerResult<T> = Result<T, CompilerError>;
+pub type CompilerResult<T> = Result<T, Report>;
 
-#[derive(Debug, thiserror::Error)]
-pub enum CompilerError {
-    /// An error was raised due to invalid command-line arguments or argument validation
-    #[error(transparent)]
-    Clap(#[from] clap::Error),
-    /// The compilation pipeline was stopped early
-    #[error("compilation was canceled by user")]
-    Stopped,
-    /// An invalid input was given to the compiler
-    #[error(transparent)]
-    InvalidInput(#[from] midenc_session::InvalidInputError),
-    /// An error occurred while parsing/translating a Wasm module from binary
-    #[error(transparent)]
-    WasmError(#[from] midenc_frontend_wasm::WasmError),
-    /// An error occurred while parsing/translating a Wasm module from text
-    #[error(transparent)]
-    WatError(#[from] wat::Error),
-    /// An error occurred while parsing an HIR module
-    #[error(transparent)]
-    Parsing(#[from] midenc_hir::parser::ParseError),
-    /// An error occurred while running an analysis
-    #[error(transparent)]
-    Analysis(#[from] midenc_hir::pass::AnalysisError),
-    /// An error occurred while rewriting an IR entity
-    #[error(transparent)]
-    Rewriting(#[from] midenc_hir::pass::RewriteError),
-    /// An error occurred while converting from one dialect to another
-    #[error(transparent)]
-    Conversion(#[from] midenc_hir::pass::ConversionError),
-    /// An error occurred while linking a program
-    #[error(transparent)]
-    Linker(#[from] midenc_hir::LinkerError),
-    /// An error occurred when reading a file
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    /// An error occurred while compiling a program
-    #[error(transparent)]
-    Failed(#[from] anyhow::Error),
-    #[error(transparent)]
-    Report(#[from] miden_assembly::diagnostics::RelatedError),
-    /// An error was emitted as a diagnostic, so we don't need to emit info to stdout
-    #[error("exited due to error: see diagnostics for details")]
-    Reported,
-}
-impl From<midenc_hir::ModuleConflictError> for CompilerError {
-    fn from(err: midenc_hir::ModuleConflictError) -> CompilerError {
-        Self::Linker(midenc_hir::LinkerError::ModuleConflict(err.0))
-    }
-}
+/// The compilation pipeline was stopped early
+#[derive(Debug, thiserror::Error, Diagnostic)]
+#[error("compilation was canceled by user")]
+#[diagnostic()]
+pub struct CompilerStopped;
 
 /// Register dynamic flags to be shown via `midenc help compile`
 pub fn register_flags(cmd: clap::Command) -> clap::Command {
@@ -122,10 +81,10 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
 /// Run the compiler using the provided [Session]
 pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
     let mut analyses = AnalysisManager::new();
-    match compile_inputs(session.inputs.clone(), &mut analyses, &session) {
+    match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
         // No outputs, generally due to skipping codegen
-        Ok(None) => return Ok(()),
-        Ok(Some(program)) => {
+        None => return Ok(()),
+        Some(program) => {
             if let Some(path) = session.emit_to(OutputType::Mast, None) {
                 log::warn!(
                     "skipping emission of MAST to {} as output type is not fully supported yet",
@@ -134,21 +93,9 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
             }
             if session.should_emit(OutputType::Masm) {
                 for module in program.modules() {
-                    session.emit(module)?;
+                    session.emit(module).into_diagnostic()?;
                 }
             }
-        }
-        Err(CompilerError::Stopped) => return Ok(()),
-        Err(CompilerError::Reported) => return Err(CompilerError::Reported),
-        Err(CompilerError::Report(report)) => {
-            let diag =
-                miden_assembly::diagnostics::reporting::PrintDiagnostic::new(report.into_report());
-            session.diagnostics.error(diag);
-            session.diagnostics.abort_if_errors();
-        }
-        Err(err) => {
-            session.diagnostics.error(err);
-            session.diagnostics.abort_if_errors();
         }
     }
 
@@ -158,14 +105,7 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
 /// Same as `compile`, but return compiled artifacts to the caller
 pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Option<Box<masm::Program>>> {
     let mut analyses = AnalysisManager::new();
-    match compile_inputs(session.inputs.clone(), &mut analyses, &session) {
-        Ok(output) => Ok(output),
-        Err(err) => {
-            session.diagnostics.error(err.to_string());
-            session.diagnostics.abort_if_errors();
-            Err(CompilerError::Reported)
-        }
-    }
+    compile_inputs(session.inputs.clone(), &mut analyses, &session)
 }
 
 fn compile_inputs(

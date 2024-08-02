@@ -14,10 +14,13 @@ members = [
     "midenc-session",
     "tools/*",
     "frontend-wasm",
-    "tests/rust-apps/*",
     "tests/integration",
 ]
-exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
+exclude = [
+    "tests/rust-apps/fib",
+    "tests/rust-apps-wasm",
+    "cargo-ext/tests/data",
+]
 
 [workspace.package]
 version = "0.0.0"
@@ -64,11 +67,11 @@ smallstr = { version = "0.3", features = ["union"] }
 thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
 toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
-indexmap = "2.1"
-miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b410f48bab75e987d18ecc0a863cc191be0ae94d" }
-miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b410f48bab75e987d18ecc0a863cc191be0ae94d" }
-miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b410f48bab75e987d18ecc0a863cc191be0ae94d" }
-miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b410f48bab75e987d18ecc0a863cc191be0ae94d" }
+indexmap = "2.2"
+miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "fdb4678ccb10c3f3a447c200f867636ee9216943" }
+miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "fdb4678ccb10c3f3a447c200f867636ee9216943" }
+miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "fdb4678ccb10c3f3a447c200f867636ee9216943" }
+miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "fdb4678ccb10c3f3a447c200f867636ee9216943" }
 midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { path = "hir" }

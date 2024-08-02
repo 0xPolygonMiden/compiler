@@ -15,16 +15,18 @@
 
 use std::collections::hash_map;
 
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use midenc_hir::{
-    cranelift_entity::packed_option::ReservedValue, Block, FieldElement, Immediate, Inst,
-    InstBuilder, Type, Type::*, Value,
+    cranelift_entity::packed_option::ReservedValue,
+    diagnostics::{DiagnosticsHandler, IntoDiagnostic, Report, Severity, SourceSpan},
+    Block, FieldElement, Immediate, Inst, InstBuilder, Type,
+    Type::*,
+    Value,
 };
 use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
 
 use crate::{
-    error::{WasmError, WasmResult},
+    error::WasmResult,
     intrinsics::{convert_intrinsics_call, is_miden_intrinsics_module},
     miden_abi::{is_miden_abi_module, transform::transform_miden_abi_call},
     module::{
@@ -56,8 +58,9 @@ pub fn translate_operator(
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
+    dbg!(span);
     if !state.reachable {
-        translate_unreachable_operator(op, builder, state, mod_types, span)?;
+        translate_unreachable_operator(op, builder, state, mod_types, diagnostics, span)?;
         return Ok(());
     }
 
@@ -85,13 +88,13 @@ pub fn translate_operator(
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
-            let ty = ir_type(module.globals[global_index].ty)?;
+            let ty = ir_type(module.globals[global_index].ty, diagnostics)?;
             state.push1(builder.ins().load_symbol(name.as_str(), ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
-            let ty = ir_type(module.globals[global_index].ty)?;
+            let ty = ir_type(module.globals[global_index].ty, diagnostics)?;
             let ptr = builder
                 .ins()
                 .symbol_addr(name.as_str(), Ptr(ty.clone().into()), span);
@@ -132,9 +135,9 @@ pub fn translate_operator(
         }
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
-        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_types, span)?,
-        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_types, span)?,
-        Operator::If { blockty } => translate_if(blockty, state, builder, mod_types, span)?,
+        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_types, diagnostics, span)?,
+        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_types, diagnostics, span)?,
+        Operator::If { blockty } => translate_if(blockty, state, builder, mod_types, diagnostics, span)?,
         Operator::Else => translate_else(state, builder, span)?,
         Operator::End => translate_end(state, builder, span),
 
@@ -154,7 +157,7 @@ pub fn translate_operator(
                 diagnostics,
             )?;
         }
-        Operator::CallIndirect { type_index: _, table_index: _, table_byte: _ } => {
+        Operator::CallIndirect { type_index: _, table_index: _ } => {
             // TODO:
         }
         /******************************* Memory management *********************************/
@@ -515,11 +518,11 @@ fn translate_br_table(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     span: SourceSpan,
-) -> Result<(), WasmError> {
+) -> Result<(), Report> {
     let default = targets.default();
     let mut min_depth = default;
     for depth in targets.targets() {
-        let depth = depth?;
+        let depth = depth.into_diagnostic()?;
         if depth < min_depth {
             min_depth = depth;
         }
@@ -543,7 +546,7 @@ fn translate_br_table(
     if jump_args_count == 0 {
         // No jump arguments
         for depth in targets.targets() {
-            let depth = depth?;
+            let depth = depth.into_diagnostic()?;
             let block = {
                 let i = state.control_stack.len() - 1 - (depth as usize);
                 let frame = &mut state.control_stack[i];
@@ -566,7 +569,7 @@ fn translate_br_table(
         let mut dest_block_sequence = vec![];
         let mut dest_block_map = FxHashMap::default();
         for depth in targets.targets() {
-            let depth = depth?;
+            let depth = depth.into_diagnostic()?;
             let branch_block = match dest_block_map.entry(depth as usize) {
                 hash_map::Entry::Occupied(entry) => *entry.get(),
                 hash_map::Entry::Vacant(entry) => {
@@ -847,9 +850,10 @@ fn translate_block(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, mod_types)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types, diagnostics)?;
     let next = builder.create_block_with_params(blockty.results.clone(), span);
     state.push_block(next, blockty.params.len(), blockty.results.len());
     Ok(())
@@ -966,9 +970,10 @@ fn translate_if(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, mod_types)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types, diagnostics)?;
     let cond = state.pop1();
     // cond is expected to be a i32 value
     let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
@@ -1023,9 +1028,10 @@ fn translate_loop(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, mod_types)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types, diagnostics)?;
     let loop_body = builder.create_block_with_params(blockty.params.clone(), span);
     let next = builder.create_block_with_params(blockty.results.clone(), span);
     builder.ins().br(loop_body, state.peekn(blockty.params.len()), span);
@@ -1044,6 +1050,7 @@ fn translate_unreachable_operator(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
     debug_assert!(!state.reachable);
@@ -1051,7 +1058,7 @@ fn translate_unreachable_operator(
         Operator::If { blockty } => {
             // Push a placeholder control stack entry. The if isn't reachable,
             // so we don't have any branches anywhere.
-            let blockty = BlockType::from_wasm(&blockty, mod_types)?;
+            let blockty = BlockType::from_wasm(&blockty, mod_types, diagnostics)?;
             state.push_if(
                 Block::reserved_value(),
                 ElseData::NoElse {

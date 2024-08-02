@@ -1,4 +1,4 @@
-use std::{cell::Cell, fmt};
+use core::{cell::Cell, fmt};
 
 use super::{Block, Inst};
 
