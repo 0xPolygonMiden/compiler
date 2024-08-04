@@ -127,7 +127,6 @@ impl TestByEmulationHarness {
         convert_to_masm
             .convert(function, &mut analyses, &self.context.session)
             .map(Box::new)
-            .map_err(CompilerError::Conversion)
     }
 
     pub fn set_cycle_budget(&mut self, budget: usize) {
@@ -285,7 +284,7 @@ fn fib_emulator() {
         .expect("failed to link program");
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
-    let program = compiler.compile(program).expect("compilation failed");
+    let program = compiler.compile(program).expect("compilation failed").unwrap_executable();
 
     println!("{}", program.get("test").unwrap());
 
@@ -341,7 +340,7 @@ fn codegen_fundamental_if() {
     let program = builder.with_entrypoint(id).link().expect("failed to link program");
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
-    let program = compiler.compile(program).expect("compilation failed");
+    let program = compiler.compile(program).expect("compilation failed").unwrap_executable();
 
     let a = Felt::new(3);
     let b = Felt::new(4);
@@ -407,7 +406,7 @@ fn codegen_fundamental_loops() {
     let program = builder.with_entrypoint(id).link().expect("failed to link program");
 
     let mut compiler = MasmCompiler::new(&harness.context.session);
-    let program = compiler.compile(program).expect("compilation failed");
+    let program = compiler.compile(program).expect("compilation failed").unwrap_executable();
 
     let a = Felt::new(3);
     let n = Felt::new(4);
@@ -438,7 +437,7 @@ fn codegen_sum_matrix() {
 
     // Compile
     let mut compiler = MasmCompiler::new(&harness.context.session);
-    let program = compiler.compile(program).expect("compilation failed");
+    let program = compiler.compile(program).expect("compilation failed").unwrap_executable();
 
     println!("{}", program.get("test").unwrap());
 
@@ -479,7 +478,7 @@ fn i32_checked_neg() {
         .emulator
         .load_module(
             Box::new(
-                intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                     .expect("undefined intrinsic module"),
             )
             .freeze(),
@@ -527,7 +526,11 @@ fn codegen_mem_store_sw_load_sw() {
     let program = builder.with_entrypoint(id).link().expect("failed to link program");
 
     let mut compiler = MasmCompiler::new(&context.session);
-    let program = compiler.compile(program).expect("compilation failed").freeze();
+    let program = compiler
+        .compile(program)
+        .expect("compilation failed")
+        .unwrap_executable()
+        .freeze();
 
     // eprintln!("{}", program);
 
@@ -603,7 +606,7 @@ macro_rules! proptest_unary_numeric_op_impl {
 
                 // Compile
                 let mut compiler = MasmCompiler::new(&harness.context.session);
-                let program = compiler.compile(program).expect("compilation failed");
+                let program = compiler.compile(program).expect("compilation failed").unwrap_executable();
 
                 harness
                     .emulator
@@ -811,7 +814,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsics module"),
                 )
                 .freeze(),
@@ -871,7 +874,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -895,7 +898,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -927,7 +930,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -959,7 +962,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -993,7 +996,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -1018,7 +1021,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -1044,7 +1047,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -1069,7 +1072,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),
@@ -1095,7 +1098,7 @@ proptest! {
             .emulator
             .load_module(
                 Box::new(
-                    intrinsics::load("intrinsics::i32", &harness.context.session.codemap)
+                    intrinsics::load("intrinsics::i32", &harness.context.session.source_manager)
                         .expect("undefined intrinsic module"),
                 )
                 .freeze(),

@@ -6,7 +6,7 @@ use super::*;
 pub struct CodegenStage;
 impl Stage for CodegenStage {
     type Input = LinkerOutput;
-    type Output = Option<Box<masm::Program>>;
+    type Output = Option<masm::MasmArtifact>;
 
     fn enabled(&self, session: &Session) -> bool {
         session.should_codegen()
@@ -23,17 +23,17 @@ impl Stage for CodegenStage {
         };
 
         let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();
-        let mut program = convert_to_masm.convert(program, analyses, session)?;
+        let mut artifact = convert_to_masm.convert(program, analyses, session)?;
         // Ensure intrinsics modules are linked
         for intrinsics_module in required_intrinsics_modules(session) {
-            program.insert(Box::new(intrinsics_module));
+            artifact.insert(Box::new(intrinsics_module));
         }
         // Link in any MASM inputs provided to the compiler
         for module in linker_output.masm {
-            program.insert(module);
+            artifact.insert(module);
         }
 
-        Ok(Some(program))
+        Ok(Some(artifact))
     }
 }
 

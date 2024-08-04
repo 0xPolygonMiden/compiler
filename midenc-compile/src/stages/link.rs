@@ -1,3 +1,6 @@
+use midenc_hir::FunctionIdent;
+use midenc_session::diagnostics::Report;
+
 use super::*;
 
 pub enum LinkerInput {
@@ -38,7 +41,20 @@ impl Stage for LinkerStage {
             }
         }
         let program = if session.should_link() {
-            let mut builder = hir::ProgramBuilder::new(&session.diagnostics);
+            // Find the program entrypoint, if possible
+            let entrypoint = match session.options.entrypoint.as_deref() {
+                Some(entrypoint) => entrypoint
+                    .parse::<FunctionIdent>()
+                    .map(Some)
+                    .map_err(|err| Report::msg(format!("invalid --entrypoint: {err}")))?,
+                None => ir.iter().find_map(|m| m.entrypoint()),
+            };
+            let builder = hir::ProgramBuilder::new(&session.diagnostics);
+            let mut builder = if let Some(entry) = entrypoint {
+                builder.with_entrypoint(entry)
+            } else {
+                builder
+            };
             for module in ir.into_iter() {
                 builder.add_module(module)?;
             }

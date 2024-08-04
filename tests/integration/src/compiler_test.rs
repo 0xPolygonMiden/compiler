@@ -247,6 +247,10 @@ impl CompilerTestBuilder {
     /// Specify the entrypoint function to call during the test
     pub fn with_entrypoint(&mut self, entrypoint: FunctionIdent) -> &mut Self {
         self.entrypoint = Some(entrypoint);
+        self.midenc_flags.extend([
+            "--entrypoint".into(),
+            format!("{}::{}", entrypoint.module.as_str(), entrypoint.function.as_str()).into(),
+        ]);
         self
     }
 
@@ -991,10 +995,12 @@ impl CompilerTest {
     }
 
     pub(crate) fn compile_wasm_to_masm_program(&mut self) {
-        let mut program = midenc_compile::compile_to_memory(self.session.clone())
+        let output = midenc_compile::compile_to_memory(self.session.clone())
             .unwrap()
             .expect("no codegen outputs produced, was linking disabled?");
-        program.entrypoint = self.entrypoint;
+        let midenc_codegen_masm::MasmArtifact::Executable(program) = output else {
+            panic!("expected executable output, got library");
+        };
         let src = program.to_string();
         let vm_prog = program.assemble(&self.session).map_err(format_report);
         self.masm_src = Some(src);

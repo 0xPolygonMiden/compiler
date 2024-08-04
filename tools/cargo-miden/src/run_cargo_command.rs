@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::Command};
 
-use anyhow::bail;
 use cargo_metadata::Metadata;
+use midenc_session::diagnostics::{IntoDiagnostic, Report};
 
 use crate::{
     build::build_masm,
@@ -21,7 +21,7 @@ pub fn run_cargo_command(
     subcommand: Option<&str>,
     cargo_args: &CargoArguments,
     spawn_args: &[String],
-) -> anyhow::Result<Vec<PathBuf>> {
+) -> Result<Vec<PathBuf>, Report> {
     let cargo = std::env::var("CARGO")
         .map(PathBuf::from)
         .ok()
@@ -48,7 +48,7 @@ pub fn run_cargo_command(
 
     // Handle the target for build commands
     if is_build {
-        install_wasm32_wasi()?;
+        install_wasm32_wasi().map_err(|err| Report::msg(err))?;
 
         // Add an implicit wasm32-wasi target if there isn't a wasm target present
         if !cargo_args.targets.iter().any(|t| is_wasm_target(t)) {
@@ -68,11 +68,17 @@ pub fn run_cargo_command(
     match cmd.status() {
         Ok(status) => {
             if !status.success() {
-                bail!("cargo failed with exit code {}", status.code().unwrap_or(1));
+                return Err(Report::msg(format!(
+                    "cargo failed with exit code {}",
+                    status.code().unwrap_or(1)
+                )));
             }
         }
         Err(e) => {
-            bail!("failed to spawn `{cargo}`: {e}", cargo = cargo.display());
+            return Err(Report::msg(format!(
+                "failed to spawn `{cargo}`: {e}",
+                cargo = cargo.display()
+            )));
         }
     }
     let mut outputs = Vec::new();
@@ -99,7 +105,7 @@ pub fn run_cargo_command(
                     "debug"
                 });
             if !miden_out_dir.exists() {
-                std::fs::create_dir_all(&miden_out_dir)?;
+                std::fs::create_dir_all(&miden_out_dir).into_diagnostic()?;
             }
 
             for package in &metadata.packages {
@@ -119,7 +125,7 @@ pub fn run_cargo_command(
                         outputs.push(output);
                     } else {
                         log::debug!("no output found for package `{name}`", name = package.name);
-                        bail!("Cargo build failed, no Wasm artifact found");
+                        return Err(Report::msg("Cargo build failed, no Wasm artifact found"));
                     }
                 }
             }

@@ -12,7 +12,7 @@ pub use midenc_hir::{
 pub use self::{
     function::{FrozenFunctionList, Function, FunctionList},
     module::{FrozenModuleTree, Module, ModuleTree},
-    program::Program,
+    program::{Library, Program},
     region::Region,
 };
 

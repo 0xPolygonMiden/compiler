@@ -39,7 +39,7 @@ macro_rules! test_bin_op {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         PushToStack::try_push(&b, &mut args);
                         PushToStack::try_push(&a, &mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session.codemap)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
@@ -78,7 +78,7 @@ macro_rules! test_unary_op {
                         dbg!(&rs_out);
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         a.try_push(&mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session.codemap)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
@@ -119,7 +119,7 @@ macro_rules! test_func_two_arg {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         b.try_push(&mut args);
                         a.try_push(&mut args);
-                        run_masm_vs_rust(rust_out, &vm_program, ir_masm.clone(), &args, &test.session.codemap)
+                        run_masm_vs_rust(rust_out, &vm_program, ir_masm.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {

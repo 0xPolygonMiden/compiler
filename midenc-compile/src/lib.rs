@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use midenc_codegen_masm as masm;
 use midenc_hir::{
-    diagnostics::{miette, Diagnostic, IntoDiagnostic, Report},
+    diagnostics::{miette, Diagnostic, IntoDiagnostic, Report, WrapErr},
     pass::AnalysisManager,
 };
 use midenc_session::{OutputType, Session};
@@ -84,15 +84,34 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
     match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
         // No outputs, generally due to skipping codegen
         None => return Ok(()),
-        Some(program) => {
+        Some(output) => {
             if let Some(path) = session.emit_to(OutputType::Mast, None) {
-                log::warn!(
-                    "skipping emission of MAST to {} as output type is not fully supported yet",
-                    path.display()
-                );
+                match output {
+                    masm::MasmArtifact::Executable(_) => {
+                        log::warn!(
+                            "skipping emission of MAST to {} as output type is not fully \
+                             supported yet",
+                            path.display()
+                        );
+                    }
+                    masm::MasmArtifact::Library(ref library) => {
+                        let mast = library.assemble(&session)?;
+                        mast.write_to_file(
+                            path.clone(),
+                            miden_assembly::ast::AstSerdeOptions {
+                                debug_info: session.options.emit_debug_decorators(),
+                                ..Default::default()
+                            },
+                        )
+                        .into_diagnostic()
+                        .wrap_err_with(|| {
+                            format!("failed to write MAST to '{}'", path.display())
+                        })?;
+                    }
+                }
             }
             if session.should_emit(OutputType::Masm) {
-                for module in program.modules() {
+                for module in output.modules() {
                     session.emit(module).into_diagnostic()?;
                 }
             }
@@ -103,7 +122,7 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
 }
 
 /// Same as `compile`, but return compiled artifacts to the caller
-pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Option<Box<masm::Program>>> {
+pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Option<masm::MasmArtifact>> {
     let mut analyses = AnalysisManager::new();
     compile_inputs(session.inputs.clone(), &mut analyses, &session)
 }
@@ -112,7 +131,7 @@ fn compile_inputs(
     inputs: Vec<midenc_session::InputFile>,
     analyses: &mut AnalysisManager,
     session: &Session,
-) -> CompilerResult<Option<Box<masm::Program>>> {
+) -> CompilerResult<Option<masm::MasmArtifact>> {
     let mut stages = ParseStage
         .next(SemanticAnalysisStage)
         .next_optional(ApplyRewritesStage)
