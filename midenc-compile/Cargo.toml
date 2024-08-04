@@ -18,8 +18,8 @@ anyhow.workspace = true
 clap.workspace = true
 log.workspace = true
 inventory.workspace = true
-miden-assembly.workspace = true
 midenc-codegen-masm.workspace = true
+miden-assembly = { workspace = true, features = ["std"] }
 miden-diagnostics.workspace = true
 midenc-frontend-wasm.workspace = true
 midenc-hir.workspace = true

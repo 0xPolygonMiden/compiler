@@ -4,6 +4,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use miden_core::Felt;
+use midenc_session::Session;
 use proptest::{prop_assert_eq, test_runner::TestCaseError};
 
 use crate::{execute_emulator, felt_conversion::PopFromStack, MidenExecutor};
@@ -21,13 +22,13 @@ pub fn run_masm_vs_rust<T>(
     vm_program: &miden_core::Program,
     ir_program: Arc<midenc_codegen_masm::Program>,
     args: &[Felt],
-    codemap: &miden_diagnostics::CodeMap,
+    session: &Session,
 ) -> Result<(), TestCaseError>
 where
     T: Clone + PopFromStack + std::cmp::PartialEq + std::fmt::Debug,
 {
     let exec = MidenExecutor::new(args.to_vec());
-    let output = exec.execute_into(vm_program, codemap);
+    let output = exec.execute_into(vm_program, session);
     prop_assert_eq!(rust_out.clone(), output, "VM output mismatch");
     // TODO: Uncomment after https://github.com/0xPolygonMiden/compiler/issues/228 is fixed
     // let emul_out: T = (*execute_emulator(ir_program.clone(), args).first().unwrap()).into();

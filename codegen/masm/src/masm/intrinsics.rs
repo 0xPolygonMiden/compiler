@@ -1,5 +1,5 @@
 use miden_assembly::{ast::ModuleKind, LibraryPath};
-use midenc_hir::diagnostics::{PrintDiagnostic, SourceManager, Spanned};
+use midenc_hir::diagnostics::{PrintDiagnostic, SourceManager};
 
 use super::Module;
 
@@ -32,19 +32,4 @@ pub fn load<N: AsRef<str>>(name: N, source_manager: &dyn SourceManager) -> Optio
             panic!("failed to parse intrinsic module: {err}");
         }
     }
-}
-
-/// This helper loads the Miden Standard Library modules from the current miden-stdlib crate
-pub fn load_stdlib() -> Vec<Module> {
-    use miden_assembly::Library;
-    use miden_stdlib::StdLibrary;
-
-    let library = StdLibrary::default();
-
-    let mut loaded = Vec::with_capacity(library.modules().len());
-    for module in library.modules() {
-        let span = module.span();
-        loaded.push(Module::from_ast(&module, span));
-    }
-    loaded
 }

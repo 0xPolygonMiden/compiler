@@ -14,6 +14,8 @@ pub struct Options {
     pub name: Option<String>,
     /// The type of project we're compiling this session
     pub project_type: ProjectType,
+    /// The name of the function to call as the entrypoint
+    pub entrypoint: Option<String>,
     /// The current target environment for this session
     pub target: TargetEnv,
     /// The optimization level for the current program
@@ -54,6 +56,7 @@ impl Options {
             name: None,
             target,
             project_type,
+            entrypoint: None,
             optimize: OptLevel::None,
             debug: DebugInfo::None,
             output_types: Default::default(),

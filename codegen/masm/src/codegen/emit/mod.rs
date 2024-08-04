@@ -638,11 +638,11 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 5);
-            assert_eq!(ops[0].item, Op::PushU32(1));
-            assert_eq!(ops[1].item, Op::PushU32(2));
-            assert_eq!(ops[2].item, Op::PushU8(3));
-            assert_eq!(ops[3].item, Op::Push2([Felt::new(1), Felt::ZERO]));
-            assert_eq!(ops[4].item, Op::Push2([Felt::new(3), Felt::new(u32::MAX as u64)]));
+            assert_eq!(ops[0].into_inner(), Op::PushU32(1));
+            assert_eq!(ops[1].into_inner(), Op::PushU32(2));
+            assert_eq!(ops[2].into_inner(), Op::PushU8(3));
+            assert_eq!(ops[3].into_inner(), Op::Push2([Felt::new(1), Felt::ZERO]));
+            assert_eq!(ops[4].into_inner(), Op::Push2([Felt::new(3), Felt::new(u32::MAX as u64)]));
         }
 
         assert_eq!(emitter.stack()[0], five);
@@ -662,8 +662,8 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 7);
-            assert_eq!(ops[5].item, Op::Dup(1));
-            assert_eq!(ops[6].item, Op::Dup(1));
+            assert_eq!(ops[5].into_inner(), Op::Dup(1));
+            assert_eq!(ops[6].into_inner(), Op::Dup(1));
         }
 
         assert_eq!(emitter.stack().effective_index(3), 6);
@@ -679,8 +679,8 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 8);
-            assert_eq!(ops[6].item, Op::Dup(1));
-            assert_eq!(ops[7].item, Op::Dup(6));
+            assert_eq!(ops[6].into_inner(), Op::Dup(1));
+            assert_eq!(ops[7].into_inner(), Op::Dup(6));
         }
 
         assert_eq!(emitter.stack().effective_index(1), 1);
@@ -697,8 +697,8 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 9);
-            assert_eq!(ops[7].item, Op::Dup(6));
-            assert_eq!(ops[8].item, Op::Movdn(2));
+            assert_eq!(ops[7].into_inner(), Op::Dup(6));
+            assert_eq!(ops[8].into_inner(), Op::Movdn(2));
         }
 
         assert_eq!(emitter.stack().effective_index(3), 5);
@@ -714,13 +714,14 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 13);
-            assert_eq!(ops[8].item, Op::Movdn(2)); // [five_a, five_b, three, five_c, five_d, four_a, four_b]
-            assert_eq!(ops[9].item, Op::Movdn(6)); // [five_b, three, five_c, five_d, four_a, four_b, five_a]
-            assert_eq!(ops[10].item, Op::Movdn(6)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
-            assert_eq!(ops[11].item, Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[12].item, Op::Movup(4)); // [four_a, four_b, three, five_c, five_d,
-                                                    // five_a,
-                                                    // five_b]
+            assert_eq!(ops[8].into_inner(), Op::Movdn(2)); // [five_a, five_b, three, five_c, five_d, four_a, four_b]
+            assert_eq!(ops[9].into_inner(), Op::Movdn(6)); // [five_b, three, five_c, five_d, four_a, four_b, five_a]
+            assert_eq!(ops[10].into_inner(), Op::Movdn(6)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
+            assert_eq!(ops[11].into_inner(), Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
+            assert_eq!(ops[12].into_inner(), Op::Movup(4)); // [four_a, four_b, three, five_c,
+                                                            // five_d,
+                                                            // five_a,
+                                                            // five_b]
         }
 
         emitter.movdn(2, SourceSpan::default());
@@ -735,14 +736,15 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 15);
-            assert_eq!(ops[9].item, Op::Movdn(6)); // [five_b, three, five_c, five_d, four_a, four_b, five_a]
-            assert_eq!(ops[10].item, Op::Movdn(6)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
-            assert_eq!(ops[11].item, Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[12].item, Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
-            assert_eq!(ops[13].item, Op::Movdn(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[14].item, Op::Movdn(4)); // [three, five_c, five_d, four_a, four_b,
-                                                    // five_a,
-                                                    // five_b]
+            assert_eq!(ops[9].into_inner(), Op::Movdn(6)); // [five_b, three, five_c, five_d, four_a, four_b, five_a]
+            assert_eq!(ops[10].into_inner(), Op::Movdn(6)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
+            assert_eq!(ops[11].into_inner(), Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
+            assert_eq!(ops[12].into_inner(), Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
+            assert_eq!(ops[13].into_inner(), Op::Movdn(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
+            assert_eq!(ops[14].into_inner(), Op::Movdn(4)); // [three, five_c, five_d, four_a,
+                                                            // four_b,
+                                                            // five_a,
+                                                            // five_b]
         }
 
         emitter.movup(2, SourceSpan::default());
@@ -757,12 +759,13 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 17);
-            assert_eq!(ops[13].item, Op::Movdn(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[14].item, Op::Movdn(4)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
-            assert_eq!(ops[15].item, Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[16].item, Op::Movup(4)); // [four_a, four_b, three, five_c, five_d,
-                                                    // five_a,
-                                                    // five_b]
+            assert_eq!(ops[13].into_inner(), Op::Movdn(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
+            assert_eq!(ops[14].into_inner(), Op::Movdn(4)); // [three, five_c, five_d, four_a, four_b, five_a, five_b]
+            assert_eq!(ops[15].into_inner(), Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
+            assert_eq!(ops[16].into_inner(), Op::Movup(4)); // [four_a, four_b, three, five_c,
+                                                            // five_d,
+                                                            // five_a,
+                                                            // five_b]
         }
 
         emitter.drop(SourceSpan::default());
@@ -777,10 +780,10 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 19);
-            assert_eq!(ops[15].item, Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
-            assert_eq!(ops[16].item, Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
-            assert_eq!(ops[17].item, Op::Drop); // [four_b, three, five_c, five_d, five_a, five_b]
-            assert_eq!(ops[18].item, Op::Drop); // [three, five_c, five_d, five_a, five_b]
+            assert_eq!(ops[15].into_inner(), Op::Movup(4)); // [four_b, three, five_c, five_d, four_a, five_a, five_b]
+            assert_eq!(ops[16].into_inner(), Op::Movup(4)); // [four_a, four_b, three, five_c, five_d, five_a, five_b]
+            assert_eq!(ops[17].into_inner(), Op::Drop); // [four_b, three, five_c, five_d, five_a, five_b]
+            assert_eq!(ops[18].into_inner(), Op::Drop); // [three, five_c, five_d, five_a, five_b]
         }
 
         emitter.copy_operand_to_position(5, 3, false, SourceSpan::default());
@@ -862,8 +865,8 @@ mod tests {
             let block = emitter.current_block();
             let ops = block.ops.as_slice();
             assert_eq!(ops.len(), 2);
-            assert_eq!(ops[0].item, Op::Dup(4));
-            assert_eq!(ops[1].item, Op::Movdn(2));
+            assert_eq!(ops[0].into_inner(), Op::Dup(4));
+            assert_eq!(ops[1].into_inner(), Op::Movdn(2));
         }
     }
 

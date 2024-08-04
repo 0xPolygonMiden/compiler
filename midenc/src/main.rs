@@ -1,9 +1,8 @@
 use std::env;
 
-use anyhow::anyhow;
 use midenc_driver::{
     self as driver,
-    diagnostics::{Report, WrapErr},
+    diagnostics::{IntoDiagnostic, Report, WrapErr},
     ClapError,
 };
 
@@ -35,7 +34,9 @@ pub fn main() -> Result<(), Report> {
     builder.init();
 
     // Get current working directory
-    let cwd = env::current_dir().wrap_err("could not read current working directory")?;
+    let cwd = env::current_dir()
+        .into_diagnostic()
+        .wrap_err("could not read current working directory")?;
 
     match driver::run(cwd, env::args_os()) {
         Err(report) => match report.downcast::<ClapError>() {

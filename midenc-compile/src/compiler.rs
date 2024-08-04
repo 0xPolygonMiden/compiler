@@ -89,6 +89,9 @@ pub struct CompilerOptions {
     /// The target environment to compile for
     #[arg(long, value_name = "TARGET", default_value_t = TargetEnv::Base, help_heading = "Compiler")]
     pub target: TargetEnv,
+    /// Specify the function to call as the entrypoint for the program
+    #[arg(long = "entrypoint", help_heading = "Compiler", hide(true))]
+    pub entrypoint: Option<String>,
     /// Tells the compiler to produce an executable Miden program
     ///
     /// When the target is `base` or `rollup`, this defaults to true
@@ -105,6 +108,7 @@ pub struct CompilerOptions {
     #[arg(
         long = "lib",
         conflicts_with("is_program"),
+        conflicts_with("entrypoint"),
         default_value_t = false,
         default_value_if("target", "emu", Some("true")),
         help_heading = "Compiler"
@@ -213,6 +217,7 @@ impl CompilerOptions {
             .with_debug_info(self.debug)
             .with_optimization(self.opt_level)
             .with_output_types(output_types);
+        options.entrypoint = self.entrypoint;
         options.print_ir_after_all = self.print_ir_after_all;
         options.print_ir_after_pass = self.print_ir_after_pass;
         options

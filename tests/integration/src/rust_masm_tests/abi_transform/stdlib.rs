@@ -61,7 +61,7 @@ fn test_blake3_hash() {
         let mut advice_inputs = advice_inputs.clone();
         advice_inputs.extend_stack(frame);
         exec.with_advice_inputs(advice_inputs);
-        let trace = exec.execute(&vm_program, &test.session.codemap);
+        let trace = exec.execute(&vm_program, &test.session);
         let vm_out: [u8; 32] = trace
             .read_from_rust_memory(128 * 1024)
             .expect("expected memory to have been written");

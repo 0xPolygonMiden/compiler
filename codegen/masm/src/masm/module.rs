@@ -326,6 +326,13 @@ impl Default for Modules {
     }
 }
 impl Modules {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Open(ref tree) => tree.iter().count(),
+            Self::Frozen(ref tree) => tree.iter().count(),
+        }
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Module> + '_ {
         match self {
             Self::Open(ref tree) => ModulesIter::Open(tree.iter()),
