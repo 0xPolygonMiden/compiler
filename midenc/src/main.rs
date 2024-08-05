@@ -3,7 +3,7 @@ use std::env;
 use midenc_driver::{
     self as driver,
     diagnostics::{IntoDiagnostic, Report, WrapErr},
-    ClapError,
+    ClapDiagnostic,
 };
 
 pub fn main() -> Result<(), Report> {
@@ -39,8 +39,13 @@ pub fn main() -> Result<(), Report> {
         .wrap_err("could not read current working directory")?;
 
     match driver::run(cwd, env::args_os()) {
-        Err(report) => match report.downcast::<ClapError>() {
-            Ok(err) => err.exit(),
+        Err(report) => match report.downcast::<ClapDiagnostic>() {
+            Ok(err) => {
+                // Remove the miette panic hook, so that clap errors can be reported without
+                // the diagnostic-style formatting
+                //drop(std::panic::take_hook());
+                err.exit()
+            }
             Err(report) => Err(report),
         },
         result => result,

@@ -14,7 +14,6 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 clap.workspace = true
 midenc-hir.workspace = true
 midenc-session.workspace = true

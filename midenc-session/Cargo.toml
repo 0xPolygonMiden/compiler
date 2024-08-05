@@ -23,5 +23,4 @@ miden-stdlib.workspace = true
 miden-diagnostics.workspace = true
 midenc-hir-symbol.workspace = true
 midenc-hir-macros.workspace = true
-rustc-hash.workspace = true
 thiserror.workspace = true

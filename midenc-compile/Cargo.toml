@@ -14,7 +14,6 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 clap.workspace = true
 log.workspace = true
 inventory.workspace = true
@@ -26,6 +25,5 @@ midenc-hir.workspace = true
 midenc-hir-analysis.workspace = true
 midenc-hir-transform.workspace = true
 midenc-session.workspace = true
-rustc-hash.workspace = true
 thiserror.workspace = true
 wat.workspace = true

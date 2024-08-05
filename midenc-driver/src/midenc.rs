@@ -4,9 +4,11 @@ use clap::{ColorChoice, Parser, Subcommand};
 use midenc_compile as compile;
 use midenc_hir::FunctionIdent;
 use midenc_session::{
-    diagnostics::{Emitter, IntoDiagnostic, Report},
+    diagnostics::{Emitter, Report},
     InputFile, TargetEnv, Verbosity, Warnings,
 };
+
+use crate::ClapDiagnostic;
 
 /// This struct provides the command-line interface used by `midenc`
 #[derive(Debug, Parser)]
@@ -168,11 +170,11 @@ impl Midenc {
         let command = <Self as clap::CommandFactory>::command();
         let command = command.mut_subcommand("compile", compile::register_flags);
 
-        let mut matches = command.try_get_matches_from(args).into_diagnostic()?;
+        let mut matches = command.try_get_matches_from(args).map_err(ClapDiagnostic::from)?;
         let compile_matches = matches.subcommand_matches("compile").cloned().unwrap_or_default();
         let cli = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<Self>)
-            .into_diagnostic()?;
+            .map_err(ClapDiagnostic::from)?;
 
         cli.invoke(cwd.into(), emitter, compile_matches)
     }
