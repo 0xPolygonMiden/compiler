@@ -152,6 +152,20 @@ pub struct LinkLibraryParser;
 impl clap::builder::TypedValueParser for LinkLibraryParser {
     type Value = LinkLibrary;
 
+    fn possible_values(
+        &self,
+    ) -> Option<Box<dyn Iterator<Item = clap::builder::PossibleValue> + '_>> {
+        use clap::builder::PossibleValue;
+
+        Some(Box::new(
+            [
+                PossibleValue::new("masm").help("A Miden Assembly project directory"),
+                PossibleValue::new("mast").help("A compiled MAST library file"),
+            ]
+            .into_iter(),
+        ))
+    }
+
     /// Parses the `-l` flag using the following format:
     ///
     /// `-l[KIND=]NAME`

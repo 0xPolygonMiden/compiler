@@ -15,9 +15,9 @@ pub enum OutputType {
     Ast,
     /// The compiler will emit Miden IR
     Hir,
-    /// The compiler will emit Miden Assembly
+    /// The compiler will emit Miden Assembly text
     Masm,
-    /// The compiler will emit binary MAST (Miden Abstract Syntax Tree)
+    /// The compiler will emit the Merkalized Abstract Syntax Tree
     #[default]
     Mast,
 }
@@ -278,6 +278,21 @@ impl clap::builder::ValueParserFactory for OutputTypeSpec {
 pub struct OutputTypeParser;
 impl clap::builder::TypedValueParser for OutputTypeParser {
     type Value = OutputTypeSpec;
+
+    fn possible_values(
+        &self,
+    ) -> Option<Box<dyn Iterator<Item = clap::builder::PossibleValue> + '_>> {
+        use clap::builder::PossibleValue;
+        Some(Box::new(
+            [
+                PossibleValue::new("ast").help("Abstract Syntax Tree (text)"),
+                PossibleValue::new("hir").help("High-level Intermediate Representation (text)"),
+                PossibleValue::new("masm").help("Miden Assembly (text)"),
+                PossibleValue::new("mast").help("Merkelized Abstract Syntax Tree (binary)"),
+            ]
+            .into_iter(),
+        ))
+    }
 
     fn parse_ref(
         &self,

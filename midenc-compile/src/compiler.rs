@@ -75,7 +75,6 @@ pub struct CompilerOptions {
         short = 'v',
         value_enum,
         value_name = "LEVEL",
-        next_line_help(true),
         default_value_t = Verbosity::Info,
         default_missing_value = "debug",
         help_heading = "Diagnostics"
@@ -87,7 +86,6 @@ pub struct CompilerOptions {
         short = 'W',
         value_enum,
         value_name = "LEVEL",
-        next_line_help(true),
         default_value_t = Warnings::All,
         default_missing_value = "all",
         help_heading = "Diagnostics"
@@ -132,27 +130,16 @@ pub struct CompilerOptions {
         help_heading = "Linker"
     )]
     pub search_path: Vec<PathBuf>,
-    /// Request that the linker load and link against a library NAME, with an
-    /// optional KIND to indicate what type of library it is, and how to load it.
+    /// Link compiled projects to the specified library NAME.
     ///
-    /// Only one library may be specified with each use of this flag, but the flag
-    /// may be used multiple times.
+    /// The optional KIND can be provided to indicate what type of library it is.
     ///
     /// NAME must either be an absolute path (with extension when applicable), or
     /// a library namespace (no extension). The former will be used as the path
     /// to load the library, without looking for it in the library search paths,
     /// while the latter will be located in the search path based on its KIND.
     ///
-    /// KIND may be omitted, in which case it will be inferred, or failing that,
-    /// the default kind of `mast` will be used.
-    ///
-    /// Valid values for KIND are:
-    ///
-    /// * mast - A compiled MAST library, must be a file with the `.masl` extension.
-    /// * masm - A Miden Assembly project directory, whose root directory is named after the root
-    ///   namespace of the library. The library will be compiled from source by recursively
-    ///   traversing the directory hierarchy, adding modules to the library with the library path
-    ///   being derived from the directory structure.
+    /// See below for valid KINDs:
     #[arg(
         long = "link-library",
         short = 'l',
@@ -162,23 +149,34 @@ pub struct CompilerOptions {
     )]
     pub link_libraries: Vec<LinkLibrary>,
     /// Specify one or more output types for the compiler to emit
+    ///
+    /// The format for SPEC is `KIND[=PATH]`. You can specify multiple items at
+    /// once by separating each SPEC with a comma, you can also pass this flag
+    /// multiple times.
+    ///
+    /// PATH must be a directory in which to place the outputs, or `-` for stdout.
     #[arg(
         long = "emit",
         value_name = "SPEC",
         value_delimiter = ',',
+        next_line_help(true),
         help_heading = "Output"
     )]
     pub output_types: Vec<OutputTypeSpec>,
+    /// Specify what level of debug information to emit in compilation artifacts
     #[arg(
         long,
         value_enum,
         value_name = "LEVEL",
         next_line_help(true),
-        default_value_t = DebugInfo::Line,
-        default_missing_value = "line",
+        default_value_t = DebugInfo::Full,
+        default_missing_value = "full",
+        num_args(0..=1),
         help_heading = "Output"
     )]
     pub debug: DebugInfo,
+    /// Specify what type, and to what degree, of optimizations to apply to code during
+    /// compilation.
     #[arg(
         long = "optimize",
         value_enum,
