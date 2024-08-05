@@ -2900,7 +2900,6 @@ dependencies = [
 name = "midenc"
 version = "0.0.1"
 dependencies = [
- "anyhow",
  "env_logger 0.11.5",
  "human-panic",
  "midenc-driver",
@@ -2936,7 +2935,6 @@ dependencies = [
 name = "midenc-compile"
 version = "0.0.1"
 dependencies = [
- "anyhow",
  "clap",
  "inventory",
  "log",
@@ -2948,7 +2946,6 @@ dependencies = [
  "midenc-hir-analysis",
  "midenc-hir-transform",
  "midenc-session",
- "rustc-hash",
  "thiserror",
  "wat",
 ]
@@ -2957,7 +2954,6 @@ dependencies = [
 name = "midenc-driver"
 version = "0.0.1"
 dependencies = [
- "anyhow",
  "clap",
  "midenc-compile",
  "midenc-hir",
@@ -3092,7 +3088,6 @@ dependencies = [
  "miden-stdlib",
  "midenc-hir-macros",
  "midenc-hir-symbol",
- "rustc-hash",
  "thiserror",
 ]
 

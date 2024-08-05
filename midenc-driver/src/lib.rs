@@ -2,12 +2,25 @@ mod midenc;
 
 pub use clap::Error as ClapError;
 pub use midenc_session::diagnostics;
-use midenc_session::diagnostics::Report;
+use midenc_session::diagnostics::{miette, Diagnostic, Report};
 
 pub use self::midenc::Midenc;
 
 /// A convenience alias for `Result<T, Report>`
 pub type DriverResult<T> = Result<T, Report>;
+
+#[derive(Debug, thiserror::Error, Diagnostic)]
+#[error(transparent)]
+#[diagnostic()]
+pub struct ClapDiagnostic {
+    #[from]
+    err: ClapError,
+}
+impl ClapDiagnostic {
+    pub fn exit(self) -> ! {
+        self.err.exit()
+    }
+}
 
 /// Run the driver as if it was invoked from the command-line
 pub fn run<P, A>(cwd: P, args: A) -> Result<(), Report>
