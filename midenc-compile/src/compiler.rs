@@ -3,8 +3,8 @@ use std::{path::PathBuf, sync::Arc};
 use clap::{Args, ColorChoice, Parser};
 use midenc_session::{
     diagnostics::{ColorChoice as MDColorChoice, Emitter, MultiThreadedSourceManager},
-    DebugInfo, InputFile, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec, OutputTypes,
-    ProjectType, Session, TargetEnv, Verbosity, Warnings,
+    DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec,
+    OutputTypes, ProjectType, Session, TargetEnv, Verbosity, Warnings,
 };
 
 /// Compile a program from WebAssembly or Miden IR, to Miden Assembly.
@@ -31,6 +31,16 @@ pub struct Compiler {
     /// By default this will be the working directory the compiler is executed from
     #[arg(long, value_name = "DIR", help_heading = "Output")]
     pub working_dir: Option<PathBuf>,
+    /// The path to the root directory of the Miden toolchain libraries
+    ///
+    /// By default this is assumed to be ~/.miden/toolchains/<version>
+    #[arg(
+        long,
+        value_name = "DIR",
+        env = "MIDENC_SYSROOT",
+        help_heading = "Compiler"
+    )]
+    pub sysroot: Option<PathBuf>,
     /// Write output to compiler-chosen filename in `<dir>`
     #[arg(
         long,
@@ -99,7 +109,7 @@ pub struct CompilerOptions {
         long = "exe",
         default_value_t = true,
         default_value_if("target", "emu", Some("false")),
-        help_heading = "Compiler"
+        help_heading = "Linker"
     )]
     pub is_program: bool,
     /// Tells the compiler to produce a Miden library
@@ -111,9 +121,46 @@ pub struct CompilerOptions {
         conflicts_with("entrypoint"),
         default_value_t = false,
         default_value_if("target", "emu", Some("true")),
-        help_heading = "Compiler"
+        help_heading = "Linker"
     )]
     pub is_library: bool,
+    /// Specify one or more search paths for link libraries requested via `-l`
+    #[arg(
+        long = "search-path",
+        short = 'L',
+        value_name = "PATH",
+        help_heading = "Linker"
+    )]
+    pub search_path: Vec<PathBuf>,
+    /// Request that the linker load and link against a library NAME, with an
+    /// optional KIND to indicate what type of library it is, and how to load it.
+    ///
+    /// Only one library may be specified with each use of this flag, but the flag
+    /// may be used multiple times.
+    ///
+    /// NAME must either be an absolute path (with extension when applicable), or
+    /// a library namespace (no extension). The former will be used as the path
+    /// to load the library, without looking for it in the library search paths,
+    /// while the latter will be located in the search path based on its KIND.
+    ///
+    /// KIND may be omitted, in which case it will be inferred, or failing that,
+    /// the default kind of `mast` will be used.
+    ///
+    /// Valid values for KIND are:
+    ///
+    /// * mast - A compiled MAST library, must be a file with the `.masl` extension.
+    /// * masm - A Miden Assembly project directory, whose root directory is named after the root
+    ///   namespace of the library. The library will be compiled from source by recursively
+    ///   traversing the directory hierarchy, adding modules to the library with the library path
+    ///   being derived from the directory structure.
+    #[arg(
+        long = "link-library",
+        short = 'l',
+        value_name = "[KIND=]NAME",
+        next_line_help(true),
+        help_heading = "Linker"
+    )]
+    pub link_libraries: Vec<LinkLibrary>,
     /// Specify one or more output types for the compiler to emit
     #[arg(
         long = "emit",
@@ -160,7 +207,8 @@ impl Compiler {
             None => None,
         };
         let cwd = self.working_dir;
-        let options = self.options.into_options(cwd);
+        let sysroot = self.sysroot;
+        let options = self.options.into_options(cwd, sysroot);
 
         Session::new(
             self.input,
@@ -187,10 +235,10 @@ impl CompilerOptions {
             .map_err(format_error::<TestCompiler>)
             .unwrap_or_else(|err| panic!("{err}"));
 
-        copts.into_options(None).with_arg_matches(compile_matches)
+        copts.into_options(None, None).with_arg_matches(compile_matches)
     }
 
-    pub fn into_options(self, working_dir: Option<PathBuf>) -> Options {
+    pub fn into_options(self, working_dir: Option<PathBuf>, sysroot: Option<PathBuf>) -> Options {
         let cwd = working_dir
             .unwrap_or_else(|| std::env::current_dir().expect("no working directory available"));
 
@@ -210,13 +258,15 @@ impl CompilerOptions {
         } else {
             ProjectType::Library
         };
-        let mut options = Options::new(self.target, project_type, cwd)
+        let mut options = Options::new(self.target, project_type, cwd, sysroot)
             .with_color(color)
             .with_verbosity(self.verbosity.into())
             .with_warnings(self.warn)
             .with_debug_info(self.debug)
             .with_optimization(self.opt_level)
             .with_output_types(output_types);
+        options.search_paths = self.search_path;
+        options.link_libraries = self.link_libraries;
         options.entrypoint = self.entrypoint;
         options.print_ir_after_all = self.print_ir_after_all;
         options.print_ir_after_pass = self.print_ir_after_pass;

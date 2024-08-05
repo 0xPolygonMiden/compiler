@@ -5,6 +5,7 @@ mod duration;
 mod emit;
 mod flags;
 mod inputs;
+mod libs;
 mod options;
 mod outputs;
 mod statistics;
@@ -15,6 +16,12 @@ use std::{
     sync::Arc,
 };
 
+/// The version associated with the current compiler toolchain
+pub const MIDENC_BUILD_VERSION: &'static str = env!("MIDENC_BUILD_VERSION");
+
+/// The git revision associated with the current compiler toolchain
+pub const MIDENC_BUILD_REV: &'static str = env!("MIDENC_BUILD_REV");
+
 use clap::ValueEnum;
 use midenc_hir_symbol::Symbol;
 
@@ -24,6 +31,7 @@ pub use self::{
     emit::Emit,
     flags::{CompileFlag, FlagAction},
     inputs::{FileType, InputFile, InputType, InvalidInputError},
+    libs::{LibraryKind, LinkLibrary},
     options::*,
     outputs::{OutputFile, OutputFiles, OutputType, OutputTypeSpec, OutputTypes},
     statistics::Statistics,
@@ -61,8 +69,6 @@ pub struct Session {
     pub source_manager: Arc<dyn SourceManager>,
     /// The current diagnostics handler
     pub diagnostics: Arc<DiagnosticsHandler>,
-    /// The location of all libraries shipped with the compiler
-    pub sysroot: PathBuf,
     /// The inputs being compiled
     pub inputs: Vec<InputFile>,
     /// The outputs to be produced by the compiler during compilation
@@ -80,12 +86,6 @@ impl Session {
         emitter: Option<Arc<dyn Emitter>>,
         source_manager: Arc<dyn SourceManager>,
     ) -> Self {
-        // TODO: Make sure we pin this down when we need to ship stuff with compiler
-        let sysroot = match &options.sysroot {
-            Some(sysroot) => sysroot.clone(),
-            None => std::env::current_dir().unwrap(),
-        };
-
         let diagnostics = Arc::new(DiagnosticsHandler::new(
             options.diagnostics.clone(),
             source_manager.clone(),
@@ -112,7 +112,6 @@ impl Session {
             options,
             source_manager,
             diagnostics,
-            sysroot,
             inputs: vec![input],
             output_files,
             statistics: Default::default(),

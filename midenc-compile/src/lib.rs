@@ -85,6 +85,11 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
         // No outputs, generally due to skipping codegen
         None => return Ok(()),
         Some(output) => {
+            if session.should_emit(OutputType::Masm) {
+                for module in output.modules() {
+                    session.emit(module).into_diagnostic()?;
+                }
+            }
             if let Some(path) = session.emit_to(OutputType::Mast, None) {
                 match output {
                     masm::MasmArtifact::Executable(_) => {
@@ -108,11 +113,6 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
                             format!("failed to write MAST to '{}'", path.display())
                         })?;
                     }
-                }
-            }
-            if session.should_emit(OutputType::Masm) {
-                for module in output.modules() {
-                    session.emit(module).into_diagnostic()?;
                 }
             }
         }
