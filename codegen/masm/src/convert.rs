@@ -68,6 +68,12 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
             MasmArtifact::Library(Box::new(masm::Library::from_hir(&program, &globals)))
         };
 
+        // Move link libraries to artifact
+        let libraries = core::mem::take(program.libraries_mut());
+        for lib in libraries.into_values() {
+            artifact.link_library(lib);
+        }
+
         // Remove the set of modules to compile from the program
         let modules = program.modules_mut().take();
 

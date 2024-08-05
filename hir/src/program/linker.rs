@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
+use miden_assembly::library::CompiledLibrary;
 use petgraph::{prelude::DiGraphMap, Direction};
 
 use crate::{
@@ -23,7 +24,7 @@ enum Node {
 pub enum Object {
     /// The object is an HIR module
     Hir(Box<Module>),
-    /// The object is a Miden Assembly module
+    /// The object is a compiled Miden Assembly module
     Masm { name: Ident, exports: Vec<Ident> },
 }
 impl Object {
@@ -209,6 +210,28 @@ impl<'a> Linker<'a> {
     /// resolved during assembly to MAST.
     pub fn allow_missing(&mut self, name: impl Into<Cow<'static, str>>) {
         self.allow_missing.insert(name.into());
+    }
+
+    /// Add a compiled library to the set of libraries to link against
+    pub fn add_library(&mut self, lib: CompiledLibrary) {
+        // Add all of the exported objects to the callgraph
+        for export in lib.exports() {
+            let module = Ident::with_empty_span(Symbol::intern(export.module.path()));
+            let name: &str = export.name.as_ref();
+            let function = Ident::with_empty_span(Symbol::intern(name));
+            self.callgraph.add_node(FunctionIdent { module, function });
+        }
+        self.program.add_library(lib);
+    }
+
+    /// Add multiple libraries to the set of libraries to link against
+    pub fn add_libraries<I>(&mut self, libs: I)
+    where
+        I: IntoIterator<Item = CompiledLibrary>,
+    {
+        for lib in libs {
+            self.add_library(lib);
+        }
     }
 
     /// Add an object to link as part of the resulting [Program].

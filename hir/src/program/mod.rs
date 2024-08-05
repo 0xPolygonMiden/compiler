@@ -1,8 +1,11 @@
 mod linker;
 
+use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
 
 use intrusive_collections::RBTree;
+use miden_assembly::library::CompiledLibrary;
+use miden_core::crypto::hash::RpoDigest;
 
 pub use self::linker::Linker;
 use crate::{
@@ -30,6 +33,8 @@ use crate::{
 pub struct Program {
     /// This tree stores all of the modules being compiled as part of the current program.
     modules: RBTree<ModuleTreeAdapter>,
+    /// The set of compiled libraries this program links against
+    libraries: BTreeMap<RpoDigest, CompiledLibrary>,
     /// If set, this field is used to determine which function is the entrypoint for the program.
     ///
     /// When generating Miden Assembly, this will determine whether or not we're emitting
@@ -53,6 +58,11 @@ impl Program {
     #[inline(always)]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Add to the set of libraries this [Program] will be assembled with
+    pub fn add_library(&mut self, lib: CompiledLibrary) {
+        self.libraries.insert(*lib.digest(), lib);
     }
 
     /// Returns true if this program has a defined entrypoint
@@ -81,6 +91,16 @@ impl Program {
     /// Return a mutable reference to the module table for this program
     pub fn modules_mut(&mut self) -> &mut RBTree<ModuleTreeAdapter> {
         &mut self.modules
+    }
+
+    /// Return the set of libraries this program links against
+    pub fn libraries(&self) -> &BTreeMap<RpoDigest, CompiledLibrary> {
+        &self.libraries
+    }
+
+    /// Return the set of libraries this program links against as a mutable reference
+    pub fn libraries_mut(&mut self) -> &mut BTreeMap<RpoDigest, CompiledLibrary> {
+        &mut self.libraries
     }
 
     /// Return a reference to the data segment table for this program
@@ -127,9 +147,11 @@ impl crate::pass::AnalysisKey for Program {
 /// [Program].
 pub struct ProgramBuilder<'a> {
     /// The set of HIR modules to link into the program
-    modules: std::collections::BTreeMap<Ident, Box<Module>>,
+    modules: BTreeMap<Ident, Box<Module>>,
     /// The set of modules defined externally, which will be linked during assembly
-    extern_modules: std::collections::BTreeMap<Ident, Vec<Ident>>,
+    extern_modules: BTreeMap<Ident, Vec<Ident>>,
+    /// The set of libraries we're linking against
+    libraries: BTreeMap<RpoDigest, CompiledLibrary>,
     entry: Option<FunctionIdent>,
     diagnostics: &'a DiagnosticsHandler,
 }
@@ -138,6 +160,7 @@ impl<'a> ProgramBuilder<'a> {
         Self {
             modules: Default::default(),
             extern_modules: Default::default(),
+            libraries: Default::default(),
             entry: None,
             diagnostics,
         }
@@ -196,6 +219,13 @@ impl<'a> ProgramBuilder<'a> {
         Ok(())
     }
 
+    /// Make the linker aware of the objects contained in the given library.
+    ///
+    /// Duplicate libraries/objects are ignored.
+    pub fn add_library(&mut self, library: CompiledLibrary) {
+        self.libraries.insert(*library.digest(), library);
+    }
+
     /// Start building a [Module] with the given name.
     ///
     /// When the builder is done, the resulting [Module] will be inserted
@@ -215,10 +245,13 @@ impl<'a> ProgramBuilder<'a> {
     /// Link a [Program] from the current [ProgramBuilder] state
     pub fn link(self) -> Result<Box<Program>, Report> {
         let mut linker = Linker::new(self.diagnostics);
+
         let entrypoint = self.entry.or_else(|| self.modules.values().find_map(|m| m.entrypoint()));
         if let Some(entry) = entrypoint {
             linker.with_entrypoint(entry)?;
         }
+
+        linker.add_libraries(self.libraries.into_values());
 
         self.extern_modules.into_iter().try_for_each(|obj| linker.add_object(obj))?;
         self.modules.into_values().try_for_each(|obj| linker.add_object(obj))?;

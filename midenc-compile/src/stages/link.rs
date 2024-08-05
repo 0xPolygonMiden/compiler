@@ -41,27 +41,33 @@ impl Stage for LinkerStage {
             }
         }
         let program = if session.should_link() {
-            // Find the program entrypoint, if possible
-            let entrypoint = match session.options.entrypoint.as_deref() {
-                Some(entrypoint) => entrypoint
-                    .parse::<FunctionIdent>()
-                    .map(Some)
-                    .map_err(|err| Report::msg(format!("invalid --entrypoint: {err}")))?,
-                None => ir.iter().find_map(|m| m.entrypoint()),
+            // Construct a new [Program] builder
+            let mut builder = match session.options.entrypoint.as_deref() {
+                Some(entrypoint) => {
+                    let entrypoint = entrypoint
+                        .parse::<FunctionIdent>()
+                        .map_err(|err| Report::msg(format!("invalid --entrypoint: {err}")))?;
+                    hir::ProgramBuilder::new(&session.diagnostics).with_entrypoint(entrypoint)
+                }
+                None => hir::ProgramBuilder::new(&session.diagnostics),
             };
-            let builder = hir::ProgramBuilder::new(&session.diagnostics);
-            let mut builder = if let Some(entry) = entrypoint {
-                builder.with_entrypoint(entry)
-            } else {
-                builder
-            };
+
+            // Add our HIR modules
             for module in ir.into_iter() {
                 builder.add_module(module)?;
             }
+
+            // Handle linking against ad-hoc MASM sources
             for module in masm.iter() {
                 builder
                     .add_extern_module(module.id, module.functions().map(|f| f.name.function))?;
             }
+
+            // Load link libraries now
+            for link_lib in session.options.link_libraries.iter() {
+                builder.add_library(link_lib.load(session)?);
+            }
+
             Some(builder.link()?)
         } else {
             None

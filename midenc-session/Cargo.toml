@@ -19,6 +19,7 @@ clap.workspace = true
 inventory.workspace = true
 miden-assembly.workspace = true
 miden-core.workspace = true
+miden-stdlib.workspace = true
 miden-diagnostics.workspace = true
 midenc-hir-symbol.workspace = true
 midenc-hir-macros.workspace = true

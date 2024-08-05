@@ -9,6 +9,7 @@ mod masm;
 #[cfg(test)]
 mod tests;
 
+use miden_assembly::library::CompiledLibrary;
 use midenc_hir::{
     self as hir,
     diagnostics::Report,
@@ -49,6 +50,13 @@ impl MasmArtifact {
         match self {
             Self::Executable(ref mut program) => program.insert(module),
             Self::Library(ref mut lib) => lib.insert(module),
+        }
+    }
+
+    pub fn link_library(&mut self, lib: CompiledLibrary) {
+        match self {
+            Self::Executable(ref mut program) => program.link_library(lib),
+            Self::Library(ref mut library) => library.link_library(lib),
         }
     }
 

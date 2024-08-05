@@ -1,10 +1,15 @@
-use std::{fmt, path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+};
 
 use clap::ValueEnum;
 
 use crate::{
     diagnostics::{ColorChoice, DiagnosticsConfig, Emitter},
-    OutputTypes, ProjectType, TargetEnv,
+    LinkLibrary, OutputTypes, ProjectType, TargetEnv,
 };
 
 /// This struct contains all of the configuration options for the compiler
@@ -26,6 +31,8 @@ pub struct Options {
     pub output_types: OutputTypes,
     /// The paths in which to search for Miden Assembly libraries to link against
     pub search_paths: Vec<PathBuf>,
+    /// The set of Miden libraries to link against
+    pub link_libraries: Vec<LinkLibrary>,
     /// The location of the libraries which are shipped with the compiler
     pub sysroot: Option<PathBuf>,
     /// Whether, and how, to color terminal output
@@ -47,11 +54,25 @@ impl Default for Options {
         let current_dir = std::env::current_dir().expect("could not get working directory");
         let target = TargetEnv::default();
         let project_type = ProjectType::default_for_target(target);
-        Self::new(target, project_type, current_dir)
+        Self::new(target, project_type, current_dir, None)
     }
 }
 impl Options {
-    pub fn new(target: TargetEnv, project_type: ProjectType, current_dir: PathBuf) -> Self {
+    pub fn new(
+        target: TargetEnv,
+        project_type: ProjectType,
+        current_dir: PathBuf,
+        sysroot: Option<PathBuf>,
+    ) -> Self {
+        let sysroot = sysroot.or_else(|| {
+            std::env::var("HOME").ok().map(|home| {
+                Path::new(&home)
+                    .join(".miden")
+                    .join("toolchains")
+                    .join(crate::MIDENC_BUILD_VERSION)
+            })
+        });
+
         Self {
             name: None,
             target,
@@ -61,7 +82,8 @@ impl Options {
             debug: DebugInfo::None,
             output_types: Default::default(),
             search_paths: vec![],
-            sysroot: None,
+            link_libraries: vec![],
+            sysroot,
             color: Default::default(),
             diagnostics: Default::default(),
             current_dir,

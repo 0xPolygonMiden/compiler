@@ -3089,6 +3089,7 @@ dependencies = [
  "miden-assembly",
  "miden-core",
  "miden-diagnostics",
+ "miden-stdlib",
  "midenc-hir-macros",
  "midenc-hir-symbol",
  "rustc-hash",
