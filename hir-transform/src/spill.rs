@@ -13,9 +13,11 @@ use midenc_hir_analysis::{
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
 
-/// This pass handles orchestrating the [InsertSpills]  and [RewriteSpills] passes, and should be
-/// preferred over using those two passes directly. See their respective documentation to better
-/// understand what this pass does.
+/// This pass places spills of SSA values to temporaries to cap the depth of the operand stack.
+///
+/// Internally it handles orchestrating the [InsertSpills]  and [RewriteSpills] passes, and should
+/// be preferred over using those two passes directly. See their respective documentation to better
+/// understand what this pass does as a whole.
 ///
 /// In addition to running the two passes, and maintaining the [AnalysisManager] state between them,
 /// this pass also handles applying an additional run of [crate::InlineBlocks] if spills were
@@ -111,7 +113,7 @@ impl RewritePass for ApplySpills {
 ///
 /// **TL;DR:** Unless testing or debugging, always apply [InsertSpills] and [RewriteSpills]
 /// consecutively!
-#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
+#[derive(Default)]
 pub struct InsertSpills;
 impl RewritePass for InsertSpills {
     type Entity = hir::Function;
@@ -309,7 +311,7 @@ impl RewritePass for InsertSpills {
 ///    only place greater constraints on backend scheduling, but also ensure that more live ranges
 ///    are split, and thus operands will spend less time on the operand stack overall. Time will
 ///    tell whether this holds true or not.
-#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
+#[derive(Default)]
 pub struct RewriteSpills;
 impl RewritePass for RewriteSpills {
     type Entity = hir::Function;

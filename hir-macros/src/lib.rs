@@ -164,9 +164,71 @@ pub fn derive_analysis_key(item: proc_macro::TokenStream) -> proc_macro::TokenSt
 pub fn derive_rewrite_pass_registration(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let derive_input = parse_macro_input!(item as DeriveInput);
     let id = derive_input.ident.clone();
+    let generics = derive_input.generics;
+    let mut params = syn::punctuated::Punctuated::<_, Token![,]>::new();
+    for gp in generics.params.iter() {
+        match gp {
+            syn::GenericParam::Lifetime(ref lt) => {
+                if !lt.bounds.empty_or_trailing() {
+                    return syn::Error::new(
+                        gp.span(),
+                        "cannot derive RewritePassRegistration on a type with lifetime bounds",
+                    )
+                    .into_compile_error()
+                    .into();
+                }
+                params.push(syn::GenericArgument::Lifetime(syn::Lifetime {
+                    apostrophe: lt.span(),
+                    ident: Ident::new("_", lt.span()),
+                }));
+            }
+            syn::GenericParam::Type(ref ty) => {
+                if !ty.bounds.empty_or_trailing() {
+                    return syn::Error::new(
+                        gp.span(),
+                        "cannot derive RewritePassRegistration on a generic type with type bounds",
+                    )
+                    .into_compile_error()
+                    .into();
+                }
+                let param_ty: syn::Type = syn::parse_quote_spanned! { ty.span() => () };
+                params.push(syn::GenericArgument::Type(param_ty));
+            }
+            syn::GenericParam::Const(_) => {
+                return syn::Error::new(
+                    gp.span(),
+                    "cannot derive RewritePassRegistration on a generic type with const arguments",
+                )
+                .into_compile_error()
+                .into();
+            }
+        }
+    }
 
-    let quoted = quote! {
-        inventory::submit!(midenc_hir::pass::RewritePassRegistration::new::<#id>());
+    let quoted = if params.empty_or_trailing() {
+        quote! {
+            inventory::submit!(midenc_hir::pass::RewritePassRegistration::new::<#id>());
+            inventory::submit! {
+                midenc_session::CompileFlag::new(<#id as PassInfo>::FLAG)
+                    .long(<#id as PassInfo>::FLAG)
+                    .help(<#id as PassInfo>::SUMMARY)
+                    .help_heading("Rewrites")
+                    .action(midenc_session::FlagAction::SetTrue)
+                    .hide(true)
+            }
+        }
+    } else {
+        quote! {
+            inventory::submit!(midenc_hir::pass::RewritePassRegistration::new::<#id<#params>>());
+            inventory::submit! {
+                midenc_session::CompileFlag::new(<#id<#params> as PassInfo>::FLAG)
+                    .long(<#id<#params> as PassInfo>::FLAG)
+                    .help(<#id<#params> as PassInfo>::SUMMARY)
+                    .help_heading("Rewrites")
+                    .action(midenc_session::FlagAction::SetTrue)
+                    .hide(true)
+            }
+        }
     };
 
     proc_macro::TokenStream::from(quoted)
@@ -243,6 +305,7 @@ pub fn derive_conversion_pass_registration(
                     .help(<#id as PassInfo>::SUMMARY)
                     .help_heading("Conversions")
                     .action(midenc_session::FlagAction::SetTrue)
+                    .hide(true)
             }
         }
     } else {
@@ -253,6 +316,7 @@ pub fn derive_conversion_pass_registration(
                     .help(<#id<#params> as PassInfo>::SUMMARY)
                     .help_heading("Conversions")
                     .action(midenc_session::FlagAction::SetTrue)
+                    .hide(true)
             }
         }
     };

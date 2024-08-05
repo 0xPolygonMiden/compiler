@@ -58,7 +58,6 @@ pub fn translate_operator(
     diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    dbg!(span);
     if !state.reachable {
         translate_unreachable_operator(op, builder, state, mod_types, diagnostics, span)?;
         return Ok(());

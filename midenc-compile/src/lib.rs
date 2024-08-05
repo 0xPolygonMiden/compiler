@@ -24,7 +24,6 @@ pub struct CompilerStopped;
 
 /// Register dynamic flags to be shown via `midenc help compile`
 pub fn register_flags(cmd: clap::Command) -> clap::Command {
-    use midenc_hir::RewritePassRegistration;
     use midenc_session::CompileFlag;
 
     let cmd = inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
@@ -61,21 +60,15 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
         } else {
             arg
         };
+        let arg = if let Some(value) = flag.hide {
+            arg.hide(value)
+        } else {
+            arg
+        };
         cmd.arg(arg)
     });
 
-    inventory::iter::<RewritePassRegistration<midenc_hir::Module>>.into_iter().fold(
-        cmd,
-        |cmd, rewrite| {
-            let name = rewrite.name();
-            let arg = clap::Arg::new(name)
-                .long(name)
-                .action(clap::ArgAction::SetTrue)
-                .help(rewrite.summary())
-                .help_heading("Transformations");
-            cmd.arg(arg)
-        },
-    )
+    cmd
 }
 
 /// Run the compiler using the provided [Session]

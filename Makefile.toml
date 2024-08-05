@@ -183,10 +183,12 @@ category = "Install"
 description = "Builds midenc and installs it globally via the cargo bin directory"
 command = "cargo"
 args = [
-    "cargo",
     "install",
     "--path",
     "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/midenc",
+    "--debug",
+    "--force",
+    "--bin",
     "midenc",
 ]
 

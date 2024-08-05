@@ -202,19 +202,18 @@ fn parse_function_body(
                     let column = loc.column.and_then(|col| col.checked_sub(1)).unwrap_or(0);
                     span = source_file.line_column_to_span(line, column).unwrap_or_default();
                 } else {
-                    eprintln!(
+                    log::debug!(
                         "failed to locate span for instruction at offset {offset} in function {}",
                         builder.id()
                     );
                 }
             }
         } else {
-            eprintln!(
+            log::debug!(
                 "failed to locate span for instruction at offset {offset} in function {}",
                 builder.id()
             );
         }
-        dbg!(span);
 
         // Track the span of every END we observe, so we have a span to assign to the return we
         // place in the final exit block
