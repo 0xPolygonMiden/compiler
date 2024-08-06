@@ -1221,7 +1221,7 @@ where
 
     let mut inputs = inputs.into_iter();
     let input_file = inputs.next().expect("must provide at least one input file");
-    let mut flags = vec!["--debug"];
+    let mut flags = vec!["--debug", "-l", "std"];
     flags.extend(extra_flags.iter().map(|flag| flag.as_ref()));
     let source_manager = Arc::new(DefaultSourceManager::default());
     let mut options = midenc_compile::CompilerOptions::parse_options(&flags);
