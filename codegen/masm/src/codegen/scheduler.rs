@@ -146,12 +146,6 @@ pub struct BlockInfo {
     pub source: hir::Block,
     /// The target MASM block which will be emitted from this info
     pub target: masm::BlockId,
-    /// The id of the last instruction in the source HIR block,
-    /// this is commonly used to check for liveness after the end
-    /// of a block
-    pub last_inst: hir::Inst,
-    /// The innermost loop to which this block belongs
-    pub innermost_loop: Option<Loop>,
     /// If set, indicates that this block is the loop header
     /// for the specified loop.
     pub loop_header: Option<Loop>,
@@ -212,10 +206,6 @@ impl Schedule {
 /// optimizer would.
 #[derive(Debug, Clone)]
 pub enum ScheduleOp {
-    /// Always the first instruction in a schedule, represents entry into a function
-    Init(hir::Block),
-    /// Push the current block context on the context stack, and switch to the given block context
-    Enter(hir::Block),
     /// Pop the most recent block context from the context stack and switch to it
     Exit,
     /// Emit the given instruction, using the provided analysis
@@ -233,7 +223,7 @@ pub enum Plan {
     /// This represents entering a block, so all further instructions
     /// are scheduled in the context of the given block until an ExitBlock
     /// meta-instruction is encountered.
-    Start(hir::Block),
+    Start,
     /// Schedule execution of an instruction's pre-requisites
     PreInst(Rc<InstInfo>),
     /// Schedule execution of the given instruction
@@ -280,16 +270,9 @@ impl<'a> Scheduler<'a> {
     pub fn build(mut self) -> Schedule {
         self.precompute_block_infos();
 
-        let entry_block_id = self.f.dfg.entry_block();
         let mut blockq = SmallVec::<[hir::Block; 8]>::from_slice(self.domtree.cfg_postorder());
         while let Some(block_id) = blockq.pop() {
-            let is_entry_block = block_id == entry_block_id;
             let schedule = &mut self.schedule.block_schedules[block_id];
-            if is_entry_block {
-                schedule.push(ScheduleOp::Init(block_id));
-            } else {
-                schedule.push(ScheduleOp::Enter(block_id));
-            }
 
             let block_info = self.schedule.block_infos.get(block_id).cloned().unwrap();
             let block_scheduler = BlockScheduler {
@@ -297,7 +280,7 @@ impl<'a> Scheduler<'a> {
                 liveness: self.liveness,
                 block_info,
                 inst_infos: Default::default(),
-                worklist: SmallVec::from_iter([Plan::Start(block_id)]),
+                worklist: SmallVec::from_iter([Plan::Start]),
             };
             block_scheduler.schedule(schedule);
         }
@@ -318,8 +301,6 @@ impl<'a> Scheduler<'a> {
 
             // Set the controlling loop
             let loop_header = self.loops.is_loop_header(block_id);
-            let last_inst = self.f.dfg.last_inst(block_id).unwrap();
-            let innermost_loop = self.loops.innermost_loop(block_id);
             let depgraph = build_dependency_graph(block_id, self.f, self.liveness);
             let treegraph = OrderedTreeGraph::new(&depgraph)
                 .expect("unable to topologically sort treegraph for block");
@@ -327,8 +308,6 @@ impl<'a> Scheduler<'a> {
             let info = Rc::new(BlockInfo {
                 source: block_id,
                 target: masm_block_id,
-                last_inst,
-                innermost_loop,
                 loop_header,
                 depgraph,
                 treegraph,
@@ -353,7 +332,7 @@ impl<'a> BlockScheduler<'a> {
         // here, we will emit scheduling operations in "normal" order.
         while let Some(plan) = self.worklist.pop() {
             match plan {
-                Plan::Start(_) => self.visit_block(),
+                Plan::Start => self.visit_block(),
                 Plan::Finish => {
                     scheduled_ops.push(ScheduleOp::Exit);
                 }

@@ -654,7 +654,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 wasmparser::Name::Global(names) => {
                     for name in names {
                         let Naming { index, name } = name?;
-                        if index != u32::max_value() {
+                        if index != u32::MAX {
                             self.result
                                 .module
                                 .name_section
@@ -666,7 +666,7 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                 wasmparser::Name::Data(names) => {
                     for name in names {
                         let Naming { index, name } = name?;
-                        if index != u32::max_value() {
+                        if index != u32::MAX {
                             self.result
                                 .module
                                 .name_section

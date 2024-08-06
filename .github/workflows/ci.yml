@@ -11,7 +11,7 @@ on:
     - '*.md'
 
 env:
-  CARGO_MAKE_TOOLCHAIN: nightly-2024-03-10
+  CARGO_MAKE_TOOLCHAIN: nightly-2024-05-15
 
 jobs:
   compiler:
@@ -128,3 +128,34 @@ jobs:
       with:
         command: make
         args: check-format
+  
+  test_coverage:
+    name: test-coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+        override: true
+    - name: Cache Cargo
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+    - name: Install cargo-make
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-make
+    - name: Run tests and generate code coverage
+      run: |
+        cargo make test-rust-cov
+    - name: Push code coverage results to coveralls.io
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: ./lcov.info
