@@ -222,30 +222,28 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 
     if let Some(inst) = dfg.last_inst(block) {
         match &dfg[inst] {
-            Instruction::Br(Br {
-                destination: dest, ..
-            }) => {
-                visit(inst, *dest, false);
+            Instruction::Br(Br { successor, .. }) => {
+                visit(inst, successor.destination, false);
             }
 
             Instruction::CondBr(CondBr {
-                then_dest: (block_then, _),
-                else_dest: (block_else, _),
+                then_dest,
+                else_dest,
                 ..
             }) => {
-                visit(inst, *block_then, false);
-                visit(inst, *block_else, false);
+                visit(inst, then_dest.destination, false);
+                visit(inst, else_dest.destination, false);
             }
 
             Instruction::Switch(Switch {
                 ref arms,
-                default: default_block,
+                default: default_succ,
                 ..
             }) => {
-                visit(inst, *default_block, false);
+                visit(inst, default_succ.destination, false);
 
-                for (_, dest) in arms.as_slice() {
-                    visit(inst, *dest, true);
+                for arm in arms.as_slice() {
+                    visit(inst, arm.successor.destination, true);
                 }
             }
 

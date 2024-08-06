@@ -49,12 +49,12 @@ impl<'a> Rule<BlockData> for DefsDominateUses<'a> {
             uses.extend(node.arguments(&self.dfg.value_lists).iter().copied());
             match node.analyze_branch(&self.dfg.value_lists) {
                 BranchInfo::NotABranch => (),
-                BranchInfo::SingleDest(_, args) => {
-                    uses.extend(args.iter().copied());
+                BranchInfo::SingleDest(info) => {
+                    uses.extend(info.args.iter().copied());
                 }
-                BranchInfo::MultiDest(ref jts) => {
-                    for jt in jts.iter() {
-                        uses.extend(jt.args.iter().copied());
+                BranchInfo::MultiDest(ref infos) => {
+                    for info in infos.iter() {
+                        uses.extend(info.args.iter().copied());
                     }
                 }
             }
@@ -182,8 +182,8 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                 .into_report());
         }
         match terminator.analyze_branch(&self.dfg.value_lists) {
-            BranchInfo::SingleDest(destination, _) => {
-                if !self.dfg.is_block_linked(destination) {
+            BranchInfo::SingleDest(info) => {
+                if !self.dfg.is_block_linked(info.destination) {
                     return Err(diagnostics
                         .diagnostic(Severity::Error)
                         .with_message("invalid block")
@@ -191,13 +191,14 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                         .with_help(format!(
                             "A block reference is only valid if the referenced block is present \
                              in the function layout. {id} references {destination}, but the \
-                             latter is not in the layout"
+                             latter is not in the layout",
+                            destination = info.destination
                         ))
                         .into_report());
                 }
             }
-            BranchInfo::MultiDest(ref jts) => {
-                if jts.is_empty() {
+            BranchInfo::MultiDest(ref infos) => {
+                if infos.is_empty() {
                     return Err(diagnostics
                         .diagnostic(Severity::Error)
                         .with_message("invalid block")
@@ -213,8 +214,8 @@ impl<'a> Rule<BlockData> for BlockValidator<'a> {
                 }
 
                 let mut seen = SmallVec::<[Block; 4]>::default();
-                for jt in jts.iter() {
-                    let destination = jt.destination;
+                for info in infos.iter() {
+                    let destination = info.destination;
                     if !self.dfg.is_block_linked(destination) {
                         return Err(diagnostics
                             .diagnostic(Severity::Error)

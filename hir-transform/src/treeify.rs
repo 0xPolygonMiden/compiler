@@ -473,14 +473,15 @@ fn treeify(
         }
     } else {
         match function.dfg.analyze_branch(p.inst) {
-            BranchInfo::SingleDest(_, args) => {
-                value_map
-                    .extend(function.dfg.block_args(b).iter().copied().zip(args.iter().copied()));
-            }
-            BranchInfo::MultiDest(ref jts) => {
-                let jt = jts.iter().find(|jt| jt.destination == b).unwrap();
+            BranchInfo::SingleDest(info) => {
                 value_map.extend(
-                    function.dfg.block_args(b).iter().copied().zip(jt.args.iter().copied()),
+                    function.dfg.block_args(b).iter().copied().zip(info.args.iter().copied()),
+                );
+            }
+            BranchInfo::MultiDest(ref infos) => {
+                let info = infos.iter().find(|info| info.destination == b).unwrap();
+                value_map.extend(
+                    function.dfg.block_args(b).iter().copied().zip(info.args.iter().copied()),
                 );
             }
             BranchInfo::NotABranch => unreachable!(),
@@ -490,12 +491,12 @@ fn treeify(
     // 3. Update the predecessor instruction to reference the new block, remove block arguments if
     //    this is not a loop header.
     let mut seen = false; // Only update the first occurrance of this predecessor
-    update_predecessor(function, p, |dest, dest_args, pool| {
-        if *dest == b && !seen {
+    update_predecessor(function, p, |successor, pool| {
+        if successor.destination == b && !seen {
             seen = true;
-            *dest = b_prime;
+            successor.destination = b_prime;
             if !is_loop {
-                dest_args.clear(pool);
+                successor.args.clear(pool);
             }
         }
     });
@@ -525,9 +526,9 @@ fn copy_children(
     };
     let successors = match function.dfg.analyze_branch(function.dfg.last_inst(b).unwrap()) {
         BranchInfo::NotABranch => return Ok(()),
-        BranchInfo::SingleDest(dest, _) => smallvec![dest],
-        BranchInfo::MultiDest(ref jts) => {
-            SmallVec::<[_; 2]>::from_iter(jts.iter().map(|jt| jt.destination))
+        BranchInfo::SingleDest(info) => smallvec![info.destination],
+        BranchInfo::MultiDest(infos) => {
+            SmallVec::<[_; 2]>::from_iter(infos.into_iter().map(|info| info.destination))
         }
     };
     let value_map = Rc::new(value_map);
@@ -535,9 +536,9 @@ fn copy_children(
 
     for succ in successors {
         if let Some(succ_prime) = block_map.get(&succ) {
-            update_predecessor(function, &pred, |dest, _, _| {
-                if dest == &succ {
-                    *dest = *succ_prime;
+            update_predecessor(function, &pred, |successor, _| {
+                if successor.destination == succ {
+                    successor.destination = *succ_prime;
                 }
             });
         }
@@ -586,14 +587,12 @@ fn copy_instructions(
         // Second, we need to rewrite value/block references contained in the instruction
         match data.as_mut() {
             Instruction::Br(hir::Br {
-                ref mut destination,
-                ref mut args,
-                ..
+                ref mut successor, ..
             }) => {
-                if let Some(new_dest) = block_map.get(destination) {
-                    *destination = *new_dest;
+                if let Some(new_dest) = block_map.get(&successor.destination) {
+                    successor.destination = *new_dest;
                 }
-                let args = args.as_mut_slice(&mut function.dfg.value_lists);
+                let args = successor.args.as_mut_slice(&mut function.dfg.value_lists);
                 for arg in args.iter_mut() {
                     if let Some(arg_prime) = value_map.get(arg) {
                         *arg = *arg_prime;
@@ -602,29 +601,59 @@ fn copy_instructions(
             }
             Instruction::CondBr(hir::CondBr {
                 ref mut cond,
-                then_dest: (ref mut then_dest, ref mut then_args),
-                else_dest: (ref mut else_dest, ref mut else_args),
+                ref mut then_dest,
+                ref mut else_dest,
                 ..
             }) => {
                 if let Some(cond_prime) = value_map.get(cond) {
                     *cond = *cond_prime;
                 }
-                if let Some(new_dest) = block_map.get(then_dest) {
-                    *then_dest = *new_dest;
+                if let Some(new_dest) = block_map.get(&then_dest.destination) {
+                    then_dest.destination = *new_dest;
                 }
-                let then_args = then_args.as_mut_slice(&mut function.dfg.value_lists);
+                let then_args = then_dest.args.as_mut_slice(&mut function.dfg.value_lists);
                 for arg in then_args.iter_mut() {
                     if let Some(arg_prime) = value_map.get(arg) {
                         *arg = *arg_prime;
                     }
                 }
-                if let Some(new_dest) = block_map.get(else_dest) {
-                    *else_dest = *new_dest;
+                if let Some(new_dest) = block_map.get(&else_dest.destination) {
+                    else_dest.destination = *new_dest;
                 }
-                let else_args = else_args.as_mut_slice(&mut function.dfg.value_lists);
+                let else_args = else_dest.args.as_mut_slice(&mut function.dfg.value_lists);
                 for arg in else_args.iter_mut() {
                     if let Some(arg_prime) = value_map.get(arg) {
                         *arg = *arg_prime;
+                    }
+                }
+            }
+            Instruction::Switch(hir::Switch {
+                ref mut arg,
+                ref mut arms,
+                default: ref mut default_succ,
+                ..
+            }) => {
+                if let Some(arg_prime) = value_map.get(arg) {
+                    *arg = *arg_prime;
+                }
+                if let Some(new_default_dest) = block_map.get(&default_succ.destination) {
+                    default_succ.destination = *new_default_dest;
+                }
+                let default_args = default_succ.args.as_mut_slice(&mut function.dfg.value_lists);
+                for arg in default_args.iter_mut() {
+                    if let Some(arg_prime) = value_map.get(arg) {
+                        *arg = *arg_prime;
+                    }
+                }
+                for arm in arms.iter_mut() {
+                    if let Some(new_dest) = block_map.get(&arm.successor.destination) {
+                        arm.successor.destination = *new_dest;
+                    }
+                    let args = arm.successor.args.as_mut_slice(&mut function.dfg.value_lists);
+                    for arg in args.iter_mut() {
+                        if let Some(arg_prime) = value_map.get(arg) {
+                            *arg = *arg_prime;
+                        }
                     }
                 }
             }
@@ -670,25 +699,23 @@ impl CopyBlock {
 #[inline]
 fn update_predecessor<F>(function: &mut hir::Function, p: &BlockPredecessor, mut callback: F)
 where
-    F: FnMut(&mut BlockId, &mut ValueList, &mut ValueListPool),
+    F: FnMut(&mut hir::Successor, &mut ValueListPool),
 {
     match &mut *function.dfg.insts[p.inst].data {
         Instruction::Br(hir::Br {
-            ref mut destination,
-            ref mut args,
-            ..
+            ref mut successor, ..
         }) => {
-            callback(destination, args, &mut function.dfg.value_lists);
+            callback(successor, &mut function.dfg.value_lists);
         }
         Instruction::CondBr(hir::CondBr {
-            then_dest: (ref mut then_dest, ref mut then_args),
-            else_dest: (ref mut else_dest, ref mut else_args),
+            ref mut then_dest,
+            ref mut else_dest,
             ..
         }) => {
-            assert_ne!(then_dest, else_dest, "unexpected critical edge");
+            assert_ne!(then_dest.destination, else_dest.destination, "unexpected critical edge");
             let value_lists = &mut function.dfg.value_lists;
-            callback(then_dest, then_args, value_lists);
-            callback(else_dest, else_args, value_lists);
+            callback(then_dest, value_lists);
+            callback(else_dest, value_lists);
         }
         Instruction::Switch(_) => {
             panic!("expected switch instructions to have been simplified prior to treeification")

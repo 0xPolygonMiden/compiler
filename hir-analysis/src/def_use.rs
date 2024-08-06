@@ -122,9 +122,11 @@ impl DefUseGraph {
                     args[index as usize] = replacement;
                 }
                 Use::BlockArgument { succ, index } => match dfg.insts[current_use.inst].as_mut() {
-                    Instruction::Br(ref mut b) => {
+                    Instruction::Br(midenc_hir::Br {
+                        ref mut successor, ..
+                    }) => {
                         assert_eq!(succ, 0);
-                        let args = b.args.as_mut_slice(&mut dfg.value_lists);
+                        let args = successor.args.as_mut_slice(&mut dfg.value_lists);
                         args[index as usize] = replacement;
                     }
                     Instruction::CondBr(midenc_hir::CondBr {
@@ -133,16 +135,31 @@ impl DefUseGraph {
                         ..
                     }) => {
                         let args = match succ {
-                            0 => then_dest.1.as_mut_slice(&mut dfg.value_lists),
-                            1 => else_dest.1.as_mut_slice(&mut dfg.value_lists),
+                            0 => then_dest.args.as_mut_slice(&mut dfg.value_lists),
+                            1 => else_dest.args.as_mut_slice(&mut dfg.value_lists),
                             n => unreachable!(
                                 "unexpected successor index {n} for conditional branch"
                             ),
                         };
                         args[index as usize] = replacement;
                     }
-                    Instruction::Switch(_) => {
-                        unimplemented!("support for switch arms with arguments is not implemented")
+                    Instruction::Switch(midenc_hir::Switch {
+                        ref mut arms,
+                        default: ref mut default_succ,
+                        ..
+                    }) => {
+                        let succ = succ as usize;
+                        assert!(
+                            succ < arms.len() + 1,
+                            "invalid successor index {succ}: but only {} arms plus fallback",
+                            arms.len()
+                        );
+                        let args = if arms.len() == succ {
+                            default_succ.args.as_mut_slice(&mut dfg.value_lists)
+                        } else {
+                            arms[succ].successor.args.as_mut_slice(&mut dfg.value_lists)
+                        };
+                        args[index as usize] = replacement;
                     }
                     _ => unreachable!(),
                 },
@@ -180,14 +197,14 @@ impl DefUseGraph {
                         }
                         graph.insert_operand_uses(inst, dfg, domtree);
                     }
-                    BranchInfo::SingleDest(_, args) => {
+                    BranchInfo::SingleDest(successor) => {
                         debug_assert_eq!(
                             dfg.inst_results(inst),
                             &[],
                             "branch instructions cannot have results"
                         );
                         graph.insert_operand_uses(inst, dfg, domtree);
-                        for (index, value) in args.iter().copied().enumerate() {
+                        for (index, value) in successor.args.iter().copied().enumerate() {
                             debug_assert!(def_dominates_use(value, inst, dfg, domtree));
                             let user = Box::new(User {
                                 link: Default::default(),
@@ -201,16 +218,16 @@ impl DefUseGraph {
                             graph.insert_use(user);
                         }
                     }
-                    BranchInfo::MultiDest(ref jts) => {
+                    BranchInfo::MultiDest(ref successors) => {
                         debug_assert_eq!(
                             dfg.inst_results(inst),
                             &[],
                             "branch instructions cannot have results"
                         );
                         graph.insert_operand_uses(inst, dfg, domtree);
-                        for (succ, jt) in jts.iter().enumerate() {
+                        for (succ, successor) in successors.iter().enumerate() {
                             let succ = u16::try_from(succ).expect("too many successors");
-                            for (index, value) in jt.args.iter().copied().enumerate() {
+                            for (index, value) in successor.args.iter().copied().enumerate() {
                                 debug_assert!(def_dominates_use(value, inst, dfg, domtree));
                                 let user = Box::new(User {
                                     link: Default::default(),

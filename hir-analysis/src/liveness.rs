@@ -442,7 +442,7 @@ fn compute_liveness(
             BranchInfo::NotABranch => {
                 flow_sensitive.insert(block, false);
             }
-            BranchInfo::SingleDest(succ, _) => {
+            BranchInfo::SingleDest(succ) => {
                 // If the successor is flow-sensitive, by definition so must the predecessor.
                 //
                 // If the successor's sensitivity is not yet known, then that means control can
@@ -458,18 +458,19 @@ fn compute_liveness(
                 // Putting this all together - it must be the case that we either know that `succ`
                 // is flow-insensitive, or we know that it is flow-sensitive, either explicitly or
                 // by implication.
-                flow_sensitive.insert(block, flow_sensitive.get(&succ).copied().unwrap_or(true));
+                flow_sensitive
+                    .insert(block, flow_sensitive.get(&succ.destination).copied().unwrap_or(true));
             }
-            BranchInfo::MultiDest(jts) => {
+            BranchInfo::MultiDest(succs) => {
                 // Must like the single-successor case, we derive flow-sensitivity for predecessors
                 // from their successors.
                 //
                 // The primary difference in this situation, is that the only possible way for
                 // `block` to be flow-insensitive, is if all successors are explicitly flow-
                 // insensitive.
-                let is_flow_sensitive = jts
+                let is_flow_sensitive = succs
                     .iter()
-                    .any(|jt| flow_sensitive.get(&jt.destination).copied().unwrap_or(true));
+                    .any(|succ| flow_sensitive.get(&succ.destination).copied().unwrap_or(true));
                 flow_sensitive.insert(block, is_flow_sensitive);
             }
         }
@@ -618,7 +619,10 @@ fn compute_liveness(
                 // This is a branch instruction, so get the next-use set at the entry of each
                 // successor, increment the distances in those sets based on the distance of the
                 // edge, and then take the join of those sets as the initial next-use set for `inst`
-                BranchInfo::SingleDest(succ, succ_args) => {
+                BranchInfo::SingleDest(SuccessorInfo {
+                    destination: succ,
+                    args: succ_args,
+                }) => {
                     let mut inst_next_uses = liveness
                         .live_in
                         .get(&ProgramPoint::Block(succ))
@@ -690,7 +694,7 @@ fn compute_liveness(
                 // graph have been split, as we cannot proceed correctly otherwise. It is expected
                 // that either no critical edges exist, or that they have been split by a prior
                 // transformation.
-                BranchInfo::MultiDest(jts) => {
+                BranchInfo::MultiDest(succs) => {
                     let mut inst_next_uses = NextUseSet::default();
                     let mut inst_next_uses_after = NextUseSet::default();
 
@@ -703,10 +707,10 @@ fn compute_liveness(
                     }
 
                     let mut max_branch_operand_stack_pressure = operand_stack_pressure;
-                    for JumpTable {
+                    for SuccessorInfo {
                         destination,
                         args: succ_args,
-                    } in jts.iter()
+                    } in succs.iter()
                     {
                         let destination = *destination;
                         // If the successor block has multiple predecessors, this is a critical

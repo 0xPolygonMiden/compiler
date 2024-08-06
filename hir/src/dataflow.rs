@@ -427,8 +427,10 @@ impl DataFlowGraph {
     pub fn replace_uses(&mut self, inst: Inst, value: Value, replacement: Value) {
         let ix = &mut self.insts[inst];
         match ix.data.deref_mut() {
-            Instruction::Br(Br { ref mut args, .. }) => {
-                let args = args.as_mut_slice(&mut self.value_lists);
+            Instruction::Br(Br {
+                ref mut successor, ..
+            }) => {
+                let args = successor.args.as_mut_slice(&mut self.value_lists);
                 for arg in args.iter_mut() {
                     if arg == &value {
                         *arg = replacement;
@@ -437,23 +439,47 @@ impl DataFlowGraph {
             }
             Instruction::CondBr(CondBr {
                 ref mut cond,
-                then_dest: (_, ref mut then_args),
-                else_dest: (_, ref mut else_args),
+                ref mut then_dest,
+                ref mut else_dest,
                 ..
             }) => {
                 if cond == &value {
                     *cond = replacement;
                 }
-                let then_args = then_args.as_mut_slice(&mut self.value_lists);
+                let then_args = then_dest.args.as_mut_slice(&mut self.value_lists);
                 for arg in then_args.iter_mut() {
                     if arg == &value {
                         *arg = replacement;
                     }
                 }
-                let else_args = else_args.as_mut_slice(&mut self.value_lists);
+                let else_args = else_dest.args.as_mut_slice(&mut self.value_lists);
                 for arg in else_args.iter_mut() {
                     if arg == &value {
                         *arg = replacement;
+                    }
+                }
+            }
+            Instruction::Switch(Switch {
+                ref mut arg,
+                ref mut arms,
+                default: default_succ,
+                ..
+            }) => {
+                if arg == &value {
+                    *arg = replacement;
+                }
+                let default_args = default_succ.args.as_mut_slice(&mut self.value_lists);
+                for arg in default_args.iter_mut() {
+                    if arg == &value {
+                        *arg = replacement;
+                    }
+                }
+                for arm in arms.iter_mut() {
+                    let args = arm.successor.args.as_mut_slice(&mut self.value_lists);
+                    for arg in args.iter_mut() {
+                        if arg == &value {
+                            *arg = replacement;
+                        }
                     }
                 }
             }
@@ -486,27 +512,37 @@ impl DataFlowGraph {
     ) {
         let ix = &mut self.insts[inst];
         match ix.data.deref_mut() {
-            Instruction::Br(Br { ref mut args, .. }) => {
+            Instruction::Br(Br {
+                ref mut successor, ..
+            }) => {
                 debug_assert_eq!(succ_index, 0);
-                args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                successor.args.as_mut_slice(&mut self.value_lists)[index] = replacement;
             }
             Instruction::CondBr(CondBr {
-                then_dest: (_, ref mut then_args),
-                else_dest: (_, ref mut else_args),
+                ref mut then_dest,
+                ref mut else_dest,
                 ..
             }) => match succ_index {
                 0 => {
-                    then_args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                    then_dest.args.as_mut_slice(&mut self.value_lists)[index] = replacement;
                 }
                 1 => {
-                    else_args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                    else_dest.args.as_mut_slice(&mut self.value_lists)[index] = replacement;
                 }
                 _ => unreachable!("expected valid successor index for cond_br, got {succ_index}"),
             },
-            Instruction::Switch(_) => unimplemented!(
-                "invalid instruction: cannot replace successor arguments for 'switch': arms \
-                 cannot have arguments yet"
-            ),
+            Instruction::Switch(Switch {
+                ref mut arms,
+                default: ref mut default_succ,
+                ..
+            }) => {
+                debug_assert!(succ_index < arms.len() + 1);
+                if succ_index == arms.len() {
+                    default_succ.args.as_mut_slice(&mut self.value_lists)[index] = replacement;
+                }
+                arms[succ_index].successor.args.as_mut_slice(&mut self.value_lists)[index] =
+                    replacement;
+            }
             ix => panic!("invalid instruction: expected branch instruction, got {ix:#?}"),
         }
     }
@@ -554,7 +590,7 @@ impl DataFlowGraph {
         self.insts[inst].analyze_call(&self.value_lists)
     }
 
-    pub fn analyze_branch(&self, inst: Inst) -> BranchInfo {
+    pub fn analyze_branch(&self, inst: Inst) -> BranchInfo<'_> {
         self.insts[inst].analyze_branch(&self.value_lists)
     }
 
@@ -754,30 +790,36 @@ impl DataFlowGraph {
     ) {
         match self.insts[branch_inst].data.deref_mut() {
             Instruction::Br(Br {
-                destination,
-                ref mut args,
-                ..
+                ref mut successor, ..
             }) => {
-                debug_assert_eq!(*destination, dest);
-                args.push(value, &mut self.value_lists);
+                debug_assert_eq!(successor.destination, dest);
+                successor.args.push(value, &mut self.value_lists);
             }
             Instruction::CondBr(CondBr {
-                then_dest: (then_dest, ref mut then_args),
-                else_dest: (else_dest, ref mut else_args),
+                ref mut then_dest,
+                ref mut else_dest,
                 ..
             }) => {
-                if *then_dest == dest {
-                    then_args.push(value, &mut self.value_lists);
+                if then_dest.destination == dest {
+                    then_dest.args.push(value, &mut self.value_lists);
                 }
-                if *else_dest == dest {
-                    else_args.push(value, &mut self.value_lists);
+                if else_dest.destination == dest {
+                    else_dest.args.push(value, &mut self.value_lists);
                 }
             }
-            Instruction::Switch(_) => {
-                panic!(
-                    "cannot append argument {value} to Switch destination block {dest}, since it \
-                     has no block arguments support"
-                );
+            Instruction::Switch(Switch {
+                ref mut arms,
+                default: ref mut default_succ,
+                ..
+            }) => {
+                if default_succ.destination == dest {
+                    default_succ.args.push(value, &mut self.value_lists);
+                }
+                for arm in arms.iter_mut() {
+                    if arm.successor.destination == dest {
+                        arm.successor.args.push(value, &mut self.value_lists);
+                    }
+                }
             }
             _ => panic!("{} must be a branch instruction", branch_inst),
         }

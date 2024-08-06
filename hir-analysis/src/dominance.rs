@@ -355,15 +355,15 @@ impl DominatorTree {
                             // consumers of the postorder we cache here.
                             match func.dfg.analyze_branch(inst) {
                                 BranchInfo::NotABranch => (),
-                                BranchInfo::SingleDest(dest, _) => {
-                                    if self.nodes[dest].rpo_number == 0 {
-                                        self.stack.push((Visit::First, dest));
+                                BranchInfo::SingleDest(successor) => {
+                                    if self.nodes[successor.destination].rpo_number == 0 {
+                                        self.stack.push((Visit::First, successor.destination));
                                     }
                                 }
-                                BranchInfo::MultiDest(ref jt) => {
-                                    for dest in jt.iter().rev().map(|entry| entry.destination) {
-                                        if self.nodes[dest].rpo_number == 0 {
-                                            self.stack.push((Visit::First, dest));
+                                BranchInfo::MultiDest(ref successors) => {
+                                    for successor in successors.iter().rev() {
+                                        if self.nodes[successor.destination].rpo_number == 0 {
+                                            self.stack.push((Visit::First, successor.destination));
                                         }
                                     }
                                 }

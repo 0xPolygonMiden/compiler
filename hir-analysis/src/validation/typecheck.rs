@@ -1,10 +1,10 @@
+use alloc::collections::BTreeMap;
 use core::fmt;
 
 use midenc_hir::{
     diagnostics::{DiagnosticsHandler, Report, Severity, Spanned},
     *,
 };
-use rustc_hash::FxHashMap;
 
 use super::Rule;
 
@@ -308,8 +308,11 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                     }
                 }
                 Instruction::Br(Br {
-                    ref args,
-                    destination,
+                    successor:
+                        Successor {
+                            destination,
+                            ref args,
+                        },
                     ..
                 }) => {
                     let successor = *destination;
@@ -351,19 +354,15 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                 }
                 Instruction::CondBr(CondBr {
                     cond,
-                    then_dest: (then_dest, then_args),
-                    else_dest: (else_dest, else_args),
+                    ref then_dest,
+                    ref else_dest,
                     ..
                 }) => {
                     typechecker.check(&[*cond], results)?;
 
-                    let then_dest = *then_dest;
-                    let else_dest = *else_dest;
-                    for (successor, dest_args) in
-                        [(then_dest, then_args), (else_dest, else_args)].into_iter()
-                    {
-                        let expected = self.dfg.block_args(successor);
-                        let args = dest_args.as_slice(&self.dfg.value_lists);
+                    for successor in [then_dest, else_dest].into_iter() {
+                        let expected = self.dfg.block_args(successor.destination);
+                        let args = successor.args.as_slice(&self.dfg.value_lists);
                         if args.len() != expected.len() {
                             return Err(diagnostics
                                 .diagnostic(Severity::Error)
@@ -373,7 +372,8 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                                     format!(
                                         "{successor} expects {} arguments, but is being given {}",
                                         expected.len(),
-                                        args.len()
+                                        args.len(),
+                                        successor = successor.destination,
                                     ),
                                 )
                                 .into_report());
@@ -391,7 +391,8 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                                         span,
                                         format!(
                                             "{successor} argument at index {index} is expected to \
-                                             be {expected}, but got {actual}"
+                                             be {expected}, but got {actual}",
+                                            successor = successor.destination
                                         ),
                                     )
                                     .into_report());
@@ -407,9 +408,9 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                 }) => {
                     typechecker.check(&[*arg], results)?;
 
-                    let mut seen = FxHashMap::<u32, usize>::default();
-                    for (i, (key, successor)) in arms.iter().enumerate() {
-                        if let Some(prev) = seen.insert(*key, i) {
+                    let mut seen = BTreeMap::<u32, usize>::default();
+                    for (i, arm) in arms.iter().enumerate() {
+                        if let Some(prev) = seen.insert(arm.value, i) {
                             return Err(diagnostics
                                 .diagnostic(Severity::Error)
                                 .with_message("invalid instruction")
@@ -423,38 +424,53 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                                 )
                                 .into_report());
                         }
+                    }
 
-                        let expected = self.dfg.block_args(*successor);
-                        if !expected.is_empty() {
+                    for (i, successor) in arms
+                        .iter()
+                        .map(|arm| &arm.successor)
+                        .chain(core::iter::once(fallback))
+                        .enumerate()
+                    {
+                        let expected = self.dfg.block_args(successor.destination);
+                        let args = successor.args.as_slice(&self.dfg.value_lists);
+                        if args.len() != expected.len() {
                             return Err(diagnostics
                                 .diagnostic(Severity::Error)
                                 .with_message("invalid instruction")
                                 .with_primary_label(
                                     span,
                                     format!(
-                                        "all successors of a 'switch' must not have block \
-                                         parameters, but {successor}, the successor for \
-                                         discriminant {key}, has {} arguments",
-                                        expected.len()
+                                        "the destination for the arm at index {i}, {successor}, \
+                                         expects {} arguments, but is being given {}",
+                                        expected.len(),
+                                        args.len(),
+                                        successor = successor.destination,
                                     ),
                                 )
                                 .into_report());
                         }
-                    }
-                    let expected = self.dfg.block_args(*fallback);
-                    if !expected.is_empty() {
-                        return Err(diagnostics
-                            .diagnostic(Severity::Error)
-                            .with_message("invalid instruction")
-                            .with_primary_label(
-                                span,
-                                format!(
-                                    "all successors of a 'switch' must not have block parameters, \
-                                     but {fallback}, the default successor, has {} arguments",
-                                    expected.len()
-                                ),
-                            )
-                            .into_report());
+                        for (index, (param, arg)) in
+                            expected.iter().copied().zip(args.iter().copied()).enumerate()
+                        {
+                            let expected = self.dfg.value_type(param);
+                            let actual = self.dfg.value_type(arg);
+                            if actual != expected {
+                                return Err(diagnostics
+                                    .diagnostic(Severity::Error)
+                                    .with_message("type error")
+                                    .with_primary_label(
+                                        span,
+                                        format!(
+                                            "invalid switch arm at index {i}: {successor} \
+                                             argument at index {index} is expected to be \
+                                             {expected}, but got {actual}",
+                                            successor = successor.destination
+                                        ),
+                                    )
+                                    .into_report());
+                            }
+                        }
                     }
                 }
             }
