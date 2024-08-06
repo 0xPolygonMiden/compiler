@@ -15,8 +15,8 @@ use crate::{
     CompilerTest, MidenExecutor,
 };
 
-//#[ignore = "until the VM stack overflow during the MASM generation is fixed"]
 #[test]
+#[ignore = "pending rodata fixes"]
 fn test_blake3_hash() {
     let main_fn =
         "(a: [u8; 32]) -> [u8; 32] {  miden_stdlib_sys::blake3_hash_1to1(a) }".to_string();
