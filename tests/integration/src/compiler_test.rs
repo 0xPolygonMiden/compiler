@@ -1109,7 +1109,7 @@ where
 {
     use midenc_hir::diagnostics::{
         reporting::{self, ReportHandlerOpts},
-        SingleThreadedSourceManager,
+        DefaultSourceManager,
     };
 
     let result = reporting::set_hook(Box::new(|_| Box::new(ReportHandlerOpts::new().build())));
@@ -1121,7 +1121,7 @@ where
     let input_file = inputs.next().expect("must provide at least one input file");
     let mut flags = vec!["--lib", "--debug=full"];
     flags.extend(extra_flags.iter().map(|flag| flag.as_ref()));
-    let source_manager = Arc::new(SingleThreadedSourceManager::default());
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let mut options = midenc_compile::CompilerOptions::parse_options(&flags);
     options.output_types.insert(OutputType::Masm, None);
     let mut session = Session::new(input_file, None, None, None, options, None, source_manager);

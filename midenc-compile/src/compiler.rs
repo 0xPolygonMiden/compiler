@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use clap::{Args, ColorChoice, Parser};
 use midenc_session::{
-    diagnostics::{ColorChoice as MDColorChoice, Emitter, MultiThreadedSourceManager},
+    diagnostics::{ColorChoice as MDColorChoice, DefaultSourceManager, Emitter},
     DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec,
     OutputTypes, ProjectType, Session, TargetEnv, Verbosity, Warnings,
 };
@@ -197,7 +197,7 @@ pub struct CompilerOptions {
 impl Compiler {
     /// Use this configuration to obtain a [Session] used for compilation
     pub fn into_session(self, emitter: Option<Arc<dyn Emitter>>) -> Session {
-        let source_manager = Arc::new(MultiThreadedSourceManager::default());
+        let source_manager = Arc::new(DefaultSourceManager::default());
         let tmp_dir = self.target_dir.unwrap_or_else(std::env::temp_dir);
         let output_file = match self.output_file {
             Some(path) => Some(OutputFile::Real(path)),

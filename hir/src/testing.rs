@@ -6,7 +6,7 @@ use midenc_session::{Options, Session};
 
 use crate::{
     diagnostics::{
-        Emitter, SingleThreadedSourceManager, SourceFile, SourceId, SourceManagerExt, SourceSpan,
+        DefaultSourceManager, Emitter, SourceFile, SourceId, SourceManagerExt, SourceSpan,
     },
     *,
 };
@@ -51,7 +51,7 @@ impl TestContext {
 
         setup_diagnostics();
 
-        let source_manager = Arc::new(SingleThreadedSourceManager::default());
+        let source_manager = Arc::new(DefaultSourceManager::default());
         let session = Session::new(
             InputFile::from_path("test.hir").unwrap(),
             None,
