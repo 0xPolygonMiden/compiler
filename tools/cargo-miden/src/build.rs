@@ -4,7 +4,7 @@ use std::{
 };
 
 use midenc_session::{
-    diagnostics::{IntoDiagnostic, MultiThreadedSourceManager, Report, WrapErr},
+    diagnostics::{DefaultSourceManager, IntoDiagnostic, Report, WrapErr},
     InputFile, OutputFile, OutputType, OutputTypeSpec, OutputTypes, Session, Verbosity,
 };
 
@@ -34,7 +34,7 @@ pub fn build_masm(
         path: Some(output_file_folder.clone()),
     }]);
     let project_type = if is_bin { "--exe" } else { "--lib" };
-    let source_manager = Arc::new(MultiThreadedSourceManager::default());
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let options = midenc_compile::CompilerOptions::parse_options(&[project_type])
         .with_verbosity(Verbosity::Debug)
         .with_output_types(output_types);

@@ -42,7 +42,7 @@ pub struct DiagnosticsHandler {
 impl Default for DiagnosticsHandler {
     fn default() -> Self {
         let emitter = Arc::new(DefaultEmitter::new(ColorChoice::Auto));
-        let source_manager = Arc::new(MultiThreadedSourceManager::default());
+        let source_manager = Arc::new(DefaultSourceManager::default());
         Self::new(Default::default(), source_manager, emitter)
     }
 }

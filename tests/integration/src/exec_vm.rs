@@ -159,8 +159,13 @@ impl MidenExecutor {
         let (_, _, _, chiplets, _) = iter.into_parts();
         let mut memories = std::collections::BTreeMap::default();
         for context in contexts {
-            let mem = chiplets
-                .get_mem_state_at(context, last_state.as_ref().map(|state| state.clk).unwrap_or(0));
+            let mem = chiplets.get_mem_state_at(
+                context,
+                last_state
+                    .as_ref()
+                    .map(|state| state.clk)
+                    .unwrap_or(miden_processor::RowIndex::from(0)),
+            );
             memories.insert(context, mem);
         }
         let outputs = result.unwrap().stack().iter().copied().map(TestFelt).collect();
