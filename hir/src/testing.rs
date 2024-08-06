@@ -82,7 +82,7 @@ impl TestContext {
             Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(caller.file());
         let source_file = self.add(caller_file);
         source_file
-            .line_column_to_span(caller.line() - 1, caller.column() - 1)
+            .line_column_to_span(caller.line(), caller.column())
             .expect("could not resolve source location")
     }
 
