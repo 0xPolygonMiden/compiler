@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use clap::{Args, ColorChoice, Parser};
+use clap::{builder::ArgPredicate, Args, ColorChoice, Parser};
 use midenc_session::{
     diagnostics::{ColorChoice as MDColorChoice, DefaultSourceManager, Emitter},
     DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec,
@@ -95,30 +95,45 @@ pub struct CompilerOptions {
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto, default_missing_value = "auto", help_heading = "Diagnostics")]
     pub color: ColorChoice,
     /// The target environment to compile for
-    #[arg(long, value_name = "TARGET", default_value_t = TargetEnv::Base, help_heading = "Compiler")]
+    #[arg(
+        long,
+        value_name = "TARGET",
+        default_value_t = TargetEnv::Base,
+        help_heading = "Compiler"
+    )]
     pub target: TargetEnv,
     /// Specify the function to call as the entrypoint for the program
-    #[arg(long = "entrypoint", help_heading = "Compiler", hide(true))]
+    #[arg(long, help_heading = "Compiler", hide(true))]
     pub entrypoint: Option<String>,
     /// Tells the compiler to produce an executable Miden program
     ///
-    /// When the target is `base` or `rollup`, this defaults to true
+    /// Implied by `--entrypoint`, defaults to true for non-rollup targets.
     #[arg(
         long = "exe",
         default_value_t = true,
-        default_value_if("target", "emu", Some("false")),
+        default_value_ifs([
+            // When targeting the rollup, never build an executable
+            ("target", "rollup".into(), Some("false")),
+            // Setting the entrypoint implies building an executable in all other cases
+            ("entrypoint", ArgPredicate::IsPresent, Some("true")),
+        ]),
         help_heading = "Linker"
     )]
     pub is_program: bool,
     /// Tells the compiler to produce a Miden library
     ///
-    /// When the target is `emu`, this defaults to true
+    /// Implied by `--target rollup`, defaults to false.
     #[arg(
         long = "lib",
         conflicts_with("is_program"),
         conflicts_with("entrypoint"),
         default_value_t = false,
-        default_value_if("target", "emu", Some("true")),
+        default_value_ifs([
+            // When an entrypoint is specified, always set the default to false
+            ("entrypoint", ArgPredicate::IsPresent, Some("false")),
+            // When targeting the rollup, we always build as a library
+            ("target", "rollup".into(), Some("true")),
+        ]),
         help_heading = "Linker"
     )]
     pub is_library: bool,
