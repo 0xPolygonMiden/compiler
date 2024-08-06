@@ -1,6 +1,6 @@
 use crate::{Felt, Word};
 
-#[link(wasm_import_module = "miden:stdlib/std_crypto_dsa")]
+#[link(wasm_import_module = "miden::stdlib::crypto::dsa")]
 extern "C" {
     #[link_name = "rpo_falcon512_verify<0x0000000000000000000000000000000000000000000000000000000000000000>"]
     fn extern_rpo_falcon512_verify(
