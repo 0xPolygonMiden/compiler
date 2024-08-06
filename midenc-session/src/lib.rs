@@ -1,3 +1,4 @@
+#![feature(debug_closure_helpers)]
 extern crate alloc;
 
 pub mod diagnostics;
@@ -76,6 +77,19 @@ pub struct Session {
     /// Statistics gathered from the current compiler session
     pub statistics: Statistics,
 }
+
+impl fmt::Debug for Session {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inputs = self.inputs.iter().map(|input| input.file_name()).collect::<Vec<_>>();
+        f.debug_struct("Session")
+            .field("options", &self.options)
+            .field("inputs", &inputs)
+            .field("output_files", &self.output_files)
+            .field("statistics", &self.statistics)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Session {
     pub fn new(
         input: InputFile,

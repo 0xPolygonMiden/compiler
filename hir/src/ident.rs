@@ -20,6 +20,17 @@ pub struct FunctionIdent {
     #[span]
     pub function: Ident,
 }
+impl FunctionIdent {
+    pub fn display(&self) -> impl fmt::Display + '_ {
+        use crate::formatter::*;
+
+        flatten(
+            const_text(self.module.as_str())
+                + const_text("::")
+                + const_text(self.function.as_str()),
+        )
+    }
+}
 impl FromStr for FunctionIdent {
     type Err = anyhow::Error;
 

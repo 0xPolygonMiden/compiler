@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, VecDeque};
 
+use miden_assembly::library::CompiledLibrary;
 use miden_core::{Program, StackInputs};
-use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Process};
+use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, MastForest, Process};
 use midenc_hir::Felt;
 use midenc_session::Session;
 
@@ -11,6 +12,7 @@ use crate::felt_conversion::{PopFromStack, TestFelt};
 pub struct MidenExecutor {
     stack: StackInputs,
     advice: AdviceInputs,
+    libraries: Vec<MastForest>,
 }
 impl MidenExecutor {
     /// Construct an executor with the given arguments on the operand stack
@@ -18,22 +20,33 @@ impl MidenExecutor {
         Self {
             stack: StackInputs::new(args).expect("invalid stack inputs"),
             advice: AdviceInputs::default(),
+            libraries: Default::default(),
         }
     }
 
     /// Set the contents of memory for the shadow stack frame of the entrypoint
-    pub fn with_advice_inputs(&mut self, advice: AdviceInputs) {
+    pub fn with_advice_inputs(&mut self, advice: AdviceInputs) -> &mut Self {
         self.advice.extend(advice);
+        self
+    }
+
+    /// Add a [CompiledLibrary] to the execution context
+    pub fn with_library(&mut self, lib: &CompiledLibrary) -> &mut Self {
+        self.libraries.push(lib.mast_forest().clone());
+        self
     }
 
     /// Execute the given program, producing a trace
-    pub fn execute(self, program: &Program, session: &Session) -> MidenExecutionTrace {
+    pub fn execute(mut self, program: &Program, session: &Session) -> MidenExecutionTrace {
         use std::collections::BTreeSet;
 
         use miden_processor::{MemAdviceProvider, ProcessState, VmStateIterator};
 
         let advice_provider = MemAdviceProvider::from(self.advice);
-        let host = DefaultHost::new(advice_provider);
+        let mut host = DefaultHost::new(advice_provider);
+        for lib in core::mem::take(&mut self.libraries) {
+            host.load_mast_forest(lib);
+        }
         //dbg!(&self.stack);
         let mut process = Process::new_debug(program.kernel().clone(), self.stack, host);
         let root_context = process.ctx();
@@ -359,7 +372,7 @@ fn render_execution_error(
         let mut labels = vec![];
         let last_op;
         let last_context_name;
-        match last_state.asmop.as_ref() {
+        match dbg!(last_state.asmop.as_ref()) {
             Some(op) => {
                 last_op = op.op().to_string();
                 last_context_name = op.context_name();

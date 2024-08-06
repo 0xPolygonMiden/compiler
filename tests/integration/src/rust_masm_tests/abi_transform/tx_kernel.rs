@@ -38,7 +38,7 @@ end
     let main_fn = "() -> Vec<Felt> { get_inputs() }";
     let artifact_name = format!("abi_transform_tx_kernel_get_inputs_{}", test_name);
     let mut test_builder =
-        CompilerTestBuilder::rust_fn_body_with_sdk(&artifact_name, main_fn, true, &[]);
+        CompilerTestBuilder::rust_fn_body_with_sdk(artifact_name.clone(), main_fn, true, None);
     test_builder.link_with_masm_module("miden::note", masm);
     let mut test = test_builder.build();
 
