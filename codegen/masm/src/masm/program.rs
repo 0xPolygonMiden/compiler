@@ -322,11 +322,9 @@ impl Program {
     // Assemble this program to MAST
     pub fn assemble(&self, session: &Session) -> Result<Arc<miden_core::Program>, Report> {
         use miden_assembly::{Assembler, CompileOptions};
-        use miden_stdlib::StdLibrary;
 
         let mut assembler = Assembler::new(session.source_manager.clone())
-            .with_debug_mode(session.options.emit_debug_decorators())
-            .with_compiled_library(&StdLibrary::default())?;
+            .with_debug_mode(session.options.emit_debug_decorators());
 
         // Link extra libraries
         for library in self.library.libraries.iter() {
@@ -515,11 +513,9 @@ impl Library {
     // Assemble this library to MAST
     pub fn assemble(&self, session: &Session) -> Result<Arc<CompiledLibrary>, Report> {
         use miden_assembly::Assembler;
-        use miden_stdlib::StdLibrary;
 
         let mut assembler = Assembler::new(session.source_manager.clone())
-            .with_debug_mode(session.options.emit_debug_decorators())
-            .with_compiled_library(&StdLibrary::default())?;
+            .with_debug_mode(session.options.emit_debug_decorators());
 
         // Link extra libraries
         for library in self.libraries.iter() {
