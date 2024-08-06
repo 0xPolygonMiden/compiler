@@ -11,6 +11,7 @@ use std::{
 };
 
 use miden_assembly::LibraryPath;
+use midenc_codegen_masm::Program;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
 use midenc_hir::{FunctionIdent, Ident, SourceSpan, Symbol};
 use midenc_session::{InputFile, InputType, OutputType, Session};
@@ -998,8 +999,14 @@ impl CompilerTest {
         let output = midenc_compile::compile_to_memory(self.session.clone())
             .unwrap()
             .expect("no codegen outputs produced, was linking disabled?");
-        let midenc_codegen_masm::MasmArtifact::Executable(program) = output else {
-            panic!("expected executable output, got library");
+        let program = match output {
+            midenc_codegen_masm::MasmArtifact::Executable(program) => program,
+            midenc_codegen_masm::MasmArtifact::Library(lib) => {
+                let Some(entrypoint) = self.entrypoint else {
+                    panic!("Cannot make a Program out of a Library with an empty entrypoint");
+                };
+                Program::from_lib(entrypoint, *lib).into()
+            }
         };
         let src = program.to_string();
         let vm_prog = program.assemble(&self.session).map_err(format_report);

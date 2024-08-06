@@ -76,6 +76,14 @@ impl Program {
         })
     }
 
+    /// Create a new [Program] from a [Library] and an entrypoint
+    pub fn from_lib(entrypoint: FunctionIdent, library: Library) -> Self {
+        Self {
+            library,
+            entrypoint,
+        }
+    }
+
     /// Link this [Program] against the given kernel during assembly
     pub fn link_kernel(&mut self, kernel: KernelLibrary) {
         self.library.link_kernel(kernel);
