@@ -13,8 +13,6 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::hash_map;
-
 use midenc_hir::{
     cranelift_entity::packed_option::ReservedValue,
     diagnostics::{DiagnosticsHandler, IntoDiagnostic, Report, Severity, SourceSpan},
@@ -22,7 +20,6 @@ use midenc_hir::{
     Type::*,
     Value,
 };
-use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
 
 use crate::{
@@ -512,100 +509,6 @@ pub fn translate_operator(
     Ok(())
 }
 
-fn translate_br_table(
-    targets: &wasmparser::BrTable<'_>,
-    state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt,
-    span: SourceSpan,
-) -> Result<(), Report> {
-    let default = targets.default();
-    let mut min_depth = default;
-    for depth in targets.targets() {
-        let depth = depth.into_diagnostic()?;
-        if depth < min_depth {
-            min_depth = depth;
-        }
-    }
-    let jump_args_count = {
-        let i = state.control_stack.len() - 1 - (min_depth as usize);
-        let min_depth_frame = &state.control_stack[i];
-        if min_depth_frame.is_loop() {
-            min_depth_frame.num_param_values()
-        } else {
-            min_depth_frame.num_return_values()
-        }
-    };
-    let val = state.pop1();
-    let val = if builder.data_flow_graph().value_type(val) != &U32 {
-        builder.ins().cast(val, U32, span)
-    } else {
-        val
-    };
-    let mut data = Vec::with_capacity(targets.len() as usize);
-    if jump_args_count == 0 {
-        // No jump arguments
-        for depth in targets.targets() {
-            let depth = depth.into_diagnostic()?;
-            let block = {
-                let i = state.control_stack.len() - 1 - (depth as usize);
-                let frame = &mut state.control_stack[i];
-                frame.set_branched_to_exit();
-                frame.br_destination()
-            };
-            data.push((depth, block));
-        }
-        let def_block = {
-            let i = state.control_stack.len() - 1 - (default as usize);
-            let frame = &mut state.control_stack[i];
-            frame.set_branched_to_exit();
-            frame.br_destination()
-        };
-        builder.ins().switch(val, data, def_block, span);
-    } else {
-        // Here we have jump arguments, but Midens's switch op doesn't support them
-        // We then proceed to split the edges going out of the br_table
-        let return_count = jump_args_count;
-        let mut dest_block_sequence = vec![];
-        let mut dest_block_map = FxHashMap::default();
-        for depth in targets.targets() {
-            let depth = depth.into_diagnostic()?;
-            let branch_block = match dest_block_map.entry(depth as usize) {
-                hash_map::Entry::Occupied(entry) => *entry.get(),
-                hash_map::Entry::Vacant(entry) => {
-                    let block = builder.create_block();
-                    dest_block_sequence.push((depth as usize, block));
-                    *entry.insert(block)
-                }
-            };
-            data.push((depth, branch_block));
-        }
-        let default_branch_block = match dest_block_map.entry(default as usize) {
-            hash_map::Entry::Occupied(entry) => *entry.get(),
-            hash_map::Entry::Vacant(entry) => {
-                let block = builder.create_block();
-                dest_block_sequence.push((default as usize, block));
-                *entry.insert(block)
-            }
-        };
-        builder.ins().switch(val, data, default_branch_block, span);
-        for (depth, dest_block) in dest_block_sequence {
-            builder.switch_to_block(dest_block);
-            builder.seal_block(dest_block);
-            let real_dest_block = {
-                let i = state.control_stack.len() - 1 - depth;
-                let frame = &mut state.control_stack[i];
-                frame.set_branched_to_exit();
-                frame.br_destination()
-            };
-            let destination_args = state.peekn_mut(return_count);
-            builder.ins().br(real_dest_block, destination_args, span);
-        }
-        state.popn(return_count);
-    }
-    state.reachable = false;
-    Ok(())
-}
-
 fn translate_load(
     ptr_ty: Type,
     memarg: &MemArg,
@@ -842,6 +745,66 @@ fn translate_br_if_args(
     };
     let inputs = state.peekn_mut(return_count);
     (br_destination, inputs)
+}
+
+fn translate_br_table(
+    br_targets: &wasmparser::BrTable<'_>,
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt,
+    span: SourceSpan,
+) -> Result<(), Report> {
+    let mut targets = Vec::default();
+    for depth in br_targets.targets() {
+        let depth = depth.into_diagnostic()?;
+
+        targets.push(depth);
+    }
+    targets.sort();
+
+    let default_depth = br_targets.default();
+    let min_depth =
+        core::cmp::min(targets.iter().copied().min().unwrap_or(default_depth), default_depth);
+
+    let argc = {
+        let i = state.control_stack.len() - 1 - (min_depth as usize);
+        let min_depth_frame = &state.control_stack[i];
+        if min_depth_frame.is_loop() {
+            min_depth_frame.num_param_values()
+        } else {
+            min_depth_frame.num_return_values()
+        }
+    };
+
+    let default_block = {
+        let i = state.control_stack.len() - 1 - (default_depth as usize);
+        let frame = &mut state.control_stack[i];
+        frame.set_branched_to_exit();
+        frame.br_destination()
+    };
+
+    let val = state.pop1();
+    let val = if builder.data_flow_graph().value_type(val) != &U32 {
+        builder.ins().cast(val, U32, span)
+    } else {
+        val
+    };
+
+    let switch_builder = builder.ins().switch(val, span);
+    let switch_builder = targets.into_iter().fold(switch_builder, |acc, depth| {
+        let block = {
+            let i = state.control_stack.len() - 1 - (depth as usize);
+            let frame = &mut state.control_stack[i];
+            frame.set_branched_to_exit();
+            frame.br_destination()
+        };
+        let args = state.peekn_mut(argc);
+        acc.case(depth, block, args)
+    });
+    switch_builder.or_else(default_block, state.peekn_mut(argc));
+
+    state.popn(argc);
+    state.reachable = false;
+    Ok(())
 }
 
 fn translate_block(

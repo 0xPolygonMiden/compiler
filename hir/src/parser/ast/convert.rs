@@ -389,8 +389,10 @@ fn try_insert_inst(
                     );
                     Some(Instruction::Br(crate::Br {
                         op,
-                        destination: successor.id,
-                        args,
+                        successor: crate::Successor {
+                            destination: successor.id,
+                            args,
+                        },
                     }))
                 }
                 Err(_) => None,
@@ -452,8 +454,14 @@ fn try_insert_inst(
                 Some(Instruction::CondBr(crate::CondBr {
                     op,
                     cond: cond.into_inner(),
-                    then_dest: (then_dest.id, then_args),
-                    else_dest: (else_dest.id, else_args),
+                    then_dest: crate::Successor {
+                        destination: then_dest.id,
+                        args: then_args,
+                    },
+                    else_dest: crate::Successor {
+                        destination: else_dest.id,
+                        args: else_args,
+                    },
                 }))
             } else {
                 None
@@ -489,7 +497,17 @@ fn try_insert_inst(
                     is_valid = false;
                 }
                 let successor = arm.into_inner().1;
-                arms.push((discriminant, successor.id));
+                let successor_args = crate::ValueList::from_iter(
+                    successor.args.iter().map(|arg| arg.into_inner()),
+                    &mut function.dfg.value_lists,
+                );
+                arms.push(crate::SwitchArm {
+                    value: discriminant,
+                    successor: crate::Successor {
+                        destination: successor.id,
+                        args: successor_args,
+                    },
+                });
                 match is_valid_successor(
                     &successor,
                     span,
@@ -508,6 +526,11 @@ fn try_insert_inst(
                     }
                 }
             }
+
+            let fallback_args = crate::ValueList::from_iter(
+                fallback.args.iter().map(|arg| arg.into_inner()),
+                &mut function.dfg.value_lists,
+            );
             match is_valid_successor(
                 &fallback,
                 span,
@@ -531,7 +554,10 @@ fn try_insert_inst(
                     op,
                     arg: selector.into_inner(),
                     arms,
-                    default: fallback.id,
+                    default: crate::Successor {
+                        destination: fallback.id,
+                        args: fallback_args,
+                    },
                 }))
             } else {
                 None

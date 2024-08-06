@@ -647,24 +647,24 @@ impl<'a> fmt::Display for CfgPrinter<'a> {
                         let opcode = self.function.dfg.inst(last_inst).opcode();
                         writeln!(f, "    {block_id} --> {opcode}")?;
                     }
-                    BranchInfo::SingleDest(succ, _) => {
+                    BranchInfo::SingleDest(info) => {
                         assert!(
-                            self.function.dfg.is_block_linked(succ),
+                            self.function.dfg.is_block_linked(info.destination),
                             "reference to detached block in attached block {}",
-                            succ
+                            info.destination
                         );
-                        writeln!(f, "    {block_id} --> {succ}")?;
-                        block_q.push_back(succ);
+                        writeln!(f, "    {block_id} --> {}", info.destination)?;
+                        block_q.push_back(info.destination);
                     }
-                    BranchInfo::MultiDest(ref jts) => {
-                        for jt in jts {
+                    BranchInfo::MultiDest(ref infos) => {
+                        for info in infos {
                             assert!(
-                                self.function.dfg.is_block_linked(jt.destination),
+                                self.function.dfg.is_block_linked(info.destination),
                                 "reference to detached block in attached block {}",
-                                jt.destination
+                                info.destination
                             );
-                            writeln!(f, "    {block_id} --> {}", jt.destination)?;
-                            block_q.push_back(jt.destination);
+                            writeln!(f, "    {block_id} --> {}", info.destination)?;
+                            block_q.push_back(info.destination);
                         }
                     }
                 }

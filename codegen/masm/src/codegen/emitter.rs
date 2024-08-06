@@ -308,14 +308,14 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     /// current block, up to the terminator, and then emit instructions to either continue the
     /// loop, or exit the current loop to the target loop.
     fn emit_br(&mut self, inst_info: &InstInfo, op: &hir::Br, tasks: &mut Tasks) {
-        let destination = op.destination;
+        let destination = op.successor.destination;
 
         let is_first_visit = !self.visited;
         let in_loop_header = self.block_info.is_loop_header();
 
         // Move block arguments into position
         let span = self.function.f.dfg.inst_span(inst_info.inst);
-        let args = op.args.as_slice(&self.function.f.dfg.value_lists);
+        let args = op.successor.args.as_slice(&self.function.f.dfg.value_lists);
         self.schedule_operands(args, inst_info.block_arguments(destination), span)
             .unwrap_or_else(|err| {
                 panic!("failed to schedule operands for {}: {err:?}", inst_info.inst)
@@ -366,8 +366,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
 
     fn emit_cond_br(&mut self, inst_info: &InstInfo, op: &hir::CondBr, tasks: &mut Tasks) {
         let cond = op.cond;
-        let then_dest = op.then_dest.0;
-        let else_dest = op.else_dest.0;
+        let then_dest = op.then_dest.destination;
+        let else_dest = op.else_dest.destination;
 
         // Ensure `cond` is on top of the stack, and remove it at the same time
         assert_eq!(
@@ -393,8 +393,10 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
                 self.emit_op(Op::If(then_blk, else_blk), span);
             }
 
-            let successors =
-                [(then_dest, then_blk, op.then_dest.1), (else_dest, else_blk, op.else_dest.1)];
+            let successors = [
+                (then_dest, then_blk, op.then_dest.args),
+                (else_dest, else_blk, op.else_dest.args),
+            ];
             for (block, masm_block, args) in successors.into_iter() {
                 // Make a copy of the operand stack in the current block
                 // to be used as the state of the operand stack in the

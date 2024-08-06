@@ -1,8 +1,9 @@
 use core::ops::{Deref, DerefMut};
+use std::collections::BTreeSet;
 
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedListLink};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use self::formatter::PrettyPrint;
 use crate::{
@@ -127,15 +128,26 @@ impl Instruction {
                 ..call.clone()
             }),
             Self::Br(br) => Self::Br(Br {
-                args: br.args.deep_clone(value_lists),
+                successor: br.successor.deep_clone(value_lists),
                 ..br.clone()
             }),
             Self::CondBr(br) => Self::CondBr(CondBr {
-                then_dest: (br.then_dest.0, br.then_dest.1.deep_clone(value_lists)),
-                else_dest: (br.else_dest.0, br.else_dest.1.deep_clone(value_lists)),
+                then_dest: br.then_dest.deep_clone(value_lists),
+                else_dest: br.else_dest.deep_clone(value_lists),
                 ..br.clone()
             }),
-            Self::Switch(op) => Self::Switch(op.clone()),
+            Self::Switch(op) => Self::Switch(Switch {
+                arms: op
+                    .arms
+                    .iter()
+                    .map(|arm| SwitchArm {
+                        value: arm.value,
+                        successor: arm.successor.deep_clone(value_lists),
+                    })
+                    .collect(),
+                default: op.default.deep_clone(value_lists),
+                ..op.clone()
+            }),
             Self::Ret(op) => Self::Ret(Ret {
                 args: op.args.deep_clone(value_lists),
                 ..op.clone()
@@ -257,23 +269,27 @@ impl Instruction {
 
     pub fn analyze_branch<'a>(&'a self, pool: &'a ValueListPool) -> BranchInfo<'a> {
         match self {
-            Self::Br(ref b) => BranchInfo::SingleDest(b.destination, b.args.as_slice(pool)),
+            Self::Br(Br { successor, .. }) => {
+                BranchInfo::SingleDest(SuccessorInfo::new(successor, pool))
+            }
             Self::CondBr(CondBr {
                 ref then_dest,
                 ref else_dest,
                 ..
             }) => BranchInfo::MultiDest(vec![
-                JumpTable::new(then_dest.0, then_dest.1.as_slice(pool)),
-                JumpTable::new(else_dest.0, else_dest.1.as_slice(pool)),
+                SuccessorInfo::new(then_dest, pool),
+                SuccessorInfo::new(else_dest, pool),
             ]),
             Self::Switch(Switch {
                 ref arms,
                 ref default,
                 ..
             }) => {
-                let mut targets =
-                    arms.iter().map(|(_, b)| JumpTable::new(*b, &[])).collect::<Vec<_>>();
-                targets.push(JumpTable::new(*default, &[]));
+                let mut targets = arms
+                    .iter()
+                    .map(|succ| SuccessorInfo::new(&succ.successor, pool))
+                    .collect::<Vec<_>>();
+                targets.push(SuccessorInfo::new(default, pool));
                 BranchInfo::MultiDest(targets)
             }
             _ => BranchInfo::NotABranch,
@@ -291,19 +307,8 @@ impl Instruction {
 #[derive(Debug)]
 pub enum BranchInfo<'a> {
     NotABranch,
-    SingleDest(Block, &'a [Value]),
-    MultiDest(Vec<JumpTable<'a>>),
-}
-
-#[derive(Debug)]
-pub struct JumpTable<'a> {
-    pub destination: Block,
-    pub args: &'a [Value],
-}
-impl<'a> JumpTable<'a> {
-    pub fn new(destination: Block, args: &'a [Value]) -> Self {
-        Self { destination, args }
-    }
+    SingleDest(SuccessorInfo<'a>),
+    MultiDest(Vec<SuccessorInfo<'a>>),
 }
 
 pub enum CallInfo<'a> {
@@ -1009,10 +1014,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub struct Br {
     pub op: Opcode,
-    pub destination: Block,
-    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
-    /// the stack is the first block argument
-    pub args: ValueList,
+    pub successor: Successor,
 }
 
 /// Conditional Branch
@@ -1020,12 +1022,8 @@ pub struct Br {
 pub struct CondBr {
     pub op: Opcode,
     pub cond: Value,
-    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
-    /// the stack is the first block argument
-    pub then_dest: (Block, ValueList),
-    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
-    /// the stack is the first block argument
-    pub else_dest: (Block, ValueList),
+    pub then_dest: Successor,
+    pub else_dest: Successor,
 }
 
 /// Multi-way Branch w/Selector
@@ -1033,8 +1031,82 @@ pub struct CondBr {
 pub struct Switch {
     pub op: Opcode,
     pub arg: Value,
-    pub arms: Vec<(u32, Block)>,
-    pub default: Block,
+    pub arms: Vec<SwitchArm>,
+    pub default: Successor,
+}
+
+#[derive(Debug, Clone)]
+pub struct SwitchArm {
+    pub value: u32,
+    pub successor: Successor,
+}
+
+#[derive(Debug, Clone)]
+pub struct Successor {
+    pub destination: Block,
+    /// NOTE: Block arguments are always in stack order, i.e. the top operand on
+    /// the stack is the first block argument
+    pub args: ValueList,
+}
+impl Successor {
+    pub fn deep_clone(&self, pool: &mut ValueListPool) -> Self {
+        Self {
+            destination: self.destination,
+            args: self.args.deep_clone(pool),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SuccessorInfo<'a> {
+    pub destination: Block,
+    pub args: &'a [Value],
+}
+impl<'a> SuccessorInfo<'a> {
+    pub fn new(successor: &Successor, pool: &'a ValueListPool) -> Self {
+        Self {
+            destination: successor.destination,
+            args: successor.args.as_slice(pool),
+        }
+    }
+}
+impl<'a> formatter::PrettyPrint for SuccessorInfo<'a> {
+    fn render(&self) -> miden_core::prettier::Document {
+        use crate::formatter::*;
+
+        if self.args.is_empty() {
+            return self.destination.render();
+        }
+
+        let args = self
+            .args
+            .iter()
+            .copied()
+            .map(display)
+            .reduce(|acc, arg| acc + const_text(" ") + arg)
+            .map(|args| const_text(" ") + args)
+            .unwrap_or_default();
+        const_text("(")
+            + const_text("block")
+            + const_text(" ")
+            + display(self.destination.as_u32())
+            + args
+            + const_text(")")
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SuccessorInfoMut<'a> {
+    pub destination: Block,
+    pub args: &'a mut [Value],
+}
+impl<'a> SuccessorInfoMut<'a> {
+    pub fn new(successor: &'a mut Successor, pool: &'a mut ValueListPool) -> Self {
+        Self {
+            destination: successor.destination,
+            args: successor.args.as_mut_slice(pool),
+        }
+    }
 }
 
 /// Return
@@ -1124,20 +1196,31 @@ impl<'a> PartialEq for InstructionWithValueListPool<'a> {
                     && l.args.as_slice(self.value_lists) == r.args.as_slice(self.value_lists)
             }
             (Instruction::Br(l), Instruction::Br(r)) => {
-                l.destination == r.destination
-                    && l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
+                let l = SuccessorInfo::new(&l.successor, self.value_lists);
+                let r = SuccessorInfo::new(&r.successor, self.value_lists);
+                l == r
             }
             (Instruction::CondBr(l), Instruction::CondBr(r)) => {
-                l.cond == r.cond
-                    && l.then_dest.0 == r.then_dest.0
-                    && l.else_dest.0 == r.else_dest.0
-                    && l.then_dest.1.as_slice(self.value_lists)
-                        == r.then_dest.1.as_slice(other.value_lists)
-                    && l.else_dest.1.as_slice(self.value_lists)
-                        == r.else_dest.1.as_slice(other.value_lists)
+                let l_then = SuccessorInfo::new(&l.then_dest, self.value_lists);
+                let l_else = SuccessorInfo::new(&l.else_dest, self.value_lists);
+                let r_then = SuccessorInfo::new(&r.then_dest, self.value_lists);
+                let r_else = SuccessorInfo::new(&r.else_dest, self.value_lists);
+                l.cond == r.cond && l_then == r_then && l_else == r_else
             }
             (Instruction::Switch(l), Instruction::Switch(r)) => {
-                l.arg == r.arg && l.default == r.default && l.arms == r.arms
+                if l.arg != r.arg {
+                    return false;
+                }
+                let l_arms = BTreeSet::from_iter(
+                    l.arms.iter().map(|arm| SuccessorInfo::new(&arm.successor, self.value_lists)),
+                );
+                let r_arms = BTreeSet::from_iter(
+                    r.arms.iter().map(|arm| SuccessorInfo::new(&arm.successor, self.value_lists)),
+                );
+                let same_arms = l_arms == r_arms;
+                let same_default = SuccessorInfo::new(&l.default, self.value_lists)
+                    == SuccessorInfo::new(&r.default, self.value_lists);
+                same_arms && same_default
             }
             (Instruction::Ret(l), Instruction::Ret(r)) => {
                 l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
@@ -1288,94 +1371,42 @@ impl<'a> formatter::PrettyPrint for InstPrettyPrinter<'a> {
             }
             Instruction::CondBr(CondBr {
                 cond,
-                then_dest,
-                else_dest,
+                ref then_dest,
+                ref else_dest,
                 ..
-            }) => {
-                let then_dest = if then_dest.1.is_empty() {
-                    then_dest.0.render()
-                } else {
-                    let then_args = then_dest
-                        .1
-                        .as_slice(&self.dfg.value_lists)
-                        .iter()
-                        .copied()
-                        .map(display)
-                        .reduce(|acc, arg| acc + const_text(" ") + arg)
-                        .map(|args| const_text(" ") + args)
-                        .unwrap_or_default();
-                    const_text("(")
-                        + const_text("block")
-                        + const_text(" ")
-                        + display(then_dest.0.as_u32())
-                        + then_args
-                        + const_text(")")
-                };
-                let else_dest = if else_dest.1.is_empty() {
-                    else_dest.0.render()
-                } else {
-                    let else_args = else_dest
-                        .1
-                        .as_slice(&self.dfg.value_lists)
-                        .iter()
-                        .copied()
-                        .map(display)
-                        .reduce(|acc, arg| acc + const_text(" ") + arg)
-                        .map(|args| const_text(" ") + args)
-                        .unwrap_or_default();
-                    const_text("(")
-                        + const_text("block")
-                        + const_text(" ")
-                        + display(else_dest.0.as_u32())
-                        + else_args
-                        + const_text(")")
-                };
-                (vec![], vec![display(*cond), then_dest, else_dest])
-            }
-            Instruction::Br(Br {
-                destination, args, ..
-            }) => {
-                if args.is_empty() {
-                    (vec![], vec![destination.render()])
-                } else {
-                    let dest_args = args
-                        .as_slice(&self.dfg.value_lists)
-                        .iter()
-                        .copied()
-                        .map(display)
-                        .reduce(|acc, e| acc + const_text(" ") + e)
-                        .map(|args| const_text(" ") + args)
-                        .unwrap_or_default();
-                    let dest = const_text("(")
-                        + const_text("block")
-                        + const_text(" ")
-                        + display(destination.as_u32())
-                        + dest_args
-                        + const_text(")");
-                    (vec![], vec![dest])
-                }
+            }) => (
+                vec![],
+                vec![
+                    display(*cond),
+                    SuccessorInfo::new(then_dest, &self.dfg.value_lists).render(),
+                    SuccessorInfo::new(else_dest, &self.dfg.value_lists).render(),
+                ],
+            ),
+            Instruction::Br(Br { ref successor, .. }) => {
+                (vec![], vec![SuccessorInfo::new(successor, &self.dfg.value_lists).render()])
             }
             Instruction::Switch(Switch {
-                arg, arms, default, ..
+                arg,
+                arms,
+                ref default,
+                ..
             }) => {
                 let default = const_text("(")
                     + const_text("_")
                     + const_text(" ")
                     + const_text(".")
                     + const_text(" ")
-                    + const_text("(")
-                    + display(*default)
-                    + const_text(")")
+                    + SuccessorInfo::new(default, &self.dfg.value_lists).render()
                     + const_text(")");
                 let arms = arms
                     .iter()
-                    .map(|(value, dest)| {
+                    .map(|arm| {
                         const_text("(")
-                            + display(*value)
+                            + display(arm.value)
                             + const_text(" ")
                             + const_text(".")
                             + const_text(" ")
-                            + dest.render()
+                            + SuccessorInfo::new(&arm.successor, &self.dfg.value_lists).render()
                             + const_text(")")
                     })
                     .chain(core::iter::once(default))
