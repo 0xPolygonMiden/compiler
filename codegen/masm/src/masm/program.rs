@@ -86,6 +86,11 @@ impl Program {
         self.library.link_library(library);
     }
 
+    /// Get the set of [CompiledLibrary] this program links against
+    pub fn link_libraries(&self) -> &[CompiledLibrary] {
+        self.library.link_libraries()
+    }
+
     /// Generate an executable module which when run expects the raw data segment data to be
     /// provided on the advice stack in the same order as initialization, and the operands of
     /// the entrypoint function on the operand stack.
@@ -443,6 +448,11 @@ impl Library {
     /// Link this [Library] against the given library during assembly
     pub fn link_library(&mut self, library: CompiledLibrary) {
         self.libraries.push(library);
+    }
+
+    /// Get the set of [CompiledLibrary] this library links against
+    pub fn link_libraries(&self) -> &[CompiledLibrary] {
+        self.libraries.as_slice()
     }
 
     /// Freezes this library, preventing further modifications

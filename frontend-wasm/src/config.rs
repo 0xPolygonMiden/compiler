@@ -1,4 +1,4 @@
-use alloc::{borrow::Cow, collections::BTreeMap};
+use alloc::{borrow::Cow, collections::BTreeMap, fmt};
 
 use miden_core::crypto::hash::RpoDigest;
 use midenc_hir::InterfaceFunctionIdent;
@@ -6,10 +6,15 @@ use midenc_hir::InterfaceFunctionIdent;
 /// Represents Miden VM codegen metadata for a function import.
 /// This struct will have more fields in the future e.g. where the function
 /// for this MAST hash is located (to be loaded by the VM)
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ImportMetadata {
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
+}
+impl fmt::Debug for ImportMetadata {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entry(&"digest", &self.digest.to_hex()).finish()
+    }
 }
 
 /// Configuration for the WASM translation.

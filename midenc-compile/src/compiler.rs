@@ -77,6 +77,7 @@ pub struct CompilerOptions {
         value_name = "LEVEL",
         default_value_t = Verbosity::Info,
         default_missing_value = "debug",
+        num_args(0..=1),
         help_heading = "Diagnostics"
     )]
     pub verbosity: Verbosity,
@@ -88,11 +89,19 @@ pub struct CompilerOptions {
         value_name = "LEVEL",
         default_value_t = Warnings::All,
         default_missing_value = "all",
+        num_args(0..=1),
         help_heading = "Diagnostics"
     )]
     pub warn: Warnings,
     /// Whether, and how, to color terminal output
-    #[arg(long, value_enum, default_value_t = ColorChoice::Auto, default_missing_value = "auto", help_heading = "Diagnostics")]
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = ColorChoice::Auto,
+        default_missing_value = "auto",
+        num_args(0..=1),
+        help_heading = "Diagnostics"
+    )]
     pub color: ColorChoice,
     /// The target environment to compile for
     #[arg(
@@ -198,7 +207,8 @@ pub struct CompilerOptions {
         value_name = "LEVEL",
         next_line_help(true),
         default_value_t = OptLevel::None,
-        default_missing_value = "none",
+        default_missing_value = "balanced",
+        num_args(0..=1),
         help_heading = "Output"
     )]
     pub opt_level: OptLevel,
@@ -239,14 +249,12 @@ impl CompilerOptions {
     pub fn parse_options(extra_args: &[&str]) -> midenc_session::Options {
         let command = <TestCompiler as clap::CommandFactory>::command();
         let command = crate::register_flags(command);
-        let mut matches = command
-            .try_get_matches_from(extra_args)
-            .expect("expected default arguments to parse successfully");
+        let mut matches = command.try_get_matches_from(extra_args).unwrap_or_else(|err| err.exit());
         let compile_matches = matches.clone();
 
         let copts = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<TestCompiler>)
-            .unwrap_or_else(|err| panic!("{err}"));
+            .unwrap_or_else(|err| err.exit());
 
         copts.into_options(None, None).with_arg_matches(compile_matches)
     }

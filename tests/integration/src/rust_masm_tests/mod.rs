@@ -27,7 +27,10 @@ pub fn run_masm_vs_rust<T>(
 where
     T: Clone + PopFromStack + std::cmp::PartialEq + std::fmt::Debug,
 {
-    let exec = MidenExecutor::new(args.to_vec());
+    let mut exec = MidenExecutor::new(args.to_vec());
+    for lib in ir_program.link_libraries() {
+        exec.with_library(lib);
+    }
     let output = exec.execute_into(vm_program, session);
     prop_assert_eq!(rust_out.clone(), output, "VM output mismatch");
     // TODO: Uncomment after https://github.com/0xPolygonMiden/compiler/issues/228 is fixed

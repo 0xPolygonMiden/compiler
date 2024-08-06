@@ -13,7 +13,6 @@ use crate::{
 };
 
 /// This struct contains all of the configuration options for the compiler
-#[derive(Debug)]
 pub struct Options {
     /// The name of the program being compiled
     pub name: Option<String>,
@@ -49,6 +48,58 @@ pub struct Options {
     /// by any downstream crates that register custom flags
     arg_matches: clap::ArgMatches,
 }
+
+impl fmt::Debug for Options {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Options")
+            .field("name", &self.name)
+            .field("project_type", &self.project_type)
+            .field("entrypoint", &self.entrypoint)
+            .field("target", &self.target)
+            .field("optimize", &self.optimize)
+            .field("debug", &self.debug)
+            .field("output_types", &self.output_types)
+            .field("search_paths", &self.search_paths)
+            .field("link_libraries", &self.link_libraries)
+            .field("sysroot", &self.sysroot)
+            .field("color", &self.color)
+            .field("diagnostics", &self.diagnostics)
+            .field("current_dir", &self.current_dir)
+            .field("print_ir_after_all", &self.print_ir_after_all)
+            .field("print_ir_after_pass", &self.print_ir_after_pass)
+            .field_with("extra_arguments", |f| {
+                let mut map = f.debug_map();
+                for id in self.arg_matches.ids() {
+                    use clap::parser::ValueSource;
+                    // Don't print CompilerOptions arg group
+                    if id.as_str() == "CompilerOptions" {
+                        continue;
+                    }
+                    // Don't print default values
+                    if matches!(
+                        self.arg_matches.value_source(id.as_str()),
+                        Some(ValueSource::DefaultValue)
+                    ) {
+                        continue;
+                    }
+                    map.key(&id.as_str()).value_with(|f| {
+                        let mut list = f.debug_list();
+                        if let Some(occurs) = self
+                            .arg_matches
+                            .try_get_raw_occurrences(id.as_str())
+                            .expect("expected flag")
+                        {
+                            list.entries(occurs.flat_map(|o| o));
+                        }
+                        list.finish()
+                    });
+                }
+                map.finish()
+            })
+            .finish()
+    }
+}
+
 impl Default for Options {
     fn default() -> Self {
         let current_dir = std::env::current_dir().expect("could not get working directory");
@@ -57,6 +108,7 @@ impl Default for Options {
         Self::new(target, project_type, current_dir, None)
     }
 }
+
 impl Options {
     pub fn new(
         target: TargetEnv,

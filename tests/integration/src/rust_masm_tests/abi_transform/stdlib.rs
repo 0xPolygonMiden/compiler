@@ -25,7 +25,7 @@ fn test_blake3_hash() {
         artifact_name,
         &main_fn,
         true,
-        &["--test-harness"],
+        ["--test-harness".into()],
     );
     // Test expected compilation artifacts
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
