@@ -67,7 +67,7 @@ impl Program {
 
     /// Returns true if this program has a defined entrypoint
     pub fn has_entrypoint(&self) -> bool {
-        self.entrypoint().is_none()
+        self.entrypoint().is_some()
     }
 
     /// Returns true if this program is executable.
