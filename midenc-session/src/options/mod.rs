@@ -89,7 +89,7 @@ impl fmt::Debug for Options {
                             .try_get_raw_occurrences(id.as_str())
                             .expect("expected flag")
                         {
-                            list.entries(occurs.flat_map(|o| o));
+                            list.entries(occurs.flatten());
                         }
                         list.finish()
                     });

@@ -18,10 +18,10 @@ use std::{
 };
 
 /// The version associated with the current compiler toolchain
-pub const MIDENC_BUILD_VERSION: &'static str = env!("MIDENC_BUILD_VERSION");
+pub const MIDENC_BUILD_VERSION: &str = env!("MIDENC_BUILD_VERSION");
 
 /// The git revision associated with the current compiler toolchain
-pub const MIDENC_BUILD_REV: &'static str = env!("MIDENC_BUILD_REV");
+pub const MIDENC_BUILD_REV: &str = env!("MIDENC_BUILD_REV");
 
 use clap::ValueEnum;
 use midenc_hir_symbol::Symbol;
@@ -101,7 +101,7 @@ impl Session {
         source_manager: Arc<dyn SourceManager>,
     ) -> Self {
         let diagnostics = Arc::new(DiagnosticsHandler::new(
-            options.diagnostics.clone(),
+            options.diagnostics,
             source_manager.clone(),
             emitter.unwrap_or_else(|| options.default_emitter()),
         ));

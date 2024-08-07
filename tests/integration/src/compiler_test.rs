@@ -7,6 +7,7 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    rc::Rc,
     sync::Arc,
 };
 
@@ -228,13 +229,10 @@ impl CompilerTestBuilder {
             CompilerTestInputType::CargoComponent(ref mut config) => config.name.as_ref(),
             CompilerTestInputType::Rustc(ref mut config) => config.name.as_ref(),
         };
-        let entrypoint = match entrypoint.as_deref() {
-            Some(entry) => Some(FunctionIdent {
-                module: Ident::with_empty_span(Symbol::intern(name)),
-                function: Ident::with_empty_span(Symbol::intern(entry)),
-            }),
-            None => None,
-        };
+        let entrypoint = entrypoint.as_deref().map(|entry| FunctionIdent {
+            module: Ident::with_empty_span(Symbol::intern(name)),
+            function: Ident::with_empty_span(Symbol::intern(entry)),
+        });
         rustflags.extend([
             // Enable bulk-memory features (e.g. native memcpy/memset instructions)
             "-C".into(),
@@ -299,7 +297,7 @@ impl CompilerTestBuilder {
         &mut self,
         flags: impl IntoIterator<Item = Cow<'static, str>>,
     ) -> &mut Self {
-        self.midenc_flags.extend(flags.into_iter().map(|flag| flag.into()));
+        self.midenc_flags.extend(flags);
         self
     }
 
@@ -308,7 +306,7 @@ impl CompilerTestBuilder {
         &mut self,
         flags: impl IntoIterator<Item = Cow<'static, str>>,
     ) -> &mut Self {
-        self.rustflags.extend(flags.into_iter().map(|flag| flag.into()));
+        self.rustflags.extend(flags);
         self
     }
 
@@ -832,7 +830,7 @@ pub struct CompilerTest {
     /// The Wasm translation configuration
     pub config: WasmTranslationConfig,
     /// The compiler session
-    pub session: Arc<Session>,
+    pub session: Rc<Session>,
     /// The artifact name from which this test is derived
     artifact_name: Cow<'static, str>,
     /// The entrypoint function to use when building the IR
@@ -1198,13 +1196,13 @@ fn wasm_to_wat(wasm_bytes: &[u8]) -> String {
     wat
 }
 
-fn dummy_session(flags: &[&str]) -> Arc<Session> {
+fn dummy_session(flags: &[&str]) -> Rc<Session> {
     let dummy = InputFile::from_path(PathBuf::from("dummy.wasm")).unwrap();
     default_session([dummy], flags)
 }
 
 /// Create a default session for testing
-pub fn default_session<S, I>(inputs: I, extra_flags: &[S]) -> Arc<Session>
+pub fn default_session<S, I>(inputs: I, extra_flags: &[S]) -> Rc<Session>
 where
     I: IntoIterator<Item = InputFile>,
     S: AsRef<str>,
@@ -1230,7 +1228,7 @@ where
     for extra_input in inputs {
         session.inputs.push(extra_input);
     }
-    Arc::new(session)
+    Rc::new(session)
 }
 
 fn hash_string(inputs: &str) -> String {

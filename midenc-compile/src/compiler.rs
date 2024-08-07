@@ -281,7 +281,7 @@ impl CompilerOptions {
         };
         let mut options = Options::new(self.target, project_type, cwd, sysroot)
             .with_color(color)
-            .with_verbosity(self.verbosity.into())
+            .with_verbosity(self.verbosity)
             .with_warnings(self.warn)
             .with_debug_info(self.debug)
             .with_optimization(self.opt_level)

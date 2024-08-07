@@ -87,12 +87,9 @@ impl RewritePass for InlineBlocks {
             // If inlining can proceed, do so until we reach a point where the inlined terminator
             // returns from the function, has multiple successors, or branches to a block with
             // multiple predecessors.
-            loop {
-                let succ = match function.dfg.analyze_branch(function.dfg.last_inst(p).unwrap()) {
-                    BranchInfo::SingleDest(succ) => succ,
-                    _ => break,
-                };
-
+            while let BranchInfo::SingleDest(succ) =
+                function.dfg.analyze_branch(function.dfg.last_inst(p).unwrap())
+            {
                 let destination = succ.destination;
 
                 // If this successor has other predecessors, it can't be inlined, so

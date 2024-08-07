@@ -41,10 +41,7 @@ fn check_unsupported(op: &Operator) {
         SourceSpan::default(),
     );
     assert!(result.is_err(), "Expected unsupported op error for {:?}", op);
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        format!("Unsupported Wasm: Wasm op {:?} is not supported", op)
-    );
+    assert_eq!(result.unwrap_err().to_string(), format!("Wasm op {:?} is not supported", op));
 }
 
 // Wasm Spec v1.0

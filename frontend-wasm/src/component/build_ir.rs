@@ -58,7 +58,7 @@ fn inline(
         &parsed_component.static_modules,
         &parsed_component.static_components,
     )
-    .map_err(|e| Report::msg(e))?;
+    .map_err(Report::msg)?;
     Ok(component_dfg.finish())
 }
 

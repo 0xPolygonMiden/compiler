@@ -356,7 +356,7 @@ impl<'a> Linker<'a> {
             // the callee for our error diagnostics. To get it, we call the
             // call graph validation routine which does a traversal specifically
             // designed to obtain that information.
-            validate_callgraph(&self.local_callgraph, &self.diagnostics)
+            validate_callgraph(&self.local_callgraph, self.diagnostics)
                 .expect_err("expected call graph to contain a cycle")
         })?;
 
@@ -432,7 +432,7 @@ impl<'a> Linker<'a> {
         self.populate_builtins();
 
         // Look for cycles in the call graph
-        validate_callgraph(&self.callgraph, &self.diagnostics)?;
+        validate_callgraph(&self.callgraph, self.diagnostics)?;
 
         // Verify the entrypoint, if declared
         if let Some(entry) = self.program.entrypoint() {
@@ -565,7 +565,7 @@ impl<'a> Linker<'a> {
                             external_span,
                             signature,
                             &external_ref.signature,
-                            &self.diagnostics,
+                            self.diagnostics,
                         )?;
                     }
                     // If we don't have a signature for the dependency, we presume it matches the

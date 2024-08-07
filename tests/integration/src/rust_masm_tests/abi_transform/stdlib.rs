@@ -37,7 +37,6 @@ fn test_blake3_hash() {
     let advice_inputs = ir_program.advice_inputs();
 
     println!("{ir_program}");
-    panic!("oops");
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     let res = TestRunner::default().run(&any::<[u8; 32]>(), move |ibytes| {

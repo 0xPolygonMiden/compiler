@@ -78,7 +78,7 @@ impl LinkLibrary {
                     .wrap_err_with(|| format!("invalid library namespace '{}'", &self.name))?;
                 CompiledLibrary::from_dir(path, ns, session.source_manager.clone())
             }
-            LibraryKind::Mast => CompiledLibrary::deserialize_from_file(&path).map_err(|err| {
+            LibraryKind::Mast => CompiledLibrary::deserialize_from_file(path).map_err(|err| {
                 Report::msg(format!(
                     "failed to deserialize library from '{}': {err}",
                     path.display()
@@ -101,7 +101,7 @@ impl LinkLibrary {
                 let Ok(entry) = entry else {
                     continue;
                 };
-                let path = PathBuf::from(entry.path());
+                let path = entry.path();
                 let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
                     continue;
                 };

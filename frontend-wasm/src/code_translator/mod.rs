@@ -790,16 +790,17 @@ fn translate_br_table(
     };
 
     let switch_builder = builder.ins().switch(val, span);
-    let switch_builder = targets.into_iter().fold(switch_builder, |acc, depth| {
-        let block = {
-            let i = state.control_stack.len() - 1 - (depth as usize);
-            let frame = &mut state.control_stack[i];
-            frame.set_branched_to_exit();
-            frame.br_destination()
-        };
-        let args = state.peekn_mut(argc);
-        acc.case(depth, block, args)
-    });
+    let switch_builder =
+        targets.into_iter().enumerate().fold(switch_builder, |acc, (label_idx, depth)| {
+            let block = {
+                let i = state.control_stack.len() - 1 - (depth as usize);
+                let frame = &mut state.control_stack[i];
+                frame.set_branched_to_exit();
+                frame.br_destination()
+            };
+            let args = state.peekn_mut(argc);
+            acc.case(label_idx as u32, block, args)
+        });
     switch_builder.or_else(default_block, state.peekn_mut(argc));
 
     state.popn(argc);

@@ -48,7 +48,7 @@ pub fn run_cargo_command(
 
     // Handle the target for build commands
     if is_build {
-        install_wasm32_wasi().map_err(|err| Report::msg(err))?;
+        install_wasm32_wasi().map_err(Report::msg)?;
 
         // Add an implicit wasm32-wasi target if there isn't a wasm target present
         if !cargo_args.targets.iter().any(|t| is_wasm_target(t)) {

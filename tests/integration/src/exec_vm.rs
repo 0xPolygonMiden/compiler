@@ -58,6 +58,7 @@ impl MidenExecutor {
             match state {
                 Ok(state) => {
                     contexts.insert(state.ctx);
+                    /*
                     if let Some(op) = state.op {
                         match op {
                             miden_core::Operation::MLoad => {
@@ -162,6 +163,7 @@ impl MidenExecutor {
                             _ => (),
                         }
                     }
+                    */
                     last_state = Some(state);
                 }
                 Err(err) => {

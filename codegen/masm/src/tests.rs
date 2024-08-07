@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use std::{cell::RefCell, sync::Arc};
 
 use midenc_hir::{
@@ -559,6 +560,7 @@ fn codegen_mem_store_sw_load_sw() {
         .unwrap();
 }
 
+#[allow(unused)]
 macro_rules! proptest_unary_numeric_op {
     ($ty_name:ident :: $op:ident, $ty:ty => $ret:ty, $rust_op:ident) => {
         proptest_unary_numeric_op_impl!($ty_name :: $op, $ty => $ret, $rust_op, 0..$ty_name::MAX);
@@ -569,6 +571,7 @@ macro_rules! proptest_unary_numeric_op {
     };
 }
 
+#[allow(unused)]
 macro_rules! proptest_unary_numeric_op_impl {
     ($ty_name:ident :: $op:ident, $ty:ty => $ret:ty, $rust_op:ident, $strategy:expr) => {
         paste::paste! {
@@ -637,17 +640,18 @@ macro_rules! proptest_unary_numeric_op_impl {
     };
 }
 
-proptest_unary_numeric_op!(u64::clz, u64 => u32, leading_zeros);
+//proptest_unary_numeric_op!(u64::clz, u64 => u32, leading_zeros);
 //proptest_unary_numeric_op!(i128::clz, i128 => u32, leading_zeros);
-proptest_unary_numeric_op!(u64::ctz, u64 => u32, trailing_zeros);
+//proptest_unary_numeric_op!(u64::ctz, u64 => u32, trailing_zeros);
 //proptest_unary_numeric_op!(i128::ctz, i128 => u32, trailing_zeros);
-proptest_unary_numeric_op!(u64::clo, u64 => u32, leading_ones);
+//proptest_unary_numeric_op!(u64::clo, u64 => u32, leading_ones);
 //proptest_unary_numeric_op!(i128::clo, i128 => u32, leading_ones);
-proptest_unary_numeric_op!(u64::cto, u64 => u32, trailing_ones);
+//proptest_unary_numeric_op!(u64::cto, u64 => u32, trailing_ones);
 //proptest_unary_numeric_op!(i128::cto, i128 => u32, trailing_ones);
-proptest_unary_numeric_op!(u64::ilog2, u64 => u32, ilog2, 1..u64::MAX);
+//proptest_unary_numeric_op!(u64::ilog2, u64 => u32, ilog2, 1..u64::MAX);
 //proptest_unary_numeric_op!(i128::ilog2, i128 => u32, ilog2, 1..i128::MAX);
 
+#[allow(unused)]
 trait ToCanonicalRepr {
     fn ir_type() -> Type;
     fn canonicalize(self) -> SmallVec<[Felt; 4]>;

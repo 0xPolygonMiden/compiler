@@ -2,7 +2,7 @@ mod compiler;
 mod stage;
 mod stages;
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use midenc_codegen_masm as masm;
 use midenc_hir::{
@@ -26,7 +26,7 @@ pub struct CompilerStopped;
 pub fn register_flags(cmd: clap::Command) -> clap::Command {
     use midenc_session::CompileFlag;
 
-    let cmd = inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
+    inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
         let arg = clap::Arg::new(flag.name)
             .long(flag.long.unwrap_or(flag.name))
             .action(clap::ArgAction::from(flag.action));
@@ -66,13 +66,11 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
             arg
         };
         cmd.arg(arg)
-    });
-
-    cmd
+    })
 }
 
 /// Run the compiler using the provided [Session]
-pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
+pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
     let mut analyses = AnalysisManager::new();
     match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
         // No outputs, generally due to skipping codegen
@@ -115,7 +113,7 @@ pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
 }
 
 /// Same as `compile`, but return compiled artifacts to the caller
-pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Option<masm::MasmArtifact>> {
+pub fn compile_to_memory(session: Rc<Session>) -> CompilerResult<Option<masm::MasmArtifact>> {
     let mut analyses = AnalysisManager::new();
     compile_inputs(session.inputs.clone(), &mut analyses, &session)
 }

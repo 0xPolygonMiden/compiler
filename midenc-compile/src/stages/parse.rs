@@ -120,7 +120,7 @@ impl ParseStage {
         session: &Session,
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
-        let module = wasm::translate(bytes, config, &session)?.unwrap_one_module();
+        let module = wasm::translate(bytes, config, session)?.unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -136,7 +136,7 @@ impl ParseStage {
             ..Default::default()
         };
         let wasm = wat::parse_file(path).into_diagnostic().wrap_err("failed to parse wat")?;
-        let module = wasm::translate(&wasm, &config, &session)?.unwrap_one_module();
+        let module = wasm::translate(&wasm, &config, session)?.unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -148,7 +148,7 @@ impl ParseStage {
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
         let wasm = wat::parse_bytes(bytes).into_diagnostic().wrap_err("failed to parse wat")?;
-        let module = wasm::translate(&wasm, config, &session)?.unwrap_one_module();
+        let module = wasm::translate(&wasm, config, session)?.unwrap_one_module();
 
         Ok(ParseOutput::Hir(module))
     }
@@ -163,7 +163,12 @@ impl ParseStage {
         // Construct library path for MASM module
         let module_name = Ident::new(path.file_stem().unwrap().to_str().unwrap())
             .into_diagnostic()
-            .wrap_err_with(|| format!("failed to construct valid module identifier from path"))?;
+            .wrap_err_with(|| {
+                format!(
+                    "failed to construct valid module identifier from path '{}'",
+                    path.display()
+                )
+            })?;
         let namespace = path
             .parent()
             .map(|dir| {

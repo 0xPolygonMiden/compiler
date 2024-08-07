@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::PathBuf, sync::Arc};
+use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 
 use clap::{ColorChoice, Parser, Subcommand};
 use midenc_compile as compile;
@@ -191,7 +191,7 @@ impl Midenc {
                     config.working_dir = Some(cwd);
                 }
                 let session = config.into_session(emitter).with_arg_matches(matches);
-                compile::compile(Arc::new(session))
+                compile::compile(Rc::new(session))
             }
             _ => unimplemented!(),
         }

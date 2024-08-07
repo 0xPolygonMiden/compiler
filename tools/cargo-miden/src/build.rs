@@ -1,5 +1,6 @@
 use std::{
     path::{Path, PathBuf},
+    rc::Rc,
     sync::Arc,
 };
 
@@ -38,7 +39,7 @@ pub fn build_masm(
     let options = midenc_compile::CompilerOptions::parse_options(&[project_type])
         .with_verbosity(Verbosity::Debug)
         .with_output_types(output_types);
-    let session = Arc::new(Session::new(
+    let session = Rc::new(Session::new(
         input,
         Some(output_folder.to_path_buf()),
         None,
