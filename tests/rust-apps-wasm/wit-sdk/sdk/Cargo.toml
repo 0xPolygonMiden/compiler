@@ -12,9 +12,7 @@ publish = false
 [workspace]
 
 [dependencies]
-wit-bindgen = { version = "0.17.0", default-features = false, features = [
-    "realloc",
-] }
+wit-bindgen-rt = "0.28"
 wee_alloc = { version = "0.4.5", default-features = false }
 
 
