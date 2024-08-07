@@ -1,4 +1,4 @@
-# mod test_rust_3600450f3e72a1f743c6e31ae5af681197ee981ecfeb91d43b6e974ed76234f5
+# mod test_rust_7ebd625ebc756910f700d1547e5bf4cc2c32a85181b0c8e5a3b9113c39335db7
 
 export.entrypoint
     dup.0
@@ -15,6 +15,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::test_rust_3600450f3e72a1f743c6e31ae5af681197ee981ecfeb91d43b6e974ed76234f5::entrypoint
-end

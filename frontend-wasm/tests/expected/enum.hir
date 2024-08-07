@@ -20,7 +20,7 @@
                     (0 . (block 4))
                     (1 . (block 3))
                     (2 . (block 2))
-                    (_ . (block4))))
+                    (_ . (block 4))))
 
             (block 1 (param v3 i32)
                 (ret v3))

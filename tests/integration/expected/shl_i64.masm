@@ -1,4 +1,4 @@
-# mod test_rust_5daeb206dcf172633a3952fa7cdfecf35c6015e5d0a99a46308f39387d96320e
+# mod test_rust_25e2507052972928b154ff844858eb75529a3497622ee9ca52b471d8a099e59f
 
 export.entrypoint
     movdn.3
@@ -17,6 +17,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::test_rust_5daeb206dcf172633a3952fa7cdfecf35c6015e5d0a99a46308f39387d96320e::entrypoint
-end

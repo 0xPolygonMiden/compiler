@@ -1,10 +1,7 @@
-# mod test_rust_de134871bf4e9b290991577707ea002a2485be8d7e8cec745b7e9faf22aff5dd
+# mod test_rust_df76c987a66b14b20c7ce818414abfb720a4e3e74eb3dc8015560af9bdb3fee4
 
 export.entrypoint
     push.65535 u32xor
 end
 
 
-begin
-    exec.::test_rust_de134871bf4e9b290991577707ea002a2485be8d7e8cec745b7e9faf22aff5dd::entrypoint
-end

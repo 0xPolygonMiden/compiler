@@ -1,10 +1,7 @@
-# mod test_rust_d3eecc0932c0745000688bf699bae5c588052144cdbc0bc7c4ab37c3cc14cd7b
+# mod test_rust_2f29f68fe27c60920a7ea2ddd41d7b6f088aaca71b06fe98e8543c00277965f4
 
 export.entrypoint
     swap.1 eq
 end
 
 
-begin
-    exec.::test_rust_d3eecc0932c0745000688bf699bae5c588052144cdbc0bc7c4ab37c3cc14cd7b::entrypoint
-end

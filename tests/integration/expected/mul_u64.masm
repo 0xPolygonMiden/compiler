@@ -1,10 +1,7 @@
-# mod test_rust_873d7388fcc4ee534ec2730026c14ba8e8b6f0fcb2133a11b18c2b4c23407376
+# mod test_rust_ac7483d8e665bc8618c926c4a827af8cc8b060db1a400373319417a1045674f6
 
 export.entrypoint
     exec.::intrinsics::i64::wrapping_mul
 end
 
 
-begin
-    exec.::test_rust_873d7388fcc4ee534ec2730026c14ba8e8b6f0fcb2133a11b18c2b4c23407376::entrypoint
-end
