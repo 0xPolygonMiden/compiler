@@ -762,10 +762,10 @@
     )
     (func $<T as core::any::Any>::type_id (;15;) (type 9) (param i32 i32)
       local.get 0
-      i64.const -6527957459535493887
+      i64.const 5799598635382251841
       i64.store offset=8
       local.get 0
-      i64.const -7007892379802179865
+      i64.const 3885382061309546557
       i64.store
     )
     (func $cabi_realloc (;16;) (type 3) (param i32 i32 i32 i32) (result i32)
