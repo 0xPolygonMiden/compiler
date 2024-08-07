@@ -69,7 +69,7 @@ impl CargoTest {
             manifest_path: None,
             target_dir: None,
             name: name.into(),
-            target: "wasm32-wasi".into(),
+            target: "wasm32-wasip1".into(),
             entrypoint: None,
             build_std: false,
             build_alloc: false,
