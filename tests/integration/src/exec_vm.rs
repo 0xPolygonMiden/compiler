@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    rc::Rc,
+};
 
 use miden_assembly::library::CompiledLibrary;
 use miden_core::{Program, StackInputs};
@@ -6,7 +9,10 @@ use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, MastForest, Pro
 use midenc_hir::Felt;
 use midenc_session::Session;
 
-use crate::felt_conversion::{PopFromStack, TestFelt};
+use crate::{
+    compiler_test::demangle,
+    felt_conversion::{PopFromStack, TestFelt},
+};
 
 /// A test executor for Miden VM tests
 pub struct MidenExecutor {
@@ -37,9 +43,8 @@ impl MidenExecutor {
     }
 
     /// Execute the given program, producing a trace
+    #[track_caller]
     pub fn execute(mut self, program: &Program, session: &Session) -> MidenExecutionTrace {
-        use std::collections::BTreeSet;
-
         use miden_processor::{MemAdviceProvider, ProcessState, VmStateIterator};
 
         let advice_provider = MemAdviceProvider::from(self.advice);
@@ -47,17 +52,42 @@ impl MidenExecutor {
         for lib in core::mem::take(&mut self.libraries) {
             host.load_mast_forest(lib);
         }
-        //dbg!(&self.stack);
         let mut process = Process::new_debug(program.kernel().clone(), self.stack, host);
         let root_context = process.ctx();
         let result = process.execute(program);
         let mut iter = VmStateIterator::new(process, result.clone());
         let mut contexts = BTreeSet::default();
+        let mut callstack = CallStack::default();
+        let mut recent_ops = VecDeque::with_capacity(5);
         let mut last_state: Option<miden_processor::VmState> = None;
         for (i, state) in iter.by_ref().enumerate() {
             match state {
                 Ok(state) => {
+                    if let Some(op) = state.op {
+                        if recent_ops.len() == 5 {
+                            recent_ops.pop_front();
+                        }
+                        recent_ops.push_back(op);
+                    }
                     contexts.insert(state.ctx);
+                    if let Some(op) = state.asmop.as_ref() {
+                        callstack.next_op(state.clk.into(), op);
+                    } else {
+                        match state.op {
+                            Some(
+                                miden_core::Operation::Join
+                                | miden_core::Operation::Split
+                                | miden_core::Operation::Span
+                                | miden_core::Operation::Respan
+                                | miden_core::Operation::End
+                                | miden_core::Operation::Noop,
+                            ) => (),
+                            Some(op) => {
+                                callstack.next_opcode(state.clk.into(), op);
+                            }
+                            None => (),
+                        }
+                    }
                     /*
                     if let Some(op) = state.op {
                         match op {
@@ -167,7 +197,14 @@ impl MidenExecutor {
                     last_state = Some(state);
                 }
                 Err(err) => {
-                    render_execution_error(err, i, last_state.as_ref(), session);
+                    render_execution_error(
+                        err,
+                        i,
+                        &callstack,
+                        &recent_ops,
+                        last_state.as_ref(),
+                        session,
+                    );
                 }
             }
         }
@@ -233,12 +270,14 @@ impl MidenExecutionTrace {
     }
 
     /// Read the word at the given Miden memory address and element offset
+    #[track_caller]
     pub fn read_memory_element(&self, addr: u32, index: u8) -> Option<Felt> {
         assert!(index < 4, "invalid element index");
         self.read_memory_word(addr).map(|word| word[index as usize])
     }
 
     /// Read a value of the given type, given an address in Rust's address space
+    #[track_caller]
     pub fn read_from_rust_memory<T>(&self, addr: u32) -> Option<T>
     where
         T: core::any::Any + PopFromStack,
@@ -359,57 +398,246 @@ pub fn execute_vm_tracing(
     Ok(last_stack.into_iter().map(TestFelt).collect())
 }
 
+#[derive(Default)]
+struct CallStack {
+    contexts: BTreeSet<Rc<str>>,
+    frames: Vec<CallFrame>,
+}
+impl CallStack {
+    pub fn next_opcode(&mut self, cycle: usize, opcode: miden_core::Operation) {
+        if let Some(frame) = self.frames.last_mut() {
+            frame.push_opcode(cycle, opcode);
+        }
+    }
+
+    pub fn next_op(&mut self, cycle: usize, state: &miden_processor::AsmOpInfo) {
+        // Only handle the first cycle of each op
+        if state.cycle_idx() > 1 {
+            return;
+        }
+        let procedure = match self.contexts.get(state.context_name()) {
+            Some(name) => Rc::clone(name),
+            None => {
+                let name = Rc::from(state.context_name().to_string().into_boxed_str());
+                self.contexts.insert(Rc::clone(&name));
+                name
+            }
+        };
+
+        // Is the name of the new frame a parent of `current_frame`?
+        // If so, then we're returning to the parent, otherwise, we're calling a new proc
+        let num_frames = self.frames.len();
+        let return_to = if num_frames == 0 {
+            None
+        } else {
+            match self.frames.iter().position(|f| f.procedure == procedure) {
+                Some(index) if index + 1 == num_frames => None,
+                return_to => return_to,
+            }
+        };
+        let is_return = return_to.is_some();
+        if let Some(return_to) = return_to {
+            self.frames.truncate(return_to + 1);
+        }
+
+        let op = match self.contexts.get(state.op()) {
+            Some(cached) => Rc::clone(cached),
+            None => {
+                let op = Rc::from(state.op().to_string().into_boxed_str());
+                self.contexts.insert(Rc::clone(&op));
+                op
+            }
+        };
+        match self.frames.last_mut() {
+            Some(current_frame) if current_frame.procedure == procedure => {
+                let asmop = state.as_ref();
+                current_frame.push(cycle, op, asmop);
+            }
+            prev_frame => {
+                assert!(
+                    !is_return,
+                    "we should only be returning to a procedure with the same name as the current \
+                     frame"
+                );
+                // Inherit the caller context, so that we always have as close to maximum context as
+                // possible
+                let context = prev_frame.map(|frame| frame.context.clone()).unwrap_or_default();
+                let asmop = state.as_ref();
+                let mut frame = CallFrame { procedure, context };
+                frame.push(cycle, op, asmop);
+                self.frames.push(frame);
+            }
+        }
+    }
+}
+
+struct CallFrame {
+    procedure: Rc<str>,
+    context: VecDeque<OpDetail>,
+}
+impl CallFrame {
+    pub fn push(&mut self, cycle: usize, opcode: Rc<str>, op: &miden_core::AssemblyOp) {
+        if self.context.len() == 5 {
+            self.context.pop_front();
+        }
+
+        self.context.push_back(OpDetail::Full {
+            opcode,
+            location: op.location().cloned(),
+            cycle,
+        });
+    }
+
+    pub fn push_opcode(&mut self, cycle: usize, op: miden_core::Operation) {
+        if self.context.len() == 5 {
+            self.context.pop_front();
+        }
+
+        self.context.push_back(OpDetail::Basic { op, cycle });
+    }
+}
+
+#[derive(Clone)]
+enum OpDetail {
+    Full {
+        #[allow(dead_code)]
+        opcode: Rc<str>,
+        location: Option<miden_core::debuginfo::Location>,
+        #[allow(dead_code)]
+        cycle: usize,
+    },
+    Basic {
+        #[allow(dead_code)]
+        op: miden_core::Operation,
+        #[allow(dead_code)]
+        cycle: usize,
+    },
+}
+impl OpDetail {
+    #[allow(dead_code)]
+    pub fn opcode(&self) -> Rc<str> {
+        match self {
+            Self::Full { ref opcode, .. } => Rc::clone(opcode),
+            Self::Basic { op, .. } => op.to_string().into_boxed_str().into(),
+        }
+    }
+
+    pub fn location(&self) -> Option<&miden_core::debuginfo::Location> {
+        match self {
+            Self::Full { ref location, .. } => location.as_ref(),
+            Self::Basic { .. } => None,
+        }
+    }
+}
+
 fn render_execution_error(
     err: ExecutionError,
     step: usize,
+    callstack: &CallStack,
+    recent_ops: &VecDeque<miden_core::Operation>,
     last_state: Option<&miden_processor::VmState>,
     session: &Session,
 ) -> ! {
+    use std::fmt::Write;
+
     use midenc_hir::diagnostics::{
         miette::miette, reporting::PrintDiagnostic, LabeledSpan, SourceManagerExt,
     };
 
-    if let Some(last_state) = last_state {
-        let mut source_code = None;
-        let mut labels = vec![];
-        let last_op;
-        let last_context_name;
-        match dbg!(last_state.asmop.as_ref()) {
-            Some(op) => {
-                last_op = op.op().to_string();
-                last_context_name = op.context_name();
-                let asmop = op.as_ref();
-                if let Some(loc) = dbg!(asmop.location()) {
-                    let path = std::path::Path::new(loc.path.as_ref());
-                    source_code = if path.exists() {
-                        session.source_manager.load_file(path).ok()
-                    } else {
-                        session.source_manager.get_by_path(loc.path.as_ref())
-                    };
-                    labels.push(LabeledSpan::new_with_span(
-                        None,
-                        loc.start.to_usize()..loc.end.to_usize(),
-                    ));
+    let session_name = session.name();
+    let num_frames = callstack.frames.len();
+    let mut source_code = None;
+    let mut labels = vec![];
+    let mut stacktrace = String::new();
+    writeln!(&mut stacktrace, "\nStack Trace:").unwrap();
+    for (i, frame) in callstack.frames.iter().enumerate() {
+        let is_top = i + 1 == num_frames;
+        let name = match frame.procedure.split_once("::") {
+            Some((module, rest)) if module == session_name.as_str() => demangle(rest),
+            _ => demangle(frame.procedure.as_ref()),
+        };
+        if is_top {
+            write!(&mut stacktrace, " `-> {name}").unwrap();
+        } else {
+            write!(&mut stacktrace, " |-> {name}").unwrap();
+        }
+        if let Some(loc) = frame.context.back().and_then(|op| op.location()) {
+            let path = std::path::Path::new(loc.path.as_ref());
+            let loc_source_code = if path.exists() {
+                session.source_manager.load_file(path).ok()
+            } else {
+                session.source_manager.get_by_path(loc.path.as_ref())
+            };
+            if is_top {
+                source_code = loc_source_code.clone();
+                labels.push(LabeledSpan::new_with_span(
+                    None,
+                    loc.start.to_usize()..loc.end.to_usize(),
+                ));
+            }
+            if let Some(source_file) = loc_source_code.as_ref() {
+                let span = midenc_hir::SourceSpan::new(source_file.id(), loc.start..loc.end);
+                let file_line_col = source_file.location(span);
+                let path = file_line_col.path();
+                let path = std::path::Path::new(path.as_ref());
+                if let Some(filename) = path.file_name().map(std::path::Path::new) {
+                    write!(
+                        &mut stacktrace,
+                        " in {}:{}:{}",
+                        filename.display(),
+                        file_line_col.line,
+                        file_line_col.column
+                    )
+                    .unwrap();
+                } else {
+                    write!(
+                        &mut stacktrace,
+                        " in {}:{}:{}",
+                        path.display(),
+                        file_line_col.line,
+                        file_line_col.column
+                    )
+                    .unwrap();
+                }
+            } else {
+                write!(&mut stacktrace, " in <unavailable>").unwrap();
+            }
+        }
+        if is_top {
+            // Print op context
+            //let context_size = frame.context.len();
+            let context_size = recent_ops.len();
+            writeln!(&mut stacktrace, ":\n\nLast {context_size} Instructions:").unwrap();
+            //for (i, op) in frame.context.iter().enumerate() {
+            for (i, op) in recent_ops.iter().enumerate() {
+                let is_last = i + 1 == context_size;
+                if is_last {
+                    //writeln!(&mut stacktrace, " `-> {}", &op.opcode()).unwrap();
+                    writeln!(&mut stacktrace, " |   {}", &op).unwrap();
+                    writeln!(&mut stacktrace, " `-> <error occured here>").unwrap();
+                } else {
+                    //writeln!(&mut stacktrace, " |   {}", &op.opcode()).unwrap();
+                    writeln!(&mut stacktrace, " |   {}", &op).unwrap();
                 }
             }
-            None => {
-                last_op =
-                    last_state.op.map(|op| op.to_string()).unwrap_or_else(|| "N/A".to_string());
-                last_context_name = "N/A";
-            }
-        };
+        } else {
+            stacktrace.push('\n');
+        }
+    }
+
+    eprintln!("{stacktrace}");
+
+    if let Some(last_state) = last_state {
         let stack = last_state.stack.iter().map(|elem| elem.as_int());
         let stack = midenc_hir::DisplayValues::new(stack);
-        let help = format!(
-            "
-last known context:       {last_context_name}
-last known op:            {last_op}
-last known frame pointer: {fmp} (frame pointer starts at 2^30)
-last known operand stack: [{stack}]",
-            fmp = last_state.fmp.as_int()
+        let fmp = last_state.fmp.as_int();
+        eprintln!(
+            "\nLast Known State (at most recent instruction which succeeded):
+ | Frame Pointer: {fmp} (starts at 2^30)
+ | Operand Stack: [{stack}]
+ "
         );
         let report = miette!(
-            help = help,
             labels = labels,
             "program execution failed at step {step} (cycle {cycle}): {err}",
             step = step,
