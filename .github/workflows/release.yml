@@ -13,7 +13,7 @@ name: release-plz
 on:
   push:
     branches:
-      - main
+      - next # TODO: switch to main after testing the publish workflow
 
 env:
   CARGO_MAKE_TOOLCHAIN: nightly-2024-05-07
