@@ -68,10 +68,10 @@ thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", b
 toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.2"
-miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
-miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
-miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
-miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
+miden-assembly = { version = "0.10" }
+miden-core = { version = "0.10" }
+miden-processor = { version = "0.10" }
+miden-stdlib = { version = "0.10" }
 midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }

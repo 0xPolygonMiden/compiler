@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use miden_assembly::library::CompiledLibrary;
+use miden_assembly::library::Library as CompiledLibrary;
 use miden_core::{Program, StackInputs};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, MastForest, Process};
 use midenc_hir::Felt;

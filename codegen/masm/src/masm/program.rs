@@ -3,7 +3,7 @@ use std::{fmt, path::Path, sync::Arc};
 use hir::{Signature, Symbol};
 use miden_assembly::{
     ast::{ModuleKind, ProcedureName},
-    library::{CompiledLibrary, KernelLibrary},
+    library::{KernelLibrary, Library as CompiledLibrary},
     LibraryNamespace,
 };
 use miden_core::crypto::hash::Rpo256;
@@ -328,7 +328,7 @@ impl Program {
 
         // Link extra libraries
         for library in self.library.libraries.iter() {
-            assembler.add_compiled_library(library)?;
+            assembler.add_library(library)?;
         }
 
         // Assemble library
@@ -519,7 +519,7 @@ impl Library {
 
         // Link extra libraries
         for library in self.libraries.iter() {
-            assembler.add_compiled_library(library)?;
+            assembler.add_library(library)?;
         }
 
         // Assemble library

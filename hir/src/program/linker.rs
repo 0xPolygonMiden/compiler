@@ -3,7 +3,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
-use miden_assembly::library::CompiledLibrary;
+use miden_assembly::library::Library as CompiledLibrary;
 use petgraph::{prelude::DiGraphMap, Direction};
 
 use crate::{
