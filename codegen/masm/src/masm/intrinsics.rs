@@ -12,9 +12,21 @@ const MEM_INTRINSICS: &str =
 
 /// This is a mapping of intrinsics module name to the raw MASM source for that module
 const INTRINSICS: [(&str, &str, &str); 3] = [
-    ("intrinsics::i32", I32_INTRINSICS, "i32.masm"),
-    ("intrinsics::i64", I64_INTRINSICS, "i64.masm"),
-    ("intrinsics::mem", MEM_INTRINSICS, "mem.masm"),
+    (
+        "intrinsics::i32",
+        I32_INTRINSICS,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/i32.masm"),
+    ),
+    (
+        "intrinsics::i64",
+        I64_INTRINSICS,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/i64.masm"),
+    ),
+    (
+        "intrinsics::mem",
+        MEM_INTRINSICS,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/intrinsics/mem.masm"),
+    ),
 ];
 
 /// This helper loads the named module from the set of intrinsics modules defined in this crate.
