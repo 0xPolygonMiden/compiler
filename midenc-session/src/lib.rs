@@ -94,11 +94,28 @@ impl fmt::Debug for Session {
 }
 
 impl Session {
-    pub fn new(
-        input: InputFile,
+    pub fn new<I>(
+        inputs: I,
         output_dir: Option<PathBuf>,
         output_file: Option<OutputFile>,
-        tmp_dir: Option<PathBuf>,
+        target_dir: PathBuf,
+        options: Options,
+        emitter: Option<Arc<dyn Emitter>>,
+        source_manager: Arc<dyn SourceManager>,
+    ) -> Self
+    where
+        I: IntoIterator<Item = InputFile>,
+    {
+        let inputs = inputs.into_iter().collect::<Vec<_>>();
+
+        Self::make(inputs, output_dir, output_file, target_dir, options, emitter, source_manager)
+    }
+
+    fn make(
+        inputs: Vec<InputFile>,
+        output_dir: Option<PathBuf>,
+        output_file: Option<OutputFile>,
+        target_dir: PathBuf,
         options: Options,
         emitter: Option<Arc<dyn Emitter>>,
         source_manager: Arc<dyn SourceManager>,
@@ -111,9 +128,8 @@ impl Session {
 
         let output_dir = output_dir
             .as_deref()
-            .or_else(|| output_file.as_ref().and_then(|of| of.as_path().parent()))
-            .map(|path| path.to_path_buf())
-            .unwrap_or_else(|| options.current_dir.clone());
+            .or_else(|| output_file.as_ref().and_then(|of| of.parent()))
+            .map(|path| path.to_path_buf());
 
         let name = options
             .name
@@ -123,11 +139,11 @@ impl Session {
                     .as_ref()
                     .and_then(|of| of.filestem().map(|stem| stem.to_string_lossy().into_owned()))
             })
-            .unwrap_or_else(|| match &input {
-                InputFile {
+            .unwrap_or_else(|| match inputs.first() {
+                Some(InputFile {
                     file: InputType::Real(ref path),
                     ..
-                } => path
+                }) => path
                     .file_stem()
                     .and_then(|stem| stem.to_str())
                     .or_else(|| path.extension().and_then(|stem| stem.to_str()))
@@ -138,10 +154,12 @@ impl Session {
                         )
                     })
                     .to_string(),
-                input @ InputFile {
-                    file: InputType::Stdin { ref name, .. },
-                    ..
-                } => {
+                Some(
+                    input @ InputFile {
+                        file: InputType::Stdin { ref name, .. },
+                        ..
+                    },
+                ) => {
                     let name = name.as_str();
                     if matches!(name, Some("empty") | Some("stdin")) {
                         options
@@ -154,13 +172,15 @@ impl Session {
                         input.filestem().to_owned()
                     }
                 }
+                None => "out".to_owned(),
             });
 
         let output_files = OutputFiles::new(
             name.clone(),
-            output_dir,
+            options.current_dir.clone(),
+            output_dir.unwrap_or_else(|| options.current_dir.clone()),
             output_file,
-            tmp_dir,
+            target_dir,
             options.output_types.clone(),
         );
 
@@ -169,7 +189,7 @@ impl Session {
             options,
             source_manager,
             diagnostics,
-            inputs: vec![input],
+            inputs,
             output_files,
             statistics: Default::default(),
         }
@@ -183,6 +203,13 @@ impl Session {
     #[doc(hidden)]
     pub fn with_arg_matches(mut self, matches: clap::ArgMatches) -> Self {
         self.options.set_arg_matches(matches);
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn with_output_type(mut self, ty: OutputType, path: Option<OutputFile>) -> Self {
+        self.output_files.outputs.insert(ty, path.clone());
+        self.options.output_types.insert(ty, path.clone());
         self
     }
 
@@ -227,40 +254,14 @@ impl Session {
         &self.name
     }
 
-    pub fn out_filename(&self, progname: Symbol) -> OutputFile {
-        let default_filename = self.filename_for_input(progname);
-        let out_filename = self
-            .output_files
-            .outputs
-            .get(&OutputType::Mast)
-            .and_then(|s| s.to_owned())
-            .or_else(|| self.output_files.out_file.clone())
-            .unwrap_or(default_filename);
+    pub fn out_file(&self) -> OutputFile {
+        let out_file = self.output_files.output_file(OutputType::Mast, None);
 
-        if let OutputFile::Real(ref path) = out_filename {
+        if let OutputFile::Real(ref path) = out_file {
             self.check_file_is_writeable(path);
         }
 
-        out_filename
-    }
-
-    pub fn filename_for_input(&self, progname: Symbol) -> OutputFile {
-        match self.options.project_type {
-            ProjectType::Program => {
-                let out_filename =
-                    self.output_files.path(Some(progname.as_str()), OutputType::Mast);
-                if let OutputFile::Real(ref path) = out_filename {
-                    OutputFile::Real(path.with_extension(OutputType::Mast.extension()))
-                } else {
-                    out_filename
-                }
-            }
-            ProjectType::Library => OutputFile::Real(
-                self.output_files
-                    .out_dir
-                    .join(format!("{progname}.{}", OutputType::Mast.extension())),
-            ),
-        }
+        out_file
     }
 
     fn check_file_is_writeable(&self, file: &Path) {
@@ -292,7 +293,7 @@ impl Session {
     /// Get the path to emit the given [OutputType] to
     pub fn emit_to(&self, ty: OutputType, name: Option<Symbol>) -> Option<PathBuf> {
         if self.should_emit(ty) {
-            match self.output_files.path(name.map(|n| n.as_str()), ty) {
+            match self.output_files.output_file(ty, name.map(|n| n.as_str())) {
                 OutputFile::Real(path) => Some(path),
                 OutputFile::Stdout => None,
             }
@@ -306,7 +307,7 @@ impl Session {
         let output_type = item.output_type();
         if self.should_emit(output_type) {
             let name = item.name().map(|n| n.as_str());
-            match self.output_files.path(name, output_type) {
+            match self.output_files.output_file(output_type, name) {
                 OutputFile::Real(path) => {
                     item.write_to_file(&path)?;
                 }

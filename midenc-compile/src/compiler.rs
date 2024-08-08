@@ -1,6 +1,6 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
-use clap::{builder::ArgPredicate, Args, ColorChoice, Parser};
+use clap::{builder::ArgPredicate, ColorChoice, Parser};
 use midenc_session::{
     diagnostics::{ColorChoice as MDColorChoice, DefaultSourceManager, Emitter},
     DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec,
@@ -8,24 +8,20 @@ use midenc_session::{
 };
 
 /// Compile a program from WebAssembly or Miden IR, to Miden Assembly.
-#[derive(Debug, Args)]
+#[derive(Debug, Parser)]
+#[command(name = "midenc")]
 pub struct Compiler {
-    /// The input file to compile
-    ///
-    /// You may specify `-` to read from stdin, otherwise you must provide a path
-    #[arg(required(true), value_name = "FILE")]
-    pub input: InputFile,
     /// Write all intermediate compiler artifacts to `<dir>`
     ///
-    /// Defaults to a directory named `target` in the current working directory
+    /// Defaults to a directory named `target/midenc` in the current working directory
     #[arg(
-        hide(true),
         long,
         value_name = "DIR",
         env = "MIDENC_TARGET_DIR",
+        default_value = "target/midenc",
         help_heading = "Output"
     )]
-    pub target_dir: Option<PathBuf>,
+    pub target_dir: PathBuf,
     /// The working directory for the compiler
     ///
     /// By default this will be the working directory the compiler is executed from
@@ -41,34 +37,21 @@ pub struct Compiler {
         help_heading = "Compiler"
     )]
     pub sysroot: Option<PathBuf>,
-    /// Write output to compiler-chosen filename in `<dir>`
+    /// Write compiled output to compiler-chosen filename in `<dir>`
     #[arg(
         long,
+        short = 'O',
         value_name = "DIR",
         env = "MIDENC_OUT_DIR",
         help_heading = "Output"
     )]
     pub output_dir: Option<PathBuf>,
-    /// Write output to `<filename>`
+    /// Write compiled output to `<filename>`
     #[arg(long, short = 'o', value_name = "FILENAME", help_heading = "Output")]
     pub output_file: Option<PathBuf>,
     /// Write output to stdout
     #[arg(long, conflicts_with("output_file"), help_heading = "Output")]
     pub stdout: bool,
-    #[command(flatten)]
-    pub options: CompilerOptions,
-}
-
-/// Used to parse `CompilerOptions` for tests
-#[derive(Debug, Parser)]
-#[command(name = "midenc")]
-pub struct TestCompiler {
-    #[command(flatten)]
-    pub options: CompilerOptions,
-}
-
-#[derive(Debug, Args)]
-pub struct CompilerOptions {
     /// Specify the name of the project being compiled
     ///
     /// The default is derived from the name of the first input file, or if reading from stdin,
@@ -231,67 +214,73 @@ pub struct CompilerOptions {
     #[arg(long, value_name = "PASS", help_heading = "Passes")]
     pub print_ir_after_pass: Option<String>,
 }
+
 impl Compiler {
-    /// Use this configuration to obtain a [Session] used for compilation
-    pub fn into_session(self, emitter: Option<Arc<dyn Emitter>>) -> Session {
-        let source_manager = Arc::new(DefaultSourceManager::default());
-        let tmp_dir = self.target_dir.unwrap_or_else(std::env::temp_dir);
-        let output_file = match self.output_file {
-            Some(path) => Some(OutputFile::Real(path)),
-            None if self.stdout => Some(OutputFile::Stdout),
-            None => None,
-        };
-        let cwd = self.working_dir;
-        let sysroot = self.sysroot;
-        let options = self.options.into_options(cwd, sysroot);
-
-        Session::new(
-            self.input,
-            self.output_dir,
-            output_file,
-            Some(tmp_dir),
-            options,
-            emitter,
-            source_manager,
-        )
-    }
-}
-
-impl CompilerOptions {
-    pub fn parse_options(extra_args: &[&str]) -> midenc_session::Options {
-        let command = <TestCompiler as clap::CommandFactory>::command();
+    /// Construct a [Compiler] programatically
+    pub fn new_session<I, A, S>(inputs: I, emitter: Option<Arc<dyn Emitter>>, argv: A) -> Session
+    where
+        I: IntoIterator<Item = InputFile>,
+        A: IntoIterator<Item = S>,
+        S: Into<OsString> + Clone,
+    {
+        let argv = [OsString::from("midenc")]
+            .into_iter()
+            .chain(argv.into_iter().map(|arg| arg.into()));
+        let command = <Self as clap::CommandFactory>::command();
         let command = crate::register_flags(command);
-        let mut matches = command.try_get_matches_from(extra_args).unwrap_or_else(|err| err.exit());
+        let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
         let compile_matches = matches.clone();
 
-        let copts = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
-            .map_err(format_error::<TestCompiler>)
+        let opts = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+            .map_err(format_error::<Self>)
             .unwrap_or_else(|err| err.exit());
 
-        copts.into_options(None, None).with_arg_matches(compile_matches)
+        let inputs = inputs.into_iter().collect();
+        opts.into_session(inputs, emitter).with_arg_matches(compile_matches)
     }
 
-    pub fn into_options(self, working_dir: Option<PathBuf>, sysroot: Option<PathBuf>) -> Options {
-        let cwd = working_dir
+    /// Use this configuration to obtain a [Session] used for compilation
+    pub fn into_session(
+        self,
+        inputs: Vec<InputFile>,
+        emitter: Option<Arc<dyn Emitter>>,
+    ) -> Session {
+        let cwd = self
+            .working_dir
             .unwrap_or_else(|| std::env::current_dir().expect("no working directory available"));
 
+        // Map clap color choices to internal color choice
         let color = match self.color {
             ColorChoice::Auto => MDColorChoice::Auto,
             ColorChoice::Always => MDColorChoice::Always,
             ColorChoice::Never => MDColorChoice::Never,
         };
 
+        // Determine if a specific output file has been requested
+        let output_file = match self.output_file {
+            Some(path) => Some(OutputFile::Real(path)),
+            None if self.stdout => Some(OutputFile::Stdout),
+            None => None,
+        };
+
+        // Initialize output types
         let mut output_types = OutputTypes::new(self.output_types);
         if output_types.is_empty() {
-            output_types.insert(OutputType::Mast, None);
+            output_types.insert(OutputType::Mast, output_file.clone());
+        } else if output_file.is_some() && output_types.get(&OutputType::Mast).is_some() {
+            // The -o flag overrides --emit
+            output_types.insert(OutputType::Mast, output_file.clone());
         }
 
+        // Convert --exe or --lib to project type
         let project_type = if self.is_program {
             ProjectType::Program
         } else {
             ProjectType::Library
         };
-        let mut options = Options::new(self.name, self.target, project_type, cwd, sysroot)
+
+        // Consolidate all compiler options
+        let mut options = Options::new(self.name, self.target, project_type, cwd, self.sysroot)
             .with_color(color)
             .with_verbosity(self.verbosity)
             .with_warnings(self.warn)
@@ -303,7 +292,27 @@ impl CompilerOptions {
         options.entrypoint = self.entrypoint;
         options.print_ir_after_all = self.print_ir_after_all;
         options.print_ir_after_pass = self.print_ir_after_pass;
-        options
+
+        // Establish --target-dir
+        let target_dir = if self.target_dir.is_absolute() {
+            self.target_dir
+        } else {
+            options.current_dir.join(&self.target_dir)
+        };
+        std::fs::create_dir_all(&target_dir).unwrap_or_else(|err| {
+            panic!("unable to create --target-dir '{}': {err}", target_dir.display())
+        });
+
+        let source_manager = Arc::new(DefaultSourceManager::default());
+        Session::new(
+            inputs,
+            self.output_dir,
+            output_file,
+            target_dir,
+            options,
+            emitter,
+            source_manager,
+        )
     }
 }
 

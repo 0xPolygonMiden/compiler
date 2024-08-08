@@ -252,7 +252,7 @@ fn i64_load32_s() {
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
             (let (v2 u32) (mod.unchecked v1 2))
-            (assertz v2)
+            (assertz 250 v2)
             (let (v3 (ptr i32)) (inttoptr v1))
             (let (v4 i32) (load v3))
             (let (v5 i64) (sext v4))
@@ -272,7 +272,7 @@ fn i64_load32_u() {
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
             (let (v2 u32) (mod.unchecked v1 2))
-            (assertz v2)
+            (assertz 250 v2)
             (let (v3 (ptr u32)) (inttoptr v1))
             (let (v4 u32) (load v3))
             (let (v5 i64) (zext v4))
@@ -292,7 +292,7 @@ fn i32_load() {
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
             (let (v2 u32) (mod.unchecked v1 2))
-            (assertz v2)
+            (assertz 250 v2)
             (let (v3 (ptr i32)) (inttoptr v1))
             (let (v4 i32) (load v3))
         "#]],
@@ -311,7 +311,7 @@ fn i64_load() {
             (let (v0 i32) (const.i32 1024))
             (let (v1 u32) (cast v0))
             (let (v2 u32) (mod.unchecked v1 3))
-            (assertz v2)
+            (assertz 250 v2)
             (let (v3 (ptr i64)) (inttoptr v1))
             (let (v4 i64) (load v3))
         "#]],
@@ -331,7 +331,7 @@ fn i32_store() {
             (let (v1 i32) (const.i32 1))
             (let (v2 u32) (cast v0))
             (let (v3 u32) (mod.unchecked v2 2))
-            (assertz v3)
+            (assertz 250 v3)
             (let (v4 (ptr i32)) (inttoptr v2))
             (store v4 v1)
         "#]],
@@ -351,7 +351,7 @@ fn i64_store() {
             (let (v1 i64) (const.i64 1))
             (let (v2 u32) (cast v0))
             (let (v3 u32) (mod.unchecked v2 3))
-            (assertz v3)
+            (assertz 250 v3)
             (let (v4 (ptr i64)) (inttoptr v2))
             (store v4 v1)
         "#]],
@@ -410,7 +410,7 @@ fn i64_store32() {
             (let (v2 u32) (trunc v1))
             (let (v3 u32) (cast v0))
             (let (v4 u32) (mod.unchecked v3 2))
-            (assertz v4)
+            (assertz 250 v4)
             (let (v5 (ptr u32)) (inttoptr v3))
             (store v5 v2)
         "#]],

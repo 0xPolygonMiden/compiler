@@ -21,7 +21,15 @@ pub struct Midenc {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    Compile(compile::Compiler),
+    Compile {
+        /// The input file to compile
+        ///
+        /// You may specify `-` to read from stdin, otherwise you must provide a path
+        #[arg(required(true), value_name = "FILE")]
+        input: InputFile,
+        #[command(flatten)]
+        options: compile::Compiler,
+    },
     /// Execute a compiled function using the Miden VM emulator.
     ///
     /// The emulator is more restrictive, but is faster than the Miden VM, and
@@ -186,11 +194,11 @@ impl Midenc {
         matches: clap::ArgMatches,
     ) -> Result<(), Report> {
         match self.command {
-            Commands::Compile(mut config) => {
-                if config.working_dir.is_none() {
-                    config.working_dir = Some(cwd);
+            Commands::Compile { input, mut options } => {
+                if options.working_dir.is_none() {
+                    options.working_dir = Some(cwd);
                 }
-                let session = config.into_session(emitter).with_arg_matches(matches);
+                let session = options.into_session(vec![input], emitter).with_arg_matches(matches);
                 compile::compile(Rc::new(session))
             }
             _ => unimplemented!(),

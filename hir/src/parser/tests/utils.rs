@@ -65,6 +65,7 @@ impl ParseTest {
 
         let emitter = Arc::new(SplitEmitter::new());
         let options = Options::new(
+            None,
             TargetEnv::Base,
             ProjectType::Library,
             std::env::current_dir().unwrap(),

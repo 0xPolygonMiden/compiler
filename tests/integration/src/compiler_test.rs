@@ -1207,27 +1207,18 @@ where
     I: IntoIterator<Item = InputFile>,
     S: AsRef<str>,
 {
-    use midenc_hir::diagnostics::{
-        reporting::{self, ReportHandlerOpts},
-        DefaultSourceManager,
-    };
+    use midenc_hir::diagnostics::reporting::{self, ReportHandlerOpts};
 
     let result = reporting::set_hook(Box::new(|_| Box::new(ReportHandlerOpts::new().build())));
     if result.is_ok() {
         reporting::set_panic_hook();
     }
 
-    let mut inputs = inputs.into_iter();
-    let input_file = inputs.next().expect("must provide at least one input file");
-    let mut flags = vec!["--debug", "-l", "std"];
-    flags.extend(extra_flags.iter().map(|flag| flag.as_ref()));
-    let source_manager = Arc::new(DefaultSourceManager::default());
-    let mut options = midenc_compile::CompilerOptions::parse_options(&flags);
-    options.output_types.insert(OutputType::Masm, None);
-    let mut session = Session::new(input_file, None, None, None, options, None, source_manager);
-    for extra_input in inputs {
-        session.inputs.push(extra_input);
-    }
+    let mut argv = vec!["-l", "std"];
+    argv.extend(extra_flags.iter().map(|flag| flag.as_ref()));
+    let session = midenc_compile::Compiler::new_session(inputs, None, argv)
+        // Ensure MASM outputs are generated
+        .with_output_type(OutputType::Masm, None);
     Rc::new(session)
 }
 

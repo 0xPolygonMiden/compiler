@@ -1,12 +1,12 @@
 use std::{
     path::{Path, PathBuf},
     rc::Rc,
-    sync::Arc,
 };
 
+use midenc_compile::Compiler;
 use midenc_session::{
-    diagnostics::{DefaultSourceManager, IntoDiagnostic, Report, WrapErr},
-    InputFile, OutputFile, OutputType, OutputTypeSpec, OutputTypes, Session, Verbosity,
+    diagnostics::{IntoDiagnostic, Report, WrapErr},
+    InputFile, OutputType,
 };
 
 pub fn build_masm(
@@ -28,28 +28,21 @@ pub fn build_masm(
     let input = InputFile::from_path(wasm_file_path)
         .into_diagnostic()
         .wrap_err("Invalid input file")?;
-    let output_file_folder = OutputFile::Real(output_folder.to_path_buf());
-    let output_type = OutputType::Masm;
-    let output_types = OutputTypes::new(vec![OutputTypeSpec {
-        output_type,
-        path: Some(output_file_folder.clone()),
-    }]);
+    let output_file = output_folder
+        .join(wasm_file_path.file_stem().expect("invalid wasm file path: no file stem"))
+        .with_extension(OutputType::Mast.extension());
     let project_type = if is_bin { "--exe" } else { "--lib" };
-    let source_manager = Arc::new(DefaultSourceManager::default());
-    let options = midenc_compile::CompilerOptions::parse_options(&[project_type])
-        .with_verbosity(Verbosity::Debug)
-        .with_output_types(output_types);
-    let session = Rc::new(Session::new(
-        input,
-        Some(output_folder.to_path_buf()),
-        None,
-        None,
-        options,
-        None,
-        source_manager,
-    ));
+    let args: Vec<&std::ffi::OsStr> = vec![
+        "--output-dir".as_ref(),
+        output_folder.as_os_str(),
+        "-o".as_ref(),
+        output_file.as_os_str(),
+        project_type.as_ref(),
+        "--verbose".as_ref(),
+        "-l".as_ref(),
+        "std".as_ref(),
+    ];
+    let session = Rc::new(Compiler::new_session([input], None, args));
     midenc_compile::compile(session.clone())?;
-    let mut output_path = output_folder.join(wasm_file_path.file_stem().unwrap());
-    output_path.set_extension(output_type.extension());
-    Ok(output_path)
+    Ok(output_file)
 }

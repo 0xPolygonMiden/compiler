@@ -11,7 +11,7 @@ use midenc_hir::{
 };
 use midenc_session::{OutputType, Session};
 
-pub use self::compiler::{Compiler, CompilerOptions};
+pub use self::compiler::Compiler;
 use self::{stage::Stage, stages::*};
 
 pub type CompilerResult<T> = Result<T, Report>;

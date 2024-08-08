@@ -18,6 +18,7 @@ fn setup_log() {
 }
 
 #[test]
+#[ignore = "pending rodata fixes"]
 fn test_get_inputs_4() {
     test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
 }

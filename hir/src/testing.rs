@@ -53,10 +53,10 @@ impl TestContext {
 
         let source_manager = Arc::new(DefaultSourceManager::default());
         let session = Session::new(
-            InputFile::from_path("test.hir").unwrap(),
+            [InputFile::from_path("test.hir").unwrap()],
             None,
             None,
-            None,
+            std::env::temp_dir(),
             options,
             emitter,
             source_manager,

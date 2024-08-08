@@ -22,6 +22,11 @@ pub enum OutputType {
     Mast,
 }
 impl OutputType {
+    /// Returns true if this output type is an intermediate artifact produced during compilation
+    pub fn is_intermediate(&self) -> bool {
+        !matches!(self, Self::Mast)
+    }
+
     pub fn extension(&self) -> &'static str {
         match self {
             Self::Ast => "ast",
@@ -75,7 +80,7 @@ impl OutputFile {
     pub fn filestem(&self) -> Option<&OsStr> {
         match self {
             Self::Real(ref path) => path.file_stem(),
-            Self::Stdout => Some(OsStr::new("stdout")),
+            Self::Stdout => None,
         }
     }
 
@@ -90,10 +95,10 @@ impl OutputFile {
         }
     }
 
-    pub fn as_path(&self) -> &Path {
+    pub fn as_path(&self) -> Option<&Path> {
         match self {
-            Self::Real(ref path) => path.as_ref(),
-            Self::Stdout => Path::new("stdout"),
+            Self::Real(ref path) => Some(path.as_ref()),
+            Self::Stdout => None,
         }
     }
 
@@ -113,93 +118,131 @@ impl OutputFile {
 #[derive(Debug)]
 pub struct OutputFiles {
     stem: String,
+    /// The compiler working directory
+    pub cwd: PathBuf,
+    /// The directory in which to place temporaries or intermediate artifacts
+    pub tmp_dir: PathBuf,
+    /// The directory in which to place objects produced by the current compiler operation
+    ///
+    /// This directory is intended for non-intermediate artifacts, though it may be used
+    /// to derive `tmp_dir` elsewhere. You should prefer to use `tmp_dir` for files which
+    /// are internal details of the compiler.
     pub out_dir: PathBuf,
+    /// If specified, the specific path at which to write the compiler output.
+    ///
+    /// This _only_ applies to the final output, i.e. the `.masl` library or executable.
     pub out_file: Option<OutputFile>,
-    pub tmp_dir: Option<PathBuf>,
+    /// The raw output types requested by the user on the command line
     pub outputs: OutputTypes,
 }
 impl OutputFiles {
     pub fn new(
         stem: String,
+        cwd: PathBuf,
         out_dir: PathBuf,
         out_file: Option<OutputFile>,
-        tmp_dir: Option<PathBuf>,
+        tmp_dir: PathBuf,
         outputs: OutputTypes,
     ) -> Self {
         Self {
             stem,
+            cwd,
+            tmp_dir,
             out_dir,
             out_file,
-            tmp_dir,
             outputs,
         }
     }
 
-    pub fn path(&self, name: Option<&str>, ty: OutputType) -> OutputFile {
-        let mut output = self
-            .outputs
+    /// Return the [OutputFile] representing where an output of `ty` type should be written,
+    /// with an optional `name`, which overrides the file stem of the resulting path.
+    pub fn output_file(&self, ty: OutputType, name: Option<&str>) -> OutputFile {
+        let default_name = name.unwrap_or(self.stem.as_str());
+        self.outputs
             .get(&ty)
             .and_then(|p| p.to_owned())
-            .or_else(|| self.out_file.clone())
-            .unwrap_or_else(|| OutputFile::Real(self.output_path(ty)));
-        if let OutputFile::Real(ref mut path) = output {
-            if let Some(name) = name {
-                path.set_file_name(name);
-            }
-        }
-        output
+            .map(|of| match of {
+                OutputFile::Real(path) => OutputFile::Real({
+                    let path = if path.is_absolute() {
+                        path
+                    } else {
+                        self.cwd.join(path)
+                    };
+                    if path.is_dir() {
+                        path.join(default_name).with_extension(ty.extension())
+                    } else if let Some(name) = name {
+                        path.with_stem_and_extension(name, ty.extension())
+                    } else {
+                        path
+                    }
+                }),
+                out @ OutputFile::Stdout => out,
+            })
+            .unwrap_or_else(|| {
+                let out = if ty.is_intermediate() {
+                    self.with_directory_and_extension(&self.tmp_dir, ty.extension())
+                } else if let Some(output_file) = self.out_file.as_ref() {
+                    return output_file.clone();
+                } else {
+                    self.with_directory_and_extension(&self.out_dir, ty.extension())
+                };
+                OutputFile::Real(if let Some(name) = name {
+                    out.with_stem(name)
+                } else {
+                    out
+                })
+            })
     }
 
+    /// Return the most appropriate file path for an output of `ty` type.
+    ///
+    /// The returned path _may_ be precise, if a specific file path was chosen by the user for
+    /// the given output type, but in general the returned path will be derived from the current
+    /// `self.stem`, and is thus an appropriate default path for the given output.
     pub fn output_path(&self, ty: OutputType) -> PathBuf {
-        let extension = ty.extension();
-        if let Some(output_file) = self.outputs.get(&ty) {
-            match output_file {
-                Some(OutputFile::Real(ref path)) if path.is_absolute() => {
-                    path.with_extension(extension)
-                }
-                Some(OutputFile::Real(ref path)) => {
-                    self.out_dir.join(path).with_extension(extension)
-                }
-                Some(OutputFile::Stdout) | None => {
-                    self.with_directory_and_extension(&self.out_dir, extension)
+        match self.output_file(ty, None) {
+            OutputFile::Real(path) => path,
+            OutputFile::Stdout => {
+                if ty.is_intermediate() {
+                    self.with_directory_and_extension(&self.tmp_dir, ty.extension())
+                } else if let Some(output_file) = self.out_file.as_ref().and_then(|of| of.as_path())
+                {
+                    output_file.to_path_buf()
+                } else {
+                    self.with_directory_and_extension(&self.out_dir, ty.extension())
                 }
             }
-        } else {
-            self.with_directory_and_extension(&self.out_dir, extension)
         }
     }
 
+    /// Constructs a file path for a temporary file of the given output type, with an optional name,
+    /// falling back to `self.stem` if no name is provided.
+    ///
+    /// The file path is always a child of `self.tmp_dir`
     pub fn temp_path(&self, ty: OutputType, name: Option<&str>) -> PathBuf {
-        let extension = ty.extension();
-        self.temp_path_ext(extension, name)
+        self.tmp_dir
+            .join(name.unwrap_or(self.stem.as_str()))
+            .with_extension(ty.extension())
     }
 
-    fn temp_path_ext(&self, ext: &str, name: Option<&str>) -> PathBuf {
-        let mut extension = String::new();
-
-        if let Some(name) = name {
-            extension.push_str(name);
-        }
-
-        if !ext.is_empty() {
-            if !extension.is_empty() {
-                extension.push('.');
-            }
-            extension.push_str(ext);
-        }
-
-        let tmp_dir = self.tmp_dir.as_ref().unwrap_or(&self.out_dir);
-        self.with_directory_and_extension(tmp_dir, &extension)
-    }
-
+    /// Build a file path which is either:
+    ///
+    /// * If `self.out_file` is set to a real path, returns it with extension set to `extension`
+    /// * Otherwise, calls [with_directory_and_extension] with `self.out_dir` and `extension`
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        self.with_directory_and_extension(&self.out_dir, extension)
+        match self.out_file.as_ref() {
+            Some(OutputFile::Real(ref path)) => path.with_extension(extension),
+            Some(OutputFile::Stdout) | None => {
+                self.with_directory_and_extension(&self.out_dir, extension)
+            }
+        }
     }
 
+    /// Build a file path whose parent is `directory`, file stem is `self.stem`, and extension is
+    /// `extension`
+    #[inline]
     fn with_directory_and_extension(&self, directory: &Path, extension: &str) -> PathBuf {
-        let mut path = directory.join(&self.stem);
-        path.set_extension(extension);
-        path
+        directory.join(&self.stem).with_extension(extension)
     }
 }
 
@@ -319,5 +362,46 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
             )
         })?;
         Ok(OutputTypeSpec { output_type, path })
+    }
+}
+
+trait PathMut {
+    fn with_stem(self, stem: impl AsRef<OsStr>) -> PathBuf;
+    fn with_stem_and_extension(self, stem: impl AsRef<OsStr>, ext: impl AsRef<OsStr>) -> PathBuf;
+}
+impl PathMut for &Path {
+    fn with_stem(self, stem: impl AsRef<OsStr>) -> PathBuf {
+        let mut path = self.with_file_name(stem);
+        if let Some(ext) = self.extension() {
+            path.set_extension(ext);
+        }
+        path
+    }
+
+    fn with_stem_and_extension(self, stem: impl AsRef<OsStr>, ext: impl AsRef<OsStr>) -> PathBuf {
+        let mut path = self.with_file_name(stem);
+        path.set_extension(ext);
+        path
+    }
+}
+impl PathMut for PathBuf {
+    fn with_stem(mut self, stem: impl AsRef<OsStr>) -> PathBuf {
+        if let Some(ext) = self.extension() {
+            let ext = ext.to_string_lossy().into_owned();
+            self.with_stem_and_extension(stem, ext)
+        } else {
+            self.set_file_name(stem);
+            self
+        }
+    }
+
+    fn with_stem_and_extension(
+        mut self,
+        stem: impl AsRef<OsStr>,
+        ext: impl AsRef<OsStr>,
+    ) -> PathBuf {
+        self.set_file_name(stem);
+        self.set_extension(ext);
+        self
     }
 }

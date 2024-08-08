@@ -569,7 +569,7 @@ fn render_execution_error(
                 session.source_manager.get_by_path(loc.path.as_ref())
             };
             if is_top {
-                source_code = loc_source_code.clone();
+                source_code.clone_from(&loc_source_code);
                 labels.push(LabeledSpan::new_with_span(
                     None,
                     loc.start.to_usize()..loc.end.to_usize(),
