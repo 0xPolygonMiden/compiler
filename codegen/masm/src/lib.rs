@@ -9,7 +9,7 @@ mod masm;
 #[cfg(test)]
 mod tests;
 
-use miden_assembly::library::CompiledLibrary;
+use miden_assembly::library::Library as CompiledLibrary;
 use midenc_hir::{
     self as hir,
     diagnostics::Report,

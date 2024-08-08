@@ -4,7 +4,7 @@ use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
 
 use intrusive_collections::RBTree;
-use miden_assembly::library::CompiledLibrary;
+use miden_assembly::library::Library as CompiledLibrary;
 use miden_core::crypto::hash::RpoDigest;
 
 pub use self::linker::Linker;

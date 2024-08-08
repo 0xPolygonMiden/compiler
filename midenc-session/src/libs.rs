@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use miden_assembly::{library::CompiledLibrary, LibraryNamespace};
+use miden_assembly::{library::Library as CompiledLibrary, LibraryNamespace};
 use miden_stdlib::StdLibrary;
 
 use crate::{

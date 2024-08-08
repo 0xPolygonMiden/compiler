@@ -2731,10 +2731,11 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63d25e229d9d1f1598de2939477884a4162776ea124d95f1349c2427325b9e53"
 dependencies = [
  "miden-core",
- "thiserror",
+ "miden-thiserror",
  "winter-air",
  "winter-prover",
 ]
@@ -2742,43 +2743,46 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "221e820d4f6ff61b7618805dd8835a871828bd3f67f09aee3e1a50233d67be2e"
 dependencies = [
  "aho-corasick",
  "lalrpop",
  "lalrpop-util",
  "miden-core",
- "miette 7.1.0",
- "rustc_version 0.2.3",
+ "miden-miette",
+ "miden-thiserror",
+ "rustc_version 0.4.0",
  "smallvec",
- "thiserror",
  "tracing",
  "unicode-width",
 ]
 
 [[package]]
 name = "miden-core"
-version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92def4a24d566e58be40c62f1730d234e1a328678a2c846a591fecd9e77971b0"
 dependencies = [
  "lock_api",
  "loom",
  "memchr",
  "miden-crypto",
  "miden-formatting",
- "miette 7.1.0",
+ "miden-miette",
+ "miden-thiserror",
  "num-derive",
  "num-traits",
  "parking_lot",
- "thiserror",
  "winter-math",
  "winter-utils",
 ]
 
 [[package]]
 name = "miden-crypto"
-version = "0.9.3"
-source = "git+https://github.com/0xPolygonMiden/crypto?branch=next#b06cfa3c035ada8122a405a72d2e4b2ad1a89b47"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6fad06fc3af260ed3c4235821daa2132813d993f96d446856036ae97e9606dd"
 dependencies = [
  "blake3",
  "cc",
@@ -2869,6 +2873,48 @@ name = "miden-integration-tests-rust-fib"
 version = "0.0.0"
 
 [[package]]
+name = "miden-miette"
+version = "7.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c532250422d933f15b148fb81e4522a5d649c178ab420d0d596c86228da35570"
+dependencies = [
+ "backtrace",
+ "backtrace-ext",
+ "cfg-if",
+ "futures",
+ "indenter",
+ "lazy_static",
+ "miden-miette-derive",
+ "miden-thiserror",
+ "owo-colors",
+ "regex",
+ "rustc_version 0.2.3",
+ "rustversion",
+ "serde_json",
+ "spin",
+ "strip-ansi-escapes",
+ "supports-color",
+ "supports-hyperlinks",
+ "supports-unicode",
+ "syn 2.0.72",
+ "terminal_size",
+ "textwrap",
+ "trybuild",
+ "unicode-width",
+]
+
+[[package]]
+name = "miden-miette-derive"
+version = "7.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cc759f0a2947acae217a2f32f722105cacc57d17d5f93bc16362142943a4edd"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
 name = "miden-parsing"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2881,7 +2927,8 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fbd977bd66fc5f28cfd12b6780a82f17de4531aaa16b43d68d54c46fa5f9e49"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -2892,9 +2939,30 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2262c928634816598db588da8ff6f2b56e0251edbd94e75b986e82dcbee5af3e"
 dependencies = [
  "miden-assembly",
+]
+
+[[package]]
+name = "miden-thiserror"
+version = "1.0.59"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "183ff8de338956ecfde3a38573241eb7a6f3d44d73866c210e5629c07fa00253"
+dependencies = [
+ "miden-thiserror-impl",
+]
+
+[[package]]
+name = "miden-thiserror-impl"
+version = "1.0.59"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ee4176a0f2e7d29d2a8ee7e60b6deb14ce67a20e94c3e2c7275cdb8804e1862"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
 ]
 
 [[package]]
@@ -3098,39 +3166,9 @@ version = "5.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e"
 dependencies = [
- "miette-derive 5.10.0",
+ "miette-derive",
  "once_cell",
  "thiserror",
- "unicode-width",
-]
-
-[[package]]
-name = "miette"
-version = "7.1.0"
-source = "git+https://github.com/bitwalker/miette?branch=no-std#e918fbde6c9853fe5e0db8e8e05bf7fbc8d2cc15"
-dependencies = [
- "backtrace",
- "backtrace-ext",
- "cfg-if",
- "futures",
- "indenter",
- "lazy_static",
- "miette-derive 7.1.0",
- "owo-colors",
- "regex",
- "rustc_version 0.2.3",
- "rustversion",
- "serde_json",
- "spin",
- "strip-ansi-escapes",
- "supports-color",
- "supports-hyperlinks",
- "supports-unicode",
- "syn 2.0.72",
- "terminal_size",
- "textwrap",
- "thiserror",
- "trybuild",
  "unicode-width",
 ]
 
@@ -3139,16 +3177,6 @@ name = "miette-derive"
 version = "5.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49e7bc1560b95a3c4a25d03de42fe76ca718ab92d1a22a55b9b4cf67b3ae635c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.72",
-]
-
-[[package]]
-name = "miette-derive"
-version = "7.1.0"
-source = "git+https://github.com/bitwalker/miette?branch=no-std#e918fbde6c9853fe5e0db8e8e05bf7fbc8d2cc15"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3915,7 +3943,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b823de344848e011658ac981009100818b322421676740546f8b52ed5249428"
 dependencies = [
  "logos",
- "miette 5.10.0",
+ "miette",
  "once_cell",
  "prost",
  "prost-types",
@@ -3937,7 +3965,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06a5aacd1f6147ceac5e3896e0c766187dc6a9645f3b93ec821fabbaf821b887"
 dependencies = [
  "bytes",
- "miette 5.10.0",
+ "miette",
  "prost",
  "prost-reflect",
  "prost-types",
@@ -3952,7 +3980,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30fc6d0af2dec2c39da31eb02cc78cbc05b843b04f30ad78ccc6e8a342ec5518"
 dependencies = [
  "logos",
- "miette 5.10.0",
+ "miette",
  "prost-types",
  "thiserror",
 ]
@@ -6314,3 +6342,8 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[patch.unused]]
+name = "miette"
+version = "7.1.0"
+source = "git+https://github.com/bitwalker/miette?branch=no-std#e918fbde6c9853fe5e0db8e8e05bf7fbc8d2cc15"
