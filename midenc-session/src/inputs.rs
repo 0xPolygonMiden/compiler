@@ -44,7 +44,7 @@ impl InputFile {
     pub fn empty() -> Self {
         Self {
             file: InputType::Stdin {
-                name: FileName::Virtual("empty.wasm".into()),
+                name: FileName::Virtual("empty".into()),
                 input: vec![],
             },
             file_type: FileType::Wasm,

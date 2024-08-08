@@ -69,6 +69,18 @@ pub struct TestCompiler {
 
 #[derive(Debug, Args)]
 pub struct CompilerOptions {
+    /// Specify the name of the project being compiled
+    ///
+    /// The default is derived from the name of the first input file, or if reading from stdin,
+    /// the base name of the working directory.
+    #[arg(
+        long,
+        short = 'n',
+        value_name = "NAME",
+        default_value = None,
+        help_heading = "Diagnostics"
+    )]
+    pub name: Option<String>,
     /// Specify what type and level of informational output to emit
     #[arg(
         long = "verbose",
@@ -279,7 +291,7 @@ impl CompilerOptions {
         } else {
             ProjectType::Library
         };
-        let mut options = Options::new(self.target, project_type, cwd, sysroot)
+        let mut options = Options::new(self.name, self.target, project_type, cwd, sysroot)
             .with_color(color)
             .with_verbosity(self.verbosity)
             .with_warnings(self.warn)

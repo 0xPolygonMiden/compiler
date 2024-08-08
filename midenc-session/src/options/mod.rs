@@ -105,12 +105,13 @@ impl Default for Options {
         let current_dir = std::env::current_dir().expect("could not get working directory");
         let target = TargetEnv::default();
         let project_type = ProjectType::default_for_target(target);
-        Self::new(target, project_type, current_dir, None)
+        Self::new(None, target, project_type, current_dir, None)
     }
 }
 
 impl Options {
     pub fn new(
+        name: Option<String>,
         target: TargetEnv,
         project_type: ProjectType,
         current_dir: PathBuf,
@@ -126,7 +127,7 @@ impl Options {
         });
 
         Self {
-            name: None,
+            name,
             target,
             project_type,
             entrypoint: None,

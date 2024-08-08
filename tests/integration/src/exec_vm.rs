@@ -553,7 +553,7 @@ fn render_execution_error(
     for (i, frame) in callstack.frames.iter().enumerate() {
         let is_top = i + 1 == num_frames;
         let name = match frame.procedure.split_once("::") {
-            Some((module, rest)) if module == session_name.as_str() => demangle(rest),
+            Some((module, rest)) if module == session_name => demangle(rest),
             _ => demangle(frame.procedure.as_ref()),
         };
         if is_top {

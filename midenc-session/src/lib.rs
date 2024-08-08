@@ -64,6 +64,8 @@ impl ProjectType {
 /// This struct provides access to all of the metadata and configuration
 /// needed during a single compilation session.
 pub struct Session {
+    /// The name of this session
+    pub name: String,
     /// Configuration for the current compiler session
     pub options: Options,
     /// The current source manager
@@ -82,6 +84,7 @@ impl fmt::Debug for Session {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let inputs = self.inputs.iter().map(|input| input.file_name()).collect::<Vec<_>>();
         f.debug_struct("Session")
+            .field("name", &self.name)
             .field("options", &self.options)
             .field("inputs", &inputs)
             .field("output_files", &self.output_files)
@@ -106,23 +109,63 @@ impl Session {
             emitter.unwrap_or_else(|| options.default_emitter()),
         ));
 
-        let output_files = match output_file {
-            None => {
-                let output_dir = output_dir.unwrap_or_default();
-                let stem = options.name.clone().unwrap_or_else(|| input.filestem().to_owned());
+        let output_dir = output_dir
+            .as_deref()
+            .or_else(|| output_file.as_ref().and_then(|of| of.as_path().parent()))
+            .map(|path| path.to_path_buf())
+            .unwrap_or_else(|| options.current_dir.clone());
 
-                OutputFiles::new(stem, output_dir, None, tmp_dir, options.output_types.clone())
-            }
-            Some(out_file) => OutputFiles::new(
-                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string(),
-                output_dir.unwrap_or_default(),
-                Some(out_file),
-                tmp_dir,
-                options.output_types.clone(),
-            ),
-        };
+        let name = options
+            .name
+            .clone()
+            .or_else(|| {
+                output_file
+                    .as_ref()
+                    .and_then(|of| of.filestem().map(|stem| stem.to_string_lossy().into_owned()))
+            })
+            .unwrap_or_else(|| match &input {
+                InputFile {
+                    file: InputType::Real(ref path),
+                    ..
+                } => path
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .or_else(|| path.extension().and_then(|stem| stem.to_str()))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "invalid input path: '{}' has no file stem or extension",
+                            path.display()
+                        )
+                    })
+                    .to_string(),
+                input @ InputFile {
+                    file: InputType::Stdin { ref name, .. },
+                    ..
+                } => {
+                    let name = name.as_str();
+                    if matches!(name, Some("empty") | Some("stdin")) {
+                        options
+                            .current_dir
+                            .file_stem()
+                            .and_then(|stem| stem.to_str())
+                            .unwrap_or(name.unwrap())
+                            .to_string()
+                    } else {
+                        input.filestem().to_owned()
+                    }
+                }
+            });
+
+        let output_files = OutputFiles::new(
+            name.clone(),
+            output_dir,
+            output_file,
+            tmp_dir,
+            options.output_types.clone(),
+        );
 
         Self {
+            name,
             options,
             source_manager,
             diagnostics,
@@ -180,20 +223,8 @@ impl Session {
     }
 
     /// The name of this session (used as the name of the project, output file, etc.)
-    pub fn name(&self) -> String {
-        self.options
-            .name
-            .clone()
-            .or_else(|| {
-                if self.inputs[0].is_real() {
-                    Some(self.inputs[0].filestem().to_string())
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| {
-                self.options.current_dir.file_name().unwrap().to_string_lossy().into_owned()
-            })
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn out_filename(&self, progname: Symbol) -> OutputFile {
