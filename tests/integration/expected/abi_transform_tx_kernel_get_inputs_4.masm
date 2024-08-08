@@ -45,7 +45,7 @@ export."miden_tx_kernel_sys::get_inputs"
     exec."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
     dup.1
     u32mod.2
-    assertz.err=0
+    assertz.err=250
     dup.0
     dup.0
     u32mod.16
@@ -58,7 +58,7 @@ export."miden_tx_kernel_sys::get_inputs"
     exec.::intrinsics::mem::load_sw
     swap.1
     u32mod.2
-    assertz.err=0
+    assertz.err=250
     swap.1
     dup.0
     u32mod.16
@@ -159,15 +159,15 @@ export."miden_tx_kernel_sys::get_inputs"
         u32div.16
         exec.::intrinsics::mem::store_sw
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         movup.2
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         movup.2
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         dropw
         dropw
     else
@@ -193,7 +193,7 @@ export."miden_tx_kernel_sys::get_inputs"
         movup.2
         exec."alloc::raw_vec::handle_error"
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         push.0
         assert
     end
@@ -292,11 +292,11 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                 else
                     swap.1
                     drop
@@ -355,11 +355,11 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                 end
             else
                 push.4
@@ -427,11 +427,11 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                 else
                     swap.1
                     drop
@@ -490,11 +490,11 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
                     u32div.16
                     exec.::intrinsics::mem::store_sw
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                 end
             end
         else
@@ -536,9 +536,9 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
             u32div.16
             exec.::intrinsics::mem::store_sw
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             u32mod.2
-            assertz.err=0
+            assertz.err=250
         end
     else
         movdn.2
@@ -579,9 +579,9 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
         u32div.16
         exec.::intrinsics::mem::store_sw
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
     end
 end
 
@@ -740,9 +740,9 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
         exec.::intrinsics::mem::store_sw
         swap.1
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         push.12
         dup.1
         swap.1
@@ -777,7 +777,7 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             exec."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_free_list"
             dup.0
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             dup.0
             u32mod.16
             dup.0
@@ -904,22 +904,22 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 exec.::intrinsics::mem::store_sw
                 movup.5
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 movup.6
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 movup.2
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 dup.0
                 neq.0
                 if.true
@@ -1003,9 +1003,9 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
                 exec.::intrinsics::mem::store_sw
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 push.0
             end
         else
@@ -1060,9 +1060,9 @@ export."<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc"
             exec.::intrinsics::mem::store_sw
             swap.1
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             u32mod.2
-            assertz.err=0
+            assertz.err=250
         end
     end
 end
@@ -1076,7 +1076,7 @@ export."wee_alloc::alloc_first_fit"
     assert
     dup.0
     u32mod.2
-    assertz.err=0
+    assertz.err=250
     push.0
     push.4294967295
     dup.4
@@ -1119,7 +1119,7 @@ export."wee_alloc::alloc_first_fit"
             u32assert
             dup.0
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             dup.0
             u32mod.16
             dup.0
@@ -1167,10 +1167,10 @@ export."wee_alloc::alloc_first_fit"
                     exec.::intrinsics::mem::store_sw
                     dup.0
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     swap.1
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     dup.0
                     u32mod.16
                     dup.0
@@ -1247,7 +1247,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             dup.0
                             push.2147483648
@@ -1257,7 +1257,7 @@ export."wee_alloc::alloc_first_fit"
                             u32assert
                             dup.0
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             u32mod.16
                             dup.0
@@ -1324,12 +1324,12 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             swap.1
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             dup.0
                             push.2147483648
@@ -1339,7 +1339,7 @@ export."wee_alloc::alloc_first_fit"
                             u32assert
                             dup.0
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             u32mod.16
                             dup.0
@@ -1400,7 +1400,7 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             dup.0
                             push.2147483648
@@ -1410,7 +1410,7 @@ export."wee_alloc::alloc_first_fit"
                             u32assert
                             dup.0
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             u32mod.16
                             dup.0
@@ -1477,12 +1477,12 @@ export."wee_alloc::alloc_first_fit"
                             u32div.16
                             exec.::intrinsics::mem::store_sw
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             swap.1
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             dup.0
                             push.2147483648
@@ -1492,7 +1492,7 @@ export."wee_alloc::alloc_first_fit"
                             u32assert
                             dup.0
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             dup.0
                             u32mod.16
                             dup.0
@@ -1518,7 +1518,7 @@ export."wee_alloc::alloc_first_fit"
                     assert
                     dup.0
                     u32mod.2
-                    assertz.err=0
+                    assertz.err=250
                     dup.0
                     u32mod.16
                     dup.0
@@ -1571,7 +1571,7 @@ export."wee_alloc::alloc_first_fit"
                         u32div.16
                         exec.::intrinsics::mem::store_sw
                         u32mod.2
-                        assertz.err=0
+                        assertz.err=250
                         dup.0
                         eq.0
                         neq.0
@@ -1689,19 +1689,19 @@ export."wee_alloc::alloc_first_fit"
                             exec.::intrinsics::mem::store_sw
                             dup.0
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             movup.2
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             swap.1
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             swap.1
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             swap.1
                             u32mod.2
-                            assertz.err=0
+                            assertz.err=250
                             push.0
                             swap.1
                             dup.0
@@ -1818,19 +1818,19 @@ export."wee_alloc::alloc_first_fit"
                                 exec.::intrinsics::mem::store_sw
                                 movup.2
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 movup.2
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 movup.2
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 movup.3
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 movup.2
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 push.2
                                 movup.2
                                 swap.1
@@ -1892,11 +1892,11 @@ export."wee_alloc::alloc_first_fit"
                                     exec.::intrinsics::mem::store_sw
                                     swap.1
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     push.8
                                     u32wrapping_add
                                 else
@@ -1937,9 +1937,9 @@ export."wee_alloc::alloc_first_fit"
                                     exec.::intrinsics::mem::store_sw
                                     swap.1
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     push.8
                                     u32wrapping_add
                                 end
@@ -2049,19 +2049,19 @@ export."wee_alloc::alloc_first_fit"
                                     exec.::intrinsics::mem::store_sw
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.3
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     push.2
                                     movup.2
                                     swap.1
@@ -2123,11 +2123,11 @@ export."wee_alloc::alloc_first_fit"
                                         exec.::intrinsics::mem::store_sw
                                         swap.1
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         push.8
                                         u32wrapping_add
                                     else
@@ -2168,9 +2168,9 @@ export."wee_alloc::alloc_first_fit"
                                         exec.::intrinsics::mem::store_sw
                                         swap.1
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         push.8
                                         u32wrapping_add
                                     end
@@ -2329,28 +2329,28 @@ export."wee_alloc::alloc_first_fit"
                                     exec.::intrinsics::mem::store_sw
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.3
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.3
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.3
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     movup.2
                                     u32mod.2
-                                    assertz.err=0
+                                    assertz.err=250
                                     push.2
                                     movup.2
                                     swap.1
@@ -2412,11 +2412,11 @@ export."wee_alloc::alloc_first_fit"
                                         exec.::intrinsics::mem::store_sw
                                         swap.1
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         push.8
                                         u32wrapping_add
                                     else
@@ -2457,9 +2457,9 @@ export."wee_alloc::alloc_first_fit"
                                         exec.::intrinsics::mem::store_sw
                                         swap.1
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         u32mod.2
-                                        assertz.err=0
+                                        assertz.err=250
                                         push.8
                                         u32wrapping_add
                                     end
@@ -2492,7 +2492,7 @@ export."wee_alloc::alloc_first_fit"
                                 u32div.16
                                 exec.::intrinsics::mem::store_sw
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 dup.0
                                 eq.0
                                 neq.0
@@ -2560,11 +2560,11 @@ export."wee_alloc::alloc_first_fit"
                                 exec.::intrinsics::mem::store_sw
                                 swap.1
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 u32mod.2
-                                assertz.err=0
+                                assertz.err=250
                                 push.8
                                 u32wrapping_add
                                 push.0
@@ -2587,7 +2587,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
     assert
     dup.0
     u32mod.2
-    assertz.err=0
+    assertz.err=250
     dup.0
     u32mod.16
     dup.0
@@ -2612,7 +2612,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
         u32assert
         dup.0
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         dup.0
         u32mod.16
         dup.0
@@ -2672,9 +2672,9 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32div.16
             exec.::intrinsics::mem::store_sw
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             u32mod.2
-            assertz.err=0
+            assertz.err=250
         else
             swap.1
             drop
@@ -2785,19 +2785,19 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             exec.::intrinsics::mem::store_sw
             swap.1
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             movup.2
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             swap.1
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             u32mod.2
-            assertz.err=0
+            assertz.err=250
         end
     else
         push.4294967292
@@ -2818,7 +2818,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             u32assert
             dup.0
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             dup.0
             u32mod.16
             dup.0
@@ -2878,9 +2878,9 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
             else
                 swap.1
                 drop
@@ -2991,19 +2991,19 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 exec.::intrinsics::mem::store_sw
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 movup.2
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
             end
         else
             swap.1
@@ -3078,7 +3078,7 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             exec.::intrinsics::mem::store_sw
             dup.1
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             dup.0
             dup.0
             u32mod.16
@@ -3091,16 +3091,16 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
             exec.::intrinsics::mem::load_sw
             swap.1
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             movup.4
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             movup.3
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             movup.2
             u32mod.2
-            assertz.err=0
+            assertz.err=250
             swap.1
             dup.0
             u32mod.16
@@ -3161,9 +3161,9 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 u32div.16
                 exec.::intrinsics::mem::store_sw
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
             else
                 swap.1
                 drop
@@ -3274,19 +3274,19 @@ export."wee_alloc::neighbors::Neighbors<T>::remove"
                 exec.::intrinsics::mem::store_sw
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 movup.2
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 swap.1
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
                 u32mod.2
-                assertz.err=0
+                assertz.err=250
             end
         end
     end
@@ -3413,13 +3413,13 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.16
         exec.::intrinsics::mem::store_sw
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
     else
         drop
         drop
@@ -3458,9 +3458,9 @@ export."<wee_alloc::LargeAllocPolicy as wee_alloc::AllocPolicy>::new_cell_for_fr
         u32div.16
         exec.::intrinsics::mem::store_sw
         u32mod.2
-        assertz.err=0
+        assertz.err=250
         u32mod.2
-        assertz.err=0
+        assertz.err=250
     end
 end
 
@@ -3474,6 +3474,7 @@ export.get_inputs
     push.4294967295
     dup.4
     mem_storew
+    dropw
     push.4
 end
 

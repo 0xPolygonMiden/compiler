@@ -600,7 +600,8 @@ fn prepare_addr(
                 Immediate::U32(memarg.align as u32),
                 span,
             );
-            builder.ins().assertz(align_offset, span);
+            // 0xFA = failed alignment
+            builder.ins().assertz_with_error(align_offset, 0xfa, span);
         }
     };
     builder.ins().inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)
