@@ -17,15 +17,19 @@ fn setup_log() {
         .try_init();
 }
 
+#[test]
+fn test_get_inputs_4() {
+    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
+}
+
 fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
     assert!(expected_inputs.len() == 4, "for now only word-sized inputs are supported");
     let masm = format!(
         "
 export.get_inputs
     push.{expect1}.{expect2}.{expect3}.{expect4}
-    # copy pointer to top of the stack
-    dup.4
-    mem_storew
+    # write word to memory, leaving the pointer on the stack
+    dup.4 mem_storew dropw
     # push the inputs len on the stack
     push.4
 end
@@ -56,10 +60,4 @@ end
 
     // let ir_program = test.ir_masm_program();
     // let emul_out = execute_emulator(ir_program.clone(), &[]);
-}
-
-#[test]
-#[ignore = "pending rodata fixes"]
-fn test_get_inputs_4() {
-    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
 }
