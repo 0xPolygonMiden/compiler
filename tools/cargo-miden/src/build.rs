@@ -36,7 +36,7 @@ pub fn build_masm(
     }]);
     let project_type = if is_bin { "--exe" } else { "--lib" };
     let source_manager = Arc::new(DefaultSourceManager::default());
-    let options = midenc_compile::CompilerOptions::parse_options(&[project_type])
+    let options = midenc_compile::CompilerOptions::parse_options(&[project_type, "-l", "std"])
         .with_verbosity(Verbosity::Debug)
         .with_output_types(output_types);
     let session = Rc::new(Session::new(

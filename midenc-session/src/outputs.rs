@@ -144,7 +144,8 @@ impl OutputFiles {
             .unwrap_or_else(|| OutputFile::Real(self.output_path(ty)));
         if let OutputFile::Real(ref mut path) = output {
             if let Some(name) = name {
-                path.set_file_name(name);
+                *path = path.join(name);
+                path.set_extension(ty.extension());
             }
         }
         output
