@@ -605,15 +605,18 @@ fn prepare_addr(
         }
         // TODO(pauls): For now, asserting alignment helps us catch mistakes/bugs, but we should
         // probably make this something that can be disabled to avoid the overhead in release builds
-        if memarg.align > 1 {
+        if memarg.align > 0 {
             // Generate alignment assertion - aligned addresses should always produce 0 here
             let align_offset = builder.ins().mod_imm_unchecked(
                 full_addr_int,
-                Immediate::U32(memarg.align as u32),
+                Immediate::U32(2u32.pow(memarg.align as u32)),
                 span,
             );
-            // 0xFA = failed alignment
-            builder.ins().assertz_with_error(align_offset, 0xfa, span);
+            builder.ins().assertz_with_error(
+                align_offset,
+                midenc_hir::ASSERT_FAILED_ALIGNMENT,
+                span,
+            );
         }
     };
     builder.ins().inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)
