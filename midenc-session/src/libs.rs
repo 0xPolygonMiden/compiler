@@ -7,6 +7,7 @@ use std::{
 
 use miden_assembly::{library::CompiledLibrary, LibraryNamespace};
 use miden_stdlib::StdLibrary;
+use midenc_tx_kernel::MidenTxKernelLibrary;
 
 use crate::{
     diagnostics::{IntoDiagnostic, Report, WrapErr},
@@ -60,8 +61,10 @@ impl LinkLibrary {
         }
 
         // Handle libraries shipped with the compiler, or via Miden crates
-        if self.name == "std" {
-            return Ok(StdLibrary::default().into());
+        match self.name.as_ref() {
+            "std" => return Ok(StdLibrary::default().into()),
+            "miden" => return Ok(MidenTxKernelLibrary::default().into()),
+            _ => (),
         }
 
         // Search for library among specified search paths

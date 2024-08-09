@@ -12,6 +12,7 @@ members = [
     "midenc-compile",
     "midenc-driver",
     "midenc-session",
+    "midenc-tx-kernel",
     "tools/*",
     "frontend-wasm",
     "tests/integration",
@@ -85,6 +86,7 @@ midenc-frontend-wasm = { version = "0.0.1", path = "frontend-wasm" }
 midenc-compile = { version = "0.0.1", path = "midenc-compile" }
 midenc-driver = { version = "0.0.1", path = "midenc-driver" }
 midenc-session = { version = "0.0.1", path = "midenc-session" }
+midenc-tx-kernel = { version = "0.0.0", path = "midenc-tx-kernel" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
