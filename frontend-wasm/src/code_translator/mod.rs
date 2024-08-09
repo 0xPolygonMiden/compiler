@@ -158,7 +158,7 @@ pub fn translate_operator(
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            let arg = state.pop1_casted(U32, builder, span);
+            let arg = state.pop1_bitcasted(U32, builder, span);
             state.push1(builder.ins().mem_grow(arg, span));
         }
         Operator::MemorySize { .. } => {
@@ -561,8 +561,16 @@ fn translate_store(
 ) {
     let (addr_int, val) = state.pop2();
     let val_ty = builder.data_flow_graph().value_type(val);
-    let arg = if ptr_ty != *val_ty {
-        builder.ins().trunc(val, ptr_ty.clone(), span)
+    let arg = if &ptr_ty != val_ty {
+        if ptr_ty.size_in_bits() == val_ty.size_in_bits() {
+            builder.ins().bitcast(val, ptr_ty.clone(), span)
+        } else if ptr_ty.is_unsigned_integer() && val_ty.is_signed_integer() {
+            let unsigned_val_ty = val_ty.as_unsigned();
+            let uval = builder.ins().bitcast(val, unsigned_val_ty, span);
+            builder.ins().trunc(uval, ptr_ty.clone(), span)
+        } else {
+            builder.ins().trunc(val, ptr_ty.clone(), span)
+        }
     } else {
         val
     };
@@ -578,10 +586,14 @@ fn prepare_addr(
     span: SourceSpan,
 ) -> Value {
     let addr_int_ty = builder.data_flow_graph().value_type(addr_int);
-    let addr_u32 = if *addr_int_ty == U32 {
+    let addr_u32 = if addr_int_ty == &U32 {
         addr_int
+    } else if addr_int_ty == &I32 {
+        builder.ins().bitcast(addr_int, U32, span)
+    } else if matches!(addr_int_ty, Ptr(_)) {
+        builder.ins().ptrtoint(addr_int, U32, span)
     } else {
-        builder.ins().cast(addr_int, U32, span)
+        panic!("unexpected type used as pointer value: {addr_int_ty}");
     };
     let mut full_addr_int = addr_u32;
     if let Some(memarg) = memarg {
