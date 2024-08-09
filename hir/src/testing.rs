@@ -533,6 +533,33 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
     )
     .expect("unexpected global variable error");
 
+    mb.declare_global_variable(
+        "HEAP_BASE",
+        Type::Ptr(Box::new(Type::U8)),
+        Linkage::External,
+        Some((2 * 65536u32).to_le_bytes().into()),
+        SourceSpan::UNKNOWN,
+    )
+    .expect("unexpected global variable error");
+
+    mb.declare_global_variable(
+        "HEAP_TOP",
+        Type::Ptr(Box::new(Type::U8)),
+        Linkage::External,
+        Some((2 * 65536u32).to_le_bytes().into()),
+        SourceSpan::UNKNOWN,
+    )
+    .expect("unexpected global variable error");
+
+    mb.declare_global_variable(
+        "HEAP_END",
+        Type::Ptr(Box::new(Type::U8)),
+        Linkage::External,
+        Some((4096 * 65536u32).to_le_bytes().into()),
+        SourceSpan::UNKNOWN,
+    )
+    .expect("unexpected global variable error");
+
     // Define the alloc function
     let mut fb = mb.function("alloc", malloc_signature()).expect("unexpected symbol conflict");
 

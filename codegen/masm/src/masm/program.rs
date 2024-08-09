@@ -31,6 +31,10 @@ pub struct Program {
     library: Library,
     /// The function identifier for the program entrypoint, if applicable
     entrypoint: FunctionIdent,
+    /// The base address of the dynamic heap, as computed by the codegen backend
+    ///
+    /// Defaults to an offset which is two 64k pages from the start of linear memory
+    heap_base: u32,
 }
 impl Program {
     /// Create a new [Program] initialized from a [DataSegmentTable], a set of [Module]s, and an
@@ -45,10 +49,14 @@ impl Program {
     where
         M: IntoIterator<Item = Box<Module>>,
     {
+        use crate::codegen::PAGE_SIZE;
+
         let library = Library::new(segments, modules);
         Self {
             library,
             entrypoint,
+            // By default, we assume the first two pages are reserved for shadow stack and globals
+            heap_base: 2 * PAGE_SIZE,
         }
     }
 
@@ -66,13 +74,22 @@ impl Program {
         program: &hir::Program,
         globals: &GlobalVariableAnalysis<hir::Program>,
     ) -> Result<Self, Report> {
+        use crate::codegen::PAGE_SIZE;
+
         let Some(entrypoint) = program.entrypoint() else {
             return Err(Report::msg("invalid program: no entrypoint"));
         };
         let library = Library::from_hir(program, globals);
+
+        // Compute the first page boundary after the end of the globals table to use as the start
+        // of the dynamic heap when the program is executed
+        let heap_base =
+            u32::try_from(program.globals().size_in_bytes().next_multiple_of(PAGE_SIZE as usize))
+                .expect("unable to allocate dynamic heap: global table too large");
         Ok(Self {
             library,
             entrypoint,
+            heap_base,
         })
     }
 
@@ -104,10 +121,19 @@ impl Program {
         let mut start = Box::new(Function::new(start_id, start_sig));
         {
             let body = start.body_mut();
+            // Initialize dynamic heap
+            body.push(Op::PushU32(self.heap_base), SourceSpan::default());
+            body.push(
+                Op::Exec("intrinsics::mem::heap_init".parse().unwrap()),
+                SourceSpan::default(),
+            );
+            // Initialize data segments from advice stack
             self.emit_data_segment_initialization(body);
+            // Possibly initialize test harness
             if emit_test_harness {
                 self.emit_test_harness(body);
             }
+            // Invoke the program entrypoint
             body.push(Op::Exec(entrypoint), SourceSpan::default());
         }
         exe.push_back(start);

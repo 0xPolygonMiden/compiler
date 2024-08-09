@@ -434,9 +434,6 @@ impl<'a> Linker<'a> {
     ///
     /// Once linked, a [Program] can be emitted to Miden Assembly using the code generation passes.
     pub fn link(mut self) -> Result<Box<Program>, Report> {
-        // Ensure linker-defined globals and intrinsics are present
-        self.populate_builtins();
-
         // Look for cycles in the call graph
         validate_callgraph(&self.callgraph, self.diagnostics)?;
 
@@ -630,50 +627,6 @@ impl<'a> Linker<'a> {
         }
 
         Ok(self.program)
-    }
-
-    /// Programs we construct may depend on one or more predefined globals/intrinsics
-    /// that are provided by the compiler in order to support common functionality, such
-    /// as memory management primitives. This function handles defining these prior to
-    /// linking the program.
-    fn populate_builtins(&mut self) {
-        // We provide three globals for managing the heap, based on the layout
-        // of the data segments and these globals.
-        let globals_offset = self.program.segments.next_available_offset();
-        // Compute the start of the heap by finding the end of the globals segment, aligned to the
-        // nearest word boundary
-        let heap_base = globals_offset
-            .checked_add(
-                self.program
-                    .globals
-                    .size_in_bytes()
-                    .try_into()
-                    .expect("unable to allocate globals, unable to fit in linear memory"),
-            )
-            .expect("unable to allocate globals, not enough unreserved space available")
-            .align_up(32);
-        let hp = heap_base.to_le_bytes();
-        // Initialize all 3 globals with the computed heap pointer
-        let heap_ptr_ty = Type::Ptr(Box::new(Type::U8));
-        self.program
-            .globals
-            .declare("HEAP_BASE".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into()))
-            .expect(
-                "unable to declare HEAP_BASE, a conflicting global by that name was already \
-                 defined",
-            );
-        self.program
-            .globals
-            .declare("HEAP_TOP".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into()))
-            .expect(
-                "unable to declare HEAP_TOP, a conflicting global by that name was already defined",
-            );
-        self.program
-            .globals
-            .declare("HEAP_END".into(), heap_ptr_ty, Linkage::External, Some(hp.into()))
-            .expect(
-                "unable to declare HEAP_END, a conflicting global by that name was already defined",
-            );
     }
 
     /// If an executable is being linked, discover unused functions and garbage collect them.

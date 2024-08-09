@@ -3,7 +3,7 @@ use midenc_hir::{self as hir, Felt, FieldElement, SourceSpan, StructType, Type};
 use super::OpEmitter;
 use crate::masm::{NativePtr, Op};
 
-const PAGE_SIZE: u32 = 64 * 1024;
+pub(crate) const PAGE_SIZE: u32 = 64 * 1024;
 
 /// Allocation
 impl<'a> OpEmitter<'a> {
@@ -23,17 +23,31 @@ impl<'a> OpEmitter<'a> {
         }
     }
 
-    /// TODO(pauls): For now, we simply return -1 as if the heap cannot be grown any further
+    /// Return the base address of the heap
+    #[allow(unused)]
+    pub fn heap_base(&mut self, span: SourceSpan) {
+        self.emit(Op::Exec("intrinsics::mem::heap_base".parse().unwrap()), span);
+        self.stack.push(Type::Ptr(Box::new(Type::U8)));
+    }
+
+    /// Return the address of the top of the heap
+    #[allow(unused)]
+    pub fn heap_top(&mut self, span: SourceSpan) {
+        self.emit(Op::Exec("intrinsics::mem::heap_top".parse().unwrap()), span);
+        self.stack.push(Type::Ptr(Box::new(Type::U8)));
+    }
+
+    /// Grow the heap (from the perspective of Wasm programs) by N pages, returning the previous
+    /// size of the heap (in pages) if successful, or -1 if the heap could not be grown.
     pub fn mem_grow(&mut self, span: SourceSpan) {
-        let _size = self.stack.pop().expect("operand stack is empty");
-        self.emit(Op::PushU32(-1i32 as u32), span);
+        let _num_pages = self.stack.pop().expect("operand stack is empty");
+        self.emit(Op::Exec("intrinsics::mem::memory_grow".parse().unwrap()), span);
         self.stack.push(Type::I32);
     }
 
-    /// TODO(pauls): For now, we simply return u32::MAX as if the heap is already fully grown
+    /// Returns the size (in pages) of the heap (from the perspective of Wasm programs)
     pub fn mem_size(&mut self, span: SourceSpan) {
-        const MAX_HEAP_PAGES: u32 = u32::MAX / PAGE_SIZE;
-        self.emit(Op::PushU32(MAX_HEAP_PAGES), span);
+        self.emit(Op::Exec("intrinsics::mem::memory_size".parse().unwrap()), span);
         self.stack.push(Type::U32);
     }
 }
