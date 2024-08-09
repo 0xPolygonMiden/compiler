@@ -41,6 +41,8 @@ pub fn build_masm(
         "--verbose".as_ref(),
         "-l".as_ref(),
         "std".as_ref(),
+        "-l".as_ref(),
+        "miden".as_ref(),
     ];
     let session = Rc::new(Compiler::new_session([input], None, args));
     midenc_compile::compile(session.clone())?;
