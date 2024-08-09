@@ -323,8 +323,10 @@ impl Program {
     pub fn assemble(&self, session: &Session) -> Result<Arc<miden_core::Program>, Report> {
         use miden_assembly::{Assembler, CompileOptions};
 
-        let mut assembler = Assembler::new(session.source_manager.clone())
-            .with_debug_mode(session.options.emit_debug_decorators());
+        let debug_mode = session.options.emit_debug_decorators();
+
+        let mut assembler =
+            Assembler::new(session.source_manager.clone()).with_debug_mode(debug_mode);
 
         // Link extra libraries
         for library in self.library.libraries.iter() {
@@ -334,7 +336,7 @@ impl Program {
         // Assemble library
         for module in self.library.modules.iter() {
             let kind = module.kind;
-            let module = module.to_ast().map(Box::new)?;
+            let module = module.to_ast(debug_mode).map(Box::new)?;
             assembler.add_module_with_options(
                 module,
                 CompileOptions {
@@ -347,7 +349,7 @@ impl Program {
 
         let emit_test_harness = session.get_flag("test_harness");
         let main = self.generate_main(self.entrypoint, emit_test_harness);
-        let main = main.to_ast().map(Box::new)?;
+        let main = main.to_ast(debug_mode).map(Box::new)?;
         println!("{main}");
         assembler.assemble_program(main).map(Arc::new)
     }
@@ -514,8 +516,10 @@ impl Library {
     pub fn assemble(&self, session: &Session) -> Result<Arc<CompiledLibrary>, Report> {
         use miden_assembly::Assembler;
 
-        let mut assembler = Assembler::new(session.source_manager.clone())
-            .with_debug_mode(session.options.emit_debug_decorators());
+        let debug_mode = session.options.emit_debug_decorators();
+
+        let mut assembler =
+            Assembler::new(session.source_manager.clone()).with_debug_mode(debug_mode);
 
         // Link extra libraries
         for library in self.libraries.iter() {
@@ -525,7 +529,7 @@ impl Library {
         // Assemble library
         let mut modules = Vec::with_capacity(self.modules.len());
         for module in self.modules.iter() {
-            let module = module.to_ast().map(Box::new)?;
+            let module = module.to_ast(debug_mode).map(Box::new)?;
             modules.push(module);
         }
         assembler.assemble_library(modules).map(Arc::new)

@@ -221,6 +221,7 @@ impl Function {
         &self,
         imports: &midenc_hir::ModuleImportInfo,
         locals: &BTreeSet<FunctionIdent>,
+        tracing_enabled: bool,
     ) -> ast::Procedure {
         let visibility = if self.signature.is_kernel() {
             ast::Visibility::Syscall
@@ -236,13 +237,51 @@ impl Function {
         ));
         let name = ast::ProcedureName::new_unchecked(id);
 
-        let body = self.body.to_block(imports, locals);
+        let mut body = self.body.to_block(imports, locals);
+
+        // Emit trace events on entry/exit from the procedure body, if not already present
+        if tracing_enabled {
+            emit_trace_frame_events(self.span, &mut body);
+        }
 
         let num_locals = u16::try_from(self.locals.len()).expect("too many locals");
         let mut proc = ast::Procedure::new(self.span, visibility, name, num_locals, body);
         proc.extend_invoked(self.invoked().cloned());
         proc
     }
+}
+
+fn emit_trace_frame_events(span: SourceSpan, body: &mut ast::Block) {
+    use midenc_hir::{TRACE_FRAME_END, TRACE_FRAME_START};
+
+    let ops = body.iter().as_slice();
+    let has_frame_start = match ops.get(1) {
+        Some(ast::Op::Inst(inst)) => match inst.inner() {
+            ast::Instruction::Trace(imm) => {
+                matches!(imm, ast::Immediate::Value(val) if val.into_inner() == TRACE_FRAME_START)
+            }
+            _ => false,
+        },
+        _ => false,
+    };
+
+    // If we have the frame start event, we do not need to emit any further events
+    if has_frame_start {
+        return;
+    }
+
+    // Because [ast::Block] does not have a mutator that lets us insert an op at the start, we need
+    // to push the events at the end, then use access to the mutable slice via `iter_mut` to move
+    // elements around.
+    body.push(ast::Op::Inst(Span::new(span, ast::Instruction::Nop)));
+    body.push(ast::Op::Inst(Span::new(span, ast::Instruction::Trace(TRACE_FRAME_END.into()))));
+    body.push(ast::Op::Inst(Span::new(span, ast::Instruction::Nop)));
+    body.push(ast::Op::Inst(Span::new(
+        span,
+        ast::Instruction::Trace(TRACE_FRAME_START.into()),
+    )));
+    let ops = body.iter_mut().into_slice();
+    ops.rotate_right(2);
 }
 
 impl fmt::Debug for Function {

@@ -1,5 +1,7 @@
+mod assertions;
 mod builder;
 mod display;
+mod events;
 mod import;
 mod isa;
 mod stack;
@@ -9,8 +11,10 @@ use cranelift_entity::PrimaryMap;
 use smallvec::smallvec;
 
 pub use self::{
+    assertions::*,
     builder::*,
     display::{DisplayInlineAsm, DisplayMasmBlock},
+    events::*,
     import::{MasmImport, ModuleImportInfo},
     isa::*,
     stack::{OperandStack, Stack, StackElement},

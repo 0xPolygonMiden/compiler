@@ -160,7 +160,7 @@ impl Module {
     }
 
     /// Convert this module into its [miden_assembly::ast::Module] representation.
-    pub fn to_ast(&self) -> Result<ast::Module, Report> {
+    pub fn to_ast(&self, tracing_enabled: bool) -> Result<ast::Module, Report> {
         let mut ast = ast::Module::new(self.kind, self.name.clone()).with_span(self.span);
         ast.set_docs(self.docs.clone().map(Span::unknown));
 
@@ -187,7 +187,11 @@ impl Module {
         }
 
         for function in self.functions.iter() {
-            ast.define_procedure(ast::Export::Procedure(function.to_ast(&self.imports, &locals)))?;
+            ast.define_procedure(ast::Export::Procedure(function.to_ast(
+                &self.imports,
+                &locals,
+                tracing_enabled,
+            )))?;
         }
 
         Ok(ast)
@@ -285,7 +289,7 @@ impl midenc_session::Emit for Module {
     }
 
     fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
-        let ast = self.to_ast().map_err(std::io::Error::other)?;
+        let ast = self.to_ast(false).map_err(std::io::Error::other)?;
         writer.write_fmt(format_args!("{}", &ast))
     }
 }
