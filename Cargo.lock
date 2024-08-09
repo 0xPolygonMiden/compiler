@@ -3267,6 +3267,15 @@ dependencies = [
  "miden-thiserror",
  "midenc-hir-macros",
  "midenc-hir-symbol",
+ "midenc-tx-kernel",
+]
+
+[[package]]
+name = "midenc-tx-kernel"
+version = "0.0.0"
+dependencies = [
+ "miden-assembly",
+ "miden-core",
 ]
 
 [[package]]

@@ -7,6 +7,7 @@ use std::{
 
 use miden_assembly::{Library as CompiledLibrary, LibraryNamespace};
 use miden_stdlib::StdLibrary;
+use midenc_tx_kernel::MidenTxKernelLibrary;
 
 use crate::{
     diagnostics::{IntoDiagnostic, Report, WrapErr},

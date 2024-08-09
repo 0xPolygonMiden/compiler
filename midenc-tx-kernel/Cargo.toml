@@ -1,0 +1,18 @@
+[package]
+name = "midenc-tx-kernel"
+description = "Miden Tx Kernel MASM library for the Midenc compiler"
+version = "0.0.0"
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[dependencies]
+miden-assembly.workspace = true
+miden-core.workspace = true
