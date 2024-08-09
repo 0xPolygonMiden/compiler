@@ -300,7 +300,7 @@ impl Emulator {
             self.load_module(module)?;
             cursor.move_next();
         }
-        self.entrypoint = program.entrypoint;
+        self.entrypoint = Some(program.entrypoint());
 
         // TODO: Load data segments
 

@@ -1,3 +1,5 @@
+extern crate alloc;
+
 mod control_flow;
 mod data;
 mod def_use;

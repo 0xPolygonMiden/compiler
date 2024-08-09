@@ -1,4 +1,5 @@
 #![feature(array_windows)]
+#![feature(iter_array_chunks)]
 #![feature(is_sorted)]
 
 mod codegen;
@@ -8,8 +9,10 @@ mod masm;
 #[cfg(test)]
 mod tests;
 
+use miden_assembly::library::CompiledLibrary;
 use midenc_hir::{
     self as hir,
+    diagnostics::Report,
     pass::{RewritePass, RewriteSet},
 };
 use midenc_session::Session;
@@ -23,27 +26,47 @@ pub use self::{
     masm::*,
 };
 
-/// This error type represents all of the errors produced by [MasmCompiler]
-#[derive(Debug, thiserror::Error)]
-pub enum CompilerError {
-    /// Two or more modules conflict with each other
-    #[error(transparent)]
-    ModuleConflict(#[from] hir::ModuleConflictError),
-    /// An error occurred at link-time
-    #[error(transparent)]
-    Linker(#[from] hir::LinkerError),
-    /// An error occurred during analysis
-    #[error(transparent)]
-    Analysis(#[from] hir::pass::AnalysisError),
-    /// An error occurred during application of a rewrite
-    #[error(transparent)]
-    Rewrite(#[from] hir::pass::RewriteError),
-    /// An error occurred during application of a conversion
-    #[error(transparent)]
-    Conversion(#[from] hir::pass::ConversionError),
-}
+pub type CompilerResult<T> = Result<T, Report>;
 
-pub type CompilerResult<T> = Result<T, CompilerError>;
+/// The artifact produced by lowering an [hir::Program] to Miden Assembly
+///
+/// This type is used in compilation pipelines to abstract over the type of output requested.
+pub enum MasmArtifact {
+    /// An executable program, with a defined entrypoint
+    Executable(Box<Program>),
+    /// A library, linkable into a program as needed
+    Library(Box<Library>),
+}
+impl MasmArtifact {
+    /// Get an iterator over the modules in this library
+    pub fn modules(&self) -> impl Iterator<Item = &Module> + '_ {
+        match self {
+            Self::Executable(ref program) => program.library().modules(),
+            Self::Library(ref lib) => lib.modules(),
+        }
+    }
+
+    pub fn insert(&mut self, module: Box<Module>) {
+        match self {
+            Self::Executable(ref mut program) => program.insert(module),
+            Self::Library(ref mut lib) => lib.insert(module),
+        }
+    }
+
+    pub fn link_library(&mut self, lib: CompiledLibrary) {
+        match self {
+            Self::Executable(ref mut program) => program.link_library(lib),
+            Self::Library(ref mut library) => library.link_library(lib),
+        }
+    }
+
+    pub fn unwrap_executable(self) -> Box<Program> {
+        match self {
+            Self::Executable(program) => program,
+            Self::Library(_) => panic!("tried to unwrap a mast library as an executable"),
+        }
+    }
+}
 
 /// [MasmCompiler] is a compiler from Miden IR to MASM IR, an intermediate representation
 /// of Miden Assembly which is used within the Miden compiler framework for various purposes,
@@ -67,7 +90,7 @@ impl<'a> MasmCompiler<'a> {
     }
 
     /// Compile an [hir::Program] that has been linked and is ready to be compiled.
-    pub fn compile(&mut self, mut input: Box<hir::Program>) -> CompilerResult<Box<Program>> {
+    pub fn compile(&mut self, mut input: Box<hir::Program>) -> CompilerResult<MasmArtifact> {
         use midenc_hir::pass::ConversionPass;
 
         let mut rewrites = default_rewrites([], self.session);
@@ -79,28 +102,23 @@ impl<'a> MasmCompiler<'a> {
         }
 
         let mut convert_to_masm = ConvertHirToMasm::<hir::Program>::default();
-        let mut program = convert_to_masm.convert(input, &mut self.analyses, self.session)?;
-
-        // Ensure standard library is linked
-        for module in intrinsics::load_stdlib(&self.session.codemap) {
-            program.insert(Box::new(module.clone()));
-        }
+        let mut artifact = convert_to_masm.convert(input, &mut self.analyses, self.session)?;
 
         // Ensure intrinsics modules are linked
-        program.insert(Box::new(
-            intrinsics::load("intrinsics::mem", &self.session.codemap)
+        artifact.insert(Box::new(
+            intrinsics::load("intrinsics::mem", &self.session.source_manager)
                 .expect("undefined intrinsics module"),
         ));
-        program.insert(Box::new(
-            intrinsics::load("intrinsics::i32", &self.session.codemap)
+        artifact.insert(Box::new(
+            intrinsics::load("intrinsics::i32", &self.session.source_manager)
                 .expect("undefined intrinsics module"),
         ));
-        program.insert(Box::new(
-            intrinsics::load("intrinsics::i64", &self.session.codemap)
+        artifact.insert(Box::new(
+            intrinsics::load("intrinsics::i64", &self.session.source_manager)
                 .expect("undefined intrinsics module"),
         ));
 
-        Ok(program)
+        Ok(artifact)
     }
 
     /// Compile a single [hir::Module] as a program.
@@ -109,10 +127,15 @@ impl<'a> MasmCompiler<'a> {
     /// rewrites have been applied. If one of these invariants is not upheld, compilation
     /// may fail.
     pub fn compile_module(&mut self, input: Box<hir::Module>) -> CompilerResult<Box<Program>> {
+        assert!(input.entrypoint().is_some(), "cannot compile a program without an entrypoint");
+
         let program =
             hir::ProgramBuilder::new(&self.session.diagnostics).with_module(input)?.link()?;
 
-        self.compile(program)
+        match self.compile(program)? {
+            MasmArtifact::Executable(program) => Ok(program),
+            _ => unreachable!("expected compiler to produce an executable, got a library"),
+        }
     }
 
     /// Compile a set of [hir::Module] as a program.
@@ -131,7 +154,12 @@ impl<'a> MasmCompiler<'a> {
 
         let program = builder.link()?;
 
-        self.compile(program)
+        assert!(program.has_entrypoint(), "cannot compile a program without an entrypoint");
+
+        match self.compile(program)? {
+            MasmArtifact::Executable(program) => Ok(program),
+            _ => unreachable!("expected compiler to produce an executable, got a library"),
+        }
     }
 }
 

@@ -6,20 +6,20 @@ use std::{
 
 use anyhow::{bail, Result};
 
-pub const WASM32_WASI_TARGET: &str = "wasm32-wasi";
+pub const WASM32_WASI_TARGET: &str = "wasm32-wasip1";
 
 pub fn install_wasm32_wasi() -> Result<()> {
     log::info!("Installing {WASM32_WASI_TARGET} target");
     let sysroot = get_sysroot()?;
-    if sysroot.join("lib/rustlib/wasm32-wasi").exists() {
+    if sysroot.join(format!("lib/rustlib/{}", WASM32_WASI_TARGET)).exists() {
         return Ok(());
     }
 
     if env::var_os("RUSTUP_TOOLCHAIN").is_none() {
         bail!(
-            "failed to find the `wasm32-wasi` target and `rustup` is not available. If you're \
-             using rustup make sure that it's correctly installed; if not, make sure to install \
-             the `wasm32-wasi` target before using this command"
+            "failed to find the `{WASM32_WASI_TARGET}` target and `rustup` is not available. If \
+             you're using rustup make sure that it's correctly installed; if not, make sure to \
+             install the `{WASM32_WASI_TARGET}` target before using this command",
         );
     }
 
@@ -32,7 +32,7 @@ pub fn install_wasm32_wasi() -> Result<()> {
         .output()?;
 
     if !output.status.success() {
-        bail!("failed to install the `wasm32-wasi` target");
+        bail!("failed to install the `{WASM32_WASI_TARGET}` target");
     }
 
     Ok(())

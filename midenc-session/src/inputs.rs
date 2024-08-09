@@ -33,6 +33,24 @@ pub struct InputFile {
     file_type: FileType,
 }
 impl InputFile {
+    pub fn new(ty: FileType, file: InputType) -> Self {
+        Self {
+            file,
+            file_type: ty,
+        }
+    }
+
+    /// Returns an [InputFile] representing an empty WebAssembly module binary
+    pub fn empty() -> Self {
+        Self {
+            file: InputType::Stdin {
+                name: FileName::Virtual("empty".into()),
+                input: vec![],
+            },
+            file_type: FileType::Wasm,
+        }
+    }
+
     /// Get an [InputFile] representing the contents of `path`.
     ///
     /// This function returns an error if the contents are not a valid supported file type.
@@ -70,6 +88,13 @@ impl InputFile {
 
     pub fn file_type(&self) -> FileType {
         self.file_type
+    }
+
+    pub fn file_name(&self) -> FileName {
+        match &self.file {
+            InputType::Real(ref path) => FileName::Real(path.clone()),
+            InputType::Stdin { name, .. } => name.clone(),
+        }
     }
 
     pub fn as_path(&self) -> Option<&Path> {

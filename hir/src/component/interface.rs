@@ -6,7 +6,7 @@ use crate::formatter::PrettyPrint;
 
 /// A fully-qualified identifier for the interface being imported, e.g.
 /// `namespace::package/interface@version`
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InterfaceIdent {
     /// A fully-qualified identifier for the interface being imported, e.g.
     /// `namespace::package/interface@version`
@@ -23,6 +23,11 @@ impl InterfaceIdent {
     }
 }
 
+impl fmt::Debug for InterfaceIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt::Display::fmt(&self.full_name, f)
+    }
+}
 impl fmt::Display for InterfaceIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\"{}\"", self.full_name.as_str().escape_default())
@@ -30,7 +35,7 @@ impl fmt::Display for InterfaceIdent {
 }
 
 /// An identifier for a function in an interface
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InterfaceFunctionIdent {
     /// An interface identifier for the interface being imported (e.g.
     /// `namespace::package/interface@version`)
@@ -50,6 +55,11 @@ impl InterfaceFunctionIdent {
     }
 }
 
+impl fmt::Debug for InterfaceFunctionIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} @ {:?}", &self.function, &self.interface)
+    }
+}
 impl fmt::Display for InterfaceFunctionIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.pretty_print(f)

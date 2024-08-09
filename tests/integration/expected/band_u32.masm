@@ -1,10 +1,7 @@
-# mod test_rust_03ecb06cdac4759a31c320b67e5a88995c8e5b0260bc540636a10106839a7c13
+# mod test_rust_c4f32e60d0da9da73a9d4beef2081fc955bd8750a29571f11f6916287436cbe3
 
 export.entrypoint
     u32and
 end
 
 
-begin
-    exec.::test_rust_03ecb06cdac4759a31c320b67e5a88995c8e5b0260bc540636a10106839a7c13::entrypoint
-end

@@ -8,12 +8,16 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+bindings::export!(Component with_types_in bindings);
+
 mod bindings;
 
-use bindings::exports::miden::base::core_types;
-use bindings::exports::miden::base::core_types::{AccountId, CoreAsset, Felt};
-use bindings::exports::miden::base::types;
-use bindings::exports::miden::base::types::Asset;
+use bindings::exports::miden::base::{
+    core_types,
+    core_types::{AccountId, CoreAsset, Felt},
+    types,
+    types::Asset,
+};
 
 pub struct Component;
 

@@ -1,10 +1,7 @@
-# mod test_rust_29e2b0618aa3bc24d39d545f8e7f4ef75a53efc331745cc813a80714b87c4f85
+# mod test_rust_8ce82de7c4fb77fe54a97d76d270876e6dc8484997171b1a52821c97bc67dbba
 
 export.entrypoint
     swap.1 u32shr
 end
 
 
-begin
-    exec.::test_rust_29e2b0618aa3bc24d39d545f8e7f4ef75a53efc331745cc813a80714b87c4f85::entrypoint
-end

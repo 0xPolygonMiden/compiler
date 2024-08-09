@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use anyhow::bail;
 use cargo_component::load_metadata;
 use cargo_component_core::terminal::Terminal;
 use clap::{CommandFactory, Parser};
 use config::CargoArguments;
+use midenc_session::diagnostics::Report;
 use new_project::NewCommand;
 
 use crate::run_cargo_command::run_cargo_command;
@@ -25,7 +25,7 @@ const BUILTIN_COMMANDS: &[&str] = &[
     "new",
 ];
 
-const AFTER_HELP: &str = "Unrecognized subcommands will be passed to cargo verbatim 
+const AFTER_HELP: &str = "Unrecognized subcommands will be passed to cargo verbatim
      and the artifacts will be processed afterwards (e.g. `build` command compiles MASM).
      \nSee `cargo help` for more information on available cargo commands.";
 
@@ -80,7 +80,7 @@ where
     None
 }
 
-pub fn run<T>(args: T, terminal: &Terminal) -> anyhow::Result<Vec<PathBuf>>
+pub fn run<T>(args: T, terminal: &Terminal) -> Result<Vec<PathBuf>, Report>
 where
     T: Iterator<Item = String>,
 {
@@ -92,7 +92,7 @@ where
         Some(cmd) if BUILTIN_COMMANDS.contains(&cmd) => {
             match CargoMiden::parse_from(args.clone()) {
                 CargoMiden::Miden(cmd) | CargoMiden::Command(cmd) => match cmd {
-                    Command::New(cmd) => vec![cmd.exec()?],
+                    Command::New(cmd) => vec![cmd.exec().map_err(Report::msg)?],
                 },
             }
         }
@@ -104,19 +104,21 @@ where
 
             // If somehow the CLI parsed correctly despite no subcommand,
             // print the help instead
-            CargoMiden::command().print_long_help()?;
+            CargoMiden::command().print_long_help().map_err(Report::msg)?;
             Vec::new()
         }
 
         _ => {
             // Not a built-in command, run the cargo command
-            let cargo_args = CargoArguments::parse_from(args.clone().into_iter())?;
-            let metadata = load_metadata(terminal, cargo_args.manifest_path.as_deref(), false)?;
+            let cargo_args =
+                CargoArguments::parse_from(args.clone().into_iter()).map_err(Report::msg)?;
+            let metadata = load_metadata(terminal, cargo_args.manifest_path.as_deref(), false)
+                .map_err(Report::msg)?;
             if metadata.packages.is_empty() {
-                bail!(
+                return Err(Report::msg(format!(
                     "manifest `{path}` contains no package or the workspace has no members",
                     path = metadata.workspace_root.join("Cargo.toml")
-                );
+                )));
             }
 
             let spawn_args: Vec<_> = args.into_iter().skip(1).collect();

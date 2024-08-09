@@ -3,15 +3,15 @@
 use core::fmt;
 use std::{collections::HashMap, ops::Index};
 
-use hir::Abi;
-use miden_diagnostics::DiagnosticsHandler;
-use midenc_hir::{cranelift_entity::PrimaryMap, AbiParam, CallConv, Linkage, Signature};
-use midenc_hir_type as hir;
+use midenc_hir::{
+    cranelift_entity::PrimaryMap,
+    diagnostics::{DiagnosticsHandler, Severity},
+    AbiParam, CallConv, Linkage, Signature,
+};
+use midenc_hir_type::{self as hir, Abi};
 use wasmparser::types::CoreTypeId;
 
-use crate::{
-    component::SignatureIndex, error::WasmResult, module::Module, unsupported_diag, WasmError,
-};
+use crate::{component::SignatureIndex, error::WasmResult, module::Module, unsupported_diag};
 
 /// Generates a new index type for each entity.
 #[macro_export]
@@ -410,16 +410,15 @@ impl DataSegmentOffset {
             DataSegmentOffset::GetGlobal(global_idx) => {
                 let global_init = &module.try_global_initializer(*global_idx, diagnostics)?;
                 match global_init.as_i32(module, diagnostics) {
-                    Err(e) => {
-                        diagnostics
-                            .diagnostic(miden_diagnostics::Severity::Error)
+                    Err(_) => {
+                        return Err(diagnostics
+                            .diagnostic(Severity::Error)
                             .with_message(format!(
                                 "Failed to get data segment offset from global init {:?} with \
                                  global index {global_idx:?}",
                                 global_init,
                             ))
-                            .emit();
-                        return Err(e);
+                            .into_report());
                     }
                     Ok(v) => v,
                 }
@@ -448,24 +447,25 @@ impl BlockType {
     pub fn from_wasm(
         block_ty: &wasmparser::BlockType,
         mod_types: &ModuleTypes,
+        diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<Self> {
         Ok(match block_ty {
             wasmparser::BlockType::Empty => Self::default(),
             wasmparser::BlockType::Type(ty) => Self {
                 params: vec![],
-                results: vec![ir_type(convert_valtype(*ty))?],
+                results: vec![ir_type(convert_valtype(*ty), diagnostics)?],
             },
             wasmparser::BlockType::FuncType(ty_index) => {
                 let func_type = &mod_types[SignatureIndex::from_u32(*ty_index)];
                 let params = func_type
                     .params()
                     .iter()
-                    .map(|t| ir_type(*t))
+                    .map(|t| ir_type(*t, diagnostics))
                     .collect::<WasmResult<Vec<hir::Type>>>()?;
                 let results = func_type
                     .returns()
                     .iter()
-                    .map(|t| ir_type(*t))
+                    .map(|t| ir_type(*t, diagnostics))
                     .collect::<WasmResult<Vec<hir::Type>>>()?;
                 Self { params, results }
             }
@@ -554,16 +554,19 @@ where
 }
 
 /// Converts a Wasm function type into a Miden IR function type
-pub fn ir_func_type(ty: &WasmFuncType) -> WasmResult<hir::FunctionType> {
+pub fn ir_func_type(
+    ty: &WasmFuncType,
+    diagnostics: &DiagnosticsHandler,
+) -> WasmResult<hir::FunctionType> {
     let params = ty
         .params()
         .iter()
-        .map(|t| ir_type(*t))
+        .map(|t| ir_type(*t, diagnostics))
         .collect::<WasmResult<Vec<hir::Type>>>()?;
     let results = ty
         .returns()
         .iter()
-        .map(|t| ir_type(*t))
+        .map(|t| ir_type(*t, diagnostics))
         .collect::<WasmResult<Vec<hir::Type>>>()?;
     Ok(hir::FunctionType {
         abi: Abi::Canonical,
@@ -573,17 +576,13 @@ pub fn ir_func_type(ty: &WasmFuncType) -> WasmResult<hir::FunctionType> {
 }
 
 /// Converts a Wasm type into a Miden IR type
-pub fn ir_type(ty: WasmType) -> WasmResult<hir::Type> {
+pub fn ir_type(ty: WasmType, diagnostics: &DiagnosticsHandler) -> WasmResult<hir::Type> {
     Ok(match ty {
         WasmType::I32 => hir::Type::I32,
         WasmType::I64 => hir::Type::I64,
         WasmType::F32 => hir::Type::Felt,
-        WasmType::F64 => return Err(WasmError::Unsupported("no f64 type in Miden IR".to_string())),
-        WasmType::V128 => {
-            return Err(WasmError::Unsupported("V128 type is not supported".to_string()));
-        }
-        WasmType::Ref(_) => {
-            return Err(WasmError::Unsupported("Ref type is not supported".to_string()));
+        ty @ (WasmType::F64 | WasmType::V128 | WasmType::Ref(_)) => {
+            unsupported_diag!(diagnostics, "wasm error: unsupported type '{}'", ty)
         }
     })
 }
@@ -612,10 +611,12 @@ pub fn convert_global_type(ty: &wasmparser::GlobalType) -> Global {
 
 /// Converts a wasmparser table type
 pub fn convert_table_type(ty: &wasmparser::TableType) -> Table {
+    assert!(!ty.table64, "64-bit tables are not supported");
+
     Table {
         wasm_ty: convert_ref_type(ty.element_type),
-        minimum: ty.initial,
-        maximum: ty.maximum,
+        minimum: ty.initial as u32,
+        maximum: ty.maximum.map(|n| n as u32),
     }
 }
 
@@ -648,19 +649,15 @@ pub fn convert_ref_type(ty: wasmparser::RefType) -> WasmRefType {
 
 /// Converts a wasmparser heap type
 pub fn convert_heap_type(ty: wasmparser::HeapType) -> WasmHeapType {
+    use wasmparser::AbstractHeapType;
     match ty {
-        wasmparser::HeapType::Func => WasmHeapType::Func,
-        wasmparser::HeapType::Extern => WasmHeapType::Extern,
-        wasmparser::HeapType::Concrete(_)
-        | wasmparser::HeapType::Any
-        | wasmparser::HeapType::None
-        | wasmparser::HeapType::NoExtern
-        | wasmparser::HeapType::NoFunc
-        | wasmparser::HeapType::Eq
-        | wasmparser::HeapType::Struct
-        | wasmparser::HeapType::Array
-        | wasmparser::HeapType::I31 => {
-            unimplemented!("unsupported heap type {ty:?}");
+        wasmparser::HeapType::Abstract { ty, shared: _ } => match ty {
+            AbstractHeapType::Func => WasmHeapType::Func,
+            AbstractHeapType::Extern => WasmHeapType::Extern,
+            ty => unimplemented!("unsupported abstract heap type {ty:?}"),
+        },
+        wasmparser::HeapType::Concrete(_) => {
+            unimplemented!("user-defined types are not supported yet")
         }
     }
 }

@@ -90,24 +90,22 @@ impl RewritePass for SplitCriticalEdges {
                 let args: ValueList;
                 match ix {
                     Instruction::Br(hir::Br {
-                        ref mut destination,
-                        args: ref mut orig_args,
-                        ..
+                        ref mut successor, ..
                     }) => {
-                        args = orig_args.take();
-                        *destination = split;
+                        args = successor.args.take();
+                        successor.destination = split;
                     }
                     Instruction::CondBr(hir::CondBr {
-                        then_dest: (ref mut then_dest, ref mut then_args),
-                        else_dest: (ref mut else_dest, ref mut else_args),
+                        ref mut then_dest,
+                        ref mut else_dest,
                         ..
                     }) => {
-                        if *then_dest == b {
-                            *then_dest = split;
-                            args = then_args.take();
+                        if then_dest.destination == b {
+                            then_dest.destination = split;
+                            args = then_dest.args.take();
                         } else {
-                            *else_dest = split;
-                            args = else_args.take();
+                            else_dest.destination = split;
+                            args = else_dest.args.take();
                         }
                     }
                     Instruction::Switch(_) => unimplemented!(),
@@ -120,8 +118,10 @@ impl RewritePass for SplitCriticalEdges {
                     },
                     Instruction::Br(hir::Br {
                         op: hir::Opcode::Br,
-                        destination: b,
-                        args,
+                        successor: hir::Successor {
+                            destination: b,
+                            args,
+                        },
                     }),
                     Type::Unknown,
                     span,

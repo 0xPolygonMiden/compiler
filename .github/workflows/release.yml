@@ -16,7 +16,7 @@ on:
       - main
 
 env:
-  CARGO_MAKE_TOOLCHAIN: nightly-2024-03-10
+  CARGO_MAKE_TOOLCHAIN: nightly-2024-05-07
 
 jobs:
   release-plz:

@@ -1,12 +1,14 @@
-use std::{ffi::OsString, path::PathBuf, sync::Arc};
+use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 
 use clap::{ColorChoice, Parser, Subcommand};
-use miden_diagnostics::Emitter;
 use midenc_compile as compile;
 use midenc_hir::FunctionIdent;
-use midenc_session::{InputFile, TargetEnv, VerbosityFlag, Warnings};
+use midenc_session::{
+    diagnostics::{Emitter, Report},
+    InputFile, TargetEnv, Verbosity, Warnings,
+};
 
-use super::DriverError;
+use crate::ClapDiagnostic;
 
 /// This struct provides the command-line interface used by `midenc`
 #[derive(Debug, Parser)]
@@ -19,7 +21,15 @@ pub struct Midenc {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    Compile(compile::Compiler),
+    Compile {
+        /// The input file to compile
+        ///
+        /// You may specify `-` to read from stdin, otherwise you must provide a path
+        #[arg(required(true), value_name = "FILE")]
+        input: InputFile,
+        #[command(flatten)]
+        options: compile::Compiler,
+    },
     /// Execute a compiled function using the Miden VM emulator.
     ///
     /// The emulator is more restrictive, but is faster than the Miden VM, and
@@ -46,11 +56,11 @@ enum Commands {
             short = 'v',
             value_name = "LEVEL",
             value_enum,
-            default_value_t = VerbosityFlag::Info,
+            default_value_t = Verbosity::Info,
             default_missing_value = "debug",
             help_heading = "Diagnostics",
         )]
-        verbosity: VerbosityFlag,
+        verbosity: Verbosity,
         /// Specify how warnings should be treated by the compiler.
         #[arg(
             long,
@@ -107,11 +117,11 @@ enum Commands {
             short = 'v',
             value_name = "LEVEL",
             value_enum,
-            default_value_t = VerbosityFlag::Info,
+            default_value_t = Verbosity::Info,
             default_missing_value = "debug",
             help_heading = "Diagnostics",
         )]
-        verbosity: VerbosityFlag,
+        verbosity: Verbosity,
         /// Specify how warnings should be treated by the compiler.
         #[arg(
             long,
@@ -148,7 +158,7 @@ enum Commands {
 }
 
 impl Midenc {
-    pub fn run<P, A>(cwd: P, args: A) -> Result<(), DriverError>
+    pub fn run<P, A>(cwd: P, args: A) -> Result<(), Report>
     where
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
@@ -160,7 +170,7 @@ impl Midenc {
         cwd: P,
         args: A,
         emitter: Option<Arc<dyn Emitter>>,
-    ) -> Result<(), DriverError>
+    ) -> Result<(), Report>
     where
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
@@ -168,10 +178,11 @@ impl Midenc {
         let command = <Self as clap::CommandFactory>::command();
         let command = command.mut_subcommand("compile", compile::register_flags);
 
-        let mut matches = command.try_get_matches_from(args)?;
+        let mut matches = command.try_get_matches_from(args).map_err(ClapDiagnostic::from)?;
         let compile_matches = matches.subcommand_matches("compile").cloned().unwrap_or_default();
         let cli = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
-            .map_err(format_error::<Self>)?;
+            .map_err(format_error::<Self>)
+            .map_err(ClapDiagnostic::from)?;
 
         cli.invoke(cwd.into(), emitter, compile_matches)
     }
@@ -181,18 +192,14 @@ impl Midenc {
         cwd: PathBuf,
         emitter: Option<Arc<dyn Emitter>>,
         matches: clap::ArgMatches,
-    ) -> Result<(), DriverError> {
+    ) -> Result<(), Report> {
         match self.command {
-            Commands::Compile(mut config) => {
-                if config.working_dir.is_none() {
-                    config.working_dir = Some(cwd);
+            Commands::Compile { input, mut options } => {
+                if options.working_dir.is_none() {
+                    options.working_dir = Some(cwd);
                 }
-                let session = config.into_session(emitter).with_arg_matches(matches);
-                match compile::compile(Arc::new(session)) {
-                    Ok(_) => Ok(()),
-                    Err(compile::CompilerError::Reported) => Err(DriverError::Reported),
-                    Err(err) => Err(DriverError::Compile(err)),
-                }
+                let session = options.into_session(vec![input], emitter).with_arg_matches(matches);
+                compile::compile(Rc::new(session))
             }
             _ => unimplemented!(),
         }

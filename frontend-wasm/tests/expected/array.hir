@@ -34,9 +34,9 @@
                 (br (block 4 v0 v4 v1)))
 
             (block 4 (param v8 i32) (param v13 i32) (param v17 i32)
-                (let (v9 u32) (cast v8))
-                (let (v10 u32) (mod.unchecked v9 2))
-                (assertz v10)
+                (let (v9 u32) (bitcast v8))
+                (let (v10 u32) (mod.unchecked v9 4))
+                (assertz 250 v10)
                 (let (v11 (ptr i32)) (inttoptr v9))
                 (let (v12 i32) (load v11))
                 (let (v14 i32) (add.wrapping v12 v13))

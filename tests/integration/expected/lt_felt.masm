@@ -5,6 +5,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::lt_felt::entrypoint
-end

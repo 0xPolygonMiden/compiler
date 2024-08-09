@@ -13,9 +13,11 @@ use midenc_hir_analysis::{
 use midenc_session::Session;
 use rustc_hash::FxHashSet;
 
-/// This pass handles orchestrating the [InsertSpills]  and [RewriteSpills] passes, and should be
-/// preferred over using those two passes directly. See their respective documentation to better
-/// understand what this pass does.
+/// This pass places spills of SSA values to temporaries to cap the depth of the operand stack.
+///
+/// Internally it handles orchestrating the [InsertSpills]  and [RewriteSpills] passes, and should
+/// be preferred over using those two passes directly. See their respective documentation to better
+/// understand what this pass does as a whole.
 ///
 /// In addition to running the two passes, and maintaining the [AnalysisManager] state between them,
 /// this pass also handles applying an additional run of [crate::InlineBlocks] if spills were
@@ -111,7 +113,7 @@ impl RewritePass for ApplySpills {
 ///
 /// **TL;DR:** Unless testing or debugging, always apply [InsertSpills] and [RewriteSpills]
 /// consecutively!
-#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
+#[derive(Default)]
 pub struct InsertSpills;
 impl RewritePass for InsertSpills {
     type Entity = hir::Function;
@@ -156,40 +158,28 @@ impl RewritePass for InsertSpills {
             let ix = builder.func.dfg.inst_mut(split_info.predecessor.inst);
             let args = match ix {
                 Instruction::Br(Br {
-                    ref mut destination,
-                    args,
-                    ..
+                    ref mut successor, ..
                 }) => {
-                    assert_eq!(*destination, split_info.block);
-                    *destination = split;
-                    args.take()
+                    assert_eq!(successor.destination, split_info.block);
+                    successor.destination = split;
+                    successor.args.take()
                 }
                 Instruction::CondBr(CondBr {
-                    then_dest,
-                    else_dest,
+                    ref mut then_dest,
+                    ref mut else_dest,
                     ..
                 }) => {
-                    if then_dest.0 == split_info.block {
-                        then_dest.0 = split;
-                        then_dest.1.take()
+                    if then_dest.destination == split_info.block {
+                        then_dest.destination = split;
+                        then_dest.args.take()
                     } else {
-                        assert_eq!(else_dest.0, split_info.block);
-                        else_dest.0 = split;
-                        else_dest.1.take()
+                        assert_eq!(else_dest.destination, split_info.block);
+                        else_dest.destination = split;
+                        else_dest.args.take()
                     }
                 }
-                Instruction::Switch(Switch {
-                    arms, r#default, ..
-                }) => {
-                    if r#default == &split_info.block {
-                        *r#default = split;
-                    }
-                    for (_, arm) in arms.iter_mut() {
-                        if arm == &split_info.block {
-                            *arm = split;
-                        }
-                    }
-                    ValueList::default()
+                Instruction::Switch(_) => {
+                    panic!("expected switch instructions to have been rewritten prior to this pass")
                 }
                 ix => unimplemented!("unhandled branch instruction: {}", ix.opcode()),
             };
@@ -309,7 +299,7 @@ impl RewritePass for InsertSpills {
 ///    only place greater constraints on backend scheduling, but also ensure that more live ranges
 ///    are split, and thus operands will spend less time on the operand stack overall. Time will
 ///    tell whether this holds true or not.
-#[derive(Default, PassInfo, ModuleRewritePassAdapter)]
+#[derive(Default)]
 pub struct RewriteSpills;
 impl RewritePass for RewriteSpills {
     type Entity = hir::Function;
@@ -485,7 +475,7 @@ fn find_inst_uses(
     // If `current_inst` is a branch or terminator, it cannot define a value, so
     // we simply record any uses, and move on.
     match function.dfg.analyze_branch(current_inst) {
-        BranchInfo::SingleDest(_, args) => {
+        BranchInfo::SingleDest(SuccessorInfo { args, .. }) => {
             for (index, arg) in args.iter().enumerate() {
                 if spills.is_spilled(arg) {
                     used.entry(*arg).or_default().insert(User::new(
@@ -499,9 +489,9 @@ fn find_inst_uses(
                 }
             }
         }
-        BranchInfo::MultiDest(ref jts) => {
-            for (succ_index, jt) in jts.iter().enumerate() {
-                for (index, arg) in jt.args.iter().enumerate() {
+        BranchInfo::MultiDest(infos) => {
+            for (succ_index, info) in infos.into_iter().enumerate() {
+                for (index, arg) in info.args.iter().enumerate() {
                     if spills.is_spilled(arg) {
                         used.entry(*arg).or_default().insert(User::new(
                             current_inst,

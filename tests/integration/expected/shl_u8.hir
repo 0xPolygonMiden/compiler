@@ -1,6 +1,6 @@
 (component 
     ;; Modules
-    (module #test_rust_11ed47f38055f9bb6c854e44680e18c81be5e7220524472414d55982c663892d
+    (module #test_rust_c41b1b7ac309f4bb3497653978e4c903a0185e0b268c2fca135833d9389bacc9
         ;; Constants
         (const (id 0) 0x00100000)
 

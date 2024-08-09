@@ -6,9 +6,9 @@ use core::{
 };
 
 use anyhow::anyhow;
-use miden_diagnostics::{SourceSpan, Spanned};
 
-use super::{
+use crate::{
+    diagnostics::{SourceSpan, Spanned},
     formatter::{self, PrettyPrint},
     symbols, Symbol,
 };
@@ -19,6 +19,17 @@ pub struct FunctionIdent {
     pub module: Ident,
     #[span]
     pub function: Ident,
+}
+impl FunctionIdent {
+    pub fn display(&self) -> impl fmt::Display + '_ {
+        use crate::formatter::*;
+
+        flatten(
+            const_text(self.module.as_str())
+                + const_text("::")
+                + const_text(self.function.as_str()),
+        )
+    }
 }
 impl FromStr for FunctionIdent {
     type Err = anyhow::Error;

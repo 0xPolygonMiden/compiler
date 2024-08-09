@@ -11,8 +11,8 @@ pub use midenc_hir::{
 
 pub use self::{
     function::{FrozenFunctionList, Function, FunctionList},
-    module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree},
-    program::Program,
+    module::{FrozenModuleTree, Module, ModuleTree},
+    program::{Library, Program},
     region::Region,
 };
 

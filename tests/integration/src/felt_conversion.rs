@@ -209,6 +209,57 @@ impl PopFromStack for TestFelt {
     }
 }
 
+impl<const N: usize> PushToStack for [u8; N] {
+    fn try_push(&self, stack: &mut Vec<Felt>) {
+        let mut iter = self.iter().array_chunks::<4>();
+        let buf_size = (self.len() / 4) + (self.len() % 4 == 0) as usize;
+        let mut buf = vec![0u32; buf_size];
+        let mut i = 0;
+        for chunk in iter.by_ref() {
+            let n = u32::from_be_bytes([*chunk[0], *chunk[1], *chunk[2], *chunk[3]]);
+            buf[i] = n;
+            i += 1;
+        }
+        if let Some(rest) = iter.into_remainder() {
+            let mut n_buf = [0u8; 4];
+            for (i, byte) in rest.into_iter().enumerate() {
+                n_buf[i] = *byte;
+            }
+            buf[i] = u32::from_be_bytes(n_buf);
+        }
+        for chunk in buf.into_iter().rev() {
+            PushToStack::try_push(&chunk, stack);
+        }
+    }
+}
+
+impl<const N: usize> PopFromStack for [u8; N] {
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
+        let mut out = [0u8; N];
+
+        let byte_size = out.len();
+        let mut i = 0;
+        while i < byte_size {
+            let chunk: u32 = PopFromStack::try_pop(stack).expect("invalid u32");
+            let bytes = chunk.to_be_bytes();
+            if i + 4 > byte_size {
+                for byte in bytes[..(byte_size - i)].iter().copied() {
+                    out[i] = byte;
+                    i += 1;
+                }
+                break;
+            } else {
+                for byte in bytes.iter().copied() {
+                    out[i] = byte;
+                    i += 1;
+                }
+            }
+        }
+
+        Ok(out)
+    }
+}
+
 /// Wrapper around `Felt` that implements `From` for a bunch of types that are want to support in
 /// tests
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

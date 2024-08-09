@@ -1,10 +1,10 @@
 /// Simple macro used in the grammar definition for constructing spans
 macro_rules! span {
-    ($l:expr, $r:expr) => {
-        miden_diagnostics::SourceSpan::new($l, $r)
+    ($source_id:expr, $l:expr, $r:expr) => {
+        SourceSpan::new($source_id, $l..$r)
     };
-    ($i:expr) => {
-        miden_diagnostics::SourceSpan::new($i, $i)
+    ($source_id:expr, $i:expr) => {
+        SourceSpan::at($source_id, $i)
     };
 }
 
@@ -20,18 +20,17 @@ lalrpop_mod!(
     "/parser/grammar.rs"
 );
 
-use std::{path::Path, sync::Arc};
-
-use miden_diagnostics::SourceFile;
-use miden_parsing::{FileMapSource, Scanner, Source};
+use alloc::sync::Arc;
+use std::path::Path;
 
 pub use self::error::ParseError;
 use self::{
     ast::ConvertAstToHir,
     lexer::{Lexed, Lexer},
 };
+use crate::diagnostics::{Report, SourceFile, SourceManagerExt};
 
-pub type ParseResult<T> = Result<T, ParseError>;
+pub type ParseResult<T> = Result<T, Report>;
 
 /// This is the parser for HIR text format
 pub struct Parser<'a> {
@@ -48,7 +47,7 @@ impl<'a> Parser<'a> {
     where
         T: Parse,
     {
-        <T as Parse>::parse(self, FileMapSource::new(source))
+        <T as Parse>::parse(self, source)
     }
 
     /// Parse a `T` from a string
@@ -56,8 +55,7 @@ impl<'a> Parser<'a> {
     where
         T: Parse,
     {
-        let id = self.session.codemap.add("nofile", source.as_ref().to_string());
-        let file = self.session.codemap.get(id).unwrap();
+        let file = self.session.source_manager.load("nofile", source.as_ref().to_string());
         self.parse(file)
     }
 
@@ -67,12 +65,9 @@ impl<'a> Parser<'a> {
         T: Parse,
     {
         let path = path.as_ref();
-        let id = self
-            .session
-            .codemap
-            .add_file(path)
-            .map_err(|err| parse_file_error(err, path.to_owned()))?;
-        let file = self.session.codemap.get(id).unwrap();
+        let file = self.session.source_manager.load_file(path).map_err(|err| {
+            Report::msg(err).wrap_err(format!("failed to load '{}' from disk", path.display()))
+        })?;
         self.parse(file)
     }
 }
@@ -80,72 +75,71 @@ impl<'a> Parser<'a> {
 pub trait Parse: Sized {
     type Grammar;
 
-    fn parse(parser: &Parser, source: impl Source) -> ParseResult<Self> {
-        let scanner = Scanner::new(source);
-        let lexer = Lexer::new(scanner);
+    fn parse(parser: &Parser, source: Arc<SourceFile>) -> ParseResult<Self> {
+        let lexer = Lexer::new(source.id(), source.as_str());
 
-        Self::parse_tokens(parser, lexer)
+        Self::parse_tokens(parser, source.clone(), lexer)
     }
 
-    fn parse_tokens(parser: &Parser, tokens: impl IntoIterator<Item = Lexed>) -> ParseResult<Self>;
+    fn parse_tokens(
+        parser: &Parser,
+        source: Arc<SourceFile>,
+        tokens: impl IntoIterator<Item = Lexed>,
+    ) -> ParseResult<Self>;
 }
 impl Parse for ast::Module {
     type Grammar = grammar::ModuleParser;
 
-    fn parse_tokens(parser: &Parser, tokens: impl IntoIterator<Item = Lexed>) -> ParseResult<Self> {
+    fn parse_tokens(
+        _parser: &Parser,
+        source: Arc<SourceFile>,
+        tokens: impl IntoIterator<Item = Lexed>,
+    ) -> ParseResult<Self> {
+        let source_id = source.id();
         let mut next_var = 0;
-        let result = <Self as Parse>::Grammar::new().parse(
-            &parser.session.diagnostics,
-            &parser.session.codemap,
-            &mut next_var,
-            tokens,
-        );
+        let result = <Self as Parse>::Grammar::new().parse(source_id, &mut next_var, tokens);
         match result {
-            Ok(ast) => {
-                if parser.session.diagnostics.has_errors() {
-                    return Err(ParseError::Failed);
-                }
-                Ok(ast)
+            Ok(ast) => Ok(ast),
+            Err(lalrpop_util::ParseError::User { error }) => {
+                Err(Report::from(error).with_source_code(source))
             }
-            Err(lalrpop_util::ParseError::User { error }) => Err(error),
-            Err(err) => Err(err.into()),
+            Err(err) => {
+                let error = ParseError::from(err);
+                Err(Report::from(error).with_source_code(source))
+            }
         }
     }
 }
 impl Parse for crate::Module {
     type Grammar = grammar::ModuleParser;
 
-    fn parse_tokens(parser: &Parser, tokens: impl IntoIterator<Item = Lexed>) -> ParseResult<Self> {
-        use crate::pass::{AnalysisManager, ConversionError, ConversionPass};
+    fn parse_tokens(
+        parser: &Parser,
+        source: Arc<SourceFile>,
+        tokens: impl IntoIterator<Item = Lexed>,
+    ) -> ParseResult<Self> {
+        use crate::pass::{AnalysisManager, ConversionPass};
 
+        let source_id = source.id();
         let mut next_var = 0;
         let result = <Self as Parse>::Grammar::new()
-            .parse(&parser.session.diagnostics, &parser.session.codemap, &mut next_var, tokens)
+            .parse(source_id, &mut next_var, tokens)
             .map(Box::new);
         match result {
             Ok(ast) => {
-                if parser.session.diagnostics.has_errors() {
-                    return Err(ParseError::Failed);
-                }
                 let mut analyses = AnalysisManager::new();
                 let mut convert_to_hir = ConvertAstToHir;
-                convert_to_hir.convert(ast, &mut analyses, parser.session).map_err(
-                    |err| match err {
-                        ConversionError::Failed(err) => match err.downcast::<ParseError>() {
-                            Ok(err) => err,
-                            Err(_) => ParseError::InvalidModule,
-                        },
-                        _ => ParseError::InvalidModule,
-                    },
-                )
+                convert_to_hir
+                    .convert(ast, &mut analyses, parser.session)
+                    .map_err(|err| err.with_source_code(source))
             }
-            Err(lalrpop_util::ParseError::User { error }) => Err(error),
-            Err(err) => Err(err.into()),
+            Err(lalrpop_util::ParseError::User { error }) => {
+                Err(Report::from(error).with_source_code(source))
+            }
+            Err(err) => {
+                let error = ParseError::from(err);
+                Err(Report::from(error).with_source_code(source))
+            }
         }
     }
-}
-
-#[inline]
-fn parse_file_error(source: std::io::Error, path: std::path::PathBuf) -> ParseError {
-    ParseError::FileError { source, path }
 }

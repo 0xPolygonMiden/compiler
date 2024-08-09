@@ -1,5 +1,9 @@
-use miden_diagnostics::DiagnosticsHandler;
-use midenc_hir::{FunctionIdent, Immediate, InstBuilder, SourceSpan, Type::*, Value};
+use midenc_hir::{
+    diagnostics::{DiagnosticsHandler, SourceSpan},
+    FunctionIdent, Immediate, InstBuilder,
+    Type::*,
+    Value,
+};
 
 use super::{stdlib, tx_kernel};
 use crate::module::function_builder_ext::FunctionBuilderExt;
@@ -15,20 +19,40 @@ enum TransformStrategy {
 }
 
 /// Get the transformation strategy for a function name
-fn get_transform_strategy(function_id: &str) -> TransformStrategy {
-    match function_id {
-        tx_kernel::note::GET_INPUTS => TransformStrategy::ListReturn,
-        tx_kernel::account::ADD_ASSET => TransformStrategy::ReturnViaPointer,
-        tx_kernel::account::REMOVE_ASSET => TransformStrategy::ReturnViaPointer,
-        tx_kernel::account::GET_ID => TransformStrategy::NoTransform,
-        tx_kernel::tx::CREATE_NOTE => TransformStrategy::NoTransform,
-        stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => TransformStrategy::ReturnViaPointer,
-        stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => TransformStrategy::ReturnViaPointer,
-        stdlib::crypto::dsa::RPO_FALCON512_VERIFY => TransformStrategy::NoTransform,
-        stdlib::mem::PIPE_WORDS_TO_MEMORY => TransformStrategy::ReturnViaPointer,
-        stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => TransformStrategy::ReturnViaPointer,
-        _ => panic!("No transform strategy found for function {}", function_id),
+fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrategy {
+    #[allow(clippy::single_match)]
+    match module_id {
+        "std::mem" => match function_id {
+            stdlib::mem::PIPE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
+            stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
+            _ => (),
+        },
+        "std::crypto::hashes::blake3" => match function_id {
+            stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => return TransformStrategy::ReturnViaPointer,
+            stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => return TransformStrategy::ReturnViaPointer,
+            _ => (),
+        },
+        "std::crypto::dsa::rpo_falcon512" => match function_id {
+            stdlib::crypto::dsa::RPO_FALCON512_VERIFY => return TransformStrategy::NoTransform,
+            _ => (),
+        },
+        "miden::note" => match function_id {
+            tx_kernel::note::GET_INPUTS => return TransformStrategy::ListReturn,
+            _ => (),
+        },
+        "miden::account" => match function_id {
+            tx_kernel::account::ADD_ASSET => return TransformStrategy::ReturnViaPointer,
+            tx_kernel::account::REMOVE_ASSET => return TransformStrategy::ReturnViaPointer,
+            tx_kernel::account::GET_ID => return TransformStrategy::NoTransform,
+            _ => (),
+        },
+        "miden::tx" => match function_id {
+            tx_kernel::tx::CREATE_NOTE => return TransformStrategy::NoTransform,
+            _ => (),
+        },
+        _ => (),
     }
+    panic!("No transform strategy found for function '{function_id}' in module '{module_id}'");
 }
 
 /// Transform a function call based on the transformation strategy
@@ -40,7 +64,7 @@ pub fn transform_miden_abi_call(
     diagnostics: &DiagnosticsHandler,
 ) -> Vec<Value> {
     use TransformStrategy::*;
-    match get_transform_strategy(func_id.function.as_symbol().as_str()) {
+    match get_transform_strategy(func_id.module.as_str(), func_id.function.as_str()) {
         ListReturn => list_return(func_id, args, builder, span, diagnostics),
         ReturnViaPointer => return_via_pointer(func_id, args, builder, span, diagnostics),
         NoTransform => no_transform(func_id, args, builder, span, diagnostics),

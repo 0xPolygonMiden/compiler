@@ -146,12 +146,6 @@ pub struct BlockInfo {
     pub source: hir::Block,
     /// The target MASM block which will be emitted from this info
     pub target: masm::BlockId,
-    /// The id of the last instruction in the source HIR block,
-    /// this is commonly used to check for liveness after the end
-    /// of a block
-    pub last_inst: hir::Inst,
-    /// The innermost loop to which this block belongs
-    pub innermost_loop: Option<Loop>,
     /// If set, indicates that this block is the loop header
     /// for the specified loop.
     pub loop_header: Option<Loop>,
@@ -212,12 +206,6 @@ impl Schedule {
 /// optimizer would.
 #[derive(Debug, Clone)]
 pub enum ScheduleOp {
-    /// Always the first instruction in a schedule, represents entry into a function
-    Init(hir::Block),
-    /// Push the current block context on the context stack, and switch to the given block context
-    Enter(hir::Block),
-    /// Pop the most recent block context from the context stack and switch to it
-    Exit,
     /// Emit the given instruction, using the provided analysis
     Inst(Rc<InstInfo>),
     /// Drop the first occurrence of the given value on the operand stack
@@ -233,7 +221,7 @@ pub enum Plan {
     /// This represents entering a block, so all further instructions
     /// are scheduled in the context of the given block until an ExitBlock
     /// meta-instruction is encountered.
-    Start(hir::Block),
+    Start,
     /// Schedule execution of an instruction's pre-requisites
     PreInst(Rc<InstInfo>),
     /// Schedule execution of the given instruction
@@ -280,24 +268,16 @@ impl<'a> Scheduler<'a> {
     pub fn build(mut self) -> Schedule {
         self.precompute_block_infos();
 
-        let entry_block_id = self.f.dfg.entry_block();
         let mut blockq = SmallVec::<[hir::Block; 8]>::from_slice(self.domtree.cfg_postorder());
         while let Some(block_id) = blockq.pop() {
-            let is_entry_block = block_id == entry_block_id;
             let schedule = &mut self.schedule.block_schedules[block_id];
-            if is_entry_block {
-                schedule.push(ScheduleOp::Init(block_id));
-            } else {
-                schedule.push(ScheduleOp::Enter(block_id));
-            }
-
             let block_info = self.schedule.block_infos.get(block_id).cloned().unwrap();
             let block_scheduler = BlockScheduler {
                 f: self.f,
                 liveness: self.liveness,
                 block_info,
                 inst_infos: Default::default(),
-                worklist: SmallVec::from_iter([Plan::Start(block_id)]),
+                worklist: SmallVec::from_iter([Plan::Start]),
             };
             block_scheduler.schedule(schedule);
         }
@@ -318,8 +298,6 @@ impl<'a> Scheduler<'a> {
 
             // Set the controlling loop
             let loop_header = self.loops.is_loop_header(block_id);
-            let last_inst = self.f.dfg.last_inst(block_id).unwrap();
-            let innermost_loop = self.loops.innermost_loop(block_id);
             let depgraph = build_dependency_graph(block_id, self.f, self.liveness);
             let treegraph = OrderedTreeGraph::new(&depgraph)
                 .expect("unable to topologically sort treegraph for block");
@@ -327,8 +305,6 @@ impl<'a> Scheduler<'a> {
             let info = Rc::new(BlockInfo {
                 source: block_id,
                 target: masm_block_id,
-                last_inst,
-                innermost_loop,
                 loop_header,
                 depgraph,
                 treegraph,
@@ -353,10 +329,8 @@ impl<'a> BlockScheduler<'a> {
         // here, we will emit scheduling operations in "normal" order.
         while let Some(plan) = self.worklist.pop() {
             match plan {
-                Plan::Start(_) => self.visit_block(),
-                Plan::Finish => {
-                    scheduled_ops.push(ScheduleOp::Exit);
-                }
+                Plan::Start => self.visit_block(),
+                Plan::Finish => continue,
                 // We're emitting code required to execute an instruction, such as materialization
                 // of data dependencies used as direct arguments. This is only
                 // emitted when an instruction has arguments which are derived from
@@ -692,7 +666,10 @@ impl<'a> BlockScheduler<'a> {
         });
 
         match self.f.dfg.analyze_branch(inst) {
-            BranchInfo::SingleDest(block, block_args) => {
+            BranchInfo::SingleDest(hir::SuccessorInfo {
+                destination: block,
+                args: block_args,
+            }) => {
                 inst_info.successors.push(Successor {
                     block,
                     arg_count: block_args.len() as u16,
@@ -728,7 +705,7 @@ impl<'a> BlockScheduler<'a> {
                                 index as usize,
                                 "successor ordering constraint violation: {arg:?}"
                             );
-                            let jt = hir::JumpTable {
+                            let succ = hir::SuccessorInfo {
                                 destination: block,
                                 args: block_args,
                             };
@@ -736,7 +713,7 @@ impl<'a> BlockScheduler<'a> {
                                 block_args[index as usize],
                                 arg_id,
                                 arg_source_id,
-                                Some(&[jt]),
+                                Some(&[succ]),
                             ));
                         }
                         Node::Argument(arg) => {
@@ -746,11 +723,11 @@ impl<'a> BlockScheduler<'a> {
                     }
                 }
             }
-            BranchInfo::MultiDest(ref jts) => {
-                for jt in jts.iter() {
+            BranchInfo::MultiDest(ref succs) => {
+                for succ in succs.iter() {
                     inst_info.successors.push(Successor {
-                        block: jt.destination,
-                        arg_count: jt.args.len() as u16,
+                        block: succ.destination,
+                        arg_count: succ.args.len() as u16,
                     });
                 }
                 for (succ_idx, arg) in self
@@ -775,7 +752,7 @@ impl<'a> BlockScheduler<'a> {
                                 inst_args[index as usize],
                                 arg_id,
                                 arg_source_id,
-                                Some(jts),
+                                Some(succs),
                             ));
                         }
                         Node::Argument(ArgumentNode::Indirect {
@@ -784,9 +761,9 @@ impl<'a> BlockScheduler<'a> {
                             debug_assert_eq!(
                                 succ_idx
                                     - inst_args.len()
-                                    - jts[..(successor as usize)]
+                                    - succs[..(successor as usize)]
                                         .iter()
-                                        .map(|jt| jt.args.len())
+                                        .map(|succ| succ.args.len())
                                         .sum::<usize>(),
                                 index as usize,
                                 "successor ordering constraint violation: {arg:?}"
@@ -794,12 +771,12 @@ impl<'a> BlockScheduler<'a> {
                             if !arg_source_id.is_stack() {
                                 inst_info.pre.insert(arg_source_id);
                             }
-                            let block_arg = jts[successor as usize].args[index as usize];
+                            let block_arg = succs[successor as usize].args[index as usize];
                             inst_info.args.push(self.constraint(
                                 block_arg,
                                 arg_id,
                                 arg_source_id,
-                                Some(jts),
+                                Some(succs),
                             ));
                         }
                         Node::Argument(ArgumentNode::Conditional {
@@ -808,9 +785,9 @@ impl<'a> BlockScheduler<'a> {
                             debug_assert_eq!(
                                 succ_idx
                                     - inst_args.len()
-                                    - jts[..(successor as usize)]
+                                    - succs[..(successor as usize)]
                                         .iter()
-                                        .map(|jt| jt.args.len())
+                                        .map(|succ| succ.args.len())
                                         .sum::<usize>(),
                                 index as usize,
                                 "successor ordering constraint violation: {arg:?}"
@@ -823,12 +800,12 @@ impl<'a> BlockScheduler<'a> {
                                 //inst_info.post.insert(arg_source_id);
                                 inst_info.pre.insert(arg_source_id);
                             }
-                            let block_arg = jts[successor as usize].args[index as usize];
+                            let block_arg = succs[successor as usize].args[index as usize];
                             inst_info.args.push(self.constraint(
                                 block_arg,
                                 arg_id,
                                 arg_source_id,
-                                Some(jts),
+                                Some(succs),
                             ));
                         }
                         _ => unreachable!(),
@@ -961,7 +938,7 @@ impl<'a> BlockScheduler<'a> {
         arg: hir::Value,
         arg_node: NodeId,
         arg_sourced_from: NodeId,
-        successors: Option<&[hir::JumpTable<'_>]>,
+        successors: Option<&[hir::SuccessorInfo<'_>]>,
     ) -> Constraint {
         if cfg!(debug_assertions) {
             assert_matches!(
@@ -1069,9 +1046,9 @@ fn build_dependency_graph(
         }
 
         match function.dfg.analyze_branch(inst) {
-            BranchInfo::SingleDest(_, args) => {
+            BranchInfo::SingleDest(succ) => {
                 // Add edges representing these data dependencies in later blocks
-                for (arg_idx, arg) in args.iter().copied().enumerate() {
+                for (arg_idx, arg) in succ.args.iter().copied().enumerate() {
                     let arg_node = ArgumentNode::Indirect {
                         inst,
                         index: arg_idx.try_into().expect("too many successor arguments"),
@@ -1080,15 +1057,15 @@ fn build_dependency_graph(
                     graph.add_data_dependency(node_id, arg_node, arg, pp, function);
                 }
             }
-            BranchInfo::MultiDest(ref jts) => {
+            BranchInfo::MultiDest(ref succs) => {
                 // Preprocess the arguments which are used so we can determine materialization
                 // requirements
-                for jt in jts.iter() {
-                    for arg in jt.args.iter().copied() {
+                for succ in succs.iter() {
+                    for arg in succ.args.iter().copied() {
                         block_arg_uses
                             .entry(arg)
                             .or_insert_with(Default::default)
-                            .insert(jt.destination);
+                            .insert(succ.destination);
                     }
                 }
                 // For each successor, check if we should implicitly require an argument along that
@@ -1096,11 +1073,11 @@ fn build_dependency_graph(
                 // somewhere downstream. We only consider block arguments passed to
                 // at least one other successor, and which are not already explicitly
                 // provided to this successor.
-                let materialization_threshold = jts.len();
+                let materialization_threshold = succs.len();
                 // Finally, add edges to the dependency graph representing the nature of each
                 // argument
-                for (succ_idx, jt) in jts.iter().enumerate() {
-                    for (arg_idx, arg) in jt.args.iter().copied().enumerate() {
+                for (succ_idx, succ) in succs.iter().enumerate() {
+                    for (arg_idx, arg) in succ.args.iter().copied().enumerate() {
                         let is_conditionally_materialized =
                             block_arg_uses[&arg].len() < materialization_threshold;
                         let must_materialize =
@@ -1372,11 +1349,11 @@ fn dce(
                     let successor = successor as usize;
                     let index = index as usize;
                     let value = match &branch_info {
-                        BranchInfo::SingleDest(_, args) => {
+                        BranchInfo::SingleDest(succ) => {
                             assert_eq!(successor, 0);
-                            args[index]
+                            succ.args[index]
                         }
-                        BranchInfo::MultiDest(ref jts) => jts[successor].args[index],
+                        BranchInfo::MultiDest(ref succs) => succs[successor].args[index],
                         BranchInfo::NotABranch => unreachable!(
                             "indirect/conditional arguments are only valid as successors of a \
                              branch instruction"

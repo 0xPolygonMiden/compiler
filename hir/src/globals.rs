@@ -1,15 +1,16 @@
-use std::{
-    alloc::Layout,
-    collections::{hash_map::DefaultHasher, BTreeMap},
+use alloc::{alloc::Layout, collections::BTreeMap};
+use core::{
     fmt::{self, Write},
     hash::{Hash, Hasher},
 };
 
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
-use miden_diagnostics::Spanned;
 
-use super::*;
+use crate::{
+    diagnostics::{miette, Diagnostic, Spanned},
+    *,
+};
 
 /// The policy to apply to a global variable (or function) when linking
 /// together a program during code generation.
@@ -79,21 +80,24 @@ intrusive_adapter!(pub GlobalVariableAdapter = UnsafeRef<GlobalVariableData>: Gl
 /// For example, two global variables with the same name, but differing
 /// types will result in this error, as there is no way to resolve the
 /// conflict.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum GlobalVariableError {
     /// There are multiple conflicting definitions of the given global symbol
     #[error(
         "invalid global variable: there are multiple conflicting definitions for symbol '{0}'"
     )]
+    #[diagnostic()]
     NameConflict(Ident),
     /// An attempt was made to set the initializer for a global that already has one
     #[error("cannot set an initializer for '{0}', it is already initialized")]
+    #[diagnostic()]
     AlreadyInitialized(Ident),
     /// The initializer data is invalid for the declared type of the given global, e.g. size
     /// mismatch.
     #[error(
         "invalid global variable initializer for '{0}': the data does not match the declared type"
     )]
+    #[diagnostic()]
     InvalidInit(Ident),
 }
 
@@ -389,7 +393,7 @@ impl GlobalVariableTable {
                         let unique_id = self.next_unique_id;
                         self.next_unique_id += 1;
                         // Calculate the hash of the global variable data
-                        let mut hasher = DefaultHasher::new();
+                        let mut hasher = rustc_hash::FxHasher::default();
                         data.hash(&mut hasher);
                         unique_id.hash(&mut hasher);
                         let hash = hasher.finish();
@@ -675,7 +679,8 @@ impl Default for GlobalValue {
 /// known statically, we instructions which manipulate globals are converted to
 /// loads/stores using constant addresses when translated to MASM.
 ///
-/// Like other entities, globals may also have a [SourceSpan] associated with them.
+/// Like other entities, globals may also have a [crate::diagnostics::SourceSpan] associated with
+/// them.
 #[derive(Debug, Clone)]
 pub enum GlobalValueData {
     /// A symbolic reference to a global variable symbol

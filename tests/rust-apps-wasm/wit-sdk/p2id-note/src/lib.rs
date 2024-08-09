@@ -8,15 +8,22 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+bindings::export!(Component with_types_in bindings);
+
 #[allow(dead_code)]
 mod bindings;
 
-use bindings::miden::base::account::get_id;
-use bindings::miden::base::core_types::account_id_from_felt;
-use bindings::miden::base::note::{get_assets, get_inputs};
-use bindings::miden::basic_wallet::basic_wallet::receive_asset;
-
-use bindings::exports::miden::base::note_script::Guest;
+use bindings::{
+    exports::miden::base::note_script::Guest,
+    miden::{
+        base::{
+            account::get_id,
+            core_types::account_id_from_felt,
+            note::{get_assets, get_inputs},
+        },
+        basic_wallet::basic_wallet::receive_asset,
+    },
+};
 
 pub struct Component;
 

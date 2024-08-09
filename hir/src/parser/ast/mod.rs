@@ -7,10 +7,11 @@ mod instruction;
 use alloc::collections::BTreeMap;
 use core::fmt;
 
-use miden_diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned};
-
 pub use self::{block::*, convert::ConvertAstToHir, functions::*, globals::*, instruction::*};
-use crate::{ExternalFunction, FunctionIdent, Ident};
+use crate::{
+    diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned},
+    ExternalFunction, FunctionIdent, Ident,
+};
 
 /// This represents the parsed contents of a single Miden IR module
 #[derive(Spanned)]

@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     sync::atomic::{AtomicU64, Ordering},
     time::{Duration, Instant},
 };
@@ -22,6 +23,16 @@ pub struct Statistics {
     opt_time: AtomicU64,
     /// The elapsed time at which codegen started
     codegen_time: AtomicU64,
+}
+impl fmt::Debug for Statistics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Statistics")
+            .field("elapsed", &self.elapsed())
+            .field("parsing", &self.parse_time())
+            .field("optimization", &self.opt_time())
+            .field("codegen", &self.codegen_time())
+            .finish()
+    }
 }
 impl Default for Statistics {
     fn default() -> Statistics {

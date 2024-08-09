@@ -4,7 +4,10 @@ use cranelift_entity::entity_impl;
 pub use miden_assembly::ast::{AdviceInjectorNode, DebugOptions};
 use smallvec::{smallvec, SmallVec};
 
-use crate::{Felt, FunctionIdent, Ident, LocalId};
+use crate::{
+    diagnostics::{SourceSpan, Span},
+    Felt, FunctionIdent, Ident, LocalId,
+};
 
 /// A handle that refers to a MASM code block
 #[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -15,7 +18,7 @@ entity_impl!(MasmBlockId, "blk");
 #[derive(Debug, Clone, PartialEq)]
 pub struct MasmBlock {
     pub id: MasmBlockId,
-    pub ops: SmallVec<[MasmOp; 4]>,
+    pub ops: SmallVec<[Span<MasmOp>; 4]>,
 }
 impl MasmBlock {
     /// Returns true if there are no instructions in this block
@@ -26,19 +29,20 @@ impl MasmBlock {
 
     /// Returns the instructions contained in this block as a slice
     #[inline(always)]
-    pub fn ops(&self) -> &[MasmOp] {
+    pub fn ops(&self) -> &[Span<MasmOp>] {
         self.ops.as_slice()
     }
 
     /// Appends `op` to this code block
     #[inline(always)]
-    pub fn push(&mut self, op: MasmOp) {
-        self.ops.push(op);
+    pub fn push(&mut self, op: MasmOp, span: SourceSpan) {
+        self.ops.push(Span::new(span, op));
     }
 
     /// Append `n` copies of `op` to the current block
     #[inline]
-    pub fn push_n(&mut self, count: usize, op: MasmOp) {
+    pub fn push_n(&mut self, count: usize, op: MasmOp, span: SourceSpan) {
+        let op = Span::new(span, op);
         for _ in 0..count {
             self.ops.push(op);
         }
@@ -46,7 +50,7 @@ impl MasmBlock {
 
     /// Append `n` copies of the sequence `ops` to this block
     #[inline]
-    pub fn push_repeat(&mut self, ops: &[MasmOp], count: usize) {
+    pub fn push_repeat(&mut self, ops: &[Span<MasmOp>], count: usize) {
         for _ in 0..count {
             self.ops.extend_from_slice(ops);
         }
@@ -56,7 +60,7 @@ impl MasmBlock {
     #[inline]
     pub fn push_template<const N: usize, F>(&mut self, count: usize, template: F)
     where
-        F: Fn(usize) -> [MasmOp; N],
+        F: Fn(usize) -> [Span<MasmOp>; N],
     {
         for n in 0..count {
             self.ops.extend_from_slice(&template(n));
@@ -65,13 +69,13 @@ impl MasmBlock {
 
     /// Appends instructions from `slice` to the end of this block
     #[inline]
-    pub fn extend_from_slice(&mut self, slice: &[MasmOp]) {
+    pub fn extend_from_slice(&mut self, slice: &[Span<MasmOp>]) {
         self.ops.extend_from_slice(slice);
     }
 
     /// Appends instructions from `slice` to the end of this block
     #[inline]
-    pub fn extend(&mut self, ops: impl IntoIterator<Item = MasmOp>) {
+    pub fn extend(&mut self, ops: impl IntoIterator<Item = Span<MasmOp>>) {
         self.ops.extend(ops);
     }
 
@@ -79,7 +83,7 @@ impl MasmBlock {
     #[inline]
     pub fn append<B>(&mut self, other: &mut SmallVec<B>)
     where
-        B: smallvec::Array<Item = MasmOp>,
+        B: smallvec::Array<Item = Span<MasmOp>>,
     {
         self.ops.append(other);
     }
@@ -1455,7 +1459,6 @@ impl MasmOp {
         locals: &BTreeSet<FunctionIdent>,
     ) -> SmallVec<[miden_assembly::ast::Instruction; 2]> {
         use miden_assembly::{
-            self as masm,
             ast::{Instruction, InvocationTarget, ProcedureName},
             LibraryPath,
         };
@@ -1622,19 +1625,23 @@ impl MasmOp {
             | Self::Syscall(ref callee)
             | Self::ProcRef(ref callee)) => {
                 let target = if locals.contains(callee) {
-                    let callee = ProcedureName::new(callee.function.as_str())
-                        .expect("invalid procedure name");
+                    let callee = ProcedureName::new_unchecked(super::utils::translate_ident(
+                        callee.function,
+                    ));
                     InvocationTarget::ProcedureName(callee)
                 } else if let Some(alias) = imports.alias(&callee.module) {
-                    let name = ProcedureName::new(callee.function.as_str())
-                        .expect("invalid procedure name");
+                    let alias = super::utils::translate_ident(alias);
+                    let name = ProcedureName::new_unchecked(super::utils::translate_ident(
+                        callee.function,
+                    ));
                     InvocationTarget::ProcedurePath {
                         name,
-                        module: masm::ast::Ident::new(alias.as_str()).expect("invalid module path"),
+                        module: alias,
                     }
                 } else {
-                    let name = ProcedureName::new(callee.function.as_str())
-                        .expect("invalid procedure name");
+                    let name = ProcedureName::new_unchecked(super::utils::translate_ident(
+                        callee.function,
+                    ));
                     let path =
                         LibraryPath::new(callee.module.as_str()).expect("invalid procedure path");
                     InvocationTarget::AbsoluteProcedurePath { name, path }
@@ -1780,15 +1787,15 @@ impl MasmOp {
             Self::U32GtImm(imm) => return smallvec![Instruction::PushU32(imm), Instruction::U32Gt],
             Self::U32Gte => Instruction::U32Gte,
             Self::U32GteImm(imm) => {
-                return smallvec![Instruction::PushU32(imm), Instruction::U32Gte]
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Gte];
             }
             Self::U32Min => Instruction::U32Min,
             Self::U32MinImm(imm) => {
-                return smallvec![Instruction::PushU32(imm), Instruction::U32Min]
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Min];
             }
             Self::U32Max => Instruction::U32Max,
             Self::U32MaxImm(imm) => {
-                return smallvec![Instruction::PushU32(imm), Instruction::U32Max]
+                return smallvec![Instruction::PushU32(imm), Instruction::U32Max];
             }
             Self::Breakpoint => Instruction::Breakpoint,
             Self::DebugStack => Instruction::Debug(DebugOptions::StackAll),

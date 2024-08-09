@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, fmt};
 
 use cranelift_entity::PrimaryMap;
 use miden_assembly::ast;
-use midenc_hir::{formatter::PrettyPrint, FunctionIdent, Ident};
+use midenc_hir::{diagnostics::Span, formatter::PrettyPrint, FunctionIdent, Ident};
 use smallvec::smallvec;
 
 use super::*;
@@ -53,7 +53,7 @@ impl Region {
     }
 
     /// Get the instruction under `ip`, if valid
-    pub fn get(&self, ip: InstructionPointer) -> Option<Op> {
+    pub fn get(&self, ip: InstructionPointer) -> Option<Span<Op>> {
         self.blocks[ip.block].ops.get(ip.index).copied()
     }
 
@@ -85,11 +85,10 @@ impl Region {
     /// local/external function maps to handle calls present in the body of the region.
     pub fn to_block(
         &self,
-        codemap: &miden_diagnostics::CodeMap,
         imports: &ModuleImportInfo,
         locals: &BTreeSet<FunctionIdent>,
     ) -> ast::Block {
-        emit_block(self.body, &self.blocks, codemap, imports, locals)
+        emit_block(self.body, &self.blocks, imports, locals)
     }
 
     /// Create a [Region] from a [miden_assembly::ast::CodeBody] and the set of imports
@@ -149,11 +148,13 @@ fn import_block(
     for op in block.iter() {
         match op {
             ast::Op::Inst(ix) => {
+                let span = ix.span();
                 let current_block = region.block_mut(current_block_id);
-                let mut ops = Op::from_masm(current_module, (**ix).clone());
-                current_block.append(&mut ops);
+                let ops = Op::from_masm(current_module, (**ix).clone());
+                current_block.extend(ops.into_iter().map(|op| Span::new(span, op)));
             }
             ast::Op::If {
+                span,
                 ref then_blk,
                 ref else_blk,
                 ..
@@ -162,22 +163,25 @@ fn import_block(
                 let else_blk_id = region.create_block();
                 import_block(current_module, region, then_blk_id, then_blk);
                 import_block(current_module, region, else_blk_id, else_blk);
-                region.block_mut(current_block_id).push(Op::If(then_blk_id, else_blk_id));
+                region.block_mut(current_block_id).push(Op::If(then_blk_id, else_blk_id), *span);
             }
             ast::Op::Repeat {
-                count, ref body, ..
+                span,
+                count,
+                ref body,
+                ..
             } => {
                 let body_blk = region.create_block();
                 import_block(current_module, region, body_blk, body);
                 let count = u16::try_from(*count).unwrap_or_else(|_| {
                     panic!("invalid repeat count: expected {count} to be less than 255")
                 });
-                region.block_mut(current_block_id).push(Op::Repeat(count, body_blk));
+                region.block_mut(current_block_id).push(Op::Repeat(count, body_blk), *span);
             }
-            ast::Op::While { ref body, .. } => {
+            ast::Op::While { span, ref body, .. } => {
                 let body_blk = region.create_block();
                 import_block(current_module, region, body_blk, body);
-                region.block_mut(current_block_id).push(Op::While(body_blk));
+                region.block_mut(current_block_id).push(Op::While(body_blk), *span);
             }
         }
     }
@@ -189,34 +193,31 @@ fn import_block(
 fn emit_block(
     block_id: BlockId,
     blocks: &PrimaryMap<BlockId, Block>,
-    codemap: &miden_diagnostics::CodeMap,
     imports: &ModuleImportInfo,
     locals: &BTreeSet<FunctionIdent>,
 ) -> ast::Block {
     let current_block = &blocks[block_id];
     let mut ops = Vec::with_capacity(current_block.ops.len());
     for op in current_block.ops.iter().copied() {
-        match op {
+        let span = op.span();
+        match op.into_inner() {
             Op::If(then_blk, else_blk) => {
-                let then_blk = emit_block(then_blk, blocks, codemap, imports, locals);
-                let else_blk = emit_block(else_blk, blocks, codemap, imports, locals);
+                let then_blk = emit_block(then_blk, blocks, imports, locals);
+                let else_blk = emit_block(else_blk, blocks, imports, locals);
                 ops.push(ast::Op::If {
-                    span: Default::default(),
+                    span,
                     then_blk,
                     else_blk,
                 });
             }
             Op::While(blk) => {
-                let body = emit_block(blk, blocks, codemap, imports, locals);
-                ops.push(ast::Op::While {
-                    span: Default::default(),
-                    body,
-                });
+                let body = emit_block(blk, blocks, imports, locals);
+                ops.push(ast::Op::While { span, body });
             }
             Op::Repeat(n, blk) => {
-                let body = emit_block(blk, blocks, codemap, imports, locals);
+                let body = emit_block(blk, blocks, imports, locals);
                 ops.push(ast::Op::Repeat {
-                    span: Default::default(),
+                    span,
                     count: n as u32,
                     body,
                 });
@@ -225,7 +226,7 @@ fn emit_block(
                 ops.extend(
                     op.into_masm(imports, locals)
                         .into_iter()
-                        .map(|inst| ast::Op::Inst(miden_assembly::Span::unknown(inst))),
+                        .map(|inst| ast::Op::Inst(Span::new(span, inst))),
                 );
             }
         }

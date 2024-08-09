@@ -1,20 +1,10 @@
 use midenc_session::Session;
 
-use super::{AnalysisError, AnalysisKey, AnalysisManager, PassInfo};
+use super::{AnalysisKey, AnalysisManager, PassInfo};
+use crate::diagnostics::Report;
 
-/// This error is produced when an error occurs when applying a rewrite rule
-#[derive(Debug, thiserror::Error)]
-pub enum RewriteError {
-    /// The rewrite failed due to an analysis error
-    #[error(transparent)]
-    Analysis(#[from] AnalysisError),
-    /// An unexpected error occurred during this rewrite
-    #[error(transparent)]
-    Failed(#[from] anyhow::Error),
-}
-
-/// A convenient type alias for `Result<(), RewriteError>`
-pub type RewriteResult = Result<(), RewriteError>;
+/// A convenient type alias for `Result<(), Report>`
+pub type RewriteResult = Result<(), Report>;
 
 /// A convenient type alias for closures which can be used as rewrite passes
 pub type RewriteFn<T> = dyn FnMut(&mut T, &mut AnalysisManager, &Session) -> RewriteResult;

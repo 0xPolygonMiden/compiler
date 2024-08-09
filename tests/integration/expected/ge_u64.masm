@@ -1,10 +1,7 @@
-# mod test_rust_d7aa757365ea28f9212f6c02f3c66b808689f2ebcbf480919e5d4f46796057c4
+# mod test_rust_77837611a2574dae16586d25d91d315da506c432500ce2d6c4234173b9ea07b2
 
 export.entrypoint
     movdn.3 movdn.3 exec.::std::math::u64::gte
 end
 
 
-begin
-    exec.::test_rust_d7aa757365ea28f9212f6c02f3c66b808689f2ebcbf480919e5d4f46796057c4::entrypoint
-end

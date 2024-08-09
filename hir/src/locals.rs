@@ -1,4 +1,5 @@
-use std::{alloc::Layout, fmt};
+use alloc::alloc::Layout;
+use core::fmt;
 
 use super::Type;
 

@@ -12,7 +12,7 @@ keywords.workspace = true
 license.workspace = true
 readme.workspace = true
 edition.workspace = true
-autotests = false # disable autodiscovery of tests
+autotests = false                                         # disable autodiscovery of tests
 
 [[bin]]
 name = "cargo-miden"
@@ -24,7 +24,6 @@ path = "tests/mod.rs"
 [dependencies]
 midenc-compile.workspace = true
 midenc-session.workspace = true
-miden-diagnostics.workspace = true
 env_logger.workspace = true
 log.workspace = true
 clap.workspace = true

@@ -45,12 +45,6 @@
     global.set $__stack_pointer
   )
   (func $miden_tx_kernel_sys::add_asset (;5;) (type 4) (param i32 i32)
-    (local i32)
-    global.get $__stack_pointer
-    i32.const 16
-    i32.sub
-    local.tee 2
-    global.set $__stack_pointer
     local.get 1
     f32.load
     local.get 1
@@ -59,32 +53,10 @@
     f32.load offset=8
     local.get 1
     f32.load offset=12
-    local.get 2
+    local.get 0
     call $miden_tx_kernel_sys::externs::extern_account_add_asset
-    local.get 0
-    i32.const 8
-    i32.add
-    local.get 2
-    i32.const 8
-    i32.add
-    i64.load align=4
-    i64.store align=4
-    local.get 0
-    local.get 2
-    i64.load align=4
-    i64.store align=4
-    local.get 2
-    i32.const 16
-    i32.add
-    global.set $__stack_pointer
   )
   (func $miden_tx_kernel_sys::remove_asset (;6;) (type 4) (param i32 i32)
-    (local i32)
-    global.get $__stack_pointer
-    i32.const 16
-    i32.sub
-    local.tee 2
-    global.set $__stack_pointer
     local.get 1
     f32.load
     local.get 1
@@ -93,24 +65,8 @@
     f32.load offset=8
     local.get 1
     f32.load offset=12
-    local.get 2
+    local.get 0
     call $miden_tx_kernel_sys::externs::extern_account_remove_asset
-    local.get 0
-    i32.const 8
-    i32.add
-    local.get 2
-    i32.const 8
-    i32.add
-    i64.load align=4
-    i64.store align=4
-    local.get 0
-    local.get 2
-    i64.load align=4
-    i64.store align=4
-    local.get 2
-    i32.const 16
-    i32.add
-    global.set $__stack_pointer
   )
   (func $miden_tx_kernel_sys::create_note (;7;) (type 5) (param i32 f32 f32 i32) (result f32)
     local.get 0

@@ -13,18 +13,17 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use std::collections::hash_map;
-
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
 use midenc_hir::{
-    cranelift_entity::packed_option::ReservedValue, Block, FieldElement, Immediate, Inst,
-    InstBuilder, Type, Type::*, Value,
+    cranelift_entity::packed_option::ReservedValue,
+    diagnostics::{DiagnosticsHandler, IntoDiagnostic, Report, Severity, SourceSpan},
+    Block, FieldElement, Immediate, Inst, InstBuilder, Type,
+    Type::*,
+    Value,
 };
-use rustc_hash::FxHashMap;
 use wasmparser::{MemArg, Operator};
 
 use crate::{
-    error::{WasmError, WasmResult},
+    error::WasmResult,
     intrinsics::{convert_intrinsics_call, is_miden_intrinsics_module},
     miden_abi::{is_miden_abi_module, transform::transform_miden_abi_call},
     module::{
@@ -57,7 +56,7 @@ pub fn translate_operator(
     span: SourceSpan,
 ) -> WasmResult<()> {
     if !state.reachable {
-        translate_unreachable_operator(op, builder, state, mod_types, span)?;
+        translate_unreachable_operator(op, builder, state, mod_types, diagnostics, span)?;
         return Ok(());
     }
 
@@ -85,13 +84,13 @@ pub fn translate_operator(
         Operator::GlobalGet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
-            let ty = ir_type(module.globals[global_index].ty)?;
+            let ty = ir_type(module.globals[global_index].ty, diagnostics)?;
             state.push1(builder.ins().load_symbol(name.as_str(), ty, span));
         }
         Operator::GlobalSet { global_index } => {
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
-            let ty = ir_type(module.globals[global_index].ty)?;
+            let ty = ir_type(module.globals[global_index].ty, diagnostics)?;
             let ptr = builder
                 .ins()
                 .symbol_addr(name.as_str(), Ptr(ty.clone().into()), span);
@@ -132,9 +131,9 @@ pub fn translate_operator(
         }
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
-        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_types, span)?,
-        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_types, span)?,
-        Operator::If { blockty } => translate_if(blockty, state, builder, mod_types, span)?,
+        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_types, diagnostics, span)?,
+        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_types, diagnostics, span)?,
+        Operator::If { blockty } => translate_if(blockty, state, builder, mod_types, diagnostics, span)?,
         Operator::Else => translate_else(state, builder, span)?,
         Operator::End => translate_end(state, builder, span),
 
@@ -154,12 +153,12 @@ pub fn translate_operator(
                 diagnostics,
             )?;
         }
-        Operator::CallIndirect { type_index: _, table_index: _, table_byte: _ } => {
+        Operator::CallIndirect { type_index: _, table_index: _ } => {
             // TODO:
         }
         /******************************* Memory management *********************************/
         Operator::MemoryGrow { .. } => {
-            let arg = state.pop1_casted(U32, builder, span);
+            let arg = state.pop1_bitcasted(U32, builder, span);
             state.push1(builder.ins().mem_grow(arg, span));
         }
         Operator::MemorySize { .. } => {
@@ -510,100 +509,6 @@ pub fn translate_operator(
     Ok(())
 }
 
-fn translate_br_table(
-    targets: &wasmparser::BrTable<'_>,
-    state: &mut FuncTranslationState,
-    builder: &mut FunctionBuilderExt,
-    span: SourceSpan,
-) -> Result<(), WasmError> {
-    let default = targets.default();
-    let mut min_depth = default;
-    for depth in targets.targets() {
-        let depth = depth?;
-        if depth < min_depth {
-            min_depth = depth;
-        }
-    }
-    let jump_args_count = {
-        let i = state.control_stack.len() - 1 - (min_depth as usize);
-        let min_depth_frame = &state.control_stack[i];
-        if min_depth_frame.is_loop() {
-            min_depth_frame.num_param_values()
-        } else {
-            min_depth_frame.num_return_values()
-        }
-    };
-    let val = state.pop1();
-    let val = if builder.data_flow_graph().value_type(val) != &U32 {
-        builder.ins().cast(val, U32, span)
-    } else {
-        val
-    };
-    let mut data = Vec::with_capacity(targets.len() as usize);
-    if jump_args_count == 0 {
-        // No jump arguments
-        for depth in targets.targets() {
-            let depth = depth?;
-            let block = {
-                let i = state.control_stack.len() - 1 - (depth as usize);
-                let frame = &mut state.control_stack[i];
-                frame.set_branched_to_exit();
-                frame.br_destination()
-            };
-            data.push((depth, block));
-        }
-        let def_block = {
-            let i = state.control_stack.len() - 1 - (default as usize);
-            let frame = &mut state.control_stack[i];
-            frame.set_branched_to_exit();
-            frame.br_destination()
-        };
-        builder.ins().switch(val, data, def_block, span);
-    } else {
-        // Here we have jump arguments, but Midens's switch op doesn't support them
-        // We then proceed to split the edges going out of the br_table
-        let return_count = jump_args_count;
-        let mut dest_block_sequence = vec![];
-        let mut dest_block_map = FxHashMap::default();
-        for depth in targets.targets() {
-            let depth = depth?;
-            let branch_block = match dest_block_map.entry(depth as usize) {
-                hash_map::Entry::Occupied(entry) => *entry.get(),
-                hash_map::Entry::Vacant(entry) => {
-                    let block = builder.create_block();
-                    dest_block_sequence.push((depth as usize, block));
-                    *entry.insert(block)
-                }
-            };
-            data.push((depth, branch_block));
-        }
-        let default_branch_block = match dest_block_map.entry(default as usize) {
-            hash_map::Entry::Occupied(entry) => *entry.get(),
-            hash_map::Entry::Vacant(entry) => {
-                let block = builder.create_block();
-                dest_block_sequence.push((default as usize, block));
-                *entry.insert(block)
-            }
-        };
-        builder.ins().switch(val, data, default_branch_block, span);
-        for (depth, dest_block) in dest_block_sequence {
-            builder.switch_to_block(dest_block);
-            builder.seal_block(dest_block);
-            let real_dest_block = {
-                let i = state.control_stack.len() - 1 - depth;
-                let frame = &mut state.control_stack[i];
-                frame.set_branched_to_exit();
-                frame.br_destination()
-            };
-            let destination_args = state.peekn_mut(return_count);
-            builder.ins().br(real_dest_block, destination_args, span);
-        }
-        state.popn(return_count);
-    }
-    state.reachable = false;
-    Ok(())
-}
-
 fn translate_load(
     ptr_ty: Type,
     memarg: &MemArg,
@@ -656,8 +561,16 @@ fn translate_store(
 ) {
     let (addr_int, val) = state.pop2();
     let val_ty = builder.data_flow_graph().value_type(val);
-    let arg = if ptr_ty != *val_ty {
-        builder.ins().trunc(val, ptr_ty.clone(), span)
+    let arg = if &ptr_ty != val_ty {
+        if ptr_ty.size_in_bits() == val_ty.size_in_bits() {
+            builder.ins().bitcast(val, ptr_ty.clone(), span)
+        } else if ptr_ty.is_unsigned_integer() && val_ty.is_signed_integer() {
+            let unsigned_val_ty = val_ty.as_unsigned();
+            let uval = builder.ins().bitcast(val, unsigned_val_ty, span);
+            builder.ins().trunc(uval, ptr_ty.clone(), span)
+        } else {
+            builder.ins().trunc(val, ptr_ty.clone(), span)
+        }
     } else {
         val
     };
@@ -673,10 +586,14 @@ fn prepare_addr(
     span: SourceSpan,
 ) -> Value {
     let addr_int_ty = builder.data_flow_graph().value_type(addr_int);
-    let addr_u32 = if *addr_int_ty == U32 {
+    let addr_u32 = if addr_int_ty == &U32 {
         addr_int
+    } else if addr_int_ty == &I32 {
+        builder.ins().bitcast(addr_int, U32, span)
+    } else if matches!(addr_int_ty, Ptr(_)) {
+        builder.ins().ptrtoint(addr_int, U32, span)
     } else {
-        builder.ins().cast(addr_int, U32, span)
+        panic!("unexpected type used as pointer value: {addr_int_ty}");
     };
     let mut full_addr_int = addr_u32;
     if let Some(memarg) = memarg {
@@ -688,14 +605,18 @@ fn prepare_addr(
         }
         // TODO(pauls): For now, asserting alignment helps us catch mistakes/bugs, but we should
         // probably make this something that can be disabled to avoid the overhead in release builds
-        if memarg.align > 1 {
+        if memarg.align > 0 {
             // Generate alignment assertion - aligned addresses should always produce 0 here
             let align_offset = builder.ins().mod_imm_unchecked(
                 full_addr_int,
-                Immediate::U32(memarg.align as u32),
+                Immediate::U32(2u32.pow(memarg.align as u32)),
                 span,
             );
-            builder.ins().assertz(align_offset, span);
+            builder.ins().assertz_with_error(
+                align_offset,
+                midenc_hir::ASSERT_FAILED_ALIGNMENT,
+                span,
+            );
         }
     };
     builder.ins().inttoptr(full_addr_int, Type::Ptr(ptr_ty.clone().into()), span)
@@ -842,14 +763,76 @@ fn translate_br_if_args(
     (br_destination, inputs)
 }
 
+fn translate_br_table(
+    br_targets: &wasmparser::BrTable<'_>,
+    state: &mut FuncTranslationState,
+    builder: &mut FunctionBuilderExt,
+    span: SourceSpan,
+) -> Result<(), Report> {
+    let mut targets = Vec::default();
+    for depth in br_targets.targets() {
+        let depth = depth.into_diagnostic()?;
+
+        targets.push(depth);
+    }
+    targets.sort();
+
+    let default_depth = br_targets.default();
+    let min_depth =
+        core::cmp::min(targets.iter().copied().min().unwrap_or(default_depth), default_depth);
+
+    let argc = {
+        let i = state.control_stack.len() - 1 - (min_depth as usize);
+        let min_depth_frame = &state.control_stack[i];
+        if min_depth_frame.is_loop() {
+            min_depth_frame.num_param_values()
+        } else {
+            min_depth_frame.num_return_values()
+        }
+    };
+
+    let default_block = {
+        let i = state.control_stack.len() - 1 - (default_depth as usize);
+        let frame = &mut state.control_stack[i];
+        frame.set_branched_to_exit();
+        frame.br_destination()
+    };
+
+    let val = state.pop1();
+    let val = if builder.data_flow_graph().value_type(val) != &U32 {
+        builder.ins().cast(val, U32, span)
+    } else {
+        val
+    };
+
+    let switch_builder = builder.ins().switch(val, span);
+    let switch_builder =
+        targets.into_iter().enumerate().fold(switch_builder, |acc, (label_idx, depth)| {
+            let block = {
+                let i = state.control_stack.len() - 1 - (depth as usize);
+                let frame = &mut state.control_stack[i];
+                frame.set_branched_to_exit();
+                frame.br_destination()
+            };
+            let args = state.peekn_mut(argc);
+            acc.case(label_idx as u32, block, args)
+        });
+    switch_builder.or_else(default_block, state.peekn_mut(argc));
+
+    state.popn(argc);
+    state.reachable = false;
+    Ok(())
+}
+
 fn translate_block(
     blockty: &wasmparser::BlockType,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, mod_types)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types, diagnostics)?;
     let next = builder.create_block_with_params(blockty.results.clone(), span);
     state.push_block(next, blockty.params.len(), blockty.results.len());
     Ok(())
@@ -966,9 +949,10 @@ fn translate_if(
     state: &mut FuncTranslationState,
     builder: &mut FunctionBuilderExt,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, mod_types)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types, diagnostics)?;
     let cond = state.pop1();
     // cond is expected to be a i32 value
     let cond_i1 = builder.ins().neq_imm(cond, Immediate::I32(0), span);
@@ -1023,9 +1007,10 @@ fn translate_loop(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let blockty = BlockType::from_wasm(blockty, mod_types)?;
+    let blockty = BlockType::from_wasm(blockty, mod_types, diagnostics)?;
     let loop_body = builder.create_block_with_params(blockty.params.clone(), span);
     let next = builder.create_block_with_params(blockty.results.clone(), span);
     builder.ins().br(loop_body, state.peekn(blockty.params.len()), span);
@@ -1044,6 +1029,7 @@ fn translate_unreachable_operator(
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     mod_types: &ModuleTypes,
+    diagnostics: &DiagnosticsHandler,
     span: SourceSpan,
 ) -> WasmResult<()> {
     debug_assert!(!state.reachable);
@@ -1051,7 +1037,7 @@ fn translate_unreachable_operator(
         Operator::If { blockty } => {
             // Push a placeholder control stack entry. The if isn't reachable,
             // so we don't have any branches anywhere.
-            let blockty = BlockType::from_wasm(&blockty, mod_types)?;
+            let blockty = BlockType::from_wasm(&blockty, mod_types, diagnostics)?;
             state.push_if(
                 Block::reserved_value(),
                 ElseData::NoElse {

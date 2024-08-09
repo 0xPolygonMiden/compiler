@@ -1,10 +1,7 @@
-# mod test_rust_c8167195a46a2ae0e4078c05a9d8411edc352c67e27b8061209b0705ca4830c7
+# mod test_rust_01dcb6fbaad510deb917ef5e283ccfaa280559139455d99f8b7c76af466af9dd
 
 export.entrypoint
     push.0.0 movdn.3 movdn.3 exec.::std::math::u64::wrapping_sub
 end
 
 
-begin
-    exec.::test_rust_c8167195a46a2ae0e4078c05a9d8411edc352c67e27b8061209b0705ca4830c7::entrypoint
-end

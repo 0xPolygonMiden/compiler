@@ -1,13 +1,16 @@
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
-use miden_diagnostics::Spanned;
 
 use self::formatter::PrettyPrint;
-use super::*;
+use crate::{
+    diagnostics::{miette, Diagnostic, Spanned},
+    *,
+};
 
 /// This error is raised when two function declarations conflict with the same symbol name
-#[derive(Debug, thiserror::Error)]
-#[error("item with this name has already been declared, or cannot be merged")]
+#[derive(Debug, thiserror::Error, Diagnostic)]
+#[error("item named '{}' has already been declared, or cannot be merged", .0)]
+#[diagnostic()]
 pub struct SymbolConflictError(pub FunctionIdent);
 
 /// A handle that refers to an [ExternalFunction]
@@ -644,24 +647,24 @@ impl<'a> fmt::Display for CfgPrinter<'a> {
                         let opcode = self.function.dfg.inst(last_inst).opcode();
                         writeln!(f, "    {block_id} --> {opcode}")?;
                     }
-                    BranchInfo::SingleDest(succ, _) => {
+                    BranchInfo::SingleDest(info) => {
                         assert!(
-                            self.function.dfg.is_block_linked(succ),
+                            self.function.dfg.is_block_linked(info.destination),
                             "reference to detached block in attached block {}",
-                            succ
+                            info.destination
                         );
-                        writeln!(f, "    {block_id} --> {succ}")?;
-                        block_q.push_back(succ);
+                        writeln!(f, "    {block_id} --> {}", info.destination)?;
+                        block_q.push_back(info.destination);
                     }
-                    BranchInfo::MultiDest(ref jts) => {
-                        for jt in jts {
+                    BranchInfo::MultiDest(ref infos) => {
+                        for info in infos {
                             assert!(
-                                self.function.dfg.is_block_linked(jt.destination),
+                                self.function.dfg.is_block_linked(info.destination),
                                 "reference to detached block in attached block {}",
-                                jt.destination
+                                info.destination
                             );
-                            writeln!(f, "    {block_id} --> {}", jt.destination)?;
-                            block_q.push_back(jt.destination);
+                            writeln!(f, "    {block_id} --> {}", info.destination)?;
+                            block_q.push_back(info.destination);
                         }
                     }
                 }

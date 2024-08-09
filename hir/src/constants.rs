@@ -68,6 +68,16 @@ impl ConstantData {
         self.0.resize(expected_size, 0);
         self
     }
+
+    /// Attempt to convert this constant data to a `u32` value
+    pub fn as_u32(&self) -> Option<u32> {
+        let bytes = self.as_slice();
+        if bytes.len() != 4 {
+            return None;
+        }
+        let bytes = bytes.as_ptr() as *const [u8; 4];
+        Some(u32::from_le_bytes(unsafe { bytes.read() }))
+    }
 }
 impl FromIterator<u8> for ConstantData {
     fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {

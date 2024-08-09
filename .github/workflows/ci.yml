@@ -3,128 +3,128 @@ name: CI
 on:
   push:
     branches:
-    - main
+      - main
     paths-ignore:
-    - '*.md'
+      - "*.md"
   pull_request:
     paths-ignore:
-    - '*.md'
+      - "*.md"
 
 env:
-  CARGO_MAKE_TOOLCHAIN: nightly-2024-03-10
+  CARGO_MAKE_TOOLCHAIN: nightly-2024-05-07
 
 jobs:
   compiler:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-        override: true
-    - name: Cache Cargo
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
-    - name: Install cargo-make
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-make
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: make
-        args: build
-    - name: Test
-      uses: actions-rs/cargo@v1
-      with:
-        command: make
-        args: test
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+          override: true
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-make
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: build
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: test
 
   cargo_miden_test_clean_env:
     # Run cargo-miden test in the clean env to simulate user's first run.
     # To test the installation of the required dependencies (e.g. rust-src, wasm target, etc.)
-    name: cargo-miden tests 
+    name: cargo-miden tests
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-        override: true
-    - name: Cache Cargo
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
-    - name: Test
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: -p cargo-miden --test integration 
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+          override: true
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p cargo-miden --test integration
 
   clippy:
     name: clippy
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-        override: true
-    - name: Cache Cargo
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
-    - name: Install cargo-make
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-make
-    - name: Test
-      uses: actions-rs/cargo@v1
-      with:
-        command: make
-        args: clippy
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+          override: true
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-make
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: clippy
 
   rustfmt:
     name: rustfmt
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-        override: true
-    - name: Cache Cargo
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
-    - name: Install cargo-make
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-make
-    - name: rustfmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: make
-        args: check-format
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
+          override: true
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-make
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: check-format

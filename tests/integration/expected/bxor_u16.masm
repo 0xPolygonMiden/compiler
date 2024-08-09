@@ -1,10 +1,7 @@
-# mod test_rust_edfc84a713511234ff9afc4c89c4fd998413355e149a7e331eaec655163d9afe
+# mod test_rust_1b43125ada2df0a7389224838e3cc4580de7ac09a86583219a3c08992ca30695
 
 export.entrypoint
     u32xor
 end
 
 
-begin
-    exec.::test_rust_edfc84a713511234ff9afc4c89c4fd998413355e149a7e331eaec655163d9afe::entrypoint
-end

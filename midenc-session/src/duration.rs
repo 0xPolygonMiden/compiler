@@ -20,6 +20,11 @@ impl From<Duration> for HumanDuration {
         Self(d)
     }
 }
+impl fmt::Debug for HumanDuration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
 impl fmt::Display for HumanDuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = self.0.as_secs();

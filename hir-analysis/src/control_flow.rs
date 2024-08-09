@@ -222,30 +222,28 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 
     if let Some(inst) = dfg.last_inst(block) {
         match &dfg[inst] {
-            Instruction::Br(Br {
-                destination: dest, ..
-            }) => {
-                visit(inst, *dest, false);
+            Instruction::Br(Br { successor, .. }) => {
+                visit(inst, successor.destination, false);
             }
 
             Instruction::CondBr(CondBr {
-                then_dest: (block_then, _),
-                else_dest: (block_else, _),
+                then_dest,
+                else_dest,
                 ..
             }) => {
-                visit(inst, *block_then, false);
-                visit(inst, *block_else, false);
+                visit(inst, then_dest.destination, false);
+                visit(inst, else_dest.destination, false);
             }
 
             Instruction::Switch(Switch {
                 ref arms,
-                default: default_block,
+                default: default_succ,
                 ..
             }) => {
-                visit(inst, *default_block, false);
+                visit(inst, default_succ.destination, false);
 
-                for (_, dest) in arms.as_slice() {
-                    visit(inst, *dest, true);
+                for arm in arms.as_slice() {
+                    visit(inst, arm.successor.destination, true);
                 }
             }
 
@@ -256,11 +254,6 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use miden_diagnostics::{
-        term::termcolor::ColorChoice, CodeMap, DefaultEmitter, DiagnosticsHandler,
-    };
     use midenc_hir::*;
 
     use super::*;
@@ -294,9 +287,7 @@ mod tests {
 
     #[test]
     fn cfg_branches_and_jumps() {
-        let codemap = Arc::new(CodeMap::new());
-        let emitter = Arc::new(DefaultEmitter::new(ColorChoice::Auto));
-        let diagnostics = DiagnosticsHandler::new(Default::default(), codemap.clone(), emitter);
+        let diagnostics = diagnostics::DiagnosticsHandler::default();
 
         // Define the 'test' module
         let mut builder = ModuleBuilder::new("test");

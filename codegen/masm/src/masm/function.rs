@@ -6,8 +6,11 @@ use miden_assembly::{
     ast::{self, ProcedureName},
     LibraryNamespace, LibraryPath,
 };
-use miden_diagnostics::{SourceSpan, Spanned};
-use midenc_hir::{formatter::PrettyPrint, AttributeSet, FunctionIdent, Ident, Signature, Type};
+use midenc_hir::{
+    diagnostics::{SourceSpan, Span, Spanned},
+    formatter::PrettyPrint,
+    AttributeSet, FunctionIdent, Ident, Signature, Type,
+};
 use smallvec::SmallVec;
 
 use super::*;
@@ -158,17 +161,13 @@ impl Function {
         kind: ast::InvokeKind,
         target: FunctionIdent,
     ) {
-        let module_name_span = miden_assembly::SourceSpan::new(
-            target.module.span.start_index().0..target.module.span.end_index().0,
-        );
-        let module_id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+        let module_name_span = target.module.span;
+        let module_id = ast::Ident::new_unchecked(Span::new(
             module_name_span,
             Arc::from(target.module.as_str().to_string().into_boxed_str()),
         ));
-        let name_span = miden_assembly::SourceSpan::new(
-            target.function.span.start_index().0..target.function.span.end_index().0,
-        );
-        let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
+        let name_span = target.function.span;
+        let id = ast::Ident::new_unchecked(Span::new(
             name_span,
             Arc::from(target.function.as_str().to_string().into_boxed_str()),
         ));
@@ -190,9 +189,11 @@ impl Function {
     pub fn from_ast(module: Ident, proc: &ast::Procedure) -> Box<Self> {
         use midenc_hir::{Linkage, Symbol};
 
+        let proc_span = proc.name().span();
+        let proc_name = Symbol::intern(AsRef::<str>::as_ref(proc.name()));
         let id = FunctionIdent {
             module,
-            function: Ident::with_empty_span(Symbol::intern(AsRef::<str>::as_ref(proc.name()))),
+            function: Ident::new(proc_name, proc_span),
         };
 
         let mut signature = Signature::new(vec![], vec![]);
@@ -218,9 +219,9 @@ impl Function {
 
     pub fn to_ast(
         &self,
-        codemap: &miden_diagnostics::CodeMap,
         imports: &midenc_hir::ModuleImportInfo,
         locals: &BTreeSet<FunctionIdent>,
+        tracing_enabled: bool,
     ) -> ast::Procedure {
         let visibility = if self.signature.is_kernel() {
             ast::Visibility::Syscall
@@ -229,34 +230,58 @@ impl Function {
         } else {
             ast::Visibility::Private
         };
-        let source_id = self.span.source_id();
-        let span =
-            miden_assembly::SourceSpan::new(self.span.start_index().0..self.span.end_index().0);
-        let source_file = codemap.get(source_id).ok().map(|sf| {
-            let nf = miden_assembly::diagnostics::SourceFile::new(
-                sf.name().as_str().unwrap(),
-                sf.source().to_string(),
-            );
-            Arc::new(nf)
-        });
 
-        let name_span = miden_assembly::SourceSpan::new(
-            self.name.function.span.start_index().0..self.name.function.span.end_index().0,
-        );
-        let id = ast::Ident::new_unchecked(miden_assembly::Span::new(
-            name_span,
+        let id = ast::Ident::new_unchecked(Span::new(
+            self.name.function.span,
             Arc::from(self.name.function.as_str().to_string().into_boxed_str()),
         ));
         let name = ast::ProcedureName::new_unchecked(id);
 
-        let body = self.body.to_block(codemap, imports, locals);
+        let mut body = self.body.to_block(imports, locals);
+
+        // Emit trace events on entry/exit from the procedure body, if not already present
+        if tracing_enabled {
+            emit_trace_frame_events(self.span, &mut body);
+        }
 
         let num_locals = u16::try_from(self.locals.len()).expect("too many locals");
-        let mut proc = ast::Procedure::new(span, visibility, name, num_locals, body)
-            .with_source_file(source_file);
+        let mut proc = ast::Procedure::new(self.span, visibility, name, num_locals, body);
         proc.extend_invoked(self.invoked().cloned());
         proc
     }
+}
+
+fn emit_trace_frame_events(span: SourceSpan, body: &mut ast::Block) {
+    use midenc_hir::{TRACE_FRAME_END, TRACE_FRAME_START};
+
+    let ops = body.iter().as_slice();
+    let has_frame_start = match ops.get(1) {
+        Some(ast::Op::Inst(inst)) => match inst.inner() {
+            ast::Instruction::Trace(imm) => {
+                matches!(imm, ast::Immediate::Value(val) if val.into_inner() == TRACE_FRAME_START)
+            }
+            _ => false,
+        },
+        _ => false,
+    };
+
+    // If we have the frame start event, we do not need to emit any further events
+    if has_frame_start {
+        return;
+    }
+
+    // Because [ast::Block] does not have a mutator that lets us insert an op at the start, we need
+    // to push the events at the end, then use access to the mutable slice via `iter_mut` to move
+    // elements around.
+    body.push(ast::Op::Inst(Span::new(span, ast::Instruction::Nop)));
+    body.push(ast::Op::Inst(Span::new(span, ast::Instruction::Trace(TRACE_FRAME_END.into()))));
+    body.push(ast::Op::Inst(Span::new(span, ast::Instruction::Nop)));
+    body.push(ast::Op::Inst(Span::new(
+        span,
+        ast::Instruction::Trace(TRACE_FRAME_START.into()),
+    )));
+    let ops = body.iter_mut().into_slice();
+    ops.rotate_right(2);
 }
 
 impl fmt::Debug for Function {

@@ -5,6 +5,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::neg_felt::entrypoint
-end

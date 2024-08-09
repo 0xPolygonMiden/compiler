@@ -1,37 +1,40 @@
-use miden_diagnostics::DiagnosticsHandler;
-use wasmparser::WasmFeatures;
+use midenc_hir::diagnostics::Report;
+use midenc_session::Session;
 
 use super::{
     inline, translator::ComponentTranslator, ComponentTypesBuilder, LinearComponentTranslation,
     ParsedRootComponent,
 };
-use crate::{component::ComponentParser, error::WasmResult, WasmTranslationConfig};
+use crate::{
+    component::ComponentParser, error::WasmResult, supported_component_model_features,
+    WasmTranslationConfig,
+};
 
 /// Translate a Wasm component binary into Miden IR component
 pub fn translate_component(
     wasm: &[u8],
     config: &WasmTranslationConfig,
-    diagnostics: &DiagnosticsHandler,
+    session: &Session,
 ) -> WasmResult<midenc_hir::Component> {
-    let (mut component_types_builder, parsed_component) = parse(config, wasm, diagnostics)?;
+    let (mut component_types_builder, parsed_component) = parse(config, wasm, session)?;
     let linearized_component_translation = inline(&mut component_types_builder, &parsed_component)?;
     let component_types = component_types_builder.finish();
     let parsed_modules = parsed_component.static_modules;
-    let translator = ComponentTranslator::new(component_types, parsed_modules, config, diagnostics);
+    let translator = ComponentTranslator::new(component_types, parsed_modules, config, session);
     translator.translate(linearized_component_translation)
 }
 
 fn parse<'data>(
     config: &WasmTranslationConfig,
     wasm: &'data [u8],
-    diagnostics: &DiagnosticsHandler,
-) -> Result<(ComponentTypesBuilder, ParsedRootComponent<'data>), crate::WasmError> {
-    let wasm_features = WasmFeatures::all();
-    let mut validator = wasmparser::Validator::new_with_features(wasm_features);
+    session: &Session,
+) -> Result<(ComponentTypesBuilder, ParsedRootComponent<'data>), Report> {
+    let mut validator =
+        wasmparser::Validator::new_with_features(supported_component_model_features());
     let mut component_types_builder = Default::default();
     let component_parser =
-        ComponentParser::new(config, &mut validator, &mut component_types_builder);
-    let parsed_component = component_parser.parse(wasm, diagnostics)?;
+        ComponentParser::new(config, session, &mut validator, &mut component_types_builder);
+    let parsed_component = component_parser.parse(wasm)?;
     Ok((component_types_builder, parsed_component))
 }
 
@@ -55,7 +58,7 @@ fn inline(
         &parsed_component.static_modules,
         &parsed_component.static_components,
     )
-    .map_err(|e| crate::WasmError::Unsupported(e.to_string()))?;
+    .map_err(Report::msg)?;
     Ok(component_dfg.finish())
 }
 
@@ -66,9 +69,7 @@ mod tests {
     use midenc_hir_type::Type;
 
     use super::*;
-    use crate::{
-        component::StaticModuleIndex, config::ImportMetadata, test_utils::test_diagnostics,
-    };
+    use crate::{component::StaticModuleIndex, config::ImportMetadata, test_utils::test_context};
 
     #[test]
     fn translate_simple() {
@@ -97,10 +98,10 @@ mod tests {
         "#
         .to_string();
         let wasm = wat::parse_str(wat).unwrap();
-        let diagnostics = test_diagnostics();
+        let context = test_context();
         let config = Default::default();
         let (mut component_types_builder, parsed_component) =
-            parse(&config, &wasm, &diagnostics).unwrap();
+            parse(&config, &wasm, &context.session).unwrap();
         let component_translation =
             inline(&mut component_types_builder, &parsed_component).unwrap();
 
@@ -119,7 +120,7 @@ mod tests {
             component_types,
             parsed_component.static_modules,
             &config,
-            &diagnostics,
+            &context.session,
         );
         let ir = translator.translate(component_translation).unwrap();
 
@@ -176,7 +177,7 @@ mod tests {
             )
         "#.to_string();
         let wasm = wat::parse_str(wat).unwrap();
-        let diagnostics = test_diagnostics();
+        let context = test_context();
         let interface_function_ident = InterfaceFunctionIdent {
             interface: InterfaceIdent::from_full_ident("miden:add/add@1.0.0".to_string()),
             function: Symbol::intern("add"),
@@ -195,7 +196,7 @@ mod tests {
             ..Default::default()
         };
         let (mut component_types_builder, parsed_component) =
-            parse(&config, &wasm, &diagnostics).unwrap();
+            parse(&config, &wasm, &context.session).unwrap();
         let component_translation =
             inline(&mut component_types_builder, &parsed_component).unwrap();
         assert_eq!(parsed_component.static_modules.len(), 1);
@@ -224,7 +225,7 @@ mod tests {
             component_types,
             parsed_component.static_modules,
             &config,
-            &diagnostics,
+            &context.session,
         );
         let ir = translator.translate(component_translation).unwrap();
 
