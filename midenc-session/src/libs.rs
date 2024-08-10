@@ -6,7 +6,7 @@ use std::{
 };
 
 use miden_assembly::{Library as CompiledLibrary, LibraryNamespace};
-use miden_base_sys::MidenTxKernelLibrary;
+use miden_base_sys::masl::tx::MidenTxKernelLibrary;
 use miden_stdlib::StdLibrary;
 
 use crate::{

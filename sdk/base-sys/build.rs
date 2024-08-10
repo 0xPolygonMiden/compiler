@@ -1,9 +1,8 @@
 use std::{env, path::Path, sync::Arc};
 
 use miden_assembly::{
-    ast::AstSerdeOptions,
     diagnostics::{IntoDiagnostic, Result},
-    library::CompiledLibrary,
+    library::Library as CompiledLibrary,
     LibraryNamespace,
 };
 
@@ -18,7 +17,6 @@ fn main() -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let source_manager = Arc::new(miden_assembly::DefaultSourceManager::default());
     let namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
-    let options = AstSerdeOptions::new(false, false);
 
     let tx_asm_dir = Path::new(manifest_dir).join("masm").join("tx");
     let txlib = CompiledLibrary::from_dir(tx_asm_dir, namespace, source_manager)?;
@@ -26,7 +24,7 @@ fn main() -> Result<()> {
         .join("assets")
         .join("tx")
         .with_extension(CompiledLibrary::LIBRARY_EXTENSION);
-    txlib.write_to_file(tx_masl_path, options).into_diagnostic()?;
+    txlib.write_to_file(tx_masl_path).into_diagnostic()?;
 
     Ok(())
 }

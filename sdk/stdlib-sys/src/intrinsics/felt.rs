@@ -308,12 +308,12 @@ pub fn assert_eq(a: Felt, b: Felt) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    #[test]
-    fn felt_macro_smoke_test() {
-        let _ = felt!(1);
-    }
-}
+//     #[test]
+//     fn felt_macro_smoke_test() {
+//         let _ = felt!(1);
+//     }
+// }

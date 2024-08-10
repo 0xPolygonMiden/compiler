@@ -23,5 +23,5 @@ miden-stdlib.workspace = true
 miden-diagnostics.workspace = true
 midenc-hir-symbol.workspace = true
 midenc-hir-macros.workspace = true
-miden-base-sys.workspace = true
+miden-base-sys = { version = "0.0.0", path = "../sdk/base-sys", features = ["masl-lib"] }
 thiserror.workspace = true

@@ -2859,6 +2859,7 @@ name = "miden-base-sys"
 version = "0.0.0"
 dependencies = [
  "miden-assembly",
+ "miden-stdlib-sys",
 ]
 
 [[package]]
@@ -3046,6 +3047,10 @@ checksum = "9314d34d66a677f819aaf9912b2110b29a24a28db66e9bf1be687b6f29389d9e"
 dependencies = [
  "miden-assembly",
 ]
+
+[[package]]
+name = "miden-stdlib-sys"
+version = "0.0.1"
 
 [[package]]
 name = "miden-thiserror"
