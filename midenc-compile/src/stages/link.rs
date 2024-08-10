@@ -1,19 +1,15 @@
-use midenc_hir::FunctionIdent;
-use midenc_session::diagnostics::Report;
-
 use super::*;
 
 pub enum LinkerInput {
     Hir(Box<hir::Module>),
-    Masm(Box<midenc_codegen_masm::Module>),
+    Masm(Box<masm::Module>),
 }
 
 pub struct LinkerOutput {
-    /// The possibly-linked HIR program
-    pub program: Option<Box<hir::Program>>,
+    /// The linked HIR program, or the unlinked HIR modules
+    pub linked: Either<Box<hir::Program>, hir::ModuleList>,
     /// The set of MASM inputs to the linker
-    #[allow(clippy::vec_box)]
-    pub masm: Vec<Box<midenc_codegen_masm::Module>>,
+    pub masm: masm::ModuleTree,
 }
 
 /// Link together one or more HIR modules into an HIR program
@@ -28,24 +24,24 @@ impl Stage for LinkerStage {
         _analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        let mut ir = Vec::with_capacity(inputs.len());
-        let mut masm = vec![];
+        let mut ir = hir::ModuleList::default();
+        let mut masm = masm::ModuleTree::default();
         for input in inputs {
             match input {
                 LinkerInput::Hir(module) => {
-                    ir.push(module);
+                    ir.push_back(module);
                 }
                 LinkerInput::Masm(module) => {
-                    masm.push(module);
+                    masm.insert(module);
                 }
             }
         }
-        let program = if session.should_link() {
+        if session.should_link() {
             // Construct a new [Program] builder
             let mut builder = match session.options.entrypoint.as_deref() {
                 Some(entrypoint) => {
                     let entrypoint = entrypoint
-                        .parse::<FunctionIdent>()
+                        .parse::<hir::FunctionIdent>()
                         .map_err(|err| Report::msg(format!("invalid --entrypoint: {err}")))?;
                     hir::ProgramBuilder::new(&session.diagnostics).with_entrypoint(entrypoint)
                 }
@@ -68,10 +64,18 @@ impl Stage for LinkerStage {
                 builder.add_library(link_lib.load(session)?);
             }
 
-            Some(builder.link()?)
+            let linked = Left(builder.link()?);
+
+            if session.options.link_only {
+                Err(Report::from(CompilerStopped))
+            } else {
+                Ok(LinkerOutput { linked, masm })
+            }
         } else {
-            None
-        };
-        Ok(LinkerOutput { program, masm })
+            Ok(LinkerOutput {
+                linked: Right(ir),
+                masm,
+            })
+        }
     }
 }

@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use miden_assembly::library::CompiledLibrary;
+use miden_assembly::library::Library as CompiledLibrary;
 use miden_core::{crypto::hash::RpoDigest, Program, StackInputs};
 use miden_processor::{
     AdviceExtractor, AdviceInjector, AdviceInputs, AdviceProvider, DefaultHost, ExecutionError,

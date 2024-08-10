@@ -4,12 +4,13 @@ mod stages;
 
 use std::rc::Rc;
 
-use midenc_codegen_masm as masm;
+use either::Either::{self, Left, Right};
+use midenc_codegen_masm::{self as masm, MasmArtifact};
 use midenc_hir::{
     diagnostics::{miette, Diagnostic, IntoDiagnostic, Report, WrapErr},
     pass::AnalysisManager,
 };
-use midenc_session::{OutputType, Session};
+use midenc_session::{OutputMode, Session};
 
 pub use self::compiler::Compiler;
 use self::{stage::Stage, stages::*};
@@ -73,61 +74,77 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
 pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
     let mut analyses = AnalysisManager::new();
     match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
-        // No outputs, generally due to skipping codegen
-        None => return Ok(()),
-        Some(output) => {
-            if session.should_emit(OutputType::Masm) {
-                for module in output.modules() {
-                    session.emit(module).into_diagnostic()?;
-                }
-            }
-            if let Some(path) = session.emit_to(OutputType::Mast, None) {
-                match output {
-                    masm::MasmArtifact::Executable(_) => {
-                        log::warn!(
-                            "skipping emission of MAST to {} as output type is not fully \
-                             supported yet",
-                            path.display()
-                        );
-                    }
-                    masm::MasmArtifact::Library(ref library) => {
-                        let mast = library.assemble(&session)?;
-                        mast.write_to_file(
-                            path.clone(),
-                            miden_assembly::ast::AstSerdeOptions {
-                                debug_info: session.options.emit_debug_decorators(),
-                                ..Default::default()
-                            },
-                        )
-                        .into_diagnostic()
-                        .wrap_err_with(|| {
-                            format!("failed to write MAST to '{}'", path.display())
-                        })?;
-                    }
-                }
-            }
+        Artifact::Assembled(ref mast) => {
+            session
+                .emit(OutputMode::Text, mast)
+                .into_diagnostic()
+                .wrap_err("failed to pretty print 'mast' artifact")?;
+            session
+                .emit(OutputMode::Binary, mast)
+                .into_diagnostic()
+                .wrap_err("failed to serialize 'mast' artifact")
         }
+        Artifact::Linked(_) | Artifact::Lowered(_) => Ok(()),
     }
-
-    Ok(())
 }
 
 /// Same as `compile`, but return compiled artifacts to the caller
-pub fn compile_to_memory(session: Rc<Session>) -> CompilerResult<Option<masm::MasmArtifact>> {
+pub fn compile_to_memory(session: Rc<Session>) -> CompilerResult<Artifact> {
     let mut analyses = AnalysisManager::new();
     compile_inputs(session.inputs.clone(), &mut analyses, &session)
+}
+
+/// Same as `compile_to_memory`, but allows registering a callback which will be used as an extra
+/// compiler stage immediately after code generation and prior to assembly, if the linker was run.
+pub fn compile_to_memory_with_pre_assembly_stage<F>(
+    session: Rc<Session>,
+    stage: &mut F,
+) -> CompilerResult<Artifact>
+where
+    F: FnMut(MasmArtifact, &mut AnalysisManager, &Session) -> CompilerResult<MasmArtifact>,
+{
+    type AssemblyInput = Either<MasmArtifact, masm::ModuleTree>;
+
+    let mut analyses = AnalysisManager::new();
+
+    let mut pre_assembly_stage = move |output: AssemblyInput,
+                                       analysis: &mut AnalysisManager,
+                                       session: &Session| {
+        match output {
+            Left(artifact) => stage(artifact, analysis, session).map(Left),
+            right @ Right(_) => Ok(right),
+        }
+    };
+    let mut stages = ParseStage
+        .next(SemanticAnalysisStage)
+        .next_optional(ApplyRewritesStage)
+        .collect(LinkerStage)
+        .next(CodegenStage)
+        .next(
+            &mut pre_assembly_stage
+                as &mut (dyn FnMut(
+                    AssemblyInput,
+                    &mut AnalysisManager,
+                    &Session,
+                ) -> CompilerResult<AssemblyInput>
+                          + '_),
+        )
+        .next(AssembleStage);
+
+    stages.run(session.inputs.clone(), &mut analyses, &session)
 }
 
 fn compile_inputs(
     inputs: Vec<midenc_session::InputFile>,
     analyses: &mut AnalysisManager,
     session: &Session,
-) -> CompilerResult<Option<masm::MasmArtifact>> {
+) -> CompilerResult<Artifact> {
     let mut stages = ParseStage
         .next(SemanticAnalysisStage)
         .next_optional(ApplyRewritesStage)
         .collect(LinkerStage)
-        .next(CodegenStage);
+        .next(CodegenStage)
+        .next(AssembleStage);
 
     stages.run(inputs, analyses, session)
 }

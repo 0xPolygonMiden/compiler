@@ -34,7 +34,7 @@ pub use self::{
     inputs::{FileType, InputFile, InputType, InvalidInputError},
     libs::{LibraryKind, LinkLibrary},
     options::*,
-    outputs::{OutputFile, OutputFiles, OutputType, OutputTypeSpec, OutputTypes},
+    outputs::{OutputFile, OutputFiles, OutputMode, OutputType, OutputTypeSpec, OutputTypes},
     statistics::Statistics,
 };
 
@@ -254,8 +254,9 @@ impl Session {
         &self.name
     }
 
+    /// Get the [OutputFile] to write the assembled MAST output to
     pub fn out_file(&self) -> OutputFile {
-        let out_file = self.output_files.output_file(OutputType::Mast, None);
+        let out_file = self.output_files.output_file(OutputType::Masl, None);
 
         if let OutputFile::Real(ref path) = out_file {
             self.check_file_is_writeable(path);
@@ -274,20 +275,54 @@ impl Session {
         }
     }
 
+    /// Returns true if the compiler should exit after parsing the input
     pub fn parse_only(&self) -> bool {
-        self.options.output_types.parse_only()
+        self.options.parse_only
     }
 
-    pub fn should_codegen(&self) -> bool {
-        self.options.output_types.should_codegen()
+    /// Returns true if the compiler should exit after performing semantic analysis
+    pub fn analyze_only(&self) -> bool {
+        self.options.analyze_only
     }
 
+    /// Returns true if the compiler should exit after applying rewrites to the IR
+    pub fn rewrite_only(&self) -> bool {
+        let link_or_masm_requested = self.should_link() || self.should_codegen();
+        !self.options.parse_only && !self.options.analyze_only && !link_or_masm_requested
+    }
+
+    /// Returns true if an [OutputType] that requires linking + assembly was requested
     pub fn should_link(&self) -> bool {
-        self.options.output_types.should_link()
+        self.options.output_types.should_link() && !self.options.no_link
     }
 
+    /// Returns true if an [OutputType] that requires generating Miden Assembly was requested
+    pub fn should_codegen(&self) -> bool {
+        self.options.output_types.should_codegen() && !self.options.link_only
+    }
+
+    /// Returns true if an [OutputType] that requires assembling MAST was requested
+    pub fn should_assemble(&self) -> bool {
+        self.options.output_types.should_assemble() && !self.options.link_only
+    }
+
+    /// Returns true if the given [OutputType] should be emitted as an output
     pub fn should_emit(&self, ty: OutputType) -> bool {
         self.options.output_types.contains_key(&ty)
+    }
+
+    /// Returns true if IR should be printed to stdout, after executing a pass named `pass`
+    pub fn should_print_ir(&self, pass: &str) -> bool {
+        self.options.print_ir_after_all
+            || self.options.print_ir_after_pass.iter().any(|p| p == pass)
+    }
+
+    /// Print the given emittable IR to stdout, as produced by a pass with name `pass`
+    pub fn print(&self, ir: impl Emit, pass: &str) -> std::io::Result<()> {
+        if self.should_print_ir(pass) {
+            ir.write_to_stdout(self)?;
+        }
+        Ok(())
     }
 
     /// Get the path to emit the given [OutputType] to
@@ -303,16 +338,17 @@ impl Session {
     }
 
     /// Emit an item to stdout/file system depending on the current configuration
-    pub fn emit<E: Emit>(&self, item: &E) -> std::io::Result<()> {
-        let output_type = item.output_type();
+    pub fn emit<E: Emit>(&self, mode: OutputMode, item: &E) -> std::io::Result<()> {
+        let output_type = item.output_type(mode);
         if self.should_emit(output_type) {
             let name = item.name().map(|n| n.as_str());
             match self.output_files.output_file(output_type, name) {
                 OutputFile::Real(path) => {
-                    item.write_to_file(&path)?;
+                    item.write_to_file(&path, mode, self)?;
                 }
                 OutputFile::Stdout => {
-                    item.write_to_stdout()?;
+                    let stdout = std::io::stdout().lock();
+                    item.write_to(stdout, mode, self)?;
                 }
             }
         }

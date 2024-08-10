@@ -1,4 +1,4 @@
-use midenc_hir::{self as hir, RewritePassRegistration};
+use midenc_hir::RewritePassRegistration;
 
 use super::*;
 
@@ -9,7 +9,7 @@ impl Stage for ApplyRewritesStage {
     type Output = LinkerInput;
 
     fn enabled(&self, session: &Session) -> bool {
-        !session.parse_only()
+        !session.analyze_only()
     }
 
     fn run(
@@ -18,8 +18,8 @@ impl Stage for ApplyRewritesStage {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        match input {
-            input @ LinkerInput::Masm(_) => Ok(input),
+        let output = match input {
+            input @ LinkerInput::Masm(_) => input,
             LinkerInput::Hir(mut input) => {
                 // Get all registered module rewrites and apply them in the order they appear
                 let mut registered = vec![];
@@ -39,14 +39,17 @@ impl Stage for ApplyRewritesStage {
 
                 // Populate the set of rewrite passes with default transformations, if there are no
                 // specific passes selected.
-                let mut rewrites = midenc_codegen_masm::default_rewrites(
-                    registered.into_iter().map(|(_, r)| r),
-                    session,
-                );
+                let mut rewrites =
+                    masm::default_rewrites(registered.into_iter().map(|(_, r)| r), session);
                 rewrites.apply(&mut input, analyses, session)?;
 
-                Ok(LinkerInput::Hir(input))
+                LinkerInput::Hir(input)
             }
+        };
+        if session.rewrite_only() {
+            Err(Report::from(CompilerStopped))
+        } else {
+            Ok(output)
         }
     }
 }

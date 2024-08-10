@@ -10,7 +10,6 @@ use midenc_hir::{
     formatter::PrettyPrint,
     FunctionIdent, Ident, Symbol,
 };
-use midenc_session::Emit;
 
 use super::{function::Functions, FrozenFunctionList, Function, ModuleImportInfo};
 
@@ -203,8 +202,6 @@ impl Module {
     /// For example, if this module is named `std::math::u64`, then it will be written to
     /// `<dir>/std/math/u64.masm`
     pub fn write_to_directory<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
-        use std::fs::File;
-
         let mut path = dir.as_ref().to_path_buf();
         assert!(path.is_dir());
         for component in self.name.components() {
@@ -212,8 +209,8 @@ impl Module {
         }
         assert!(path.set_extension("masm"));
 
-        let mut out = File::create(&path)?;
-        self.write_to(&mut out)
+        let ast = self.to_ast(false).map_err(std::io::Error::other)?;
+        ast.write_to_file(path)
     }
 }
 impl midenc_hir::formatter::PrettyPrint for Module {
@@ -284,13 +281,18 @@ impl midenc_session::Emit for Module {
         Some(self.id.as_symbol())
     }
 
-    fn output_type(&self) -> midenc_session::OutputType {
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
         midenc_session::OutputType::Masm
     }
 
-    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+    fn write_to<W: std::io::Write>(
+        &self,
+        writer: W,
+        mode: midenc_session::OutputMode,
+        session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
         let ast = self.to_ast(false).map_err(std::io::Error::other)?;
-        writer.write_fmt(format_args!("{}", &ast))
+        ast.write_to(writer, mode, session)
     }
 }
 
@@ -327,6 +329,15 @@ pub(super) enum Modules {
 impl Default for Modules {
     fn default() -> Self {
         Self::Open(Default::default())
+    }
+}
+impl Clone for Modules {
+    fn clone(&self) -> Self {
+        let mut out = ModuleTree::default();
+        for module in self.iter() {
+            out.insert(Box::new(module.clone()));
+        }
+        Self::Open(out)
     }
 }
 impl Modules {

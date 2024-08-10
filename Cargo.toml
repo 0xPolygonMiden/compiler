@@ -49,7 +49,8 @@ Inflector = "0.11"
 intrusive-collections = "0.9"
 inventory = "0.3"
 log = "0.4"
-miette = { version = "7.1.0", git = "https://github.com/bitwalker/miette", branch = "no-std" }
+#miette = { package = "miden-miette", version = "7.1.1" }
+miette = { version = "7.1", git = "https://github.com/bitwalker/miette", branch = "no-std" }
 paste = "1.0"
 parking_lot = "0.12"
 parking_lot_core = "0.9"
@@ -64,14 +65,19 @@ smallvec = { version = "1.13", features = [
     "drain_filter",
 ] }
 smallstr = { version = "0.3", features = ["union"] }
+#thiserror = { package = "miden-thiserror", version = "1.0" }
 thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
 toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.2"
-miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
-miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
-miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
-miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88" }
+#miden-assembly = { version = "0.10" }
+#miden-core = { version = "0.10" }
+#miden-processor = { version = "0.10" }
+#miden-stdlib = { version = "0.10" }
+miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }
@@ -88,10 +94,6 @@ midenc-session = { version = "0.0.1", path = "midenc-session" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
-
-[patch.crates-io]
-thiserror = { git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
-miette = { git = "https://github.com/bitwalker/miette", branch = "no-std" }
 
 [profile.dev]
 lto = false

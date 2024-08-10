@@ -47,6 +47,36 @@ pub trait Stage {
     }
 }
 
+impl<'a, I, O> Stage for &'a mut dyn FnMut(I, &mut AnalysisManager, &Session) -> CompilerResult<O> {
+    type Input = I;
+    type Output = O;
+
+    #[inline]
+    fn run(
+        &mut self,
+        input: Self::Input,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> CompilerResult<Self::Output> {
+        (*self)(input, analyses, session)
+    }
+}
+
+impl<I, O> Stage for Box<dyn FnMut(I, &mut AnalysisManager, &Session) -> CompilerResult<O>> {
+    type Input = I;
+    type Output = O;
+
+    #[inline]
+    fn run(
+        &mut self,
+        input: Self::Input,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> CompilerResult<Self::Output> {
+        self(input, analyses, session)
+    }
+}
+
 /// This struct is used to chain multiple [Stage] together
 pub struct Chain<A, B> {
     a: A,

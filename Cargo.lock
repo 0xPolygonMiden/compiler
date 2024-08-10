@@ -690,7 +690,7 @@ dependencies = [
  "semver 1.0.23",
  "serde",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.63",
  "toml",
  "walkdir",
 ]
@@ -757,7 +757,7 @@ dependencies = [
  "semver 1.0.23",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -1158,7 +1158,7 @@ dependencies = [
  "console",
  "shell-words",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.63",
  "zeroize",
 ]
 
@@ -1742,7 +1742,7 @@ dependencies = [
  "gix-date",
  "gix-utils",
  "itoa",
- "thiserror",
+ "thiserror 1.0.63",
  "winnow 0.6.16",
 ]
 
@@ -1762,7 +1762,7 @@ dependencies = [
  "memchr",
  "once_cell",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.63",
  "unicode-bom",
  "winnow 0.6.16",
 ]
@@ -1777,7 +1777,7 @@ dependencies = [
  "bstr",
  "gix-path",
  "libc",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -1788,7 +1788,7 @@ checksum = "9eed6931f21491ee0aeb922751bd7ec97b4b2fe8fbfedcb678e2a2dce5f3b8c0"
 dependencies = [
  "bstr",
  "itoa",
- "thiserror",
+ "thiserror 1.0.63",
  "time",
 ]
 
@@ -1836,7 +1836,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f93d7df7366121b5018f947a04d37f034717e113dcf9ccd85c34b58e57a74d5e"
 dependencies = [
  "faster-hex",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -1847,7 +1847,7 @@ checksum = "e7c359f81f01b8352063319bcb39789b7ea0887b406406381106e38c4a34d049"
 dependencies = [
  "gix-tempfile",
  "gix-utils",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -1865,7 +1865,7 @@ dependencies = [
  "gix-validate",
  "itoa",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.63",
  "winnow 0.6.16",
 ]
 
@@ -1879,7 +1879,7 @@ dependencies = [
  "gix-trace",
  "home",
  "once_cell",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -1900,7 +1900,7 @@ dependencies = [
  "gix-utils",
  "gix-validate",
  "memmap2",
- "thiserror",
+ "thiserror 1.0.63",
  "winnow 0.6.16",
 ]
 
@@ -1952,7 +1952,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82c27dd34a49b1addf193c92070bcbf3beaf6e10f16a78544de6372e146a0acf"
 dependencies = [
  "bstr",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -2731,10 +2731,10 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=828557c28ca1d159bfe42195e7ea73256ce4aa06#828557c28ca1d159bfe42195e7ea73256ce4aa06"
 dependencies = [
  "miden-core",
- "thiserror",
+ "thiserror 1.0.59",
  "winter-air",
  "winter-prover",
 ]
@@ -2742,7 +2742,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=828557c28ca1d159bfe42195e7ea73256ce4aa06#828557c28ca1d159bfe42195e7ea73256ce4aa06"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -2751,7 +2751,7 @@ dependencies = [
  "miette 7.1.0",
  "rustc_version 0.2.3",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.59",
  "tracing",
  "unicode-width",
 ]
@@ -2759,7 +2759,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=828557c28ca1d159bfe42195e7ea73256ce4aa06#828557c28ca1d159bfe42195e7ea73256ce4aa06"
 dependencies = [
  "lock_api",
  "loom",
@@ -2770,15 +2770,16 @@ dependencies = [
  "num-derive",
  "num-traits",
  "parking_lot",
- "thiserror",
+ "thiserror 1.0.59",
  "winter-math",
  "winter-utils",
 ]
 
 [[package]]
 name = "miden-crypto"
-version = "0.9.3"
-source = "git+https://github.com/0xPolygonMiden/crypto?branch=next#b06cfa3c035ada8122a405a72d2e4b2ad1a89b47"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6fad06fc3af260ed3c4235821daa2132813d993f96d446856036ae97e9606dd"
 dependencies = [
  "blake3",
  "cc",
@@ -2875,13 +2876,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d36dfec2c0319b3773a83627318f92a0212077bed80148c86e8b09af60cd1a88"
 dependencies = [
  "miden-diagnostics",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
 name = "miden-processor"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=828557c28ca1d159bfe42195e7ea73256ce4aa06#828557c28ca1d159bfe42195e7ea73256ce4aa06"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -2892,7 +2893,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.10.0"
-source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88#b4e1f3abf84c0c982b3a0ff83bb7568d2ba7ee88"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=828557c28ca1d159bfe42195e7ea73256ce4aa06#828557c28ca1d159bfe42195e7ea73256ce4aa06"
 dependencies = [
  "miden-assembly",
 ]
@@ -2929,7 +2930,7 @@ dependencies = [
  "proptest",
  "rustc-hash",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.59",
 ]
 
 [[package]]
@@ -2937,6 +2938,8 @@ name = "midenc-compile"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "either",
+ "intrusive-collections",
  "inventory",
  "log",
  "miden-assembly",
@@ -2947,7 +2950,7 @@ dependencies = [
  "midenc-hir-analysis",
  "midenc-hir-transform",
  "midenc-session",
- "thiserror",
+ "thiserror 1.0.59",
  "wat",
 ]
 
@@ -2959,7 +2962,7 @@ dependencies = [
  "midenc-compile",
  "midenc-hir",
  "midenc-session",
- "thiserror",
+ "thiserror 1.0.59",
 ]
 
 [[package]]
@@ -2980,7 +2983,7 @@ dependencies = [
  "midenc-session",
  "rustc-hash",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.59",
  "wasmparser 0.214.0",
  "wat",
 ]
@@ -3013,7 +3016,7 @@ dependencies = [
  "pretty_assertions",
  "rustc-hash",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.59",
  "typed-arena",
  "unicode-width",
 ]
@@ -3032,7 +3035,7 @@ dependencies = [
  "pretty_assertions",
  "rustc-hash",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.59",
 ]
 
 [[package]]
@@ -3089,7 +3092,7 @@ dependencies = [
  "miden-stdlib",
  "midenc-hir-macros",
  "midenc-hir-symbol",
- "thiserror",
+ "thiserror 1.0.59",
 ]
 
 [[package]]
@@ -3100,7 +3103,7 @@ checksum = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e"
 dependencies = [
  "miette-derive 5.10.0",
  "once_cell",
- "thiserror",
+ "thiserror 1.0.63",
  "unicode-width",
 ]
 
@@ -3129,7 +3132,7 @@ dependencies = [
  "syn 2.0.72",
  "terminal_size",
  "textwrap",
- "thiserror",
+ "thiserror 1.0.59",
  "trybuild",
  "unicode-width",
 ]
@@ -3624,7 +3627,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd53dff83f26735fdc1ca837098ccf133605d794cdae66acfc2bfac3ec809d95"
 dependencies = [
  "memchr",
- "thiserror",
+ "thiserror 1.0.63",
  "ucd-trie",
 ]
 
@@ -3942,7 +3945,7 @@ dependencies = [
  "prost-reflect",
  "prost-types",
  "protox-parse",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -3954,7 +3957,7 @@ dependencies = [
  "logos",
  "miette 5.10.0",
  "prost-types",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -4037,7 +4040,7 @@ checksum = "bd283d9651eeda4b2a83a43c1c91b266c40fd76ecd39a50a8c630ae69dc72891"
 dependencies = [
  "getrandom",
  "libredox",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -4883,13 +4886,33 @@ name = "thiserror"
 version = "1.0.59"
 source = "git+https://github.com/bitwalker/thiserror?branch=no-std#444c920234c683b73e1da67ba371a7084ae11725"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.59",
+]
+
+[[package]]
+name = "thiserror"
+version = "1.0.63"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0342370b38b6a11b6cc11d6a805569958d54cfa061a29969c3b5ce2ea405724"
+dependencies = [
+ "thiserror-impl 1.0.63",
 ]
 
 [[package]]
 name = "thiserror-impl"
 version = "1.0.59"
 source = "git+https://github.com/bitwalker/thiserror?branch=no-std#444c920234c683b73e1da67ba371a7084ae11725"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.63"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4558b58466b9ad7ca0f102865eccc95938dca1a74a856f2b57b6629050da261"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5366,7 +5389,7 @@ dependencies = [
  "itertools 0.11.0",
  "serde",
  "serde_with",
- "thiserror",
+ "thiserror 1.0.63",
  "warg-crypto",
  "warg-protocol",
 ]
@@ -5392,7 +5415,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.63",
  "tokio",
  "tokio-util",
  "tracing",
@@ -5423,7 +5446,7 @@ dependencies = [
  "serde",
  "sha2",
  "signature",
- "thiserror",
+ "thiserror 1.0.63",
 ]
 
 [[package]]
@@ -5461,7 +5484,7 @@ dependencies = [
  "semver 1.0.23",
  "serde",
  "serde_with",
- "thiserror",
+ "thiserror 1.0.63",
  "warg-crypto",
  "warg-protobuf",
  "warg-transparency",
@@ -5476,7 +5499,7 @@ checksum = "d2cd84da2c4f298556706e75a8f19df3e2c844be2ce9e959b07904fb66c333cc"
 dependencies = [
  "anyhow",
  "prost",
- "thiserror",
+ "thiserror 1.0.63",
  "warg-crypto",
  "warg-protobuf",
 ]

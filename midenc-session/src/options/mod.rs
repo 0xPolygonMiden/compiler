@@ -40,10 +40,20 @@ pub struct Options {
     pub diagnostics: DiagnosticsConfig,
     /// The current working directory of the compiler
     pub current_dir: PathBuf,
+    /// Only parse inputs
+    pub parse_only: bool,
+    /// Only perform semantic analysis on the input
+    pub analyze_only: bool,
+    /// Run the linker on the inputs, but do not generate Miden Assembly
+    pub link_only: bool,
+    /// Generate Miden Assembly from the inputs without the linker
+    pub no_link: bool,
     /// Print IR to stdout after each pass
     pub print_ir_after_all: bool,
-    /// Print IR to stdout each time the named pass is applied
-    pub print_ir_after_pass: Option<String>,
+    /// Print IR to stdout each time the named passes are applied
+    pub print_ir_after_pass: Vec<String>,
+    /// Save intermediate artifacts in memory during compilation
+    pub save_temps: bool,
     /// We store any leftover argument matches in the session options for use
     /// by any downstream crates that register custom flags
     arg_matches: clap::ArgMatches,
@@ -65,6 +75,11 @@ impl fmt::Debug for Options {
             .field("color", &self.color)
             .field("diagnostics", &self.diagnostics)
             .field("current_dir", &self.current_dir)
+            .field("parse_only", &self.parse_only)
+            .field("analyze_only", &self.analyze_only)
+            .field("link_only", &self.link_only)
+            .field("no_link", &self.no_link)
+            .field("save_temps", &self.save_temps)
             .field("print_ir_after_all", &self.print_ir_after_all)
             .field("print_ir_after_pass", &self.print_ir_after_pass)
             .field_with("extra_arguments", |f| {
@@ -140,8 +155,13 @@ impl Options {
             color: Default::default(),
             diagnostics: Default::default(),
             current_dir,
+            parse_only: false,
+            analyze_only: false,
+            link_only: false,
+            no_link: false,
+            save_temps: false,
             print_ir_after_all: false,
-            print_ir_after_pass: None,
+            print_ir_after_pass: vec![],
             arg_matches: Default::default(),
         }
     }

@@ -15,7 +15,9 @@ edition.workspace = true
 
 [dependencies]
 clap.workspace = true
+either.workspace = true
 log.workspace = true
+intrusive-collections.workspace = true
 inventory.workspace = true
 midenc-codegen-masm.workspace = true
 miden-assembly = { workspace = true, features = ["std"] }

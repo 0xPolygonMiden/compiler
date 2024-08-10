@@ -212,12 +212,180 @@ pub struct Compiler {
         help_heading = "Output"
     )]
     pub opt_level: OptLevel,
+    /// Set a codegen option
+    ///
+    /// Use `-C help` to print available options
+    #[arg(
+        long,
+        short = 'C',
+        value_name = "OPT[=VALUE]",
+        help_heading = "Compiler"
+    )]
+    pub codegen: Option<CodegenOptions>,
+    /// Set an unstable compiler option
+    ///
+    /// Use `-Z help` to print available options
+    #[arg(
+        long,
+        short = 'Z',
+        value_name = "OPT[=VALUE]",
+        help_heading = "Compiler"
+    )]
+    pub unstable: Option<UnstableOptions>,
+}
+
+#[derive(Debug, Clone, Parser)]
+#[command(name = "-C")]
+pub struct CodegenOptions {
+    /// Tell the compiler to exit after it has parsed the inputs
+    #[arg(
+        long,
+        conflicts_with_all(["analyze_only", "link_only"]),
+    )]
+    pub parse_only: bool,
+    /// Tell the compiler to exit after it has performed semantic analysis on the inputs
+    #[arg(
+        long,
+        conflicts_with_all(["parse_only", "link_only"]),
+    )]
+    pub analyze_only: bool,
+    /// Tell the compiler to exit after linking the inputs, without generating Miden Assembly
+    #[arg(
+        long,
+        conflicts_with_all(["no_link"]),
+    )]
+    pub link_only: bool,
+    /// Tell the compiler to generate Miden Assembly from the inputs without linking them
+    #[arg(long)]
+    pub no_link: bool,
+}
+
+#[derive(Debug, Clone, Parser)]
+#[command(name = "-Z")]
+pub struct UnstableOptions {
     /// Print the IR after each pass is applied
     #[arg(long, default_value_t = false, help_heading = "Passes")]
     pub print_ir_after_all: bool,
     /// Print the IR after running a specific pass
-    #[arg(long, value_name = "PASS", help_heading = "Passes")]
-    pub print_ir_after_pass: Option<String>,
+    #[arg(
+        long,
+        value_name = "PASS",
+        value_delimiter = ',',
+        help_heading = "Passes"
+    )]
+    pub print_ir_after_pass: Vec<String>,
+}
+
+impl clap::builder::ValueParserFactory for CodegenOptions {
+    type Parser = CodegenOptionsParser;
+
+    fn value_parser() -> Self::Parser {
+        CodegenOptionsParser
+    }
+}
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct CodegenOptionsParser;
+impl clap::builder::TypedValueParser for CodegenOptionsParser {
+    type Value = CodegenOptions;
+
+    fn parse_ref(
+        &self,
+        _cmd: &clap::Command,
+        _arg: Option<&clap::Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::error::Error> {
+        use clap::error::{Error, ErrorKind};
+
+        let command = <CodegenOptions as clap::CommandFactory>::command()
+            .no_binary_name(true)
+            .arg_required_else_help(true)
+            .help_template(
+                "\
+Available codegen options:
+
+Usage: midenc compile -C <opt>
+
+{all-args}{after-help}
+
+NOTE: When specifying these options, strip the leading '--'",
+            );
+
+        let option = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
+        let mut argv = match option.split_once('=') {
+            None => vec![option],
+            Some((opt, value)) => vec![opt, value],
+        };
+
+        if option == "help" || option == "h" {
+            argv.clear();
+            argv.push("--help");
+        }
+
+        let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
+        let opts = <CodegenOptions as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+            .map_err(format_error::<CodegenOptions>)
+            .unwrap_or_else(|err| err.exit());
+
+        Ok(opts)
+    }
+}
+
+impl clap::builder::ValueParserFactory for UnstableOptions {
+    type Parser = UnstableOptionsParser;
+
+    fn value_parser() -> Self::Parser {
+        UnstableOptionsParser
+    }
+}
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct UnstableOptionsParser;
+impl clap::builder::TypedValueParser for UnstableOptionsParser {
+    type Value = UnstableOptions;
+
+    fn parse_ref(
+        &self,
+        _cmd: &clap::Command,
+        _arg: Option<&clap::Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::error::Error> {
+        use clap::error::{Error, ErrorKind};
+
+        let command = <UnstableOptions as clap::CommandFactory>::command()
+            .no_binary_name(true)
+            .arg_required_else_help(true)
+            .help_template(
+                "\
+Available unstable options:
+
+Usage: midenc compile -Z <opt>
+
+{all-args}{after-help}
+
+NOTE: When specifying these options, strip the leading '--'",
+            );
+
+        let option = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
+        let mut argv = match option.split_once('=') {
+            None => vec![option],
+            Some((opt, value)) => vec![opt, value],
+        };
+
+        if option == "help" || option == "h" {
+            argv.clear();
+            argv.push("--help");
+        }
+
+        let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
+        let opts = <UnstableOptions as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+            .map_err(format_error::<UnstableOptions>)
+            .unwrap_or_else(|err| err.exit());
+
+        Ok(opts)
+    }
 }
 
 impl Compiler {
@@ -269,7 +437,7 @@ impl Compiler {
         };
 
         // Initialize output types
-        let mut output_types = OutputTypes::new(self.output_types);
+        let mut output_types = OutputTypes::new(self.output_types).unwrap_or_else(|err| err.exit());
         if output_types.is_empty() {
             output_types.insert(OutputType::Mast, output_file.clone());
         } else if output_file.is_some() && output_types.get(&OutputType::Mast).is_some() {
@@ -295,8 +463,16 @@ impl Compiler {
         options.search_paths = self.search_path;
         options.link_libraries = self.link_libraries;
         options.entrypoint = self.entrypoint;
-        options.print_ir_after_all = self.print_ir_after_all;
-        options.print_ir_after_pass = self.print_ir_after_pass;
+        if let Some(unstable) = self.unstable {
+            options.print_ir_after_all = unstable.print_ir_after_all;
+            options.print_ir_after_pass = unstable.print_ir_after_pass;
+        }
+        if let Some(codegen) = self.codegen {
+            options.parse_only = codegen.parse_only;
+            options.analyze_only = codegen.analyze_only;
+            options.link_only = codegen.link_only;
+            options.no_link = codegen.no_link;
+        }
 
         // Establish --target-dir
         let target_dir = if self.target_dir.is_absolute() {

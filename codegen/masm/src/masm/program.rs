@@ -3,7 +3,7 @@ use std::{fmt, path::Path, sync::Arc};
 use hir::{Signature, Symbol};
 use miden_assembly::{
     ast::{ModuleKind, ProcedureName},
-    library::{CompiledLibrary, KernelLibrary},
+    library::{KernelLibrary, Library as CompiledLibrary},
     LibraryNamespace,
 };
 use miden_core::crypto::hash::Rpo256;
@@ -12,7 +12,7 @@ use midenc_hir::{
     SourceSpan,
 };
 use midenc_hir_analysis::GlobalVariableAnalysis;
-use midenc_session::Session;
+use midenc_session::{Emit, Session};
 
 use super::{module::Modules, *};
 
@@ -26,6 +26,7 @@ inventory::submit! {
 
 /// A [Program] represents a complete set of modules which are intended to be shipped and executed
 /// together.
+#[derive(Clone)]
 pub struct Program {
     /// The code for this program
     library: Library,
@@ -356,7 +357,7 @@ impl Program {
 
         // Link extra libraries
         for library in self.library.libraries.iter() {
-            assembler.add_compiled_library(library)?;
+            assembler.add_library(library)?;
         }
 
         // Assemble library
@@ -391,6 +392,30 @@ impl fmt::Display for Program {
     }
 }
 
+impl Emit for Program {
+    fn name(&self) -> Option<Symbol> {
+        None
+    }
+
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
+        midenc_session::OutputType::Masm
+    }
+
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for masm ir programs"
+        );
+        writer.write_fmt(format_args!("{}\n", self))
+    }
+}
+
 /// A [Library] represents a set of modules and its dependencies, which are compiled/assembled
 /// together into a single artifact, and then linked into a [Program] for execution at a later
 /// time.
@@ -398,7 +423,7 @@ impl fmt::Display for Program {
 /// Modules are stored in a [Library] in a B-tree map, keyed by the module name. This is done to
 /// make accessing modules by name efficient, and to ensure a stable ordering for compiled programs
 /// when emitted as text.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Library {
     /// The set of modules which belong to this program
     modules: Modules,
@@ -549,7 +574,7 @@ impl Library {
 
         // Link extra libraries
         for library in self.libraries.iter() {
-            assembler.add_compiled_library(library)?;
+            assembler.add_library(library)?;
         }
 
         // Assemble library
@@ -575,5 +600,29 @@ impl fmt::Display for Library {
         }
 
         Ok(())
+    }
+}
+
+impl Emit for Library {
+    fn name(&self) -> Option<Symbol> {
+        None
+    }
+
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
+        midenc_session::OutputType::Masm
+    }
+
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for masm ir libraries"
+        );
+        writer.write_fmt(format_args!("{}\n", self))
     }
 }

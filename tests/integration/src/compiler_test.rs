@@ -1110,17 +1110,36 @@ impl CompilerTest {
     }
 
     pub(crate) fn compile_wasm_to_masm_program(&mut self) {
-        let output = midenc_compile::compile_to_memory(self.session.clone())
-            .unwrap()
-            .expect("no codegen outputs produced, was linking disabled?");
-        let midenc_codegen_masm::MasmArtifact::Executable(program) = output else {
-            panic!("expected executable output, got library");
-        };
-        let src = program.to_string();
-        let vm_prog = program.assemble(&self.session).map_err(format_report);
-        self.masm_src = Some(src);
-        self.ir_masm_program = Some(Ok(program.into()));
-        self.vm_masm_program = Some(vm_prog);
+        use midenc_codegen_masm::MasmArtifact;
+        use midenc_compile::compile_to_memory_with_pre_assembly_stage;
+        use midenc_hir::pass::AnalysisManager;
+
+        let mut src = None;
+        let mut masm_program = None;
+        let mut stage =
+            |artifact: MasmArtifact, _analyses: &mut AnalysisManager, _session: &Session| {
+                match artifact {
+                    MasmArtifact::Executable(ref program) => {
+                        src = Some(program.to_string());
+                        masm_program = Some(Arc::from(program.clone()));
+                    }
+                    MasmArtifact::Library(ref lib) => {
+                        src = Some(lib.to_string());
+                    }
+                }
+                Ok(artifact)
+            };
+        let mast_program =
+            compile_to_memory_with_pre_assembly_stage(self.session.clone(), &mut stage as _)
+                .map_err(format_report)
+                .unwrap_or_else(|err| panic!("{err}"))
+                .unwrap_mast()
+                .unwrap_program();
+        assert!(src.is_some(), "failed to pretty print masm artifact");
+        assert!(masm_program.is_some(), "failed to capture masm artifact");
+        self.masm_src = src;
+        self.ir_masm_program = masm_program.map(Ok);
+        self.vm_masm_program = Some(Ok(mast_program));
     }
 }
 
@@ -1214,7 +1233,7 @@ where
         reporting::set_panic_hook();
     }
 
-    let argv = argv.into_iter().map(|arg| arg.as_ref());
+    let argv = argv.iter().map(|arg| arg.as_ref());
     let session = midenc_compile::Compiler::new_session(inputs, None, argv)
         // Ensure MASM outputs are generated
         .with_output_type(OutputType::Masm, None);

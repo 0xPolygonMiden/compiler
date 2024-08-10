@@ -3,7 +3,7 @@ use alloc::collections::BTreeMap;
 use intrusive_collections::{
     intrusive_adapter,
     linked_list::{Cursor, CursorMut},
-    LinkedList, RBTreeLink,
+    LinkedList, LinkedListLink, RBTreeLink,
 };
 use rustc_hash::FxHashSet;
 
@@ -31,6 +31,10 @@ impl ModuleConflictError {
     }
 }
 
+pub type ModuleTree = intrusive_collections::RBTree<ModuleTreeAdapter>;
+pub type ModuleList = intrusive_collections::LinkedList<ModuleListAdapter>;
+
+intrusive_adapter!(pub ModuleListAdapter = Box<Module>: Module { list_link: LinkedListLink });
 intrusive_adapter!(pub ModuleTreeAdapter = Box<Module>: Module { link: RBTreeLink });
 impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
     type Key = Ident;
@@ -53,6 +57,8 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
 pub struct Module {
     /// The link used to attach this module to a [Program]
     link: RBTreeLink,
+    /// The link used to store this module in a list of modules
+    list_link: LinkedListLink,
     /// The name of this module
     #[span]
     #[analysis_key]
@@ -191,11 +197,21 @@ impl midenc_session::Emit for Module {
         Some(self.name.as_symbol())
     }
 
-    fn output_type(&self) -> midenc_session::OutputType {
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
         midenc_session::OutputType::Hir
     }
 
-    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for HIR modules"
+        );
         writer.write_fmt(format_args!("{}", self))
     }
 }
@@ -286,6 +302,7 @@ impl Module {
     fn make(name: Ident, is_kernel: bool) -> Self {
         Self {
             link: Default::default(),
+            list_link: Default::default(),
             name,
             docs: None,
             segments: Default::default(),

@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use miden_assembly::{library::CompiledLibrary, LibraryNamespace};
+use miden_assembly::{library::Library as CompiledLibrary, LibraryNamespace};
 use miden_stdlib::StdLibrary;
 
 use crate::{
@@ -64,9 +64,9 @@ impl LinkLibrary {
             "std" => return Ok(StdLibrary::default().into()),
             "base" => {
                 // TODO(pauls): Handle properly once we have miden-base-sys
-                return Err(Report::msg(format!(
-                    "invalid link library 'base': miden-base-sys is unimplemented"
-                )));
+                return Err(Report::msg(
+                    "invalid link library 'base': miden-base-sys is unimplemented",
+                ));
             }
             _ => (),
         }

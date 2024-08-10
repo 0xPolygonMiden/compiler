@@ -8,6 +8,15 @@ use std::{
 
 use clap::ValueEnum;
 
+/// The type of output to produce for a given [OutputType], when multiple options are available
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum OutputMode {
+    /// Pretty-print the textual form of the current [OutputType]
+    Text,
+    /// Encode the current [OutputType] in its canonical binary format
+    Binary,
+}
+
 /// This enum represents the type of outputs the compiler can produce
 #[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum OutputType {
@@ -17,14 +26,16 @@ pub enum OutputType {
     Hir,
     /// The compiler will emit Miden Assembly text
     Masm,
-    /// The compiler will emit the Merkalized Abstract Syntax Tree
-    #[default]
+    /// The compiler will emit a Merkalized Abstract Syntax Tree in text form
     Mast,
+    /// The compiler will emit a MAST library in binary form
+    #[default]
+    Masl,
 }
 impl OutputType {
     /// Returns true if this output type is an intermediate artifact produced during compilation
     pub fn is_intermediate(&self) -> bool {
-        !matches!(self, Self::Mast)
+        !matches!(self, Self::Mast | Self::Masl)
     }
 
     pub fn extension(&self) -> &'static str {
@@ -33,11 +44,29 @@ impl OutputType {
             Self::Hir => "hir",
             Self::Masm => "masm",
             Self::Mast => "mast",
+            Self::Masl => "mast",
         }
     }
 
     pub fn shorthand_display() -> String {
-        format!("`{}`, `{}`, `{}`, `{}`", Self::Ast, Self::Hir, Self::Masm, Self::Mast,)
+        format!(
+            "`{}`, `{}`, `{}`, `{}`, `{}`",
+            Self::Ast,
+            Self::Hir,
+            Self::Masm,
+            Self::Mast,
+            Self::Masl
+        )
+    }
+
+    pub fn all() -> [OutputType; 5] {
+        [
+            OutputType::Ast,
+            OutputType::Hir,
+            OutputType::Masm,
+            OutputType::Mast,
+            OutputType::Masl,
+        ]
     }
 }
 impl fmt::Display for OutputType {
@@ -47,6 +76,7 @@ impl fmt::Display for OutputType {
             Self::Hir => f.write_str("hir"),
             Self::Masm => f.write_str("masm"),
             Self::Mast => f.write_str("mast"),
+            Self::Masl => f.write_str("masl"),
         }
     }
 }
@@ -59,6 +89,7 @@ impl FromStr for OutputType {
             "hir" => Ok(Self::Hir),
             "masm" => Ok(Self::Masm),
             "mast" => Ok(Self::Mast),
+            "masl" => Ok(Self::Masl),
             _ => Err(()),
         }
     }
@@ -111,6 +142,14 @@ impl OutputFile {
         match self {
             Self::Real(ref path) => path.clone(),
             Self::Stdout => outputs.temp_path(ty, name),
+        }
+    }
+}
+impl fmt::Display for OutputFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Real(ref path) => write!(f, "{}", path.display()),
+            Self::Stdout => write!(f, "stdout"),
         }
     }
 }
@@ -249,10 +288,49 @@ impl OutputFiles {
 #[derive(Debug, Clone, Default)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<OutputFile>>);
 impl OutputTypes {
-    pub fn new<I: IntoIterator<Item = OutputTypeSpec>>(entries: I) -> Self {
-        Self(BTreeMap::from_iter(
-            entries.into_iter().map(|spec| (spec.output_type, spec.path)),
-        ))
+    pub fn new<I: IntoIterator<Item = OutputTypeSpec>>(entries: I) -> Result<Self, clap::Error> {
+        let entries = entries.into_iter();
+        let mut map = BTreeMap::default();
+        for spec in entries {
+            match spec {
+                OutputTypeSpec::All { path } => {
+                    if !map.is_empty() {
+                        return Err(clap::Error::raw(
+                            clap::error::ErrorKind::ValueValidation,
+                            "--emit=all cannot be combined with other --emit types",
+                        ));
+                    }
+                    if let Some(OutputFile::Real(ref path)) = &path {
+                        if path.extension().is_some() {
+                            return Err(clap::Error::raw(
+                                clap::error::ErrorKind::ValueValidation,
+                                "invalid path for --emit=all: must be a directory",
+                            ));
+                        }
+                    }
+                    for ty in OutputType::all() {
+                        map.insert(ty, path.clone());
+                    }
+                }
+                OutputTypeSpec::Typed { output_type, path } => {
+                    if path.is_some() {
+                        if matches!(map.get(&output_type), Some(Some(OutputFile::Real(_)))) {
+                            return Err(clap::Error::raw(
+                                clap::error::ErrorKind::ValueValidation,
+                                format!(
+                                    "conflicting --emit options given for output type \
+                                     '{output_type}'"
+                                ),
+                            ));
+                        }
+                    } else if matches!(map.get(&output_type), Some(Some(_))) {
+                        continue;
+                    }
+                    map.insert(output_type, path);
+                }
+            }
+        }
+        Ok(Self(map))
     }
 
     pub fn get(&self, key: &OutputType) -> Option<&Option<OutputFile>> {
@@ -261,6 +339,10 @@ impl OutputTypes {
 
     pub fn insert(&mut self, key: OutputType, value: Option<OutputFile>) {
         self.0.insert(key, value);
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
     }
 
     pub fn contains_key(&self, key: &OutputType) -> bool {
@@ -281,6 +363,7 @@ impl OutputTypes {
         self.0.values()
     }
 
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -290,23 +373,48 @@ impl OutputTypes {
     }
 
     pub fn parse_only(&self) -> bool {
-        !self.0.keys().any(|k| !matches!(k, OutputType::Ast))
+        self.0.keys().all(|k| matches!(k, OutputType::Ast))
     }
 
-    pub fn should_codegen(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Mast))
+    pub fn should_analyze(&self) -> bool {
+        self.0.keys().any(|k| {
+            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+        })
+    }
+
+    pub fn should_rewrite(&self) -> bool {
+        self.0.keys().any(|k| {
+            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+        })
     }
 
     pub fn should_link(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Masm | OutputType::Mast))
+        self.0.keys().any(|k| {
+            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+        })
+    }
+
+    pub fn should_codegen(&self) -> bool {
+        self.0
+            .keys()
+            .any(|k| matches!(k, OutputType::Masm | OutputType::Mast | OutputType::Masl))
+    }
+
+    pub fn should_assemble(&self) -> bool {
+        self.0.keys().any(|k| matches!(k, OutputType::Mast | OutputType::Masl))
     }
 }
 
 /// This type describes an output type with optional path specification
 #[derive(Debug, Clone)]
-pub struct OutputTypeSpec {
-    pub output_type: OutputType,
-    pub path: Option<OutputFile>,
+pub enum OutputTypeSpec {
+    All {
+        path: Option<OutputFile>,
+    },
+    Typed {
+        output_type: OutputType,
+        path: Option<OutputFile>,
+    },
 }
 impl clap::builder::ValueParserFactory for OutputTypeSpec {
     type Parser = OutputTypeParser;
@@ -331,7 +439,9 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
                 PossibleValue::new("ast").help("Abstract Syntax Tree (text)"),
                 PossibleValue::new("hir").help("High-level Intermediate Representation (text)"),
                 PossibleValue::new("masm").help("Miden Assembly (text)"),
-                PossibleValue::new("mast").help("Merkelized Abstract Syntax Tree (binary)"),
+                PossibleValue::new("mast").help("Merkelized Abstract Syntax Tree (text)"),
+                PossibleValue::new("masl").help("Merkelized Abstract Syntax Tree (binary)"),
+                PossibleValue::new("all").help("All of the above"),
             ]
             .into_iter(),
         ))
@@ -352,6 +462,9 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
             Some((shorthand, "-")) => (shorthand, Some(OutputFile::Stdout)),
             Some((shorthand, path)) => (shorthand, Some(OutputFile::Real(PathBuf::from(path)))),
         };
+        if shorthand == "all" {
+            return Ok(OutputTypeSpec::All { path });
+        }
         let output_type = shorthand.parse::<OutputType>().map_err(|_| {
             Error::raw(
                 ErrorKind::InvalidValue,
@@ -361,7 +474,7 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
                 ),
             )
         })?;
-        Ok(OutputTypeSpec { output_type, path })
+        Ok(OutputTypeSpec::Typed { output_type, path })
     }
 }
 

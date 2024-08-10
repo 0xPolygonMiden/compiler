@@ -85,13 +85,7 @@ impl ParseStage {
             .into_diagnostic()
             .wrap_err("input is not valid utf-8")?;
         let parser = Parser::new(session);
-        match parser.parse_str(source).map(Box::new) {
-            Ok(ast) => {
-                session.emit(&ast).into_diagnostic()?;
-                Ok(ParseOutput::Ast(ast))
-            }
-            Err(err) => Err(err),
-        }
+        parser.parse_str(source).map(Box::new).map(ParseOutput::Ast)
     }
 
     fn parse_hir_from_wasm_file(
