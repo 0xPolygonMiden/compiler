@@ -163,6 +163,11 @@ pub struct Compiler {
         long = "link-library",
         short = 'l',
         value_name = "[KIND=]NAME",
+        value_delimiter = ',',
+        default_value_ifs([
+            ("target", "base", "std"),
+            ("target", "rollup", "std,base"),
+        ]),
         next_line_help(true),
         help_heading = "Linker"
     )]

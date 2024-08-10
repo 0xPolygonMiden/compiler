@@ -28,7 +28,7 @@ impl FromStr for LibraryKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "mast" => Ok(Self::Mast),
+            "mast" | "masl" => Ok(Self::Mast),
             "masm" => Ok(Self::Masm),
             _ => Err(()),
         }
@@ -60,8 +60,15 @@ impl LinkLibrary {
         }
 
         // Handle libraries shipped with the compiler, or via Miden crates
-        if self.name == "std" {
-            return Ok(StdLibrary::default().into());
+        match self.name.as_ref() {
+            "std" => return Ok(StdLibrary::default().into()),
+            "base" => {
+                // TODO(pauls): Handle properly once we have miden-base-sys
+                return Err(Report::msg(format!(
+                    "invalid link library 'base': miden-base-sys is unimplemented"
+                )));
+            }
+            _ => (),
         }
 
         // Search for library among specified search paths
@@ -160,7 +167,7 @@ impl clap::builder::TypedValueParser for LinkLibraryParser {
         Some(Box::new(
             [
                 PossibleValue::new("masm").help("A Miden Assembly project directory"),
-                PossibleValue::new("mast").help("A compiled MAST library file"),
+                PossibleValue::new("masl").help("A compiled MAST library file"),
             ]
             .into_iter(),
         ))

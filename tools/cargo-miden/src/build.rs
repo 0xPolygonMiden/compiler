@@ -39,8 +39,6 @@ pub fn build_masm(
         output_file.as_os_str(),
         project_type.as_ref(),
         "--verbose".as_ref(),
-        "-l".as_ref(),
-        "std".as_ref(),
     ];
     let session = Rc::new(Compiler::new_session([input], None, args));
     midenc_compile::compile(session.clone())?;

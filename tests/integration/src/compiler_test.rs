@@ -1202,7 +1202,7 @@ fn dummy_session(flags: &[&str]) -> Rc<Session> {
 }
 
 /// Create a default session for testing
-pub fn default_session<S, I>(inputs: I, extra_flags: &[S]) -> Rc<Session>
+pub fn default_session<S, I>(inputs: I, argv: &[S]) -> Rc<Session>
 where
     I: IntoIterator<Item = InputFile>,
     S: AsRef<str>,
@@ -1214,8 +1214,7 @@ where
         reporting::set_panic_hook();
     }
 
-    let mut argv = vec!["-l", "std"];
-    argv.extend(extra_flags.iter().map(|flag| flag.as_ref()));
+    let argv = argv.into_iter().map(|arg| arg.as_ref());
     let session = midenc_compile::Compiler::new_session(inputs, None, argv)
         // Ensure MASM outputs are generated
         .with_output_type(OutputType::Masm, None);
