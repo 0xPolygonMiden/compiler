@@ -1,5 +1,3 @@
-#![no_std]
-
 mod externs;
 use externs::*;
 

@@ -1,6 +1,6 @@
 use miden_stdlib_sys::Felt;
 
-use crate::{AccountId, CoreAsset, NoteId, NoteType, Tag};
+use crate::bindings::tx::{AccountId, CoreAsset, NoteId, NoteType, Tag};
 
 #[link(wasm_import_module = "miden::account")]
 extern "C" {

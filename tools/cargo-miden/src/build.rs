@@ -39,6 +39,8 @@ pub fn build_masm(
         output_file.as_os_str(),
         project_type.as_ref(),
         "--verbose".as_ref(),
+        "--target".as_ref(),
+        "rollup".as_ref(),
     ];
     let session = Rc::new(Compiler::new_session([input], None, args));
     midenc_compile::compile(session.clone())?;
