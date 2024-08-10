@@ -3275,7 +3275,6 @@ name = "midenc-tx-kernel"
 version = "0.0.0"
 dependencies = [
  "miden-assembly",
- "miden-core",
 ]
 
 [[package]]

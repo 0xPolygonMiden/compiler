@@ -15,4 +15,3 @@ edition.workspace = true
 
 [dependencies]
 miden-assembly.workspace = true
-miden-core.workspace = true

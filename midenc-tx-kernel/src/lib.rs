@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use miden_assembly::{
     ast::ModuleKind, library::Library as CompiledLibrary, Assembler, Compile, CompileOptions,
-    DefaultSourceManager,
+    DefaultSourceManager, SourceManager,
 };
 
 /// Stubs for the Miden rollup tx kernel
@@ -25,7 +25,9 @@ impl Default for MidenTxKernelLibrary {
         // TODO: Load compiled MASL from file
         let source_manager = Arc::new(DefaultSourceManager::default());
         let assembler = Assembler::new(source_manager.clone());
-        let tx_module = (include_str!("../masm/tx.masm"))
+        let tx_source = source_manager
+            .load("midenc-tx-kernel/masm/tx.masm", include_str!("../masm/tx.masm").into());
+        let tx_module = tx_source
             .compile_with_options(
                 source_manager.as_ref(),
                 CompileOptions {
@@ -34,7 +36,11 @@ impl Default for MidenTxKernelLibrary {
                 },
             )
             .unwrap();
-        let account_module = (include_str!("../masm/account.masm"))
+        let account_source = source_manager.load(
+            "midenc-tx-kernel/masm/account.masm",
+            include_str!("../masm/account.masm").into(),
+        );
+        let account_module = account_source
             .compile_with_options(
                 source_manager.as_ref(),
                 CompileOptions {
