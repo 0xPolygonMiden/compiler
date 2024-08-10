@@ -2855,6 +2855,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-base-sys"
+version = "0.0.0"
+dependencies = [
+ "miden-assembly",
+]
+
+[[package]]
 name = "miden-core"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3277,20 +3284,13 @@ dependencies = [
  "clap",
  "inventory",
  "miden-assembly",
+ "miden-base-sys",
  "miden-core",
  "miden-diagnostics",
  "miden-stdlib",
  "miden-thiserror",
  "midenc-hir-macros",
  "midenc-hir-symbol",
- "midenc-tx-kernel",
-]
-
-[[package]]
-name = "midenc-tx-kernel"
-version = "0.0.0"
-dependencies = [
- "miden-assembly",
 ]
 
 [[package]]

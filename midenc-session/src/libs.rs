@@ -6,8 +6,8 @@ use std::{
 };
 
 use miden_assembly::{Library as CompiledLibrary, LibraryNamespace};
+use miden_base_sys::MidenTxKernelLibrary;
 use miden_stdlib::StdLibrary;
-use midenc_tx_kernel::MidenTxKernelLibrary;
 
 use crate::{
     diagnostics::{IntoDiagnostic, Report, WrapErr},
@@ -63,12 +63,7 @@ impl LinkLibrary {
         // Handle libraries shipped with the compiler, or via Miden crates
         match self.name.as_ref() {
             "std" => return Ok(StdLibrary::default().into()),
-            "base" => {
-                // TODO(pauls): Handle properly once we have miden-base-sys
-                return Err(Report::msg(
-                    "invalid link library 'base': miden-base-sys is unimplemented",
-                ));
-            }
+            "base" => return Ok(MidenTxKernelLibrary::default().into()),
             _ => (),
         }
 
