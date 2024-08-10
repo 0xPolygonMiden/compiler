@@ -1,6 +1,6 @@
 [package]
-name = "midenc-tx-kernel"
-description = "Miden Tx Kernel MASM library for the Midenc compiler"
+name = "miden-base-sys"
+description = "Miden rollup Rust bingings and MASM library"
 version = "0.0.0"
 rust-version.workspace = true
 authors.workspace = true
