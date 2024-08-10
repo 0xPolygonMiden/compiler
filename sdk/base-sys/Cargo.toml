@@ -15,3 +15,6 @@ edition.workspace = true
 
 [dependencies]
 miden-assembly.workspace = true
+
+[build-dependencies]
+miden-assembly.workspace = true
