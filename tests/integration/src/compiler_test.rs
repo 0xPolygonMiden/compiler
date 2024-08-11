@@ -14,7 +14,7 @@ use std::{
 use miden_assembly::LibraryPath;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
 use midenc_hir::{FunctionIdent, Ident, Symbol};
-use midenc_session::{InputFile, InputType, OutputType, Session};
+use midenc_session::{InputFile, InputType, Session};
 
 use crate::cargo_proj::project;
 
@@ -1234,9 +1234,7 @@ where
     }
 
     let argv = argv.iter().map(|arg| arg.as_ref());
-    let session = midenc_compile::Compiler::new_session(inputs, None, argv)
-        // Ensure MASM outputs are generated
-        .with_output_type(OutputType::Masm, None);
+    let session = midenc_compile::Compiler::new_session(inputs, None, argv);
     Rc::new(session)
 }
 
