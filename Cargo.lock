@@ -2850,7 +2850,6 @@ dependencies = [
  "log",
  "miden-assembly",
  "miden-core",
- "miden-diagnostics",
  "miden-integration-tests-rust-fib",
  "miden-processor",
  "miden-stdlib",
@@ -2860,9 +2859,9 @@ dependencies = [
  "midenc-frontend-wasm",
  "midenc-hir",
  "midenc-hir-transform",
+ "midenc-runner",
  "midenc-session",
  "proptest",
- "rustc-demangle",
  "sha2",
  "walkdir",
  "wasmprinter",
@@ -3029,6 +3028,7 @@ dependencies = [
  "miden-thiserror",
  "midenc-compile",
  "midenc-hir",
+ "midenc-runner",
  "midenc-session",
 ]
 
@@ -3082,6 +3082,7 @@ dependencies = [
  "paste",
  "petgraph",
  "pretty_assertions",
+ "rustc-demangle",
  "rustc-hash",
  "smallvec",
  "typed-arena",
@@ -3144,6 +3145,23 @@ name = "midenc-hir-type"
 version = "0.0.1"
 dependencies = [
  "smallvec",
+]
+
+[[package]]
+name = "midenc-runner"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "log",
+ "miden-assembly",
+ "miden-core",
+ "miden-processor",
+ "miden-stdlib",
+ "miden-thiserror",
+ "midenc-codegen-masm",
+ "midenc-hir",
+ "midenc-session",
+ "proptest",
 ]
 
 [[package]]

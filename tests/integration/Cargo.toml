@@ -31,6 +31,7 @@ midenc-codegen-masm.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true
 midenc-driver.workspace = true
+midenc-runner.workspace = true
 miden-integration-tests-rust-fib = { path = "../rust-apps/fib" }
 wasmprinter = "0.2.80"
 proptest.workspace = true

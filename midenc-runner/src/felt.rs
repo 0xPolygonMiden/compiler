@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use miden_core::Felt;
+use miden_processor::Felt;
 use proptest::{
     arbitrary::Arbitrary,
     strategy::{BoxedStrategy, Strategy},
@@ -29,7 +29,7 @@ pub trait PushToStack: Sized {
 }
 
 pub trait PopFromStack: Sized {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
         use core::mem::MaybeUninit;
 
         let mut num_bytes = core::mem::size_of::<Self>();
@@ -45,7 +45,7 @@ pub trait PopFromStack: Sized {
             }
             num_bytes -= consume;
         }
-        Ok(unsafe { result.assume_init() })
+        Some(unsafe { result.assume_init() })
     }
 }
 
@@ -55,8 +55,8 @@ impl PushToStack for bool {
     }
 }
 impl PopFromStack for bool {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() != 0)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() != 0)
     }
 }
 
@@ -66,8 +66,8 @@ impl PushToStack for u8 {
     }
 }
 impl PopFromStack for u8 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() as u8)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() as u8)
     }
 }
 
@@ -77,8 +77,8 @@ impl PushToStack for i8 {
     }
 }
 impl PopFromStack for i8 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() as i8)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() as i8)
     }
 }
 
@@ -88,8 +88,8 @@ impl PushToStack for u16 {
     }
 }
 impl PopFromStack for u16 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() as u16)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() as u16)
     }
 }
 
@@ -99,8 +99,8 @@ impl PushToStack for i16 {
     }
 }
 impl PopFromStack for i16 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() as i16)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() as i16)
     }
 }
 
@@ -110,8 +110,8 @@ impl PushToStack for u32 {
     }
 }
 impl PopFromStack for u32 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() as u32)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() as u32)
     }
 }
 
@@ -121,8 +121,8 @@ impl PushToStack for i32 {
     }
 }
 impl PopFromStack for i32 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().unwrap().0.as_int() as i32)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front().unwrap().0.as_int() as i32)
     }
 }
 
@@ -136,12 +136,10 @@ impl PushToStack for u64 {
     }
 }
 impl PopFromStack for u64 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        dbg!(&stack);
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
         let hi = stack.pop_front().unwrap().0.as_int() * 2u64.pow(32);
         let lo = stack.pop_front().unwrap().0.as_int();
-        dbg!(hi, lo);
-        Ok(hi + lo)
+        Some(hi + lo)
     }
 }
 
@@ -151,7 +149,7 @@ impl PushToStack for i64 {
     }
 }
 impl PopFromStack for i64 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
         u64::try_pop(stack).map(|value| value as i64)
     }
 }
@@ -165,10 +163,10 @@ impl PushToStack for u128 {
     }
 }
 impl PopFromStack for u128 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
         let hi = (u64::try_pop(stack).unwrap() as u128) * 2u128.pow(64);
         let lo = u64::try_pop(stack).unwrap() as u128;
-        Ok(hi + lo)
+        Some(hi + lo)
     }
 }
 
@@ -178,7 +176,7 @@ impl PushToStack for i128 {
     }
 }
 impl PopFromStack for i128 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
         u128::try_pop(stack).map(|value| value as i128)
     }
 }
@@ -191,8 +189,8 @@ impl PushToStack for Felt {
 }
 impl PopFromStack for Felt {
     #[inline(always)]
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        Ok(stack.pop_front().ok_or(())?.0)
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        Some(stack.pop_front()?.0)
     }
 }
 
@@ -204,8 +202,8 @@ impl PushToStack for TestFelt {
 }
 impl PopFromStack for TestFelt {
     #[inline(always)]
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
-        stack.pop_front().ok_or(())
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+        stack.pop_front()
     }
 }
 
@@ -234,7 +232,7 @@ impl<const N: usize> PushToStack for [u8; N] {
 }
 
 impl<const N: usize> PopFromStack for [u8; N] {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Result<Self, ()> {
+    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
         let mut out = [0u8; N];
 
         let byte_size = out.len();
@@ -256,7 +254,7 @@ impl<const N: usize> PopFromStack for [u8; N] {
             }
         }
 
-        Ok(out)
+        Some(out)
     }
 }
 

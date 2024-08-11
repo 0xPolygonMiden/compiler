@@ -1013,7 +1013,7 @@ impl CompilerTest {
     /// Compare the compiled Wasm against the expected output
     pub fn expect_wasm(&self, expected_wat_file: expect_test::ExpectFile) {
         let wasm_bytes = self.wasm_bytes();
-        let wat = demangle(&wasm_to_wat(&wasm_bytes));
+        let wat = demangle(wasm_to_wat(&wasm_bytes));
         expected_wat_file.assert_eq(&wat);
     }
 
@@ -1050,15 +1050,15 @@ impl CompilerTest {
                         hir_program.modules().iter().next().expect("expected at least one module")
                     })
                     .to_string();
-                let ir_module = demangle(&ir_module);
+                let ir_module = demangle(ir_module);
                 expected_hir_file.assert_eq(&ir_module);
             }
             HirArtifact::Component(hir_component) => {
-                let ir_component = demangle(&hir_component.to_string());
+                let ir_component = demangle(hir_component.to_string());
                 expected_hir_file.assert_eq(&ir_component);
             }
             HirArtifact::Module(hir_module) => {
-                let ir_module = demangle(&hir_module.to_string());
+                let ir_module = demangle(hir_module.to_string());
                 expected_hir_file.assert_eq(&ir_module);
             }
         }

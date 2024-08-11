@@ -1,6 +1,6 @@
 [package]
-name = "midenc-driver"
-description = "The driver for midenc, the Miden compiler"
+name = "midenc-runner"
+description = "The Miden VM executor that implements midenc run"
 version = "0.0.1"
 rust-version.workspace = true
 authors.workspace = true
@@ -15,8 +15,13 @@ edition.workspace = true
 
 [dependencies]
 clap.workspace = true
-midenc-hir.workspace = true
+log.workspace = true
+miden-assembly.workspace = true
+miden-core.workspace = true
+miden-processor.workspace = true
+miden-stdlib.workspace = true
 midenc-session.workspace = true
-midenc-compile.workspace = true
-midenc-runner.workspace = true
+midenc-codegen-masm.workspace = true
+midenc-hir.workspace = true
 thiserror.workspace = true
+proptest.workspace = true

@@ -4,16 +4,14 @@ use std::collections::VecDeque;
 use expect_test::expect_file;
 use miden_core::utils::group_slice_elements;
 use midenc_hir::Felt;
+use midenc_runner::{MidenExecutor, PopFromStack, PushToStack, TestFelt};
 use proptest::{
     arbitrary::any,
     prop_assert_eq,
     test_runner::{TestError, TestRunner},
 };
 
-use crate::{
-    felt_conversion::{PopFromStack, PushToStack, TestFelt},
-    CompilerTest, MidenExecutor,
-};
+use crate::CompilerTest;
 
 #[test]
 #[ignore = "pending rodata fixes"]

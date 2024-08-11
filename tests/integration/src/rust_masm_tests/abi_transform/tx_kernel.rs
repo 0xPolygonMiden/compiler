@@ -4,8 +4,9 @@ use expect_test::expect_file;
 use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
+use midenc_runner::MidenExecutor;
 
-use crate::{exec_vm::execute_vm_tracing, execute_emulator, CompilerTestBuilder, MidenExecutor};
+use crate::{execute_emulator, CompilerTestBuilder};
 
 #[allow(unused)]
 fn setup_log() {
@@ -18,7 +19,7 @@ fn setup_log() {
 }
 
 #[test]
-#[ignore = "pending rodata fixes"]
+//#[ignore = "pending rodata fixes"]
 fn test_get_inputs_4() {
     test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
 }

@@ -4,10 +4,11 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use miden_core::Felt;
+use midenc_runner::{MidenExecutor, PopFromStack};
 use midenc_session::Session;
 use proptest::{prop_assert_eq, test_runner::TestCaseError};
 
-use crate::{execute_emulator, felt_conversion::PopFromStack, MidenExecutor};
+use crate::execute_emulator;
 
 mod abi_transform;
 mod apps;

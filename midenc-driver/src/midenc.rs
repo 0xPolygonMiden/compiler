@@ -3,9 +3,10 @@ use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 use clap::{ColorChoice, Parser, Subcommand};
 use midenc_compile as compile;
 use midenc_hir::FunctionIdent;
+use midenc_runner as runner;
 use midenc_session::{
     diagnostics::{Emitter, Report},
-    InputFile, TargetEnv, Verbosity, Warnings,
+    InputFile, Verbosity, Warnings,
 };
 
 use crate::ClapDiagnostic;
@@ -91,17 +92,24 @@ enum Commands {
         #[arg(long, short = 'e', value_name = "NAME")]
         entrypoint: Option<FunctionIdent>,
     },
-    /// Compile and run a program with the Miden VM
+    /// Run a program with the Miden VM
     ///
-    /// The program will be compiled to Miden Assembly and then run with the Miden VM.
-    ///
-    /// The inputs given must constitute a valid executable program.
+    /// The program will be loaded into memory and executed with the Miden VM
     Run {
-        /// Specify one or more input files to compile as part of the program to execute
+        /// Specify the path to a Miden program file to execute.
+        ///
+        /// Miden Assembly programs are emitted by the compiler with a `.masl` extension.
         ///
         /// You may use `-` as a file name to read a file from stdin.
         #[arg(required(true), value_name = "FILE")]
         input: InputFile,
+        /// Specify the path to a file containing program inputs.
+        ///
+        /// Program inputs are stack and advice provider values which the program can
+        /// access during execution. The inputs file is a JSON file which describes
+        /// what the inputs are, or where to source them from.
+        #[arg(long, value_name = "FILE")]
+        inputs: Option<runner::ProgramInputs>,
         /// Arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,
@@ -109,51 +117,12 @@ enum Commands {
         /// Example: `-- a b` will push `a` on the stack, then `b`.
         ///
         /// These arguments must be valid field element values expressed in decimal format.
+        ///
+        /// NOTE: These arguments will override any stack values provided via --inputs
         #[arg(last(true), value_name = "ARGV")]
         args: Vec<String>,
-        /// Specify what type and level of informational output to emit
-        #[arg(
-            long = "verbose",
-            short = 'v',
-            value_name = "LEVEL",
-            value_enum,
-            default_value_t = Verbosity::Info,
-            default_missing_value = "debug",
-            help_heading = "Diagnostics",
-        )]
-        verbosity: Verbosity,
-        /// Specify how warnings should be treated by the compiler.
-        #[arg(
-            long,
-            short = 'W',
-            value_name = "LEVEL",
-            value_enum,
-            default_value_t = Warnings::All,
-            help_heading = "Diagnostics",
-        )]
-        warn: Warnings,
-        /// Whether, and how, to color terminal output
-        #[arg(long, value_enum, default_value_t = ColorChoice::Auto, default_missing_value = "auto", help_heading = "Diagnostics")]
-        color: ColorChoice,
-        /// Write all intermediate compiler artifacts to `<dir>`
-        ///
-        /// Defaults to a directory named `target` in the current working directory
-        #[arg(
-            long,
-            value_name = "DIR",
-            hide(true),
-            env = "MIDENC_TARGET_DIR",
-            help_heading = "Output"
-        )]
-        target_dir: Option<PathBuf>,
-        /// The target environment to compile for
-        #[arg(long, value_name = "TARGET", hide(true), default_value_t = TargetEnv::Base)]
-        target: TargetEnv,
-        /// Specify the fully-qualified name of the function to invoke as the program entrypoint
-        ///
-        /// For example, `foo::bar`
-        #[arg(long, short = 'e', value_name = "NAME")]
-        entrypoint: Option<FunctionIdent>,
+        #[command(flatten)]
+        options: runner::Runner,
     },
 }
 
@@ -200,6 +169,18 @@ impl Midenc {
                 }
                 let session = options.into_session(vec![input], emitter).with_arg_matches(matches);
                 compile::compile(Rc::new(session))
+            }
+            Commands::Run {
+                input,
+                inputs,
+                args,
+                mut options,
+            } => {
+                if options.working_dir.is_none() {
+                    options.working_dir = Some(cwd);
+                }
+                let session = options.into_session(vec![input], emitter);
+                runner::run(inputs, args, Rc::new(session))
             }
             _ => unimplemented!(),
         }

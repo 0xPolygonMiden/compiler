@@ -1,11 +1,12 @@
 use expect_test::expect_file;
+use midenc_runner::PushToStack;
 use proptest::{
     prelude::*,
     test_runner::{TestError, TestRunner},
 };
 
 use super::run_masm_vs_rust;
-use crate::{felt_conversion::PushToStack, CompilerTest};
+use crate::CompilerTest;
 
 macro_rules! test_bin_op {
     ($name:ident, $op:tt, $op_ty:ty, $res_ty:ty, $a_range:expr, $b_range:expr) => {

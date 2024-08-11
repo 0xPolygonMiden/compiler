@@ -2,12 +2,10 @@ use std::collections::VecDeque;
 
 use expect_test::expect_file;
 use midenc_hir::Felt;
+use midenc_runner::{MidenExecutor, PopFromStack, PushToStack};
 use proptest::{prelude::*, test_runner::TestRunner};
 
-use crate::{
-    felt_conversion::{PopFromStack, PushToStack},
-    CompilerTest, MidenExecutor,
-};
+use crate::CompilerTest;
 
 #[test]
 fn fib() {
