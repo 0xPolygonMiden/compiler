@@ -1,6 +1,6 @@
 use std::{fmt, fs::File, io::Write, path::Path, sync::Arc};
 
-use miden_core::prettier::PrettyPrint;
+use miden_core::{prettier::PrettyPrint, utils::Serializable};
 use midenc_hir_symbol::Symbol;
 
 use crate::{OutputMode, OutputType, Session};
@@ -131,23 +131,32 @@ impl Emit for miden_assembly::ast::Module {
         &self,
         mut writer: W,
         mode: OutputMode,
-        session: &Session,
+        _session: &Session,
     ) -> std::io::Result<()> {
-        use miden_assembly::ast::AstSerdeOptions;
-
-        match mode {
-            OutputMode::Text => return writer.write_fmt(format_args!("{}\n", self)),
-            OutputMode::Binary => self.write_into_with_options(
-                &mut writer,
-                AstSerdeOptions {
-                    debug_info: session.options.emit_debug_decorators(),
-                    ..Default::default()
-                },
-            ),
-        }
-
-        Ok(())
+        assert_eq!(mode, OutputMode::Text, "masm syntax trees do not support binary mode");
+        writer.write_fmt(format_args!("{}\n", self))
     }
+}
+
+macro_rules! serialize_into {
+    ($serializable:ident, $writer:ident) => {
+        // NOTE: We're protecting against unwinds here due to i/o errors that will get turned into
+        // panics if writing to the underlying file fails. This is because ByteWriter does not have
+        // fallible APIs, thus WriteAdapter has to panic if writes fail. This could be fixed, but
+        // that has to happen upstream in winterfell
+        std::panic::catch_unwind(move || {
+            let mut writer = $writer;
+            $serializable.write_into(&mut writer)
+        })
+        .map_err(|p| {
+            match p.downcast::<std::io::Error>() {
+                // SAFETY: It is guaranteed to be safe to read Box<std::io::Error>
+                Ok(err) => unsafe { core::ptr::read(&*err) },
+                // Propagate unknown panics
+                Err(err) => std::panic::resume_unwind(err),
+            }
+        })
+    };
 }
 
 impl Emit for miden_assembly::library::Library {
@@ -166,10 +175,8 @@ impl Emit for miden_assembly::library::Library {
         &self,
         mut writer: W,
         mode: OutputMode,
-        session: &Session,
+        _session: &Session,
     ) -> std::io::Result<()> {
-        use miden_assembly::ast::AstSerdeOptions;
-
         struct LibraryTextFormatter<'a>(&'a miden_assembly::library::Library);
         impl<'a> miden_core::prettier::PrettyPrint for LibraryTextFormatter<'a> {
             fn render(&self) -> miden_core::prettier::Document {
@@ -223,17 +230,12 @@ impl Emit for miden_assembly::library::Library {
         }
 
         match mode {
-            OutputMode::Text => writer.write_fmt(format_args!("{}", LibraryTextFormatter(self)))?,
-            OutputMode::Binary => self.write_into_with_options(
-                &mut writer,
-                AstSerdeOptions {
-                    debug_info: session.options.emit_debug_decorators(),
-                    ..Default::default()
-                },
-            ),
+            OutputMode::Text => writer.write_fmt(format_args!("{}", LibraryTextFormatter(self))),
+            OutputMode::Binary => {
+                self.write_into(&mut writer);
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 }
 
@@ -249,6 +251,35 @@ impl Emit for miden_core::Program {
         }
     }
 
+    fn write_to_file(
+        &self,
+        path: &Path,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        let mut file = std::fs::File::create(path)?;
+        match mode {
+            OutputMode::Text => self.write_to(&mut file, mode, session),
+            OutputMode::Binary => serialize_into!(self, file),
+        }
+    }
+
+    fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        let mut stdout = std::io::stdout().lock();
+        let mode = if atty::is(atty::Stream::Stdout) {
+            OutputMode::Text
+        } else {
+            OutputMode::Binary
+        };
+        match mode {
+            OutputMode::Text => self.write_to(&mut stdout, mode, session),
+            OutputMode::Binary => serialize_into!(self, stdout),
+        }
+    }
+
     fn write_to<W: Write>(
         &self,
         mut writer: W,
@@ -258,7 +289,8 @@ impl Emit for miden_core::Program {
         match mode {
             OutputMode::Text => writer.write_fmt(format_args!("{}", self)),
             OutputMode::Binary => {
-                todo!("binary format for miden_core::Program")
+                self.write_into(&mut writer);
+                Ok(())
             }
         }
     }

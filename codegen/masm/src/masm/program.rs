@@ -334,14 +334,18 @@ impl Program {
     }
 
     /// Write this [Program] to the given output directory.
-    pub fn write_to_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+    pub fn write_to_directory<P: AsRef<Path>>(
+        &self,
+        path: P,
+        session: &Session,
+    ) -> std::io::Result<()> {
         let path = path.as_ref();
         assert!(path.is_dir());
 
-        self.library.write_to_directory(path)?;
+        self.library.write_to_directory(path, session)?;
 
         let main = self.generate_main(self.entrypoint, /* test_harness= */ false);
-        main.write_to_directory(path)?;
+        main.write_to_directory(path, session)?;
 
         Ok(())
     }
@@ -552,12 +556,16 @@ impl Library {
     }
 
     /// Write this [Library] to the given output directory.
-    pub fn write_to_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+    pub fn write_to_directory<P: AsRef<Path>>(
+        &self,
+        path: P,
+        session: &Session,
+    ) -> std::io::Result<()> {
         let path = path.as_ref();
         assert!(path.is_dir());
 
         for module in self.modules.iter() {
-            module.write_to_directory(path)?;
+            module.write_to_directory(path, session)?;
         }
 
         Ok(())

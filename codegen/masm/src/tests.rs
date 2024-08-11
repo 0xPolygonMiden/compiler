@@ -2,6 +2,7 @@
 use std::{cell::RefCell, sync::Arc};
 
 use midenc_hir::{
+    self as hir,
     pass::{AnalysisManager, ConversionPass},
     testing::{self, TestContext},
     AbiParam, CallConv, Felt, FieldElement, FunctionIdent, Immediate, InstBuilder, Linkage,

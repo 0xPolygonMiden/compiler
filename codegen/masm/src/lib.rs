@@ -12,7 +12,8 @@ mod tests;
 
 pub use self::{
     compiler::{
-        default_function_rewrites, default_rewrites, MasmArtifact, MasmCompiler, MastArtifact,
+        default_function_rewrites, default_rewrites, CompilerResult, MasmArtifact, MasmCompiler,
+        MastArtifact,
     },
     convert::ConvertHirToMasm,
     emulator::{

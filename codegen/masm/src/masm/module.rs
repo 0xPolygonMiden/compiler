@@ -201,7 +201,13 @@ impl Module {
     ///
     /// For example, if this module is named `std::math::u64`, then it will be written to
     /// `<dir>/std/math/u64.masm`
-    pub fn write_to_directory<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
+    pub fn write_to_directory<P: AsRef<Path>>(
+        &self,
+        dir: P,
+        session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
+        use midenc_session::{Emit, OutputMode};
+
         let mut path = dir.as_ref().to_path_buf();
         assert!(path.is_dir());
         for component in self.name.components() {
@@ -210,7 +216,7 @@ impl Module {
         assert!(path.set_extension("masm"));
 
         let ast = self.to_ast(false).map_err(std::io::Error::other)?;
-        ast.write_to_file(path)
+        ast.write_to_file(&path, OutputMode::Text, session)
     }
 }
 impl midenc_hir::formatter::PrettyPrint for Module {
