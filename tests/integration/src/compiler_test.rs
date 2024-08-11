@@ -13,7 +13,7 @@ use std::{
 
 use miden_assembly::LibraryPath;
 use midenc_frontend_wasm::{translate, WasmTranslationConfig};
-use midenc_hir::{FunctionIdent, Ident, Symbol};
+use midenc_hir::{demangle, FunctionIdent, Ident, Symbol};
 use midenc_session::{InputFile, InputType, Session};
 
 use crate::cargo_proj::project;
@@ -1196,14 +1196,6 @@ fn find_wasm_artifacts(child: &mut std::process::Child) -> Vec<std::path::PathBu
         }
     }
     wasm_artifacts
-}
-
-pub(crate) fn demangle(name: &str) -> String {
-    let mut input = name.as_bytes();
-    let mut demangled = Vec::new();
-    let include_hash = false;
-    rustc_demangle::demangle_stream(&mut input, &mut demangled, include_hash).unwrap();
-    String::from_utf8(demangled).unwrap()
 }
 
 fn wasm_to_wat(wasm_bytes: &[u8]) -> String {

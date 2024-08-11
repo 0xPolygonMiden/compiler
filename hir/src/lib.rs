@@ -164,7 +164,7 @@ pub use self::{
     display::{Decorator, DisplayValues},
     function::*,
     globals::*,
-    ident::{FunctionIdent, Ident},
+    ident::{demangle, FunctionIdent, Ident},
     immediates::Immediate,
     insert::{Insert, InsertionPoint},
     instruction::*,

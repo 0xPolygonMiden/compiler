@@ -13,7 +13,7 @@ edition.workspace = true
 
 [features]
 default = ["std"]
-std = []
+std = ["rustc-demangle/std"]
 
 [build-dependencies]
 lalrpop = { version = "0.20", default-features = false }
@@ -38,6 +38,7 @@ num-traits = "0.2"
 petgraph.workspace = true
 paste.workspace = true
 rustc-hash.workspace = true
+rustc-demangle = "0.1.19"
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"

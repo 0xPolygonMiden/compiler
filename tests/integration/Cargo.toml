@@ -24,7 +24,6 @@ miden-assembly.workspace = true
 miden-core.workspace = true
 miden-processor.workspace = true
 miden-stdlib.workspace = true
-miden-diagnostics.workspace = true
 midenc-frontend-wasm.workspace = true
 midenc-hir.workspace = true
 midenc-hir-transform.workspace = true
@@ -35,7 +34,6 @@ midenc-driver.workspace = true
 miden-integration-tests-rust-fib = { path = "../rust-apps/fib" }
 wasmprinter = "0.2.80"
 proptest.workspace = true
-rustc-demangle = { version = "0.1.19", features = ["std"] }
 sha2 = "0.10"
 walkdir = "2.5.0"
 
