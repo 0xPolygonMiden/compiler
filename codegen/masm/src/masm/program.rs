@@ -3,8 +3,7 @@ use std::{fmt, path::Path, sync::Arc};
 use hir::{Signature, Symbol};
 use miden_assembly::{
     ast::{ModuleKind, ProcedureName},
-    library::{KernelLibrary, Library as CompiledLibrary},
-    LibraryNamespace,
+    KernelLibrary, Library as CompiledLibrary, LibraryNamespace,
 };
 use miden_core::crypto::hash::Rpo256;
 use midenc_hir::{
@@ -381,7 +380,6 @@ impl Program {
         let emit_test_harness = session.get_flag("test_harness");
         let main = self.generate_main(self.entrypoint, emit_test_harness);
         let main = main.to_ast(debug_mode).map(Box::new)?;
-        println!("{main}");
         assembler.assemble_program(main).map(Arc::new)
     }
 

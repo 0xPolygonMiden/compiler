@@ -904,9 +904,10 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             let value = operand.as_value().expect("unexpected non-ssa value on stack");
             // If the given value is not live on entry to this block, it should be dropped
             if !self.function.liveness.is_live_at(&value, pp) {
-                println!(
+                log::trace!(
                     "should drop {value} at {} (visited={})",
-                    self.block_info.source, self.visited
+                    self.block_info.source,
+                    self.visited
                 );
                 unused.push(value);
                 constraints.push(Constraint::Move);
@@ -1098,9 +1099,19 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             // Entering a top-level loop, set the controlling loop
             (None, controlling_loop @ Some(_)) => {
                 for l in self.function.loops.loops() {
-                    dbg!(l, self.function.loops.loop_header(l));
-                    dbg!(self.function.loops.is_in_loop(current_block, l));
-                    dbg!(self.function.loops.is_in_loop(target_block, l));
+                    log::debug!(
+                        "l {:?} is loop header {:?}",
+                        l,
+                        self.function.loops.loop_header(l)
+                    );
+                    log::debug!(
+                        "l in loop with current_block {:?}",
+                        self.function.loops.is_in_loop(current_block, l)
+                    );
+                    log::debug!(
+                        "l in loop with target_block {:?}",
+                        self.function.loops.is_in_loop(target_block, l)
+                    );
                 }
                 assert!(is_first_visit);
                 assert_eq!(

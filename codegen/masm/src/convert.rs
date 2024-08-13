@@ -148,8 +148,6 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
     ) -> ConversionResult<Self::To> {
         use midenc_hir::ProgramAnalysisKey;
 
-        println!("{f}");
-
         let mut f_prime = masm::Function::new(f.id, f.signature.clone());
 
         // Start at the function entry

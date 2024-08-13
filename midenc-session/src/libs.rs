@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use miden_assembly::{library::Library as CompiledLibrary, LibraryNamespace};
+use miden_assembly::{Library as CompiledLibrary, LibraryNamespace};
 use miden_stdlib::StdLibrary;
 
 use crate::{
@@ -83,7 +83,9 @@ impl LinkLibrary {
                 let ns = LibraryNamespace::new(&self.name)
                     .into_diagnostic()
                     .wrap_err_with(|| format!("invalid library namespace '{}'", &self.name))?;
-                CompiledLibrary::from_dir(path, ns, session.source_manager.clone())
+                let assembler = miden_assembly::Assembler::new(session.source_manager.clone())
+                    .with_debug_mode(true);
+                CompiledLibrary::from_dir(path, ns, assembler)
             }
             LibraryKind::Mast => CompiledLibrary::deserialize_from_file(path).map_err(|err| {
                 Report::msg(format!(

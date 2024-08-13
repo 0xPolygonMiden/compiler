@@ -1,4 +1,4 @@
-use miden_assembly::library::Library as CompiledLibrary;
+use miden_assembly::Library as CompiledLibrary;
 use midenc_hir::Symbol;
 use midenc_session::{diagnostics::Report, Emit, OutputMode, OutputType, Session};
 

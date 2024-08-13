@@ -159,7 +159,7 @@ macro_rules! serialize_into {
     };
 }
 
-impl Emit for miden_assembly::library::Library {
+impl Emit for miden_assembly::Library {
     fn name(&self) -> Option<Symbol> {
         None
     }
@@ -177,7 +177,7 @@ impl Emit for miden_assembly::library::Library {
         mode: OutputMode,
         _session: &Session,
     ) -> std::io::Result<()> {
-        struct LibraryTextFormatter<'a>(&'a miden_assembly::library::Library);
+        struct LibraryTextFormatter<'a>(&'a miden_assembly::Library);
         impl<'a> miden_core::prettier::PrettyPrint for LibraryTextFormatter<'a> {
             fn render(&self) -> miden_core::prettier::Document {
                 use miden_core::prettier::*;

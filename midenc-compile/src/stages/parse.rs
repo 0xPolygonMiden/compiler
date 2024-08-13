@@ -42,6 +42,12 @@ impl Stage for ParseStage {
                 FileType::Wasm => self.parse_hir_from_wasm_file(path.as_ref(), session),
                 FileType::Wat => self.parse_hir_from_wat_file(path.as_ref(), session),
                 FileType::Masm => self.parse_masm_from_file(path.as_ref(), session),
+                FileType::Mast => {
+                    return Err(Report::msg(
+                        "invalid input: mast libraries are not supported as inputs, did you mean \
+                         to use '-l'?",
+                    ));
+                }
             },
             InputType::Stdin { name, ref input } => match file_type {
                 FileType::Hir => self.parse_ast_from_bytes(input, session),
@@ -63,6 +69,12 @@ impl Stage for ParseStage {
                 ),
                 FileType::Masm => {
                     self.parse_masm_from_bytes(name.as_str().unwrap(), input, session)
+                }
+                FileType::Mast => {
+                    return Err(Report::msg(
+                        "invalid input: mast libraries are not supported as inputs, did you mean \
+                         to use '-l'?",
+                    ));
                 }
             },
         }

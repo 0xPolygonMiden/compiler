@@ -76,14 +76,10 @@ impl InputFile {
 
     pub fn from_bytes(bytes: Vec<u8>, name: FileName) -> Result<Self, InvalidInputError> {
         let file_type = FileType::detect(&bytes)?;
-        match file_type {
-            FileType::Hir | FileType::Wasm | FileType::Wat => Ok(Self {
-                file: InputType::Stdin { name, input: bytes },
-                file_type,
-            }),
-            // We do not yet have frontends for these file types
-            FileType::Masm => Err(InvalidInputError::UnsupportedFileType(PathBuf::from("stdin"))),
-        }
+        Ok(Self {
+            file: InputType::Stdin { name, input: bytes },
+            file_type,
+        })
     }
 
     pub fn file_type(&self) -> FileType {
@@ -180,6 +176,7 @@ impl clap::builder::TypedValueParser for InputFileParser {
 pub enum FileType {
     Hir,
     Masm,
+    Mast,
     Wasm,
     Wat,
 }
@@ -188,6 +185,7 @@ impl fmt::Display for FileType {
         match self {
             Self::Hir => f.write_str("hir"),
             Self::Masm => f.write_str("masm"),
+            Self::Mast => f.write_str("mast"),
             Self::Wasm => f.write_str("wasm"),
             Self::Wat => f.write_str("wat"),
         }
@@ -197,6 +195,10 @@ impl FileType {
     pub fn detect(bytes: &[u8]) -> Result<Self, InvalidInputError> {
         if bytes.starts_with(b"\0asm") {
             return Ok(FileType::Wasm);
+        }
+
+        if bytes.starts_with(b"MAST\0") {
+            return Ok(FileType::Mast);
         }
 
         fn is_masm_top_level_item(line: &str) -> bool {
@@ -231,6 +233,7 @@ impl TryFrom<&Path> for FileType {
         match path.extension().and_then(|ext| ext.to_str()) {
             Some("hir") => Ok(FileType::Hir),
             Some("masm") => Ok(FileType::Masm),
+            Some("masl") | Some("mast") => Ok(FileType::Mast),
             Some("wasm") => Ok(FileType::Wasm),
             Some("wat") => Ok(FileType::Wat),
             _ => Err(InvalidInputError::UnsupportedFileType(path.to_path_buf())),
