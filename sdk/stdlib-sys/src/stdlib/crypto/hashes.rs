@@ -102,7 +102,7 @@ fn hash_1to1(
     input: [u8; 32],
     extern_hash_1to1: unsafe extern "C" fn(u32, u32, u32, u32, u32, u32, u32, u32, *mut u8),
 ) -> [u8; 32] {
-    let input = unsafe { core::mem::transmute::<_, [u32; 8]>(input) };
+    let input = unsafe { core::mem::transmute::<[u8; 32], [u32; 8]>(input) };
     unsafe {
         let mut ret_area = ::core::mem::MaybeUninit::<[u8; 32]>::uninit();
         let ptr = ret_area.as_mut_ptr() as *mut u8;
@@ -137,7 +137,7 @@ fn hash_2to1(
         *mut u8,
     ),
 ) -> [u8; 32] {
-    let input = unsafe { core::mem::transmute::<_, [u32; 16]>(input) };
+    let input = unsafe { core::mem::transmute::<[u8; 64], [u32; 16]>(input) };
     unsafe {
         let mut ret_area = ::core::mem::MaybeUninit::<[u8; 32]>::uninit();
         let ptr = ret_area.as_mut_ptr() as *mut u8;
