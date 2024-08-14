@@ -46,6 +46,7 @@ cranelift-entity = "0.108"
 cranelift-bforest = "0.108"
 env_logger = "0.11"
 either = { version = "1.10", default-features = false }
+expect-test = "1.4.1"
 Inflector = "0.11"
 intrusive-collections = "0.9"
 inventory = "0.3"
@@ -71,10 +72,10 @@ thiserror = { package = "miden-thiserror", version = "1.0" }
 toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
 indexmap = "2.2"
-miden-assembly = { version = "0.10.2" }
-miden-core = { version = "0.10.2" }
-miden-processor = { version = "0.10.2" }
-miden-stdlib = { version = "0.10.2" }
+miden-assembly = { version = "0.10.3" }
+miden-core = { version = "0.10.3" }
+miden-processor = { version = "0.10.3" }
+miden-stdlib = { version = "0.10.3" }
 #miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }

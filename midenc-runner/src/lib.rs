@@ -1,4 +1,5 @@
 #![feature(iter_array_chunks)]
+#![allow(unused)]
 
 mod debug;
 mod felt;
@@ -6,18 +7,22 @@ mod host;
 mod inputs;
 mod run;
 mod runner;
+mod ui;
 
 use std::rc::Rc;
 
 pub use midenc_hir::TraceEvent;
-use midenc_session::{diagnostics::Report, Session};
+use midenc_session::{
+    diagnostics::{IntoDiagnostic, Report},
+    Session,
+};
 
 pub use self::{
     debug::*,
-    felt::{PopFromStack, PushToStack, TestFelt},
+    felt::{Felt, Felt as TestFelt, PopFromStack, PushToStack},
     host::TestHost,
     inputs::ProgramInputs,
-    run::{MidenExecutionTrace, MidenExecutor},
+    run::{ExecutionState, MidenExecutionTrace, MidenExecutor},
     runner::Runner,
 };
 
@@ -26,11 +31,13 @@ pub type ExecutionResult<T> = Result<T, Report>;
 pub type TraceHandler = dyn FnMut(miden_processor::RowIndex, TraceEvent);
 
 pub fn run(
-    _inputs: Option<ProgramInputs>,
-    _args: Vec<String>,
-    _session: Rc<Session>,
+    inputs: Option<ProgramInputs>,
+    args: Vec<miden_processor::Felt>,
+    session: Rc<Session>,
 ) -> ExecutionResult<()> {
-    todo!()
+    let mut builder = tokio::runtime::Builder::new_current_thread();
+    let rt = builder.enable_all().build().into_diagnostic()?;
+    rt.block_on(async move { start_ui(inputs, args, session).await })
 }
 
 pub fn trace(
@@ -39,4 +46,24 @@ pub fn trace(
     _session: Rc<Session>,
 ) -> ExecutionResult<MidenExecutionTrace> {
     todo!()
+}
+
+pub async fn start_ui(
+    inputs: Option<ProgramInputs>,
+    args: Vec<miden_processor::Felt>,
+    session: Rc<Session>,
+) -> Result<(), Report> {
+    use ratatui::crossterm as term;
+
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let _ = term::terminal::disable_raw_mode();
+        let _ = term::execute!(std::io::stdout(), term::terminal::LeaveAlternateScreen);
+        original_hook(panic_info);
+    }));
+
+    let mut app = ui::App::new(inputs, args, session).await?;
+    app.run().await?;
+
+    Ok(())
 }

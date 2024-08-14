@@ -120,7 +120,7 @@ enum Commands {
         ///
         /// NOTE: These arguments will override any stack values provided via --inputs
         #[arg(last(true), value_name = "ARGV")]
-        args: Vec<String>,
+        args: Vec<runner::Felt>,
         #[command(flatten)]
         options: runner::Runner,
     },
@@ -180,6 +180,7 @@ impl Midenc {
                     options.working_dir = Some(cwd);
                 }
                 let session = options.into_session(vec![input], emitter);
+                let args = args.into_iter().map(|felt| felt.0).collect();
                 runner::run(inputs, args, Rc::new(session))
             }
             _ => unimplemented!(),

@@ -48,6 +48,18 @@ impl CallStack {
         StackTrace::new(self, recent, session)
     }
 
+    pub fn current_frame(&self) -> Option<&CallFrame> {
+        self.frames.last()
+    }
+
+    pub fn nth_frame(&self, n: usize) -> Option<&CallFrame> {
+        self.frames.iter().nth_back(n)
+    }
+
+    pub fn frames(&self) -> &[CallFrame] {
+        self.frames.as_slice()
+    }
+
     pub fn next(&mut self, state: &VmState) {
         if let Some(op) = state.op {
             // Do not do anything if this cycle is a continuation of the last instruction
@@ -84,7 +96,7 @@ impl CallStack {
             match op {
                 Operation::Span => {
                     if let Some(asmop) = state.asmop.as_ref() {
-                        dbg!(asmop);
+                        log::debug!("{asmop:#?}");
                         self.block_stack.push(Some(SpanContext {
                             frame_index: self.frames.len().saturating_sub(1),
                             location: asmop.as_ref().location().cloned(),
@@ -278,6 +290,7 @@ impl CallFrame {
                 self.context.push_back(OpDetail::Full {
                     op: opcode,
                     location,
+                    resolved: Default::default(),
                 });
             }
             None => {
@@ -287,6 +300,7 @@ impl CallFrame {
                     self.context.push_back(OpDetail::Full {
                         op: opcode,
                         location: loc,
+                        resolved: Default::default(),
                     });
                 } else {
                     self.context.push_back(OpDetail::Basic { op: opcode });
@@ -312,6 +326,14 @@ impl CallFrame {
             None => None,
         }
     }
+
+    pub fn last_resolved(&self, session: &Session) -> Option<&ResolvedLocation> {
+        self.context.back().and_then(|op| op.resolve(session))
+    }
+
+    pub fn recent(&self) -> &VecDeque<OpDetail> {
+        &self.context
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -319,6 +341,7 @@ pub enum OpDetail {
     Full {
         op: Operation,
         location: Option<Location>,
+        resolved: OnceCell<Option<ResolvedLocation>>,
     },
     Exec {
         callee: Option<Rc<str>>,
@@ -344,6 +367,16 @@ impl OpDetail {
         }
     }
 
+    pub fn display(&self) -> String {
+        match self {
+            Self::Full { op, .. } | Self::Basic { op } => format!("{op}"),
+            Self::Exec {
+                callee: Some(callee),
+            } => format!("exec.{callee}"),
+            Self::Exec { callee: None } => "exec.<unavailable>".to_string(),
+        }
+    }
+
     pub fn opcode(&self) -> Operation {
         match self {
             Self::Full { op, .. } | Self::Basic { op } => *op,
@@ -357,18 +390,61 @@ impl OpDetail {
             Self::Basic { .. } | Self::Exec { .. } => None,
         }
     }
+
+    pub fn resolve(&self, session: &Session) -> Option<&ResolvedLocation> {
+        use midenc_session::diagnostics::SourceManagerExt;
+
+        match self {
+            Self::Full {
+                location: Some(ref loc),
+                ref resolved,
+                ..
+            } => resolved
+                .get_or_init(|| {
+                    let path = Path::new(loc.path.as_ref());
+                    let source_file = if path.exists() {
+                        session.source_manager.load_file(path).ok()?
+                    } else {
+                        session.source_manager.get_by_path(loc.path.as_ref())?
+                    };
+                    let span = SourceSpan::new(source_file.id(), loc.start..loc.end);
+                    let file_line_col = source_file.location(span);
+                    Some(ResolvedLocation {
+                        source_file,
+                        line: file_line_col.line,
+                        col: file_line_col.column,
+                        span,
+                    })
+                })
+                .as_ref(),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedLocation {
+    pub source_file: Arc<SourceFile>,
+    pub line: u32,
+    pub col: u32,
+    pub span: SourceSpan,
+}
+impl fmt::Display for ResolvedLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.source_file.path().display(), self.line, self.col)
+    }
 }
 
 pub struct CurrentFrame {
-    pub source_file: Option<Arc<SourceFile>>,
-    pub span: Option<SourceSpan>,
+    pub procedure: Option<Rc<str>>,
+    pub location: Option<ResolvedLocation>,
 }
 
 pub struct StackTrace<'a> {
     callstack: &'a CallStack,
     recent: &'a VecDeque<Operation>,
     session: &'a Session,
-    current_frame: OnceCell<CurrentFrame>,
+    current_frame: Option<CurrentFrame>,
 }
 
 impl<'a> StackTrace<'a> {
@@ -377,24 +453,30 @@ impl<'a> StackTrace<'a> {
         recent: &'a VecDeque<Operation>,
         session: &'a Session,
     ) -> Self {
+        let current_frame = callstack.current_frame().map(|frame| {
+            let location = frame.last_resolved(session).cloned();
+            let procedure = frame.procedure(session.name());
+            CurrentFrame {
+                procedure,
+                location,
+            }
+        });
         Self {
             callstack,
             recent,
             session,
-            current_frame: Default::default(),
+            current_frame,
         }
     }
 
     pub fn current_frame(&self) -> Option<&CurrentFrame> {
-        self.current_frame.get()
+        self.current_frame.as_ref()
     }
 }
 
 impl<'a> fmt::Display for StackTrace<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::fmt::Write;
-
-        use midenc_session::diagnostics::SourceManagerExt;
 
         let session_name = self.session.name();
         let num_frames = self.callstack.frames.len();
@@ -410,47 +492,10 @@ impl<'a> fmt::Display for StackTrace<'a> {
             } else {
                 write!(f, " |-> {name}")?;
             }
-            if let Some(loc) = frame.last_location() {
-                let path = Path::new(loc.path.as_ref());
-                let loc_source_code = if path.exists() {
-                    self.session.source_manager.load_file(path).ok()
-                } else {
-                    self.session.source_manager.get_by_path(loc.path.as_ref())
-                };
-                if is_top {
-                    self.current_frame.get_or_init(|| {
-                        let source_file = loc_source_code.clone();
-                        let span = source_file
-                            .as_ref()
-                            .map(|src| SourceSpan::new(src.id(), loc.start..loc.end));
-                        CurrentFrame { source_file, span }
-                    });
-                }
-                if let Some(source_file) = loc_source_code.as_ref() {
-                    let span = midenc_hir::SourceSpan::new(source_file.id(), loc.start..loc.end);
-                    let file_line_col = source_file.location(span);
-                    let path = file_line_col.path();
-                    let path = Path::new(path.as_ref());
-                    if let Some(filename) = Some(path) {
-                        write!(
-                            f,
-                            " in {}:{}:{}",
-                            filename.display(),
-                            file_line_col.line,
-                            file_line_col.column
-                        )?;
-                    } else {
-                        write!(
-                            f,
-                            " in {}:{}:{}",
-                            path.display(),
-                            file_line_col.line,
-                            file_line_col.column
-                        )?;
-                    }
-                } else {
-                    write!(f, " in <unavailable>")?;
-                }
+            if let Some(resolved) = frame.last_resolved(self.session) {
+                write!(f, " in {resolved}")?;
+            } else {
+                write!(f, " in <unavailable>")?;
             }
             if is_top {
                 // Print op context

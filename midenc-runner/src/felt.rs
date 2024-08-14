@@ -1,13 +1,13 @@
 use std::collections::VecDeque;
 
-use miden_processor::Felt;
+use miden_processor::Felt as RawFelt;
 use proptest::{
     arbitrary::Arbitrary,
     strategy::{BoxedStrategy, Strategy},
 };
 
 pub trait PushToStack: Sized {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
         let mut ptr = self as *const Self as *const u8;
         let mut num_bytes = core::mem::size_of::<Self>();
         let mut buf = Vec::with_capacity(num_bytes / core::mem::size_of::<u32>());
@@ -19,7 +19,7 @@ pub trait PushToStack: Sized {
                 ptr = ptr.byte_add(consume);
             }
             num_bytes -= consume;
-            buf.push(Felt::new(u32::from_be_bytes(next) as u64));
+            buf.push(RawFelt::new(u32::from_be_bytes(next) as u64));
         }
 
         for item in buf.into_iter().rev() {
@@ -29,7 +29,7 @@ pub trait PushToStack: Sized {
 }
 
 pub trait PopFromStack: Sized {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         use core::mem::MaybeUninit;
 
         let mut num_bytes = core::mem::size_of::<Self>();
@@ -50,93 +50,92 @@ pub trait PopFromStack: Sized {
 }
 
 impl PushToStack for bool {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u64))
     }
 }
 impl PopFromStack for bool {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() != 0)
     }
 }
 
 impl PushToStack for u8 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u64))
     }
 }
 impl PopFromStack for u8 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() as u8)
     }
 }
 
 impl PushToStack for i8 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u8 as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u8 as u64))
     }
 }
 impl PopFromStack for i8 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() as i8)
     }
 }
 
 impl PushToStack for u16 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u64))
     }
 }
 impl PopFromStack for u16 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() as u16)
     }
 }
 
 impl PushToStack for i16 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u16 as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u16 as u64))
     }
 }
 impl PopFromStack for i16 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() as i16)
     }
 }
 
 impl PushToStack for u32 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u64))
     }
 }
 impl PopFromStack for u32 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() as u32)
     }
 }
 
 impl PushToStack for i32 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(Felt::new(*self as u32 as u64))
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(RawFelt::new(*self as u32 as u64))
     }
 }
 impl PopFromStack for i32 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         Some(stack.pop_front().unwrap().0.as_int() as i32)
     }
 }
 
 impl PushToStack for u64 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
         let lo = self.rem_euclid(2u64.pow(32));
         let hi = self.div_euclid(2u64.pow(32));
-        dbg!(hi, lo);
-        stack.push(Felt::new(lo));
-        stack.push(Felt::new(hi));
+        stack.push(RawFelt::new(lo));
+        stack.push(RawFelt::new(hi));
     }
 }
 impl PopFromStack for u64 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         let hi = stack.pop_front().unwrap().0.as_int() * 2u64.pow(32);
         let lo = stack.pop_front().unwrap().0.as_int();
         Some(hi + lo)
@@ -144,18 +143,18 @@ impl PopFromStack for u64 {
 }
 
 impl PushToStack for i64 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
         (*self as u64).try_push(stack)
     }
 }
 impl PopFromStack for i64 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         u64::try_pop(stack).map(|value| value as i64)
     }
 }
 
 impl PushToStack for u128 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
         let lo = self.rem_euclid(2u128.pow(64));
         let hi = self.div_euclid(2u128.pow(64));
         (lo as u64).try_push(stack);
@@ -163,7 +162,7 @@ impl PushToStack for u128 {
     }
 }
 impl PopFromStack for u128 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         let hi = (u64::try_pop(stack).unwrap() as u128) * 2u128.pow(64);
         let lo = u64::try_pop(stack).unwrap() as u128;
         Some(hi + lo)
@@ -171,44 +170,44 @@ impl PopFromStack for u128 {
 }
 
 impl PushToStack for i128 {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
         (*self as u128).try_push(stack)
     }
 }
 impl PopFromStack for i128 {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         u128::try_pop(stack).map(|value| value as i128)
+    }
+}
+
+impl PushToStack for RawFelt {
+    #[inline(always)]
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(*self);
+    }
+}
+impl PopFromStack for RawFelt {
+    #[inline(always)]
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
+        Some(stack.pop_front()?.0)
     }
 }
 
 impl PushToStack for Felt {
     #[inline(always)]
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(*self);
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
+        stack.push(self.0);
     }
 }
 impl PopFromStack for Felt {
     #[inline(always)]
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
-        Some(stack.pop_front()?.0)
-    }
-}
-
-impl PushToStack for TestFelt {
-    #[inline(always)]
-    fn try_push(&self, stack: &mut Vec<Felt>) {
-        stack.push(self.0);
-    }
-}
-impl PopFromStack for TestFelt {
-    #[inline(always)]
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         stack.pop_front()
     }
 }
 
 impl<const N: usize> PushToStack for [u8; N] {
-    fn try_push(&self, stack: &mut Vec<Felt>) {
+    fn try_push(&self, stack: &mut Vec<RawFelt>) {
         let mut iter = self.iter().array_chunks::<4>();
         let buf_size = (self.len() / 4) + (self.len() % 4 == 0) as usize;
         let mut buf = vec![0u32; buf_size];
@@ -232,7 +231,7 @@ impl<const N: usize> PushToStack for [u8; N] {
 }
 
 impl<const N: usize> PopFromStack for [u8; N] {
-    fn try_pop(stack: &mut VecDeque<TestFelt>) -> Option<Self> {
+    fn try_pop(stack: &mut VecDeque<Felt>) -> Option<Self> {
         let mut out = [0u8; N];
 
         let byte_size = out.len();
@@ -258,132 +257,167 @@ impl<const N: usize> PopFromStack for [u8; N] {
     }
 }
 
-/// Wrapper around `Felt` that implements `From` for a bunch of types that are want to support in
-/// tests
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TestFelt(pub Felt);
+/// Wrapper around `miden_processor::Felt` that implements useful traits that are not implemented
+/// for that type.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Felt(pub RawFelt);
 
-impl From<TestFelt> for Felt {
-    fn from(f: TestFelt) -> Self {
+impl clap::builder::ValueParserFactory for Felt {
+    type Parser = FeltParser;
+
+    fn value_parser() -> Self::Parser {
+        FeltParser
+    }
+}
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct FeltParser;
+impl clap::builder::TypedValueParser for FeltParser {
+    type Value = Felt;
+
+    fn parse_ref(
+        &self,
+        _cmd: &clap::Command,
+        _arg: Option<&clap::Arg>,
+        value: &std::ffi::OsStr,
+    ) -> Result<Self::Value, clap::error::Error> {
+        use clap::error::{Error, ErrorKind};
+
+        let value = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
+
+        let value = value.parse::<u64>().map_err(|err| {
+            Error::raw(ErrorKind::InvalidValue, format!("invalid field element value: {err}"))
+        })?;
+
+        RawFelt::try_from(value)
+            .map(Felt)
+            .map_err(|err| Error::raw(ErrorKind::InvalidValue, err))
+    }
+}
+
+impl From<Felt> for miden_processor::Felt {
+    fn from(f: Felt) -> Self {
         f.0
     }
 }
 
-impl From<bool> for TestFelt {
+impl From<bool> for Felt {
     fn from(b: bool) -> Self {
-        Self(Felt::from(b as u32))
+        Self(RawFelt::from(b as u32))
     }
 }
 
-impl From<u8> for TestFelt {
+impl From<u8> for Felt {
     fn from(t: u8) -> Self {
         Self(t.into())
     }
 }
 
-impl From<i8> for TestFelt {
+impl From<i8> for Felt {
     fn from(t: i8) -> Self {
         Self((t as u8).into())
     }
 }
 
-impl From<i16> for TestFelt {
+impl From<i16> for Felt {
     fn from(t: i16) -> Self {
         Self((t as u16).into())
     }
 }
 
-impl From<u16> for TestFelt {
+impl From<u16> for Felt {
     fn from(t: u16) -> Self {
         Self(t.into())
     }
 }
 
-impl From<i32> for TestFelt {
+impl From<i32> for Felt {
     fn from(t: i32) -> Self {
         Self((t as u32).into())
     }
 }
 
-impl From<u32> for TestFelt {
+impl From<u32> for Felt {
     fn from(t: u32) -> Self {
         Self(t.into())
     }
 }
 
-impl From<u64> for TestFelt {
+impl From<u64> for Felt {
     fn from(t: u64) -> Self {
-        Self(Felt::new(t))
+        Self(RawFelt::new(t))
     }
 }
 
-impl From<i64> for TestFelt {
+impl From<i64> for Felt {
     fn from(t: i64) -> Self {
-        Self(Felt::new(t as u64))
+        Self(RawFelt::new(t as u64))
     }
 }
 
-// Reverse TestFelt to Rust types conversion
+// Reverse Felt to Rust types conversion
 
-impl From<TestFelt> for bool {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for bool {
+    fn from(f: Felt) -> Self {
         f.0.as_int() != 0
     }
 }
 
-impl From<TestFelt> for u8 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for u8 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as u8
     }
 }
 
-impl From<TestFelt> for i8 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for i8 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as i8
     }
 }
 
-impl From<TestFelt> for u16 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for u16 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as u16
     }
 }
 
-impl From<TestFelt> for i16 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for i16 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as i16
     }
 }
 
-impl From<TestFelt> for u32 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for u32 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as u32
     }
 }
 
-impl From<TestFelt> for i32 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for i32 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as i32
     }
 }
 
-impl From<TestFelt> for u64 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for u64 {
+    fn from(f: Felt) -> Self {
         f.0.as_int()
     }
 }
 
-impl From<TestFelt> for i64 {
-    fn from(f: TestFelt) -> Self {
+impl From<Felt> for i64 {
+    fn from(f: Felt) -> Self {
         f.0.as_int() as i64
     }
 }
 
-impl Arbitrary for TestFelt {
+impl Arbitrary for Felt {
     type Parameters = ();
     type Strategy = BoxedStrategy<Self>;
 
     fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
-        (0u64..u64::MAX).prop_map(|v| TestFelt(Felt::new(v))).boxed()
+        use miden_core::StarkField;
+        (0u64..RawFelt::MODULUS).prop_map(|v| Felt(RawFelt::new(v))).boxed()
     }
 }

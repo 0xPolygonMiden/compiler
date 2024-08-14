@@ -1,10 +1,11 @@
 use std::{ffi::OsStr, path::Path};
 
-use miden_processor::{ExecutionOptions, StackInputs};
+use miden_processor::{AdviceInputs, ExecutionOptions, StackInputs};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProgramInputs {
     pub inputs: StackInputs,
+    pub advice_inputs: AdviceInputs,
     pub options: ExecutionOptions,
 }
 

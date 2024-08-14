@@ -3235,6 +3235,7 @@ dependencies = [
  "clap",
  "crossterm",
  "futures",
+ "glob",
  "log",
  "miden-assembly",
  "miden-core",
