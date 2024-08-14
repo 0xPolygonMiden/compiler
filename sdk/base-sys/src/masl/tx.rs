@@ -1,4 +1,4 @@
-use miden_assembly::{library::Library as CompiledLibrary, utils::Deserializable};
+use miden_assembly::{utils::Deserializable, Library as CompiledLibrary};
 
 /// Stubs for the Miden rollup tx kernel
 pub struct MidenTxKernelLibrary(CompiledLibrary);

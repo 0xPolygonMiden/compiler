@@ -2,8 +2,7 @@ use std::{env, path::Path, sync::Arc};
 
 use miden_assembly::{
     diagnostics::{IntoDiagnostic, Result},
-    library::Library as CompiledLibrary,
-    LibraryNamespace,
+    Assembler, Library as CompiledLibrary, LibraryNamespace,
 };
 
 /// Read and parse the contents from `./masm/*` and compile it to MASL.
@@ -19,7 +18,8 @@ fn main() -> Result<()> {
     let namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
 
     let tx_asm_dir = Path::new(manifest_dir).join("masm").join("tx");
-    let txlib = CompiledLibrary::from_dir(tx_asm_dir, namespace, source_manager)?;
+    let asm = Assembler::new(source_manager);
+    let txlib = CompiledLibrary::from_dir(tx_asm_dir, namespace, asm)?;
     let tx_masl_path = build_dir
         .join("assets")
         .join("tx")
