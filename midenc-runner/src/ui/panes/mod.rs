@@ -11,6 +11,7 @@ use super::{
 };
 
 pub mod breakpoints;
+pub mod debug;
 pub mod disasm;
 pub mod footer;
 pub mod header;

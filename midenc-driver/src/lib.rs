@@ -1,6 +1,7 @@
 mod midenc;
 
 pub use clap::Error as ClapError;
+use log::Log;
 pub use midenc_session::diagnostics;
 use midenc_session::diagnostics::{miette, Diagnostic, Report};
 
@@ -23,14 +24,14 @@ impl ClapDiagnostic {
 }
 
 /// Run the driver as if it was invoked from the command-line
-pub fn run<P, A>(cwd: P, args: A) -> Result<(), Report>
+pub fn run<P, A>(cwd: P, args: A, logger: Box<dyn Log>) -> Result<(), Report>
 where
     P: Into<std::path::PathBuf>,
     A: IntoIterator<Item = std::ffi::OsString>,
 {
     setup_diagnostics();
 
-    match Midenc::run(cwd, args) {
+    match Midenc::run(cwd, args, logger) {
         Err(report) => match report.downcast::<midenc_compile::CompilerStopped>() {
             Ok(_) => Ok(()),
             Err(report) => Err(report),

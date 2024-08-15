@@ -47,7 +47,7 @@ no longer appear, and instead you will see the prompt, starting with `:`. It sup
 of the following commands:
 
 * `q` or `quit` (quit) - exit the debugger
-* `history` (command history) - display prompt history
+* `debug` (debug log) - display internal debug log for the debugger itself
 * `reload` (reload current program) - reloads the program from disk, and resets the UI, with the
   exception of breakpoints, which are retained across reloads
 * `b` or `break` or `breakpoint` (breakpoints) - manage breakpoints (see [Breakpoints](#breakpoints))

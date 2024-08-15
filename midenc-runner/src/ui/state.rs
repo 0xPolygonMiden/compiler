@@ -83,6 +83,7 @@ impl State {
     }
 
     pub fn reload(&mut self) -> Result<(), Report> {
+        log::debug!("reloading program");
         let program = load_program(&self.session)?;
         let args = self.inputs.inputs.values().iter().copied().rev().collect::<Vec<_>>();
 
@@ -121,6 +122,7 @@ impl State {
     pub fn create_breakpoint(&mut self, ty: BreakpointType) {
         let id = self.next_breakpoint_id();
         let creation_cycle = self.execution_state.cycle;
+        log::trace!("created breakpoint with id {id} at cycle {creation_cycle}");
         self.breakpoints.push(Breakpoint {
             id,
             creation_cycle,

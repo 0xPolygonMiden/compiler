@@ -1,10 +1,12 @@
 #![feature(iter_array_chunks)]
+#![feature(lazy_cell)]
 #![allow(unused)]
 
 mod debug;
 mod felt;
 mod host;
 mod inputs;
+mod logger;
 mod run;
 mod runner;
 mod ui;
@@ -34,10 +36,11 @@ pub fn run(
     inputs: Option<ProgramInputs>,
     args: Vec<miden_processor::Felt>,
     session: Rc<Session>,
+    logger: Box<dyn log::Log>,
 ) -> ExecutionResult<()> {
     let mut builder = tokio::runtime::Builder::new_current_thread();
     let rt = builder.enable_all().build().into_diagnostic()?;
-    rt.block_on(async move { start_ui(inputs, args, session).await })
+    rt.block_on(async move { start_ui(inputs, args, session, logger).await })
 }
 
 pub fn trace(
@@ -52,8 +55,11 @@ pub async fn start_ui(
     inputs: Option<ProgramInputs>,
     args: Vec<miden_processor::Felt>,
     session: Rc<Session>,
+    logger: Box<dyn log::Log>,
 ) -> Result<(), Report> {
     use ratatui::crossterm as term;
+
+    logger::DebugLogger::install(logger);
 
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {

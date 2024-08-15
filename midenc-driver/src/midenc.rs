@@ -1,6 +1,7 @@
 use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 
 use clap::{ColorChoice, Parser, Subcommand};
+use log::Log;
 use midenc_compile as compile;
 use midenc_hir::FunctionIdent;
 use midenc_runner as runner;
@@ -127,18 +128,19 @@ enum Commands {
 }
 
 impl Midenc {
-    pub fn run<P, A>(cwd: P, args: A) -> Result<(), Report>
+    pub fn run<P, A>(cwd: P, args: A, logger: Box<dyn Log>) -> Result<(), Report>
     where
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
     {
-        Self::run_with_emitter(cwd, args, None)
+        Self::run_with_emitter(cwd, args, None, logger)
     }
 
     pub fn run_with_emitter<P, A>(
         cwd: P,
         args: A,
         emitter: Option<Arc<dyn Emitter>>,
+        logger: Box<dyn Log>,
     ) -> Result<(), Report>
     where
         P: Into<PathBuf>,
@@ -153,17 +155,20 @@ impl Midenc {
             .map_err(format_error::<Self>)
             .map_err(ClapDiagnostic::from)?;
 
-        cli.invoke(cwd.into(), emitter, compile_matches)
+        cli.invoke(cwd.into(), emitter, logger, compile_matches)
     }
 
     fn invoke(
         self,
         cwd: PathBuf,
         emitter: Option<Arc<dyn Emitter>>,
+        logger: Box<dyn Log>,
         matches: clap::ArgMatches,
     ) -> Result<(), Report> {
         match self.command {
             Commands::Compile { input, mut options } => {
+                log::set_boxed_logger(logger)
+                    .unwrap_or_else(|err| panic!("failed to install logger: {err}"));
                 if options.working_dir.is_none() {
                     options.working_dir = Some(cwd);
                 }
@@ -181,7 +186,7 @@ impl Midenc {
                 }
                 let session = options.into_session(vec![input], emitter);
                 let args = args.into_iter().map(|felt| felt.0).collect();
-                runner::run(inputs, args, Rc::new(session))
+                runner::run(inputs, args, Rc::new(session), logger)
             }
             _ => unimplemented!(),
         }

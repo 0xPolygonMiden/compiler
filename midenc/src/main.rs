@@ -11,7 +11,7 @@ pub fn main() -> Result<(), Report> {
         human_panic::setup_panic!();
     }
 
-    // Initialize logger
+    // Initialize logger, but do not install it, leave that up to the command handler
     let mut builder = env_logger::Builder::from_env("MIDENC_TRACE");
     builder.format_indent(Some(2));
     if let Ok(precision) = env::var("MIDENC_TRACE_TIMING") {
@@ -31,14 +31,14 @@ pub fn main() -> Result<(), Report> {
     } else {
         builder.format_timestamp(None);
     }
-    builder.init();
+    let logger = Box::new(builder.build());
 
     // Get current working directory
     let cwd = env::current_dir()
         .into_diagnostic()
         .wrap_err("could not read current working directory")?;
 
-    match driver::run(cwd, env::args_os()) {
+    match driver::run(cwd, env::args_os(), logger) {
         Err(report) => match report.downcast::<ClapDiagnostic>() {
             Ok(err) => {
                 // Remove the miette panic hook, so that clap errors can be reported without

@@ -139,16 +139,20 @@ impl Page for Home {
                             Err(err) => actions.push(Some(Action::TimedStatusLine(err, 5))),
                         },
                         _ => {
+                            log::debug!("unknown command with arguments: '{cmd} {args}'");
                             actions.push(Some(Action::TimedStatusLine("unknown command".into(), 1)))
                         }
                     },
                     None => match args.trim() {
                         "q" | "quit" => actions.push(Some(Action::Quit)),
-                        "history" => actions.push(Some(Action::History)),
                         "reload" => {
                             actions.push(Some(Action::Reload));
                         }
-                        _ => {
+                        "debug" => {
+                            actions.push(Some(Action::ShowDebug));
+                        }
+                        invalid => {
+                            log::debug!("unknown command: '{invalid}'");
                             actions.push(Some(Action::TimedStatusLine("unknown command".into(), 1)))
                         }
                     },

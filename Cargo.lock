@@ -3133,6 +3133,7 @@ name = "midenc-driver"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "log",
  "miden-thiserror",
  "midenc-compile",
  "midenc-hir",

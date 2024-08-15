@@ -15,6 +15,7 @@ edition.workspace = true
 
 [dependencies]
 clap.workspace = true
+log.workspace = true
 midenc-hir.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true

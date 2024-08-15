@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 
 use super::{
     pages::{home::Home, Page},
-    panes::{footer::FooterPane, header::HeaderPane, Pane},
+    panes::{debug::DebugPane, footer::FooterPane, header::HeaderPane, Pane},
     state::{InputMode, State},
     tui, Action,
 };
@@ -30,6 +30,7 @@ pub struct App {
     pub active_page: usize,
     pub footer: FooterPane,
     pub header: HeaderPane,
+    pub popup: Option<Box<dyn Pane>>,
     pub last_tick_key_events: Vec<KeyEvent>,
     pub mode: Mode,
     pub state: State,
@@ -53,6 +54,7 @@ impl App {
             active_page: 0,
             footer: FooterPane::new(),
             header: HeaderPane::new(),
+            popup: None,
             last_tick_key_events: vec![],
             mode: Mode::Home,
             state,
@@ -86,9 +88,9 @@ impl App {
         loop {
             if let Some(evt) = tui.next().await {
                 let mut stop_event_propagation = self
-                    .pages
-                    .get_mut(self.active_page)
-                    .and_then(|page| page.handle_events(evt.clone(), &mut self.state).ok())
+                    .popup
+                    .as_mut()
+                    .and_then(|pane| pane.handle_events(evt.clone(), &mut self.state).ok())
                     .map(|response| match response {
                         Some(tui::EventResponse::Continue(action)) => {
                             action_tx.send(action).ok();
@@ -101,6 +103,23 @@ impl App {
                         _ => false,
                     })
                     .unwrap_or(false);
+                stop_event_propagation = stop_event_propagation
+                    || self
+                        .pages
+                        .get_mut(self.active_page)
+                        .and_then(|page| page.handle_events(evt.clone(), &mut self.state).ok())
+                        .map(|response| match response {
+                            Some(tui::EventResponse::Continue(action)) => {
+                                action_tx.send(action).ok();
+                                false
+                            }
+                            Some(tui::EventResponse::Stop(action)) => {
+                                action_tx.send(action).ok();
+                                true
+                            }
+                            _ => false,
+                        })
+                        .unwrap_or(false);
                 stop_event_propagation = stop_event_propagation
                     || self
                         .footer
@@ -182,10 +201,23 @@ impl App {
                         })
                         .into_diagnostic()?;
                     }
+                    Action::ShowDebug => {
+                        let debug_popup = DebugPane::default();
+                        self.popup = Some(Box::new(debug_popup));
+                    }
+                    Action::ClosePopup => {
+                        if self.popup.is_some() {
+                            self.popup = None;
+                        }
+                    }
                     _ => (),
                 }
 
-                if let Some(page) = self.pages.get_mut(self.active_page) {
+                if let Some(popup) = self.popup.as_mut() {
+                    if let Some(action) = popup.update(action.clone(), &mut self.state)? {
+                        action_tx.send(action).into_diagnostic()?;
+                    }
+                } else if let Some(page) = self.pages.get_mut(self.active_page) {
                     if let Some(action) = page.update(action.clone(), &mut self.state)? {
                         action_tx.send(action).into_diagnostic()?;
                     }
@@ -226,6 +258,22 @@ impl App {
 
         if let Some(page) = self.pages.get_mut(self.active_page) {
             page.draw(frame, vertical_layout[1], &self.state)?;
+        }
+
+        if let Some(popup) = self.popup.as_mut() {
+            let popup_vertical_layout = Layout::vertical(vec![
+                Constraint::Fill(1),
+                popup.height_constraint(),
+                Constraint::Fill(1),
+            ])
+            .split(frame.area());
+            let popup_layout = Layout::horizontal(vec![
+                Constraint::Fill(1),
+                Constraint::Percentage(80),
+                Constraint::Fill(1),
+            ])
+            .split(popup_vertical_layout[1]);
+            popup.draw(frame, popup_layout[1], &self.state)?;
         }
 
         self.footer.draw(frame, vertical_layout[2], &self.state)?;
