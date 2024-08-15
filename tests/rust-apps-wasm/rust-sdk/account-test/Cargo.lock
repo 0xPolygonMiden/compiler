@@ -534,9 +534,9 @@ checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
 name = "miden-assembly"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d013ba230b6ed8a20126e48553e25418bcc3cf8b3960fa5c4df371e2efb381a7"
+checksum = "f3aefae8d99d66c3f8666e917cb3ef976edb39247099311f695e5ba57305616d"
 dependencies = [
  "aho-corasick",
  "lalrpop",
