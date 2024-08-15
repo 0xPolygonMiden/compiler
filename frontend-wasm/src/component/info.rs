@@ -61,6 +61,7 @@ pub struct LinearComponentTranslation {
 /// NB: Lots of the component model is not yet implemented in the runtime so
 /// this is going to undergo a lot of churn.
 #[derive(Default, Debug)]
+#[allow(dead_code)]
 pub struct LinearComponent {
     /// A list of typed values that this component imports.
     ///
@@ -213,6 +214,7 @@ pub enum GlobalInitializer {
     /// Declares a new defined resource within this component.
     ///
     /// Contains information about the destructor, for example.
+    #[allow(dead_code)]
     Resource(Resource),
 }
 
@@ -223,6 +225,7 @@ pub struct ExtractMemory {
     /// The index of the memory being defined.
     pub index: RuntimeMemoryIndex,
     /// Where this memory is being extracted from.
+    #[allow(dead_code)]
     pub export: CoreExport<MemoryIndex>,
 }
 
@@ -260,6 +263,7 @@ pub enum InstantiateModule {
     /// This is similar to `Upvar` but notably the imports are provided as a
     /// two-level named map since import resolution order needs to happen at
     /// runtime.
+    #[allow(dead_code)]
     Import(RuntimeImportIndex, IndexMap<String, IndexMap<String, CoreDef>>),
 }
 
@@ -357,14 +361,17 @@ pub enum Export {
         options: CanonicalOptions,
     },
     /// A module defined within this component is exported.
+    #[allow(dead_code)]
     ModuleStatic(StaticModuleIndex),
     /// A module imported into this component is exported.
+    #[allow(dead_code)]
     ModuleImport(RuntimeImportIndex),
     /// A nested instance is being exported which has recursively defined
     /// `Export` items.
     Instance(IndexMap<String, Export>),
     /// An exported type from a component or instance, currently only
     /// informational.
+    #[allow(dead_code)]
     Type(TypeDef),
 }
 
@@ -372,12 +379,14 @@ pub enum Export {
 #[derive(Debug, Clone)]
 pub struct CanonicalOptions {
     /// The component instance that this bundle was associated with.
+    #[allow(dead_code)]
     pub instance: RuntimeComponentInstanceIndex,
 
     /// The encoding used for strings.
     pub string_encoding: StringEncoding,
 
     /// The memory used by these options, if specified.
+    #[allow(dead_code)]
     pub memory: Option<RuntimeMemoryIndex>,
 
     /// The realloc function used by these options, if specified.
@@ -403,6 +412,7 @@ pub enum StringEncoding {
 /// This will have the effect of initializing runtime state for this resource,
 /// namely the destructor is fetched and stored.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Resource {
     /// The local index of the resource being defined.
     pub index: DefinedResourceIndex,
@@ -442,12 +452,15 @@ pub enum Trampoline {
 
     /// A `resource.new` intrinsic which will inject a new resource into the
     /// table specified.
+    #[allow(dead_code)]
     ResourceNew(TypeResourceTableIndex),
 
     /// Same as `ResourceNew`, but for the `resource.rep` intrinsic.
+    #[allow(dead_code)]
     ResourceRep(TypeResourceTableIndex),
 
     /// Same as `ResourceNew`, but for the `resource.drop` intrinsic.
+    #[allow(dead_code)]
     ResourceDrop(TypeResourceTableIndex),
 
     /// An intrinsic used by FACT-generated modules which will transfer an owned

@@ -1004,12 +1004,12 @@ fn compute_control_flow_edge_spills_and_reloads(
     // parameters, with the corresponding source values in W^exit(P) (issuing reloads if the value
     // given as argument in the predecessor is not in W^exit(P))
     let pred_args = match function.dfg.analyze_branch(pred.inst) {
-        BranchInfo::SingleDest(_, pred_args) => pred_args,
-        BranchInfo::MultiDest(jts) => jts
+        BranchInfo::SingleDest(successor) => successor.args,
+        BranchInfo::MultiDest(successors) => successors
             .iter()
-            .find_map(|jt| {
-                if jt.destination == block_info.block_id {
-                    Some(jt.args)
+            .find_map(|successor| {
+                if successor.destination == block_info.block_id {
+                    Some(successor.args)
                 } else {
                     None
                 }
@@ -1272,14 +1272,15 @@ fn min(
                     w.retain(|o| liveness.is_live_after(&o.value, current_pp));
                     w.extend(results.iter().map(|v| Operand::new(*v, function)));
                 }
-                BranchInfo::SingleDest(_, succ_args) => {
+                BranchInfo::SingleDest(successor) => {
                     w.retain(|o| {
-                        succ_args.contains(&o.value) || liveness.is_live_after(&o.value, current_pp)
+                        successor.args.contains(&o.value)
+                            || liveness.is_live_after(&o.value, current_pp)
                     });
                 }
-                BranchInfo::MultiDest(jts) => {
+                BranchInfo::MultiDest(successors) => {
                     w.retain(|o| {
-                        let is_succ_arg = jts.iter().any(|jt| jt.args.contains(&o.value));
+                        let is_succ_arg = successors.iter().any(|s| s.args.contains(&o.value));
                         is_succ_arg || liveness.is_live_after(&o.value, current_pp)
                     });
                 }

@@ -1,4 +1,4 @@
-use super::*;
+use crate::{diagnostics::Span, *};
 
 pub struct FunctionBuilder<'f> {
     pub func: &'f mut Function,
@@ -181,8 +181,6 @@ impl<'f> InstBuilderBase<'f> for ReplaceBuilder<'f> {
         ctrl_typevar: Type,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
-        use miden_diagnostics::Span;
-
         // Splat the new instruction on top of the old one.
         self.dfg.insts[self.inst].replace(Span::new(span, data));
         // The old result values, if any, were either detached or non-existent.
@@ -1419,9 +1417,9 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.CondBr(cond, then_dest, then_vlist, else_dest, else_vlist, span).0
     }
 
-    fn switch(self, arg: Value, arms: Vec<(u32, Block)>, default: Block, span: SourceSpan) -> Inst {
+    fn switch(self, arg: Value, span: SourceSpan) -> SwitchBuilder<'f, Self> {
         require_integer!(self, arg, Type::U32);
-        self.Switch(arg, arms, default, span).0
+        SwitchBuilder::new(self, arg, span)
     }
 
     fn ret(mut self, returning: Option<Value>, span: SourceSpan) -> Inst {
@@ -1471,8 +1469,14 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         let data = Instruction::CondBr(CondBr {
             op: Opcode::CondBr,
             cond,
-            then_dest: (then_dest, then_args),
-            else_dest: (else_dest, else_args),
+            then_dest: Successor {
+                destination: then_dest,
+                args: then_args,
+            },
+            else_dest: Successor {
+                destination: else_dest,
+                args: else_args,
+            },
         });
         self.build(data, Type::Unit, span)
     }
@@ -1488,8 +1492,7 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     ) -> (Inst, &'f mut DataFlowGraph) {
         let data = Instruction::Br(Br {
             op,
-            destination,
-            args,
+            successor: Successor { destination, args },
         });
         self.build(data, ty, span)
     }
@@ -1498,8 +1501,8 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     fn Switch(
         self,
         arg: Value,
-        arms: Vec<(u32, Block)>,
-        default: Block,
+        arms: Vec<SwitchArm>,
+        default: Successor,
         span: SourceSpan,
     ) -> (Inst, &'f mut DataFlowGraph) {
         let data = Instruction::Switch(Switch {
@@ -1726,3 +1729,63 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
 }
 
 impl<'f, T: InstBuilderBase<'f>> InstBuilder<'f> for T {}
+
+/// An instruction builder for `switch`, to ensure it is validated during construction
+pub struct SwitchBuilder<'f, T: InstBuilder<'f>> {
+    builder: T,
+    arg: Value,
+    span: SourceSpan,
+    arms: Vec<SwitchArm>,
+    _marker: core::marker::PhantomData<&'f Function>,
+}
+impl<'f, T: InstBuilder<'f>> SwitchBuilder<'f, T> {
+    fn new(builder: T, arg: Value, span: SourceSpan) -> Self {
+        Self {
+            builder,
+            arg,
+            span,
+            arms: Default::default(),
+            _marker: core::marker::PhantomData,
+        }
+    }
+
+    /// Specify to what block a specific discriminant value should be dispatched
+    pub fn case(mut self, discriminant: u32, target: Block, args: &[Value]) -> Self {
+        assert_eq!(
+            self.arms
+                .iter()
+                .find(|arm| arm.value == discriminant)
+                .map(|arm| arm.successor.destination),
+            None,
+            "duplicate switch case value '{discriminant}': already matched"
+        );
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.builder.data_flow_graph_mut().value_lists;
+            vlist.extend(args.iter().copied(), pool);
+        }
+        let arm = SwitchArm {
+            value: discriminant,
+            successor: Successor {
+                destination: target,
+                args: vlist,
+            },
+        };
+        self.arms.push(arm);
+        self
+    }
+
+    /// Build the `switch` by specifying the fallback destination if none of the arms match
+    pub fn or_else(mut self, target: Block, args: &[Value]) -> Inst {
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.builder.data_flow_graph_mut().value_lists;
+            vlist.extend(args.iter().copied(), pool);
+        }
+        let fallback = Successor {
+            destination: target,
+            args: vlist,
+        };
+        self.builder.Switch(self.arg, self.arms, fallback, self.span).0
+    }
+}

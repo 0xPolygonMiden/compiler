@@ -7,10 +7,11 @@ mod instruction;
 use alloc::collections::BTreeMap;
 use core::fmt;
 
-use miden_diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned};
-
 pub use self::{block::*, convert::ConvertAstToHir, functions::*, globals::*, instruction::*};
-use crate::{ExternalFunction, FunctionIdent, Ident};
+use crate::{
+    diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned},
+    ExternalFunction, FunctionIdent, Ident,
+};
 
 /// This represents the parsed contents of a single Miden IR module
 #[derive(Spanned)]
@@ -43,11 +44,21 @@ impl midenc_session::Emit for Module {
         Some(self.name.as_symbol())
     }
 
-    fn output_type(&self) -> midenc_session::OutputType {
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
         midenc_session::OutputType::Ast
     }
 
-    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for HIR syntax trees"
+        );
         writer.write_fmt(format_args!("{:#?}", self))
     }
 }

@@ -1,53 +1,48 @@
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    rc::Rc,
 };
 
-use anyhow::{bail, Context};
-use miden_diagnostics::Verbosity;
+use midenc_compile::Compiler;
 use midenc_session::{
-    InputFile, OutputFile, OutputType, OutputTypeSpec, OutputTypes, ProjectType, Session, TargetEnv,
+    diagnostics::{IntoDiagnostic, Report, WrapErr},
+    InputFile, OutputType,
 };
 
 pub fn build_masm(
     wasm_file_path: &Path,
     output_folder: &Path,
     is_bin: bool,
-) -> anyhow::Result<PathBuf> {
-    let project_type = if is_bin {
-        ProjectType::Program
-    } else {
-        ProjectType::Library
-    };
-
+) -> Result<PathBuf, Report> {
     if !output_folder.exists() {
-        bail!("MASM output folder '{}' does not exist.", output_folder.to_str().unwrap());
+        return Err(Report::msg(format!(
+            "MASM output folder '{}' does not exist.",
+            output_folder.to_str().unwrap()
+        )));
     }
     log::debug!(
         "Compiling '{}' Wasm to '{}' directory with midenc ...",
         wasm_file_path.to_str().unwrap(),
         &output_folder.to_str().unwrap()
     );
-    let input = InputFile::from_path(wasm_file_path).context("Invalid input file")?;
-    let output_file_folder = OutputFile::Real(output_folder.to_path_buf());
-    let output_type = OutputType::Masm;
-    let output_types = OutputTypes::new(vec![OutputTypeSpec {
-        output_type,
-        path: Some(output_file_folder.clone()),
-    }]);
-    let cwd = std::env::current_dir().context("Failed to get current working directory")?;
-    let options = midenc_session::Options::new(cwd)
-        // .with_color(color)
-        .with_verbosity(Verbosity::Debug)
-        // .with_warnings(self.warn)
-        .with_output_types(output_types);
-    let target = TargetEnv::default();
-    let session = Arc::new(
-        Session::new(target, input, Some(output_folder.to_path_buf()), None, None, options, None)
-            .with_project_type(project_type),
-    );
-    midenc_compile::compile(session.clone()).context("Wasm to MASM compilation failed!")?;
-    let mut output_path = output_folder.join(wasm_file_path.file_stem().unwrap());
-    output_path.set_extension(output_type.extension());
-    Ok(output_path)
+    let input = InputFile::from_path(wasm_file_path)
+        .into_diagnostic()
+        .wrap_err("Invalid input file")?;
+    let output_file = output_folder
+        .join(wasm_file_path.file_stem().expect("invalid wasm file path: no file stem"))
+        .with_extension(OutputType::Mast.extension());
+    let project_type = if is_bin { "--exe" } else { "--lib" };
+    let args: Vec<&std::ffi::OsStr> = vec![
+        "--output-dir".as_ref(),
+        output_folder.as_os_str(),
+        "-o".as_ref(),
+        output_file.as_os_str(),
+        project_type.as_ref(),
+        "--verbose".as_ref(),
+        "--target".as_ref(),
+        "rollup".as_ref(),
+    ];
+    let session = Rc::new(Compiler::new_session([input], None, args));
+    midenc_compile::compile(session.clone())?;
+    Ok(output_file)
 }

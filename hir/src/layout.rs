@@ -1,4 +1,4 @@
-use std::{
+use core::{
     ops::{Index, IndexMut},
     ptr::NonNull,
 };

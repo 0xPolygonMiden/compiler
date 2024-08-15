@@ -87,13 +87,15 @@ impl RewritePass for InlineBlocks {
             // If inlining can proceed, do so until we reach a point where the inlined terminator
             // returns from the function, has multiple successors, or branches to a block with
             // multiple predecessors.
-            while let BranchInfo::SingleDest(b, args) =
+            while let BranchInfo::SingleDest(succ) =
                 function.dfg.analyze_branch(function.dfg.last_inst(p).unwrap())
             {
+                let destination = succ.destination;
+
                 // If this successor has other predecessors, it can't be inlined, so
                 // add it to the work list and move on
-                if cfg.num_predecessors(b) > 1 {
-                    worklist.push_back(b);
+                if cfg.num_predecessors(destination) > 1 {
+                    worklist.push_back(destination);
                     break;
                 }
 
@@ -103,16 +105,20 @@ impl RewritePass for InlineBlocks {
                 // as we must visit all uses of the block arguments and update them. This
                 // is left as a future extension of this pass should we find that it is
                 // valuable as an optimization.
-                if !args.is_empty() {
+                if !succ.args.is_empty() {
                     // Compute the set of values to rewrite
-                    for (from, to) in
-                        function.dfg.block_params(b).iter().copied().zip(args.iter().copied())
+                    for (from, to) in function
+                        .dfg
+                        .block_params(destination)
+                        .iter()
+                        .copied()
+                        .zip(succ.args.iter().copied())
                     {
                         rewrites.insert(from, to);
                     }
                 }
 
-                inline(b, p, function, &mut worklist, &rewrites, &mut cfg);
+                inline(destination, p, function, &mut worklist, &rewrites, &mut cfg);
 
                 // Mark that the control flow graph as modified
                 changed = true;
@@ -167,16 +173,24 @@ fn inline(
     // Append the cloned terminator back to the inlined block before we detach it
     let from_terminator = from_terminator.expect("a block must have a terminator");
     match (*from_terminator).as_ref() {
-        Instruction::Br(Br { destination, .. }) => {
-            worklist.push_back(*destination);
+        Instruction::Br(Br { successor, .. }) => {
+            worklist.push_back(successor.destination);
         }
         Instruction::CondBr(CondBr {
-            then_dest: (then_blk, _),
-            else_dest: (else_blk, _),
+            then_dest,
+            else_dest,
             ..
         }) => {
-            worklist.push_back(*then_blk);
-            worklist.push_back(*else_blk);
+            worklist.push_back(then_dest.destination);
+            worklist.push_back(else_dest.destination);
+        }
+        Instruction::Switch(hir::Switch {
+            arms,
+            default: default_dest,
+            ..
+        }) => {
+            worklist.extend(arms.iter().map(|arm| arm.successor.destination));
+            worklist.push_back(default_dest.destination);
         }
         _ => (),
     }
@@ -226,12 +240,10 @@ fn rewrite_use(
     let mut worklist = SmallVec::<[Block; 2]>::default();
     match inst {
         Instruction::Br(Br {
-            destination,
-            ref mut args,
-            ..
+            ref mut successor, ..
         }) => {
-            worklist.push(*destination);
-            for arg in args.as_mut_slice(pool) {
+            worklist.push(successor.destination);
+            for arg in successor.args.as_mut_slice(pool) {
                 if let Some(replacement) = rewrites.get(arg).copied() {
                     *arg = replacement;
                 }
@@ -239,23 +251,47 @@ fn rewrite_use(
         }
         Instruction::CondBr(CondBr {
             ref mut cond,
-            then_dest: (then_dest, ref mut then_args),
-            else_dest: (else_dest, ref mut else_args),
+            ref mut then_dest,
+            ref mut else_dest,
             ..
         }) => {
-            worklist.push(*then_dest);
-            worklist.push(*else_dest);
+            worklist.push(then_dest.destination);
+            worklist.push(else_dest.destination);
             if let Some(replacement) = rewrites.get(cond).copied() {
                 *cond = replacement;
             }
-            for arg in then_args.as_mut_slice(pool) {
+            for arg in then_dest.args.as_mut_slice(pool) {
                 if let Some(replacement) = rewrites.get(arg).copied() {
                     *arg = replacement;
                 }
             }
-            for arg in else_args.as_mut_slice(pool) {
+            for arg in else_dest.args.as_mut_slice(pool) {
                 if let Some(replacement) = rewrites.get(arg).copied() {
                     *arg = replacement;
+                }
+            }
+        }
+        Instruction::Switch(hir::Switch {
+            ref mut arg,
+            ref mut arms,
+            default: ref mut default_dest,
+            ..
+        }) => {
+            worklist.extend(arms.iter().map(|arm| arm.successor.destination));
+            worklist.push(default_dest.destination);
+            if let Some(replacement) = rewrites.get(arg).copied() {
+                *arg = replacement;
+            }
+            for arg in default_dest.args.as_mut_slice(pool) {
+                if let Some(replacement) = rewrites.get(arg).copied() {
+                    *arg = replacement;
+                }
+            }
+            for arm in arms.iter_mut() {
+                for arg in arm.successor.args.as_mut_slice(pool) {
+                    if let Some(replacement) = rewrites.get(arg).copied() {
+                        *arg = replacement;
+                    }
                 }
             }
         }

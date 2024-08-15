@@ -1,5 +1,6 @@
 use midenc_hir::{
-    self as hir, ArgumentExtension, ArgumentPurpose, Felt, FieldElement, Immediate, Type,
+    self as hir, diagnostics::SourceSpan, ArgumentExtension, ArgumentPurpose, Felt, FieldElement,
+    Immediate, Type,
 };
 
 use super::{int64, OpEmitter};
@@ -9,7 +10,7 @@ impl<'a> OpEmitter<'a> {
     /// Assert that an integer value on the stack has the value 1
     ///
     /// This operation consumes the input value.
-    pub fn assert(&mut self, code: Option<u32>) {
+    pub fn assert(&mut self, code: Option<u32>, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let code = code.unwrap_or_default();
         match arg.ty() {
@@ -21,16 +22,19 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => {
-                self.emit(Op::AssertWithError(code));
+                self.emit(Op::AssertWithError(code), span);
             }
             Type::I128 | Type::U128 => {
-                self.emit_all(&[
-                    Op::Pushw([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ONE]),
-                    Op::AssertEqwWithError(code),
-                ]);
+                self.emit_all(
+                    &[
+                        Op::Pushw([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ONE]),
+                        Op::AssertEqwWithError(code),
+                    ],
+                    span,
+                );
             }
             Type::U64 | Type::I64 => {
-                self.emit_all(&[Op::AssertzWithError(code), Op::AssertWithError(code)]);
+                self.emit_all(&[Op::AssertzWithError(code), Op::AssertWithError(code)], span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assert: expected integer, got {ty}")
@@ -42,7 +46,7 @@ impl<'a> OpEmitter<'a> {
     /// Assert that an integer value on the stack has the value 0
     ///
     /// This operation consumes the input value.
-    pub fn assertz(&mut self, code: Option<u32>) {
+    pub fn assertz(&mut self, code: Option<u32>, span: SourceSpan) {
         let arg = self.stack.pop().expect("operand stack is empty");
         let code = code.unwrap_or_default();
         match arg.ty() {
@@ -54,13 +58,13 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => {
-                self.emit(Op::AssertzWithError(code));
+                self.emit(Op::AssertzWithError(code), span);
             }
             Type::U64 | Type::I64 => {
-                self.emit_all(&[Op::AssertzWithError(code), Op::AssertzWithError(code)]);
+                self.emit_all(&[Op::AssertzWithError(code), Op::AssertzWithError(code)], span);
             }
             Type::U128 | Type::I128 => {
-                self.emit_all(&[Op::Pushw([Felt::ZERO; 4]), Op::AssertEqwWithError(code)]);
+                self.emit_all(&[Op::Pushw([Felt::ZERO; 4]), Op::AssertEqwWithError(code)], span);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assertz: expected integer, got {ty}")
@@ -72,7 +76,7 @@ impl<'a> OpEmitter<'a> {
     /// Assert that the top two integer values on the stack have the same value
     ///
     /// This operation consumes the input values.
-    pub fn assert_eq(&mut self) {
+    pub fn assert_eq(&mut self, span: SourceSpan) {
         let rhs = self.pop().expect("operand stack is empty");
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
@@ -86,17 +90,20 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => {
-                self.emit(Op::AssertEq);
+                self.emit(Op::AssertEq, span);
             }
-            Type::U128 | Type::I128 => self.emit(Op::AssertEqw),
+            Type::U128 | Type::I128 => self.emit(Op::AssertEqw, span),
             Type::U64 | Type::I64 => {
-                self.emit_all(&[
-                    // compare the hi bits
-                    Op::Movup(2),
-                    Op::AssertEq,
-                    // compare the low bits
-                    Op::AssertEq,
-                ]);
+                self.emit_all(
+                    &[
+                        // compare the hi bits
+                        Op::Movup(2),
+                        Op::AssertEq,
+                        // compare the low bits
+                        Op::AssertEq,
+                    ],
+                    span,
+                );
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assert_eq: expected integer, got {ty}")
@@ -109,7 +116,7 @@ impl<'a> OpEmitter<'a> {
     /// as the provided immediate.
     ///
     /// This operation consumes the input value.
-    pub fn assert_eq_imm(&mut self, imm: Immediate) {
+    pub fn assert_eq_imm(&mut self, imm: Immediate, span: SourceSpan) {
         let lhs = self.pop().expect("operand stack is empty");
         let ty = lhs.ty();
         assert_eq!(ty, imm.ty(), "expected assert_eq_imm operands to have the same type");
@@ -122,11 +129,11 @@ impl<'a> OpEmitter<'a> {
             | Type::U8
             | Type::I8
             | Type::I1 => {
-                self.emit_all(&[Op::EqImm(imm.as_felt().unwrap()), Op::Assert]);
+                self.emit_all(&[Op::EqImm(imm.as_felt().unwrap()), Op::Assert], span);
             }
             Type::I128 | Type::U128 => {
-                self.push_immediate(imm);
-                self.emit(Op::AssertEqw)
+                self.push_immediate(imm, span);
+                self.emit(Op::AssertEqw, span)
             }
             Type::I64 | Type::U64 => {
                 let imm = match imm {
@@ -135,12 +142,15 @@ impl<'a> OpEmitter<'a> {
                     _ => unreachable!(),
                 };
                 let (hi, lo) = int64::to_raw_parts(imm);
-                self.emit_all(&[
-                    Op::EqImm(Felt::new(hi as u64)),
-                    Op::Assert,
-                    Op::EqImm(Felt::new(lo as u64)),
-                    Op::Assert,
-                ])
+                self.emit_all(
+                    &[
+                        Op::EqImm(Felt::new(hi as u64)),
+                        Op::Assert,
+                        Op::EqImm(Felt::new(lo as u64)),
+                        Op::Assert,
+                    ],
+                    span,
+                )
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assert_eq: expected integer, got {ty}")
@@ -160,7 +170,7 @@ impl<'a> OpEmitter<'a> {
     /// * Pop `b` and `a` from the stack, and push back `b` if `c` is true, or `a` if `c` is false.
     ///
     /// This operation will assert that the selected value is a valid value for the given type.
-    pub fn select(&mut self) {
+    pub fn select(&mut self, span: SourceSpan) {
         let c = self.stack.pop().expect("operand stack is empty");
         let b = self.stack.pop().expect("operand stack is empty");
         let a = self.stack.pop().expect("operand stack is empty");
@@ -175,23 +185,26 @@ impl<'a> OpEmitter<'a> {
             | Type::I16
             | Type::U8
             | Type::I8
-            | Type::I1 => self.emit(Op::Cdrop),
-            Type::I128 | Type::U128 => self.emit(Op::Cdropw),
+            | Type::I1 => self.emit(Op::Cdrop, span),
+            Type::I128 | Type::U128 => self.emit(Op::Cdropw, span),
             Type::I64 | Type::U64 => {
                 // Perform two conditional drops, one for each 32-bit limb
                 // corresponding to the value which is being selected
-                self.emit_all(&[
-                    // stack starts as [c, b_hi, b_lo, a_hi, a_lo]
-                    Op::Dup(0),   // [c, c, b_hi, b_lo, a_hi, a_lo]
-                    Op::Movdn(6), // [c, b_hi, b_lo, a_hi, a_lo, c]
-                    Op::Movup(3), // [a_hi, c, b_hi, b_lo, a_lo, c]
-                    Op::Movup(2), // [b_hi, a_hi, c, b_lo, a_lo, c]
-                    Op::Movup(6), // [c, b_hi, a_hi, c, b_lo, a_lo]
-                    Op::Cdrop,    // [d_hi, c, b_lo, a_lo]
-                    Op::Movdn(4), // [c, b_lo, a_lo, d_hi]
-                    Op::Cdrop,    // [d_lo, d_hi]
-                    Op::Swap(1),  // [d_hi, d_lo]
-                ]);
+                self.emit_all(
+                    &[
+                        // stack starts as [c, b_hi, b_lo, a_hi, a_lo]
+                        Op::Dup(0),   // [c, c, b_hi, b_lo, a_hi, a_lo]
+                        Op::Movdn(6), // [c, b_hi, b_lo, a_hi, a_lo, c]
+                        Op::Movup(3), // [a_hi, c, b_hi, b_lo, a_lo, c]
+                        Op::Movup(2), // [b_hi, a_hi, c, b_lo, a_lo, c]
+                        Op::Movup(6), // [c, b_hi, a_hi, c, b_lo, a_lo]
+                        Op::Cdrop,    // [d_hi, c, b_lo, a_lo]
+                        Op::Movdn(4), // [c, b_lo, a_lo, d_hi]
+                        Op::Cdrop,    // [d_lo, d_hi]
+                        Op::Swap(1),  // [d_hi, d_lo]
+                    ],
+                    span,
+                );
             }
             ty if !ty.is_integer() => {
                 panic!("invalid argument to assert_eq: expected integer, got {ty}")
@@ -204,7 +217,7 @@ impl<'a> OpEmitter<'a> {
     /// Execute the given procedure.
     ///
     /// A function called using this operation is invoked in the same memory context as the caller.
-    pub fn exec(&mut self, callee: &hir::ExternalFunction) {
+    pub fn exec(&mut self, callee: &hir::ExternalFunction, span: SourceSpan) {
         let import = callee;
         let callee = import.id;
         let signature = &import.signature;
@@ -270,7 +283,7 @@ impl<'a> OpEmitter<'a> {
                     );
                     // Zero-extend this argument
                     self.stack.push(arg);
-                    self.zext(&param.ty);
+                    self.zext(&param.ty, span);
                     self.stack.drop();
                 }
                 // Caller can provide a smaller type which will be sign-extended to the expected
@@ -307,7 +320,7 @@ impl<'a> OpEmitter<'a> {
                     }
                     // Push the operand back on the stack for `sext`
                     self.stack.push(arg);
-                    self.sext(&param.ty);
+                    self.sext(&param.ty, span);
                     self.stack.drop();
                 }
                 ArgumentExtension::Zext | ArgumentExtension::Sext => (),
@@ -318,13 +331,13 @@ impl<'a> OpEmitter<'a> {
             self.stack.push(result.ty.clone());
         }
 
-        self.emit(Op::Exec(callee));
+        self.emit(Op::Exec(callee), span);
     }
 
     /// Execute the given procedure as a syscall.
     ///
     /// A function called using this operation is invoked in the same memory context as the caller.
-    pub fn syscall(&mut self, _callee: &hir::ExternalFunction) {
+    pub fn syscall(&mut self, _callee: &hir::ExternalFunction, _span: SourceSpan) {
         todo!()
     }
 }

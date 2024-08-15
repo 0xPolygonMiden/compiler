@@ -6,12 +6,26 @@ use core::{
 };
 
 use anyhow::anyhow;
-use miden_diagnostics::{SourceSpan, Spanned};
 
-use super::{
+use crate::{
+    diagnostics::{SourceSpan, Spanned},
     formatter::{self, PrettyPrint},
     symbols, Symbol,
 };
+
+/// Demangle `name`, where `name` was mangled using Rust's mangling scheme
+#[inline]
+pub fn demangle<S: AsRef<str>>(name: S) -> String {
+    demangle_impl(name.as_ref())
+}
+
+fn demangle_impl(name: &str) -> String {
+    let mut input = name.as_bytes();
+    let mut demangled = Vec::with_capacity(input.len() * 2);
+    rustc_demangle::demangle_stream(&mut input, &mut demangled, /* include_hash= */ false)
+        .expect("failed to write demangled identifier");
+    String::from_utf8(demangled).expect("demangled identifier contains invalid utf-8")
+}
 
 /// Represents a globally-unique module/function name pair, with corresponding source spans.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Spanned)]
@@ -19,6 +33,17 @@ pub struct FunctionIdent {
     pub module: Ident,
     #[span]
     pub function: Ident,
+}
+impl FunctionIdent {
+    pub fn display(&self) -> impl fmt::Display + '_ {
+        use crate::formatter::*;
+
+        flatten(
+            const_text(self.module.as_str())
+                + const_text("::")
+                + const_text(self.function.as_str()),
+        )
+    }
 }
 impl FromStr for FunctionIdent {
     type Err = anyhow::Error;

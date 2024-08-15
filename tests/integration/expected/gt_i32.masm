@@ -1,10 +1,7 @@
-# mod test_rust_b5c4c7a4d7b24d8bd326c64565f6f00c5acdaaabb321e953eac6c8606d72ef20
+# mod test_rust_dcf68bbd3d38962baca8bcc39895a74e9f927a15ae1af780f83843028d53154e
 
 export.entrypoint
     swap.1 exec.::intrinsics::i32::is_gt
 end
 
 
-begin
-    exec.::test_rust_b5c4c7a4d7b24d8bd326c64565f6f00c5acdaaabb321e953eac6c8606d72ef20::entrypoint
-end

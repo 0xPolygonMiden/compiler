@@ -1,25 +1,13 @@
 use std::sync::Arc;
 
-use miden_diagnostics::{
-    term::termcolor::ColorChoice, CodeMap, DiagnosticsConfig, DiagnosticsHandler, Emitter,
-    NullEmitter, Verbosity,
+use midenc_hir::{
+    diagnostics::{ColorChoice, NullEmitter},
+    testing::TestContext,
 };
+use midenc_session::Options;
 
-pub fn default_emitter(color: ColorChoice) -> Arc<dyn Emitter> {
-    Arc::new(NullEmitter::new(color))
-}
-
-pub fn test_diagnostics() -> DiagnosticsHandler {
-    let codemap = Arc::new(CodeMap::new());
-
-    DiagnosticsHandler::new(
-        DiagnosticsConfig {
-            verbosity: Verbosity::Debug,
-            warnings_as_errors: false,
-            no_warn: false,
-            display: Default::default(),
-        },
-        codemap,
-        default_emitter(ColorChoice::Auto),
-    )
+pub fn test_context() -> TestContext {
+    let options = Options::default().with_verbosity(midenc_session::Verbosity::Debug);
+    let emitter = Arc::new(NullEmitter::new(ColorChoice::Auto));
+    TestContext::default_with_opts_and_emitter(options, Some(emitter))
 }

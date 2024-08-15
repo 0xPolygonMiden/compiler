@@ -1,7 +1,7 @@
 use midenc_hir::pass::AnalysisManager;
 use midenc_session::Session;
 
-use crate::{CompilerError, CompilerResult};
+use crate::{CompilerResult, CompilerStopped};
 
 /// This trait is implemented by a stage in the compiler
 pub trait Stage {
@@ -47,6 +47,36 @@ pub trait Stage {
     }
 }
 
+impl<'a, I, O> Stage for &'a mut dyn FnMut(I, &mut AnalysisManager, &Session) -> CompilerResult<O> {
+    type Input = I;
+    type Output = O;
+
+    #[inline]
+    fn run(
+        &mut self,
+        input: Self::Input,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> CompilerResult<Self::Output> {
+        (*self)(input, analyses, session)
+    }
+}
+
+impl<I, O> Stage for Box<dyn FnMut(I, &mut AnalysisManager, &Session) -> CompilerResult<O>> {
+    type Input = I;
+    type Output = O;
+
+    #[inline]
+    fn run(
+        &mut self,
+        input: Self::Input,
+        analyses: &mut AnalysisManager,
+        session: &Session,
+    ) -> CompilerResult<Self::Output> {
+        self(input, analyses, session)
+    }
+}
+
 /// This struct is used to chain multiple [Stage] together
 pub struct Chain<A, B> {
     a: A,
@@ -72,11 +102,11 @@ where
         session: &Session,
     ) -> CompilerResult<Self::Output> {
         if !self.a.enabled(session) {
-            return Err(CompilerError::Stopped);
+            return Err(CompilerStopped.into());
         }
         let output = self.a.run(input, analyses, session)?;
         if !self.b.enabled(session) {
-            return Err(CompilerError::Stopped);
+            return Err(CompilerStopped.into());
         }
         self.b.run(output, analyses, session)
     }
@@ -107,7 +137,7 @@ where
         session: &Session,
     ) -> CompilerResult<Self::Output> {
         if !self.a.enabled(session) {
-            return Err(CompilerError::Stopped);
+            return Err(CompilerStopped.into());
         }
         let output = self.a.run(input, analyses, session)?;
         if !self.b.enabled(session) {

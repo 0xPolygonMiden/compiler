@@ -1,20 +1,25 @@
+mod assertions;
 mod builder;
 mod display;
+mod events;
 mod import;
 mod isa;
 mod stack;
+pub mod utils;
 
 use cranelift_entity::PrimaryMap;
 use smallvec::smallvec;
 
 pub use self::{
+    assertions::*,
     builder::*,
     display::{DisplayInlineAsm, DisplayMasmBlock},
+    events::*,
     import::{MasmImport, ModuleImportInfo},
     isa::*,
     stack::{OperandStack, Stack, StackElement},
 };
-use super::{DataFlowGraph, Opcode, Type, ValueList};
+use crate::{diagnostics::SourceSpan, DataFlowGraph, Opcode, Type, ValueList};
 
 /// Represents Miden Assembly (MASM) directly in the IR
 ///
@@ -78,8 +83,8 @@ impl InlineAsm {
     }
 
     /// Appends `op` to the end of `block`
-    pub fn push(&mut self, block: MasmBlockId, op: MasmOp) {
-        self.blocks[block].push(op);
+    pub fn push(&mut self, block: MasmBlockId, op: MasmOp, span: SourceSpan) {
+        self.blocks[block].push(op, span);
     }
 
     pub fn display<'a, 'b: 'a>(

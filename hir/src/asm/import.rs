@@ -5,10 +5,12 @@ use core::{
 };
 
 use anyhow::bail;
-use miden_diagnostics::{SourceSpan, Spanned};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{FunctionIdent, Ident, Symbol};
+use crate::{
+    diagnostics::{SourceSpan, Spanned},
+    FunctionIdent, Ident, Symbol,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct ModuleImportInfo {

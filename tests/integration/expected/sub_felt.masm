@@ -5,6 +5,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::sub_felt::entrypoint
-end

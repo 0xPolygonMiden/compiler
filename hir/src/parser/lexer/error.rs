@@ -1,6 +1,6 @@
 use core::{fmt, num::IntErrorKind};
 
-use miden_diagnostics::{Diagnostic, SourceIndex, SourceSpan, ToDiagnostic};
+use crate::diagnostics::{miette, Diagnostic, SourceSpan};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum InvalidEscapeKind {
@@ -19,31 +19,57 @@ impl fmt::Display for InvalidEscapeKind {
 }
 
 /// Errors that may occur during lexing of the source
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error, Diagnostic)]
 pub enum LexicalError {
     #[error("invalid integer value: {}", DisplayIntErrorKind(reason))]
+    #[diagnostic()]
     InvalidInt {
+        #[label]
         span: SourceSpan,
         reason: IntErrorKind,
     },
     #[error("encountered unexpected character '{found}'")]
-    UnexpectedCharacter { start: SourceIndex, found: char },
+    #[diagnostic()]
+    UnexpectedCharacter {
+        #[label]
+        start: SourceSpan,
+        found: char,
+    },
     #[error("unclosed string")]
-    UnclosedString { span: SourceSpan },
+    #[diagnostic()]
+    UnclosedString {
+        #[label]
+        span: SourceSpan,
+    },
     #[error("invalid unicode escape: {kind}")]
+    #[diagnostic()]
     InvalidUnicodeEscape {
+        #[label]
         span: SourceSpan,
         kind: InvalidEscapeKind,
     },
     #[error("invalid hex escape: {kind}")]
+    #[diagnostic()]
     InvalidHexEscape {
+        #[label]
         span: SourceSpan,
         kind: InvalidEscapeKind,
     },
     #[error("invalid module identifier")]
-    InvalidModuleIdentifier { span: SourceSpan },
+    #[diagnostic(help(
+        "module names must be non-empty, start with 'a-z', and only contain ascii alpha-numeric \
+         characters, '_', or '::' as a namespacing operator",
+    ))]
+    InvalidModuleIdentifier {
+        #[label]
+        span: SourceSpan,
+    },
     #[error("invalid function identifier")]
-    InvalidFunctionIdentifier { span: SourceSpan },
+    #[diagnostic(help("function names must be non-empty, and start with '_' or 'a-z'"))]
+    InvalidFunctionIdentifier {
+        #[label]
+        span: SourceSpan,
+    },
 }
 impl PartialEq for LexicalError {
     fn eq(&self, other: &Self) -> bool {
@@ -68,47 +94,6 @@ impl PartialEq for LexicalError {
                 true
             }
             _ => false,
-        }
-    }
-}
-impl ToDiagnostic for LexicalError {
-    fn to_diagnostic(self) -> Diagnostic {
-        use miden_diagnostics::Label;
-
-        match self {
-            Self::InvalidInt { span, ref reason } => Diagnostic::error()
-                .with_message("invalid integer literal")
-                .with_labels(vec![Label::primary(span.source_id(), span)
-                    .with_message(format!("{}", DisplayIntErrorKind(reason)))]),
-            Self::UnexpectedCharacter { start, .. } => {
-                Diagnostic::error().with_message("unexpected character").with_labels(vec![
-                    Label::primary(start.source_id(), SourceSpan::new(start, start)),
-                ])
-            }
-            Self::UnclosedString { span, .. } => Diagnostic::error()
-                .with_message("unclosed string")
-                .with_labels(vec![Label::primary(span.source_id(), span)]),
-            Self::InvalidUnicodeEscape { span, kind } => {
-                Diagnostic::error().with_message("invalid unicode escape").with_labels(vec![
-                    Label::primary(span.source_id(), span).with_message(kind.to_string()),
-                ])
-            }
-            Self::InvalidHexEscape { span, kind } => {
-                Diagnostic::error().with_message("invalid hex escape").with_labels(vec![
-                    Label::primary(span.source_id(), span).with_message(kind.to_string()),
-                ])
-            }
-            Self::InvalidModuleIdentifier { span, .. } => Diagnostic::error()
-                .with_message("invalid module identifier")
-                .with_labels(vec![Label::primary(span.source_id(), span).with_message(
-                    "module names must be non-empty, start with 'a-z', and only contain ascii \
-                     alpha-numeric characters, '_', or '::' as a namespacing operator",
-                )]),
-            Self::InvalidFunctionIdentifier { span, .. } => Diagnostic::error()
-                .with_message("invalid function identifier")
-                .with_labels(vec![Label::primary(span.source_id(), span).with_message(
-                    "function names must be non-empty, and start with '_' or 'a-z'",
-                )]),
         }
     }
 }

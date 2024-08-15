@@ -1,4 +1,4 @@
-# mod test_rust_0321dd193a3848fd9694d83145f19dfd509077216649a5c8574ca9ef1fad1279
+# mod test_rust_947b1fd0c78559d180609e8a959684c5090a8ac458193ed6a1103a863d3c8bd0
 
 export.entrypoint
     push.15
@@ -9,6 +9,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::test_rust_0321dd193a3848fd9694d83145f19dfd509077216649a5c8574ca9ef1fad1279::entrypoint
-end

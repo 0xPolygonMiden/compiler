@@ -1,24 +1,18 @@
-use std::{
+use alloc::rc::Rc;
+use core::{
     any::{Any, TypeId},
     hash::Hash,
-    rc::Rc,
 };
 
 use midenc_session::Session;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
+use crate::diagnostics::Report;
+
 type BuildFxHasher = std::hash::BuildHasherDefault<FxHasher>;
 
-/// This error type is produced when an [Analysis] fails
-#[derive(Debug, thiserror::Error)]
-pub enum AnalysisError {
-    /// The analysis failed for an unexpected reason
-    #[error(transparent)]
-    Failed(#[from] anyhow::Error),
-}
-
 /// A convenient type alias for `Result<T, AnalysisError>`
-pub type AnalysisResult<T> = Result<T, AnalysisError>;
+pub type AnalysisResult<T> = Result<T, Report>;
 
 #[doc(hidden)]
 pub trait PreservableAnalysis: Any {

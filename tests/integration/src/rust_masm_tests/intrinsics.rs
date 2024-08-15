@@ -2,16 +2,13 @@ use core::panic;
 
 use expect_test::expect_file;
 use miden_core::Felt;
+use midenc_debug::{PushToStack, TestFelt};
 use proptest::{
     arbitrary::any,
     test_runner::{TestError, TestRunner},
 };
 
-use crate::{
-    felt_conversion::{PushToStack, TestFelt},
-    rust_masm_tests::run_masm_vs_rust,
-    CompilerTest,
-};
+use crate::{rust_masm_tests::run_masm_vs_rust, CompilerTest};
 
 /// Compiles, runs VM vs. Rust fuzzing the inputs via proptest
 macro_rules! test_bin_op {
@@ -24,7 +21,7 @@ macro_rules! test_bin_op {
                 let res_ty_str = stringify!($res_ty);
                 let main_fn = format!("(a: {op_ty_str}, b: {op_ty_str}) -> {res_ty_str} {{ a {op_str} b }}");
                 let artifact_name = format!("{}_{}", stringify!($name), stringify!($op_ty).to_lowercase());
-                let mut test = CompilerTest::rust_fn_body_with_stdlib_sys(&artifact_name, &main_fn, false);
+                let mut test = CompilerTest::rust_fn_body_with_stdlib_sys(artifact_name.clone(), &main_fn, false, None);
                 // Test expected compilation artifacts
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
                 test.expect_ir(expect_file![format!("../../expected/{artifact_name}.hir")]);
@@ -43,7 +40,7 @@ macro_rules! test_bin_op {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         PushToStack::try_push(&b, &mut args);
                         PushToStack::try_push(&a, &mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
@@ -66,7 +63,7 @@ macro_rules! test_compile_comparison_op {
                 let op_str = stringify!($op);
                 let main_fn = format!("(a: Felt, b: Felt) -> bool {{ a {op_str} b }}");
                 let artifact_name = format!("{}_felt", stringify!($name));
-                let mut test = CompilerTest::rust_fn_body_with_stdlib_sys(&artifact_name, &main_fn, false);
+                let mut test = CompilerTest::rust_fn_body_with_stdlib_sys(artifact_name.clone(), &main_fn, false, None);
                 // Test expected compilation artifacts
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
                 test.expect_ir(expect_file![format!("../../expected/{artifact_name}.hir")]);

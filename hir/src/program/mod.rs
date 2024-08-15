@@ -1,11 +1,17 @@
 mod linker;
 
+use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
 
 use intrusive_collections::RBTree;
+use miden_assembly::Library as CompiledLibrary;
+use miden_core::crypto::hash::RpoDigest;
 
-pub use self::linker::{Linker, LinkerError};
-use super::*;
+pub use self::linker::Linker;
+use crate::{
+    diagnostics::{DiagnosticsHandler, Report},
+    *,
+};
 
 /// A [Program] is a collection of [Module]s that are being compiled together as a package.
 ///
@@ -27,6 +33,8 @@ use super::*;
 pub struct Program {
     /// This tree stores all of the modules being compiled as part of the current program.
     modules: RBTree<ModuleTreeAdapter>,
+    /// The set of compiled libraries this program links against
+    libraries: BTreeMap<RpoDigest, CompiledLibrary>,
     /// If set, this field is used to determine which function is the entrypoint for the program.
     ///
     /// When generating Miden Assembly, this will determine whether or not we're emitting
@@ -52,9 +60,14 @@ impl Program {
         Self::default()
     }
 
+    /// Add to the set of libraries this [Program] will be assembled with
+    pub fn add_library(&mut self, lib: CompiledLibrary) {
+        self.libraries.insert(*lib.digest(), lib);
+    }
+
     /// Returns true if this program has a defined entrypoint
     pub fn has_entrypoint(&self) -> bool {
-        self.entrypoint().is_none()
+        self.entrypoint().is_some()
     }
 
     /// Returns true if this program is executable.
@@ -78,6 +91,16 @@ impl Program {
     /// Return a mutable reference to the module table for this program
     pub fn modules_mut(&mut self) -> &mut RBTree<ModuleTreeAdapter> {
         &mut self.modules
+    }
+
+    /// Return the set of libraries this program links against
+    pub fn libraries(&self) -> &BTreeMap<RpoDigest, CompiledLibrary> {
+        &self.libraries
+    }
+
+    /// Return the set of libraries this program links against as a mutable reference
+    pub fn libraries_mut(&mut self) -> &mut BTreeMap<RpoDigest, CompiledLibrary> {
+        &mut self.libraries
     }
 
     /// Return a reference to the data segment table for this program
@@ -123,14 +146,21 @@ impl crate::pass::AnalysisKey for Program {
 /// Simply create the builder, add/build one or more modules, then call `link` to obtain a
 /// [Program].
 pub struct ProgramBuilder<'a> {
-    modules: std::collections::BTreeMap<Ident, Box<Module>>,
+    /// The set of HIR modules to link into the program
+    modules: BTreeMap<Ident, Box<Module>>,
+    /// The set of modules defined externally, which will be linked during assembly
+    extern_modules: BTreeMap<Ident, Vec<Ident>>,
+    /// The set of libraries we're linking against
+    libraries: BTreeMap<RpoDigest, CompiledLibrary>,
     entry: Option<FunctionIdent>,
-    diagnostics: &'a miden_diagnostics::DiagnosticsHandler,
+    diagnostics: &'a DiagnosticsHandler,
 }
 impl<'a> ProgramBuilder<'a> {
-    pub fn new(diagnostics: &'a miden_diagnostics::DiagnosticsHandler) -> Self {
+    pub fn new(diagnostics: &'a DiagnosticsHandler) -> Self {
         Self {
             modules: Default::default(),
+            extern_modules: Default::default(),
+            libraries: Default::default(),
             entry: None,
             diagnostics,
         }
@@ -158,13 +188,42 @@ impl<'a> ProgramBuilder<'a> {
     /// Returns `Err` if a module with the same name already exists
     pub fn add_module(&mut self, module: Box<Module>) -> Result<(), ModuleConflictError> {
         let module_name = module.name;
-        if self.modules.contains_key(&module_name) {
-            return Err(ModuleConflictError(module_name));
+        if self.modules.contains_key(&module_name) || self.extern_modules.contains_key(&module_name)
+        {
+            return Err(ModuleConflictError::new(module_name));
         }
 
         self.modules.insert(module_name, module);
 
         Ok(())
+    }
+
+    /// Make the linker aware that `module` (with the given set of exports), is available to be
+    /// linked against, but is already compiled to Miden Assembly, so has no HIR representation.
+    ///
+    /// Returns `Err` if a module with the same name already exists
+    pub fn add_extern_module<E>(
+        &mut self,
+        module: Ident,
+        exports: E,
+    ) -> Result<(), ModuleConflictError>
+    where
+        E: IntoIterator<Item = Ident>,
+    {
+        if self.modules.contains_key(&module) || self.extern_modules.contains_key(&module) {
+            return Err(ModuleConflictError::new(module));
+        }
+
+        self.extern_modules.insert(module, exports.into_iter().collect());
+
+        Ok(())
+    }
+
+    /// Make the linker aware of the objects contained in the given library.
+    ///
+    /// Duplicate libraries/objects are ignored.
+    pub fn add_library(&mut self, library: CompiledLibrary) {
+        self.libraries.insert(*library.digest(), library);
     }
 
     /// Start building a [Module] with the given name.
@@ -184,16 +243,18 @@ impl<'a> ProgramBuilder<'a> {
     }
 
     /// Link a [Program] from the current [ProgramBuilder] state
-    pub fn link(self) -> Result<Box<Program>, LinkerError> {
-        let mut linker = Linker::new();
+    pub fn link(self) -> Result<Box<Program>, Report> {
+        let mut linker = Linker::new(self.diagnostics);
+
         let entrypoint = self.entry.or_else(|| self.modules.values().find_map(|m| m.entrypoint()));
         if let Some(entry) = entrypoint {
             linker.with_entrypoint(entry)?;
         }
 
-        for (_, module) in self.modules.into_iter() {
-            linker.add(module)?;
-        }
+        linker.add_libraries(self.libraries.into_values());
+
+        self.extern_modules.into_iter().try_for_each(|obj| linker.add_object(obj))?;
+        self.modules.into_values().try_for_each(|obj| linker.add_object(obj))?;
 
         linker.link()
     }
@@ -260,15 +321,15 @@ impl<'a, 'b: 'a> AsMut<ModuleBuilder> for ProgramModuleBuilder<'a, 'b> {
 /// This is used to build a [Function] from a [ProgramModuleBuilder].
 ///
 /// It is basically just a wrapper around [ModuleFunctionBuilder], but overrides
-/// `build` to use the [miden_diagnostics::DiagnosticsHandler] of the parent
+/// `build` to use the [DiagnosticsHandler] of the parent
 /// [ProgramBuilder].
 pub struct ProgramFunctionBuilder<'a, 'b: 'a> {
-    diagnostics: &'b miden_diagnostics::DiagnosticsHandler,
+    diagnostics: &'b DiagnosticsHandler,
     fb: ModuleFunctionBuilder<'a>,
 }
 impl<'a, 'b: 'a> ProgramFunctionBuilder<'a, 'b> {
     /// Build the current function
-    pub fn build(self) -> Result<FunctionIdent, InvalidFunctionError> {
+    pub fn build(self) -> Result<FunctionIdent, Report> {
         let diagnostics = self.diagnostics;
         self.fb.build(diagnostics)
     }

@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct CompileFlag {
     pub name: &'static str,
     pub short: Option<char>,
@@ -8,6 +9,7 @@ pub struct CompileFlag {
     pub action: FlagAction,
     pub default_missing_value: Option<&'static str>,
     pub default_value: Option<&'static str>,
+    pub hide: Option<bool>,
 }
 impl CompileFlag {
     pub const fn new(name: &'static str) -> Self {
@@ -21,6 +23,7 @@ impl CompileFlag {
             action: FlagAction::Set,
             default_missing_value: None,
             default_value: None,
+            hide: None,
         }
     }
 
@@ -61,6 +64,11 @@ impl CompileFlag {
 
     pub const fn default_missing_value(mut self, value: &'static str) -> Self {
         self.default_missing_value = Some(value);
+        self
+    }
+
+    pub const fn hide(mut self, yes: bool) -> Self {
+        self.hide = Some(yes);
         self
     }
 }

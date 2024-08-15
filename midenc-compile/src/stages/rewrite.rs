@@ -1,45 +1,55 @@
-use midenc_hir::{self as hir, RewritePassRegistration};
+use midenc_hir::RewritePassRegistration;
 
 use super::*;
 
 /// This stage applies all registered (and enabled) module-scoped rewrites to input HIR module(s)
 pub struct ApplyRewritesStage;
 impl Stage for ApplyRewritesStage {
-    type Input = Box<hir::Module>;
-    type Output = Box<hir::Module>;
+    type Input = LinkerInput;
+    type Output = LinkerInput;
 
     fn enabled(&self, session: &Session) -> bool {
-        !session.parse_only()
+        !session.analyze_only()
     }
 
     fn run(
         &mut self,
-        mut input: Self::Input,
+        input: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        // Get all registered module rewrites and apply them in the order they appear
-        let mut registered = vec![];
-        let matches = session.matches();
-        for rewrite in inventory::iter::<RewritePassRegistration<hir::Module>> {
-            let flag = rewrite.name();
-            if matches.try_contains_id(flag).is_ok() {
-                if let Some(index) = matches.index_of(flag) {
-                    let is_enabled = matches.get_flag(flag);
-                    if is_enabled {
-                        registered.push((index, rewrite.get()));
+        let output = match input {
+            input @ LinkerInput::Masm(_) => input,
+            LinkerInput::Hir(mut input) => {
+                // Get all registered module rewrites and apply them in the order they appear
+                let mut registered = vec![];
+                let matches = session.matches();
+                for rewrite in inventory::iter::<RewritePassRegistration<hir::Module>> {
+                    let flag = rewrite.name();
+                    if matches.try_contains_id(flag).is_ok() {
+                        if let Some(index) = matches.index_of(flag) {
+                            let is_enabled = matches.get_flag(flag);
+                            if is_enabled {
+                                registered.push((index, rewrite.get()));
+                            }
+                        }
                     }
                 }
+                registered.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+
+                // Populate the set of rewrite passes with default transformations, if there are no
+                // specific passes selected.
+                let mut rewrites =
+                    masm::default_rewrites(registered.into_iter().map(|(_, r)| r), session);
+                rewrites.apply(&mut input, analyses, session)?;
+
+                LinkerInput::Hir(input)
             }
+        };
+        if session.rewrite_only() {
+            Err(Report::from(CompilerStopped))
+        } else {
+            Ok(output)
         }
-        registered.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
-
-        // Populate the set of rewrite passes with default transformations, if there are no
-        // specific passes selected.
-        let mut rewrites =
-            midenc_codegen_masm::default_rewrites(registered.into_iter().map(|(_, r)| r), session);
-        rewrites.apply(&mut input, analyses, session)?;
-
-        Ok(input)
     }
 }

@@ -6,7 +6,6 @@
   (type (;4;) (func (param i32 i32 i32) (result i32)))
   (type (;5;) (func (param i32 i32 i32)))
   (type (;6;) (func (param i32 i32)))
-  (type (;7;) (func))
   (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_note_get_inputs (;0;) (type 0)))
   (func $entrypoint (;1;) (type 1) (param i32)
     local.get 0
@@ -499,45 +498,37 @@
     i32.const 0
     call $alloc::raw_vec::RawVec<T,A>::try_allocate_in
     local.get 1
-    i32.load offset=12
-    local.set 2
-    local.get 1
     i32.load offset=8
-    local.set 3
+    local.set 2
     block ;; label = @1
-      block ;; label = @2
-        local.get 1
-        i32.load offset=4
-        i32.eqz
-        br_if 0 (;@2;)
-        local.get 3
-        i32.eqz
-        br_if 1 (;@1;)
-        local.get 3
-        local.get 2
-        call $alloc::alloc::handle_alloc_error
-        unreachable
-      end
-      local.get 2
-      call $miden_tx_kernel_sys::externs::extern_note_get_inputs
-      drop
-      local.get 0
-      i32.const 0
-      i32.store offset=8
-      local.get 0
-      local.get 2
-      i32.store offset=4
-      local.get 0
-      local.get 3
-      i32.store
       local.get 1
-      i32.const 16
-      i32.add
-      global.set $__stack_pointer
-      return
+      i32.load offset=4
+      i32.eqz
+      br_if 0 (;@1;)
+      local.get 2
+      local.get 1
+      i32.load offset=12
+      call $alloc::raw_vec::handle_error
+      unreachable
     end
-    call $alloc::raw_vec::capacity_overflow
-    unreachable
+    local.get 1
+    i32.load offset=12
+    local.tee 3
+    call $miden_tx_kernel_sys::externs::extern_note_get_inputs
+    drop
+    local.get 0
+    i32.const 0
+    i32.store offset=8
+    local.get 0
+    local.get 3
+    i32.store offset=4
+    local.get 0
+    local.get 2
+    i32.store
+    local.get 1
+    i32.const 16
+    i32.add
+    global.set $__stack_pointer
   )
   (func $alloc::raw_vec::RawVec<T,A>::try_allocate_in (;9;) (type 5) (param i32 i32 i32)
     (local i32)
@@ -613,11 +604,7 @@
     local.get 1
     i32.store
   )
-  (func $alloc::alloc::handle_alloc_error (;10;) (type 6) (param i32 i32)
-    unreachable
-    unreachable
-  )
-  (func $alloc::raw_vec::capacity_overflow (;11;) (type 7)
+  (func $alloc::raw_vec::handle_error (;10;) (type 6) (param i32 i32)
     unreachable
     unreachable
   )

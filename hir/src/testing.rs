@@ -1,11 +1,26 @@
-use std::{mem, path::Path, slice, sync::Arc};
+use alloc::sync::Arc;
+use core::{mem, slice};
+use std::path::Path;
 
-use miden_diagnostics::Emitter;
 use midenc_session::{Options, Session};
 
-use super::*;
+use crate::{
+    diagnostics::{
+        DefaultSourceManager, Emitter, SourceFile, SourceId, SourceManagerExt, SourceSpan,
+    },
+    *,
+};
 
 const PAGE_SIZE: u32 = 64 * 1024;
+
+fn setup_diagnostics() {
+    use crate::diagnostics::reporting::{self, ReportHandlerOpts};
+
+    let result = reporting::set_hook(Box::new(|_| Box::new(ReportHandlerOpts::new().build())));
+    if result.is_ok() {
+        reporting::set_panic_hook();
+    }
+}
 
 /// The base context used by all IR tests
 pub struct TestContext {
@@ -19,6 +34,8 @@ impl Default for TestContext {
 impl TestContext {
     /// Create a new test context with the given [Session]
     pub fn new(session: Session) -> Self {
+        setup_diagnostics();
+
         Self { session }
     }
 
@@ -32,33 +49,41 @@ impl TestContext {
     ) -> Self {
         use midenc_session::InputFile;
 
+        setup_diagnostics();
+
+        let source_manager = Arc::new(DefaultSourceManager::default());
         let session = Session::new(
-            Default::default(),
-            InputFile::from_path("test.hir").unwrap(),
+            [InputFile::from_path("test.hir").unwrap()],
             None,
             None,
-            None,
+            std::env::temp_dir(),
             options,
             emitter,
+            source_manager,
         );
 
         Self { session }
     }
 
     /// Add a source file to this context
-    pub fn add<P: AsRef<Path>>(&mut self, path: P) -> miden_diagnostics::SourceId {
-        self.session.codemap.add_file(path).expect("invalid source file")
+    pub fn add<P: AsRef<Path>>(&self, path: P) -> Arc<SourceFile> {
+        self.session
+            .source_manager
+            .load_file(path.as_ref())
+            .expect("invalid source file")
     }
 
     /// Get a [SourceSpan] corresponding to the callsite of this function
     #[track_caller]
     #[inline(never)]
-    pub fn current_span(&self) -> miden_diagnostics::SourceSpan {
+    pub fn current_span(&self) -> SourceSpan {
         let caller = core::panic::Location::caller();
         let caller_file =
             Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(caller.file());
-        let source_id = self.session.codemap.add_file(caller_file).expect("invalid source file");
-        self.span(source_id, caller.line(), caller.column())
+        let source_file = self.add(caller_file);
+        source_file
+            .line_column_to_span(caller.line(), caller.column())
+            .expect("could not resolve source location")
     }
 
     /// Get a [SourceSpan] representing the location in the given source file (by id), line and
@@ -66,16 +91,13 @@ impl TestContext {
     ///
     /// It is expected that line and column are 1-indexed, so they will be shifted to be 0-indexed,
     /// make sure to add 1 if you already have a 0-indexed line/column on hand
-    pub fn span(
-        &self,
-        source_id: miden_diagnostics::SourceId,
-        line: u32,
-        column: u32,
-    ) -> miden_diagnostics::SourceSpan {
+    pub fn span(&self, source_id: SourceId, line: u32, column: u32) -> SourceSpan {
         self.session
-            .codemap
-            .line_column_to_span(source_id, line - 1, column - 1)
-            .expect("invalid source location")
+            .source_manager
+            .get(source_id)
+            .ok()
+            .and_then(|file| file.line_column_to_span(line - 1, column - 1))
+            .unwrap_or_default()
     }
 }
 
@@ -88,8 +110,12 @@ macro_rules! current_file {
 
 #[macro_export]
 macro_rules! span {
-    ($codemap:ident, $src:ident) => {
-        $codemap.line_column_to_span($src, line!() - 1, column!() - 1).unwrap()
+    ($source_manager:ident, $src:ident) => {
+        $source_manager
+            .get($src)
+            .ok()
+            .and_then(|file| file.line_column_to_span(line!() - 1, column!() - 1))
+            .unwrap()
     };
 }
 
@@ -503,6 +529,33 @@ pub fn mem_intrinsics(builder: &mut ProgramBuilder, _context: &TestContext) -> a
         Type::U32,
         Linkage::External,
         Some(PAGE_SIZE.to_le_bytes().into()),
+        SourceSpan::UNKNOWN,
+    )
+    .expect("unexpected global variable error");
+
+    mb.declare_global_variable(
+        "HEAP_BASE",
+        Type::Ptr(Box::new(Type::U8)),
+        Linkage::External,
+        Some((2 * 65536u32).to_le_bytes().into()),
+        SourceSpan::UNKNOWN,
+    )
+    .expect("unexpected global variable error");
+
+    mb.declare_global_variable(
+        "HEAP_TOP",
+        Type::Ptr(Box::new(Type::U8)),
+        Linkage::External,
+        Some((2 * 65536u32).to_le_bytes().into()),
+        SourceSpan::UNKNOWN,
+    )
+    .expect("unexpected global variable error");
+
+    mb.declare_global_variable(
+        "HEAP_END",
+        Type::Ptr(Box::new(Type::U8)),
+        Linkage::External,
+        Some((4096 * 65536u32).to_le_bytes().into()),
         SourceSpan::UNKNOWN,
     )
     .expect("unexpected global variable error");

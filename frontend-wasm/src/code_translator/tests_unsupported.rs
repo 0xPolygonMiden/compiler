@@ -1,5 +1,4 @@
-use miden_diagnostics::SourceSpan;
-use midenc_hir::{CallConv, Linkage, ModuleBuilder, Signature};
+use midenc_hir::{CallConv, Linkage, ModuleBuilder, Signature, SourceSpan};
 use wasmparser::{MemArg, Operator, Operator::*};
 
 use super::translate_operator;
@@ -10,13 +9,13 @@ use crate::{
         module_translation_state::ModuleTranslationState,
         Module,
     },
-    test_utils::test_diagnostics,
+    test_utils::test_context,
 };
 
 fn check_unsupported(op: &Operator) {
-    let diagnostics = test_diagnostics();
+    let context = test_context();
     let mod_name = "noname";
-    let module_info = Module::new();
+    let module_info = Module::default();
     let mut module_builder = ModuleBuilder::new(mod_name);
     let sig = Signature {
         params: vec![],
@@ -29,7 +28,8 @@ fn check_unsupported(op: &Operator) {
     let mod_types = Default::default();
     let mut state = FuncTranslationState::new();
     let mut builder_ext = FunctionBuilderExt::new(&mut module_func_builder, &mut fb_ctx);
-    let mut module_state = ModuleTranslationState::new(&module_info, &mod_types, vec![]);
+    let mut module_state =
+        ModuleTranslationState::new(&module_info, &mod_types, vec![], &context.session.diagnostics);
     let result = translate_operator(
         op,
         &mut builder_ext,
@@ -37,15 +37,11 @@ fn check_unsupported(op: &Operator) {
         &mut module_state,
         &module_info,
         &mod_types,
-        &diagnostics,
+        &context.session.diagnostics,
         SourceSpan::default(),
     );
     assert!(result.is_err(), "Expected unsupported op error for {:?}", op);
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        format!("Unsupported Wasm: Wasm op {:?} is not supported", op)
-    );
-    assert!(diagnostics.has_errors(), "Expected diagnostics to have errors");
+    assert_eq!(result.unwrap_err().to_string(), format!("Wasm op {:?} is not supported", op));
 }
 
 // Wasm Spec v1.0

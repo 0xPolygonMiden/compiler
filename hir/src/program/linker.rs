@@ -1,90 +1,15 @@
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, BTreeSet},
+};
+
+use miden_assembly::Library as CompiledLibrary;
 use petgraph::{prelude::DiGraphMap, Direction};
-use rustc_hash::FxHashMap;
 
-use crate::*;
-
-/// This represents the various types of errors which may be raised by a [Linker]
-#[derive(Debug, thiserror::Error)]
-pub enum LinkerError {
-    /// The given module has already been declared
-    #[error("duplicate module declaration for '{0}'")]
-    ModuleConflict(Ident),
-    /// The given identifier references a [Module] which is not present in the set of
-    /// modules to link.
-    #[error("encountered reference to undefined module '{0}'")]
-    MissingModule(Ident),
-    /// The given identifier references a [Function] which is not defined in any of the
-    /// modules being linked, and is not a standard library function whose definition is
-    /// expected to be provided by the Miden VM.
-    #[error("encountered reference to undefined function '{0}'")]
-    MissingFunction(FunctionIdent),
-    /// The given identifier references [GlobalVariableData] which has not been defined
-    /// in any of the modules being linked.
-    #[error("encountered reference to undefined global '{0}'")]
-    MissingGlobal(Ident),
-    /// The given function is referenced by an external declaration, but the actual definition
-    /// of that function has a different signature than was expected by the external reference.
-    ///
-    /// The types of mismatches that will cause this error are:
-    ///
-    /// * The calling convention is different
-    /// * The number and/or types of the arguments and results are not the same
-    /// * A special purpose parameter is declared in one signature but not the other
-    /// * Argument extension conflicts, i.e. one signature says a parameter is zero-extended, the
-    ///   other sign-extended
-    #[error(
-        "signature mismatch for '{0}': external function declaration does not match definition"
-    )]
-    SignatureMismatch(FunctionIdent),
-    /// An external declaration for the given function was found in a different module than the
-    /// one in which the function is defined, and the actual definition does not have external
-    /// linkage.
-    ///
-    /// This error is a variant of `SignatureMismatch`, but occurs when the signature is otherwise
-    /// correct, but is ultimately an invalid declaration because the function should not be
-    /// visible outside its containing module.
-    #[error(
-        "invalid reference to '{0}': only functions with external linkage can be referenced from \
-         other modules"
-    )]
-    LinkageMismatch(FunctionIdent),
-    /// A cycle in the call graph was found starting at the given function.
-    ///
-    /// This occurs due to recursion (self or mutual), and is not supported by Miden.
-    #[error(
-        "encountered an invalid cycle in the call graph caused by a call from '{caller}' to \
-         '{callee}'"
-    )]
-    InvalidCycle {
-        caller: FunctionIdent,
-        callee: FunctionIdent,
-    },
-    /// Occurs when the declared entrypoint does not have external linkage
-    #[error("invalid entrypoint '{0}': must have external linkage")]
-    InvalidEntryLinkage(FunctionIdent),
-    /// Occurs when attempting to set the program entrypoint when it has already been set
-    #[error(
-        "conflicting entrypoints: '{current}' conflicts with previously declared entrypoint \
-         '{prev}'"
-    )]
-    InvalidMultipleEntry {
-        current: FunctionIdent,
-        prev: FunctionIdent,
-    },
-    /// An error occurred when attempting to link segments declared by a module into the
-    /// set of segments already declared in the program. A segment might be valid in the
-    /// context of a single module, but invalid in the context of a whole program, either
-    /// due to conflicts, or an inability to allocate all segments without running out of
-    /// available heap memory.
-    #[error(transparent)]
-    SegmentError(#[from] DataSegmentError),
-    /// A conflict between two global variables with the same symbol was detected.
-    ///
-    /// When this occurs, the definitions must have been in separate modules, with external
-    /// linkage, and they disagree on the type of the value or its initializer.
-    #[error(transparent)]
-    GlobalVariableError(#[from] GlobalVariableError),
-}
+use crate::{
+    diagnostics::{DiagnosticsHandler, Report, Severity, Spanned},
+    *,
+};
 
 /// Represents a node in the global variable dependency graph
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -93,6 +18,50 @@ enum Node {
     Global(Ident),
     /// A function which refers to one or more global symbols
     Function(FunctionIdent),
+}
+
+/// Represents an object input to the [Linker]
+pub enum Object {
+    /// The object is an HIR module
+    Hir(Box<Module>),
+    /// The object is a compiled Miden Assembly module
+    Masm { name: Ident, exports: Vec<Ident> },
+}
+impl Object {
+    /// Return the identifier associated with this object
+    pub fn id(&self) -> Ident {
+        match self {
+            Self::Hir(module) => module.name,
+            Self::Masm { name, .. } => *name,
+        }
+    }
+
+    /// Return the set of exported functions/procedures from this object
+    pub fn exports(&self) -> Box<(dyn Iterator<Item = FunctionIdent> + '_)> {
+        match self {
+            Self::Hir(module) => Box::new(module.functions().map(|f| f.id)),
+            Self::Masm { name, ref exports } => {
+                let name = *name;
+                Box::new(exports.iter().copied().map(move |function| FunctionIdent {
+                    module: name,
+                    function,
+                }))
+            }
+        }
+    }
+}
+impl From<Box<Module>> for Object {
+    fn from(module: Box<Module>) -> Self {
+        Self::Hir(module)
+    }
+}
+impl From<(Ident, Vec<Ident>)> for Object {
+    fn from(module: (Ident, Vec<Ident>)) -> Self {
+        Self::Masm {
+            name: module.0,
+            exports: module.1,
+        }
+    }
 }
 
 /// The [Linker] performs a similar role in conjunction with the Miden compiler, as the system
@@ -149,11 +118,19 @@ enum Node {
 /// context, and we do not provide instructions for executing calls in another context. However, we
 /// will eventually be linking programs which have a potentially unbounded number of address spaces,
 /// which is an additional complication that your typical linker doesn't have to deal with
-pub struct Linker {
+pub struct Linker<'a> {
+    diagnostics: &'a DiagnosticsHandler,
     /// This is the program being constructed by the linker
     program: Box<Program>,
-    /// This is the set of modules which have yet to be linked
-    pending: FxHashMap<Ident, Box<Module>>,
+    /// This is the set of named objects which have yet to be linked
+    pending: BTreeMap<Ident, Object>,
+    /// This is the set of patterns that symbol names will be matched against when determining
+    /// whether or not to raise an error when a reference to any symbol whose name starts with
+    /// that pattern cannot be found.
+    ///
+    /// In practice, this is used to allow certain library modules to be referenced without
+    /// requiring them to be loaded into the linker.
+    allow_missing: BTreeSet<Cow<'static, str>>,
     /// This is the dependency graph for all functions in the program.
     ///
     /// This graph is used to obtain a topological ordering of the
@@ -179,10 +156,11 @@ pub struct Linker {
     /// The set of renamed global symbols for a single module.
     ///
     /// This is only used when preprocessing a module, and is reset on each call to `add`
-    renamed: FxHashMap<Ident, Ident>,
+    renamed: BTreeMap<Ident, Ident>,
 }
-impl Default for Linker {
-    fn default() -> Self {
+impl<'a> Linker<'a> {
+    /// Create a [Linker] for a new, empty [Program].
+    pub fn new(diagnostics: &'a DiagnosticsHandler) -> Self {
         let mut program = Box::new(Program::new());
 
         // We reserve the first page of memory for the shadow stack
@@ -192,28 +170,39 @@ impl Default for Linker {
             .expect("unexpected error declaring shadow stack segment");
 
         Self {
+            diagnostics,
             program,
             pending: Default::default(),
+            allow_missing: BTreeSet::from_iter([
+                "std::".into(),
+                "intrinsics::".into(),
+                "miden::account".into(),
+                "miden::tx".into(),
+                "miden::note".into(),
+            ]),
             callgraph: DiGraphMap::new(),
             local_callgraph: DiGraphMap::new(),
             globals: DiGraphMap::new(),
             renamed: Default::default(),
         }
     }
-}
-impl Linker {
-    /// Create a [Linker] for a new, empty [Program].
-    pub fn new() -> Self {
-        Self::default()
-    }
 
     /// Set the entrypoint for the linked program
     ///
-    /// Returns a [LinkerError] if a different entrypoint was already declared.
-    pub fn with_entrypoint(&mut self, id: FunctionIdent) -> Result<(), LinkerError> {
+    /// Returns a [Report] if a different entrypoint was already declared.
+    pub fn with_entrypoint(&mut self, id: FunctionIdent) -> Result<(), Report> {
         if let Some(prev) = self.program.entrypoint() {
             if prev != id {
-                return Err(LinkerError::InvalidMultipleEntry { current: id, prev });
+                return Err(self
+                    .diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("linker error")
+                    .with_primary_label(
+                        id.function.span,
+                        "this entrypoint conflicts with a previously declared entrypoint",
+                    )
+                    .with_secondary_label(prev.function.span, "previous entrypoint declared here")
+                    .into_report());
             }
         }
 
@@ -222,7 +211,82 @@ impl Linker {
         Ok(())
     }
 
-    /// Add `module` to the set of modules to be linked
+    /// Specify a pattern that will be matched against undefined symbols that determines whether or
+    /// or not it should be treated as an error. It is assumed that the referenced symbol will be
+    /// resolved during assembly to MAST.
+    pub fn allow_missing(&mut self, name: impl Into<Cow<'static, str>>) {
+        self.allow_missing.insert(name.into());
+    }
+
+    /// Add a compiled library to the set of libraries to link against
+    pub fn add_library(&mut self, lib: CompiledLibrary) {
+        // Add all of the exported objects to the callgraph
+        for export in lib.exports() {
+            let module = Ident::with_empty_span(Symbol::intern(export.module.path()));
+            let name: &str = export.name.as_ref();
+            let function = Ident::with_empty_span(Symbol::intern(name));
+            self.callgraph.add_node(FunctionIdent { module, function });
+        }
+        self.program.add_library(lib);
+    }
+
+    /// Add multiple libraries to the set of libraries to link against
+    pub fn add_libraries<I>(&mut self, libs: I)
+    where
+        I: IntoIterator<Item = CompiledLibrary>,
+    {
+        for lib in libs {
+            self.add_library(lib);
+        }
+    }
+
+    /// Add an object to link as part of the resulting [Program].
+    ///
+    /// There are different types of objects, see [Object] for details.
+    ///
+    /// # Errors
+    ///
+    /// The following conditions can cause an error to be raised, if applicable to the object given:
+    ///
+    /// * The object is invalid
+    /// * The object introduces recursion into the call graph
+    /// * Two or more objects export a module with the same name
+    /// * Two or more objects contain conflicting data segment declarations
+    /// * Two or more objects contain conflicting global variable declarations
+    pub fn add_object(&mut self, object: impl Into<Object>) -> Result<(), Report> {
+        let object = object.into();
+        let id = object.id();
+
+        // Raise an error if we've already got a module by this name pending
+        if self.pending.contains_key(&id) {
+            return Err(self
+                .diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("linker error")
+                .with_primary_label(
+                    id.span,
+                    "this module conflicts with a previous module of the same name",
+                )
+                .into_report());
+        }
+
+        // Register functions in the callgraph
+        for export in object.exports() {
+            self.callgraph.add_node(export);
+        }
+
+        match object {
+            Object::Hir(module) => self.add_hir_object(module),
+            object @ Object::Masm { .. } => {
+                // We're done preprocessing, so add the module to the pending set
+                self.pending.insert(object.id(), object);
+
+                Ok(())
+            }
+        }
+    }
+
+    /// Add `module` to the set of objects to be linked
     ///
     /// This preprocesses the module for the linker, and will catch the following issues:
     ///
@@ -231,8 +295,8 @@ impl Linker {
     /// * Conflicting global variable declarations
     /// * Recursion in the local call graph of the module (global analysis comes later)
     ///
-    /// If any of the above errors occurs, a [LinkerError] is returned.
-    pub fn add(&mut self, mut module: Box<Module>) -> Result<(), LinkerError> {
+    /// If any of the above errors occurs, a [Report] is returned.
+    fn add_hir_object(&mut self, mut module: Box<Module>) -> Result<(), Report> {
         let id = module.name;
 
         // Reset the auxiliary data structures used for preprocessing
@@ -241,7 +305,15 @@ impl Linker {
 
         // Raise an error if we've already got a module by this name pending
         if self.pending.contains_key(&id) {
-            return Err(LinkerError::ModuleConflict(id));
+            return Err(self
+                .diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("linker error")
+                .with_primary_label(
+                    id.span,
+                    "this module conflicts with a previous module of the same name",
+                )
+                .into_report());
         }
 
         // Import all data segments
@@ -290,7 +362,7 @@ impl Linker {
             // the callee for our error diagnostics. To get it, we call the
             // call graph validation routine which does a traversal specifically
             // designed to obtain that information.
-            validate_callgraph(&self.local_callgraph)
+            validate_callgraph(&self.local_callgraph, self.diagnostics)
                 .expect_err("expected call graph to contain a cycle")
         })?;
 
@@ -339,14 +411,14 @@ impl Linker {
         }
 
         // We're done preprocessing, so add the module to the pending set
-        self.pending.insert(id, module);
+        self.pending.insert(id, Object::Hir(module));
 
         Ok(())
     }
 
     /// Links all of the modules which were added, producing a [Program] if no issues are found.
     ///
-    /// Returns a [LinkerError] if the link fails for any reason.
+    /// Returns a [Report] if the link fails for any reason.
     ///
     /// When called, all of the added modules have been preprocessed, and what remains are the
     /// following tasks:
@@ -361,75 +433,151 @@ impl Linker {
     /// * TODO: If linking an executable program, garbage collect unused modules/functions
     ///
     /// Once linked, a [Program] can be emitted to Miden Assembly using the code generation passes.
-    pub fn link(mut self) -> Result<Box<Program>, LinkerError> {
-        // Ensure linker-defined globals and intrinsics are present
-        self.populate_builtins();
-
+    pub fn link(mut self) -> Result<Box<Program>, Report> {
         // Look for cycles in the call graph
-        validate_callgraph(&self.callgraph)?;
+        validate_callgraph(&self.callgraph, self.diagnostics)?;
 
         // Verify the entrypoint, if declared
         if let Some(entry) = self.program.entrypoint() {
-            let is_linked = self.pending.contains_key(&entry.module);
-            if !is_linked {
-                return Err(LinkerError::MissingModule(entry.module));
-            }
-
-            let module = &self.pending[&entry.module];
-            let function =
-                module.function(entry.function).ok_or(LinkerError::MissingFunction(entry))?;
-            if !function.is_public() {
-                return Err(LinkerError::InvalidEntryLinkage(entry));
+            // NOTE(pauls): Currently, we always raise an error here, but since we do allow
+            // missing symbols in other situations, perhaps we should allow it here as well.
+            // For now though, we assume this is a mistake, since presumably you are compiling
+            // the code that contains the entrypoint.
+            let object = self.pending.get(&entry.module).ok_or_else(|| {
+                self.diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message(format!("linker error: undefined module '{}'", &entry.module))
+                    .into_report()
+            })?;
+            match object {
+                Object::Hir(module) => {
+                    let function = module.function(entry.function).ok_or_else(|| {
+                        self.diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message(format!("linker error: undefined function '{}'", &entry))
+                            .into_report()
+                    })?;
+                    if !function.is_public() {
+                        return Err(self
+                            .diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("linker error")
+                            .with_primary_label(
+                                entry.function.span,
+                                "entrypoint must have external linkage",
+                            )
+                            .into_report());
+                    }
+                }
+                Object::Masm { ref exports, .. } => {
+                    if !exports.contains(&entry.function) {
+                        return Err(self
+                            .diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message(format!("linker error: undefined function '{}'", &entry))
+                            .into_report());
+                    }
+                }
             }
         }
 
         // Verify module/function references
         for node in self.callgraph.nodes() {
             // If the module is pending, it is being linked
-            let is_linked = self.pending.contains_key(&node.module);
-            let is_stdlib = node.module.as_str().starts_with("std::");
-            let is_intrinsic = node.module.as_str().starts_with("intrinsics::");
+            let object = self.pending.get(&node.module);
+            let is_allowed_missing = self
+                .allow_missing
+                .iter()
+                .any(|pattern| node.module.as_str().starts_with(pattern.as_ref()));
 
-            // If a referenced module is not being linked, raise an error
-            if !is_linked {
-                // However we ignore standard library/intrinsic modules in this check,
-                // as they are known to be provided at runtime.
-                //
-                // TODO: We need to validate that the given module/function
-                // is actually in the standard library though, and that the
-                // signature matches what is expected.
-                if is_stdlib || is_intrinsic {
+            // If a referenced module is not present for the link, raise an error, unless it is
+            // specifically allowed to be missing at this point.
+            if object.is_none() {
+                if is_allowed_missing {
                     continue;
                 }
 
-                return Err(LinkerError::MissingModule(node.module));
+                return Err(self
+                    .diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message(format!("linker error: undefined module '{}'", &node.module))
+                    .into_report());
             }
 
             // The module is present, so we must verify that the function is defined in that module
-            let module = &self.pending[&node.module];
-            let function =
-                module.function(node.function).ok_or(LinkerError::MissingFunction(node))?;
-            let is_externally_linkable = function.is_public();
+            let object = unsafe { object.unwrap_unchecked() };
+            let (is_externally_linkable, signature) = match object {
+                Object::Hir(ref module) => match module.function(node.function) {
+                    Some(function) => (function.is_public(), Some(&function.signature)),
+                    None if is_allowed_missing => (true, None),
+                    None => {
+                        return Err(self
+                            .diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message(format!("linker error: undefined function '{}'", &node))
+                            .into_report())
+                    }
+                },
+                Object::Masm { ref exports, .. } => {
+                    if !exports.contains(&node.function) && !is_allowed_missing {
+                        return Err(self
+                            .diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message(format!("linker error: undefined function '{}'", &node))
+                            .into_report());
+                    }
+                    (true, None)
+                }
+            };
 
             // Next, visit all of the dependent functions, and ensure their signatures match
             for dependent_id in self.callgraph.neighbors_directed(node, Direction::Incoming) {
                 // If the dependent is in another module, but the function has internal linkage,
                 // raise an error
                 if dependent_id.module != node.module && !is_externally_linkable {
-                    return Err(LinkerError::LinkageMismatch(node));
+                    return Err(self
+                        .diagnostics
+                        .diagnostic(Severity::Error)
+                        .with_message("linker error")
+                        .with_primary_label(
+                            dependent_id.function.span,
+                            format!(
+                                "this function contains an invalid reference to '{}'",
+                                &node.function
+                            ),
+                        )
+                        .with_help(
+                            "Only functions with external linkage can be referenced across modules",
+                        )
+                        .into_report());
                 }
-                // Otherwise, make sure the signatures match
-                let dependent_module = &self.pending[&dependent_id.module];
-                let dependent_function = dependent_module
-                    .function(dependent_id.function)
-                    .expect("dependency graph is outdated");
-                let external_ref =
-                    dependent_function.dfg.get_import(&node).expect("dependency graph is outdated");
-                verify_matching_signature(
-                    function.id,
-                    &function.signature,
-                    &external_ref.signature,
-                )?;
+                // Otherwise, make sure the signatures match (if we have signatures available)
+                let dependent_object = &self.pending[&dependent_id.module];
+                match (signature, dependent_object) {
+                    (Some(signature), Object::Hir(ref dependent_module)) => {
+                        let dependent_function = dependent_module
+                            .function(dependent_id.function)
+                            .expect("dependency graph is outdated");
+                        let external_ref = dependent_function
+                            .dfg
+                            .get_import(&node)
+                            .expect("dependency graph is outdated");
+                        let external_span = external_ref.id.span();
+                        verify_matching_signature(
+                            node,
+                            external_span,
+                            signature,
+                            &external_ref.signature,
+                            self.diagnostics,
+                        )?;
+                    }
+                    // If we don't have a signature for the dependency, we presume it matches the
+                    // dependent
+                    (None, Object::Hir(_)) => (),
+                    // If the dependent is MASM, we don't know what signature it used, so we
+                    // presume it is correct
+                    (_, Object::Masm { .. }) => (),
+                }
             }
         }
 
@@ -454,7 +602,11 @@ impl Linker {
 
             // If it has dependents, but isn't defined anywhere, raise an error
             if !self.program.globals.exists(name) {
-                return Err(LinkerError::MissingGlobal(name));
+                return Err(self
+                    .diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message(format!("linker error: undefined global variable '{name}'"))
+                    .into_report());
             }
         }
 
@@ -462,55 +614,19 @@ impl Linker {
         self.garbage_collect();
 
         // We're finished processing all pending modules, so add them to the program
-        for module in self.pending.into_values() {
-            self.program.modules.insert(module);
+        for object in self.pending.into_values() {
+            match object {
+                Object::Hir(module) => {
+                    self.program.modules.insert(module);
+                }
+                Object::Masm { .. } => {
+                    // These objects are provided to the assembler directly
+                    continue;
+                }
+            }
         }
 
         Ok(self.program)
-    }
-
-    /// Programs we construct may depend on one or more predefined globals/intrinsics
-    /// that are provided by the compiler in order to support common functionality, such
-    /// as memory management primitives. This function handles defining these prior to
-    /// linking the program.
-    fn populate_builtins(&mut self) {
-        // We provide three globals for managing the heap, based on the layout
-        // of the data segments and these globals.
-        let globals_offset = self.program.segments.next_available_offset();
-        // Compute the start of the heap by finding the end of the globals segment, aligned to the
-        // nearest word boundary
-        let heap_base = globals_offset
-            .checked_add(
-                self.program
-                    .globals
-                    .size_in_bytes()
-                    .try_into()
-                    .expect("unable to allocate globals, unable to fit in linear memory"),
-            )
-            .expect("unable to allocate globals, not enough unreserved space available")
-            .align_up(32);
-        let hp = heap_base.to_le_bytes();
-        // Initialize all 3 globals with the computed heap pointer
-        let heap_ptr_ty = Type::Ptr(Box::new(Type::U8));
-        self.program
-            .globals
-            .declare("HEAP_BASE".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into()))
-            .expect(
-                "unable to declare HEAP_BASE, a conflicting global by that name was already \
-                 defined",
-            );
-        self.program
-            .globals
-            .declare("HEAP_TOP".into(), heap_ptr_ty.clone(), Linkage::External, Some(hp.into()))
-            .expect(
-                "unable to declare HEAP_TOP, a conflicting global by that name was already defined",
-            );
-        self.program
-            .globals
-            .declare("HEAP_END".into(), heap_ptr_ty, Linkage::External, Some(hp.into()))
-            .expect(
-                "unable to declare HEAP_END, a conflicting global by that name was already defined",
-            );
     }
 
     /// If an executable is being linked, discover unused functions and garbage collect them.
@@ -532,18 +648,37 @@ impl Linker {
 /// caller.
 fn verify_matching_signature(
     id: FunctionIdent,
+    expected_span: SourceSpan,
     actual: &Signature,
     expected: &Signature,
-) -> Result<(), LinkerError> {
+    diagnostics: &DiagnosticsHandler,
+) -> Result<(), Report> {
     // If the number of parameters differs, raise an error
     if expected.arity() != actual.arity() {
-        return Err(LinkerError::SignatureMismatch(id));
+        return Err(diagnostics
+            .diagnostic(Severity::Error)
+            .with_message("linker error")
+            .with_primary_label(id.span(), "the arity of this function declaration is incorrect")
+            .with_secondary_label(
+                expected_span,
+                format!("the actual arity of the definition is {}", expected.arity()),
+            )
+            .into_report());
     }
 
     // If the type or specification of any parameters differs, raise an error
-    for (ep, ap) in expected.params().iter().zip(actual.params().iter()) {
+    for (i, (ep, ap)) in expected.params().iter().zip(actual.params().iter()).enumerate() {
         if !is_matching_param(ep, ap) {
-            return Err(LinkerError::SignatureMismatch(id));
+            return Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("linker error")
+                .with_primary_label(
+                    id.span(),
+                    "the type signature of this function declaration is incorrect",
+                )
+                .with_secondary_label(expected_span, "it does not match the signature defined here")
+                .with_help(format!("The parameter at index {i} is defined as {}", &ep.ty))
+                .into_report());
         }
     }
 
@@ -551,13 +686,33 @@ fn verify_matching_signature(
     let expected_results = expected.results();
     let actual_results = actual.results();
     if expected_results.len() != actual_results.len() {
-        return Err(LinkerError::SignatureMismatch(id));
+        return Err(diagnostics
+            .diagnostic(Severity::Error)
+            .with_message("linker error")
+            .with_primary_label(
+                id.span(),
+                "the return arity of this function declaration is incorrect",
+            )
+            .with_secondary_label(
+                expected_span,
+                format!("the actual number of return values is {}", expected_results.len()),
+            )
+            .into_report());
     }
 
     // If the type of results differs, raise an error
-    for (er, ar) in expected_results.iter().zip(actual_results.iter()) {
+    for (i, (er, ar)) in expected_results.iter().zip(actual_results.iter()).enumerate() {
         if !is_matching_param(er, ar) {
-            return Err(LinkerError::SignatureMismatch(id));
+            return Err(diagnostics
+                .diagnostic(Severity::Error)
+                .with_message("linker error")
+                .with_primary_label(
+                    id.span(),
+                    "the type signature of this function declaration is incorrect",
+                )
+                .with_secondary_label(expected_span, "it does not match the signature defined here")
+                .with_help(format!("The result at index {i} is defined as {}", &er.ty))
+                .into_report());
         }
     }
 
@@ -583,12 +738,24 @@ fn is_matching_param(expected: &AbiParam, actual: &AbiParam) -> bool {
 
 /// Validate the given call graph by looking for cycles caused by recursion.
 ///
-/// Returns a [LinkerError] if a cycle is found.
-fn validate_callgraph(callgraph: &DiGraphMap<FunctionIdent, ()>) -> Result<(), LinkerError> {
+/// Returns a [Report] if a cycle is found.
+fn validate_callgraph(
+    callgraph: &DiGraphMap<FunctionIdent, ()>,
+    diagnostics: &DiagnosticsHandler,
+) -> Result<(), Report> {
     use petgraph::visit::{depth_first_search, DfsEvent, IntoNodeIdentifiers};
 
     depth_first_search(callgraph, callgraph.node_identifiers(), |event| match event {
-        DfsEvent::BackEdge(caller, callee) => Err(LinkerError::InvalidCycle { caller, callee }),
+        DfsEvent::BackEdge(caller, callee) => Err(diagnostics
+            .diagnostic(Severity::Error)
+            .with_message("linker error")
+            .with_primary_label(caller.span(), "this function contains recursion")
+            .with_secondary_label(callee.span(), "due to one or more calls to this function")
+            .with_help(
+                "If you need to make the call recursive, you may need to use indirect calls to \
+                 acheive this",
+            )
+            .into_report()),
         _ => Ok(()),
     })
 }

@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use midenc_codegen_masm::{Emulator, Program};
+use midenc_debug::TestFelt;
 use midenc_hir::{Felt, Stack};
-
-use crate::felt_conversion::TestFelt;
 
 /// Execute the module using the emulator with the given arguments
 /// Arguments are expected to be in the order they are passed to the entrypoint function

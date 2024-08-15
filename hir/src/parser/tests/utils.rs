@@ -1,26 +1,26 @@
 use std::{path::Path, sync::Arc};
 
-use miden_diagnostics::{Emitter, Verbosity};
-use midenc_session::{Options, Warnings};
+use midenc_session::{Options, Verbosity, Warnings};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    parser::{ast::Module, ParseError, Parser},
+    diagnostics::{self, CaptureEmitter, DefaultEmitter, Emitter, EmitterBuffer, Report},
+    parser::{ast::Module, Parser},
     testing::TestContext,
 };
 
 struct SplitEmitter {
-    capture: miden_diagnostics::CaptureEmitter,
-    default: miden_diagnostics::DefaultEmitter,
+    capture: CaptureEmitter,
+    default: DefaultEmitter,
 }
 impl SplitEmitter {
     #[inline]
     pub fn new() -> Self {
-        use miden_diagnostics::term::termcolor::ColorChoice;
+        use diagnostics::ColorChoice;
 
         Self {
             capture: Default::default(),
-            default: miden_diagnostics::DefaultEmitter::new(ColorChoice::Auto),
+            default: DefaultEmitter::new(ColorChoice::Auto),
         }
     }
 
@@ -31,12 +31,12 @@ impl SplitEmitter {
 }
 impl Emitter for SplitEmitter {
     #[inline]
-    fn buffer(&self) -> miden_diagnostics::term::termcolor::Buffer {
+    fn buffer(&self) -> EmitterBuffer {
         self.capture.buffer()
     }
 
     #[inline]
-    fn print(&self, buffer: miden_diagnostics::term::termcolor::Buffer) -> std::io::Result<()> {
+    fn print(&self, buffer: EmitterBuffer) -> std::io::Result<()> {
         use std::io::Write;
 
         let mut copy = self.capture.buffer();
@@ -61,10 +61,18 @@ pub struct ParseTest {
 impl ParseTest {
     /// Creates a new test, from the source string.
     pub fn new() -> Self {
+        use midenc_session::{ProjectType, TargetEnv};
+
         let emitter = Arc::new(SplitEmitter::new());
-        let options = Options::new(std::env::current_dir().unwrap())
-            .with_verbosity(Verbosity::Warning)
-            .with_warnings(Warnings::Error);
+        let options = Options::new(
+            None,
+            TargetEnv::Base,
+            ProjectType::Library,
+            std::env::current_dir().unwrap(),
+            None,
+        )
+        .with_verbosity(Verbosity::Warning)
+        .with_warnings(Warnings::Error);
         let context = TestContext::default_with_opts_and_emitter(options, Some(emitter.clone()));
         Self { context, emitter }
     }
@@ -75,31 +83,28 @@ impl ParseTest {
     /// disk
     #[allow(unused)]
     pub fn add_virtual_file<P: AsRef<Path>>(&self, name: P, content: String) {
-        self.context.session.codemap.add(name.as_ref(), content);
+        use diagnostics::SourceManager;
+
+        let name = name.as_ref().to_str().unwrap();
+        self.context.session.source_manager.load(name, content);
     }
 
-    pub fn parse_module_ast_from_file<P: AsRef<Path>>(
-        &self,
-        path: P,
-    ) -> Result<Module, ParseError> {
+    pub fn parse_module_ast_from_file<P: AsRef<Path>>(&self, path: P) -> Result<Module, Report> {
         let parser = Parser::new(&self.context.session);
         parser.parse_file::<Module>(path)
     }
 
-    pub fn parse_module_ast(&self, source: &str) -> Result<Module, ParseError> {
+    pub fn parse_module_ast(&self, source: &str) -> Result<Module, Report> {
         let parser = Parser::new(&self.context.session);
         parser.parse_str::<Module>(source)
     }
 
-    pub fn parse_module_from_file<P: AsRef<Path>>(
-        &self,
-        path: P,
-    ) -> Result<crate::Module, ParseError> {
+    pub fn parse_module_from_file<P: AsRef<Path>>(&self, path: P) -> Result<crate::Module, Report> {
         let parser = Parser::new(&self.context.session);
         parser.parse_file::<crate::Module>(path)
     }
 
-    pub fn parse_module(&self, source: &str) -> Result<crate::Module, ParseError> {
+    pub fn parse_module(&self, source: &str) -> Result<crate::Module, Report> {
         let parser = Parser::new(&self.context.session);
         parser.parse_str::<crate::Module>(source)
     }

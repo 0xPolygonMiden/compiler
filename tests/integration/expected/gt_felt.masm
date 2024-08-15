@@ -5,6 +5,3 @@ export.entrypoint
 end
 
 
-begin
-    exec.::gt_felt::entrypoint
-end

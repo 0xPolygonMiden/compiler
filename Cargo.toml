@@ -10,14 +10,19 @@ members = [
     "hir-type",
     "midenc",
     "midenc-compile",
+    "midenc-debug",
     "midenc-driver",
     "midenc-session",
+    "sdk/base-sys",
     "tools/*",
     "frontend-wasm",
-    "tests/rust-apps/*",
     "tests/integration",
 ]
-exclude = ["tests/rust-apps-wasm", "cargo-ext/tests/data"]
+exclude = [
+    "tests/rust-apps/fib",
+    "tests/rust-apps-wasm",
+    "cargo-ext/tests/data",
+]
 
 [workspace.package]
 version = "0.0.0"
@@ -42,11 +47,13 @@ cranelift-entity = "0.108"
 cranelift-bforest = "0.108"
 env_logger = "0.11"
 either = { version = "1.10", default-features = false }
+expect-test = "1.4.1"
 Inflector = "0.11"
 intrusive-collections = "0.9"
 inventory = "0.3"
 log = "0.4"
-miette = { version = "7.1.0", git = "https://github.com/bitwalker/miette", branch = "no-std" }
+miette = { package = "miden-miette", version = "7.1.1" }
+#miette = { version = "7.1", git = "https://github.com/bitwalker/miette", branch = "no-std" }
 paste = "1.0"
 parking_lot = "0.12"
 parking_lot_core = "0.9"
@@ -61,17 +68,20 @@ smallvec = { version = "1.13", features = [
     "drain_filter",
 ] }
 smallstr = { version = "0.3", features = ["union"] }
-thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
+thiserror = { package = "miden-thiserror", version = "1.0" }
+#thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
 toml = { version = "0.8", features = ["preserve_order"] }
 derive_more = "0.99"
-indexmap = "2.1"
-# a993b72e3fd5d209e017461b62ef2054d9120f01 is the commit that sets the `v0.10.0`
-# version to all the VM crates in the 'next' branch
-miden-assembly = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-miden-core = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-miden-processor = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-miden-stdlib = { version = "0.10", git = "https://github.com/0xPolygonMiden/miden-vm", rev = "a993b72e3fd5d209e017461b62ef2054d9120f01" }
-midenc-codegen-masm = { version = "0.0.1", path = "codegen/masm" }
+indexmap = "2.2"
+miden-assembly = { version = "0.10.3" }
+miden-core = { version = "0.10.3" }
+miden-processor = { version = "0.10.3" }
+miden-stdlib = { version = "0.10.3" }
+#miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+#miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+#miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+#miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
+midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }
 midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }
@@ -83,14 +93,11 @@ miden-parsing = "0.1"
 midenc-frontend-wasm = { version = "0.0.1", path = "frontend-wasm" }
 midenc-compile = { version = "0.0.1", path = "midenc-compile" }
 midenc-driver = { version = "0.0.1", path = "midenc-driver" }
+midenc-debug = { version = "0.0.1", path = "midenc-debug" }
 midenc-session = { version = "0.0.1", path = "midenc-session" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
-
-[patch.crates-io]
-thiserror = { git = "https://github.com/bitwalker/thiserror", branch = "no-std" }
-miette = { git = "https://github.com/bitwalker/miette", branch = "no-std" }
 
 [profile.dev]
 lto = false
@@ -103,16 +110,21 @@ debug = true
 codegen-units = 1
 lto = "thin"
 
+# The following crates are always built with optimizations
 [profile.test.package.proptest]
 opt-level = 3
 
 [profile.test.package.rand_chacha]
 opt-level = 3
 
-# Build `expect-test` with release optimizations even in dev mode to speed up the diffing
 [profile.dev.package.expect-test]
 opt-level = 3
 
-# Build `dissimilar` with release optimizations even in dev mode to speed up the diffing
 [profile.dev.package.dissimilar]
+opt-level = 3
+
+[profile.dev.package.regex-syntax]
+opt-level = 3
+
+[profile.dev.package.onig]
 opt-level = 3

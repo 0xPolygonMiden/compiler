@@ -1,7 +1,12 @@
+#![feature(debug_closure_helpers)]
+extern crate alloc;
+
+pub mod diagnostics;
 mod duration;
 mod emit;
 mod flags;
 mod inputs;
+mod libs;
 mod options;
 mod outputs;
 mod statistics;
@@ -12,17 +17,24 @@ use std::{
     sync::Arc,
 };
 
+/// The version associated with the current compiler toolchain
+pub const MIDENC_BUILD_VERSION: &str = env!("MIDENC_BUILD_VERSION");
+
+/// The git revision associated with the current compiler toolchain
+pub const MIDENC_BUILD_REV: &str = env!("MIDENC_BUILD_REV");
+
 use clap::ValueEnum;
-use miden_diagnostics::{CodeMap, DiagnosticsHandler, Emitter};
 use midenc_hir_symbol::Symbol;
 
 pub use self::{
+    diagnostics::{DiagnosticsHandler, Emitter, SourceManager},
     duration::HumanDuration,
     emit::Emit,
     flags::{CompileFlag, FlagAction},
     inputs::{FileType, InputFile, InputType, InvalidInputError},
+    libs::{LibraryKind, LinkLibrary},
     options::*,
-    outputs::{OutputFile, OutputFiles, OutputType, OutputTypeSpec, OutputTypes},
+    outputs::{OutputFile, OutputFiles, OutputMode, OutputType, OutputTypeSpec, OutputTypes},
     statistics::Statistics,
 };
 
@@ -52,171 +64,205 @@ impl ProjectType {
 /// This struct provides access to all of the metadata and configuration
 /// needed during a single compilation session.
 pub struct Session {
-    /// The type of project we're compiling this session
-    pub project_type: ProjectType,
-    /// The current target environment for this session
-    pub target: TargetEnv,
+    /// The name of this session
+    pub name: String,
     /// Configuration for the current compiler session
     pub options: Options,
-    /// The current source map
-    pub codemap: Arc<CodeMap>,
+    /// The current source manager
+    pub source_manager: Arc<dyn SourceManager>,
     /// The current diagnostics handler
     pub diagnostics: Arc<DiagnosticsHandler>,
-    /// The location of all libraries shipped with the compiler
-    pub sysroot: PathBuf,
-    /// The input being compiled
-    pub input: InputFile,
+    /// The inputs being compiled
+    pub inputs: Vec<InputFile>,
     /// The outputs to be produced by the compiler during compilation
     pub output_files: OutputFiles,
     /// Statistics gathered from the current compiler session
     pub statistics: Statistics,
-    /// We store any leftover argument matches in the session for use
-    /// by any downstream crates that register custom flags
-    arg_matches: clap::ArgMatches,
 }
+
+impl fmt::Debug for Session {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inputs = self.inputs.iter().map(|input| input.file_name()).collect::<Vec<_>>();
+        f.debug_struct("Session")
+            .field("name", &self.name)
+            .field("options", &self.options)
+            .field("inputs", &inputs)
+            .field("output_files", &self.output_files)
+            .field("statistics", &self.statistics)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Session {
-    pub fn new(
-        target: TargetEnv,
-        input: InputFile,
+    pub fn new<I>(
+        inputs: I,
         output_dir: Option<PathBuf>,
         output_file: Option<OutputFile>,
-        tmp_dir: Option<PathBuf>,
+        target_dir: PathBuf,
         options: Options,
         emitter: Option<Arc<dyn Emitter>>,
-    ) -> Self {
-        // TODO: Make sure we pin this down when we need to ship stuff with compiler
-        let sysroot = match &options.sysroot {
-            Some(sysroot) => sysroot.clone(),
-            None => std::env::current_dir().unwrap(),
-        };
-        let codemap = Arc::new(CodeMap::new());
+        source_manager: Arc<dyn SourceManager>,
+    ) -> Self
+    where
+        I: IntoIterator<Item = InputFile>,
+    {
+        let inputs = inputs.into_iter().collect::<Vec<_>>();
 
+        Self::make(inputs, output_dir, output_file, target_dir, options, emitter, source_manager)
+    }
+
+    fn make(
+        inputs: Vec<InputFile>,
+        output_dir: Option<PathBuf>,
+        output_file: Option<OutputFile>,
+        target_dir: PathBuf,
+        options: Options,
+        emitter: Option<Arc<dyn Emitter>>,
+        source_manager: Arc<dyn SourceManager>,
+    ) -> Self {
         let diagnostics = Arc::new(DiagnosticsHandler::new(
-            options.diagnostics.clone(),
-            codemap.clone(),
+            options.diagnostics,
+            source_manager.clone(),
             emitter.unwrap_or_else(|| options.default_emitter()),
         ));
 
-        let output_files = match output_file {
-            None => {
-                let output_dir = output_dir.unwrap_or_default();
-                let stem = options.name.clone().unwrap_or_else(|| input.filestem().to_owned());
+        let output_dir = output_dir
+            .as_deref()
+            .or_else(|| output_file.as_ref().and_then(|of| of.parent()))
+            .map(|path| path.to_path_buf());
 
-                OutputFiles::new(stem, output_dir, None, tmp_dir, options.output_types.clone())
-            }
-            Some(out_file) => OutputFiles::new(
-                out_file.filestem().unwrap_or_default().to_str().unwrap().to_string(),
-                output_dir.unwrap_or_default(),
-                Some(out_file),
-                tmp_dir,
-                options.output_types.clone(),
-            ),
-        };
+        let name = options
+            .name
+            .clone()
+            .or_else(|| {
+                output_file
+                    .as_ref()
+                    .and_then(|of| of.filestem().map(|stem| stem.to_string_lossy().into_owned()))
+            })
+            .unwrap_or_else(|| match inputs.first() {
+                Some(InputFile {
+                    file: InputType::Real(ref path),
+                    ..
+                }) => path
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .or_else(|| path.extension().and_then(|stem| stem.to_str()))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "invalid input path: '{}' has no file stem or extension",
+                            path.display()
+                        )
+                    })
+                    .to_string(),
+                Some(
+                    input @ InputFile {
+                        file: InputType::Stdin { ref name, .. },
+                        ..
+                    },
+                ) => {
+                    let name = name.as_str();
+                    if matches!(name, Some("empty") | Some("stdin")) {
+                        options
+                            .current_dir
+                            .file_stem()
+                            .and_then(|stem| stem.to_str())
+                            .unwrap_or(name.unwrap())
+                            .to_string()
+                    } else {
+                        input.filestem().to_owned()
+                    }
+                }
+                None => "out".to_owned(),
+            });
 
-        let project_type = ProjectType::default_for_target(target);
+        let output_files = OutputFiles::new(
+            name.clone(),
+            options.current_dir.clone(),
+            output_dir.unwrap_or_else(|| options.current_dir.clone()),
+            output_file,
+            target_dir,
+            options.output_types.clone(),
+        );
+
         Self {
-            project_type,
-            target,
+            name,
             options,
-            codemap,
+            source_manager,
             diagnostics,
-            sysroot,
-            input,
+            inputs,
             output_files,
             statistics: Default::default(),
-            arg_matches: Default::default(),
         }
     }
 
     pub fn with_project_type(mut self, ty: ProjectType) -> Self {
-        self.project_type = ty;
+        self.options.project_type = ty;
         self
     }
 
     #[doc(hidden)]
     pub fn with_arg_matches(mut self, matches: clap::ArgMatches) -> Self {
-        self.arg_matches = matches;
+        self.options.set_arg_matches(matches);
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn with_output_type(mut self, ty: OutputType, path: Option<OutputFile>) -> Self {
+        self.output_files.outputs.insert(ty, path.clone());
+        self.options.output_types.insert(ty, path.clone());
         self
     }
 
     /// Get the value of a custom flag with action `FlagAction::SetTrue` or `FlagAction::SetFalse`
+    #[inline]
     pub fn get_flag(&self, name: &str) -> bool {
-        self.arg_matches.get_flag(name)
+        self.options.get_flag(name)
     }
 
     /// Get the count of a specific custom flag with action `FlagAction::Count`
+    #[inline]
     pub fn get_flag_count(&self, name: &str) -> usize {
-        self.arg_matches.get_count(name) as usize
+        self.options.get_flag_count(name)
     }
 
     /// Get the value of a specific custom flag
+    #[inline]
     pub fn get_flag_value<T>(&self, name: &str) -> Option<&T>
     where
         T: core::any::Any + Clone + Send + Sync + 'static,
     {
-        self.arg_matches.get_one(name)
+        self.options.get_flag_value(name)
     }
 
     /// Iterate over values of a specific custom flag
+    #[inline]
     pub fn get_flag_values<T>(&self, name: &str) -> Option<clap::parser::ValuesRef<'_, T>>
     where
         T: core::any::Any + Clone + Send + Sync + 'static,
     {
-        self.arg_matches.get_many(name)
+        self.options.get_flag_values(name)
     }
 
     /// Get the remaining [clap::ArgMatches] left after parsing the base session configuration
+    #[inline]
     pub fn matches(&self) -> &clap::ArgMatches {
-        &self.arg_matches
+        self.options.matches()
     }
 
     /// The name of this session (used as the name of the project, output file, etc.)
-    pub fn name(&self) -> String {
-        self.options
-            .name
-            .clone()
-            .or_else(|| {
-                if self.input.is_real() {
-                    Some(self.input.filestem().to_string())
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| {
-                self.options.current_dir.file_name().unwrap().to_string_lossy().into_owned()
-            })
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
-    pub fn out_filename(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
-        let default_filename = self.filename_for_input(outputs, progname);
-        let out_filename = outputs
-            .outputs
-            .get(&OutputType::Mast)
-            .and_then(|s| s.to_owned())
-            .or_else(|| outputs.out_file.clone())
-            .unwrap_or(default_filename);
+    /// Get the [OutputFile] to write the assembled MAST output to
+    pub fn out_file(&self) -> OutputFile {
+        let out_file = self.output_files.output_file(OutputType::Masl, None);
 
-        if let OutputFile::Real(ref path) = out_filename {
+        if let OutputFile::Real(ref path) = out_file {
             self.check_file_is_writeable(path);
         }
 
-        out_filename
-    }
-
-    pub fn filename_for_input(&self, outputs: &OutputFiles, progname: Symbol) -> OutputFile {
-        match self.project_type {
-            ProjectType::Program => {
-                let out_filename = outputs.path(OutputType::Mast);
-                if let OutputFile::Real(ref path) = out_filename {
-                    OutputFile::Real(path.with_extension(OutputType::Mast.extension()))
-                } else {
-                    out_filename
-                }
-            }
-            ProjectType::Library => OutputFile::Real(
-                outputs.out_dir.join(format!("{progname}.{}", OutputType::Mast.extension())),
-            ),
-        }
+        out_file
     }
 
     fn check_file_is_writeable(&self, file: &Path) {
@@ -229,29 +275,61 @@ impl Session {
         }
     }
 
+    /// Returns true if the compiler should exit after parsing the input
     pub fn parse_only(&self) -> bool {
-        self.options.output_types.parse_only()
+        self.options.parse_only
     }
 
-    pub fn should_codegen(&self) -> bool {
-        self.options.output_types.should_codegen()
+    /// Returns true if the compiler should exit after performing semantic analysis
+    pub fn analyze_only(&self) -> bool {
+        self.options.analyze_only
     }
 
+    /// Returns true if the compiler should exit after applying rewrites to the IR
+    pub fn rewrite_only(&self) -> bool {
+        let link_or_masm_requested = self.should_link() || self.should_codegen();
+        !self.options.parse_only && !self.options.analyze_only && !link_or_masm_requested
+    }
+
+    /// Returns true if an [OutputType] that requires linking + assembly was requested
     pub fn should_link(&self) -> bool {
-        self.options.output_types.should_link()
+        self.options.output_types.should_link() && !self.options.no_link
     }
 
+    /// Returns true if an [OutputType] that requires generating Miden Assembly was requested
+    pub fn should_codegen(&self) -> bool {
+        self.options.output_types.should_codegen() && !self.options.link_only
+    }
+
+    /// Returns true if an [OutputType] that requires assembling MAST was requested
+    pub fn should_assemble(&self) -> bool {
+        self.options.output_types.should_assemble() && !self.options.link_only
+    }
+
+    /// Returns true if the given [OutputType] should be emitted as an output
     pub fn should_emit(&self, ty: OutputType) -> bool {
         self.options.output_types.contains_key(&ty)
+    }
+
+    /// Returns true if IR should be printed to stdout, after executing a pass named `pass`
+    pub fn should_print_ir(&self, pass: &str) -> bool {
+        self.options.print_ir_after_all
+            || self.options.print_ir_after_pass.iter().any(|p| p == pass)
+    }
+
+    /// Print the given emittable IR to stdout, as produced by a pass with name `pass`
+    pub fn print(&self, ir: impl Emit, pass: &str) -> std::io::Result<()> {
+        if self.should_print_ir(pass) {
+            ir.write_to_stdout(self)?;
+        }
+        Ok(())
     }
 
     /// Get the path to emit the given [OutputType] to
     pub fn emit_to(&self, ty: OutputType, name: Option<Symbol>) -> Option<PathBuf> {
         if self.should_emit(ty) {
-            match self.output_files.path(ty) {
-                OutputFile::Real(path) => name
-                    .map(|name| path.with_file_name(name.as_str()).with_extension(ty.extension()))
-                    .or(Some(path)),
+            match self.output_files.output_file(ty, name.map(|n| n.as_str())) {
+                OutputFile::Real(path) => Some(path),
                 OutputFile::Stdout => None,
             }
         } else {
@@ -260,22 +338,17 @@ impl Session {
     }
 
     /// Emit an item to stdout/file system depending on the current configuration
-    pub fn emit<E: Emit>(&self, item: &E) -> std::io::Result<()> {
-        let output_type = item.output_type();
+    pub fn emit<E: Emit>(&self, mode: OutputMode, item: &E) -> std::io::Result<()> {
+        let output_type = item.output_type(mode);
         if self.should_emit(output_type) {
-            match self.output_files.path(output_type) {
+            let name = item.name().map(|n| n.as_str());
+            match self.output_files.output_file(output_type, name) {
                 OutputFile::Real(path) => {
-                    let file_path = if path.is_dir() {
-                        let item_name =
-                            item.name().map(|s| s.to_string()).unwrap_or("noname".to_string());
-                        path.join(item_name.as_str()).with_extension(output_type.extension())
-                    } else {
-                        path
-                    };
-                    item.write_to_file(&file_path)?;
+                    item.write_to_file(&path, mode, self)?;
                 }
                 OutputFile::Stdout => {
-                    item.write_to_stdout()?;
+                    let stdout = std::io::stdout().lock();
+                    item.write_to(stdout, mode, self)?;
                 }
             }
         }

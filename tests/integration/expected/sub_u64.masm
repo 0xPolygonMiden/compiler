@@ -1,10 +1,7 @@
-# mod test_rust_c41269e28d824a670ab81604f68197c58597e1d3d436ce5573ca0f7437aad0ba
+# mod test_rust_5574a62019b06e2b235711c006fa92058c6184438940dab99ef3bc7024353803
 
 export.entrypoint
     movdn.3 movdn.3 exec.::std::math::u64::wrapping_sub
 end
 
 
-begin
-    exec.::test_rust_c41269e28d824a670ab81604f68197c58597e1d3d436ce5573ca0f7437aad0ba::entrypoint
-end

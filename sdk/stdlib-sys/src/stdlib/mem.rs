@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 
 use crate::{Felt, Word};
 
-#[link(wasm_import_module = "miden:stdlib/std_mem")]
+#[link(wasm_import_module = "std::mem")]
 extern "C" {
 
     /// Moves an arbitrary number of words from the advice stack to memory.
@@ -91,7 +91,7 @@ pub fn pipe_double_words_to_memory(num_words: Felt) -> (Word, Vec<Felt>) {
     }
 
     let num_words_in_felts = num_words.as_u64() as usize * 4;
-    let mut buf: Vec<Felt> = Vec::with_capacity(num_words_in_felts as usize);
+    let mut buf: Vec<Felt> = Vec::with_capacity(num_words_in_felts);
     let write_ptr = buf.as_mut_ptr();
     let end_ptr = unsafe { write_ptr.add(num_words_in_felts) };
     // Place for returned C, B, A, write_ptr

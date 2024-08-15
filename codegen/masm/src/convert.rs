@@ -9,7 +9,7 @@ use midenc_session::Session;
 
 use crate::{
     codegen::{FunctionEmitter, OperandStack, Scheduler, TypedValue},
-    masm,
+    masm, MasmArtifact,
 };
 
 type ProgramGlobalVariableAnalysis = analysis::GlobalVariableAnalysis<hir::Program>;
@@ -48,7 +48,7 @@ impl<T> PassInfo for ConvertHirToMasm<T> {
 
 impl ConversionPass for ConvertHirToMasm<hir::Program> {
     type From = Box<hir::Program>;
-    type To = Box<masm::Program>;
+    type To = MasmArtifact;
 
     fn convert(
         &mut self,
@@ -56,42 +56,37 @@ impl ConversionPass for ConvertHirToMasm<hir::Program> {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> ConversionResult<Self::To> {
-        let mut masm_program = Box::new(masm::Program::from_hir(&program));
+        // Ensure global variable analysis is computed
+        let globals =
+            analyses.get_or_compute::<ProgramGlobalVariableAnalysis>(&program, session)?;
+
+        let mut artifact = if program.has_entrypoint() {
+            masm::Program::from_hir(&program, &globals)
+                .map(Box::new)
+                .map(MasmArtifact::Executable)?
+        } else {
+            MasmArtifact::Library(Box::new(masm::Library::from_hir(&program, &globals)))
+        };
+
+        // Move link libraries to artifact
+        let libraries = core::mem::take(program.libraries_mut());
+        for lib in libraries.into_values() {
+            artifact.link_library(lib);
+        }
 
         // Remove the set of modules to compile from the program
         let modules = program.modules_mut().take();
-
-        // Ensure global variable analysis is computed
-        analyses.get_or_compute::<ProgramGlobalVariableAnalysis>(&program, session)?;
 
         for module in modules.into_iter() {
             // Convert the module
             let mut convert_to_masm = ConvertHirToMasm::<hir::Module>::default();
             let masm_module = convert_to_masm.convert(module, analyses, session)?;
 
-            // If this module makes use of any intrinsics modules, and those modules are not
-            // already present, add them to the program.
-            for import in masm_module
-                .imports
-                .iter()
-                .filter(|import| import.name.as_str().starts_with("intrinsics::"))
-            {
-                if masm_program.contains(import.name) {
-                    continue;
-                }
-                match masm::intrinsics::load(import.name.as_str(), &session.codemap) {
-                    Some(loaded) => {
-                        masm_program.insert(Box::new(loaded));
-                    }
-                    None => unimplemented!("unrecognized intrinsic module: '{}'", &import.name),
-                }
-            }
-
             // Add to the final Miden Assembly program
-            masm_program.insert(masm_module);
+            artifact.insert(masm_module);
         }
 
-        Ok(masm_program)
+        Ok(artifact)
     }
 }
 

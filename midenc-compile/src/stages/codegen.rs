@@ -1,19 +1,12 @@
-use midenc_codegen_masm::intrinsics;
+use midenc_session::OutputType;
 
 use super::*;
-
-/// The code generator may output either a single program,
-/// ora  collection of modules, depending on earlier stages.
-pub enum Compiled {
-    Program(Box<masm::Program>),
-    Modules(Vec<Box<masm::Module>>),
-}
 
 /// Perform code generation on the possibly-linked output of previous stages
 pub struct CodegenStage;
 impl Stage for CodegenStage {
-    type Input = MaybeLinked;
-    type Output = Compiled;
+    type Input = LinkerOutput;
+    type Output = Either<masm::MasmArtifact, masm::ModuleTree>;
 
     fn enabled(&self, session: &Session) -> bool {
         session.should_codegen()
@@ -21,32 +14,50 @@ impl Stage for CodegenStage {
 
     fn run(
         &mut self,
-        input: Self::Input,
+        linker_output: Self::Input,
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        match input {
-            MaybeLinked::Linked(program) => {
+        let LinkerOutput {
+            linked,
+            masm: mut masm_modules,
+        } = linker_output;
+        match linked {
+            Left(program) => {
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();
-                let mut program = convert_to_masm.convert(program, analyses, session)?;
+                let mut artifact = convert_to_masm.convert(program, analyses, session)?;
+
+                if session.should_emit(OutputType::Masm) {
+                    for module in artifact.modules() {
+                        session.emit(OutputMode::Text, module).into_diagnostic()?;
+                    }
+                }
+
                 // Ensure intrinsics modules are linked
                 for intrinsics_module in required_intrinsics_modules(session) {
-                    program.insert(Box::new(intrinsics_module));
+                    artifact.insert(Box::new(intrinsics_module));
                 }
-                Ok(Compiled::Program(program))
+                // Link in any MASM inputs provided to the compiler
+                for module in masm_modules.into_iter() {
+                    artifact.insert(module);
+                }
+
+                Ok(Left(artifact))
             }
-            MaybeLinked::Unlinked(modules) => {
+            Right(ir) => {
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Module>::default();
-                let mut masm_modules = Vec::with_capacity(modules.len());
-                // Ensure intrinsics modules are linked
-                for intrinsics_module in required_intrinsics_modules(session) {
-                    masm_modules.push(Box::new(intrinsics_module));
-                }
-                for module in modules.into_iter() {
+                for module in ir.into_iter() {
                     let masm_module = convert_to_masm.convert(module, analyses, session)?;
-                    masm_modules.push(masm_module);
+                    session
+                        .emit(OutputMode::Text, masm_module.as_ref())
+                        .into_diagnostic()
+                        .wrap_err_with(|| {
+                            format!("failed to emit 'masm' output for '{}'", masm_module.id)
+                        })?;
+                    masm_modules.insert(masm_module);
                 }
-                Ok(Compiled::Modules(masm_modules))
+
+                Ok(Right(masm_modules))
             }
         }
     }
@@ -54,8 +65,11 @@ impl Stage for CodegenStage {
 
 fn required_intrinsics_modules(session: &Session) -> Vec<masm::Module> {
     vec![
-        intrinsics::load("intrinsics::mem", &session.codemap).expect("undefined intrinsics module"),
-        intrinsics::load("intrinsics::i32", &session.codemap).expect("undefined intrinsics module"),
-        intrinsics::load("intrinsics::i64", &session.codemap).expect("undefined intrinsics module"),
+        masm::intrinsics::load("intrinsics::mem", &session.source_manager)
+            .expect("undefined intrinsics module"),
+        masm::intrinsics::load("intrinsics::i32", &session.source_manager)
+            .expect("undefined intrinsics module"),
+        masm::intrinsics::load("intrinsics::i64", &session.source_manager)
+            .expect("undefined intrinsics module"),
     ]
 }

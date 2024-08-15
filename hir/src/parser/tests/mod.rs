@@ -1,14 +1,15 @@
-use miden_diagnostics::{SourceSpan, Span};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    parser::ast::*, AbiParam, ArgumentExtension, ArgumentPurpose, CallConv, ExternalFunction,
-    FunctionIdent, Ident, Linkage, Opcode, Overflow, Signature, StructType, Type,
+    diagnostics::{SourceSpan, Span},
+    parser::ast::*,
+    AbiParam, ArgumentExtension, ArgumentPurpose, CallConv, ExternalFunction, FunctionIdent, Ident,
+    Linkage, Opcode, Overflow, Signature, StructType, Type,
 };
 
 macro_rules! ident {
     ($name:ident) => {
-        Ident::new(crate::Symbol::intern(stringify!($name)), miden_diagnostics::SourceSpan::UNKNOWN)
+        Ident::new(crate::Symbol::intern(stringify!($name)), SourceSpan::UNKNOWN)
     };
 }
 

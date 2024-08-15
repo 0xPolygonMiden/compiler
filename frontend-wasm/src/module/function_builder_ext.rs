@@ -1,6 +1,6 @@
-use miden_diagnostics::SourceSpan;
 use midenc_hir::{
     cranelift_entity::{EntitySet, SecondaryMap},
+    diagnostics::SourceSpan,
     Block, Br, CondBr, DataFlowGraph, InsertionPoint, Inst, InstBuilderBase, Instruction,
     ModuleFunctionBuilder, ProgramPoint, Switch, Value,
 };
@@ -68,6 +68,10 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
 
     pub fn data_flow_graph_mut(&mut self) -> &mut DataFlowGraph {
         self.inner.data_flow_graph_mut()
+    }
+
+    pub fn id(&self) -> midenc_hir::FunctionIdent {
+        self.inner.id()
     }
 
     pub fn signature(&self) -> &midenc_hir::Signature {
@@ -341,22 +345,21 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
     /// other jump instructions.
     pub fn change_jump_destination(&mut self, inst: Inst, old_block: Block, new_block: Block) {
         self.func_ctx.ssa.remove_block_predecessor(old_block, inst);
-        match self.data_flow_graph_mut().insts[inst].data.item {
+        match &mut *self.data_flow_graph_mut().insts[inst].data {
             Instruction::Br(Br {
-                ref mut destination,
-                ..
-            }) if destination == &old_block => {
-                *destination = new_block;
+                ref mut successor, ..
+            }) if successor.destination == old_block => {
+                successor.destination = new_block;
             }
             Instruction::CondBr(CondBr {
-                then_dest: (ref mut then_dest, _),
-                else_dest: (ref mut else_dest, _),
+                ref mut then_dest,
+                ref mut else_dest,
                 ..
             }) => {
-                if then_dest == &old_block {
-                    *then_dest = new_block;
-                } else if else_dest == &old_block {
-                    *else_dest = new_block;
+                if then_dest.destination == old_block {
+                    then_dest.destination = new_block;
+                } else if else_dest.destination == old_block {
+                    else_dest.destination = new_block;
                 }
             }
             Instruction::Switch(Switch {
@@ -365,13 +368,13 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
                 ref mut arms,
                 ref mut default,
             }) => {
-                for (_, ref mut dest_block) in arms {
-                    if dest_block == &old_block {
-                        *dest_block = new_block;
+                for arm in arms.iter_mut() {
+                    if arm.successor.destination == old_block {
+                        arm.successor.destination = new_block;
                     }
                 }
-                if default == &old_block {
-                    *default = new_block;
+                if default.destination == old_block {
+                    default.destination = new_block;
                 }
             }
             _ => panic!("{} must be a branch instruction", inst),
@@ -445,38 +448,45 @@ impl<'a, 'b, 'c, 'd> InstBuilderBase<'a> for FuncInstBuilderExt<'a, 'b, 'c, 'd> 
         let opcode = data.opcode();
         let inst = self.builder.data_flow_graph_mut().insert_inst(self.ip, data, ty, span);
 
-        match &self.builder.inner.data_flow_graph().insts[inst].data.item {
-            Instruction::Br(Br { destination, .. }) => {
+        match self.builder.inner.data_flow_graph().insts[inst].data.inner() {
+            Instruction::Br(Br { successor, .. }) => {
                 // If the user has supplied jump arguments we must adapt the arguments of
                 // the destination block
-                self.builder.func_ctx.ssa.declare_block_predecessor(*destination, inst);
+                self.builder.func_ctx.ssa.declare_block_predecessor(successor.destination, inst);
             }
 
             Instruction::CondBr(CondBr {
-                then_dest: (block_then, _),
-                else_dest: (block_else, _),
+                then_dest,
+                else_dest,
                 ..
             }) => {
-                self.builder.func_ctx.ssa.declare_block_predecessor(*block_then, inst);
-                if block_then != block_else {
-                    self.builder.func_ctx.ssa.declare_block_predecessor(*block_else, inst);
+                self.builder.func_ctx.ssa.declare_block_predecessor(then_dest.destination, inst);
+                if then_dest.destination != else_dest.destination {
+                    self.builder
+                        .func_ctx
+                        .ssa
+                        .declare_block_predecessor(else_dest.destination, inst);
                 }
             }
             Instruction::Switch(Switch {
                 op: _,
                 arg: _,
                 ref arms,
-                default: _,
+                default: default_successor,
             }) => {
                 // Unlike all other jumps/branches, arms are
                 // capable of having the same successor appear
                 // multiple times, so we must deduplicate.
                 let mut unique = EntitySet::<Block>::new();
-                for (_, dest_block) in arms {
-                    if !unique.insert(*dest_block) {
+                let blocks = arms
+                    .iter()
+                    .map(|arm| arm.successor.destination)
+                    .chain([default_successor.destination]);
+                for block in blocks {
+                    if !unique.insert(block) {
                         continue;
                     }
-                    self.builder.func_ctx.ssa.declare_block_predecessor(*dest_block, inst);
+                    self.builder.func_ctx.ssa.declare_block_predecessor(block, inst);
                 }
             }
             inst => debug_assert!(!inst.opcode().is_branch()),

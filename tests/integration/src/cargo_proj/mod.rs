@@ -44,7 +44,6 @@ pub fn panic_error(what: &str, err: impl Into<anyhow::Error>) -> ! {
 
 pub mod paths;
 use self::paths::CargoPathExt;
-use crate::compiler_test::skip_rust_compilation;
 
 /*
  *
@@ -207,7 +206,8 @@ impl ProjectBuilder {
     pub fn build(mut self) -> Project {
         let last_path_component =
             self.root.root().file_name().unwrap().to_string_lossy().to_string();
-        if skip_rust_compilation(&self.root(), &last_path_component) {
+
+        if self.skip_rust_compilation(&last_path_component) {
             // Return the root directory without re-creating any files
             return self.root;
         }
@@ -248,6 +248,22 @@ impl ProjectBuilder {
 
     fn rm_root(&self) {
         self.root.root().rm_rf()
+    }
+
+    fn skip_rust_compilation(&self, artifact_name: &str) -> bool {
+        let computed_artifact_path = self
+            .root()
+            .join("target")
+            .join("wasm32-unknown-unknown")
+            .join("release")
+            .join(artifact_name)
+            .with_extension("wasm");
+        if std::env::var("SKIP_RUST").is_ok() && computed_artifact_path.exists() {
+            eprintln!("Skipping Rust compilation");
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -465,9 +481,6 @@ pub fn is_nightly() -> bool {
 
 /// Returns `true` if the local filesystem has low-resolution mtimes.
 pub fn is_coarse_mtime() -> bool {
-    // If the filetime crate is being used to emulate HFS then
-    // return `true`, without looking at the actual hardware.
-    cfg!(emulate_second_only_system) ||
     // This should actually be a test that `$CARGO_TARGET_DIR` is on an HFS
     // filesystem, (or any filesystem with low-resolution mtimes). However,
     // that's tricky to detect, so for now just deal with CI.

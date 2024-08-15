@@ -7,8 +7,7 @@ use midenc_session::Session;
 
 use super::*;
 use crate::{
-    parser::ParseError,
-    pass::{AnalysisManager, ConversionError, ConversionPass, ConversionResult},
+    pass::{AnalysisManager, ConversionPass, ConversionResult},
     Immediate, Opcode, PassInfo, Signature, Type,
 };
 
@@ -43,7 +42,7 @@ impl ConversionPass for ConvertAstToHir {
         let mut remapped_constants = RemappedConstants::default();
         for (constant_id, constant_data) in constants_by_id.into_iter() {
             if let Entry::Vacant(entry) = remapped_constants.entry(constant_id) {
-                let new_constant_id = module.globals.insert_constant(constant_data.item);
+                let new_constant_id = module.globals.insert_constant(constant_data.into_inner());
                 entry.insert(new_constant_id);
             }
         }
@@ -55,7 +54,7 @@ impl ConversionPass for ConvertAstToHir {
 
         for (_, gv_data) in globals_by_id.into_iter() {
             unsafe {
-                module.globals.insert(gv_data.item);
+                module.globals.insert(gv_data.into_inner());
             }
         }
 
@@ -202,7 +201,7 @@ impl ConversionPass for ConvertAstToHir {
                     "expected that {id} is always ahead of, or equal to {next_id}"
                 );
                 if raw_id == next_raw_id {
-                    f.dfg.values.push(data.item);
+                    f.dfg.values.push(data.into_inner());
                     continue;
                 }
 
@@ -215,7 +214,7 @@ impl ConversionPass for ConvertAstToHir {
                         inst: crate::Inst::reserved_value(),
                     });
                 }
-                assert_eq!(f.dfg.values.push(data.item), id);
+                assert_eq!(f.dfg.values.push(data.into_inner()), id);
             }
 
             // Also record all of the instruction results
@@ -233,7 +232,7 @@ impl ConversionPass for ConvertAstToHir {
                     if used_imports.contains(id) {
                         None
                     } else {
-                        Some((*id, ext.item.clone()))
+                        Some((*id, ext.inner().clone()))
                     }
                 }));
                 module.functions.push_back(function);
@@ -245,7 +244,12 @@ impl ConversionPass for ConvertAstToHir {
         if is_valid {
             Ok(module)
         } else {
-            Err(ConversionError::Failed(ParseError::InvalidModule.into()))
+            Err(session
+                .diagnostics
+                .diagnostic(Severity::Error)
+                .with_message(format!("failed to validate '{}'", module.name))
+                .with_help("One or more diagnostics have been emitted, see them for details")
+                .into_report())
         }
     }
 }
@@ -281,7 +285,7 @@ fn try_insert_inst(
         } => Some(Instruction::BinaryOp(BinaryOp {
             op,
             overflow,
-            args: [rhs.item, lhs.item],
+            args: [rhs.into_inner(), lhs.into_inner()],
         })),
         InstType::BinaryOp {
             opcode: op,
@@ -293,7 +297,7 @@ fn try_insert_inst(
                 Instruction::BinaryOpImm(BinaryOpImm {
                     op,
                     overflow,
-                    arg: rhs.item,
+                    arg: rhs.into_inner(),
                     imm,
                 })
             })
@@ -319,7 +323,7 @@ fn try_insert_inst(
         } => Some(Instruction::UnaryOp(UnaryOp {
             op,
             overflow,
-            arg: operand.item,
+            arg: operand.into_inner(),
         })),
         InstType::UnaryOp {
             opcode: op,
@@ -380,13 +384,15 @@ fn try_insert_inst(
                         blockq.push_back(next);
                     }
                     let args = crate::ValueList::from_iter(
-                        successor.args.iter().map(|arg| arg.item),
+                        successor.args.iter().map(|arg| arg.into_inner()),
                         &mut function.dfg.value_lists,
                     );
                     Some(Instruction::Br(crate::Br {
                         op,
-                        destination: successor.id,
-                        args,
+                        successor: crate::Successor {
+                            destination: successor.id,
+                            args,
+                        },
                     }))
                 }
                 Err(_) => None,
@@ -438,18 +444,24 @@ fn try_insert_inst(
 
             if is_valid {
                 let then_args = crate::ValueList::from_iter(
-                    then_dest.args.iter().map(|arg| arg.item),
+                    then_dest.args.iter().map(|arg| arg.into_inner()),
                     &mut function.dfg.value_lists,
                 );
                 let else_args = crate::ValueList::from_iter(
-                    else_dest.args.iter().map(|arg| arg.item),
+                    else_dest.args.iter().map(|arg| arg.into_inner()),
                     &mut function.dfg.value_lists,
                 );
                 Some(Instruction::CondBr(crate::CondBr {
                     op,
-                    cond: cond.item,
-                    then_dest: (then_dest.id, then_args),
-                    else_dest: (else_dest.id, else_args),
+                    cond: cond.into_inner(),
+                    then_dest: crate::Successor {
+                        destination: then_dest.id,
+                        args: then_args,
+                    },
+                    else_dest: crate::Successor {
+                        destination: else_dest.id,
+                        args: else_args,
+                    },
                 }))
             } else {
                 None
@@ -467,7 +479,7 @@ fn try_insert_inst(
             let mut arms = Vec::with_capacity(successors.len());
             for arm in successors.into_iter() {
                 let arm_span = arm.span();
-                let discriminant = arm.item.0;
+                let discriminant = arm.inner().0;
                 if !used_discriminants.insert(Span::new(arm_span, discriminant)) {
                     let prev = used_discriminants
                         .get(&Span::new(SourceSpan::UNKNOWN, discriminant))
@@ -484,8 +496,18 @@ fn try_insert_inst(
                         .emit();
                     is_valid = false;
                 }
-                let successor = arm.item.1;
-                arms.push((discriminant, successor.id));
+                let successor = arm.into_inner().1;
+                let successor_args = crate::ValueList::from_iter(
+                    successor.args.iter().map(|arg| arg.into_inner()),
+                    &mut function.dfg.value_lists,
+                );
+                arms.push(crate::SwitchArm {
+                    value: discriminant,
+                    successor: crate::Successor {
+                        destination: successor.id,
+                        args: successor_args,
+                    },
+                });
                 match is_valid_successor(
                     &successor,
                     span,
@@ -504,6 +526,11 @@ fn try_insert_inst(
                     }
                 }
             }
+
+            let fallback_args = crate::ValueList::from_iter(
+                fallback.args.iter().map(|arg| arg.into_inner()),
+                &mut function.dfg.value_lists,
+            );
             match is_valid_successor(
                 &fallback,
                 span,
@@ -525,9 +552,12 @@ fn try_insert_inst(
             if is_valid {
                 Some(Instruction::Switch(crate::Switch {
                     op,
-                    arg: selector.item,
+                    arg: selector.into_inner(),
                     arms,
-                    default: fallback.id,
+                    default: crate::Successor {
+                        destination: fallback.id,
+                        args: fallback_args,
+                    },
                 }))
             } else {
                 None
@@ -562,7 +592,7 @@ fn try_insert_inst(
                         Operand::Value(v) => {
                             if is_valid_value_reference(&v, span, values_by_id, diagnostics) {
                                 let args = crate::ValueList::from_slice(
-                                    &[v.item],
+                                    &[v.into_inner()],
                                     &mut function.dfg.value_lists,
                                 );
                                 Some(Instruction::Ret(crate::Ret { op, args }))
@@ -582,7 +612,7 @@ fn try_insert_inst(
                         let mut args = crate::ValueList::new();
                         for operand in operands.iter() {
                             if let Operand::Value(ref v) = operand {
-                                args.push(v.item, &mut function.dfg.value_lists);
+                                args.push(v.into_inner(), &mut function.dfg.value_lists);
                                 is_valid &=
                                     is_valid_value_reference(v, span, values_by_id, diagnostics);
                             } else {
@@ -624,7 +654,7 @@ fn try_insert_inst(
                         if let Entry::Vacant(entry) = function.dfg.imports.entry(callee) {
                             entry.insert(ExternalFunction {
                                 id: callee,
-                                signature: sig.item.clone(),
+                                signature: sig.inner().clone(),
                             });
                         }
                     } else {
@@ -646,7 +676,7 @@ fn try_insert_inst(
                     used_imports.insert(external);
                     if let Entry::Vacant(entry) = function.dfg.imports.entry(external) {
                         if let Some(ef) = imports_by_id.get(&external) {
-                            entry.insert(ef.item.clone());
+                            entry.insert(ef.inner().clone());
                         } else {
                             diagnostics
                                 .diagnostic(Severity::Error)
@@ -669,7 +699,7 @@ fn try_insert_inst(
                 is_valid_value_references(operands.as_slice(), span, values_by_id, diagnostics);
             if is_valid {
                 let args = crate::ValueList::from_iter(
-                    operands.iter().map(|arg| arg.item),
+                    operands.iter().map(|arg| arg.into_inner()),
                     &mut function.dfg.value_lists,
                 );
                 Some(Instruction::Call(crate::Call { op, callee, args }))
@@ -699,13 +729,13 @@ fn try_insert_inst(
                         Operand::Value(v) => {
                             is_valid &=
                                 is_valid_value_reference(&v, span, values_by_id, diagnostics);
-                            args.push(v.item, &mut function.dfg.value_lists);
+                            args.push(v.into_inner(), &mut function.dfg.value_lists);
                         }
                         operand @ (Operand::Int(_) | Operand::BigInt(_)) if is_first => {
                             imm = match op {
                                 Opcode::AssertEq => {
                                     if let Some(value) = operands[i + 1].as_value() {
-                                        match values_by_id.get(&value.item).map(|vd| vd.ty()) {
+                                        match values_by_id.get(value.inner()).map(|vd| vd.ty()) {
                                             Some(ty) => {
                                                 operand_to_immediate(operand, ty, diagnostics)
                                             }
@@ -883,7 +913,7 @@ fn is_valid_value_reference(
     values_by_id: &ValuesById,
     diagnostics: &DiagnosticsHandler,
 ) -> bool {
-    let is_valid = values_by_id.contains_key(&value.item);
+    let is_valid = values_by_id.contains_key(value.inner());
     if !is_valid {
         diagnostics
             .diagnostic(Severity::Error)
@@ -969,8 +999,8 @@ fn operand_to_immediate(
     diagnostics: &DiagnosticsHandler,
 ) -> Option<Immediate> {
     match operand {
-        Operand::Int(i) => smallint_to_immediate(i.span(), i.item, ty, diagnostics),
-        Operand::BigInt(i) => bigint_to_immediate(i.span(), i.item, ty, diagnostics),
+        Operand::Int(i) => smallint_to_immediate(i.span(), i.into_inner(), ty, diagnostics),
+        Operand::BigInt(i) => bigint_to_immediate(i.span(), i.into_inner(), ty, diagnostics),
         Operand::Value(_) => panic!("cannot convert ssa values to immediate"),
     }
 }

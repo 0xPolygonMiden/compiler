@@ -1,11 +1,12 @@
 use expect_test::expect_file;
+use midenc_debug::PushToStack;
 use proptest::{
     prelude::*,
     test_runner::{TestError, TestRunner},
 };
 
 use super::run_masm_vs_rust;
-use crate::{felt_conversion::PushToStack, CompilerTest};
+use crate::CompilerTest;
 
 macro_rules! test_bin_op {
     ($name:ident, $op:tt, $op_ty:ty, $res_ty:ty, $a_range:expr, $b_range:expr) => {
@@ -21,7 +22,7 @@ macro_rules! test_bin_op {
                 let b_ty_str = stringify!($b_ty);
                 let res_ty_str = stringify!($res_ty);
                 let main_fn = format!("(a: {a_ty_str}, b: {b_ty_str}) -> {res_ty_str} {{ a {op_str} b }}");
-                let mut test = CompilerTest::rust_fn_body(&main_fn);
+                let mut test = CompilerTest::rust_fn_body(&main_fn, None);
                 // Test expected compilation artifacts
                 let artifact_name = format!("{}_{}", stringify!($name), stringify!($a_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
@@ -39,7 +40,7 @@ macro_rules! test_bin_op {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         PushToStack::try_push(&b, &mut args);
                         PushToStack::try_push(&a, &mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
@@ -62,7 +63,7 @@ macro_rules! test_unary_op {
                 let op_ty_str = stringify!($op_ty);
                 let res_ty_str = stringify!($op_ty);
                 let main_fn = format!("(a: {op_ty_str}) -> {res_ty_str} {{ {op_str}a }}");
-                let mut test = CompilerTest::rust_fn_body(&main_fn);
+                let mut test = CompilerTest::rust_fn_body(&main_fn, None);
                 // Test expected compilation artifacts
                 let artifact_name = format!("{}_{}", stringify!($name), stringify!($op_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
@@ -78,7 +79,7 @@ macro_rules! test_unary_op {
                         dbg!(&rs_out);
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         a.try_push(&mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args)
+                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {
@@ -102,7 +103,7 @@ macro_rules! test_func_two_arg {
                 let b_ty_str = stringify!($b_ty);
                 let res_ty_str = stringify!($res_ty);
                 let main_fn = format!("(a: {a_ty_str}, b: {b_ty_str}) -> {res_ty_str} {{ {func_name_str}(a, b) }}");
-                let mut test = CompilerTest::rust_fn_body(&main_fn);
+                let mut test = CompilerTest::rust_fn_body(&main_fn, None);
                 // Test expected compilation artifacts
                 let artifact_name = format!("{}_{}_{}", stringify!($func), stringify!($a_ty), stringify!($b_ty));
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
@@ -119,7 +120,7 @@ macro_rules! test_func_two_arg {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         b.try_push(&mut args);
                         a.try_push(&mut args);
-                        run_masm_vs_rust(rust_out, &vm_program, ir_masm.clone(), &args)
+                        run_masm_vs_rust(rust_out, &vm_program, ir_masm.clone(), &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {

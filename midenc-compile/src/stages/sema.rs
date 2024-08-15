@@ -7,11 +7,7 @@ use super::*;
 pub struct SemanticAnalysisStage;
 impl Stage for SemanticAnalysisStage {
     type Input = ParseOutput;
-    type Output = Box<hir::Module>;
-
-    fn enabled(&self, session: &Session) -> bool {
-        !session.parse_only()
-    }
+    type Output = LinkerInput;
 
     fn run(
         &mut self,
@@ -19,17 +15,33 @@ impl Stage for SemanticAnalysisStage {
         analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
-        match input {
+        let parse_only = session.parse_only();
+        let output = match input {
+            ParseOutput::Ast(ast) if parse_only => {
+                session.emit(OutputMode::Text, &ast).into_diagnostic()?;
+                return Err(CompilerStopped.into());
+            }
             ParseOutput::Ast(ast) => {
+                session.emit(OutputMode::Text, &ast).into_diagnostic()?;
                 let mut convert_to_hir = ast::ConvertAstToHir;
                 let module = Box::new(convert_to_hir.convert(ast, analyses, session)?);
-                session.emit(&module)?;
-                Ok(module)
+                LinkerInput::Hir(module)
             }
-            ParseOutput::Hir(module) => {
-                session.emit(&module)?;
-                Ok(module)
+            ParseOutput::Hir(module) if parse_only => {
+                session.emit(OutputMode::Text, &module).into_diagnostic()?;
+                return Err(CompilerStopped.into());
             }
+            ParseOutput::Hir(module) => LinkerInput::Hir(module),
+            ParseOutput::Masm(masm) if parse_only => {
+                session.emit(OutputMode::Text, &masm).into_diagnostic()?;
+                return Err(CompilerStopped.into());
+            }
+            ParseOutput::Masm(masm) => LinkerInput::Masm(masm),
+        };
+        if session.analyze_only() {
+            Err(CompilerStopped.into())
+        } else {
+            Ok(output)
         }
     }
 }

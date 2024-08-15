@@ -1,9 +1,10 @@
-use miden_diagnostics::DiagnosticsHandler;
 use midenc_hir::{
-    cranelift_entity::PrimaryMap, CanonAbiImport, ComponentBuilder, ComponentExport, FunctionIdent,
-    FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol,
+    cranelift_entity::PrimaryMap, diagnostics::Severity, CanonAbiImport, ComponentBuilder,
+    ComponentExport, FunctionIdent, FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent,
+    Symbol,
 };
 use midenc_hir_type::Abi;
+use midenc_session::Session;
 use rustc_hash::FxHashMap;
 
 use super::{
@@ -23,7 +24,7 @@ use crate::{
         types::{EntityIndex, FuncIndex},
         Module, ModuleImport,
     },
-    WasmError, WasmTranslationConfig,
+    unsupported_diag, WasmTranslationConfig,
 };
 
 /// A translator from the linearized Wasm component model to the Miden IR component
@@ -42,7 +43,7 @@ pub struct ComponentTranslator<'a, 'data> {
     reallocs: FxHashMap<RuntimeReallocIndex, FunctionIdent>,
     /// The post return functions used in CanonicalOptions in this component
     post_returns: FxHashMap<RuntimePostReturnIndex, FunctionIdent>,
-    diagnostics: &'a DiagnosticsHandler,
+    session: &'a Session,
 }
 
 impl<'a, 'data> ComponentTranslator<'a, 'data> {
@@ -50,13 +51,13 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         component_types: ComponentTypes,
         parsed_modules: PrimaryMap<StaticModuleIndex, ParsedModule<'data>>,
         config: &'a WasmTranslationConfig,
-        diagnostics: &'a DiagnosticsHandler,
+        session: &'a Session,
     ) -> Self {
         Self {
             component_types,
             parsed_modules,
             config,
-            diagnostics,
+            session,
             module_instances_source: PrimaryMap::new(),
             lower_imports: FxHashMap::default(),
             reallocs: FxHashMap::default(),
@@ -70,7 +71,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         wasm_translation: LinearComponentTranslation,
     ) -> WasmResult<midenc_hir::Component> {
         let mut component_builder: midenc_hir::ComponentBuilder<'a> =
-            midenc_hir::ComponentBuilder::new(self.diagnostics);
+            midenc_hir::ComponentBuilder::new(&self.session.diagnostics);
         dbg!(&wasm_translation.component.initializers);
         for initializer in &wasm_translation.component.initializers {
             match initializer {
@@ -89,9 +90,10 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 }
                 GlobalInitializer::ExtractMemory(mem) => {
                     if mem.index.as_u32() > 0 {
-                        return Err(WasmError::Unsupported(
-                            "Only one memory is supported in the component".to_string(),
-                        ));
+                        unsupported_diag!(
+                            &self.session.diagnostics,
+                            "only one memory is supported in the component"
+                        );
                     }
                 }
                 GlobalInitializer::ExtractRealloc(realloc) => {
@@ -103,9 +105,10 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     self.post_returns.insert(post_return.index, func_id);
                 }
                 GlobalInitializer::Resource(_) => {
-                    return Err(WasmError::Unsupported(
-                        "Resource global initializers are not yet supported".to_string(),
-                    ))
+                    unsupported_diag!(
+                        &self.session.diagnostics,
+                        "resource global initializers are not yet supported"
+                    );
                 }
             }
         }
@@ -121,15 +124,16 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         instantiate_module: &InstantiateModule,
         component_builder: &mut ComponentBuilder<'_>,
         wasm_translation: &LinearComponentTranslation,
-    ) -> Result<(), WasmError> {
+    ) -> WasmResult<()> {
         match instantiate_module {
             InstantiateModule::Static(static_module_idx, args) => {
                 if self.module_instances_source.values().any(|idx| *idx == *static_module_idx) {
-                    return Err(WasmError::Unsupported(format!(
+                    unsupported_diag!(
+                        &self.session.diagnostics,
                         "A module with a static index {} is already instantiated. We don't \
                          support multiple instantiations of the same module.",
                         static_module_idx.as_u32()
-                    )));
+                    );
                 }
                 self.module_instances_source.push(*static_module_idx);
                 // TODO: create and init module instance tables
@@ -142,9 +146,10 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                             module_args.push(self.module_arg_from_export(export)?);
                         }
                         CoreDef::InstanceFlags(_) => {
-                            return Err(WasmError::Unsupported(
-                                "Wasm component instance flags are not supported".to_string(),
-                            ))
+                            unsupported_diag!(
+                                &self.session.diagnostics,
+                                "Wasm component instance flags are not supported"
+                            );
                         }
                         CoreDef::Trampoline(trampoline_idx) => {
                             let trampoline = &wasm_translation.trampolines[*trampoline_idx];
@@ -160,21 +165,26 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     }
                 }
                 let module_types = self.component_types.module_types();
-                let mut module_state =
-                    ModuleTranslationState::new(module, module_types, module_args);
+                let mut module_state = ModuleTranslationState::new(
+                    module,
+                    module_types,
+                    module_args,
+                    &self.session.diagnostics,
+                );
                 let ir_module = build_ir_module(
                     self.parsed_modules.get_mut(*static_module_idx).unwrap(),
                     module_types,
                     &mut module_state,
                     self.config,
-                    self.diagnostics,
+                    self.session,
                 )?;
                 component_builder.add_module(ir_module.into()).expect("module is already added");
             }
             InstantiateModule::Import(..) => {
-                return Err(WasmError::Unsupported(
-                    "Imported Wasm core module instantiation is not supported".to_string(),
-                ))
+                unsupported_diag!(
+                    &self.session.diagnostics,
+                    "Imported Wasm core module instantiation is not supported"
+                );
             }
         };
         Ok(())
@@ -188,7 +198,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         idx: usize,
         wasm_component: &LinearComponent,
         component_builder: &mut ComponentBuilder<'_>,
-    ) -> Result<ModuleArgument, WasmError> {
+    ) -> WasmResult<ModuleArgument> {
         match trampoline {
             Trampoline::LowerImport {
                 index,
@@ -203,9 +213,11 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 component_builder.add_import(function_id, component_import.clone());
                 Ok(ModuleArgument::ComponentImport(component_import))
             }
-            _ => Err(WasmError::Unsupported(format!(
-                "Not yet implemented trampoline type {trampoline:?}"
-            ))),
+            _ => unsupported_diag!(
+                &self.session.diagnostics,
+                "Not yet implemented trampoline type {:?}",
+                trampoline
+            ),
         }
     }
 
@@ -232,13 +244,15 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 EntityIndex::Memory(_) => {
                     unreachable!("Attempt to export memory from a module instance. ")
                 }
-                EntityIndex::Global(_) => Err(WasmError::Unsupported(
-                    "Exporting of core module globals are not yet supported".to_string(),
-                )),
+                EntityIndex::Global(_) => unsupported_diag!(
+                    &self.session.diagnostics,
+                    "Exporting of core module globals are not yet supported"
+                ),
             },
-            ExportItem::Name(_) => Err(WasmError::Unsupported(
-                "Named core module exports are not yet supported".to_string(),
-            )),
+            ExportItem::Name(_) => unsupported_diag!(
+                &self.session.diagnostics,
+                "Named core module exports are not yet supported"
+            ),
         }
     }
 
@@ -252,9 +266,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     ) -> WasmResult<midenc_hir::ComponentImport> {
         let (import_idx, import_names) = &wasm_component.imports[runtime_import_index];
         if import_names.len() != 1 {
-            return Err(crate::WasmError::Unsupported(
-                "multi-name imports not supported".to_string(),
-            ));
+            unsupported_diag!(&self.session.diagnostics, "multi-name imports not supported");
         }
         let import_func_name = import_names.first().unwrap();
         let (full_interface_name, _) = wasm_component.import_types[*import_idx].clone();
@@ -263,10 +275,15 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             function: Symbol::intern(import_func_name),
         };
         let Some(import_metadata) = self.config.import_metadata.get(&interface_function) else {
-            return Err(crate::WasmError::MissingImportMetadata(format!(
-                "Import metadata for interface function {:?} not found",
-                &interface_function,
-            )));
+            return Err(self
+                .session
+                .diagnostics
+                .diagnostic(Severity::Error)
+                .with_message(format!(
+                    "wasm error: import metadata for interface function {interface_function:?} \
+                     not found"
+                ))
+                .into_report());
         };
         let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
 
@@ -301,11 +318,15 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 Ok(())
             }
             Export::ModuleStatic(_) => {
-                Err(WasmError::Unsupported("Static module exports are not supported".to_string()))
+                unsupported_diag!(
+                    &self.session.diagnostics,
+                    "Static module exports are not supported"
+                );
             }
-            Export::ModuleImport(_) => Err(WasmError::Unsupported(
-                "Exporting of an imported module is not supported".to_string(),
-            )),
+            Export::ModuleImport(_) => unsupported_diag!(
+                &self.session.diagnostics,
+                "Exporting of an imported module is not supported"
+            ),
             Export::Type(_) => {
                 // Besides the function exports the individual type are also exported from the
                 // component We can ignore them for now
@@ -342,15 +363,18 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                     ExportItem::Index(idx) => match idx {
                         EntityIndex::Function(func_idx) => module.func_name(func_idx),
                         EntityIndex::Table(_) | EntityIndex::Memory(_) | EntityIndex::Global(_) => {
-                            return Err(WasmError::Unsupported(format!(
-                                "Exporting of non-function entity {core_export:?} is not supported"
-                            )));
+                            unsupported_diag!(
+                                &self.session.diagnostics,
+                                "Exporting of non-function entity {:?} is not supported",
+                                core_export
+                            );
                         }
                     },
                     ExportItem::Name(_) => {
-                        return Err(WasmError::Unsupported(
-                            "Named exports are not yet supported".to_string(),
-                        ))
+                        unsupported_diag!(
+                            &self.session.diagnostics,
+                            "Named exports are not yet supported"
+                        );
                     }
                 };
 
@@ -360,14 +384,16 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 }
             }
             CoreDef::InstanceFlags(_) => {
-                return Err(WasmError::Unsupported(
-                    "Component instance flags exports are not supported".to_string(),
-                ))
+                unsupported_diag!(
+                    &self.session.diagnostics,
+                    "Component instance flags exports are not supported"
+                );
             }
             CoreDef::Trampoline(_) => {
-                return Err(WasmError::Unsupported(
-                    "Trampoline core module exports are not supported".to_string(),
-                ))
+                unsupported_diag!(
+                    &self.session.diagnostics,
+                    "Trampoline core module exports are not supported"
+                );
             }
         })
     }
@@ -377,10 +403,10 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         options: &CanonicalOptions,
     ) -> WasmResult<midenc_hir::CanonicalOptions> {
         if options.string_encoding != StringEncoding::Utf8 {
-            return Err(WasmError::Unsupported(
+            unsupported_diag!(
+                &self.session.diagnostics,
                 "UTF-8 is expected in CanonicalOptions, string transcoding is not yet supported"
-                    .to_string(),
-            ));
+            );
         }
         Ok(midenc_hir::CanonicalOptions {
             realloc: options.realloc.map(|idx| self.reallocs[&idx]),

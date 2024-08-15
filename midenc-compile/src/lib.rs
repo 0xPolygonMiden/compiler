@@ -2,71 +2,32 @@ mod compiler;
 mod stage;
 mod stages;
 
-use std::sync::Arc;
+use std::rc::Rc;
 
-use midenc_codegen_masm as masm;
-use midenc_hir::pass::AnalysisManager;
-use midenc_session::{OutputType, Session};
+use either::Either::{self, Left, Right};
+use midenc_codegen_masm::{self as masm, MasmArtifact};
+use midenc_hir::{
+    diagnostics::{miette, Diagnostic, IntoDiagnostic, Report, WrapErr},
+    pass::AnalysisManager,
+};
+use midenc_session::{OutputMode, Session};
 
-pub use self::{compiler::Compiler, stages::Compiled};
+pub use self::compiler::Compiler;
 use self::{stage::Stage, stages::*};
 
-pub type CompilerResult<T> = Result<T, CompilerError>;
+pub type CompilerResult<T> = Result<T, Report>;
 
-#[derive(Debug, thiserror::Error)]
-pub enum CompilerError {
-    /// An error was raised due to invalid command-line arguments or argument validation
-    #[error(transparent)]
-    Clap(#[from] clap::Error),
-    /// The compilation pipeline was stopped early
-    #[error("compilation was canceled by user")]
-    Stopped,
-    /// An invalid input was given to the compiler
-    #[error(transparent)]
-    InvalidInput(#[from] midenc_session::InvalidInputError),
-    /// An error occurred while parsing/translating a Wasm module from binary
-    #[error(transparent)]
-    WasmError(#[from] midenc_frontend_wasm::WasmError),
-    /// An error occurred while parsing/translating a Wasm module from text
-    #[error(transparent)]
-    WatError(#[from] wat::Error),
-    /// An error occurred while parsing an HIR module
-    #[error(transparent)]
-    Parsing(#[from] midenc_hir::parser::ParseError),
-    /// An error occurred while running an analysis
-    #[error(transparent)]
-    Analysis(#[from] midenc_hir::pass::AnalysisError),
-    /// An error occurred while rewriting an IR entity
-    #[error(transparent)]
-    Rewriting(#[from] midenc_hir::pass::RewriteError),
-    /// An error occurred while converting from one dialect to another
-    #[error(transparent)]
-    Conversion(#[from] midenc_hir::pass::ConversionError),
-    /// An error occurred while linking a program
-    #[error(transparent)]
-    Linker(#[from] midenc_hir::LinkerError),
-    /// An error occurred when reading a file
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    /// An error occurred while compiling a program
-    #[error(transparent)]
-    Failed(#[from] anyhow::Error),
-    /// An error was emitted as a diagnostic, so we don't need to emit info to stdout
-    #[error("exited due to error: see diagnostics for details")]
-    Reported,
-}
-impl From<midenc_hir::ModuleConflictError> for CompilerError {
-    fn from(err: midenc_hir::ModuleConflictError) -> CompilerError {
-        Self::Linker(midenc_hir::LinkerError::ModuleConflict(err.0))
-    }
-}
+/// The compilation pipeline was stopped early
+#[derive(Debug, thiserror::Error, Diagnostic)]
+#[error("compilation was canceled by user")]
+#[diagnostic()]
+pub struct CompilerStopped;
 
 /// Register dynamic flags to be shown via `midenc help compile`
 pub fn register_flags(cmd: clap::Command) -> clap::Command {
-    use midenc_hir::RewritePassRegistration;
     use midenc_session::CompileFlag;
 
-    let cmd = inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
+    inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
         let arg = clap::Arg::new(flag.name)
             .long(flag.long.unwrap_or(flag.name))
             .action(clap::ArgAction::from(flag.action));
@@ -100,93 +61,90 @@ pub fn register_flags(cmd: clap::Command) -> clap::Command {
         } else {
             arg
         };
+        let arg = if let Some(value) = flag.hide {
+            arg.hide(value)
+        } else {
+            arg
+        };
         cmd.arg(arg)
-    });
-
-    inventory::iter::<RewritePassRegistration<midenc_hir::Module>>.into_iter().fold(
-        cmd,
-        |cmd, rewrite| {
-            let name = rewrite.name();
-            let arg = clap::Arg::new(name)
-                .long(name)
-                .action(clap::ArgAction::SetTrue)
-                .help(rewrite.summary())
-                .help_heading("Transformations");
-            cmd.arg(arg)
-        },
-    )
+    })
 }
 
 /// Run the compiler using the provided [Session]
-pub fn compile(session: Arc<Session>) -> CompilerResult<()> {
-    let inputs = vec![session.input.clone()];
+pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
     let mut analyses = AnalysisManager::new();
-    match compile_inputs(inputs, &mut analyses, &session) {
-        Ok(Compiled::Program(ref program)) => {
-            if let Some(path) = session.emit_to(OutputType::Mast, None) {
-                log::warn!(
-                    "skipping emission of MAST to {} as output type is not fully supported yet",
-                    path.display()
-                );
-            }
-            if session.should_emit(OutputType::Masm) {
-                for module in program.modules() {
-                    session.emit(module)?;
-                }
-            }
+    match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
+        Artifact::Assembled(ref mast) => {
+            session
+                .emit(OutputMode::Text, mast)
+                .into_diagnostic()
+                .wrap_err("failed to pretty print 'mast' artifact")?;
+            session
+                .emit(OutputMode::Binary, mast)
+                .into_diagnostic()
+                .wrap_err("failed to serialize 'mast' artifact")
         }
-        Ok(Compiled::Modules(modules)) => {
-            let mut program = masm::Program::empty();
-            for module in modules.into_iter() {
-                program.insert(module);
-            }
-            if let Some(path) = session.emit_to(OutputType::Mast, None) {
-                log::warn!(
-                    "skipping emission of MAST to {} as output type is not fully supported yet",
-                    path.display()
-                );
-            }
-            if session.should_emit(OutputType::Masm) {
-                for module in program.modules() {
-                    session.emit(module)?;
-                }
-            }
-        }
-        Err(CompilerError::Stopped) => return Ok(()),
-        Err(CompilerError::Reported) => return Err(CompilerError::Reported),
-        Err(err) => {
-            session.diagnostics.error(err);
-            session.diagnostics.abort_if_errors();
-        }
+        Artifact::Linked(_) | Artifact::Lowered(_) => Ok(()),
     }
-
-    Ok(())
 }
 
 /// Same as `compile`, but return compiled artifacts to the caller
-pub fn compile_to_memory(session: Arc<Session>) -> CompilerResult<Compiled> {
-    let inputs = vec![session.input.clone()];
+pub fn compile_to_memory(session: Rc<Session>) -> CompilerResult<Artifact> {
     let mut analyses = AnalysisManager::new();
-    match compile_inputs(inputs, &mut analyses, &session) {
-        Ok(output) => Ok(output),
-        Err(err) => {
-            session.diagnostics.error(err.to_string());
-            session.diagnostics.abort_if_errors();
-            Err(CompilerError::Reported)
+    compile_inputs(session.inputs.clone(), &mut analyses, &session)
+}
+
+/// Same as `compile_to_memory`, but allows registering a callback which will be used as an extra
+/// compiler stage immediately after code generation and prior to assembly, if the linker was run.
+pub fn compile_to_memory_with_pre_assembly_stage<F>(
+    session: Rc<Session>,
+    stage: &mut F,
+) -> CompilerResult<Artifact>
+where
+    F: FnMut(MasmArtifact, &mut AnalysisManager, &Session) -> CompilerResult<MasmArtifact>,
+{
+    type AssemblyInput = Either<MasmArtifact, masm::ModuleTree>;
+
+    let mut analyses = AnalysisManager::new();
+
+    let mut pre_assembly_stage = move |output: AssemblyInput,
+                                       analysis: &mut AnalysisManager,
+                                       session: &Session| {
+        match output {
+            Left(artifact) => stage(artifact, analysis, session).map(Left),
+            right @ Right(_) => Ok(right),
         }
-    }
+    };
+    let mut stages = ParseStage
+        .next(SemanticAnalysisStage)
+        .next_optional(ApplyRewritesStage)
+        .collect(LinkerStage)
+        .next(CodegenStage)
+        .next(
+            &mut pre_assembly_stage
+                as &mut (dyn FnMut(
+                    AssemblyInput,
+                    &mut AnalysisManager,
+                    &Session,
+                ) -> CompilerResult<AssemblyInput>
+                          + '_),
+        )
+        .next(AssembleStage);
+
+    stages.run(session.inputs.clone(), &mut analyses, &session)
 }
 
 fn compile_inputs(
     inputs: Vec<midenc_session::InputFile>,
     analyses: &mut AnalysisManager,
     session: &Session,
-) -> CompilerResult<Compiled> {
+) -> CompilerResult<Artifact> {
     let mut stages = ParseStage
         .next(SemanticAnalysisStage)
         .next_optional(ApplyRewritesStage)
         .collect(LinkerStage)
-        .next(CodegenStage);
+        .next(CodegenStage)
+        .next(AssembleStage);
 
     stages.run(inputs, analyses, session)
 }

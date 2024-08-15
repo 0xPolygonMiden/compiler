@@ -6,8 +6,11 @@
 use std::{collections::HashMap, mem};
 
 use indexmap::IndexMap;
-use miden_diagnostics::DiagnosticsHandler;
-use midenc_hir::cranelift_entity::PrimaryMap;
+use midenc_hir::{
+    cranelift_entity::PrimaryMap,
+    diagnostics::{IntoDiagnostic, Severity},
+};
+use midenc_session::Session;
 use rustc_hash::FxHashMap;
 use wasmparser::{
     types::{
@@ -28,13 +31,16 @@ use crate::{
         },
     },
     translation_utils::BuildFxHasher,
-    unsupported_diag, WasmError, WasmTranslationConfig,
+    unsupported_diag, WasmTranslationConfig,
 };
 
 /// Structure used to parse a Wasm component
 pub struct ComponentParser<'a, 'data> {
     /// Configuration options for the translation.
     config: &'a WasmTranslationConfig,
+
+    /// The current compilation session
+    session: &'a Session,
 
     /// The current component being parsed.
     ///
@@ -285,11 +291,13 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     /// Creates a new parsing state ready to parse a component.
     pub fn new(
         config: &'a WasmTranslationConfig,
+        session: &'a Session,
         validator: &'a mut Validator,
         types: &'a mut ComponentTypesBuilder,
     ) -> Self {
         Self {
             config,
+            session,
             result: ParsedComponent::default(),
             validator,
             types,
@@ -301,14 +309,10 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     }
 
     /// Parses the given the Wasm component
-    pub fn parse(
-        mut self,
-        component: &'data [u8],
-        diagnostics: &DiagnosticsHandler,
-    ) -> Result<ParsedRootComponent<'data>, crate::WasmError> {
+    pub fn parse(mut self, component: &'data [u8]) -> WasmResult<ParsedRootComponent<'data>> {
         let mut remaining = component;
         loop {
-            let payload = match self.parser.parse(remaining, true)? {
+            let payload = match self.parser.parse(remaining, true).into_diagnostic()? {
                 Chunk::Parsed { payload, consumed } => {
                     remaining = &remaining[consumed..];
                     payload
@@ -316,7 +320,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 Chunk::NeedMoreData(_) => unreachable!(),
             };
 
-            match self.parse_payload(payload, component, diagnostics)? {
+            match self.parse_payload(payload, component)? {
                 Action::KeepGoing => {}
                 Action::Skip(n) => remaining = &remaining[n..],
                 Action::Done => break,
@@ -337,7 +341,6 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         &mut self,
         payload: Payload<'data>,
         component: &'data [u8],
-        diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<Action> {
         match payload {
             Payload::Version {
@@ -345,7 +348,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 encoding,
                 range,
             } => {
-                self.validator.version(num, encoding, &range)?;
+                self.validator.version(num, encoding, &range).into_diagnostic()?;
 
                 match encoding {
                     Encoding::Component => {}
@@ -356,7 +359,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             }
             Payload::End(offset) => {
                 assert!(self.result.types.is_none());
-                self.result.types = Some(self.validator.end(offset)?);
+                self.result.types = Some(self.validator.end(offset).into_diagnostic()?);
                 // Exit the current lexical scope. If there is no parent (no
                 // frame currently on the stack) then parsing is finished.
                 // Otherwise that means that a nested component has been
@@ -377,20 +380,31 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                     .push(LocalInitializer::ComponentStatic(static_idx, closure_args));
             }
             Payload::ComponentTypeSection(s) => self.component_type_section(s)?,
-            Payload::CoreTypeSection(s) => self.validator.core_type_section(&s)?,
+            Payload::CoreTypeSection(s) => {
+                self.validator.core_type_section(&s).into_diagnostic()?
+            }
             Payload::ComponentImportSection(s) => self.component_import_section(s)?,
             Payload::ComponentCanonicalSection(s) => self.component_canonical_section(s)?,
-            Payload::ModuleSection { parser, range } => {
-                self.module_section(range.clone(), parser, component, diagnostics)?;
+            Payload::ModuleSection {
+                parser,
+                unchecked_range: range,
+            } => {
+                self.module_section(range.clone(), parser, component)?;
                 return Ok(Action::Skip(range.end - range.start));
             }
-            Payload::ComponentSection { parser, range } => self.component_section(range, parser)?,
+            Payload::ComponentSection {
+                parser,
+                unchecked_range: range,
+            } => self.component_section(range, parser)?,
             Payload::InstanceSection(s) => self.core_instance_section(s)?,
             Payload::ComponentInstanceSection(s) => self.component_instance_section(s)?,
             Payload::ComponentExportSection(s) => self.component_export_section(s)?,
             Payload::ComponentStartSection { start, range } => {
-                self.validator.component_start_section(&start, &range)?;
-                unsupported_diag!(diagnostics, "component start section is not supported");
+                self.validator.component_start_section(&start, &range).into_diagnostic()?;
+                unsupported_diag!(
+                    &self.session.diagnostics,
+                    "component start section is not supported"
+                );
             }
             Payload::ComponentAliasSection(s) => self.component_alias_section(s)?,
             // All custom sections are ignored at this time.
@@ -402,8 +416,8 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
             // if it gets past validation provide a helpful error message to
             // debug.
             other => {
-                self.validator.payload(&other)?;
-                unsupported_diag!(diagnostics, "unsupported section {other:?}");
+                self.validator.payload(&other).into_diagnostic()?;
+                unsupported_diag!(&self.session.diagnostics, "unsupported section {other:?}");
             }
         }
 
@@ -413,7 +427,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn component_type_section(
         &mut self,
         s: wasmparser::ComponentTypeSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // When we see a type section the types are validated and then parsed.
         // Each active type definition is recorded in the
         // `ComponentTypesBuilder` tables, or this component's active scope.
@@ -422,10 +436,10 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // `Version` and `End` since multiple type sections can appear within a
         // component.
         let mut component_type_index = self.validator.types(0).unwrap().component_type_count();
-        self.validator.component_type_section(&s)?;
+        self.validator.component_type_section(&s).into_diagnostic()?;
         let types = self.validator.types(0).unwrap();
         for ty in s {
-            match ty? {
+            match ty.into_diagnostic()? {
                 wasmparser::ComponentType::Resource { rep, dtor } => {
                     let rep = convert_valtype(rep);
                     let id = types.component_any_type_at(component_type_index).unwrap_resource();
@@ -448,13 +462,13 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn component_import_section(
         &mut self,
         s: wasmparser::ComponentImportSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // Processing the import section at this point is relatively simple
         // which is to simply record the name of the import and the type
         // information associated with it.
-        self.validator.component_import_section(&s)?;
+        self.validator.component_import_section(&s).into_diagnostic()?;
         for import in s {
-            let import = import?;
+            let import = import.into_diagnostic()?;
             let types = self.validator.types(0).unwrap();
             let ty = types.component_entity_type_of_import(import.name.0).unwrap();
             self.result.initializers.push(LocalInitializer::Import(import.name, ty));
@@ -465,14 +479,14 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn component_canonical_section(
         &mut self,
         s: wasmparser::ComponentCanonicalSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // Entries in the canonical section will get initializers recorded
         // with the listed options for lifting/lowering.
         let mut core_func_index = self.validator.types(0).unwrap().function_count();
-        self.validator.component_canonical_section(&s)?;
+        self.validator.component_canonical_section(&s).into_diagnostic()?;
         for func in s {
             let types = self.validator.types(0).unwrap();
-            let init = match func? {
+            let init = match func.into_diagnostic()? {
                 wasmparser::CanonicalFunction::Lift {
                     type_index,
                     core_func_index,
@@ -529,8 +543,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         range: std::ops::Range<usize>,
         parser: Parser,
         component: &'data [u8],
-        diagnostics: &DiagnosticsHandler,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // Core wasm modules are parsed inline directly here with the
         // `ModuleEnvironment` from core wasm compilation. This will return
         // to the caller the size of the module so it knows how many bytes
@@ -539,13 +552,13 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // Note that this is just initial type parsing of the core wasm
         // module and actual function translation is deferred until this
         // entire process has completed.
-        self.validator.module_section(&range)?;
+        self.validator.module_section(&range).into_diagnostic()?;
         let parsed_module = ModuleEnvironment::new(
             self.config,
             self.validator,
             self.types.module_types_builder_mut(),
         )
-        .parse(parser, &component[range.start..range.end], diagnostics)?;
+        .parse(parser, &component[range.start..range.end], &self.session.diagnostics)?;
         let static_idx = self.static_modules.push(parsed_module);
         self.result.initializers.push(LocalInitializer::ModuleStatic(static_idx));
         // Set a fallback name for the newly added parsed module to be used if
@@ -562,7 +575,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         &mut self,
         range: std::ops::Range<usize>,
         parser: Parser,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // When a sub-component is found then the current parsing state
         // is pushed onto the `lexical_scopes` stack. This will subsequently
         // get popped as part of `Payload::End` processing above.
@@ -571,7 +584,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
         // starts empty since it will only get populated if parsing of
         // the nested component ends up aliasing some outer module or
         // component.
-        self.validator.component_section(&range)?;
+        self.validator.component_section(&range).into_diagnostic()?;
         self.lexical_scopes.push(LexicalScope {
             parser: mem::replace(&mut self.parser, parser),
             parsed_component: mem::take(&mut self.result),
@@ -583,14 +596,14 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn core_instance_section(
         &mut self,
         s: wasmparser::InstanceSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // Both core wasm instances and component instances record
         // initializers of what form of instantiation is performed which
         // largely just records the arguments given from wasmparser into a
         // `HashMap` for processing later during inlining.
-        self.validator.instance_section(&s)?;
+        self.validator.instance_section(&s).into_diagnostic()?;
         for instance in s {
-            let init = match instance? {
+            let init = match instance.into_diagnostic()? {
                 wasmparser::Instance::Instantiate { module_index, args } => {
                     let index = ModuleIndex::from_u32(module_index);
                     instantiate_module(index, &args)
@@ -607,11 +620,11 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn component_instance_section(
         &mut self,
         s: wasmparser::ComponentInstanceSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         let mut index = self.validator.types(0).unwrap().component_instance_count();
-        self.validator.component_instance_section(&s)?;
+        self.validator.component_instance_section(&s).into_diagnostic()?;
         for instance in s {
-            let init = match instance? {
+            let init = match instance.into_diagnostic()? {
                 wasmparser::ComponentInstance::Instantiate {
                     component_index,
                     args,
@@ -634,15 +647,15 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn component_export_section(
         &mut self,
         s: wasmparser::ComponentExportSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // Exports don't actually fill out the `initializers` array but
         // instead fill out the one other field in a `ParsedComponent`, the
         // `exports` field (as one might imagine). This for now simply
         // records the index of what's exported and that's tracked further
         // later during inlining.
-        self.validator.component_export_section(&s)?;
+        self.validator.component_export_section(&s).into_diagnostic()?;
         for export in s {
-            let export = export?;
+            let export = export.into_diagnostic()?;
             let item = self.kind_to_item(export.kind, export.index)?;
             let prev = self.result.exports.insert(export.name.0, item);
             assert!(prev.is_none());
@@ -654,13 +667,13 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
     fn component_alias_section(
         &mut self,
         s: wasmparser::ComponentAliasSectionReader<'data>,
-    ) -> Result<(), crate::WasmError> {
+    ) -> WasmResult<()> {
         // Aliases of instance exports (either core or component) will be
         // recorded as an initializer of the appropriate type with outer
         // aliases handled specially via upvars and type processing.
-        self.validator.component_alias_section(&s)?;
+        self.validator.component_alias_section(&s).into_diagnostic()?;
         for alias in s {
-            let init = match alias? {
+            let init = match alias.into_diagnostic()? {
                 wasmparser::ComponentAlias::InstanceExport {
                     kind: _,
                     instance_index,
@@ -742,9 +755,7 @@ impl<'a, 'data> ComponentParser<'a, 'data> {
                 ComponentItem::Component(index)
             }
             wasmparser::ComponentExternalKind::Value => {
-                return Err(WasmError::Unsupported(
-                    "component values are not supported".to_string(),
-                ));
+                unsupported_diag!(&self.session.diagnostics, "component values are not supported");
             }
             wasmparser::ComponentExternalKind::Type => {
                 let types = self.validator.types(0).unwrap();

@@ -6,17 +6,22 @@
 //!
 //! Based on Cranelift's Wasm -> CLIF translator v11.0.0
 
-use miden_diagnostics::{DiagnosticsHandler, SourceSpan};
-use midenc_hir::{cranelift_entity::EntityRef, Block, InstBuilder, ModuleFunctionBuilder};
-use wasmparser::{BinaryReader, FuncValidator, FunctionBody, WasmModuleResources};
+use midenc_hir::{
+    cranelift_entity::EntityRef,
+    diagnostics::{DiagnosticsHandler, IntoDiagnostic, SourceManagerExt, SourceSpan},
+    Block, InstBuilder, ModuleFunctionBuilder,
+};
+use midenc_session::Session;
+use wasmparser::{FuncValidator, FunctionBody, WasmModuleResources};
 
-use super::{module_translation_state::ModuleTranslationState, Module};
+use super::{module_env::ParsedModule, module_translation_state::ModuleTranslationState};
 use crate::{
     code_translator::translate_operator,
     error::WasmResult,
     module::{
         func_translation_state::FuncTranslationState,
         function_builder_ext::{FunctionBuilderContext, FunctionBuilderExt},
+        module_env::DwarfReader,
         types::{convert_valtype, ir_type, ModuleTypes},
     },
     ssa::Variable,
@@ -49,13 +54,12 @@ impl FuncTranslator {
         body: &FunctionBody<'_>,
         mod_func_builder: &mut ModuleFunctionBuilder,
         module_state: &mut ModuleTranslationState,
-        module: &Module,
+        module: &ParsedModule<'_>,
         mod_types: &ModuleTypes,
-        diagnostics: &DiagnosticsHandler,
+        addr2line: &addr2line::Context<DwarfReader<'_>>,
+        session: &Session,
         func_validator: &mut FuncValidator<impl WasmModuleResources>,
     ) -> WasmResult<()> {
-        let mut reader = body.get_binary_reader();
-
         let mut builder = FunctionBuilderExt::new(mod_func_builder, &mut self.func_ctx);
         let entry_block = builder.current_block();
         builder.seal_block(entry_block); // Declare all predecessors known.
@@ -68,15 +72,26 @@ impl FuncTranslator {
         builder.append_block_params_for_function_returns(exit_block);
         self.state.initialize(builder.signature(), exit_block);
 
-        parse_local_decls(&mut reader, &mut builder, num_params, func_validator)?;
+        let mut reader = body.get_locals_reader().into_diagnostic()?;
+
+        parse_local_decls(
+            &mut reader,
+            &mut builder,
+            num_params,
+            func_validator,
+            &session.diagnostics,
+        )?;
+
+        let mut reader = body.get_operators_reader().into_diagnostic()?;
         parse_function_body(
-            reader,
+            &mut reader,
             &mut builder,
             &mut self.state,
             module_state,
             module,
             mod_types,
-            diagnostics,
+            addr2line,
+            session,
             func_validator,
         )?;
 
@@ -107,20 +122,20 @@ fn declare_parameters(builder: &mut FunctionBuilderExt, entry_block: Block) -> u
 ///
 /// Declare local variables, starting from `num_params`.
 fn parse_local_decls(
-    reader: &mut BinaryReader,
+    reader: &mut wasmparser::LocalsReader<'_>,
     builder: &mut FunctionBuilderExt,
     num_params: usize,
     validator: &mut FuncValidator<impl WasmModuleResources>,
+    diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
     let mut next_local = num_params;
-    let local_count = reader.read_var_u32()?;
+    let local_count = reader.get_count();
 
     for _ in 0..local_count {
         let pos = reader.original_position();
-        let count = reader.read_var_u32()?;
-        let ty = reader.read()?;
-        validator.define_locals(pos, count, ty)?;
-        declare_locals(builder, count, ty, &mut next_local)?;
+        let (count, ty) = reader.read().into_diagnostic()?;
+        validator.define_locals(pos, count, ty).into_diagnostic()?;
+        declare_locals(builder, count, ty, &mut next_local, diagnostics)?;
     }
 
     Ok(())
@@ -134,10 +149,11 @@ fn declare_locals(
     count: u32,
     wasm_type: wasmparser::ValType,
     next_local: &mut usize,
+    diagnostics: &DiagnosticsHandler,
 ) -> WasmResult<()> {
-    let ty = ir_type(convert_valtype(wasm_type))?;
+    let ty = ir_type(convert_valtype(wasm_type), diagnostics)?;
     // All locals are initialized to 0.
-    let init = emit_zero(&ty, builder)?;
+    let init = emit_zero(&ty, builder, diagnostics)?;
     for _ in 0..count {
         let local = Variable::new(*next_local);
         builder.declare_var(local, ty.clone());
@@ -153,35 +169,71 @@ fn declare_locals(
 /// arguments and locals are declared in the builder.
 #[allow(clippy::too_many_arguments)]
 fn parse_function_body(
-    mut reader: BinaryReader,
+    reader: &mut wasmparser::OperatorsReader<'_>,
     builder: &mut FunctionBuilderExt,
     state: &mut FuncTranslationState,
     module_state: &mut ModuleTranslationState,
-    module: &Module,
+    module: &ParsedModule<'_>,
     mod_types: &ModuleTypes,
-    diagnostics: &DiagnosticsHandler,
+    addr2line: &addr2line::Context<DwarfReader<'_>>,
+    session: &Session,
     func_validator: &mut FuncValidator<impl WasmModuleResources>,
 ) -> WasmResult<()> {
     // The control stack is initialized with a single block representing the whole function.
     debug_assert_eq!(state.control_stack.len(), 1, "State not initialized");
 
+    let mut end_span = SourceSpan::default();
     while !reader.eof() {
         let pos = reader.original_position();
-        let op = reader.read_operator()?;
-        func_validator.op(pos, &op)?;
+        let (op, offset) = reader.read_with_offset().into_diagnostic()?;
+        func_validator.op(pos, &op).into_diagnostic()?;
+
+        let offset = (offset as u64)
+            .checked_sub(module.wasm_file.code_section_offset)
+            .expect("offset occurs before start of code section");
+        let mut span = SourceSpan::default();
+        if let Some(loc) = addr2line.find_location(offset).into_diagnostic()? {
+            if let Some(file) = loc.file {
+                let path = std::path::Path::new(file);
+                let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+                if path.exists() {
+                    let source_file = session.source_manager.load_file(&path).into_diagnostic()?;
+                    let line = loc.line.and_then(|line| line.checked_sub(1)).unwrap_or(0);
+                    let column = loc.column.and_then(|col| col.checked_sub(1)).unwrap_or(0);
+                    span = source_file.line_column_to_span(line, column).unwrap_or_default();
+                } else {
+                    log::debug!(
+                        "failed to locate span for instruction at offset {offset} in function {}",
+                        builder.id()
+                    );
+                }
+            }
+        } else {
+            log::debug!(
+                "failed to locate span for instruction at offset {offset} in function {}",
+                builder.id()
+            );
+        }
+
+        // Track the span of every END we observe, so we have a span to assign to the return we
+        // place in the final exit block
+        if let wasmparser::Operator::End = op {
+            end_span = span;
+        }
+
         translate_operator(
             &op,
             builder,
             state,
             module_state,
-            module,
+            &module.module,
             mod_types,
-            diagnostics,
-            SourceSpan::default(),
+            &session.diagnostics,
+            span,
         )?;
     }
     let pos = reader.original_position();
-    func_validator.finish(pos)?;
+    func_validator.finish(pos).into_diagnostic()?;
 
     // The final `End` operator left us in the exit block where we need to manually add a return
     // instruction.
@@ -189,7 +241,7 @@ fn parse_function_body(
     // If the exit block is unreachable, it may not have the correct arguments, so we would
     // generate a return instruction that doesn't match the signature.
     if state.reachable && !builder.is_unreachable() {
-        builder.ins().ret(state.stack.first().cloned(), SourceSpan::default());
+        builder.ins().ret(state.stack.first().cloned(), end_span);
     }
 
     // Discard any remaining values on the stack. Either we just returned them,

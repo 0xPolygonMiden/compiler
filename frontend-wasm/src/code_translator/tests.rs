@@ -3,11 +3,13 @@ use core::fmt::Write;
 use expect_test::expect;
 use midenc_hir::Ident;
 
-use crate::{test_utils::test_diagnostics, translate, WasmTranslationConfig};
+use crate::{test_utils::test_context, translate, WasmTranslationConfig};
 
 /// Check IR generated for a Wasm op(s).
 /// Wrap Wasm ops in a function and check the IR generated for the entry block of that function.
 fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
+    let context = test_context();
+
     let wat = format!(
         r#"
         (module
@@ -18,8 +20,7 @@ fn check_op(wat_op: &str, expected_ir: expect_test::Expect) {
         )"#,
     );
     let wasm = wat::parse_str(wat).unwrap();
-    let diagnostics = test_diagnostics();
-    let module = translate(&wasm, &WasmTranslationConfig::default(), &diagnostics)
+    let module = translate(&wasm, &WasmTranslationConfig::default(), &context.session)
         .unwrap()
         .unwrap_one_module();
     let func = module.function(Ident::from("test_wrapper")).unwrap();
@@ -54,7 +55,7 @@ fn memory_grow() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1))
-            (let (v1 u32) (cast v0))
+            (let (v1 u32) (bitcast v0))
             (let (v2 i32) (memory.grow v1))
         "#]],
     )
@@ -86,9 +87,9 @@ fn memory_copy() {
             (let (v0 i32) (const.i32 20))
             (let (v1 i32) (const.i32 10))
             (let (v2 i32) (const.i32 1))
-            (let (v3 u32) (cast v0))
+            (let (v3 u32) (bitcast v0))
             (let (v4 (ptr u8)) (inttoptr v3))
-            (let (v5 u32) (cast v1))
+            (let (v5 u32) (bitcast v1))
             (let (v6 (ptr u8)) (inttoptr v5))
             (memcpy v6 v4 v2)
         "#]],
@@ -105,7 +106,7 @@ fn i32_load8_u() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
+            (let (v1 u32) (bitcast v0))
             (let (v2 (ptr u8)) (inttoptr v1))
             (let (v3 u8) (load v2))
             (let (v4 i32) (zext v3))
@@ -123,10 +124,12 @@ fn i32_load16_u() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 (ptr u16)) (inttoptr v1))
-            (let (v3 u16) (load v2))
-            (let (v4 i32) (zext v3))
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz 250 v2)
+            (let (v3 (ptr u16)) (inttoptr v1))
+            (let (v4 u16) (load v3))
+            (let (v5 i32) (zext v4))
         "#]],
     )
 }
@@ -141,7 +144,7 @@ fn i32_load8_s() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
+            (let (v1 u32) (bitcast v0))
             (let (v2 (ptr i8)) (inttoptr v1))
             (let (v3 i8) (load v2))
             (let (v4 i32) (sext v3))
@@ -159,10 +162,12 @@ fn i32_load16_s() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 (ptr i16)) (inttoptr v1))
-            (let (v3 i16) (load v2))
-            (let (v4 i32) (sext v3))
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz 250 v2)
+            (let (v3 (ptr i16)) (inttoptr v1))
+            (let (v4 i16) (load v3))
+            (let (v5 i32) (sext v4))
         "#]],
     )
 }
@@ -177,7 +182,7 @@ fn i64_load8_u() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
+            (let (v1 u32) (bitcast v0))
             (let (v2 (ptr u8)) (inttoptr v1))
             (let (v3 u8) (load v2))
             (let (v4 i64) (zext v3))
@@ -195,10 +200,12 @@ fn i64_load16_u() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 (ptr u16)) (inttoptr v1))
-            (let (v3 u16) (load v2))
-            (let (v4 i64) (zext v3))
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz 250 v2)
+            (let (v3 (ptr u16)) (inttoptr v1))
+            (let (v4 u16) (load v3))
+            (let (v5 i64) (zext v4))
         "#]],
     )
 }
@@ -213,7 +220,7 @@ fn i64_load8_s() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
+            (let (v1 u32) (bitcast v0))
             (let (v2 (ptr i8)) (inttoptr v1))
             (let (v3 i8) (load v2))
             (let (v4 i64) (sext v3))
@@ -231,10 +238,12 @@ fn i64_load16_s() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 (ptr i16)) (inttoptr v1))
-            (let (v3 i16) (load v2))
-            (let (v4 i64) (sext v3))
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 2))
+            (assertz 250 v2)
+            (let (v3 (ptr i16)) (inttoptr v1))
+            (let (v4 i16) (load v3))
+            (let (v5 i64) (sext v4))
         "#]],
     )
 }
@@ -249,9 +258,9 @@ fn i64_load32_s() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 u32) (mod.unchecked v1 2))
-            (assertz v2)
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 4))
+            (assertz 250 v2)
             (let (v3 (ptr i32)) (inttoptr v1))
             (let (v4 i32) (load v3))
             (let (v5 i64) (sext v4))
@@ -269,9 +278,9 @@ fn i64_load32_u() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 u32) (mod.unchecked v1 2))
-            (assertz v2)
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 4))
+            (assertz 250 v2)
             (let (v3 (ptr u32)) (inttoptr v1))
             (let (v4 u32) (load v3))
             (let (v5 i64) (zext v4))
@@ -289,9 +298,9 @@ fn i32_load() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 u32) (mod.unchecked v1 2))
-            (assertz v2)
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 4))
+            (assertz 250 v2)
             (let (v3 (ptr i32)) (inttoptr v1))
             (let (v4 i32) (load v3))
         "#]],
@@ -308,9 +317,9 @@ fn i64_load() {
         "#,
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
-            (let (v1 u32) (cast v0))
-            (let (v2 u32) (mod.unchecked v1 3))
-            (assertz v2)
+            (let (v1 u32) (bitcast v0))
+            (let (v2 u32) (mod.unchecked v1 8))
+            (assertz 250 v2)
             (let (v3 (ptr i64)) (inttoptr v1))
             (let (v4 i64) (load v3))
         "#]],
@@ -328,9 +337,9 @@ fn i32_store() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (mod.unchecked v2 2))
-            (assertz v3)
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (mod.unchecked v2 4))
+            (assertz 250 v3)
             (let (v4 (ptr i32)) (inttoptr v2))
             (store v4 v1)
         "#]],
@@ -348,9 +357,9 @@ fn i64_store() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u32) (cast v0))
-            (let (v3 u32) (mod.unchecked v2 3))
-            (assertz v3)
+            (let (v2 u32) (bitcast v0))
+            (let (v3 u32) (mod.unchecked v2 8))
+            (assertz 250 v3)
             (let (v4 (ptr i64)) (inttoptr v2))
             (store v4 v1)
         "#]],
@@ -368,10 +377,11 @@ fn i32_store8() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u8) (trunc v1))
-            (let (v3 u32) (cast v0))
-            (let (v4 (ptr u8)) (inttoptr v3))
-            (store v4 v2)
+            (let (v2 u32) (bitcast v1))
+            (let (v3 u8) (trunc v2))
+            (let (v4 u32) (bitcast v0))
+            (let (v5 (ptr u8)) (inttoptr v4))
+            (store v5 v3)
         "#]],
     )
 }
@@ -387,10 +397,13 @@ fn i32_store16() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 i32) (const.i32 1))
-            (let (v2 u16) (trunc v1))
-            (let (v3 u32) (cast v0))
-            (let (v4 (ptr u16)) (inttoptr v3))
-            (store v4 v2)
+            (let (v2 u32) (bitcast v1))
+            (let (v3 u16) (trunc v2))
+            (let (v4 u32) (bitcast v0))
+            (let (v5 u32) (mod.unchecked v4 2))
+            (assertz 250 v5)
+            (let (v6 (ptr u16)) (inttoptr v4))
+            (store v6 v3)
         "#]],
     )
 }
@@ -406,12 +419,13 @@ fn i64_store32() {
         expect![[r#"
             (let (v0 i32) (const.i32 1024))
             (let (v1 i64) (const.i64 1))
-            (let (v2 u32) (trunc v1))
-            (let (v3 u32) (cast v0))
-            (let (v4 u32) (mod.unchecked v3 2))
-            (assertz v4)
-            (let (v5 (ptr u32)) (inttoptr v3))
-            (store v5 v2)
+            (let (v2 u64) (bitcast v1))
+            (let (v3 u32) (trunc v2))
+            (let (v4 u32) (bitcast v0))
+            (let (v5 u32) (mod.unchecked v4 4))
+            (assertz 250 v5)
+            (let (v6 (ptr u32)) (inttoptr v4))
+            (store v6 v3)
         "#]],
     )
 }

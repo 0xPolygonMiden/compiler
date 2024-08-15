@@ -11,8 +11,8 @@ pub use midenc_hir::{
 
 pub use self::{
     function::{FrozenFunctionList, Function, FunctionList},
-    module::{FrozenModuleTree, LoadModuleError, Module, ModuleTree},
-    program::Program,
+    module::{FrozenModuleTree, Module, ModuleTree},
+    program::{Library, Program},
     region::Region,
 };
 
@@ -42,6 +42,15 @@ pub struct NativePtr {
     pub addrspace: midenc_hir::AddressSpace,
 }
 impl NativePtr {
+    pub fn new(waddr: u32, index: u8, offset: u8) -> Self {
+        Self {
+            waddr,
+            index,
+            offset,
+            addrspace: Default::default(),
+        }
+    }
+
     /// Translates a raw pointer (assumed to be in a byte-addressable address space) to
     /// a native pointer value, in the default [hir::AddressSpace].
     pub fn from_ptr(addr: u32) -> Self {

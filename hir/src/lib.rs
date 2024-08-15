@@ -20,10 +20,10 @@ extern crate lalrpop_util;
 
 pub use intrusive_collections::UnsafeRef;
 pub use miden_core::{FieldElement, StarkField};
-pub use miden_diagnostics::SourceSpan;
 pub use midenc_hir_macros::*;
 pub use midenc_hir_symbol::{symbols, Symbol};
 pub use midenc_hir_type::{AddressSpace, Alignable, FunctionType, StructType, Type, TypeRepr};
+pub use midenc_session::diagnostics::{self, SourceSpan};
 
 /// Represents a field element in Miden
 pub type Felt = miden_core::Felt;
@@ -80,66 +80,44 @@ macro_rules! diagnostic {
 
     ($diagnostics:ident, $severity:expr, $msg:literal, $span:expr, $label:expr) => {{
         let span = $span;
-        if span.is_unknown() {
-            $diagnostics.diagnostic($severity).with_message($msg).with_note($label).emit();
-        } else {
-            $diagnostics
-                .diagnostic($severity)
-                .with_message($msg)
-                .with_primary_label($span, $label)
-                .emit();
-        }
+        $diagnostics
+            .diagnostic($severity)
+            .with_message($msg)
+            .with_primary_label($span, $label)
+            .emit();
     }};
 
     ($diagnostics:ident, $severity:expr, $msg:literal, $span:expr, $label:expr, $note:expr) => {{
         let span = $span;
-        if span.is_unknown() {
-            $diagnostics
-                .diagnostic($severity)
-                .with_message($msg)
-                .with_note($label)
-                .with_note($note)
-                .emit();
-        } else {
-            $diagnostics
-                .diagnostic($severity)
-                .with_message($msg)
-                .with_primary_label(span, $label)
-                .with_note($note)
-                .emit();
-        }
+        $diagnostics
+            .diagnostic($severity)
+            .with_message($msg)
+            .with_primary_label(span, $label)
+            .with_note($note)
+            .emit();
     }};
 
     ($diagnostics:ident, $severity:expr, $msg:literal, $span:expr, $label:expr, $span2:expr, $label2:expr) => {{
         let span = $span;
         let span2 = $span2;
-        let diag = $diagnostics.diagnostic($severity).with_message($msg);
-        if span.is_unknown() {
-            diag.with_note($label);
-        } else {
-            diag.with_primary_label(span, $label);
-        }
-        if span2.is_unknown() {
-            diag.with_note($label2).emit();
-        } else {
-            diag.with_secondary_label(span2, $label2).emit();
-        }
+        $diagnostics
+            .diagnostic($severity)
+            .with_message($msg)
+            .with_primary_label(span, $label)
+            .with_secondary_label(span2, $label2)
+            .emit();
     }};
 
     ($diagnostics:ident, $severity:expr, $msg:literal, $span:expr, $label:expr, $span2:expr, $label2:expr, $note:expr) => {{
         let span = $span;
         let span2 = $span2;
-        let diag = $diagnostics.diagnostic($severity).with_message($msg);
-        if span.is_unknown() {
-            diag.with_note($label);
-        } else {
-            diag.with_primary_label(span, $label);
-        }
-        if span2.is_unknown() {
-            diag.with_note($label2).with_note($note).emit();
-        } else {
-            diag.with_secondary_label(span2, $label2).with_note($note).emit();
-        }
+        $diagnostics
+            .diagnostic($severity)
+            .with_message($msg)
+            .with_primary_label(span, $label)
+            .with_secondary_label(span2, $label2)
+            .with_help($note)
+            .emit();
     }};
 }
 
@@ -186,7 +164,7 @@ pub use self::{
     display::{Decorator, DisplayValues},
     function::*,
     globals::*,
-    ident::{FunctionIdent, Ident},
+    ident::{demangle, FunctionIdent, Ident},
     immediates::Immediate,
     insert::{Insert, InsertionPoint},
     instruction::*,
@@ -197,7 +175,7 @@ pub use self::{
         AnalysisKey, ConversionPassRegistration, ModuleRewritePassAdapter, PassInfo,
         RewritePassRegistration,
     },
-    program::{Linker, LinkerError, Program, ProgramAnalysisKey, ProgramBuilder},
+    program::{Linker, Program, ProgramAnalysisKey, ProgramBuilder},
     segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable},
     value::{Value, ValueData, ValueList, ValueListPool},
 };

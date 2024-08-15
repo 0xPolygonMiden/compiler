@@ -3,19 +3,38 @@ use alloc::collections::BTreeMap;
 use intrusive_collections::{
     intrusive_adapter,
     linked_list::{Cursor, CursorMut},
-    LinkedList, RBTreeLink,
+    LinkedList, LinkedListLink, RBTreeLink,
 };
-use miden_diagnostics::{DiagnosticsHandler, Severity, Spanned};
 use rustc_hash::FxHashSet;
 
 use self::formatter::PrettyPrint;
-use super::*;
+use crate::{
+    diagnostics::{miette, Diagnostic, DiagnosticsHandler, Report, Severity, Spanned},
+    *,
+};
 
 /// This error is raised when two modules conflict with the same symbol name
-#[derive(Debug, thiserror::Error)]
-#[error("module {} has already been declared", .0)]
-pub struct ModuleConflictError(pub Ident);
+#[derive(Debug, thiserror::Error, Diagnostic)]
+#[error("module {} has already been declared", .name)]
+#[diagnostic()]
+pub struct ModuleConflictError {
+    #[label("duplicate declaration occurs here")]
+    pub span: SourceSpan,
+    pub name: Symbol,
+}
+impl ModuleConflictError {
+    pub fn new(name: Ident) -> Self {
+        Self {
+            span: name.span,
+            name: name.as_symbol(),
+        }
+    }
+}
 
+pub type ModuleTree = intrusive_collections::RBTree<ModuleTreeAdapter>;
+pub type ModuleList = intrusive_collections::LinkedList<ModuleListAdapter>;
+
+intrusive_adapter!(pub ModuleListAdapter = Box<Module>: Module { list_link: LinkedListLink });
 intrusive_adapter!(pub ModuleTreeAdapter = Box<Module>: Module { link: RBTreeLink });
 impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
     type Key = Ident;
@@ -38,6 +57,8 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
 pub struct Module {
     /// The link used to attach this module to a [Program]
     link: RBTreeLink,
+    /// The link used to store this module in a list of modules
+    list_link: LinkedListLink,
     /// The name of this module
     #[span]
     #[analysis_key]
@@ -176,11 +197,21 @@ impl midenc_session::Emit for Module {
         Some(self.name.as_symbol())
     }
 
-    fn output_type(&self) -> midenc_session::OutputType {
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
         midenc_session::OutputType::Hir
     }
 
-    fn write_to<W: std::io::Write>(&self, mut writer: W) -> std::io::Result<()> {
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for HIR modules"
+        );
         writer.write_fmt(format_args!("{}", self))
     }
 }
@@ -271,6 +302,7 @@ impl Module {
     fn make(name: Ident, is_kernel: bool) -> Self {
         Self {
             link: Default::default(),
+            list_link: Default::default(),
             name,
             docs: None,
             segments: Default::default(),
@@ -804,23 +836,20 @@ impl<'m> ModuleFunctionBuilder<'m> {
         DefaultInstBuilder::new(&mut self.function.dfg, self.position)
     }
 
-    pub fn build(
-        self,
-        diagnostics: &DiagnosticsHandler,
-    ) -> Result<FunctionIdent, InvalidFunctionError> {
+    pub fn build(self, diagnostics: &DiagnosticsHandler) -> Result<FunctionIdent, Report> {
         let sig = self.function.signature();
         match sig.linkage {
             Linkage::External | Linkage::Internal => (),
             linkage => {
-                diagnostics
+                return Err(diagnostics
                     .diagnostic(Severity::Error)
-                    .with_message(format!(
-                        "invalid linkage ('{}') for function '{}'",
-                        linkage, &self.function.id
-                    ))
-                    .with_note("Only 'external' and 'internal' linkage are valid for functions")
-                    .emit();
-                return Err(InvalidFunctionError);
+                    .with_message("invalid function definition")
+                    .with_primary_label(
+                        self.function.span(),
+                        format!("invalid linkage: '{linkage}'"),
+                    )
+                    .with_help("Only 'external' and 'internal' linkage are valid for functions")
+                    .into_report());
             }
         }
 
@@ -830,47 +859,47 @@ impl<'m> ModuleFunctionBuilder<'m> {
         match sig.cc {
             CallConv::Kernel if is_kernel_module => {
                 if !is_public {
-                    diagnostics
+                    return Err(diagnostics
                         .diagnostic(Severity::Error)
-                        .with_message(format!(
-                            "expected external linkage for kernel function '{}'",
-                            &self.function.id
-                        ))
-                        .with_note(
-                            "This function is private, but uses the 'kernel' calling convention. \
-                             It must either be made public, or use a different convention",
+                        .with_message("invalid function definition")
+                        .with_primary_label(
+                            self.function.span(),
+                            format!("expected 'external' linkage, but got '{}'", &sig.linkage),
                         )
-                        .emit();
-                    return Err(InvalidFunctionError);
+                        .with_help(
+                            "Functions declared with the 'kernel' calling convention must have \
+                             'external' linkage",
+                        )
+                        .into_report());
                 }
             }
             CallConv::Kernel => {
-                diagnostics
+                return Err(diagnostics
                     .diagnostic(Severity::Error)
-                    .with_message(format!(
-                        "invalid calling convention for function '{}'",
-                        &self.function.id
-                    ))
-                    .with_note(
+                    .with_message("invalid function definition")
+                    .with_primary_label(
+                        self.function.span(),
+                        "unsupported use of 'kernel' calling convention",
+                    )
+                    .with_help(
                         "The 'kernel' calling convention is only allowed in kernel modules, on \
                          functions with external linkage",
                     )
-                    .emit();
-                return Err(InvalidFunctionError);
+                    .into_report());
             }
-            _ if is_kernel_module && is_public => {
-                diagnostics
+            cc if is_kernel_module && is_public => {
+                return Err(diagnostics
                     .diagnostic(Severity::Error)
-                    .with_message(format!(
-                        "invalid calling convention for function '{}'",
-                        &self.function.id
-                    ))
-                    .with_note(
+                    .with_message("invalid function definition")
+                    .with_primary_label(
+                        self.function.span(),
+                        format!("unsupported use of '{cc}' calling convention"),
+                    )
+                    .with_help(
                         "Functions with external linkage, must use the 'kernel' calling \
                          convention when defined in a kernel module",
                     )
-                    .emit();
-                return Err(InvalidFunctionError);
+                    .into_report());
             }
             _ => (),
         }
@@ -881,6 +910,3 @@ impl<'m> ModuleFunctionBuilder<'m> {
         Ok(id)
     }
 }
-
-#[derive(Debug)]
-pub struct InvalidFunctionError;

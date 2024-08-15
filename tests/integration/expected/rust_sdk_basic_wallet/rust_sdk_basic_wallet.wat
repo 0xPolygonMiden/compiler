@@ -5,9 +5,9 @@
   (type (;3;) (func (param i32 f32 f32 i32)))
   (type (;4;) (func (param i32 i32)))
   (type (;5;) (func (param i32 f32 f32 i32) (result f32)))
-  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_add_asset (;0;) (type 0)))
-  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_account_remove_asset (;1;) (type 0)))
-  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_tx_kernel_sys::externs::extern_tx_create_note (;2;) (type 1)))
+  (import "miden::account" "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_base_sys::bindings::tx::externs::extern_account_add_asset (;0;) (type 0)))
+  (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_base_sys::bindings::tx::externs::extern_account_remove_asset (;1;) (type 0)))
+  (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_base_sys::bindings::tx::externs::extern_tx_create_note (;2;) (type 1)))
   (func $receive_asset (;3;) (type 2) (param i32)
     (local i32)
     global.get $__stack_pointer
@@ -17,7 +17,7 @@
     global.set $__stack_pointer
     local.get 1
     local.get 0
-    call $miden_tx_kernel_sys::add_asset
+    call $miden_base_sys::bindings::tx::add_asset
     local.get 1
     i32.const 16
     i32.add
@@ -32,25 +32,19 @@
     global.set $__stack_pointer
     local.get 4
     local.get 0
-    call $miden_tx_kernel_sys::remove_asset
+    call $miden_base_sys::bindings::tx::remove_asset
     local.get 4
     local.get 1
     local.get 2
     local.get 3
-    call $miden_tx_kernel_sys::create_note
+    call $miden_base_sys::bindings::tx::create_note
     drop
     local.get 4
     i32.const 16
     i32.add
     global.set $__stack_pointer
   )
-  (func $miden_tx_kernel_sys::add_asset (;5;) (type 4) (param i32 i32)
-    (local i32)
-    global.get $__stack_pointer
-    i32.const 16
-    i32.sub
-    local.tee 2
-    global.set $__stack_pointer
+  (func $miden_base_sys::bindings::tx::add_asset (;5;) (type 4) (param i32 i32)
     local.get 1
     f32.load
     local.get 1
@@ -59,32 +53,10 @@
     f32.load offset=8
     local.get 1
     f32.load offset=12
-    local.get 2
-    call $miden_tx_kernel_sys::externs::extern_account_add_asset
     local.get 0
-    i32.const 8
-    i32.add
-    local.get 2
-    i32.const 8
-    i32.add
-    i64.load align=4
-    i64.store align=4
-    local.get 0
-    local.get 2
-    i64.load align=4
-    i64.store align=4
-    local.get 2
-    i32.const 16
-    i32.add
-    global.set $__stack_pointer
+    call $miden_base_sys::bindings::tx::externs::extern_account_add_asset
   )
-  (func $miden_tx_kernel_sys::remove_asset (;6;) (type 4) (param i32 i32)
-    (local i32)
-    global.get $__stack_pointer
-    i32.const 16
-    i32.sub
-    local.tee 2
-    global.set $__stack_pointer
+  (func $miden_base_sys::bindings::tx::remove_asset (;6;) (type 4) (param i32 i32)
     local.get 1
     f32.load
     local.get 1
@@ -93,26 +65,10 @@
     f32.load offset=8
     local.get 1
     f32.load offset=12
-    local.get 2
-    call $miden_tx_kernel_sys::externs::extern_account_remove_asset
     local.get 0
-    i32.const 8
-    i32.add
-    local.get 2
-    i32.const 8
-    i32.add
-    i64.load align=4
-    i64.store align=4
-    local.get 0
-    local.get 2
-    i64.load align=4
-    i64.store align=4
-    local.get 2
-    i32.const 16
-    i32.add
-    global.set $__stack_pointer
+    call $miden_base_sys::bindings::tx::externs::extern_account_remove_asset
   )
-  (func $miden_tx_kernel_sys::create_note (;7;) (type 5) (param i32 f32 f32 i32) (result f32)
+  (func $miden_base_sys::bindings::tx::create_note (;7;) (type 5) (param i32 f32 f32 i32) (result f32)
     local.get 0
     f32.load
     local.get 0
@@ -131,7 +87,7 @@
     f32.load offset=8
     local.get 3
     f32.load offset=12
-    call $miden_tx_kernel_sys::externs::extern_tx_create_note
+    call $miden_base_sys::bindings::tx::externs::extern_tx_create_note
   )
   (table (;0;) 1 1 funcref)
   (memory (;0;) 16)
