@@ -13,7 +13,7 @@ the program. The UI is organized into pages and panes, with the main/home page b
 one you get dropped into when the debugger starts. The home page contains the following panes:
 
 * Source Code - displays source code for the current instruction, if available, with
-  the relevant line and span highlighted
+  the relevant line and span highlighted, with syntax highlighting (when available)
 * Disassembly - displays the 5 most recently executed VM instructions, and the current
   cycle count
 * Stack Trace - displays a stack trace for the current instruction, if the program was
@@ -128,5 +128,4 @@ The following are some features planned for the near future:
 * Conditional breakpoints, i.e. only trigger a breakpoint when an expression attached to it
   evaluates to true
 * More robust type support in the `read` command
-* Syntax highlighting in the source window
 * Display procedure locals and their contents in a dedicated pane

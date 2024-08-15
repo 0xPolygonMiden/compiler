@@ -159,8 +159,21 @@ impl Page for Home {
             Action::Continue => {
                 let start_cycle = state.execution_state.cycle;
                 let mut breakpoints = core::mem::take(&mut state.breakpoints);
-                while state.execution_state.step().is_ok() {
+                state.stopped = false;
+                let stopped = loop {
+                    // If stepping the program results in the program terminating succesfully, stop
+                    if state.execution_state.stopped {
+                        break true;
+                    }
+
+                    if let Err(err) = state.execution_state.step() {
+                        // Execution terminated with an error
+                        state.execution_failed = Some(err);
+                        break true;
+                    }
+
                     if breakpoints.is_empty() {
+                        // No breakpoint management needed, keep executing
                         continue;
                     }
 
@@ -241,17 +254,29 @@ impl Page for Home {
                     });
 
                     if !state.breakpoints_hit.is_empty() {
-                        break;
+                        break true;
                     }
-                }
+                };
 
                 // Restore the breakpoints state
                 state.breakpoints = breakpoints;
 
-                // Track whether we are stopped for a breakpoint or not in the UI state
-                state.stopped = true;
+                // Ensure that if we yield to the runtime, that we resume executing when
+                // resumed, unless we specifically stopped for a breakpoint or other condition
+                state.stopped = stopped;
 
-                // TODO(pauls): Handle case where stepping at the end should notify user
+                // Report program termination to the user
+                if stopped && state.execution_state.stopped {
+                    if let Some(err) = state.execution_failed.as_ref() {
+                        actions.push(Some(Action::StatusLine(err.to_string())));
+                    } else {
+                        actions.push(Some(Action::StatusLine(
+                            "program terminated successfully".to_string(),
+                        )));
+                    }
+                }
+
+                // Update the UI with latest state
                 for pane in self.panes.iter_mut() {
                     actions.push(pane.update(Action::Update, state)?);
                 }
@@ -307,19 +332,31 @@ impl Page for Home {
                         EventResponse::Stop(Action::FocusFooter(":".into(), None))
                     }
                     KeyCode::Char('q') => EventResponse::Stop(Action::Quit),
-                    KeyCode::Char('s') => {
+                    // Only step if we're stopped, and execution has not terminated
+                    KeyCode::Char('s') if state.stopped && !state.execution_state.stopped => {
                         state.create_breakpoint(BreakpointType::Step);
                         state.stopped = false;
                         EventResponse::Stop(Action::Continue)
                     }
-                    KeyCode::Char('n') => {
+                    // Only step-next if we're stopped, and execution has not terminated
+                    KeyCode::Char('n') if state.stopped && !state.execution_state.stopped => {
                         state.create_breakpoint(BreakpointType::Next);
                         state.stopped = false;
                         EventResponse::Stop(Action::Continue)
                     }
-                    KeyCode::Char('c') => {
+                    // Only resume execution if we're stopped, and execution has not terminated
+                    KeyCode::Char('c') if state.stopped && !state.execution_state.stopped => {
                         state.stopped = false;
                         EventResponse::Stop(Action::Continue)
+                    }
+                    // Do not try to continue if execution has terminated, but warn user
+                    KeyCode::Char('c' | 's' | 'n')
+                        if state.stopped && state.execution_state.stopped =>
+                    {
+                        EventResponse::Stop(Action::TimedStatusLine(
+                            "program has terminated, cannot continue".to_string(),
+                            3,
+                        ))
                     }
                     KeyCode::Char('d') => EventResponse::Stop(Action::Delete),
                     _ => {

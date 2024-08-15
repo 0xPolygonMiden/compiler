@@ -54,7 +54,10 @@ impl ExecutionState {
 
                 Ok(())
             }
-            Some(Err(err)) => Err(err),
+            Some(Err(err)) => {
+                self.stopped = true;
+                Err(err)
+            }
             None => {
                 self.stopped = true;
                 Ok(())

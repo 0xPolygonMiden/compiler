@@ -109,16 +109,24 @@ debug = true
 codegen-units = 1
 lto = "thin"
 
+# The following crates are always built with optimizations
 [profile.test.package.proptest]
 opt-level = 3
 
 [profile.test.package.rand_chacha]
 opt-level = 3
 
-# Build `expect-test` with release optimizations even in dev mode to speed up the diffing
 [profile.dev.package.expect-test]
 opt-level = 3
 
-# Build `dissimilar` with release optimizations even in dev mode to speed up the diffing
 [profile.dev.package.dissimilar]
+opt-level = 3
+
+[profile.dev.package.fancy-regex]
+opt-level = 3
+
+[profile.dev.package.regex-syntax]
+opt-level = 3
+
+[profile.dev.package.onig]
 opt-level = 3
