@@ -4,7 +4,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use miden_core::Felt;
-use midenc_runner::{MidenExecutor, PopFromStack};
+use midenc_debug::{MidenExecutor, PopFromStack};
 use midenc_session::Session;
 use proptest::{prop_assert_eq, test_runner::TestCaseError};
 

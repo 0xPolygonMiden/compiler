@@ -1,6 +1,6 @@
 [package]
-name = "midenc-runner"
-description = "The Miden VM executor that implements midenc run"
+name = "midenc-debug"
+description = "An interactive debugger for Miden VM programs"
 version = "0.0.1"
 rust-version.workspace = true
 authors.workspace = true

@@ -19,5 +19,5 @@ log.workspace = true
 midenc-hir.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true
-midenc-runner.workspace = true
+midenc-debug.workspace = true
 thiserror.workspace = true

@@ -3,8 +3,8 @@ use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 use clap::{ColorChoice, Parser, Subcommand};
 use log::Log;
 use midenc_compile as compile;
+use midenc_debug as debugger;
 use midenc_hir::FunctionIdent;
-use midenc_runner as runner;
 use midenc_session::{
     diagnostics::{Emitter, Report},
     InputFile, Verbosity, Warnings,
@@ -93,10 +93,10 @@ enum Commands {
         #[arg(long, short = 'e', value_name = "NAME")]
         entrypoint: Option<FunctionIdent>,
     },
-    /// Run a program with the Miden VM
+    /// Run a program under the interactive Miden VM debugger
     ///
-    /// The program will be loaded into memory and executed with the Miden VM
-    Run {
+    /// This command starts a TUI-based interactive debugger with the given program loaded.
+    Debug {
         /// Specify the path to a Miden program file to execute.
         ///
         /// Miden Assembly programs are emitted by the compiler with a `.masl` extension.
@@ -110,7 +110,7 @@ enum Commands {
         /// access during execution. The inputs file is a JSON file which describes
         /// what the inputs are, or where to source them from.
         #[arg(long, value_name = "FILE")]
-        inputs: Option<runner::ProgramInputs>,
+        inputs: Option<debugger::ProgramInputs>,
         /// Arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,
@@ -121,9 +121,9 @@ enum Commands {
         ///
         /// NOTE: These arguments will override any stack values provided via --inputs
         #[arg(last(true), value_name = "ARGV")]
-        args: Vec<runner::Felt>,
+        args: Vec<debugger::Felt>,
         #[command(flatten)]
-        options: runner::Runner,
+        options: debugger::Runner,
     },
 }
 
@@ -175,7 +175,7 @@ impl Midenc {
                 let session = options.into_session(vec![input], emitter).with_arg_matches(matches);
                 compile::compile(Rc::new(session))
             }
-            Commands::Run {
+            Commands::Debug {
                 input,
                 inputs,
                 args,
@@ -186,7 +186,7 @@ impl Midenc {
                 }
                 let session = options.into_session(vec![input], emitter);
                 let args = args.into_iter().map(|felt| felt.0).collect();
-                runner::run(inputs, args, Rc::new(session), logger)
+                debugger::run(inputs, args, Rc::new(session), logger)
             }
             _ => unimplemented!(),
         }

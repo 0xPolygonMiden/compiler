@@ -3,8 +3,8 @@ use std::collections::VecDeque;
 
 use expect_test::expect_file;
 use miden_core::utils::group_slice_elements;
+use midenc_debug::{MidenExecutor, PopFromStack, PushToStack, TestFelt};
 use midenc_hir::Felt;
-use midenc_runner::{MidenExecutor, PopFromStack, PushToStack, TestFelt};
 use proptest::{
     arbitrary::any,
     prop_assert_eq,

@@ -2959,11 +2959,11 @@ dependencies = [
  "miden-stdlib",
  "midenc-codegen-masm",
  "midenc-compile",
+ "midenc-debug",
  "midenc-driver",
  "midenc-frontend-wasm",
  "midenc-hir",
  "midenc-hir-transform",
- "midenc-runner",
  "midenc-session",
  "proptest",
  "sha2",
@@ -3129,6 +3129,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "midenc-debug"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "crossterm",
+ "futures",
+ "glob",
+ "log",
+ "miden-assembly",
+ "miden-core",
+ "miden-processor",
+ "miden-stdlib",
+ "miden-thiserror",
+ "midenc-codegen-masm",
+ "midenc-hir",
+ "midenc-session",
+ "proptest",
+ "ratatui",
+ "signal-hook",
+ "syntect",
+ "tokio",
+ "tokio-util",
+ "tui-input",
+]
+
+[[package]]
 name = "midenc-driver"
 version = "0.0.1"
 dependencies = [
@@ -3136,8 +3162,8 @@ dependencies = [
  "log",
  "miden-thiserror",
  "midenc-compile",
+ "midenc-debug",
  "midenc-hir",
- "midenc-runner",
  "midenc-session",
 ]
 
@@ -3254,32 +3280,6 @@ name = "midenc-hir-type"
 version = "0.0.1"
 dependencies = [
  "smallvec",
-]
-
-[[package]]
-name = "midenc-runner"
-version = "0.0.1"
-dependencies = [
- "clap",
- "crossterm",
- "futures",
- "glob",
- "log",
- "miden-assembly",
- "miden-core",
- "miden-processor",
- "miden-stdlib",
- "miden-thiserror",
- "midenc-codegen-masm",
- "midenc-hir",
- "midenc-session",
- "proptest",
- "ratatui",
- "signal-hook",
- "syntect",
- "tokio",
- "tokio-util",
- "tui-input",
 ]
 
 [[package]]

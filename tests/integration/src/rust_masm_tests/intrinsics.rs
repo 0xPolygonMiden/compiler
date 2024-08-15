@@ -2,7 +2,7 @@ use core::panic;
 
 use expect_test::expect_file;
 use miden_core::Felt;
-use midenc_runner::{PushToStack, TestFelt};
+use midenc_debug::{PushToStack, TestFelt};
 use proptest::{
     arbitrary::any,
     test_runner::{TestError, TestRunner},

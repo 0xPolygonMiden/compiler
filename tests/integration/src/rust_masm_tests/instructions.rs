@@ -1,5 +1,5 @@
 use expect_test::expect_file;
-use midenc_runner::PushToStack;
+use midenc_debug::PushToStack;
 use proptest::{
     prelude::*,
     test_runner::{TestError, TestRunner},

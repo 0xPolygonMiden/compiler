@@ -4,7 +4,7 @@ use expect_test::expect_file;
 use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
-use midenc_runner::MidenExecutor;
+use midenc_debug::MidenExecutor;
 
 use crate::{execute_emulator, CompilerTestBuilder};
 
