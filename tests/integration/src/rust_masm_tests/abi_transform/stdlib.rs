@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 
 use expect_test::expect_file;
 use miden_core::utils::group_slice_elements;
-use midenc_debug::{MidenExecutor, PopFromStack, PushToStack, TestFelt};
+use midenc_debug::{Executor, PopFromStack, PushToStack, TestFelt};
 use midenc_hir::Felt;
 use proptest::{
     arbitrary::any,
@@ -54,7 +54,7 @@ fn test_blake3_hash() {
                                                   //    .collect::<Vec<Felt>>();
         dbg!(&ibytes, &frame, rs_out);
         // Arguments are: [hash_input_ptr, hash_output_ptr]
-        let mut exec = MidenExecutor::new(vec![Felt::new(0), Felt::new(128 * 1024)]);
+        let mut exec = Executor::new(vec![Felt::new(0), Felt::new(128 * 1024)]);
         let mut advice_inputs = advice_inputs.clone();
         advice_inputs.extend_stack(frame);
         exec.with_advice_inputs(advice_inputs);

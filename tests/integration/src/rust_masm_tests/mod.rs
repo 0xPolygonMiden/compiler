@@ -4,7 +4,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use miden_core::Felt;
-use midenc_debug::{MidenExecutor, PopFromStack};
+use midenc_debug::{Executor, PopFromStack};
 use midenc_session::Session;
 use proptest::{prop_assert_eq, test_runner::TestCaseError};
 
@@ -28,7 +28,7 @@ pub fn run_masm_vs_rust<T>(
 where
     T: Clone + PopFromStack + std::cmp::PartialEq + std::fmt::Debug,
 {
-    let mut exec = MidenExecutor::new(args.to_vec());
+    let mut exec = Executor::new(args.to_vec());
     for lib in ir_program.link_libraries() {
         exec.with_library(lib);
     }

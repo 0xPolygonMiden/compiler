@@ -8,8 +8,8 @@ use midenc_session::{
 
 /// Run a compiled Miden program with the Miden VM
 #[derive(Default, Debug, Parser)]
-#[command(name = "run")]
-pub struct Runner {
+#[command(name = "debug")]
+pub struct Debugger {
     /// The working directory for the compiler
     ///
     /// By default this will be the working directory the compiler is executed from
@@ -79,7 +79,7 @@ pub struct Runner {
     pub link_libraries: Vec<LinkLibrary>,
 }
 
-impl Runner {
+impl Debugger {
     /// Construct a [Compiler] programatically
     pub fn new_session<I, A, S>(inputs: I, emitter: Option<Arc<dyn Emitter>>, argv: A) -> Session
     where

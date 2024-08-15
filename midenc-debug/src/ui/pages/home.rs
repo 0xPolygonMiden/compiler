@@ -164,16 +164,16 @@ impl Page for Home {
                 }
             }
             Action::Continue => {
-                let start_cycle = state.execution_state.cycle;
+                let start_cycle = state.executor.cycle;
                 let mut breakpoints = core::mem::take(&mut state.breakpoints);
                 state.stopped = false;
                 let stopped = loop {
                     // If stepping the program results in the program terminating succesfully, stop
-                    if state.execution_state.stopped {
+                    if state.executor.stopped {
                         break true;
                     }
 
-                    if let Err(err) = state.execution_state.step() {
+                    if let Err(err) = state.executor.step() {
                         // Execution terminated with an error
                         state.execution_failed = Some(err);
                         break true;
@@ -184,8 +184,7 @@ impl Page for Home {
                         continue;
                     }
 
-                    let (op, is_op_boundary, proc, loc) = match state.execution_state.last.as_ref()
-                    {
+                    let (op, is_op_boundary, proc, loc) = match state.executor.last.as_ref() {
                         Some(last_state) => {
                             let op = last_state.op;
                             let is_boundary = last_state
@@ -193,8 +192,7 @@ impl Page for Home {
                                 .as_ref()
                                 .map(|info| info.cycle_idx() == 1)
                                 .unwrap_or(false);
-                            let (proc, loc) = match state.execution_state.callstack.current_frame()
-                            {
+                            let (proc, loc) = match state.executor.callstack.current_frame() {
                                 Some(frame) => {
                                     let loc = frame
                                         .recent()
@@ -211,7 +209,7 @@ impl Page for Home {
                     };
 
                     // Remove all breakpoints triggered at this cycle
-                    let current_cycle = state.execution_state.cycle;
+                    let current_cycle = state.executor.cycle;
                     let cycles_stepped = current_cycle - start_cycle;
                     breakpoints.retain_mut(|bp| {
                         if let Some(n) = bp.cycles_to_skip(current_cycle) {
@@ -276,7 +274,7 @@ impl Page for Home {
                 state.stopped = stopped;
 
                 // Report program termination to the user
-                if stopped && state.execution_state.stopped {
+                if stopped && state.executor.stopped {
                     if let Some(err) = state.execution_failed.as_ref() {
                         actions.push(Some(Action::StatusLine(err.to_string())));
                     } else {
@@ -353,26 +351,24 @@ impl Page for Home {
                     }
                     KeyCode::Char('q') => EventResponse::Stop(Action::Quit),
                     // Only step if we're stopped, and execution has not terminated
-                    KeyCode::Char('s') if state.stopped && !state.execution_state.stopped => {
+                    KeyCode::Char('s') if state.stopped && !state.executor.stopped => {
                         state.create_breakpoint(BreakpointType::Step);
                         state.stopped = false;
                         EventResponse::Stop(Action::Continue)
                     }
                     // Only step-next if we're stopped, and execution has not terminated
-                    KeyCode::Char('n') if state.stopped && !state.execution_state.stopped => {
+                    KeyCode::Char('n') if state.stopped && !state.executor.stopped => {
                         state.create_breakpoint(BreakpointType::Next);
                         state.stopped = false;
                         EventResponse::Stop(Action::Continue)
                     }
                     // Only resume execution if we're stopped, and execution has not terminated
-                    KeyCode::Char('c') if state.stopped && !state.execution_state.stopped => {
+                    KeyCode::Char('c') if state.stopped && !state.executor.stopped => {
                         state.stopped = false;
                         EventResponse::Stop(Action::Continue)
                     }
                     // Do not try to continue if execution has terminated, but warn user
-                    KeyCode::Char('c' | 's' | 'n')
-                        if state.stopped && state.execution_state.stopped =>
-                    {
+                    KeyCode::Char('c' | 's' | 'n') if state.stopped && state.executor.stopped => {
                         EventResponse::Stop(Action::TimedStatusLine(
                             "program has terminated, cannot continue".to_string(),
                             3,

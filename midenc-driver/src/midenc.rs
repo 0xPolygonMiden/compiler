@@ -123,7 +123,7 @@ enum Commands {
         #[arg(last(true), value_name = "ARGV")]
         args: Vec<debugger::Felt>,
         #[command(flatten)]
-        options: debugger::Runner,
+        options: debugger::Debugger,
     },
 }
 

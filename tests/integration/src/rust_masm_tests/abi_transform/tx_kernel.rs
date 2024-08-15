@@ -4,7 +4,7 @@ use expect_test::expect_file;
 use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
-use midenc_debug::MidenExecutor;
+use midenc_debug::Executor;
 
 use crate::{execute_emulator, CompilerTestBuilder};
 
@@ -55,7 +55,7 @@ end
 
     let vm_program = test.vm_masm_program();
 
-    let exec = MidenExecutor::new(vec![]);
+    let exec = Executor::new(vec![]);
     let trace = exec.execute(&vm_program, &test.session);
     let vm_out = trace.into_outputs();
     dbg!(&vm_out);

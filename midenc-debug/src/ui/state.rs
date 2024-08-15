@@ -9,14 +9,14 @@ use midenc_session::{
 };
 
 use crate::{
-    Breakpoint, BreakpointType, ExecutionState, MidenExecutionTrace, ProgramInputs, ReadMemoryExpr,
+    Breakpoint, BreakpointType, DebugExecutor, ExecutionTrace, ProgramInputs, ReadMemoryExpr,
 };
 
 pub struct State {
     pub program: Arc<Program>,
     pub inputs: ProgramInputs,
-    pub execution_state: ExecutionState,
-    pub execution_trace: MidenExecutionTrace,
+    pub executor: DebugExecutor,
+    pub execution_trace: ExecutionTrace,
     pub execution_failed: Option<miden_processor::ExecutionError>,
     pub session: Rc<Session>,
     pub input_mode: InputMode,
@@ -48,17 +48,17 @@ impl State {
         let args = inputs.inputs.values().iter().copied().rev().collect::<Vec<_>>();
         let program = load_program(&session)?;
 
-        let mut executor = crate::MidenExecutor::new(args.clone());
+        let mut executor = crate::Executor::new(args.clone());
         executor.with_advice_inputs(inputs.advice_inputs.clone());
         for link_library in session.options.link_libraries.iter() {
             let lib = link_library.load(&session)?;
             executor.with_library(&lib);
         }
 
-        let execution_state = executor.into_execution_state(&program, &session);
+        let executor = executor.into_debug(&program, &session);
 
         // Execute the program until it terminates to capture a full trace for use during debugging
-        let mut trace_executor = crate::MidenExecutor::new(args);
+        let mut trace_executor = crate::Executor::new(args);
         trace_executor.with_advice_inputs(inputs.advice_inputs.clone());
         for link_library in session.options.link_libraries.iter() {
             let lib = link_library.load(&session)?;
@@ -70,7 +70,7 @@ impl State {
         Ok(Self {
             program,
             inputs,
-            execution_state,
+            executor,
             execution_trace,
             execution_failed: None,
             session,
@@ -87,16 +87,16 @@ impl State {
         let program = load_program(&self.session)?;
         let args = self.inputs.inputs.values().iter().copied().rev().collect::<Vec<_>>();
 
-        let mut executor = crate::MidenExecutor::new(args.clone());
+        let mut executor = crate::Executor::new(args.clone());
         executor.with_advice_inputs(self.inputs.advice_inputs.clone());
         for link_library in self.session.options.link_libraries.iter() {
             let lib = link_library.load(&self.session)?;
             executor.with_library(&lib);
         }
-        let execution_state = executor.into_execution_state(&self.program, &self.session);
+        let executor = executor.into_debug(&self.program, &self.session);
 
         // Execute the program until it terminates to capture a full trace for use during debugging
-        let mut trace_executor = crate::MidenExecutor::new(args);
+        let mut trace_executor = crate::Executor::new(args);
         trace_executor.with_advice_inputs(self.inputs.advice_inputs.clone());
         for link_library in self.session.options.link_libraries.iter() {
             let lib = link_library.load(&self.session)?;
@@ -105,7 +105,7 @@ impl State {
         let execution_trace = trace_executor.capture_trace(&program, &self.session);
 
         self.program = program;
-        self.execution_state = execution_state;
+        self.executor = executor;
         self.execution_trace = execution_trace;
         self.execution_failed = None;
         self.breakpoints_hit.clear();
@@ -121,7 +121,7 @@ impl State {
 
     pub fn create_breakpoint(&mut self, ty: BreakpointType) {
         let id = self.next_breakpoint_id();
-        let creation_cycle = self.execution_state.cycle;
+        let creation_cycle = self.executor.cycle;
         log::trace!("created breakpoint with id {id} at cycle {creation_cycle}");
         self.breakpoints.push(Breakpoint {
             id,
@@ -167,8 +167,8 @@ impl State {
 
         use midenc_hir::Type;
 
-        let cycle = miden_processor::RowIndex::from(self.execution_state.cycle);
-        let context = self.execution_state.current_context;
+        let cycle = miden_processor::RowIndex::from(self.executor.cycle);
+        let context = self.executor.current_context;
         let mut output = String::new();
         if expr.count > 1 {
             return Err("-count with value > 1 is not yet implemented".into());

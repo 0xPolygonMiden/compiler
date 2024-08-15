@@ -61,8 +61,8 @@ impl Pane for StackTracePane {
 
     fn draw(&mut self, frame: &mut Frame<'_>, area: Rect, state: &State) -> Result<(), Report> {
         let mut lines = Vec::default();
-        let num_frames = state.execution_state.callstack.frames().len();
-        for (i, frame) in state.execution_state.callstack.frames().iter().enumerate() {
+        let num_frames = state.executor.callstack.frames().len();
+        for (i, frame) in state.executor.callstack.frames().iter().enumerate() {
             let is_top = i + 1 == num_frames;
             let mut parts = vec![];
             /*

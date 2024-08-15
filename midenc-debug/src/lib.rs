@@ -2,35 +2,30 @@
 #![feature(lazy_cell)]
 #![allow(unused)]
 
+mod cli;
 mod debug;
+mod exec;
 mod felt;
-mod host;
 mod inputs;
 mod logger;
-mod run;
-mod runner;
 mod ui;
 
 use std::rc::Rc;
 
-pub use midenc_hir::TraceEvent;
 use midenc_session::{
     diagnostics::{IntoDiagnostic, Report},
     Session,
 };
 
 pub use self::{
+    cli::Debugger,
     debug::*,
+    exec::*,
     felt::{Felt, Felt as TestFelt, PopFromStack, PushToStack},
-    host::TestHost,
     inputs::ProgramInputs,
-    run::{ExecutionState, MidenExecutionTrace, MidenExecutor},
-    runner::Runner,
 };
 
 pub type ExecutionResult<T> = Result<T, Report>;
-
-pub type TraceHandler = dyn FnMut(miden_processor::RowIndex, TraceEvent);
 
 pub fn run(
     inputs: Option<ProgramInputs>,
@@ -47,7 +42,7 @@ pub fn trace(
     _options: Option<ProgramInputs>,
     _args: Vec<String>,
     _session: Rc<Session>,
-) -> ExecutionResult<MidenExecutionTrace> {
+) -> ExecutionResult<ExecutionTrace> {
     todo!()
 }
 

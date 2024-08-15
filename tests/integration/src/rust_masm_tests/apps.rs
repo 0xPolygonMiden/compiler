@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use expect_test::expect_file;
-use midenc_debug::{MidenExecutor, PopFromStack, PushToStack};
+use midenc_debug::{Executor, PopFromStack, PushToStack};
 use midenc_hir::Felt;
 use proptest::{prelude::*, test_runner::TestRunner};
 
@@ -25,7 +25,7 @@ fn fib() {
             let mut args = Vec::<Felt>::default();
             PushToStack::try_push(&a, &mut args);
 
-            let exec = MidenExecutor::new(args);
+            let exec = Executor::new(args);
             let output: u32 = exec.execute_into(vm_program, &test.session);
             dbg!(output);
             prop_assert_eq!(rust_out, output);

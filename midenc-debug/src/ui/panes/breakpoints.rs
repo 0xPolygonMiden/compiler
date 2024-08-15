@@ -52,7 +52,7 @@ impl Pane for BreakpointsPane {
     }
 
     fn init(&mut self, state: &State) -> Result<(), Report> {
-        self.breakpoint_cycle = state.execution_state.cycle;
+        self.breakpoint_cycle = state.executor.cycle;
         self.breakpoints_hit.clear();
         self.breakpoint_selected = None;
         Ok(())
@@ -106,7 +106,7 @@ impl Pane for BreakpointsPane {
                 self.init(state)?;
             }
             Action::Update => {
-                if self.breakpoint_cycle < state.execution_state.cycle {
+                if self.breakpoint_cycle < state.executor.cycle {
                     self.breakpoints_hit.clear();
                     self.breakpoints_hit.append(&mut state.breakpoints_hit);
                     if let Some(prev) = self.breakpoint_selected {
@@ -115,7 +115,7 @@ impl Pane for BreakpointsPane {
                         }
                     }
                 }
-                self.breakpoint_cycle = state.execution_state.cycle;
+                self.breakpoint_cycle = state.executor.cycle;
             }
             _ => {}
         }

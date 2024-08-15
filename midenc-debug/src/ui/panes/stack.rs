@@ -60,7 +60,7 @@ impl Pane for OperandStackPane {
     }
 
     fn draw(&mut self, frame: &mut Frame<'_>, area: Rect, state: &State) -> Result<(), Report> {
-        let lines = match state.execution_state.last.as_ref() {
+        let lines = match state.executor.last.as_ref() {
             None => vec![],
             Some(state) => state
                 .stack

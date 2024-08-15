@@ -8,14 +8,18 @@ use miden_processor::{
 
 use super::{TraceEvent, TraceHandler};
 
+/// This is an implementation of [Host] which is essentially [miden_processor::DefaultHost],
+/// but extended with additional functionality for debugging, in particular it manages trace
+/// events that record the entry or exit of a procedure call frame.
 #[derive(Default)]
-pub struct TestHost {
+pub struct DebuggerHost {
     adv_provider: MemAdviceProvider,
     store: MemMastForestStore,
     tracing_callbacks: BTreeMap<u32, Vec<Box<TraceHandler>>>,
     on_assert_failed: Option<Box<TraceHandler>>,
 }
-impl TestHost {
+impl DebuggerHost {
+    /// Construct a new instance of [DebuggerHost] with the given advice provider.
     pub fn new(adv_provider: MemAdviceProvider) -> Self {
         Self {
             adv_provider,
@@ -25,6 +29,7 @@ impl TestHost {
         }
     }
 
+    /// Register a trace handler for `event`
     pub fn register_trace_handler<F>(&mut self, event: TraceEvent, callback: F)
     where
         F: FnMut(RowIndex, TraceEvent) + 'static,
@@ -36,6 +41,7 @@ impl TestHost {
         self.tracing_callbacks.entry(key).or_default().push(Box::new(callback));
     }
 
+    /// Register a handler to be called when an assertion in the VM fails
     pub fn register_assert_failed_tracer<F>(&mut self, callback: F)
     where
         F: FnMut(RowIndex, TraceEvent) + 'static,
@@ -43,12 +49,13 @@ impl TestHost {
         self.on_assert_failed = Some(Box::new(callback));
     }
 
+    /// Load `forest` into the MAST store for this host
     pub fn load_mast_forest(&mut self, forest: MastForest) {
         self.store.insert(forest);
     }
 }
 
-impl Host for TestHost {
+impl Host for DebuggerHost {
     fn get_advice<P: ProcessState>(
         &mut self,
         process: &P,
