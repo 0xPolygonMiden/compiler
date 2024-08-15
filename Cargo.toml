@@ -123,9 +123,6 @@ opt-level = 3
 [profile.dev.package.dissimilar]
 opt-level = 3
 
-[profile.dev.package.fancy-regex]
-opt-level = 3
-
 [profile.dev.package.regex-syntax]
 opt-level = 3
 

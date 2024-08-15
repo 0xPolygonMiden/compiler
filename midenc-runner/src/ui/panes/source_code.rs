@@ -166,34 +166,37 @@ impl Default for Theme {
         Self {
             focused_border_style: Style::default(),
             current_line: Style::default()
-                .fg(Color::Black)
-                .bg(Color::White)
+                .bg(Color::Black)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
             current_span: Style::default()
                 .fg(Color::White)
                 .bg(Color::DarkGray)
                 .add_modifier(Modifier::BOLD),
-            line_number: Style::default().fg(Color::White),
-            gutter_border: Style::default().fg(Color::White),
+            line_number: Style::default(),
+            gutter_border: Style::default(),
         }
     }
 }
 impl Theme {
     pub fn patch_from_syntect(&mut self, theme: &syntect::highlighting::Theme) {
         use crate::ui::syntax_highlighting::convert_color;
-        let span_fg = theme
-            .settings
-            .find_highlight_foreground
-            .map(convert_color)
-            .unwrap_or(Color::White);
-        let span_bg = theme.settings.find_highlight.map(convert_color).unwrap_or(Color::Black);
-        if let Some(fg) = theme.settings.line_highlight.map(convert_color) {
-            self.current_line.patch(Style::default().fg(fg));
-            self.current_span.patch(Style::default().fg(span_fg).bg(span_bg));
+        if let Some(bg) = theme.settings.line_highlight.map(convert_color) {
+            self.current_line.bg = Some(bg);
+        }
+        if let Some(bg) = theme.settings.selection.map(convert_color) {
+            self.current_span.bg = Some(bg);
+        }
+        if let Some(fg) = theme.settings.selection_foreground.map(convert_color) {
+            self.current_span.fg = Some(fg);
+        }
+        if let Some(bg) = theme.settings.gutter.map(convert_color) {
+            self.line_number.bg = Some(bg);
+            self.gutter_border.bg = Some(bg);
         }
         if let Some(fg) = theme.settings.gutter_foreground.map(convert_color) {
-            self.line_number.patch(Style::default().fg(fg));
-            self.gutter_border.patch(Style::default().fg(fg));
+            self.line_number.fg = Some(fg);
+            self.gutter_border.fg = Some(fg);
         }
     }
 }
@@ -384,7 +387,7 @@ impl Pane for SourceCodePane {
 
         // Get the cached (highlighted) lines for the current source file
         let mut lines = self.current_source_lines(&resolved);
-        let selected_line = resolved.line as usize;
+        let selected_line = resolved.line.saturating_sub(1) as usize;
         // Extract the current selected line as a vector of raw syntect parts
         let selected_line_deconstructed = lines[selected_line]
             .iter()
@@ -440,7 +443,7 @@ impl Pane for SourceCodePane {
         .map(|(style, str)| {
             Span::styled(
                 str.to_string(),
-                crate::ui::syntax_highlighting::convert_style(style, false),
+                crate::ui::syntax_highlighting::convert_style(style, true),
             )
         })
         .collect();
@@ -449,13 +452,18 @@ impl Pane for SourceCodePane {
 
         let gutter_width = self.current_file.as_ref().unwrap().gutter_width as usize;
         let lines = lines.into_iter().enumerate().map(|(line_index, highlighted_parts)| {
+            let line_number_style = if line_index == selected_line {
+                self.theme.current_line
+            } else {
+                self.theme.line_number
+            };
             Line::from_iter(
                 [
                     Span::styled(
                         format!("{line_no:gutter_width$}", line_no = line_index + 1),
-                        self.theme.line_number,
+                        line_number_style,
                     ),
-                    Span::styled(" | ", self.theme.gutter_border),
+                    Span::styled(" | ", line_number_style),
                 ]
                 .into_iter()
                 .chain(highlighted_parts),
@@ -467,7 +475,8 @@ impl Pane for SourceCodePane {
         let list = List::new(lines)
             .block(Block::default().borders(Borders::ALL))
             .highlight_symbol(symbols::scrollbar::HORIZONTAL.end)
-            .highlight_spacing(HighlightSpacing::Always);
+            .highlight_spacing(HighlightSpacing::Always)
+            .scroll_padding(15);
         let mut list_state = ListState::default().with_selected(Some(selected_line as usize));
 
         frame.render_stateful_widget(list, area, &mut list_state);
