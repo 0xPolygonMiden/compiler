@@ -209,12 +209,13 @@ impl Page for Home {
                     breakpoints.retain_mut(|bp| {
                         if let Some(n) = bp.cycles_to_skip(current_cycle) {
                             if cycles_stepped >= n {
-                                if bp.is_one_shot() {
-                                    state.breakpoints_hit.push(core::mem::take(bp));
-                                } else {
+                                let retained = !bp.is_one_shot();
+                                if retained {
                                     state.breakpoints_hit.push(bp.clone());
+                                } else {
+                                    state.breakpoints_hit.push(core::mem::take(bp));
                                 }
-                                return false;
+                                return retained;
                             } else {
                                 return true;
                             }
@@ -230,23 +231,25 @@ impl Page for Home {
 
                         if let Some(loc) = loc.as_ref() {
                             if bp.should_break_at(loc) {
-                                if bp.is_one_shot() {
-                                    state.breakpoints_hit.push(core::mem::take(bp));
-                                } else {
+                                let retained = !bp.is_one_shot();
+                                if retained {
                                     state.breakpoints_hit.push(bp.clone());
+                                } else {
+                                    state.breakpoints_hit.push(core::mem::take(bp));
                                 }
-                                return false;
+                                return retained;
                             }
                         }
 
                         if let Some(proc) = proc.as_deref() {
                             if bp.should_break_in(proc) {
-                                if bp.is_one_shot() {
-                                    state.breakpoints_hit.push(core::mem::take(bp));
-                                } else {
+                                let retained = !bp.is_one_shot();
+                                if retained {
                                     state.breakpoints_hit.push(bp.clone());
+                                } else {
+                                    state.breakpoints_hit.push(core::mem::take(bp));
                                 }
-                                return false;
+                                return retained;
                             }
                         }
 
