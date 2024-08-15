@@ -48,6 +48,8 @@ of the following commands:
 
 * `q` or `quit` (quit) - exit the debugger
 * `history` (command history) - display prompt history
+* `reload` (reload current program) - reloads the program from disk, and resets the UI, with the
+  exception of breakpoints, which are retained across reloads
 * `b` or `break` or `breakpoint` (breakpoints) - manage breakpoints (see [Breakpoints](#breakpoints))
 * `r` or `read` (read memory) - read values from linear memory (see [Reading Memory](#read-memory))
 

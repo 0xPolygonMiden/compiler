@@ -34,4 +34,5 @@ pub enum Action {
     Noop,
     Continue,
     Delete,
+    Reload,
 }

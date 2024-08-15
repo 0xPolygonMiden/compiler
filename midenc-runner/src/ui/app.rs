@@ -45,7 +45,7 @@ impl App {
         args: Vec<miden_processor::Felt>,
         session: Rc<Session>,
     ) -> Result<Self, Report> {
-        let state = State::from_inputs(inputs, args, session).await?;
+        let state = State::from_inputs(inputs, args, session)?;
         let home = Home::new()?;
         Ok(Self {
             pages: vec![Box::new(home)],
@@ -146,68 +146,68 @@ impl App {
                         _ => (),
                     }
                 }
+            }
 
-                while let Ok(action) = action_rx.try_recv() {
-                    if action != Action::Tick && action != Action::Render {
-                        log::debug!("{action:?}");
+            while let Ok(action) = action_rx.try_recv() {
+                if action != Action::Tick && action != Action::Render {
+                    log::debug!("{action:?}");
+                }
+                match action {
+                    Action::Tick => {
+                        self.last_tick_key_events.clear();
                     }
-                    match action {
-                        Action::Tick => {
-                            self.last_tick_key_events.clear();
-                        }
-                        Action::Quit if self.state.input_mode == InputMode::Normal => {
-                            self.should_quit = true
-                        }
-                        Action::Suspend => self.should_suspend = true,
-                        Action::Resume => self.should_suspend = false,
-                        Action::Resize(w, h) => {
-                            tui.resize(Rect::new(0, 0, w, h)).into_diagnostic()?;
-                            tui.draw(|f| {
-                                self.draw(f).unwrap_or_else(|err| {
-                                    action_tx
-                                        .send(Action::Error(format!("Failed to draw: {err:?}")))
-                                        .unwrap();
-                                })
+                    Action::Quit if self.state.input_mode == InputMode::Normal => {
+                        self.should_quit = true
+                    }
+                    Action::Suspend => self.should_suspend = true,
+                    Action::Resume => self.should_suspend = false,
+                    Action::Resize(w, h) => {
+                        tui.resize(Rect::new(0, 0, w, h)).into_diagnostic()?;
+                        tui.draw(|f| {
+                            self.draw(f).unwrap_or_else(|err| {
+                                action_tx
+                                    .send(Action::Error(format!("Failed to draw: {err:?}")))
+                                    .unwrap();
                             })
-                            .into_diagnostic()?;
-                        }
-                        Action::Render => {
-                            tui.draw(|f| {
-                                self.draw(f).unwrap_or_else(|err| {
-                                    action_tx
-                                        .send(Action::Error(format!("Failed to draw {err:?}")))
-                                        .unwrap()
-                                })
+                        })
+                        .into_diagnostic()?;
+                    }
+                    Action::Render => {
+                        tui.draw(|f| {
+                            self.draw(f).unwrap_or_else(|err| {
+                                action_tx
+                                    .send(Action::Error(format!("Failed to draw {err:?}")))
+                                    .unwrap()
                             })
-                            .into_diagnostic()?;
-                        }
-                        _ => (),
+                        })
+                        .into_diagnostic()?;
                     }
+                    _ => (),
+                }
 
-                    if let Some(page) = self.pages.get_mut(self.active_page) {
-                        if let Some(action) = page.update(action.clone(), &mut self.state)? {
-                            action_tx.send(action).into_diagnostic()?;
-                        }
-                    }
-
-                    if let Some(action) = self.header.update(action.clone(), &mut self.state)? {
-                        action_tx.send(action).into_diagnostic()?;
-                    }
-
-                    if let Some(action) = self.footer.update(action.clone(), &mut self.state)? {
+                if let Some(page) = self.pages.get_mut(self.active_page) {
+                    if let Some(action) = page.update(action.clone(), &mut self.state)? {
                         action_tx.send(action).into_diagnostic()?;
                     }
                 }
 
-                if self.should_suspend {
-                    tui.suspend()?;
-                    action_tx.send(Action::Resume).into_diagnostic()?;
-                    tui = tui::Tui::new()?;
-                    tui.enter()?;
-                } else if self.should_quit {
-                    tui.stop()?;
-                    break;
+                if let Some(action) = self.header.update(action.clone(), &mut self.state)? {
+                    action_tx.send(action).into_diagnostic()?;
                 }
+
+                if let Some(action) = self.footer.update(action.clone(), &mut self.state)? {
+                    action_tx.send(action).into_diagnostic()?;
+                }
+            }
+
+            if self.should_suspend {
+                tui.suspend()?;
+                action_tx.send(Action::Resume).into_diagnostic()?;
+                tui = tui::Tui::new()?;
+                tui.enter()?;
+            } else if self.should_quit {
+                tui.stop()?;
+                break;
             }
         }
 

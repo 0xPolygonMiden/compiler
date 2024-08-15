@@ -219,6 +219,27 @@ impl SourceCodePane {
         }
     }
 
+    fn reload(&mut self, state: &State) {
+        self.current_source_id = SourceId::UNKNOWN;
+        self.current_span = SourceSpan::default();
+        self.current_line = 0;
+        self.current_col = 0;
+        self.num_lines = 0;
+        self.selected_line = 0;
+        self.current_file = None;
+
+        if let Some(frame) = state.execution_state.callstack.current_frame() {
+            if let Some(loc) = frame.last_resolved(&state.session) {
+                self.current_source_id = loc.source_file.id();
+                self.current_span = loc.span;
+                self.current_line = loc.line;
+                self.current_col = loc.col;
+                self.num_lines = loc.source_file.line_count() as u32;
+                self.selected_line = loc.line;
+            }
+        }
+    }
+
     fn border_style(&self) -> Style {
         match self.focused {
             true => self.theme.focused_border_style,
@@ -310,7 +331,11 @@ impl Pane for SourceCodePane {
                 self.focused = false;
             }
             Action::Submit => {}
-            Action::Update => {
+            Action::Update | Action::Reload => {
+                if action == Action::Reload {
+                    self.reload(state);
+                }
+
                 if let Some(frame) = state.execution_state.callstack.current_frame() {
                     if let Some(loc) = frame.last_resolved(&state.session) {
                         let source_id = loc.source_file.id();

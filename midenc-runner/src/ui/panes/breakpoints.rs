@@ -102,6 +102,9 @@ impl Pane for BreakpointsPane {
                     self.breakpoint_selected = select_next;
                 }
             }
+            Action::Reload => {
+                self.init(state)?;
+            }
             Action::Update => {
                 if self.breakpoint_cycle < state.execution_state.cycle {
                     self.breakpoints_hit.clear();

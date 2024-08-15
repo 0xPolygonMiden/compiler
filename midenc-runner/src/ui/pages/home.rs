@@ -145,6 +145,9 @@ impl Page for Home {
                     None => match args.trim() {
                         "q" | "quit" => actions.push(Some(Action::Quit)),
                         "history" => actions.push(Some(Action::History)),
+                        "reload" => {
+                            actions.push(Some(Action::Reload));
+                        }
                         _ => {
                             actions.push(Some(Action::TimedStatusLine("unknown command".into(), 1)))
                         }
@@ -284,6 +287,16 @@ impl Page for Home {
                     actions.push(pane.update(Action::Update, state)?);
                 }
             }
+            Action::Reload => match state.reload() {
+                Ok(_) => {
+                    for pane in self.panes.iter_mut() {
+                        actions.push(pane.update(Action::Reload, state)?);
+                    }
+                }
+                Err(err) => {
+                    actions.push(Some(Action::TimedStatusLine(err.to_string(), 5)));
+                }
+            },
             _ => {
                 if let Some(pane) = self.panes.get_mut(self.focused_pane_index) {
                     actions.push(pane.update(action, state)?);
