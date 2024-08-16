@@ -110,7 +110,7 @@ enum Commands {
         /// access during execution. The inputs file is a JSON file which describes
         /// what the inputs are, or where to source them from.
         #[arg(long, value_name = "FILE")]
-        inputs: Option<debugger::ProgramInputs>,
+        inputs: Option<debugger::DebuggerConfig>,
         /// Arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,

@@ -11,23 +11,23 @@ use serde_derive::Deserialize;
 use crate::Felt;
 
 #[derive(Debug, Clone, Default, Deserialize)]
-#[serde(try_from = "ProgramInputsFile")]
-pub struct ProgramInputs {
+#[serde(try_from = "DebuggerConfigFile")]
+pub struct DebuggerConfig {
     pub inputs: StackInputs,
     pub advice_inputs: AdviceInputs,
     pub options: ExecutionOptions,
 }
 
-impl TryFrom<ProgramInputsFile> for ProgramInputs {
+impl TryFrom<DebuggerConfigFile> for DebuggerConfig {
     type Error = String;
 
     #[inline]
-    fn try_from(mut file: ProgramInputsFile) -> Result<Self, Self::Error> {
+    fn try_from(mut file: DebuggerConfigFile) -> Result<Self, Self::Error> {
         Self::from_inputs_file(file, None)
     }
 }
 
-impl ProgramInputs {
+impl DebuggerConfig {
     pub fn parse_file<P>(path: P) -> std::io::Result<Self>
     where
         P: AsRef<std::path::Path>,
@@ -35,19 +35,22 @@ impl ProgramInputs {
         let path = path.as_ref();
         let content = std::fs::read_to_string(path)?;
 
-        let file = toml::from_str::<ProgramInputsFile>(&content)
+        let file = toml::from_str::<DebuggerConfigFile>(&content)
             .map_err(|err| std::io::Error::other(err))?;
         Self::from_inputs_file(file, path.parent().map(|p| p.to_path_buf()))
             .map_err(|err| std::io::Error::other(err))
     }
 
     pub fn parse_str(content: &str) -> Result<Self, String> {
-        let file = toml::from_str::<ProgramInputsFile>(content).map_err(|err| err.to_string())?;
+        let file = toml::from_str::<DebuggerConfigFile>(content).map_err(|err| err.to_string())?;
 
         Self::from_inputs_file(file, None)
     }
 
-    fn from_inputs_file(mut file: ProgramInputsFile, cwd: Option<PathBuf>) -> Result<Self, String> {
+    fn from_inputs_file(
+        mut file: DebuggerConfigFile,
+        cwd: Option<PathBuf>,
+    ) -> Result<Self, String> {
         let rodata = match file.inputs.rodata.take() {
             Some(path) => {
                 let path = if let Some(cwd) = cwd.as_ref() {
@@ -109,7 +112,7 @@ fn decode_rodata(data: &[u8]) -> Result<Vec<RawFelt>, String> {
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
-struct ProgramInputsFile {
+struct DebuggerConfigFile {
     inputs: Inputs,
     #[serde(deserialize_with = "deserialize_execution_options")]
     options: ExecutionOptions,
@@ -146,19 +149,19 @@ struct AdviceMapEntry {
     values: Vec<crate::Felt>,
 }
 
-impl clap::builder::ValueParserFactory for ProgramInputs {
-    type Parser = ProgramInputsParser;
+impl clap::builder::ValueParserFactory for DebuggerConfig {
+    type Parser = DebuggerConfigParser;
 
     fn value_parser() -> Self::Parser {
-        ProgramInputsParser
+        DebuggerConfigParser
     }
 }
 
 #[doc(hidden)]
 #[derive(Clone)]
-pub struct ProgramInputsParser;
-impl clap::builder::TypedValueParser for ProgramInputsParser {
-    type Value = ProgramInputs;
+pub struct DebuggerConfigParser;
+impl clap::builder::TypedValueParser for DebuggerConfigParser {
+    type Value = DebuggerConfig;
 
     fn parse_ref(
         &self,
@@ -179,11 +182,11 @@ impl clap::builder::TypedValueParser for ProgramInputsParser {
         let content = std::fs::read_to_string(inputs_path).map_err(|err| {
             Error::raw(ErrorKind::ValueValidation, format!("failed to read inputs file: {err}"))
         })?;
-        let inputs_file = toml::from_str::<ProgramInputsFile>(&content).map_err(|err| {
+        let inputs_file = toml::from_str::<DebuggerConfigFile>(&content).map_err(|err| {
             Error::raw(ErrorKind::ValueValidation, format!("invalid inputs file: {err}"))
         })?;
 
-        ProgramInputs::from_inputs_file(inputs_file, Some(inputs_path.to_path_buf())).map_err(
+        DebuggerConfig::from_inputs_file(inputs_file, Some(inputs_path.to_path_buf())).map_err(
             |err| Error::raw(ErrorKind::ValueValidation, format!("invalid inputs file: {err}")),
         )
     }
@@ -232,14 +235,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn program_inputs_empty() {
+    fn debugger_config_empty() {
         let text = toml::to_string_pretty(&toml! {
             [inputs]
             [options]
         })
         .unwrap();
 
-        let file = toml::from_str::<ProgramInputs>(&text).unwrap();
+        let file = toml::from_str::<DebuggerConfig>(&text).unwrap();
         assert!(file.inputs.values().is_empty());
         assert!(file.advice_inputs.stack().is_empty());
         assert_eq!(file.options.enable_tracing(), true);
@@ -249,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    fn program_inputs_with_options() {
+    fn debugger_config_with_options() {
         let text = toml::to_string_pretty(&toml! {
             [inputs]
             [options]
@@ -257,7 +260,7 @@ mod tests {
         })
         .unwrap();
 
-        let file = ProgramInputs::parse_str(&text).unwrap();
+        let file = DebuggerConfig::parse_str(&text).unwrap();
         assert!(file.inputs.values().is_empty());
         assert!(file.advice_inputs.stack().is_empty());
         assert_eq!(file.options.enable_tracing(), true);
@@ -267,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn program_inputs_with_operands() {
+    fn debugger_config_with_operands() {
         let text = toml::to_string_pretty(&toml! {
             [inputs]
             stack = [1, 2, 3]
@@ -277,7 +280,7 @@ mod tests {
         })
         .unwrap();
 
-        let file = ProgramInputs::parse_str(&text).unwrap();
+        let file = DebuggerConfig::parse_str(&text).unwrap();
         assert_eq!(file.inputs.values(), &[RawFelt::new(3), RawFelt::new(2), RawFelt::new(1)]);
         assert!(file.advice_inputs.stack().is_empty());
         assert_eq!(file.options.enable_tracing(), true);
@@ -287,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    fn program_inputs_with_advice() {
+    fn debugger_config_with_advice() {
         let text = toml::to_string_pretty(&toml! {
             [inputs]
             stack = [1, 2, 3]
@@ -307,7 +310,7 @@ mod tests {
             "0x3cff5b58a573dc9d25fd3c57130cc57e5b1b381dc58b5ae3594b390c59835e63",
         )
         .unwrap();
-        let file = ProgramInputs::parse_str(&text).unwrap();
+        let file = DebuggerConfig::parse_str(&text).unwrap();
         assert_eq!(file.inputs.values(), &[RawFelt::new(3), RawFelt::new(2), RawFelt::new(1)]);
         assert_eq!(
             file.advice_inputs.stack(),
@@ -324,7 +327,7 @@ mod tests {
     }
 
     #[test]
-    fn program_inputs_with_rodata() {
+    fn debugger_config_with_rodata() {
         const RODATA_SAMPLE: &[u8] = "hello world\0data\0strings\nü".as_bytes();
         let rodata_cwd = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let rodata_path = rodata_cwd.join("testdata").join("rodata-sample.bin");
@@ -348,8 +351,9 @@ mod tests {
         expected.reverse();
 
         // Bypass parse_str so that we can specify the working directory context
-        let file = toml::from_str::<ProgramInputsFile>(&text).unwrap_or_else(|err| panic!("{err}"));
-        let file = ProgramInputs::from_inputs_file(file, Some(rodata_cwd.to_path_buf())).unwrap();
+        let file =
+            toml::from_str::<DebuggerConfigFile>(&text).unwrap_or_else(|err| panic!("{err}"));
+        let file = DebuggerConfig::from_inputs_file(file, Some(rodata_cwd.to_path_buf())).unwrap();
 
         assert_eq!(file.inputs.values(), &[RawFelt::new(3), RawFelt::new(2), RawFelt::new(1)]);
         assert_eq!(file.advice_inputs.stack().len(), 4 + expected.len());

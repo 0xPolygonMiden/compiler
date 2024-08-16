@@ -9,12 +9,12 @@ use midenc_session::{
 };
 
 use crate::{
-    Breakpoint, BreakpointType, DebugExecutor, ExecutionTrace, ProgramInputs, ReadMemoryExpr,
+    Breakpoint, BreakpointType, DebugExecutor, DebuggerConfig, ExecutionTrace, ReadMemoryExpr,
 };
 
 pub struct State {
     pub program: Arc<Program>,
-    pub inputs: ProgramInputs,
+    pub inputs: DebuggerConfig,
     pub executor: DebugExecutor,
     pub execution_trace: ExecutionTrace,
     pub execution_failed: Option<miden_processor::ExecutionError>,
@@ -36,7 +36,7 @@ pub enum InputMode {
 
 impl State {
     pub fn from_inputs(
-        inputs: Option<ProgramInputs>,
+        inputs: Option<DebuggerConfig>,
         mut args: Vec<Felt>,
         session: Rc<Session>,
     ) -> Result<Self, Report> {
