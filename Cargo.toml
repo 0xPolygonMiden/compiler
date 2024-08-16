@@ -93,7 +93,7 @@ miden-parsing = "0.1"
 midenc-frontend-wasm = { version = "0.0.1", path = "frontend-wasm" }
 midenc-compile = { version = "0.0.1", path = "midenc-compile" }
 midenc-driver = { version = "0.0.1", path = "midenc-driver" }
-midenc-debug = { version = "0.0.1", path = "midenc-debug" }
+midenc-debug = { version = "0.0.0", path = "midenc-debug" }
 midenc-session = { version = "0.0.1", path = "midenc-session" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"

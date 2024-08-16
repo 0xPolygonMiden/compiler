@@ -1,7 +1,7 @@
 [package]
 name = "midenc-debug"
 description = "An interactive debugger for Miden VM programs"
-version = "0.0.1"
+version = "0.0.0"
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
