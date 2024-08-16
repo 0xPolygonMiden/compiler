@@ -173,14 +173,13 @@ impl Program {
         // Emit data segment initialization code
         //
         // NOTE: This depends on the program being executed with the data for all data
-        // segments having been pushed on the advice stack in the same order as visited
-        // here, with the same encoding. The program will fail to execute if it is not
-        // set up correctly.
+        // segments having been placed in the advice map with the same commitment and
+        // encoding used here. The program will fail to execute if this is not set up
+        // correctly.
         //
-        // TODO(pauls): To facilitate automation of this, we should emit a file to disk
-        // that includes the raw encoding of the data we expect to be placed on the advice
-        // stack, in a manner which allows us to simply read that file as an array of felt
-        // and use that directly via `AdviceInputs`
+        // TODO(pauls): To facilitate automation of this, we should emit an inputs file to
+        // disk that maps each segment to a commitment and its data encoded as binary. This
+        // can then be loaded into the advice provider during VM init.
         let pipe_preimage_to_memory = "std::mem::pipe_preimage_to_memory".parse().unwrap();
         for segment in self.library.segments.iter() {
             // Don't bother emitting anything for zeroed segments
@@ -229,8 +228,14 @@ impl Program {
             let digest = Rpo256::hash_elements(&elements);
             let span = SourceSpan::default();
 
-            // COM
-            block.push(Op::Pushw(digest.into()), span);
+            log::debug!(
+                "computed commitment for data segment at offset {offset} ({size} bytes, \
+                 {num_elements} elements): '{digest}'"
+            );
+
+            // Move rodata from advice map to advice stack
+            block.push(Op::Pushw(digest.into()), span); // COM
+            block.push(Op::AdvInjectPushMapVal, span);
             // write_ptr
             block.push(Op::PushU32(base.waddr), span);
             // num_words

@@ -281,7 +281,9 @@ impl<'de> Deserialize<'de> for Felt {
                     "invalid field element value: exceeds the field modulus",
                 ))
             } else {
-                Ok(Self(RawFelt::new(n)))
+                RawFelt::try_from(n).map(Felt).map_err(|err| {
+                    serde::de::Error::custom(format!("invalid field element value: {err}"))
+                })
             }
         })
     }
@@ -309,15 +311,27 @@ impl clap::builder::TypedValueParser for FeltParser {
     ) -> Result<Self::Value, clap::error::Error> {
         use clap::error::{Error, ErrorKind};
 
-        let value = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
+        let value = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?.trim();
+        value.parse().map_err(|err| Error::raw(ErrorKind::ValueValidation, err))
+    }
+}
 
-        let value = value.parse::<u64>().map_err(|err| {
-            Error::raw(ErrorKind::InvalidValue, format!("invalid field element value: {err}"))
-        })?;
+impl core::str::FromStr for Felt {
+    type Err = String;
 
-        RawFelt::try_from(value)
-            .map(Felt)
-            .map_err(|err| Error::raw(ErrorKind::InvalidValue, err))
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value = if let Some(value) = s.strip_prefix("0x") {
+            u64::from_str_radix(value, 16)
+                .map_err(|err| format!("invalid field element value: {err}"))?
+        } else {
+            s.parse::<u64>().map_err(|err| format!("invalid field element value: {err}"))?
+        };
+
+        if value > RawFelt::MODULUS {
+            Err("invalid field element value: exceeds the field modulus".to_string())
+        } else {
+            RawFelt::try_from(value).map(Felt)
+        }
     }
 }
 

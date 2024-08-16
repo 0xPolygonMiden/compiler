@@ -79,6 +79,12 @@ impl ConstantData {
         Some(u32::from_le_bytes(unsafe { bytes.read() }))
     }
 }
+impl From<ConstantData> for Vec<u8> {
+    #[inline(always)]
+    fn from(data: ConstantData) -> Self {
+        data.0
+    }
+}
 impl FromIterator<u8> for ConstantData {
     fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
@@ -126,25 +132,39 @@ impl fmt::LowerHex for ConstantData {
 impl FromStr for ConstantData {
     type Err = ();
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str_be(s).map_err(|_| ())
+    }
+}
+impl ConstantData {
+    pub fn from_str_be(s: &str) -> Result<Self, &'static str> {
+        const NOT_EVEN: &str = "invalid hex-encoded data: expected an even number of hex digits";
+        const NOT_HEX: &str = "invalid hex-encoded data: contains invalid hex digits";
+
         let s = s.strip_prefix("0x").unwrap_or(s);
         let len = s.len();
         if len % 2 != 0 {
-            return Err(());
+            return Err(NOT_EVEN);
         }
         // Parse big-endian
         let pairs = len / 2;
         let mut data = Vec::with_capacity(pairs);
         let mut chars = s.chars();
         while let Some(a) = chars.next() {
-            let a = a.to_digit(16).ok_or(())?;
-            let b = chars.next().unwrap().to_digit(16).ok_or(())?;
+            let a = a.to_digit(16).ok_or(NOT_HEX)?;
+            let b = chars.next().unwrap().to_digit(16).ok_or(NOT_HEX)?;
             data.push(((a << 4) + b) as u8);
         }
 
-        // Make little-endian
-        data.reverse();
         Ok(Self(data))
+    }
+
+    pub fn from_str_le(s: &str) -> Result<Self, &'static str> {
+        let mut data = Self::from_str_be(s)?;
+        // Make little-endian
+        data.0.reverse();
+        Ok(data)
     }
 }
 

@@ -5,8 +5,105 @@ interoperate with `midenc`.
 
 # Usage
 
-The easiest way to use the debugger, is via `midenc run`, and giving it a path  to a
-program compiled by `midenc compile`.
+The easiest way to use the debugger, is via `midenc debug`, and giving it a path to a
+program compiled by `midenc compile`. See [Program Inputs](#program-inputs) for information
+on how to provide inputs to the program you wish to debug. Run `midenc help debug` for more
+detailed usage documentation.
+
+The debugger may also be used as a library, but that is left as an exercise for the reader for now.
+
+## Example
+
+```shell
+# Compile a program to MAST from a rustc-generated Wasm module
+midenc compile foo.wasm -o foo.masl
+
+# Load that program into the debugger and start executing it
+midenc debug foo.masl
+```
+
+## Program Inputs
+
+To pass arguments to the program on the operand stack, or via the advice provider, you have two
+options, depending on the needs of the program:
+
+1. Pass arguments to `midenc debug` in the same order you wish them to appear on the stack. That
+   is, the first argument you specify will be on top of the stack, and so on.
+2. Specify a configuration file from which to load inputs for the program, via the `--inputs` option.
+
+### Via Command Line
+
+To specify the contents of the operand stack, you can do so following the raw arguments separator `--`.
+Each operand must be a valid field element value, in either decimal or hexadecimal format. For example:
+
+```shell
+midenc debug foo.masl -- 1 2 0xdeadbeef
+```
+
+If you pass arguments via the command line in conjunction with `--inputs`, then the command line arguments
+will be used instead of the contents of the `inputs.stack` option (if set). This lets you specify a baseline
+set of inputs, and then try out different arguments using the command line.
+
+### Via Inputs Config
+
+While simply passing operands to the `midenc debug` command is useful, it only allows you to specify
+inputs to be passed via operand stack. To provide inputs via the advice provider, you will need to use
+the `--inputs` option. The configuration file expected by `--inputs` also lets you tweak the execution
+options for the VM, such as the maximum and expected cycle counts.
+
+An example configuration file looks like so:
+
+```toml
+# This section is used for execution options
+[options]
+max_cycles = 5000
+expected_cycles = 4000
+
+# This section is the root table for all inputs
+[inputs]
+# Specify elements to place on the operand stack, leftmost element will be on top of the stack
+stack = [1, 2, 0xdeadbeef]
+
+# The `inputs.rodata` section is a list of rodata segments that should be placed
+# in the advice map before the program is executed. Programs compiled by midenc
+# will have a prologue generated in their entrypoint that writes this data to linear
+# memory, by moving it from the advice map to the advice stack (using the commitment
+# digest), and then invoking `std::mem::pipe_preimage_to_memory`.
+#
+# The raw binary data is chunked up into 4 byte chunks, and then converted to field
+# elements by first treating each chunk as a big-endian u32 value, and then creating
+# the field element from that value. The data will arrive on the advice stack in an
+# order that ensures it is written to linear memory in the same order as it appears
+# in the raw binary data.
+#
+# You can specify one or more of these segments
+[[inputs.rodata]]
+digest = '0xb9691da1d9b4b364aca0a0990e9f04c446a2faa622c8dd0d8831527dbec61393'
+# Specify a path to the binary data for this segment
+path = 'foo.bin'
+# Or, alternatively, specify the binary data in hexadecimal form directly
+# data = '0x...'
+
+# This section contains input options for the advice provider
+[inputs.advice]
+# Specify elements to place on the advice stack, leftmost element will be on top
+stack = [1, 2, 3, 4]
+
+# The `inputs.advice.map` section is a list of advice map entries that should be
+# placed in the advice map before the program is executed. Entries with duplicate
+# keys are handled on a last-write-wins basis.
+[[inputs.advice.map]]
+# The key for this entry in the advice map
+digest = '0x3cff5b58a573dc9d25fd3c57130cc57e5b1b381dc58b5ae3594b390c59835e63'
+# The values to be stored under this key
+values = [1, 2, 3, 4]
+
+[[inputs.advice.map]]
+digest = '0x20234ee941e53a15886e733cc8e041198c6e90d2a16ea18ce1030e8c3596dd38''
+values = [5, 6, 7, 8]
+```
+
+# Debugger Usage
 
 Once started, you will be dropped into the main debugger UI, stopped at the first cycle of
 the program. The UI is organized into pages and panes, with the main/home page being the
