@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
 
+use miden_core::StarkField;
 use miden_processor::Felt as RawFelt;
 use proptest::{
     arbitrary::Arbitrary,
     strategy::{BoxedStrategy, Strategy},
 };
+use serde::Deserialize;
 
 pub trait PushToStack: Sized {
     fn try_push(&self, stack: &mut Vec<RawFelt>) {
@@ -261,6 +263,29 @@ impl<const N: usize> PopFromStack for [u8; N] {
 /// for that type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Felt(pub RawFelt);
+impl Felt {
+    #[inline]
+    pub fn new(value: u64) -> Self {
+        Self(RawFelt::new(value))
+    }
+}
+
+impl<'de> Deserialize<'de> for Felt {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        u64::deserialize(deserializer).and_then(|n| {
+            if n > RawFelt::MODULUS {
+                Err(serde::de::Error::custom(
+                    "invalid field element value: exceeds the field modulus",
+                ))
+            } else {
+                Ok(Self(RawFelt::new(n)))
+            }
+        })
+    }
+}
 
 impl clap::builder::ValueParserFactory for Felt {
     type Parser = FeltParser;
