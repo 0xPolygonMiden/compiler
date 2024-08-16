@@ -1,5 +1,5 @@
 # Runs `release-plz release` only after the release PR (starts with `release-plz-`) 
-# is merged to the main branch. See `release_always = false` in `release-plz.toml` 
+# is merged to the next branch. See `release_always = false` in `release-plz.toml` 
 # Publishes any unpublished crates when.
 # Does nothing if all crates are already published (i.e. have their versions on crates.io).
 # Does not create/update release PRs.
@@ -13,7 +13,7 @@ name: release-plz
 on:
   push:
     branches:
-      - main
+      - next
 
 env:
   CARGO_MAKE_TOOLCHAIN: nightly-2024-05-07
