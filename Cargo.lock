@@ -3040,6 +3040,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-sdk"
+version = "0.0.1"
+dependencies = [
+ "miden-base-sys",
+ "miden-stdlib-sys",
+]
+
+[[package]]
 name = "miden-stdlib"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
