@@ -1,12 +1,16 @@
 #![feature(array_windows)]
 #![feature(iter_array_chunks)]
 #![feature(is_sorted)]
+#![feature(debug_closure_helpers)]
+
+extern crate alloc;
 
 mod codegen;
 mod compiler;
 mod convert;
 mod emulator;
 mod masm;
+mod packaging;
 #[cfg(test)]
 mod tests;
 
@@ -21,4 +25,5 @@ pub use self::{
         Emulator, EmulatorEvent, InstructionPointer, WatchMode, Watchpoint, WatchpointId,
     },
     masm::*,
+    packaging::*,
 };

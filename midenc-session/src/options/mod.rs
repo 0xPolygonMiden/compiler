@@ -141,6 +141,8 @@ impl Options {
             })
         });
 
+        let arg_matches = crate::flags::default_arg_matches(None::<&str>).unwrap();
+
         Self {
             name,
             target,
@@ -162,7 +164,7 @@ impl Options {
             save_temps: false,
             print_ir_after_all: false,
             print_ir_after_pass: vec![],
-            arg_matches: Default::default(),
+            arg_matches,
         }
     }
 

@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
 use miden_assembly::Library as CompiledLibrary;
+use miden_processor::{Digest, MastForest};
 use midenc_hir::Symbol;
 use midenc_session::{Emit, OutputMode, OutputType, Session};
 
 /// The artifact produced by lowering a [Program] to a Merkelized Abstract Syntax Tree
 ///
 /// This type is used in compilation pipelines to abstract over the type of output requested.
+#[derive(Clone)]
 pub enum MastArtifact {
     /// A MAST artifact which can be executed by the VM directly
     Executable(Arc<miden_core::Program>),
@@ -19,6 +21,22 @@ impl MastArtifact {
         match self {
             Self::Executable(prog) => prog,
             Self::Library(_) => panic!("attempted to unwrap 'mast' library as program"),
+        }
+    }
+
+    /// Get the content digest associated with this artifact
+    pub fn digest(&self) -> Digest {
+        match self {
+            Self::Executable(ref prog) => prog.hash(),
+            Self::Library(ref lib) => *lib.digest(),
+        }
+    }
+
+    /// Get the underlying [MastForest] for this artifact
+    pub fn mast_forest(&self) -> &MastForest {
+        match self {
+            Self::Executable(ref prog) => prog.mast_forest(),
+            Self::Library(ref lib) => lib.mast_forest(),
         }
     }
 }

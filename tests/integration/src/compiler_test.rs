@@ -841,8 +841,8 @@ pub struct CompilerTest {
     masm_src: Option<String>,
     /// The compiled IR MASM program
     ir_masm_program: Option<Result<Arc<midenc_codegen_masm::Program>, String>>,
-    /// The compiled VM program
-    vm_masm_program: Option<Result<Arc<miden_core::Program>, String>>,
+    /// The compiled package containing a program executable by the VM
+    package: Option<Result<Arc<midenc_codegen_masm::Package>, String>>,
 }
 
 impl fmt::Debug for CompilerTest {
@@ -907,7 +907,7 @@ impl Default for CompilerTest {
             hir: None,
             masm_src: None,
             ir_masm_program: None,
-            vm_masm_program: None,
+            package: None,
         }
     }
 }
@@ -1081,12 +1081,12 @@ impl CompilerTest {
         }
     }
 
-    /// Get the compiled MASM as [`miden_core::Program`]
-    pub fn vm_masm_program(&mut self) -> Arc<miden_core::Program> {
-        if self.vm_masm_program.is_none() {
+    /// Get the compiled [midenc_codegen_masm::Package]
+    pub fn compiled_package(&mut self) -> Arc<midenc_codegen_masm::Package> {
+        if self.package.is_none() {
             self.compile_wasm_to_masm_program();
         }
-        match self.vm_masm_program.as_ref().unwrap().as_ref() {
+        match self.package.as_ref().unwrap().as_ref() {
             Ok(prog) => prog.clone(),
             Err(msg) => panic!("{msg}"),
         }
@@ -1129,17 +1129,20 @@ impl CompilerTest {
                 }
                 Ok(artifact)
             };
-        let mast_program =
+        let package =
             compile_to_memory_with_pre_assembly_stage(self.session.clone(), &mut stage as _)
                 .map_err(format_report)
                 .unwrap_or_else(|err| panic!("{err}"))
-                .unwrap_mast()
-                .unwrap_program();
+                .unwrap_mast();
         assert!(src.is_some(), "failed to pretty print masm artifact");
         assert!(masm_program.is_some(), "failed to capture masm artifact");
+        assert!(
+            package.is_program(),
+            "expected to have produced an executable program, not a library"
+        );
         self.masm_src = src;
         self.ir_masm_program = masm_program.map(Ok);
-        self.vm_masm_program = Some(Ok(mast_program));
+        self.package = Some(Ok(Arc::new(package)));
     }
 }
 

@@ -10,9 +10,12 @@ use miden_processor::{
     AdviceInputs, ContextId, ExecutionError, Felt, MastForest, MemAdviceProvider, Process,
     ProcessState, RowIndex, StackOutputs, VmState, VmStateIterator,
 };
-use midenc_codegen_masm::NativePtr;
+use midenc_codegen_masm::{NativePtr, Package};
 use midenc_hir::Type;
-use midenc_session::Session;
+use midenc_session::{
+    diagnostics::{IntoDiagnostic, Report},
+    Session,
+};
 
 use super::{DebugExecutor, DebuggerHost, ExecutionTrace, TraceEvent};
 use crate::{debug::CallStack, felt::PopFromStack, TestFelt};
@@ -36,6 +39,26 @@ impl Executor {
             advice: AdviceInputs::default(),
             libraries: Default::default(),
         }
+    }
+
+    pub fn for_package(
+        package: &Package,
+        args: Vec<Felt>,
+        session: &Session,
+    ) -> Result<Self, Report> {
+        let mut exec = Self::new(args);
+
+        for link_library in package.manifest.link_libraries.iter() {
+            let library = link_library.load(session)?;
+            exec.with_library(&library);
+        }
+
+        for rodata in package.rodata.iter() {
+            exec.advice
+                .extend_map([(rodata.digest, rodata.to_elements().map_err(Report::msg)?)]);
+        }
+
+        Ok(exec)
     }
 
     /// Set the contents of memory for the shadow stack frame of the entrypoint

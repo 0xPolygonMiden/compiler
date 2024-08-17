@@ -3,6 +3,7 @@ use std::{rc::Rc, sync::Arc};
 use miden_assembly::Library;
 use miden_core::{utils::Deserializable, FieldElement};
 use miden_processor::{Felt, Program, StackInputs};
+use midenc_codegen_masm::Package;
 use midenc_session::{
     diagnostics::{IntoDiagnostic, Report, SourceSpan, Span, WrapErr},
     InputType, Session,
@@ -13,7 +14,7 @@ use crate::{
 };
 
 pub struct State {
-    pub program: Arc<Program>,
+    pub package: Arc<Package>,
     pub inputs: DebuggerConfig,
     pub executor: DebugExecutor,
     pub execution_trace: ExecutionTrace,
@@ -46,19 +47,20 @@ impl State {
             inputs.inputs = StackInputs::new(args).into_diagnostic()?;
         }
         let args = inputs.inputs.values().iter().copied().rev().collect::<Vec<_>>();
-        let program = load_program(&session)?;
+        let package = load_package(&session)?;
 
-        let mut executor = crate::Executor::new(args.clone());
+        let mut executor = crate::Executor::for_package(&package, args.clone(), &session)?;
         executor.with_advice_inputs(inputs.advice_inputs.clone());
         for link_library in session.options.link_libraries.iter() {
             let lib = link_library.load(&session)?;
             executor.with_library(&lib);
         }
 
+        let program = package.unwrap_program();
         let executor = executor.into_debug(&program, &session);
 
         // Execute the program until it terminates to capture a full trace for use during debugging
-        let mut trace_executor = crate::Executor::new(args);
+        let mut trace_executor = crate::Executor::for_package(&package, args, &session)?;
         trace_executor.with_advice_inputs(inputs.advice_inputs.clone());
         for link_library in session.options.link_libraries.iter() {
             let lib = link_library.load(&session)?;
@@ -68,7 +70,7 @@ impl State {
         let execution_trace = trace_executor.capture_trace(&program, &session);
 
         Ok(Self {
-            program,
+            package,
             inputs,
             executor,
             execution_trace,
@@ -84,19 +86,20 @@ impl State {
 
     pub fn reload(&mut self) -> Result<(), Report> {
         log::debug!("reloading program");
-        let program = load_program(&self.session)?;
+        let package = load_package(&self.session)?;
         let args = self.inputs.inputs.values().iter().copied().rev().collect::<Vec<_>>();
 
-        let mut executor = crate::Executor::new(args.clone());
+        let mut executor = crate::Executor::for_package(&package, args.clone(), &self.session)?;
         executor.with_advice_inputs(self.inputs.advice_inputs.clone());
         for link_library in self.session.options.link_libraries.iter() {
             let lib = link_library.load(&self.session)?;
             executor.with_library(&lib);
         }
-        let executor = executor.into_debug(&self.program, &self.session);
+        let program = package.unwrap_program();
+        let executor = executor.into_debug(&program, &self.session);
 
         // Execute the program until it terminates to capture a full trace for use during debugging
-        let mut trace_executor = crate::Executor::new(args);
+        let mut trace_executor = crate::Executor::for_package(&package, args, &self.session)?;
         trace_executor.with_advice_inputs(self.inputs.advice_inputs.clone());
         for link_library in self.session.options.link_libraries.iter() {
             let lib = link_library.load(&self.session)?;
@@ -104,7 +107,7 @@ impl State {
         }
         let execution_trace = trace_executor.capture_trace(&program, &self.session);
 
-        self.program = program;
+        self.package = package;
         self.executor = executor;
         self.execution_trace = execution_trace;
         self.execution_failed = None;
@@ -252,69 +255,27 @@ impl State {
     }
 }
 
-fn load_program(session: &Session) -> Result<Arc<Program>, Report> {
+fn load_package(session: &Session) -> Result<Arc<Package>, Report> {
+    let package = match &session.inputs[0].file {
+        InputType::Real(ref path) => {
+            Package::read_from_file(path).map(Arc::new).into_diagnostic()?
+        }
+        InputType::Stdin { input, .. } => {
+            Package::read_from_bytes(input.as_slice()).map(Arc::new)?
+        }
+    };
+
     if let Some(entry) = session.options.entrypoint.as_ref() {
         // Input must be a library, not a program
         let id = entry
             .parse::<midenc_hir::FunctionIdent>()
             .map_err(|_| Report::msg(format!("invalid function identifier: '{entry}'")))?;
-        let library = match session.inputs[0].file {
-            InputType::Real(ref path) => read_library(path)?,
-            InputType::Stdin { ref input, .. } => Library::read_from_bytes(input)
-                .map_err(|err| Report::msg(format!("failed to read library from stdin: {err}")))?,
-        };
-        let module = library
-            .module_infos()
-            .find(|info| info.path().path() == id.module.as_str())
-            .ok_or_else(|| {
-            Report::msg(format!(
-                "invalid entrypoint: library does not contain a module named '{}'",
-                id.module.as_str()
-            ))
-        })?;
-        let name = miden_assembly::ast::ProcedureName::new_unchecked(
-            miden_assembly::ast::Ident::new_unchecked(Span::new(
-                SourceSpan::UNKNOWN,
-                Arc::from(id.function.as_str()),
-            )),
-        );
-        if let Some(digest) = module.get_procedure_digest_by_name(&name) {
-            let node_id = library.mast_forest().find_procedure_root(digest).ok_or_else(|| {
-                Report::msg(
-                    "invalid entrypoint: malformed library - procedure exported, but digest has \
-                     no node in the forest",
-                )
-            })?;
-            Ok(Arc::new(Program::new(library.mast_forest().clone(), node_id)))
-        } else {
-            Err(Report::msg(format!(
-                "invalid entrypoint: library does not export '{}'",
-                id.display()
-            )))
+        if !package.is_library() {
+            return Err(Report::msg("cannot use --entrypoint with executable packages"));
         }
+
+        package.make_executable(&id).map(Arc::new)
     } else {
-        match session.inputs[0].file {
-            InputType::Real(ref path) => read_program(path),
-            InputType::Stdin { ref input, .. } => Program::read_from_bytes(input)
-                .map(Arc::new)
-                .map_err(|err| Report::msg(format!("failed to read program from stdin: {err}",))),
-        }
+        Ok(package)
     }
-}
-
-fn read_program(path: &std::path::Path) -> Result<Arc<Program>, Report> {
-    use miden_core::utils::ReadAdapter;
-    let bytes = std::fs::read(path)
-        .into_diagnostic()
-        .wrap_err_with(|| format!("failed to open program file '{}'", path.display()))?;
-    let mut reader = miden_core::utils::SliceReader::new(bytes.as_slice());
-    Program::read_from(&mut reader).map(Arc::new).map_err(|err| {
-        Report::msg(format!("failed to read program from '{}': {err}", path.display()))
-    })
-}
-
-fn read_library(path: &std::path::Path) -> Result<Library, Report> {
-    Library::deserialize_from_file(path).map_err(|err| {
-        Report::msg(format!("failed to read library from '{}': {err}", path.display()))
-    })
 }

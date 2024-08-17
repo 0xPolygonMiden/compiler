@@ -11,8 +11,13 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 
+[features]
+default = ["std"]
+std = ["bitcode/std"]
+
 [dependencies]
 anyhow.workspace = true
+bitcode.workspace = true
 cranelift-entity.workspace = true
 intrusive-collections.workspace = true
 inventory.workspace = true
@@ -21,13 +26,15 @@ miden-assembly.workspace = true
 miden-core.workspace = true
 miden-processor.workspace = true
 miden-stdlib.workspace = true
-midenc-hir.workspace = true
+midenc-hir = { workspace = true, features = ["serde"] }
 midenc-hir-analysis.workspace = true
 midenc-hir-transform.workspace = true
-midenc-session.workspace = true
+midenc-session = { workspace = true, features = ["serde"] }
 paste.workspace = true
 petgraph.workspace = true
 rustc-hash.workspace = true
+serde.workspace = true
+serde_bytes.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 

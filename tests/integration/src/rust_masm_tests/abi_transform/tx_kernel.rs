@@ -5,6 +5,7 @@ use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
 use midenc_debug::Executor;
+use midenc_session::{diagnostics::Report, Emit};
 
 use crate::{execute_emulator, CompilerTestBuilder};
 
@@ -20,11 +21,11 @@ fn setup_log() {
 
 #[test]
 #[ignore = "pending rodata fixes"]
-fn test_get_inputs_4() {
-    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
+fn test_get_inputs_4() -> Result<(), Report> {
+    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()])
 }
 
-fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
+fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) -> Result<(), Report> {
     assert!(expected_inputs.len() == 4, "for now only word-sized inputs are supported");
     let masm = format!(
         "
@@ -53,13 +54,14 @@ end
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
-    let vm_program = test.vm_masm_program();
+    let package = test.compiled_package();
 
-    let exec = Executor::new(vec![]);
-    let trace = exec.execute(&vm_program, &test.session);
+    let exec = Executor::for_package(&package, vec![], &test.session)?;
+    let trace = exec.execute(&package.unwrap_program(), &test.session);
     let vm_out = trace.into_outputs();
     dbg!(&vm_out);
 
     // let ir_program = test.ir_masm_program();
     // let emul_out = execute_emulator(ir_program.clone(), &[]);
+    Ok(())
 }

@@ -47,33 +47,15 @@ impl DebuggerConfig {
 
     fn from_inputs_file(
         mut file: DebuggerConfigFile,
-        cwd: Option<PathBuf>,
+        _cwd: Option<PathBuf>,
     ) -> Result<Self, String> {
         let inputs = StackInputs::new(file.inputs.stack.into_iter().map(|felt| felt.0).collect())
             .map_err(|err| format!("invalid value for 'stack': {err}"))?;
-        let mut advice_inputs = AdviceInputs::default()
+        let advice_inputs = AdviceInputs::default()
             .with_stack(file.inputs.advice.stack.into_iter().rev().map(|felt| felt.0))
             .with_map(file.inputs.advice.map.into_iter().map(|entry| {
                 (entry.digest.0, entry.values.into_iter().map(|felt| felt.0).collect::<Vec<_>>())
             }));
-
-        for segment in file.inputs.rodata {
-            let data = if let Some(path) = segment.path {
-                let path = if let Some(cwd) = cwd.as_ref() {
-                    if path.is_relative() {
-                        cwd.join(path)
-                    } else {
-                        path
-                    }
-                } else {
-                    path
-                };
-                decode_rodata_from_path(&path)?
-            } else {
-                decode_rodata(&segment.data)?
-            };
-            advice_inputs.extend_map([(segment.digest.0, data)]);
-        }
 
         Ok(Self {
             inputs,
@@ -81,28 +63,6 @@ impl DebuggerConfig {
             options: file.options,
         })
     }
-}
-
-fn decode_rodata_from_path(path: &Path) -> Result<Vec<RawFelt>, String> {
-    let data = std::fs::read(path)
-        .map_err(|err| format!("failed to read rodata from '{}': {err}", path.display()))?;
-
-    decode_rodata(data.as_slice())
-}
-
-fn decode_rodata(data: &[u8]) -> Result<Vec<RawFelt>, String> {
-    let mut felts = Vec::with_capacity(data.len() / 4);
-    let mut iter = data.iter().copied().array_chunks::<4>();
-    felts.extend(iter.by_ref().map(|bytes| RawFelt::new(u32::from_be_bytes(bytes) as u64)));
-    if let Some(remainder) = iter.into_remainder() {
-        let mut chunk = [0u8; 4];
-        for (i, byte) in remainder.into_iter().enumerate() {
-            chunk[i] = byte;
-        }
-        felts.push(RawFelt::new(u32::from_be_bytes(chunk) as u64));
-    }
-
-    Ok(felts)
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -116,24 +76,10 @@ struct DebuggerConfigFile {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 struct Inputs {
-    /// The rodata segments to place in the advice map
-    rodata: Vec<DataSegment>,
     /// The contents of the operand stack, top is leftmost
     stack: Vec<crate::Felt>,
     /// The inputs to the advice provider
     advice: Advice,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct DataSegment {
-    /// The commitment digest for this segment
-    digest: Digest,
-    /// A path to the file containing the raw binary data for this segment
-    #[serde(default)]
-    path: Option<PathBuf>,
-    /// The raw data for this segment (mutually exclusive with `path`)
-    #[serde(default, deserialize_with = "deserialize_rodata_bytes")]
-    data: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -341,45 +287,5 @@ mod tests {
         assert_eq!(file.options.enable_debugging(), true);
         assert_eq!(file.options.max_cycles(), 1000);
         assert_eq!(file.options.expected_cycles(), 64);
-    }
-
-    #[test]
-    fn debugger_config_with_rodata() {
-        const RODATA_SAMPLE: &[u8] = "hello world\0data\0strings\nü".as_bytes();
-
-        let rodata_cwd = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        let rodata_path = rodata_cwd.join("testdata").join("rodata-sample.bin");
-        let text = toml::to_string_pretty(&toml! {
-            [inputs]
-            stack = [1, 2, 3]
-
-            [[inputs.rodata]]
-            digest = "0x2786346021744030bf0b9eb930712993609fb0425f7bda70e38ffc23c2f11df2"
-            path = "testdata/rodata-sample.bin"
-
-            [inputs.advice]
-            stack = [1, 2, 3, 4]
-
-            [options]
-            max_cycles = 1000
-        })
-        .unwrap();
-
-        let mut expected = decode_rodata(RODATA_SAMPLE).unwrap();
-        let digest = miden_processor::crypto::Rpo256::hash_elements(&expected);
-        assert_eq!(expected[0], RawFelt::new(u32::from_be_bytes([b'h', b'e', b'l', b'l']) as u64));
-
-        // Bypass parse_str so that we can specify the working directory context
-        let file =
-            toml::from_str::<DebuggerConfigFile>(&text).unwrap_or_else(|err| panic!("{err}"));
-        let file = DebuggerConfig::from_inputs_file(file, Some(rodata_cwd.to_path_buf())).unwrap();
-
-        assert_eq!(file.inputs.values(), &[RawFelt::new(3), RawFelt::new(2), RawFelt::new(1)]);
-        assert_eq!(file.advice_inputs.stack().len(), 4);
-        assert_eq!(
-            file.advice_inputs.stack(),
-            &[RawFelt::new(4), RawFelt::new(3), RawFelt::new(2), RawFelt::new(1)]
-        );
-        assert_eq!(file.advice_inputs.mapped_values(&digest), Some(expected.as_slice()));
     }
 }

@@ -26,8 +26,7 @@ macro_rules! test_bin_op {
                 test.expect_wasm(expect_file![format!("../../expected/{artifact_name}.wat")]);
                 test.expect_ir(expect_file![format!("../../expected/{artifact_name}.hir")]);
                 test.expect_masm(expect_file![format!("../../expected/{artifact_name}.masm")]);
-                let vm_program = test.vm_masm_program();
-                let ir_program = test.ir_masm_program();
+                let package = test.compiled_package();
 
                 // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
                 let res = TestRunner::default()
@@ -40,7 +39,7 @@ macro_rules! test_bin_op {
                         let mut args = Vec::<midenc_hir::Felt>::default();
                         PushToStack::try_push(&b, &mut args);
                         PushToStack::try_push(&a, &mut args);
-                        run_masm_vs_rust(rs_out, &vm_program, ir_program.clone(), &args, &test.session)
+                        run_masm_vs_rust(rs_out, &package, &args, &test.session)
                     });
                 match res {
                     Err(TestError::Fail(_, value)) => {

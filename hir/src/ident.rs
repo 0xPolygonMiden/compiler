@@ -29,6 +29,7 @@ fn demangle_impl(name: &str) -> String {
 
 /// Represents a globally-unique module/function name pair, with corresponding source spans.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Spanned)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionIdent {
     pub module: Ident,
     #[span]
@@ -97,9 +98,11 @@ impl Ord for FunctionIdent {
 ///
 /// An identifier is some string, along with an associated source span
 #[derive(Copy, Clone, Eq, Spanned)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ident {
     pub name: Symbol,
     #[span]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub span: SourceSpan,
 }
 impl Default for Ident {

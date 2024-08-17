@@ -147,7 +147,7 @@ impl Midenc {
         A: IntoIterator<Item = OsString>,
     {
         let command = <Self as clap::CommandFactory>::command();
-        let command = command.mut_subcommand("compile", compile::register_flags);
+        let command = command.mut_subcommand("compile", midenc_session::flags::register_flags);
 
         let mut matches = command.try_get_matches_from(args).map_err(ClapDiagnostic::from)?;
         let compile_matches = matches.subcommand_matches("compile").cloned().unwrap_or_default();

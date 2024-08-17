@@ -330,7 +330,7 @@ impl<'a> Linker<'a> {
             // If an initializer was set, we need to import the constant data too
             if let Some(init) = imported_global.init.take() {
                 let data = module.globals.get_constant(init).clone();
-                imported_global.init = Some(self.program.globals.insert_constant(data));
+                imported_global.init = Some(self.program.globals.insert_refcounted_constant(data));
             }
             let (id, renamed) = self.program.globals.try_insert(imported_global)?;
             let name = self.program.globals.get(id).name;

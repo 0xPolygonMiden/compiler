@@ -11,6 +11,7 @@ pub use self::layout::Alignable;
 
 /// Represents the type of a value
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Type {
     /// This indicates a failure to type a value, or a value which is untypable
     Unknown,
@@ -330,6 +331,7 @@ impl fmt::Display for Type {
 
 /// This represents metadata about how a structured type will be represented in memory
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TypeRepr {
     /// This corresponds to the C ABI representation for a given type
     #[default]
@@ -394,6 +396,7 @@ impl TypeRepr {
 
 /// This represents metadata about a field of a [StructType]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StructField {
     /// The index of this field in the final layout
     pub index: u8,
@@ -412,6 +415,7 @@ impl fmt::Display for StructField {
 
 /// This represents a structured aggregate type
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StructType {
     /// The representation to use for this type
     pub(crate) repr: TypeRepr,
@@ -586,6 +590,11 @@ impl fmt::Display for StructType {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
+#[repr(u8)]
 pub enum Abi {
     /// The type signature of a function in canonical form. Canonical in this context means that
     /// no special lowering is required between caller and callee - all the compiler needs to
@@ -609,6 +618,7 @@ impl fmt::Display for Abi {
 
 /// This represents the type of a function, including the ABI, result types, and parameter types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionType {
     /// The ABI of this function type
     pub abi: Abi,
@@ -706,6 +716,7 @@ impl fmt::Display for InvalidAddressSpaceError {
 /// This type uniquely identifies the address space associated with a native
 /// Miden pointer value
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AddressSpace {
     /// The address space is not known statically, but is available
     /// at runtime in the pointer metadata.

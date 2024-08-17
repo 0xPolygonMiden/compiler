@@ -7,10 +7,10 @@ pub enum Artifact {
     /// The user requested MASM outputs, but
     Lowered(masm::ModuleTree),
     Linked(masm::MasmArtifact),
-    Assembled(masm::MastArtifact),
+    Assembled(masm::Package),
 }
 impl Artifact {
-    pub fn unwrap_mast(self) -> masm::MastArtifact {
+    pub fn unwrap_mast(self) -> masm::Package {
         match self {
             Self::Assembled(mast) => mast,
             Self::Linked(_) => {
@@ -37,7 +37,8 @@ impl Stage for AssembleStage {
     ) -> CompilerResult<Self::Output> {
         match input {
             Left(masm_artifact) if session.should_assemble() => {
-                masm_artifact.assemble(session).map(Artifact::Assembled)
+                let mast = masm_artifact.assemble(session)?;
+                Ok(Artifact::Assembled(masm::Package::new(mast, &masm_artifact, session)))
             }
             Left(masm_artifact) => Ok(Artifact::Linked(masm_artifact)),
             Right(_masm_modules) if session.should_assemble() => todo!(), /* Ok(Artifact::Assembled(todo!())), */

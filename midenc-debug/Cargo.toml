@@ -24,11 +24,10 @@ miden-stdlib.workspace = true
 midenc-session.workspace = true
 midenc-codegen-masm.workspace = true
 midenc-hir.workspace = true
-serde = "1.0.208"
-serde_derive = "1.0.208"
 thiserror.workspace = true
 toml.workspace = true
 proptest.workspace = true
+serde.workspace = true
 ratatui = "0.28.0"
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 tui-input = "0.10"

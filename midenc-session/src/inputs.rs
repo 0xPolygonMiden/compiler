@@ -177,6 +177,7 @@ pub enum FileType {
     Hir,
     Masm,
     Mast,
+    Masp,
     Wasm,
     Wat,
 }
@@ -186,6 +187,7 @@ impl fmt::Display for FileType {
             Self::Hir => f.write_str("hir"),
             Self::Masm => f.write_str("masm"),
             Self::Mast => f.write_str("mast"),
+            Self::Masp => f.write_str("masp"),
             Self::Wasm => f.write_str("wasm"),
             Self::Wat => f.write_str("wat"),
         }
@@ -199,6 +201,10 @@ impl FileType {
 
         if bytes.starts_with(b"MAST\0") {
             return Ok(FileType::Mast);
+        }
+
+        if bytes.starts_with(b"MASP\0") {
+            return Ok(FileType::Masp);
         }
 
         fn is_masm_top_level_item(line: &str) -> bool {
@@ -234,6 +240,7 @@ impl TryFrom<&Path> for FileType {
             Some("hir") => Ok(FileType::Hir),
             Some("masm") => Ok(FileType::Masm),
             Some("masl") | Some("mast") => Ok(FileType::Mast),
+            Some("masp") => Ok(FileType::Masp),
             Some("wasm") => Ok(FileType::Wasm),
             Some("wat") => Ok(FileType::Wat),
             _ => Err(InvalidInputError::UnsupportedFileType(path.to_path_buf())),

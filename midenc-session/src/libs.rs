@@ -16,6 +16,11 @@ use crate::{
 
 /// The types of libraries that can be linked against during compilation
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
+#[repr(u8)]
 pub enum LibraryKind {
     /// A compiled MAST library
     #[default]
@@ -38,6 +43,7 @@ impl FromStr for LibraryKind {
 
 /// A library requested by the user to be linked against during compilation
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LinkLibrary {
     /// The name of the library.
     ///
@@ -47,6 +53,10 @@ pub struct LinkLibrary {
     /// will be the basename of the file specified in the path.
     pub name: Cow<'static, str>,
     /// If specified, the path from which this library should be loaded
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub path: Option<PathBuf>,
     /// The kind of library to load.
     ///

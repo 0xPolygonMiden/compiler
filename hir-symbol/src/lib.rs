@@ -26,6 +26,41 @@ unsafe impl Sync for SymbolTable {}
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Symbol(SymbolIndex);
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for Symbol {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.as_str().serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Symbol {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct SymbolVisitor;
+        impl<'de> serde::de::Visitor<'de> for SymbolVisitor {
+            type Value = Symbol;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("symbol")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(Symbol::intern(v))
+            }
+        }
+        deserializer.deserialize_str(SymbolVisitor)
+    }
+}
+
 impl Symbol {
     #[inline]
     pub const fn new(n: u32) -> Self {

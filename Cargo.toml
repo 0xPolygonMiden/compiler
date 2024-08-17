@@ -43,6 +43,7 @@ publish = false
 [workspace.dependencies]
 anyhow = "1.0"
 bitflags = "2.4"
+bitcode = { version = "0.6.3", default-features = false, features = ["serde"] }
 clap = { version = "4.1", features = ["derive", "env"] }
 cranelift-entity = "0.108"
 cranelift-bforest = "0.108"
@@ -62,6 +63,9 @@ petgraph = "0.6"
 pretty_assertions = "1.0"
 proptest = "1.4"
 rustc-hash = "1.1"
+serde = { version = "1.0.208", features = ["serde_derive", "alloc", "rc"] }
+serde_repr = "0.1.19"
+serde_bytes = "0.11.15"
 smallvec = { version = "1.13", features = [
     "union",
     "const_generics",

@@ -3,10 +3,12 @@ use std::collections::VecDeque;
 
 use expect_test::expect_file;
 use miden_core::utils::group_slice_elements;
+use miden_processor::AdviceInputs;
 use midenc_debug::{Executor, PopFromStack, PushToStack, TestFelt};
 use midenc_hir::Felt;
 use proptest::{
     arbitrary::any,
+    prelude::TestCaseError,
     prop_assert_eq,
     test_runner::{TestError, TestRunner},
 };
@@ -29,12 +31,7 @@ fn test_blake3_hash() {
     test.expect_wasm(expect_file![format!("../../../expected/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
-    let ir_program = test.ir_masm_program();
-    let vm_program = test.vm_masm_program();
-
-    let advice_inputs = ir_program.advice_inputs();
-
-    println!("{ir_program}");
+    let package = test.compiled_package();
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     let res = TestRunner::default().run(&any::<[u8; 32]>(), move |ibytes| {
@@ -54,11 +51,15 @@ fn test_blake3_hash() {
                                                   //    .collect::<Vec<Felt>>();
         dbg!(&ibytes, &frame, rs_out);
         // Arguments are: [hash_input_ptr, hash_output_ptr]
-        let mut exec = Executor::new(vec![Felt::new(0), Felt::new(128 * 1024)]);
-        let mut advice_inputs = advice_inputs.clone();
-        advice_inputs.extend_stack(frame);
+        let mut exec = Executor::for_package(
+            &package,
+            vec![Felt::new(0), Felt::new(128 * 1024)],
+            &test.session,
+        )
+        .map_err(|err| TestCaseError::fail(err.to_string()))?;
+        let advice_inputs = AdviceInputs::default().with_stack(frame);
         exec.with_advice_inputs(advice_inputs);
-        let trace = exec.execute(&vm_program, &test.session);
+        let trace = exec.execute(&package.unwrap_program(), &test.session);
         let vm_out: [u8; 32] = trace
             .read_from_rust_memory(128 * 1024)
             .expect("expected memory to have been written");

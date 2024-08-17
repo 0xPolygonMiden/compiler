@@ -122,7 +122,7 @@ impl formatter::PrettyPrint for Module {
                     + display(constant.as_u32())
                     + const_text(")")
                     + const_text(" ")
-                    + text(format!("{:#x}", constant_data))
+                    + text(format!("{:#x}", constant_data.as_ref()))
                     + const_text(")")
             })
             .reduce(|acc, doc| acc + nl() + doc)

@@ -400,7 +400,7 @@ impl Compiler {
             .into_iter()
             .chain(argv.into_iter().map(|arg| arg.into()));
         let command = <Self as clap::CommandFactory>::command();
-        let command = crate::register_flags(command);
+        let command = midenc_session::flags::register_flags(command);
         let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
         let compile_matches = matches.clone();
 

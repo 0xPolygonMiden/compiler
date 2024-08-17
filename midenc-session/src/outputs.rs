@@ -29,13 +29,15 @@ pub enum OutputType {
     /// The compiler will emit a Merkalized Abstract Syntax Tree in text form
     Mast,
     /// The compiler will emit a MAST library in binary form
-    #[default]
     Masl,
+    /// The compiler will emit a MAST package in binary form
+    #[default]
+    Masp,
 }
 impl OutputType {
     /// Returns true if this output type is an intermediate artifact produced during compilation
     pub fn is_intermediate(&self) -> bool {
-        !matches!(self, Self::Mast | Self::Masl)
+        !matches!(self, Self::Mast | Self::Masl | Self::Masp)
     }
 
     pub fn extension(&self) -> &'static str {
@@ -45,27 +47,30 @@ impl OutputType {
             Self::Masm => "masm",
             Self::Mast => "mast",
             Self::Masl => "mast",
+            Self::Masp => "masp",
         }
     }
 
     pub fn shorthand_display() -> String {
         format!(
-            "`{}`, `{}`, `{}`, `{}`, `{}`",
+            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
             Self::Ast,
             Self::Hir,
             Self::Masm,
             Self::Mast,
-            Self::Masl
+            Self::Masl,
+            Self::Masp,
         )
     }
 
-    pub fn all() -> [OutputType; 5] {
+    pub fn all() -> [OutputType; 6] {
         [
             OutputType::Ast,
             OutputType::Hir,
             OutputType::Masm,
             OutputType::Mast,
             OutputType::Masl,
+            OutputType::Masp,
         ]
     }
 }
@@ -77,6 +82,7 @@ impl fmt::Display for OutputType {
             Self::Masm => f.write_str("masm"),
             Self::Mast => f.write_str("mast"),
             Self::Masl => f.write_str("masl"),
+            Self::Masp => f.write_str("masp"),
         }
     }
 }
@@ -90,6 +96,7 @@ impl FromStr for OutputType {
             "masm" => Ok(Self::Masm),
             "mast" => Ok(Self::Mast),
             "masl" => Ok(Self::Masl),
+            "masp" => Ok(Self::Masp),
             _ => Err(()),
         }
     }
@@ -441,6 +448,7 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
                 PossibleValue::new("masm").help("Miden Assembly (text)"),
                 PossibleValue::new("mast").help("Merkelized Abstract Syntax Tree (text)"),
                 PossibleValue::new("masl").help("Merkelized Abstract Syntax Tree (binary)"),
+                PossibleValue::new("masp").help("Miden Assembly Package Format (binary)"),
                 PossibleValue::new("all").help("All of the above"),
             ]
             .into_iter(),

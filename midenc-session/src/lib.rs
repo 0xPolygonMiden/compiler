@@ -4,7 +4,7 @@ extern crate alloc;
 pub mod diagnostics;
 mod duration;
 mod emit;
-mod flags;
+pub mod flags;
 mod inputs;
 mod libs;
 mod options;

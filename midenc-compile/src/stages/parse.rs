@@ -46,6 +46,10 @@ impl Stage for ParseStage {
                     "invalid input: mast libraries are not supported as inputs, did you mean to \
                      use '-l'?",
                 )),
+                FileType::Masp => Err(Report::msg(
+                    "invalid input: mast packages are not supported as inputs, did you mean to \
+                     use '-l'?",
+                )),
             },
             InputType::Stdin { name, ref input } => match file_type {
                 FileType::Hir => self.parse_ast_from_bytes(input, session),
@@ -70,6 +74,10 @@ impl Stage for ParseStage {
                 }
                 FileType::Mast => Err(Report::msg(
                     "invalid input: mast libraries are not supported as inputs, did you mean to \
+                     use '-l'?",
+                )),
+                FileType::Masp => Err(Report::msg(
+                    "invalid input: mast packages are not supported as inputs, did you mean to \
                      use '-l'?",
                 )),
             },
