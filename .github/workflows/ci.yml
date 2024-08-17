@@ -45,7 +45,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: make
-          args: test
+          args: test -E 'not package(cargo-miden)'
 
   cargo_miden_test_clean_env:
     # Run cargo-miden test in the clean env to simulate user's first run.
@@ -67,11 +67,16 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
           key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-make
       - name: Test
         uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: -p cargo-miden --test integration
+          command: make
+          args: test -E 'package(cargo-miden)'
 
   clippy:
     name: clippy
@@ -95,7 +100,7 @@ jobs:
         with:
           command: install
           args: cargo-make
-      - name: Test
+      - name: Run clippy
         uses: actions-rs/cargo@v1
         with:
           command: make
