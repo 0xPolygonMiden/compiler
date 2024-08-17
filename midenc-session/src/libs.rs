@@ -3,6 +3,7 @@ use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::LazyLock,
 };
 
 use miden_assembly::{Library as CompiledLibrary, LibraryNamespace};
@@ -13,6 +14,9 @@ use crate::{
     diagnostics::{IntoDiagnostic, Report, WrapErr},
     Session,
 };
+
+static STDLIB: LazyLock<StdLibrary> = LazyLock::new(StdLibrary::default);
+static BASE: LazyLock<MidenTxKernelLibrary> = LazyLock::new(MidenTxKernelLibrary::default);
 
 /// The types of libraries that can be linked against during compilation
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -72,8 +76,8 @@ impl LinkLibrary {
 
         // Handle libraries shipped with the compiler, or via Miden crates
         match self.name.as_ref() {
-            "std" => return Ok(StdLibrary::default().into()),
-            "base" => return Ok(MidenTxKernelLibrary::default().into()),
+            "std" => return Ok((*STDLIB).as_ref().clone()),
+            "base" => return Ok((*BASE).as_ref().clone()),
             _ => (),
         }
 

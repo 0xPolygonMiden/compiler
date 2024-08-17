@@ -133,3 +133,6 @@ opt-level = 3
 
 [profile.dev.package.onig]
 opt-level = 3
+
+[profile.dev.package.miden-crypto]
+opt-level = 3

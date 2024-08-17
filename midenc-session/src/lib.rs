@@ -1,4 +1,5 @@
 #![feature(debug_closure_helpers)]
+#![feature(lazy_cell)]
 extern crate alloc;
 
 pub mod diagnostics;
