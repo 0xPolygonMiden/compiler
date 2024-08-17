@@ -126,6 +126,11 @@ impl State {
         let id = self.next_breakpoint_id();
         let creation_cycle = self.executor.cycle;
         log::trace!("created breakpoint with id {id} at cycle {creation_cycle}");
+        if matches!(ty, BreakpointType::Finish) {
+            if let Some(frame) = self.executor.callstack.current_frame_mut() {
+                frame.break_on_exit();
+            }
+        }
         self.breakpoints.push(Breakpoint {
             id,
             creation_cycle,

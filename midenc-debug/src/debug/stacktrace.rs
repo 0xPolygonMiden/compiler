@@ -52,6 +52,10 @@ impl CallStack {
         self.frames.last()
     }
 
+    pub fn current_frame_mut(&mut self) -> Option<&mut CallFrame> {
+        self.frames.last_mut()
+    }
+
     pub fn nth_frame(&self, n: usize) -> Option<&CallFrame> {
         self.frames.iter().nth_back(n)
     }
@@ -60,7 +64,10 @@ impl CallStack {
         self.frames.as_slice()
     }
 
-    pub fn next(&mut self, state: &VmState) {
+    /// Updates the call stack from `state`
+    ///
+    /// Returns the call frame exited this cycle, if any
+    pub fn next(&mut self, state: &VmState) -> Option<CallFrame> {
         if let Some(op) = state.op {
             // Do not do anything if this cycle is a continuation of the last instruction
             //let skip = state.asmop.as_ref().map(|op| op.cycle_idx() > 1).unwrap_or(false);
@@ -80,7 +87,8 @@ impl CallStack {
             // Handle trace events for this cycle
             let event = self.trace_events.borrow().get(&state.clk).copied();
             log::trace!("handling {op} at cycle {}: {:?}", state.clk, &event);
-            let is_frame_end = self.handle_trace_event(event, procedure.as_ref());
+            let popped_frame = self.handle_trace_event(event, procedure.as_ref());
+            let is_frame_end = popped_frame.is_some();
 
             // These ops we do not record in call frame details
             let ignore = matches!(
@@ -115,7 +123,7 @@ impl CallStack {
             }
 
             if ignore || is_frame_end {
-                return;
+                return popped_frame;
             }
 
             // Attempt to supply procedure context from the current span context, if needed +
@@ -194,6 +202,8 @@ impl CallStack {
                 }
             }
         }
+
+        None
     }
 
     // Get or cache procedure name/context as `Rc<str>`
@@ -212,7 +222,7 @@ impl CallStack {
         &mut self,
         event: Option<TraceEvent>,
         procedure: Option<&Rc<str>>,
-    ) -> bool {
+    ) -> Option<CallFrame> {
         // Do we need to handle any frame events?
         if let Some(event) = event {
             match event {
@@ -226,13 +236,12 @@ impl CallStack {
                 }
                 TraceEvent::Unknown(code) => log::debug!("unknown trace event: {code}"),
                 TraceEvent::FrameEnd => {
-                    self.frames.pop();
-                    return true;
+                    return self.frames.pop();
                 }
                 _ => (),
             }
         }
-        false
+        None
     }
 }
 
@@ -240,6 +249,7 @@ pub struct CallFrame {
     procedure: Option<Rc<str>>,
     context: VecDeque<OpDetail>,
     display_name: std::cell::OnceCell<Rc<str>>,
+    finishing: bool,
 }
 impl CallFrame {
     pub fn new(procedure: Option<Rc<str>>) -> Self {
@@ -247,6 +257,7 @@ impl CallFrame {
             procedure,
             context: Default::default(),
             display_name: Default::default(),
+            finishing: false,
         }
     }
 
@@ -333,6 +344,16 @@ impl CallFrame {
 
     pub fn recent(&self) -> &VecDeque<OpDetail> {
         &self.context
+    }
+
+    #[inline(always)]
+    pub fn should_break_on_exit(&self) -> bool {
+        self.finishing
+    }
+
+    #[inline(always)]
+    pub fn break_on_exit(&mut self) {
+        self.finishing = true;
     }
 }
 

@@ -64,26 +64,6 @@ expected_cycles = 4000
 # Specify elements to place on the operand stack, leftmost element will be on top of the stack
 stack = [1, 2, 0xdeadbeef]
 
-# The `inputs.rodata` section is a list of rodata segments that should be placed
-# in the advice map before the program is executed. Programs compiled by midenc
-# will have a prologue generated in their entrypoint that writes this data to linear
-# memory, by moving it from the advice map to the advice stack (using the commitment
-# digest), and then invoking `std::mem::pipe_preimage_to_memory`.
-#
-# The raw binary data is chunked up into 4 byte chunks, and then converted to field
-# elements by first treating each chunk as a big-endian u32 value, and then creating
-# the field element from that value. The data will arrive on the advice stack in an
-# order that ensures it is written to linear memory in the same order as it appears
-# in the raw binary data.
-#
-# You can specify one or more of these segments
-[[inputs.rodata]]
-digest = '0xb9691da1d9b4b364aca0a0990e9f04c446a2faa622c8dd0d8831527dbec61393'
-# Specify a path to the binary data for this segment
-path = 'foo.bin'
-# Or, alternatively, specify the binary data in hexadecimal form directly
-# data = '0x...'
-
 # This section contains input options for the advice provider
 [inputs.advice]
 # Specify elements to place on the advice stack, leftmost element will be on top
@@ -127,6 +107,8 @@ On the home page, the following keyboard shortcuts are available:
 * `n` (step next) - advance the VM to the next instruction (i.e. skip over all the cycles
   of a multi-cycle instructions)
 * `c` (continue) - advance the VM to the next breakpoint, or until execution terminates
+* `e` (exit current frame) - advance the VM until we exit the current call frame, or until
+  another breakpoint is triggered, or execution terminates, whichever happens first
 * `d` (delete) - delete an item (where applicable, for example, the breakpoints pane)
 * `:` (command prompt) - bring up the command prompt (described further below)
 
@@ -226,5 +208,11 @@ The following are some features planned for the near future:
 * Watchpoints, i.e. cause execution to break when a memory store touches a specific address
 * Conditional breakpoints, i.e. only trigger a breakpoint when an expression attached to it
   evaluates to true
+* More DYIM-style breakpoints, i.e. when breaking on first hitting a match for a file or
+  procedure, we probably shouldn't continue to break for every instruction to which that
+  breakpoint technically applies. Instead, it would make sense to break and then temporarily
+  disable that breakpoint until something changes that would make breaking again useful.
+  This will rely on the ability to disable breakpoints, not delete them, which we don't yet
+  support.
 * More robust type support in the `read` command
 * Display procedure locals and their contents in a dedicated pane

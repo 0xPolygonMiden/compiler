@@ -55,6 +55,8 @@ pub enum BreakpointType {
     StepTo(usize),
     /// Break at the first cycle of the next instruction
     Next,
+    /// Break when we exit the current call frame
+    Finish,
     /// Break when any cycle corresponds to a source location whose file matches PATTERN
     File(Pattern),
     /// Break when any cycle corresponds to a source location whose file matches PATTERN and occurs
@@ -95,7 +97,7 @@ impl BreakpointType {
 
     /// Returns true if this breakpoint is internal to the debugger (i.e. not creatable via :b)
     pub fn is_internal(&self) -> bool {
-        matches!(self, BreakpointType::Next | BreakpointType::Step)
+        matches!(self, BreakpointType::Next | BreakpointType::Step | BreakpointType::Finish)
     }
 
     /// Returns true if this breakpoint is removed upon being hit
@@ -103,6 +105,7 @@ impl BreakpointType {
         matches!(
             self,
             BreakpointType::Next
+                | BreakpointType::Finish
                 | BreakpointType::Step
                 | BreakpointType::StepN(_)
                 | BreakpointType::StepTo(_)
@@ -117,6 +120,7 @@ impl FromStr for BreakpointType {
         let s = s.trim();
 
         // b next
+        // b finish
         // b after {n}
         // b for {opcode}
         // b at {cycle}
@@ -124,6 +128,9 @@ impl FromStr for BreakpointType {
         // b {file}[:{line}]
         if s == "next" {
             return Ok(BreakpointType::Next);
+        }
+        if s == "finish" {
+            return Ok(BreakpointType::Finish);
         }
         if let Some(n) = s.strip_prefix("after ") {
             let n = n.trim().parse::<usize>().map_err(|err| {
