@@ -279,16 +279,27 @@ impl Program {
 
         let debug_mode = session.options.emit_debug_decorators();
 
+        log::debug!(
+            "assembling executable with entrypoint '{}' (debug_mode={})",
+            self.entrypoint,
+            debug_mode
+        );
         let mut assembler =
             Assembler::new(session.source_manager.clone()).with_debug_mode(debug_mode);
 
         // Link extra libraries
         for library in self.library.libraries.iter() {
+            if log::log_enabled!(log::Level::Debug) {
+                for module in library.module_infos() {
+                    log::debug!("registering '{}' with assembler", module.path());
+                }
+            }
             assembler.add_library(library)?;
         }
 
         // Assemble library
         for module in self.library.modules.iter() {
+            log::debug!("adding '{}' to assembler", module.id.as_str());
             let kind = module.kind;
             let module = module.to_ast(debug_mode).map(Box::new)?;
             assembler.add_module_with_options(
@@ -504,18 +515,29 @@ impl Library {
         use miden_assembly::Assembler;
 
         let debug_mode = session.options.emit_debug_decorators();
+        log::debug!(
+            "assembling library of {} modules (debug_mode={})",
+            self.modules().count(),
+            debug_mode
+        );
 
         let mut assembler =
             Assembler::new(session.source_manager.clone()).with_debug_mode(debug_mode);
 
         // Link extra libraries
         for library in self.libraries.iter() {
+            if log::log_enabled!(log::Level::Debug) {
+                for module in library.module_infos() {
+                    log::debug!("registering '{}' with assembler", module.path());
+                }
+            }
             assembler.add_library(library)?;
         }
 
         // Assemble library
         let mut modules = Vec::with_capacity(self.modules.len());
         for module in self.modules.iter() {
+            log::debug!("adding '{}' to assembler", module.id.as_str());
             let module = module.to_ast(debug_mode).map(Box::new)?;
             modules.push(module);
         }

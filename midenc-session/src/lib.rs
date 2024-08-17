@@ -121,6 +121,24 @@ impl Session {
         emitter: Option<Arc<dyn Emitter>>,
         source_manager: Arc<dyn SourceManager>,
     ) -> Self {
+        log::debug!("creating session for {} inputs:", inputs.len());
+        if log::log_enabled!(log::Level::Debug) {
+            for input in inputs.iter() {
+                log::debug!(" - {} ({})", input.file_name(), input.file_type());
+            }
+            log::debug!(
+                " | outputs_dir = {}",
+                output_dir
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or("<unset>".to_string())
+            );
+            log::debug!(
+                " | output_file = {}",
+                output_file.as_ref().map(|of| of.to_string()).unwrap_or("<unset>".to_string())
+            );
+            log::debug!(" | target_dir = {}", target_dir.display());
+        }
         let diagnostics = Arc::new(DiagnosticsHandler::new(
             options.diagnostics,
             source_manager.clone(),

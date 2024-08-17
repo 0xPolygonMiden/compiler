@@ -128,12 +128,17 @@ enum Commands {
 }
 
 impl Midenc {
-    pub fn run<P, A>(cwd: P, args: A, logger: Box<dyn Log>) -> Result<(), Report>
+    pub fn run<P, A>(
+        cwd: P,
+        args: A,
+        logger: Box<dyn Log>,
+        filter: log::LevelFilter,
+    ) -> Result<(), Report>
     where
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
     {
-        Self::run_with_emitter(cwd, args, None, logger)
+        Self::run_with_emitter(cwd, args, None, logger, filter)
     }
 
     pub fn run_with_emitter<P, A>(
@@ -141,6 +146,7 @@ impl Midenc {
         args: A,
         emitter: Option<Arc<dyn Emitter>>,
         logger: Box<dyn Log>,
+        filter: log::LevelFilter,
     ) -> Result<(), Report>
     where
         P: Into<PathBuf>,
@@ -155,7 +161,7 @@ impl Midenc {
             .map_err(format_error::<Self>)
             .map_err(ClapDiagnostic::from)?;
 
-        cli.invoke(cwd.into(), emitter, logger, compile_matches)
+        cli.invoke(cwd.into(), emitter, logger, filter, compile_matches)
     }
 
     fn invoke(
@@ -163,12 +169,14 @@ impl Midenc {
         cwd: PathBuf,
         emitter: Option<Arc<dyn Emitter>>,
         logger: Box<dyn Log>,
+        filter: log::LevelFilter,
         matches: clap::ArgMatches,
     ) -> Result<(), Report> {
         match self.command {
             Commands::Compile { input, mut options } => {
                 log::set_boxed_logger(logger)
                     .unwrap_or_else(|err| panic!("failed to install logger: {err}"));
+                log::set_max_level(filter);
                 if options.working_dir.is_none() {
                     options.working_dir = Some(cwd);
                 }

@@ -37,9 +37,12 @@ impl Stage for LinkerStage {
             }
         }
         if session.should_link() {
+            log::debug!("linking hir program");
+
             // Construct a new [Program] builder
             let mut builder = match session.options.entrypoint.as_deref() {
                 Some(entrypoint) => {
+                    log::debug!("overriding entrypoint with '{entrypoint}'");
                     let entrypoint = entrypoint
                         .parse::<hir::FunctionIdent>()
                         .map_err(|err| Report::msg(format!("invalid --entrypoint: {err}")))?;
@@ -50,28 +53,38 @@ impl Stage for LinkerStage {
 
             // Add our HIR modules
             for module in ir.into_iter() {
+                log::debug!("adding '{}' to linker inputs", module.name);
                 builder.add_module(module)?;
             }
 
             // Handle linking against ad-hoc MASM sources
             for module in masm.iter() {
+                log::debug!("adding external module '{}' to linker inputs", module.name);
                 builder
                     .add_extern_module(module.id, module.functions().map(|f| f.name.function))?;
             }
 
             // Load link libraries now
             for link_lib in session.options.link_libraries.iter() {
+                log::debug!(
+                    "registering link library '{}' ({}, from {:#?}) with linker",
+                    link_lib.name,
+                    link_lib.kind,
+                    link_lib.path.as_ref()
+                );
                 builder.add_library(link_lib.load(session)?);
             }
 
             let linked = Left(builder.link()?);
 
             if session.options.link_only {
+                log::debug!("stopping compiler early (link-only=true)");
                 Err(Report::from(CompilerStopped))
             } else {
                 Ok(LinkerOutput { linked, masm })
             }
         } else {
+            log::debug!("skipping hir linker (should-link=false)");
             Ok(LinkerOutput {
                 linked: Right(ir),
                 masm,

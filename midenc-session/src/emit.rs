@@ -287,7 +287,8 @@ impl Emit for miden_core::Program {
         _session: &Session,
     ) -> std::io::Result<()> {
         match mode {
-            OutputMode::Text => writer.write_fmt(format_args!("{}", self)),
+            //OutputMode::Text => writer.write_fmt(format_args!("{}", self)),
+            OutputMode::Text => unimplemented!("emitting mast in text form is currently broken"),
             OutputMode::Binary => {
                 self.write_into(&mut writer);
                 Ok(())

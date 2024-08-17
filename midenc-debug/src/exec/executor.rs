@@ -46,17 +46,39 @@ impl Executor {
         args: Vec<Felt>,
         session: &Session,
     ) -> Result<Self, Report> {
+        use midenc_hir::formatter::DisplayHex;
+        log::debug!(
+            "creating executor for package '{}' (digest={})",
+            package.name,
+            DisplayHex::new(&package.digest.as_bytes())
+        );
+
         let mut exec = Self::new(args);
 
         for link_library in package.manifest.link_libraries.iter() {
+            log::debug!(
+                "loading link library from package manifest: {} (kind = {}, from = {:#?})",
+                link_library.name.as_ref(),
+                link_library.kind,
+                link_library.path.as_ref().map(|p| p.display())
+            );
             let library = link_library.load(session)?;
+            log::debug!("library loaded succesfully");
             exec.with_library(&library);
         }
 
         for rodata in package.rodata.iter() {
+            log::debug!(
+                "adding rodata segment for offset {} (size {}) to advice map: {}",
+                rodata.start.as_ptr(),
+                rodata.size_in_bytes(),
+                DisplayHex::new(&rodata.digest.as_bytes())
+            );
             exec.advice
                 .extend_map([(rodata.digest, rodata.to_elements().map_err(Report::msg)?)]);
         }
+
+        log::debug!("executor created");
 
         Ok(exec)
     }
@@ -76,6 +98,8 @@ impl Executor {
     /// Convert this [Executor] into a [DebugExecutor], which captures much more information
     /// about the program being executed, and must be stepped manually.
     pub fn into_debug(mut self, program: &Program, session: &Session) -> DebugExecutor {
+        log::debug!("creating debug executor");
+
         let advice_provider = MemAdviceProvider::from(self.advice);
         let mut host = DebuggerHost::new(advice_provider);
         for lib in core::mem::take(&mut self.libraries) {

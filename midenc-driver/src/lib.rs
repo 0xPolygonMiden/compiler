@@ -24,14 +24,19 @@ impl ClapDiagnostic {
 }
 
 /// Run the driver as if it was invoked from the command-line
-pub fn run<P, A>(cwd: P, args: A, logger: Box<dyn Log>) -> Result<(), Report>
+pub fn run<P, A>(
+    cwd: P,
+    args: A,
+    logger: Box<dyn Log>,
+    filter: log::LevelFilter,
+) -> Result<(), Report>
 where
     P: Into<std::path::PathBuf>,
     A: IntoIterator<Item = std::ffi::OsString>,
 {
     setup_diagnostics();
 
-    match Midenc::run(cwd, args, logger) {
+    match Midenc::run(cwd, args, logger, filter) {
         Err(report) => match report.downcast::<midenc_compile::CompilerStopped>() {
             Ok(_) => Ok(()),
             Err(report) => Err(report),

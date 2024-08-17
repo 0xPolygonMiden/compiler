@@ -111,6 +111,7 @@ impl ParseStage {
     ) -> CompilerResult<ParseOutput> {
         use std::io::Read;
 
+        log::debug!("parsing hir from wasm at {}", path.display());
         let mut file = std::fs::File::open(path)
             .into_diagnostic()
             .wrap_err("could not open input for reading")?;
@@ -131,6 +132,7 @@ impl ParseStage {
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
         let module = wasm::translate(bytes, config, session)?.unwrap_one_module();
+        log::debug!("parsed hir module from wasm bytes: {}", module.name.as_str());
 
         Ok(ParseOutput::Hir(module))
     }

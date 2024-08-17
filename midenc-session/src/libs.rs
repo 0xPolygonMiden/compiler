@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{
     borrow::Cow,
     ffi::OsStr,
@@ -32,7 +33,14 @@ pub enum LibraryKind {
     /// A source-form MASM library, using the standard project layout
     Masm,
 }
-
+impl fmt::Display for LibraryKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mast => f.write_str("mast"),
+            Self::Masm => f.write_str("masm"),
+        }
+    }
+}
 impl FromStr for LibraryKind {
     type Err = ();
 
@@ -57,10 +65,7 @@ pub struct LinkLibrary {
     /// will be the basename of the file specified in the path.
     pub name: Cow<'static, str>,
     /// If specified, the path from which this library should be loaded
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub path: Option<PathBuf>,
     /// The kind of library to load.
     ///

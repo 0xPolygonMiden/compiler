@@ -20,7 +20,7 @@ pub struct SwapAndMoveUp;
 impl Tactic for SwapAndMoveUp {
     fn apply(&mut self, builder: &mut SolutionBuilder) -> TacticResult {
         if builder.requires_copies() || builder.arity() < 2 {
-            log::debug!(
+            log::trace!(
                 "cannot apply tactic when there are required copies ({}) or fewer than 2 operands \
                  ({})",
                 builder.requires_copies(),
@@ -32,7 +32,7 @@ impl Tactic for SwapAndMoveUp {
         // Find the operand that should be at index 1 and swap the top element
         // with it; then move up the value that should be at index 0
         let Some(expected1) = builder.get_expected(1) else {
-            log::debug!("abandoning tactic because operand at index 1 is already in position");
+            log::trace!("abandoning tactic because operand at index 1 is already in position");
             return Err(TacticError::NotApplicable);
         };
         let expected1_pos = builder.unwrap_current_position(&expected1);

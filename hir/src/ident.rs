@@ -99,10 +99,10 @@ impl Ord for FunctionIdent {
 /// An identifier is some string, along with an associated source span
 #[derive(Copy, Clone, Eq, Spanned)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(into = "Symbol", from = "Symbol"))]
 pub struct Ident {
     pub name: Symbol,
     #[span]
-    #[cfg_attr(feature = "serde", serde(skip))]
     pub span: SourceSpan,
 }
 impl Default for Ident {
@@ -123,6 +123,18 @@ impl FromStr for Ident {
 impl<'a> From<&'a str> for Ident {
     fn from(name: &'a str) -> Self {
         Self::with_empty_span(Symbol::intern(name))
+    }
+}
+impl From<Symbol> for Ident {
+    #[inline]
+    fn from(sym: Symbol) -> Self {
+        Self::with_empty_span(sym)
+    }
+}
+impl From<Ident> for Symbol {
+    #[inline]
+    fn from(id: Ident) -> Self {
+        id.as_symbol()
     }
 }
 impl Ident {

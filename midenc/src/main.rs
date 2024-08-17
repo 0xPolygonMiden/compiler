@@ -32,13 +32,14 @@ pub fn main() -> Result<(), Report> {
         builder.format_timestamp(None);
     }
     let logger = Box::new(builder.build());
+    let filter = logger.filter();
 
     // Get current working directory
     let cwd = env::current_dir()
         .into_diagnostic()
         .wrap_err("could not read current working directory")?;
 
-    match driver::run(cwd, env::args_os(), logger) {
+    match driver::run(cwd, env::args_os(), logger, filter) {
         Err(report) => match report.downcast::<ClapDiagnostic>() {
             Ok(err) => {
                 // Remove the miette panic hook, so that clap errors can be reported without

@@ -93,7 +93,7 @@ pub struct PackageExport {
     )]
     pub digest: Digest,
     /// We don't always have a type signature for an export
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub signature: Option<Signature>,
 }
 impl fmt::Debug for PackageExport {

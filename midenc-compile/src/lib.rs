@@ -25,9 +25,16 @@ pub struct CompilerStopped;
 
 /// Run the compiler using the provided [Session]
 pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
+    use midenc_hir::formatter::DisplayHex;
     let mut analyses = AnalysisManager::new();
+    log::info!("starting compilation session");
     match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
         Artifact::Assembled(ref mast) => {
+            log::info!(
+                "succesfully assembled mast package '{}' with digest {}",
+                mast.name,
+                DisplayHex::new(&mast.digest.as_bytes())
+            );
             session
                 .emit(OutputMode::Text, mast)
                 .into_diagnostic()
@@ -37,7 +44,14 @@ pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
                 .into_diagnostic()
                 .wrap_err("failed to serialize 'mast' artifact")
         }
-        Artifact::Linked(_) | Artifact::Lowered(_) => Ok(()),
+        Artifact::Linked(_) => {
+            log::debug!("no outputs requested by user: pipeline stopped after linking");
+            Ok(())
+        }
+        Artifact::Lowered(_) => {
+            log::debug!("no outputs requested by user: pipeline stopped before linking");
+            Ok(())
+        }
     }
 }
 

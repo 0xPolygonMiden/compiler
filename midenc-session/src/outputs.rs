@@ -385,30 +385,53 @@ impl OutputTypes {
 
     pub fn should_analyze(&self) -> bool {
         self.0.keys().any(|k| {
-            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+            matches!(
+                k,
+                OutputType::Hir
+                    | OutputType::Masm
+                    | OutputType::Mast
+                    | OutputType::Masl
+                    | OutputType::Masp
+            )
         })
     }
 
     pub fn should_rewrite(&self) -> bool {
         self.0.keys().any(|k| {
-            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+            matches!(
+                k,
+                OutputType::Hir
+                    | OutputType::Masm
+                    | OutputType::Mast
+                    | OutputType::Masl
+                    | OutputType::Masp
+            )
         })
     }
 
     pub fn should_link(&self) -> bool {
         self.0.keys().any(|k| {
-            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+            matches!(
+                k,
+                OutputType::Hir
+                    | OutputType::Masm
+                    | OutputType::Mast
+                    | OutputType::Masl
+                    | OutputType::Masp
+            )
         })
     }
 
     pub fn should_codegen(&self) -> bool {
-        self.0
-            .keys()
-            .any(|k| matches!(k, OutputType::Masm | OutputType::Mast | OutputType::Masl))
+        self.0.keys().any(|k| {
+            matches!(k, OutputType::Masm | OutputType::Mast | OutputType::Masl | OutputType::Masp)
+        })
     }
 
     pub fn should_assemble(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Mast | OutputType::Masl))
+        self.0
+            .keys()
+            .any(|k| matches!(k, OutputType::Mast | OutputType::Masl | OutputType::Masp))
     }
 }
 

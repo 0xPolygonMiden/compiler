@@ -14,7 +14,7 @@ impl Tactic for CopyAll {
         // We can't apply this tactic if any values should be moved
         let arity = builder.arity();
         if builder.num_copies() != arity {
-            log::debug!(
+            log::trace!(
                 "expected all operands to require copying; but only {} out of {} operands are \
                  copied",
                 builder.num_copies(),

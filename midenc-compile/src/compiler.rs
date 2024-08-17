@@ -439,10 +439,10 @@ impl Compiler {
         // Initialize output types
         let mut output_types = OutputTypes::new(self.output_types).unwrap_or_else(|err| err.exit());
         if output_types.is_empty() {
-            output_types.insert(OutputType::Mast, output_file.clone());
-        } else if output_file.is_some() && output_types.get(&OutputType::Mast).is_some() {
+            output_types.insert(OutputType::Masp, output_file.clone());
+        } else if output_file.is_some() && output_types.get(&OutputType::Masp).is_some() {
             // The -o flag overrides --emit
-            output_types.insert(OutputType::Mast, output_file.clone());
+            output_types.insert(OutputType::Masp, output_file.clone());
         }
 
         // Convert --exe or --lib to project type

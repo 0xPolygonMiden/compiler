@@ -3333,6 +3333,7 @@ dependencies = [
  "atty",
  "clap",
  "inventory",
+ "log",
  "miden-assembly",
  "miden-base-sys",
  "miden-core",

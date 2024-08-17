@@ -21,6 +21,7 @@ serde = ["dep:serde", "dep:serde_repr", "midenc-hir-symbol/serde"]
 atty = "0.2"
 clap.workspace = true
 inventory.workspace = true
+log.workspace = true
 miden-assembly.workspace = true
 miden-core.workspace = true
 miden-stdlib.workspace = true
