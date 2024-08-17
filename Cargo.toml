@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "codegen/*",
+    "frontend-wasm",
     "hir",
     "hir-analysis",
     "hir-macros",
@@ -13,14 +14,12 @@ members = [
     "midenc-debug",
     "midenc-driver",
     "midenc-session",
-    "sdk/base-sys",
-    "sdk/stdlib-sys",
-    "sdk/sdk",
+    "sdk/*",
     "tools/*",
-    "frontend-wasm",
     "tests/integration",
 ]
 exclude = [
+    "sdk/.cargo",
     "tests/rust-apps/fib",
     "tests/rust-apps-wasm",
     "cargo-ext/tests/data",
