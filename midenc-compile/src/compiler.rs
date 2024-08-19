@@ -314,13 +314,15 @@ NOTE: When specifying these options, strip the leading '--'",
 
         let option = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
         let mut argv = match option.split_once('=') {
-            None => vec![option],
-            Some((opt, value)) => vec![opt, value],
+            None => vec![format!("--{option}")],
+            Some((opt, value)) => {
+                vec![format!("--{opt}"), value.to_string()]
+            }
         };
 
         if option == "help" || option == "h" {
             argv.clear();
-            argv.push("--help");
+            argv.push("--help".to_string());
         }
 
         let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
@@ -370,13 +372,15 @@ NOTE: When specifying these options, strip the leading '--'",
 
         let option = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
         let mut argv = match option.split_once('=') {
-            None => vec![option],
-            Some((opt, value)) => vec![opt, value],
+            None => vec![format!("--{option}")],
+            Some((opt, value)) => {
+                vec![format!("--{opt}"), value.to_string()]
+            }
         };
 
         if option == "help" || option == "h" {
             argv.clear();
-            argv.push("--help");
+            argv.push("--help".to_string());
         }
 
         let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());

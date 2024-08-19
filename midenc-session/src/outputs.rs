@@ -385,36 +385,6 @@ impl OutputTypes {
         self.0.len()
     }
 
-    pub fn parse_only(&self) -> bool {
-        self.0.keys().all(|k| matches!(k, OutputType::Ast))
-    }
-
-    pub fn should_analyze(&self) -> bool {
-        self.0.keys().any(|k| {
-            matches!(
-                k,
-                OutputType::Hir
-                    | OutputType::Masm
-                    | OutputType::Mast
-                    | OutputType::Masl
-                    | OutputType::Masp
-            )
-        })
-    }
-
-    pub fn should_rewrite(&self) -> bool {
-        self.0.keys().any(|k| {
-            matches!(
-                k,
-                OutputType::Hir
-                    | OutputType::Masm
-                    | OutputType::Mast
-                    | OutputType::Masl
-                    | OutputType::Masp
-            )
-        })
-    }
-
     pub fn should_link(&self) -> bool {
         self.0.keys().any(|k| {
             matches!(

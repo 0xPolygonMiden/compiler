@@ -39,6 +39,7 @@ impl Stage for SemanticAnalysisStage {
                     "no semantic analysis required, '{}' is already valid hir",
                     module.name.as_str()
                 );
+                session.emit(OutputMode::Text, &module).into_diagnostic()?;
                 LinkerInput::Hir(module)
             }
             ParseOutput::Masm(masm) if parse_only => {
@@ -51,6 +52,7 @@ impl Stage for SemanticAnalysisStage {
                     "no semantic analysis required, '{}' is already valid hir",
                     masm.id.as_str()
                 );
+                session.emit(OutputMode::Text, &masm).into_diagnostic()?;
                 LinkerInput::Masm(masm)
             }
         };
