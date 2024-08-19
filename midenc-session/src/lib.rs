@@ -1,22 +1,33 @@
 #![feature(debug_closure_helpers)]
 #![feature(lazy_cell)]
-extern crate alloc;
+#![feature(error_in_core)]
+#![no_std]
 
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+use alloc::{
+    borrow::ToOwned,
+    string::{String, ToString},
+    vec::Vec,
+};
+
+mod color;
 pub mod diagnostics;
+#[cfg(feature = "std")]
 mod duration;
 mod emit;
+mod emitter;
 pub mod flags;
 mod inputs;
 mod libs;
 mod options;
 mod outputs;
+#[cfg(feature = "std")]
 mod statistics;
 
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use alloc::{fmt, sync::Arc};
+use std::path::{Path, PathBuf};
 
 /// The version associated with the current compiler toolchain
 pub const MIDENC_BUILD_VERSION: &str = env!("MIDENC_BUILD_VERSION");
@@ -28,10 +39,11 @@ use clap::ValueEnum;
 use midenc_hir_symbol::Symbol;
 
 pub use self::{
+    color::ColorChoice,
     diagnostics::{DiagnosticsHandler, Emitter, SourceManager},
     duration::HumanDuration,
     emit::Emit,
-    flags::{CompileFlag, FlagAction},
+    flags::{CompileFlag, CompileFlags, FlagAction},
     inputs::{FileType, InputFile, InputType, InvalidInputError},
     libs::{LibraryKind, LinkLibrary},
     options::*,
@@ -78,6 +90,7 @@ pub struct Session {
     /// The outputs to be produced by the compiler during compilation
     pub output_files: OutputFiles,
     /// Statistics gathered from the current compiler session
+    #[cfg(feature = "std")]
     pub statistics: Statistics,
 }
 
@@ -89,7 +102,6 @@ impl fmt::Debug for Session {
             .field("options", &self.options)
             .field("inputs", &inputs)
             .field("output_files", &self.output_files)
-            .field("statistics", &self.statistics)
             .finish_non_exhaustive()
     }
 }
@@ -180,12 +192,12 @@ impl Session {
                     },
                 ) => {
                     let name = name.as_str();
-                    if matches!(name, Some("empty") | Some("stdin")) {
+                    if matches!(name, "empty" | "stdin") {
                         options
                             .current_dir
                             .file_stem()
                             .and_then(|stem| stem.to_str())
-                            .unwrap_or(name.unwrap())
+                            .unwrap_or(name)
                             .to_string()
                     } else {
                         input.filestem().to_owned()
@@ -220,28 +232,28 @@ impl Session {
     }
 
     #[doc(hidden)]
-    pub fn with_arg_matches(mut self, matches: clap::ArgMatches) -> Self {
-        self.options.set_arg_matches(matches);
-        self
-    }
-
-    #[doc(hidden)]
     pub fn with_output_type(mut self, ty: OutputType, path: Option<OutputFile>) -> Self {
         self.output_files.outputs.insert(ty, path.clone());
         self.options.output_types.insert(ty, path.clone());
         self
     }
 
+    #[doc(hidden)]
+    pub fn with_extra_flags(mut self, flags: CompileFlags) -> Self {
+        self.options.set_extra_flags(flags);
+        self
+    }
+
     /// Get the value of a custom flag with action `FlagAction::SetTrue` or `FlagAction::SetFalse`
     #[inline]
     pub fn get_flag(&self, name: &str) -> bool {
-        self.options.get_flag(name)
+        self.options.flags.get_flag(name)
     }
 
     /// Get the count of a specific custom flag with action `FlagAction::Count`
     #[inline]
     pub fn get_flag_count(&self, name: &str) -> usize {
-        self.options.get_flag_count(name)
+        self.options.flags.get_flag_count(name)
     }
 
     /// Get the value of a specific custom flag
@@ -250,22 +262,24 @@ impl Session {
     where
         T: core::any::Any + Clone + Send + Sync + 'static,
     {
-        self.options.get_flag_value(name)
+        self.options.flags.get_flag_value(name)
     }
 
     /// Iterate over values of a specific custom flag
     #[inline]
+    #[cfg(feature = "std")]
     pub fn get_flag_values<T>(&self, name: &str) -> Option<clap::parser::ValuesRef<'_, T>>
     where
         T: core::any::Any + Clone + Send + Sync + 'static,
     {
-        self.options.get_flag_values(name)
+        self.options.flags.get_flag_values(name)
     }
 
     /// Get the remaining [clap::ArgMatches] left after parsing the base session configuration
     #[inline]
+    #[cfg(feature = "std")]
     pub fn matches(&self) -> &clap::ArgMatches {
-        self.options.matches()
+        self.options.flags.matches()
     }
 
     /// The name of this session (used as the name of the project, output file, etc.)
@@ -287,9 +301,10 @@ impl Session {
     fn check_file_is_writeable(&self, file: &Path) {
         if let Ok(m) = file.metadata() {
             if m.permissions().readonly() {
-                self.diagnostics
-                    .fatal(format!("file is not writeable: {}", file.display()))
-                    .raise();
+                panic!(
+                    "Compiler exited with a fatal error: file is not writeable: {}",
+                    file.display()
+                );
             }
         }
     }
@@ -377,7 +392,8 @@ impl Session {
 }
 
 /// This enum describes the different target environments targetable by the compiler
-#[derive(Debug, Copy, Clone, Default, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default)]
+#[cfg_attr(feature = "std", derive(ValueEnum))]
 pub enum TargetEnv {
     /// The emulator environment, which has a more restrictive instruction set
     Emu,

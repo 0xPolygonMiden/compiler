@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CompileFlag {
     pub name: &'static str,
     pub short: Option<char>,
@@ -73,7 +73,7 @@ impl CompileFlag {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FlagAction {
     Set,
     Append,
@@ -81,6 +81,18 @@ pub enum FlagAction {
     SetFalse,
     Count,
 }
+impl FlagAction {
+    pub fn is_boolean(&self) -> bool {
+        matches!(self, Self::SetTrue | Self::SetFalse)
+    }
+
+    pub fn as_boolean_value(&self) -> bool {
+        assert!(self.is_boolean());
+        self == &Self::SetTrue
+    }
+}
+
+#[cfg(feature = "std")]
 impl From<FlagAction> for clap::ArgAction {
     fn from(action: FlagAction) -> Self {
         match action {
@@ -94,67 +106,3 @@ impl From<FlagAction> for clap::ArgAction {
 }
 
 inventory::collect!(CompileFlag);
-
-/// Generate a fake compile command for use with default options
-fn fake_compile_command() -> clap::Command {
-    let cmd = clap::Command::new("compile")
-        .no_binary_name(true)
-        .disable_help_flag(true)
-        .disable_version_flag(true)
-        .disable_help_subcommand(true);
-    register_flags(cmd)
-}
-
-/// Get [clap::ArgMatches] for registered command-line flags, without a [clap::Command]
-pub fn default_arg_matches<I, V>(argv: I) -> Result<clap::ArgMatches, clap::Error>
-where
-    I: IntoIterator<Item = V>,
-    V: Into<std::ffi::OsString> + Clone,
-{
-    fake_compile_command().try_get_matches_from(argv)
-}
-
-/// Register dynamic flags to be shown via `midenc help compile`
-pub fn register_flags(cmd: clap::Command) -> clap::Command {
-    inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
-        let arg = clap::Arg::new(flag.name)
-            .long(flag.long.unwrap_or(flag.name))
-            .action(clap::ArgAction::from(flag.action));
-        let arg = if let Some(help) = flag.help {
-            arg.help(help)
-        } else {
-            arg
-        };
-        let arg = if let Some(help_heading) = flag.help_heading {
-            arg.help_heading(help_heading)
-        } else {
-            arg
-        };
-        let arg = if let Some(short) = flag.short {
-            arg.short(short)
-        } else {
-            arg
-        };
-        let arg = if let Some(env) = flag.env {
-            arg.env(env)
-        } else {
-            arg
-        };
-        let arg = if let Some(value) = flag.default_missing_value {
-            arg.default_missing_value(value)
-        } else {
-            arg
-        };
-        let arg = if let Some(value) = flag.default_value {
-            arg.default_value(value)
-        } else {
-            arg
-        };
-        let arg = if let Some(value) = flag.hide {
-            arg.hide(value)
-        } else {
-            arg
-        };
-        cmd.arg(arg)
-    })
-}

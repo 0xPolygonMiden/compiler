@@ -57,7 +57,7 @@ impl Stage for ParseStage {
                     input,
                     session,
                     &WasmTranslationConfig {
-                        source_name: name.as_str().unwrap().to_string().into(),
+                        source_name: name.as_str().to_string().into(),
                         ..Default::default()
                     },
                 ),
@@ -65,13 +65,11 @@ impl Stage for ParseStage {
                     input,
                     session,
                     &WasmTranslationConfig {
-                        source_name: name.as_str().unwrap().to_string().into(),
+                        source_name: name.as_str().to_string().into(),
                         ..Default::default()
                     },
                 ),
-                FileType::Masm => {
-                    self.parse_masm_from_bytes(name.as_str().unwrap(), input, session)
-                }
+                FileType::Masm => self.parse_masm_from_bytes(name.as_str(), input, session),
                 FileType::Mast => Err(Report::msg(
                     "invalid input: mast libraries are not supported as inputs, did you mean to \
                      use '-l'?",

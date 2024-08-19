@@ -44,7 +44,11 @@ publish = false
 anyhow = "1.0"
 bitflags = "2.4"
 bitcode = { version = "0.6.3", default-features = false, features = ["serde"] }
-clap = { version = "4.1", features = ["derive", "env"] }
+clap = { version = "4.1", default-features = false, features = [
+    "derive",
+    "std",
+    "env",
+] }
 cranelift-entity = "0.108"
 cranelift-bforest = "0.108"
 env_logger = "0.11"
@@ -87,7 +91,6 @@ miden-stdlib = { version = "0.10.3" }
 #miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 midenc-codegen-masm = { path = "codegen/masm" }
-miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }
 midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }
 midenc-hir-macros = { version = "0.0.2", path = "hir-macros" }

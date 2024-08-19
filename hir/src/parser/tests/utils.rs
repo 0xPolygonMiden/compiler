@@ -4,7 +4,7 @@ use midenc_session::{Options, Verbosity, Warnings};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    diagnostics::{self, CaptureEmitter, DefaultEmitter, Emitter, EmitterBuffer, Report},
+    diagnostics::{self, Buffer, CaptureEmitter, DefaultEmitter, Emitter, IntoDiagnostic, Report},
     parser::{ast::Module, Parser},
     testing::TestContext,
 };
@@ -16,7 +16,7 @@ struct SplitEmitter {
 impl SplitEmitter {
     #[inline]
     pub fn new() -> Self {
-        use diagnostics::ColorChoice;
+        use midenc_session::ColorChoice;
 
         Self {
             capture: Default::default(),
@@ -31,16 +31,16 @@ impl SplitEmitter {
 }
 impl Emitter for SplitEmitter {
     #[inline]
-    fn buffer(&self) -> EmitterBuffer {
+    fn buffer(&self) -> Buffer {
         self.capture.buffer()
     }
 
     #[inline]
-    fn print(&self, buffer: EmitterBuffer) -> std::io::Result<()> {
+    fn print(&self, buffer: Buffer) -> Result<(), Report> {
         use std::io::Write;
 
         let mut copy = self.capture.buffer();
-        copy.write_all(buffer.as_slice())?;
+        copy.write_all(buffer.as_slice()).into_diagnostic()?;
         self.capture.print(buffer)?;
         self.default.print(copy)
     }

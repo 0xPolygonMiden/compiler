@@ -1,9 +1,8 @@
+use alloc::{borrow::Cow, boxed::Box, format, str::FromStr, string::ToString};
 use core::fmt;
 use std::{
-    borrow::Cow,
     ffi::OsStr,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::LazyLock,
 };
 

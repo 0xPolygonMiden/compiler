@@ -1,18 +1,13 @@
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
-
-use clap::ValueEnum;
+use alloc::{fmt, str::FromStr, string::String, sync::Arc, vec, vec::Vec};
+use std::path::{Path, PathBuf};
 
 use crate::{
-    diagnostics::{ColorChoice, DiagnosticsConfig, Emitter},
-    LinkLibrary, OutputTypes, ProjectType, TargetEnv,
+    diagnostics::{DiagnosticsConfig, Emitter},
+    ColorChoice, CompileFlags, LinkLibrary, OutputTypes, ProjectType, TargetEnv,
 };
 
 /// This struct contains all of the configuration options for the compiler
+#[derive(Debug)]
 pub struct Options {
     /// The name of the program being compiled
     pub name: Option<String>,
@@ -56,63 +51,7 @@ pub struct Options {
     pub save_temps: bool,
     /// We store any leftover argument matches in the session options for use
     /// by any downstream crates that register custom flags
-    arg_matches: clap::ArgMatches,
-}
-
-impl fmt::Debug for Options {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Options")
-            .field("name", &self.name)
-            .field("project_type", &self.project_type)
-            .field("entrypoint", &self.entrypoint)
-            .field("target", &self.target)
-            .field("optimize", &self.optimize)
-            .field("debug", &self.debug)
-            .field("output_types", &self.output_types)
-            .field("search_paths", &self.search_paths)
-            .field("link_libraries", &self.link_libraries)
-            .field("sysroot", &self.sysroot)
-            .field("color", &self.color)
-            .field("diagnostics", &self.diagnostics)
-            .field("current_dir", &self.current_dir)
-            .field("parse_only", &self.parse_only)
-            .field("analyze_only", &self.analyze_only)
-            .field("link_only", &self.link_only)
-            .field("no_link", &self.no_link)
-            .field("save_temps", &self.save_temps)
-            .field("print_ir_after_all", &self.print_ir_after_all)
-            .field("print_ir_after_pass", &self.print_ir_after_pass)
-            .field_with("extra_arguments", |f| {
-                let mut map = f.debug_map();
-                for id in self.arg_matches.ids() {
-                    use clap::parser::ValueSource;
-                    // Don't print CompilerOptions arg group
-                    if id.as_str() == "CompilerOptions" {
-                        continue;
-                    }
-                    // Don't print default values
-                    if matches!(
-                        self.arg_matches.value_source(id.as_str()),
-                        Some(ValueSource::DefaultValue)
-                    ) {
-                        continue;
-                    }
-                    map.key(&id.as_str()).value_with(|f| {
-                        let mut list = f.debug_list();
-                        if let Some(occurs) = self
-                            .arg_matches
-                            .try_get_raw_occurrences(id.as_str())
-                            .expect("expected flag")
-                        {
-                            list.entries(occurs.flatten());
-                        }
-                        list.finish()
-                    });
-                }
-                map.finish()
-            })
-            .finish()
-    }
+    pub flags: CompileFlags,
 }
 
 impl Default for Options {
@@ -141,8 +80,6 @@ impl Options {
             })
         });
 
-        let arg_matches = crate::flags::default_arg_matches(None::<&str>).unwrap();
-
         Self {
             name,
             target,
@@ -164,7 +101,7 @@ impl Options {
             save_temps: false,
             print_ir_after_all: false,
             print_ir_after_pass: vec![],
-            arg_matches,
+            flags: CompileFlags::default(),
         }
     }
 
@@ -204,14 +141,14 @@ impl Options {
     }
 
     #[doc(hidden)]
-    pub fn with_arg_matches(mut self, matches: clap::ArgMatches) -> Self {
-        self.arg_matches = matches;
+    pub fn with_extra_flags(mut self, flags: CompileFlags) -> Self {
+        self.flags = flags;
         self
     }
 
     #[doc(hidden)]
-    pub fn set_arg_matches(&mut self, matches: clap::ArgMatches) {
-        self.arg_matches = matches;
+    pub fn set_extra_flags(&mut self, flags: CompileFlags) {
+        self.flags = flags;
     }
 
     /// Get a new [Emitter] based on the current options.
@@ -241,41 +178,11 @@ impl Options {
     pub fn emit_debug_assertions(&self) -> bool {
         self.debug != DebugInfo::None && matches!(self.optimize, OptLevel::None | OptLevel::Basic)
     }
-
-    /// Get the value of a custom flag with action `FlagAction::SetTrue` or `FlagAction::SetFalse`
-    pub fn get_flag(&self, name: &str) -> bool {
-        self.arg_matches.get_flag(name)
-    }
-
-    /// Get the count of a specific custom flag with action `FlagAction::Count`
-    pub fn get_flag_count(&self, name: &str) -> usize {
-        self.arg_matches.get_count(name) as usize
-    }
-
-    /// Get the value of a specific custom flag
-    pub fn get_flag_value<T>(&self, name: &str) -> Option<&T>
-    where
-        T: core::any::Any + Clone + Send + Sync + 'static,
-    {
-        self.arg_matches.get_one(name)
-    }
-
-    /// Iterate over values of a specific custom flag
-    pub fn get_flag_values<T>(&self, name: &str) -> Option<clap::parser::ValuesRef<'_, T>>
-    where
-        T: core::any::Any + Clone + Send + Sync + 'static,
-    {
-        self.arg_matches.get_many(name)
-    }
-
-    /// Get the remaining [clap::ArgMatches] left after parsing the base session configuration
-    pub fn matches(&self) -> &clap::ArgMatches {
-        &self.arg_matches
-    }
 }
 
 /// This enum describes the degree to which compiled programs will be optimized
-#[derive(Debug, Copy, Clone, Default, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default)]
+#[cfg_attr(feature = "std", derive(clap::ValueEnum))]
 pub enum OptLevel {
     /// No optimizations at all
     None,
@@ -293,7 +200,8 @@ pub enum OptLevel {
 }
 
 /// This enum describes what type of debugging information to emit in compiled programs
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(clap::ValueEnum))]
 pub enum DebugInfo {
     /// Do not emit debug info in the final output
     None,
@@ -305,7 +213,8 @@ pub enum DebugInfo {
 }
 
 /// This enum represents the behavior of the compiler with regard to warnings
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(clap::ValueEnum))]
 pub enum Warnings {
     /// Disable all warnings
     None,
@@ -338,7 +247,8 @@ impl FromStr for Warnings {
 }
 
 /// This enum represents the type of messages produced by the compiler during execution
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(clap::ValueEnum))]
 pub enum Verbosity {
     /// Emit additional debug/trace information during compilation
     Debug,

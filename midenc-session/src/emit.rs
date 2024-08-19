@@ -1,4 +1,5 @@
-use std::{fmt, fs::File, io::Write, path::Path, sync::Arc};
+use alloc::{boxed::Box, fmt, format, string::ToString, sync::Arc, vec};
+use std::{fs::File, io::Write, path::Path};
 
 use miden_core::{prettier::PrettyPrint, utils::Serializable};
 use midenc_hir_symbol::Symbol;
@@ -13,8 +14,9 @@ pub trait Emit {
     /// Write this item to standard output, inferring the best [OutputMode] based on whether or not
     /// stdout is a tty or not
     fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        use std::io::IsTerminal;
         let stdout = std::io::stdout().lock();
-        let mode = if atty::is(atty::Stream::Stdout) {
+        let mode = if stdout.is_terminal() {
             OutputMode::Text
         } else {
             OutputMode::Binary
@@ -268,8 +270,9 @@ impl Emit for miden_core::Program {
     }
 
     fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        use std::io::IsTerminal;
         let mut stdout = std::io::stdout().lock();
-        let mode = if atty::is(atty::Stream::Stdout) {
+        let mode = if stdout.is_terminal() {
             OutputMode::Text
         } else {
             OutputMode::Binary

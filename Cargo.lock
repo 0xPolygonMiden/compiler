@@ -3152,7 +3152,6 @@ dependencies = [
  "inventory",
  "log",
  "miden-assembly",
- "miden-diagnostics",
  "miden-thiserror",
  "midenc-codegen-masm",
  "midenc-frontend-wasm",
@@ -3308,7 +3307,6 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "inventory",
- "miden-diagnostics",
  "midenc-hir",
  "midenc-hir-analysis",
  "midenc-session",
@@ -3330,20 +3328,20 @@ dependencies = [
 name = "midenc-session"
 version = "0.0.2"
 dependencies = [
- "atty",
  "clap",
  "inventory",
  "log",
  "miden-assembly",
  "miden-base-sys",
  "miden-core",
- "miden-diagnostics",
  "miden-stdlib",
  "miden-thiserror",
  "midenc-hir-macros",
  "midenc-hir-symbol",
+ "parking_lot",
  "serde",
  "serde_repr",
+ "termcolor",
 ]
 
 [[package]]

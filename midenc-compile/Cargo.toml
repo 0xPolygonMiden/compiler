@@ -21,7 +21,6 @@ intrusive-collections.workspace = true
 inventory.workspace = true
 midenc-codegen-masm.workspace = true
 miden-assembly = { workspace = true, features = ["std"] }
-miden-diagnostics.workspace = true
 midenc-frontend-wasm.workspace = true
 midenc-hir.workspace = true
 midenc-hir-analysis.workspace = true

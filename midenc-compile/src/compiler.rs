@@ -1,10 +1,10 @@
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
-use clap::{builder::ArgPredicate, ColorChoice, Parser};
+use clap::{builder::ArgPredicate, Parser};
 use midenc_session::{
-    diagnostics::{ColorChoice as MDColorChoice, DefaultSourceManager, Emitter},
-    DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec,
-    OutputTypes, ProjectType, Session, TargetEnv, Verbosity, Warnings,
+    diagnostics::{DefaultSourceManager, Emitter},
+    ColorChoice, DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType,
+    OutputTypeSpec, OutputTypes, ProjectType, Session, TargetEnv, Verbosity, Warnings,
 };
 
 /// Compile a program from WebAssembly or Miden IR, to Miden Assembly.
@@ -409,7 +409,7 @@ impl Compiler {
             .unwrap_or_else(|err| err.exit());
 
         let inputs = inputs.into_iter().collect();
-        opts.into_session(inputs, emitter).with_arg_matches(compile_matches)
+        opts.into_session(inputs, emitter).with_extra_flags(compile_matches.into())
     }
 
     /// Use this configuration to obtain a [Session] used for compilation
@@ -421,13 +421,6 @@ impl Compiler {
         let cwd = self
             .working_dir
             .unwrap_or_else(|| std::env::current_dir().expect("no working directory available"));
-
-        // Map clap color choices to internal color choice
-        let color = match self.color {
-            ColorChoice::Auto => MDColorChoice::Auto,
-            ColorChoice::Always => MDColorChoice::Always,
-            ColorChoice::Never => MDColorChoice::Never,
-        };
 
         // Determine if a specific output file has been requested
         let output_file = match self.output_file {
@@ -454,7 +447,7 @@ impl Compiler {
 
         // Consolidate all compiler options
         let mut options = Options::new(self.name, self.target, project_type, cwd, self.sysroot)
-            .with_color(color)
+            .with_color(self.color)
             .with_verbosity(self.verbosity)
             .with_warnings(self.warn)
             .with_debug_info(self.debug)

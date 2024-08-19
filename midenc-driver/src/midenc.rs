@@ -3,6 +3,7 @@ use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 use clap::{ColorChoice, Parser, Subcommand};
 use log::Log;
 use midenc_compile as compile;
+#[cfg(feature = "debug")]
 use midenc_debug as debugger;
 use midenc_hir::FunctionIdent;
 use midenc_session::{
@@ -96,6 +97,7 @@ enum Commands {
     /// Run a program under the interactive Miden VM debugger
     ///
     /// This command starts a TUI-based interactive debugger with the given program loaded.
+    #[cfg(feature = "debug")]
     Debug {
         /// Specify the path to a Miden program file to execute.
         ///
@@ -180,9 +182,11 @@ impl Midenc {
                 if options.working_dir.is_none() {
                     options.working_dir = Some(cwd);
                 }
-                let session = options.into_session(vec![input], emitter).with_arg_matches(matches);
+                let session =
+                    options.into_session(vec![input], emitter).with_extra_flags(matches.into());
                 compile::compile(Rc::new(session))
             }
+            #[cfg(feature = "debug")]
             Commands::Debug {
                 input,
                 inputs,

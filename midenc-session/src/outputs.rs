@@ -1,12 +1,10 @@
-use std::{
-    collections::BTreeMap,
-    ffi::OsStr,
-    fmt,
-    path::{Path, PathBuf},
-    str::FromStr,
+use alloc::{
+    borrow::ToOwned, boxed::Box, collections::BTreeMap, fmt, format, str::FromStr, string::String,
 };
-
-use clap::ValueEnum;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 /// The type of output to produce for a given [OutputType], when multiple options are available
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -18,7 +16,8 @@ pub enum OutputMode {
 }
 
 /// This enum represents the type of outputs the compiler can produce
-#[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(clap::ValueEnum))]
 pub enum OutputType {
     /// The compiler will emit the parse tree of the input, if applicable
     Ast,
@@ -126,11 +125,18 @@ impl OutputFile {
         matches!(self, Self::Stdout)
     }
 
+    #[cfg(feature = "std")]
     pub fn is_tty(&self) -> bool {
+        use std::io::IsTerminal;
         match self {
             Self::Real(_) => false,
-            Self::Stdout => atty::is(atty::Stream::Stdout),
+            Self::Stdout => std::io::stdout().is_terminal(),
         }
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn is_tty(&self) -> bool {
+        false
     }
 
     pub fn as_path(&self) -> Option<&Path> {
