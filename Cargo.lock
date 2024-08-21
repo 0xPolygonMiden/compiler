@@ -3307,6 +3307,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "inventory",
+ "log",
  "midenc-hir",
  "midenc-hir-analysis",
  "midenc-session",
