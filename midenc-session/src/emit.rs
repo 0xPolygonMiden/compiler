@@ -46,6 +46,80 @@ pub trait Emit {
     ) -> std::io::Result<()>;
 }
 
+impl<'a, T: Emit> Emit for &'a T {
+    #[inline]
+    fn name(&self) -> Option<Symbol> {
+        (**self).name()
+    }
+
+    #[inline]
+    fn output_type(&self, mode: OutputMode) -> OutputType {
+        (**self).output_type(mode)
+    }
+
+    #[inline]
+    fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        (**self).write_to_stdout(session)
+    }
+
+    #[inline]
+    fn write_to_file(
+        &self,
+        path: &Path,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to_file(path, mode, session)
+    }
+
+    #[inline]
+    fn write_to<W: Write>(
+        &self,
+        writer: W,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to(writer, mode, session)
+    }
+}
+
+impl<'a, T: Emit> Emit for &'a mut T {
+    #[inline]
+    fn name(&self) -> Option<Symbol> {
+        (**self).name()
+    }
+
+    #[inline]
+    fn output_type(&self, mode: OutputMode) -> OutputType {
+        (**self).output_type(mode)
+    }
+
+    #[inline]
+    fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        (**self).write_to_stdout(session)
+    }
+
+    #[inline]
+    fn write_to_file(
+        &self,
+        path: &Path,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to_file(path, mode, session)
+    }
+
+    #[inline]
+    fn write_to<W: Write>(
+        &self,
+        writer: W,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to(writer, mode, session)
+    }
+}
+
 impl<T: Emit> Emit for Box<T> {
     #[inline]
     fn name(&self) -> Option<Symbol> {

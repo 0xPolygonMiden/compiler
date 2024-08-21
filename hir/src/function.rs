@@ -641,6 +641,29 @@ impl PartialEq for Function {
         self.dfg.imports == other.dfg.imports
     }
 }
+impl midenc_session::Emit for Function {
+    fn name(&self) -> Option<crate::Symbol> {
+        Some(self.id.function.as_symbol())
+    }
+
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
+        midenc_session::OutputType::Hir
+    }
+
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for HIR functions"
+        );
+        writer.write_fmt(format_args!("{}\n", self))
+    }
+}
 
 struct CfgPrinter<'a> {
     function: &'a Function,

@@ -43,6 +43,10 @@ pub struct Options {
     pub link_only: bool,
     /// Generate Miden Assembly from the inputs without the linker
     pub no_link: bool,
+    /// Print CFG to stdout after each pass
+    pub print_cfg_after_all: bool,
+    /// Print CFG to stdout each time the named passes are applied
+    pub print_cfg_after_pass: Vec<String>,
     /// Print IR to stdout after each pass
     pub print_ir_after_all: bool,
     /// Print IR to stdout each time the named passes are applied
@@ -99,6 +103,8 @@ impl Options {
             link_only: false,
             no_link: false,
             save_temps: false,
+            print_cfg_after_all: false,
+            print_cfg_after_pass: vec![],
             print_ir_after_all: false,
             print_ir_after_pass: vec![],
             flags: CompileFlags::default(),

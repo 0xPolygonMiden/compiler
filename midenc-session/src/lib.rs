@@ -351,6 +351,12 @@ impl Session {
             || self.options.print_ir_after_pass.iter().any(|p| p == pass)
     }
 
+    /// Returns true if CFG should be printed to stdout, after executing a pass named `pass`
+    pub fn should_print_cfg(&self, pass: &str) -> bool {
+        self.options.print_cfg_after_all
+            || self.options.print_cfg_after_pass.iter().any(|p| p == pass)
+    }
+
     /// Print the given emittable IR to stdout, as produced by a pass with name `pass`
     pub fn print(&self, ir: impl Emit, pass: &str) -> std::io::Result<()> {
         if self.should_print_ir(pass) {

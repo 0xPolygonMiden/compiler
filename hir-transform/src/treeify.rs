@@ -5,12 +5,14 @@ use std::{
 
 use midenc_hir::{
     self as hir,
-    diagnostics::Report,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     Block as BlockId, Value as ValueId, *,
 };
 use midenc_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, Loop, LoopAnalysis};
-use midenc_session::Session;
+use midenc_session::{
+    diagnostics::{IntoDiagnostic, Report},
+    Emit, Session,
+};
 use smallvec::{smallvec, SmallVec};
 
 use crate::adt::ScopedMap;
@@ -431,6 +433,13 @@ impl RewritePass for Treeify {
             }
         }
 
+        session.print(&function, Self::FLAG).into_diagnostic()?;
+        if session.should_print_cfg(Self::FLAG) {
+            use std::io::Write;
+            let cfg = function.cfg_printer();
+            let mut stdout = std::io::stdout().lock();
+            write!(&mut stdout, "{cfg}").into_diagnostic()?;
+        }
         Ok(())
     }
 }

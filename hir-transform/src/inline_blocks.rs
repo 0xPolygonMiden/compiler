@@ -6,7 +6,7 @@ use midenc_hir::{
     *,
 };
 use midenc_hir_analysis::ControlFlowGraph;
-use midenc_session::Session;
+use midenc_session::{diagnostics::IntoDiagnostic, Session};
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
@@ -40,7 +40,7 @@ impl RewritePass for InlineBlocks {
         &mut self,
         function: &mut Self::Entity,
         analyses: &mut AnalysisManager,
-        _session: &Session,
+        session: &Session,
     ) -> RewriteResult {
         let mut cfg = analyses
             .take::<ControlFlowGraph>(&function.id)
@@ -130,6 +130,14 @@ impl RewritePass for InlineBlocks {
         analyses.insert(function.id, cfg);
         if !changed {
             analyses.mark_preserved::<ControlFlowGraph>(&function.id);
+        }
+
+        session.print(&function, Self::FLAG).into_diagnostic()?;
+        if session.should_print_cfg(Self::FLAG) {
+            use std::io::Write;
+            let cfg = function.cfg_printer();
+            let mut stdout = std::io::stdout().lock();
+            write!(&mut stdout, "{cfg}").into_diagnostic()?;
         }
 
         Ok(())
