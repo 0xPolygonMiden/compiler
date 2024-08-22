@@ -111,8 +111,8 @@ impl ControlFlowGraph {
         self.clear();
         self.data.resize(dfg.num_blocks());
 
-        for (block, _) in dfg.blocks() {
-            self.compute_block(dfg, block);
+        for block in dfg.body().blocks() {
+            self.compute_block(dfg, block.id);
         }
 
         self.valid = true;
@@ -277,8 +277,8 @@ mod tests {
         let mut cfg = ControlFlowGraph::new();
         cfg.compute(&dfg);
 
-        let mut blocks = dfg.blocks().map(|(blk, _)| blk);
-        for block in dfg.blocks().map(|(blk, _)| blk) {
+        let mut blocks = dfg.body().blocks().iter().map(|blk| blk.id);
+        for block in dfg.body().blocks().iter().map(|blk| blk.id) {
             assert_eq!(block, blocks.next().unwrap());
             assert_eq!(cfg.pred_iter(block).count(), 0);
             assert_eq!(cfg.succ_iter(block).count(), 0);

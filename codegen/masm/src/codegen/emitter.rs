@@ -246,6 +246,9 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             Instruction::Switch(_) => {
                 panic!("expected switch instructions to have been rewritten before stackification")
             }
+            ix @ (Instruction::If(_) | Instruction::While(_)) => {
+                unimplemented!("no implementation for {ix:#?}")
+            }
             Instruction::LocalVar(ref op) => {
                 let span = self.function.f.dfg.inst_span(inst_info.inst);
                 let local = self.function.locals[&op.local];

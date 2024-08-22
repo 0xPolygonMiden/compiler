@@ -6,8 +6,7 @@ pub struct FunctionBuilder<'f> {
 }
 impl<'f> FunctionBuilder<'f> {
     pub fn new(func: &'f mut Function) -> Self {
-        let entry = func.dfg.entry_block();
-        let position = func.dfg.last_block().unwrap_or(entry);
+        let position = func.dfg.last_block().id;
 
         Self {
             func,
@@ -19,8 +18,17 @@ impl<'f> FunctionBuilder<'f> {
         Self { func, ip }
     }
 
+    pub fn body(&self) -> RegionId {
+        self.func.dfg.body_id()
+    }
+
     pub fn entry_block(&self) -> Block {
         self.func.dfg.entry_block()
+    }
+
+    #[inline]
+    pub fn current_region(&self) -> RegionId {
+        self.ip.region(self.func)
     }
 
     #[inline]
@@ -37,6 +45,23 @@ impl<'f> FunctionBuilder<'f> {
         self.func.dfg.create_block()
     }
 
+    pub fn create_block_in(&mut self, region: RegionId) -> Block {
+        self.func.dfg.create_block_in(region)
+    }
+
+    pub fn create_region(&mut self) -> RegionId {
+        self.func.dfg.create_region()
+    }
+
+    pub fn detach_region(&mut self, region: RegionId) {
+        assert_ne!(
+            region,
+            self.current_region(),
+            "cannot remove region the builder is currently inserting in"
+        );
+        self.func.dfg.detach_region(region);
+    }
+
     pub fn detach_block(&mut self, block: Block) {
         assert_ne!(
             block,
@@ -44,6 +69,14 @@ impl<'f> FunctionBuilder<'f> {
             "cannot remove block the builder is currently inserting in"
         );
         self.func.dfg.detach_block(block);
+    }
+
+    pub fn region_param_types(&self, region: RegionId) -> &[Type] {
+        self.func.dfg.region(region).params.as_slice()
+    }
+
+    pub fn region_result_types(&self, region: RegionId) -> &[Type] {
+        self.func.dfg.region(region).results.as_slice()
     }
 
     pub fn block_params(&self, block: Block) -> &[Value] {
@@ -1422,18 +1455,61 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         SwitchBuilder::new(self, arg, span)
     }
 
+    fn if_true(
+        self,
+        cond: Value,
+        then_region: RegionId,
+        else_region: RegionId,
+        span: SourceSpan,
+    ) -> Inst {
+        require_integer!(self, cond, Type::I1);
+        self.If(cond, then_region, else_region, span).0
+    }
+
+    fn while_true(
+        mut self,
+        args: &[Value],
+        before_region: RegionId,
+        body_region: RegionId,
+        span: SourceSpan,
+    ) -> Inst {
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.extend(args.iter().copied(), pool);
+        }
+        self.While(vlist, before_region, body_region, span).0
+    }
+
     fn ret(mut self, returning: Option<Value>, span: SourceSpan) -> Inst {
         let mut vlist = ValueList::default();
         if let Some(value) = returning {
             let pool = &mut self.data_flow_graph_mut().value_lists;
             vlist.push(value, pool);
         }
-        self.Ret(vlist, span).0
+        self.Ret(Opcode::Ret, vlist, span).0
     }
 
     fn ret_imm(self, arg: Immediate, span: SourceSpan) -> Inst {
         let data = Instruction::RetImm(RetImm {
             op: Opcode::Ret,
+            arg,
+        });
+        self.build(data, Type::Unit, span).0
+    }
+
+    fn r#yield(mut self, returning: &[Value], span: SourceSpan) -> Inst {
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.extend(returning.iter().copied(), pool);
+        }
+        self.Ret(Opcode::Yield, vlist, span).0
+    }
+
+    fn yield_imm(self, arg: Immediate, span: SourceSpan) -> Inst {
+        let data = Instruction::RetImm(RetImm {
+            op: Opcode::Yield,
             arg,
         });
         self.build(data, Type::Unit, span).0
@@ -1515,11 +1591,42 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
     }
 
     #[allow(non_snake_case)]
-    fn Ret(self, args: ValueList, span: SourceSpan) -> (Inst, &'f mut DataFlowGraph) {
-        let data = Instruction::Ret(Ret {
-            op: Opcode::Ret,
-            args,
+    fn If(
+        self,
+        cond: Value,
+        then_region: RegionId,
+        else_region: RegionId,
+        span: SourceSpan,
+    ) -> (Inst, &'f mut DataFlowGraph) {
+        let data = Instruction::If(If {
+            op: Opcode::IfTrue,
+            cond,
+            then_region,
+            else_region,
         });
+        self.build(data, Type::Unit, span)
+    }
+
+    #[allow(non_snake_case)]
+    fn While(
+        self,
+        args: ValueList,
+        before: RegionId,
+        body: RegionId,
+        span: SourceSpan,
+    ) -> (Inst, &'f mut DataFlowGraph) {
+        let data = Instruction::While(While {
+            op: Opcode::WhileTrue,
+            args,
+            before,
+            body,
+        });
+        self.build(data, Type::Unit, span)
+    }
+
+    #[allow(non_snake_case)]
+    fn Ret(self, op: Opcode, args: ValueList, span: SourceSpan) -> (Inst, &'f mut DataFlowGraph) {
+        let data = Instruction::Ret(Ret { op, args });
         self.build(data, Type::Unit, span)
     }
 

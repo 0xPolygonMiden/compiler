@@ -1,6 +1,12 @@
 use cranelift_entity::entity_impl;
+use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, UnsafeRef};
 
 use super::*;
+
+intrusive_adapter!(pub BlockListAdapter = UnsafeRef<BlockData>: BlockData { link: LinkedListLink });
+
+/// A type alias for `LinkedList<BlockListAdapter>`
+pub type BlockList = LinkedList<BlockListAdapter>;
 
 /// A handle to a single function block
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,7 +32,9 @@ impl formatter::PrettyPrint for Block {
 ///
 /// Blocks have arguments, and consist of a sequence of instructions.
 pub struct BlockData {
+    link: LinkedListLink,
     pub id: Block,
+    pub region: RegionId,
     pub params: ValueList,
     pub insts: InstructionList,
 }
@@ -38,19 +46,28 @@ impl Drop for BlockData {
 impl Clone for BlockData {
     fn clone(&self) -> Self {
         Self {
+            link: Default::default(),
             id: self.id,
+            region: self.region,
             params: self.params,
             insts: Default::default(),
         }
     }
 }
 impl BlockData {
-    pub(crate) fn new(id: Block) -> Self {
+    pub(crate) fn new(region: RegionId, id: Block) -> Self {
         Self {
+            link: Default::default(),
             id,
+            region,
             params: ValueList::new(),
             insts: Default::default(),
         }
+    }
+
+    #[inline]
+    pub fn is_linked(&self) -> bool {
+        self.link.is_linked()
     }
 
     #[inline]

@@ -3,11 +3,14 @@ mod convert;
 mod functions;
 mod globals;
 mod instruction;
+mod region;
 
 use alloc::collections::BTreeMap;
 use core::fmt;
 
-pub use self::{block::*, convert::ConvertAstToHir, functions::*, globals::*, instruction::*};
+pub use self::{
+    block::*, convert::ConvertAstToHir, functions::*, globals::*, instruction::*, region::*,
+};
 use crate::{
     diagnostics::{DiagnosticsHandler, Severity, SourceSpan, Span, Spanned},
     ExternalFunction, FunctionIdent, Ident,
@@ -67,7 +70,9 @@ type ConstantsById = BTreeMap<crate::Constant, Span<crate::ConstantData>>;
 type RemappedConstants = BTreeMap<crate::Constant, crate::Constant>;
 type GlobalVariablesById = BTreeMap<crate::GlobalVariable, Span<crate::GlobalVariableData>>;
 type ImportsById = BTreeMap<FunctionIdent, Span<crate::ExternalFunction>>;
+type RegionsById = BTreeMap<crate::RegionId, crate::Region>;
 type BlocksById = BTreeMap<crate::Block, Block>;
+type LocalsById = BTreeMap<crate::LocalId, Span<crate::Local>>;
 type ValuesById = BTreeMap<crate::Value, Span<crate::ValueData>>;
 type InstResults = BTreeMap<crate::Inst, Vec<crate::Value>>;
 

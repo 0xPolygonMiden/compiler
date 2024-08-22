@@ -473,6 +473,7 @@ impl<'a> Rule<BlockData> for TypeCheck<'a> {
                         }
                     }
                 }
+                Instruction::If(_) | Instruction::While(_) => todo!(),
             }
         }
 
@@ -1268,7 +1269,17 @@ impl<'a> InstTypeChecker<'a> {
             Opcode::Br => InstPattern::Any,
             Opcode::CondBr => InstPattern::Exact(vec![Type::I1.into()], vec![]),
             Opcode::Switch => InstPattern::Exact(vec![Type::U32.into()], vec![]),
-            Opcode::Ret => InstPattern::Any,
+            Opcode::IfTrue => {
+                let results = dfg
+                    .inst_results(node.key)
+                    .iter()
+                    .copied()
+                    .map(|value| dfg.value_type(value).clone().into())
+                    .collect();
+                InstPattern::Exact(vec![Type::I1.into()], results)
+            }
+            Opcode::WhileTrue => InstPattern::Any,
+            Opcode::Ret | Opcode::Yield => InstPattern::Any,
             Opcode::Unreachable => InstPattern::Empty,
             Opcode::InlineAsm => InstPattern::Any,
             Opcode::Spill | Opcode::Reload => InstPattern::Any,

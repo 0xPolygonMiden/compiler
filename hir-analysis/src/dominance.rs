@@ -897,7 +897,11 @@ mod tests {
         let block2 = function.dfg.create_block();
         let block3 = function.dfg.create_block();
         let cond = function.dfg.append_block_param(block3, Type::I1, SourceSpan::UNKNOWN);
-        function.dfg.entry = block3;
+        // Make block3 the entry block
+        let block_data_3 = function.dfg.body_mut().blocks.pop_back().unwrap();
+        assert_eq!(block3, block_data_3.id);
+        function.dfg.body_mut().blocks.push_front(block_data_3);
+
         function.signature.params.push(AbiParam::new(Type::I1));
         let (br_block3_block1, br_block1_block0_block2) = {
             let mut builder = FunctionBuilder::new(&mut function);

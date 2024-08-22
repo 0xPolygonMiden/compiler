@@ -429,11 +429,11 @@ impl RewritePass for Treeify {
             let cfg = ControlFlowGraph::with_function(function);
             let domtree = DominatorTree::with_function(function, &cfg);
             let mut to_remove = vec![];
-            for (b, _) in function.dfg.blocks() {
-                if domtree.is_reachable(b) {
+            for blk in function.dfg.body().blocks() {
+                if domtree.is_reachable(blk.id) {
                     continue;
                 }
-                to_remove.push(b);
+                to_remove.push(blk.id);
             }
             // Remove all blocks from the function that were unreachable
             for b in to_remove {

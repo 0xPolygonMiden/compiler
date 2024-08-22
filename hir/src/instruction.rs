@@ -113,6 +113,8 @@ pub enum Instruction {
     PrimOpImm(PrimOpImm),
     Test(Test),
     InlineAsm(InlineAsm),
+    If(If),
+    While(While),
 }
 impl Instruction {
     pub fn deep_clone(&self, value_lists: &mut ValueListPool) -> Self {
@@ -167,6 +169,11 @@ impl Instruction {
                 args: op.args.deep_clone(value_lists),
                 ..op.clone()
             }),
+            Self::If(op) => Self::If(op.clone()),
+            Self::While(op) => Self::While(While {
+                args: op.args.deep_clone(value_lists),
+                ..op.clone()
+            }),
         }
     }
 
@@ -188,7 +195,9 @@ impl Instruction {
             | Self::PrimOp(PrimOp { ref op, .. })
             | Self::PrimOpImm(PrimOpImm { ref op, .. })
             | Self::Test(Test { ref op, .. })
-            | Self::InlineAsm(InlineAsm { ref op, .. }) => *op,
+            | Self::InlineAsm(InlineAsm { ref op, .. })
+            | Self::If(If { ref op, .. })
+            | Self::While(While { ref op, .. }) => *op,
         }
     }
 
@@ -244,6 +253,8 @@ impl Instruction {
             Self::Test(Test { ref arg, .. }) => core::slice::from_ref(arg),
             Self::InlineAsm(InlineAsm { ref args, .. }) => args.as_slice(pool),
             Self::LocalVar(LocalVarOp { ref args, .. }) => args.as_slice(pool),
+            Self::If(If { ref cond, .. }) => core::slice::from_ref(cond),
+            Self::While(While { ref args, .. }) => args.as_slice(pool),
             Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &[],
         }
     }
@@ -263,6 +274,8 @@ impl Instruction {
             Self::Test(Test { ref mut arg, .. }) => core::slice::from_mut(arg),
             Self::InlineAsm(InlineAsm { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::LocalVar(LocalVarOp { ref mut args, .. }) => args.as_mut_slice(pool),
+            Self::If(If { ref mut cond, .. }) => core::slice::from_mut(cond),
+            Self::While(While { ref mut args, .. }) => args.as_mut_slice(pool),
             Self::GlobalValue(_) | Self::UnaryOpImm(_) | Self::Br(_) | Self::RetImm(_) => &mut [],
         }
     }
@@ -462,7 +475,10 @@ pub enum Opcode {
     Br,
     CondBr,
     Switch,
+    IfTrue,
+    WhileTrue,
     Ret,
+    Yield,
     Unreachable,
     InlineAsm,
     /// NOTE: Internal Use Only!
@@ -477,7 +493,14 @@ pub enum Opcode {
 }
 impl Opcode {
     pub fn is_terminator(&self) -> bool {
-        matches!(self, Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Unreachable)
+        matches!(
+            self,
+            Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Yield | Self::Unreachable
+        )
+    }
+
+    pub fn has_regions(&self) -> bool {
+        matches!(self, Self::IfTrue | Self::WhileTrue)
     }
 
     pub fn is_branch(&self) -> bool {
@@ -555,10 +578,13 @@ impl Opcode {
             | Self::CondBr
             | Self::Switch
             | Self::Ret
+            | Self::Yield
             | Self::Unreachable
             | Self::InlineAsm
             | Self::Spill
-            | Self::Reload => true,
+            | Self::Reload
+            | Self::IfTrue
+            | Self::WhileTrue => true,
             // These opcodes are not
             Self::ImmI1
             | Self::ImmU8
@@ -705,13 +731,16 @@ impl Opcode {
             // Unconditional branches have no fixed arguments
             Self::Br => 0,
             // Ifs have a single argument, the conditional
-            Self::CondBr => 1,
+            Self::CondBr | Self::IfTrue => 1,
             // Switches have a single argument, the input value
             Self::Switch => 1,
-            // Returns require at least one argument
-            Self::Ret => 1,
+            // While loops do not require arguments, the condition is evaluated inside the
+            // first region of the instruction, so it is not expected as an argument.
+            Self::WhileTrue => 0,
             // The following require no arguments
-            Self::MemSize
+            Self::Ret
+            | Self::Yield
+            | Self::MemSize
             | Self::GlobalValue
             | Self::Alloca
             | Self::Unreachable
@@ -736,6 +765,7 @@ impl Opcode {
             | Self::CondBr
             | Self::Switch
             | Self::Ret
+            | Self::Yield
             | Self::Unreachable
             | Self::Spill => smallvec![],
             // These ops have fixed result types
@@ -792,7 +822,9 @@ impl Opcode {
             | Self::Rotr
             | Self::MemGrow
             | Self::MemSize
-            | Self::Reload => {
+            | Self::Reload
+            | Self::IfTrue
+            | Self::WhileTrue => {
                 smallvec![ctrl_ty]
             }
             // These ops always return a usize/u32 type
@@ -855,6 +887,7 @@ impl fmt::Display for Opcode {
             Self::Call => f.write_str("call"),
             Self::Syscall => f.write_str("syscall"),
             Self::Ret => f.write_str("ret"),
+            Self::Yield => f.write_str("yield"),
             Self::Test => f.write_str("test"),
             Self::Select => f.write_str("select"),
             Self::Add => f.write_str("add"),
@@ -899,6 +932,8 @@ impl fmt::Display for Opcode {
             Self::InlineAsm => f.write_str("asm"),
             Self::Spill => f.write_str("spill"),
             Self::Reload => f.write_str("reload"),
+            Self::IfTrue => f.write_str("if.true"),
+            Self::WhileTrue => f.write_str("while.true"),
         }
     }
 }
@@ -1039,6 +1074,32 @@ pub struct Switch {
 pub struct SwitchArm {
     pub value: u32,
     pub successor: Successor,
+}
+
+#[derive(Debug, Clone)]
+pub struct If {
+    pub op: Opcode,
+    pub cond: Value,
+    pub then_region: RegionId,
+    pub else_region: RegionId,
+}
+
+#[derive(Debug, Clone)]
+pub struct While {
+    pub op: Opcode,
+    /// The set of input arguments
+    ///
+    /// These arguments must match the `before` region parameters
+    pub args: ValueList,
+    /// The region to be executed before the loop, it must end with a `condition` op, which tells
+    /// the `while` instruction whether or not to execute `after`. If false, then the loop is not
+    /// entered, and control transfers to the next instruction after the `while`. If true, then
+    /// control transfers to `after`.
+    pub before: RegionId,
+    /// The region which acts as the loop body. It must end with a `yield` op, whose value matches
+    /// the operands expected by `before`, and will be used to determine whether or not to resume
+    /// the loop.
+    pub body: RegionId,
 }
 
 #[derive(Debug, Clone)]
@@ -1221,6 +1282,14 @@ impl<'a> PartialEq for InstructionWithValueListPool<'a> {
                 let same_default = SuccessorInfo::new(&l.default, self.value_lists)
                     == SuccessorInfo::new(&r.default, self.value_lists);
                 same_arms && same_default
+            }
+            (Instruction::If(l), Instruction::If(r)) => {
+                l.cond == r.cond && l.then_region == r.then_region && l.else_region == r.else_region
+            }
+            (Instruction::While(l), Instruction::While(r)) => {
+                l.args.as_slice(self.value_lists) == r.args.as_slice(self.value_lists)
+                    && l.before == r.before
+                    && l.body == r.body
             }
             (Instruction::Ret(l), Instruction::Ret(r)) => {
                 l.args.as_slice(self.value_lists) == r.args.as_slice(other.value_lists)
@@ -1413,6 +1482,65 @@ impl<'a> formatter::PrettyPrint for InstPrettyPrinter<'a> {
                     .reduce(|acc, arm| acc + nl() + arm)
                     .unwrap();
                 return inner + display(*arg) + indent(4, nl() + arms) + const_text(")");
+            }
+            Instruction::If(If {
+                cond,
+                ref then_region,
+                ref else_region,
+                ..
+            }) => (
+                vec![],
+                vec![
+                    display(*cond),
+                    indent(
+                        4,
+                        self.dfg
+                            .region(*then_region)
+                            .pretty_print(self.current_function, self.dfg)
+                            .render(),
+                    ),
+                    indent(
+                        4,
+                        self.dfg
+                            .region(*else_region)
+                            .pretty_print(self.current_function, self.dfg)
+                            .render(),
+                    ),
+                ],
+            ),
+            Instruction::While(While {
+                ref args,
+                ref before,
+                ref body,
+                ..
+            }) => {
+                let args = const_text("(")
+                    + args
+                        .as_slice(&self.dfg.value_lists)
+                        .iter()
+                        .copied()
+                        .fold(Document::Empty, |acc, arg| acc + const_text(" ") + display(arg))
+                    + const_text(")");
+                (
+                    vec![],
+                    vec![
+                        args,
+                        indent(
+                            4,
+                            self.dfg
+                                .region(*before)
+                                .pretty_print(self.current_function, self.dfg)
+                                .render(),
+                        ),
+                        indent(
+                            4,
+                            self.dfg
+                                .region(*body)
+                                .pretty_print(self.current_function, self.dfg)
+                                .render(),
+                        ),
+                    ],
+                )
             }
             Instruction::Test(Test { arg, ref ty, .. }) => {
                 (vec![text(format!("{}", ty))], vec![display(*arg)])

@@ -4,7 +4,7 @@ use crate::{
     diagnostics::{SourceSpan, Span},
     parser::ast::*,
     AbiParam, ArgumentExtension, ArgumentPurpose, CallConv, ExternalFunction, FunctionIdent, Ident,
-    Linkage, Opcode, Overflow, Signature, StructType, Type,
+    Linkage, Opcode, Overflow, RegionId, Signature, StructType, Type,
 };
 
 macro_rules! ident {
@@ -52,8 +52,20 @@ fn parser_integration_test() {
             cc: CallConv::Fast,
             linkage: Linkage::External,
         },
-        blocks: vec![],
+        locals: vec![],
+        body: Region {
+            span: dummy_sourcespan,
+            id: RegionId::from_u32(0),
+            params: vec![
+                Span::new(dummy_sourcespan, Type::U32),
+                Span::new(dummy_sourcespan, Type::U32),
+            ],
+            results: vec![Span::new(dummy_sourcespan, Type::U32)],
+            blocks: vec![],
+        },
     };
+
+    let body_id = foo.body.id;
 
     //     blk0(v1: u32, v2: u32):
     let v1 = crate::Value::from_u32(1);
@@ -62,6 +74,7 @@ fn parser_integration_test() {
     let mut blk0 = Block {
         span: dummy_sourcespan,
         id: blk0_id,
+        region_id: body_id,
         params: vec![
             TypedValue::new(dummy_sourcespan, v1, Type::U32),
             TypedValue::new(dummy_sourcespan, v2, Type::U32),
@@ -104,6 +117,7 @@ fn parser_integration_test() {
     // blk1:
     let mut blk1 = Block {
         span: dummy_sourcespan,
+        region_id: body_id,
         id: blk1_id,
         params: vec![],
         body: vec![],
@@ -119,8 +133,8 @@ fn parser_integration_test() {
     };
     blk1.body.push(inst3);
 
-    foo.blocks.push(blk0);
-    foo.blocks.push(blk1);
+    foo.body.blocks.push(blk0);
+    foo.body.blocks.push(blk1);
 
     // cc(kernel) fn tuple::make_pair (sret *mut { u32, u32 });
     let tuple = StructType::new([Type::U32, Type::U32]);

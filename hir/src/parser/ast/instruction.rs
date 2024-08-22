@@ -61,6 +61,18 @@ pub enum InstType {
         successors: Vec<Span<(u32, Successor)>>,
         fallback: Successor,
     },
+    If {
+        opcode: Opcode,
+        cond: Span<crate::Value>,
+        then_region: Region,
+        else_region: Region,
+    },
+    While {
+        opcode: Opcode,
+        operands: Vec<Span<crate::Value>>,
+        before: Region,
+        body: Region,
+    },
     Ret {
         opcode: Opcode,
         operands: Vec<Operand>,
@@ -82,6 +94,11 @@ pub enum InstType {
     GlobalValue {
         opcode: Opcode,
         expr: GlobalValueExpr,
+    },
+    LocalVar {
+        opcode: Opcode,
+        local: crate::LocalId,
+        operands: Vec<Span<crate::Value>>,
     },
 }
 
@@ -112,7 +129,7 @@ impl Operand {
 }
 
 /// Represents a value/type pair where applicable in the AST
-#[derive(Spanned)]
+#[derive(Spanned, Clone)]
 pub struct TypedValue {
     #[span]
     pub span: SourceSpan,

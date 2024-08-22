@@ -45,6 +45,12 @@ pub enum ParseError {
         span: SourceSpan,
         value: isize,
     },
+    #[error("expected valid u16 value, got '{value}'")]
+    InvalidU16 {
+        #[label]
+        span: SourceSpan,
+        value: isize,
+    },
     #[error("expected valid offset value, got '{value}'")]
     InvalidOffset {
         #[label]
@@ -105,6 +111,7 @@ impl PartialEq for ParseError {
             (Self::EmptyFunction { .. }, Self::EmptyFunction { .. }) => true,
             (Self::ImportedFunctionWithBody { .. }, Self::ImportedFunctionWithBody { .. }) => true,
             (Self::InvalidU32 { value: l, .. }, Self::InvalidU32 { value: r, .. }) => l == r,
+            (Self::InvalidU16 { value: l, .. }, Self::InvalidU16 { value: r, .. }) => l == r,
             (Self::InvalidOffset { value: l, .. }, Self::InvalidOffset { value: r, .. }) => l == r,
             (Self::InvalidAlignment { value: l, .. }, Self::InvalidAlignment { value: r, .. }) => {
                 l == r

@@ -786,7 +786,7 @@ impl ModuleBuilder {
             function: name,
         };
         let function = Box::new(Function::new(id, signature));
-        let entry = function.dfg.entry;
+        let entry = function.dfg.entry_block();
 
         Ok(ModuleFunctionBuilder {
             builder: self,
@@ -837,6 +837,11 @@ impl<'m> ModuleFunctionBuilder<'m> {
 
     #[inline]
     pub fn entry_block(&self) -> Block {
+        self.function.dfg.entry_block()
+    }
+
+    #[inline]
+    pub fn body(&self) -> RegionId {
         self.function.dfg.entry
     }
 
@@ -846,12 +851,21 @@ impl<'m> ModuleFunctionBuilder<'m> {
     }
 
     #[inline]
+    pub fn current_region(&self) -> RegionId {
+        self.function.dfg.block(self.position).region
+    }
+
+    #[inline]
     pub fn switch_to_block(&mut self, block: Block) {
         self.position = block;
     }
 
     pub fn create_block(&mut self) -> Block {
         self.data_flow_graph_mut().create_block()
+    }
+
+    pub fn create_block_in(&mut self, region: RegionId) -> Block {
+        self.data_flow_graph_mut().create_block_in(region)
     }
 
     pub fn block_params(&self, block: Block) -> &[Value] {

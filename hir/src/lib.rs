@@ -7,6 +7,7 @@
 // in an upcoming release, see https://github.com/rust-lang/rust/issues/65991
 // for details
 #![feature(trait_upcasting)]
+#![feature(debug_closure_helpers)]
 pub mod parser;
 
 #[cfg(feature = "std")]
@@ -144,6 +145,7 @@ mod locals;
 mod module;
 pub mod pass;
 mod program;
+mod region;
 mod segments;
 pub mod testing;
 #[cfg(test)]
@@ -158,7 +160,7 @@ pub use cranelift_entity;
 pub use self::{
     asm::*,
     attribute::{attributes, Attribute, AttributeSet, AttributeValue},
-    block::{Block, BlockData},
+    block::{Block, BlockData, BlockList},
     builder::{DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder},
     component::*,
     constants::{Constant, ConstantData, ConstantPool, IntoBytes},
@@ -178,6 +180,7 @@ pub use self::{
         RewritePassRegistration,
     },
     program::{Linker, Program, ProgramAnalysisKey, ProgramBuilder},
+    region::{Region, RegionId, RegionList},
     segments::{DataSegment, DataSegmentAdapter, DataSegmentError, DataSegmentTable},
     value::{Value, ValueData, ValueList, ValueListPool},
 };

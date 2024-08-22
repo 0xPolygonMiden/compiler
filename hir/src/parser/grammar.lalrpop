@@ -4,9 +4,10 @@ use either::Either::{self, Left, Right};
 
 use crate::diagnostics::{Span, SourceId, SourceSpan, ByteIndex};
 use crate::{AbiParam, ArgumentExtension, ArgumentPurpose};
-use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent};
+use crate::{CallConv, ConstantData, ExternalFunction, FunctionIdent, RegionId};
 use crate::{Ident, Linkage, Opcode, Overflow, Signature, symbols, Symbol};
 use crate::{Type, TypeRepr, AddressSpace, StructType};
+use crate::{Local, LocalId};
 use crate::{AttributeSet, Attribute, AttributeValue};
 use crate::parser::{
     ast::*,
@@ -34,7 +35,7 @@ use crate::parser::{
 ///  DATA_SEGMENT ::= "(" "data" MUTABLE? OFFSET HEX_BYTES ")"
 ///  MUTABLE ::= "(" "mut" ")"
 ///
-///  FUNC ::= "(" "func" FUNC_ID FUNC_ATTR* PARAM* RESULT? BLOCK+ ")"
+///  FUNC ::= "(" "func" FUNC_ID FUNC_ATTR* PARAM* RESULT? LOCAL* BLOCK+ ")"
 ///  FUNC_ID ::= ID
 ///            | "(" "export" NAME_OR_ID ")"
 ///            | "(" "import" MODULE_NAME_OR_ID FUNCTION_NAME_OR_ID ")"
@@ -47,6 +48,11 @@ use crate::parser::{
 ///
 ///  RESULT ::= "(" "result" TYPE_NAME ")"
 ///
+///  LOCAL ::= "(" "local" LOCAL_ID TYPE_NAME ")"
+///
+///  REGION ::= "(" "region" REGION_ID REGION_PARAMS BLOCK+ ")
+///  REGION_PARAMS  ::= "(" "params" TYPE_NAME* ")"
+///
 ///  BLOCK ::= "(" "block" BLOCK_ID BLOCK_PARAM* INST+ ")
 ///  BLOCK_PARAM  ::= "(" "param" VALUE_ID TYPE_NAME ")"
 ///
@@ -56,6 +62,8 @@ use crate::parser::{
 ///         | "(" "br" SUCCESSOR ")"
 ///         | "(" "condbr" VALUE_ID SUCCESSOR SUCCESSOR ")"
 ///         | "(" "switch" VALUE_ID SWITCH_ARM* "(" "_" "." SUCCESSOR ")" ")"
+///         | "(" "if.true" VALUE_ID REGION REGION ")"
+///         | "(" "while.true" REGION REGION ")"
 ///
 ///  NO_RESULTS_OP  ::= "(" OPCODE OPERAND* ")"
 ///  ONE_RESULT_OP  ::= "(" "let" VALUE_ID NO_RESULTS_OP ")"
@@ -77,6 +85,8 @@ use crate::parser::{
 ///
 ///  INDEX     ::= "(" "id" U32 ")"
 ///  OFFSET    ::= "(" "offset" I32 ")"
+///  LOCAL_ID  ::= [\d]+
+///  REGION_ID ::= [\d]+
 ///  BLOCK_ID  ::= [\d]+
 ///  VALUE_ID  ::= v[\d]+
 ///  ID        ::= "#" BARE_NAME
@@ -196,6 +206,10 @@ TypeName: Type = {
     ArrayType,
 }
 
+SpannedTypeName: Span<Type> = {
+    <l:@L> <ty:TypeName> <r:@R> => Span::new(span!(source_id, l, r), ty),
+}
+
 PointerType: Type = {
     "(" "ptr" <addrspace:("(" "addrspace" <AddressSpace> ")")?> <pointee:TypeName> ")" => {
         match addrspace {
@@ -267,10 +281,13 @@ AttributeValue: AttributeValue = {
 // ==============================================================================================
 
 FunctionDeclaration: Form = {
-    <l:@L> "(" "func" <name_and_linkage:FuncId> <cc:CallConvAttr?> <params:FuncParam*> <result:FuncResult?> <blocks:Block*> ")" <r:@R> =>? {
+    <l:@L> "(" "func" <name_and_linkage:FuncId> <cc:CallConvAttr?> <params:FuncParam*> <result:FuncResult?> <locals:Local*> <mut blocks:Block*> ")" <r:@R> =>? {
         let (name, linkage) = name_and_linkage;
         let cc = cc.unwrap_or(CallConv::SystemV);
-        let results = result.map(|res| vec![res]).unwrap_or_default();
+        let region_params = params.iter().map(|abi_param| Span::new(abi_param.span(), abi_param.ty.clone())).collect();
+        let region_results = result.as_ref().map(|abi_param| vec![Span::new(abi_param.span(), abi_param.ty.clone())]).unwrap_or_default();
+        let params = params.into_iter().map(|spanned| spanned.into_inner()).collect();
+        let results = result.map(|res| vec![res.into_inner()]).unwrap_or_default();
         let signature = Signature {
             params,
             results,
@@ -280,7 +297,13 @@ FunctionDeclaration: Form = {
         match name {
             Left(name) if blocks.is_empty() =>  Err(ParseError::EmptyFunction { span: span!(source_id, l, r) }.into()),
             Left(name) => {
-                Ok(Form::Function(FunctionDeclaration::new(span!(source_id, l, r), name, signature, blocks, AttributeSet::default())))
+                let span = span!(source_id, l, r);
+                let region_id = RegionId::from_u32(0);
+                for block in blocks.iter_mut() {
+                    block.region_id = region_id;
+                }
+                let region = Region::new(span, region_id, region_params, region_results, blocks);
+                Ok(Form::Function(FunctionDeclaration::new(span, name, signature, locals, region, AttributeSet::default())))
             }
             Right(id) if !blocks.is_empty() => Err(ParseError::ImportedFunctionWithBody { span: span!(source_id, l, r) }.into()),
             Right(id) => {
@@ -299,17 +322,18 @@ FuncId: (Either<Ident, FunctionIdent>, Linkage) = {
     <NameOrId> => (Left(<>), Linkage::Internal),
 }
 
-FuncParam: AbiParam = {
-    "(" "param" "(" "sret" ")" <ty:TypeName> ")"
-        => AbiParam { ty, purpose: ArgumentPurpose::StructReturn, extension: ArgumentExtension::None },
-    "(" "param" "(" <extension:ArgumentExtension> ")" <ty:TypeName> ")"
-        => AbiParam { ty, purpose: ArgumentPurpose::Default, extension },
-    "(" "param" <ty:TypeName> ")"
-        => AbiParam { ty, purpose: ArgumentPurpose::Default, extension: ArgumentExtension::None },
+FuncParam: Span<AbiParam> = {
+    <l:@L> "(" "param" "(" "sret" ")" <ty:TypeName> ")" <r:@R>
+        => Span::new(span!(source_id, l, r), AbiParam { ty, purpose: ArgumentPurpose::StructReturn, extension: ArgumentExtension::None }),
+    <l:@L> "(" "param" "(" <extension:ArgumentExtension> ")" <ty:TypeName> ")" <r:@R>
+        => Span::new(span!(source_id, l, r), AbiParam { ty, purpose: ArgumentPurpose::Default, extension }),
+    <l:@L> "(" "param" <ty:TypeName> ")" <r:@R>
+        => Span::new(span!(source_id, l, r), AbiParam { ty, purpose: ArgumentPurpose::Default, extension: ArgumentExtension::None }),
 }
 
-FuncResult: AbiParam = {
-    "(" "result" <ty:TypeName> ")" => AbiParam { ty, purpose: Default::default(), extension: Default::default() },
+FuncResult: Span<AbiParam> = {
+    <l:@L> "(" "result" <ty:TypeName> ")" <r:@R>
+        => Span::new(span!(source_id, l, r), AbiParam { ty, purpose: Default::default(), extension: Default::default() }),
 }
 
 CallConvAttr: CallConv = {
@@ -327,6 +351,39 @@ ArgumentExtension: ArgumentExtension = {
     "sext" => ArgumentExtension::Sext,
 }
 
+// LOCALS
+// ================================================================================================
+
+Local: Span<Local> = {
+    <l:@L> "(" "local" <id:LocalId> <ty:TypeName> ")" <r:@R> => {
+         Span::new(span!(source_id, l, r), Local { id, ty })
+    }
+}
+
+// REGIONS
+// ================================================================================================
+
+Region: Region = {
+    <l:@L> "(" "region" <id:U32> <params:RegionParams> <results:RegionResults> <mut blocks:Block+> ")" <r:@R> => {
+        let id = RegionId::from_u32(id);
+        for block in blocks.iter_mut() {
+            block.region_id = id;
+        }
+        Region::new(span!(source_id, l, r), id, params, results, blocks)
+    }
+}
+
+#[inline]
+RegionParams: Vec<Span<Type>> = {
+    "(" "params" <tys:SpannedTypeName+> ")" => tys,
+    => vec![],
+}
+
+#[inline]
+RegionResults: Vec<Span<Type>> = {
+    "(" "results" <tys:SpannedTypeName+> ")" => tys,
+    => vec![],
+}
 
 // BLOCKS
 // ================================================================================================
@@ -412,9 +469,13 @@ Inst: Inst = {
         }
         Ok(Inst::new(span!(source_id, l, r), InstType::Switch { opcode: Opcode::Switch, selector, successors, fallback }, vec![]))
     },
+
+    <inst:InstWithRegion> => Inst::new(inst.span(), inst.into_inner(), vec![]),
 }
 
 InstWithResult: Span<InstType> = {
+    InstWithRegion,
+
     <l:@L> "(" <op_and_overflow:UnaryOpcode> <operand:Operand> ")" <r:@R> => {
         let (opcode, overflow) = op_and_overflow;
         Span::new(span!(source_id, l, r), InstType::UnaryOp { opcode, overflow, operand })
@@ -433,10 +494,20 @@ InstWithResult: Span<InstType> = {
         Span::new(span!(source_id, l, r), InstType::Call { opcode: Opcode::Syscall, callee, operands })
     },
 
+    <l:@L> "(" "load" "." "local" <local:LocalId> <operands:SpannedValueId*> ")" <r:@R> => {
+        Span::new(span!(source_id, l, r), InstType::LocalVar { opcode: Opcode::Load, local, operands })
+    },
+
+    <l:@L> "(" "store" "." "local" <local:LocalId> <operands:SpannedValueId*> ")" <r:@R> => {
+        Span::new(span!(source_id, l, r), InstType::LocalVar { opcode: Opcode::Store, local, operands })
+    },
+
     <expr:GlobalValueExpr> => Span::new(expr.span(), InstType::GlobalValue { opcode: Opcode::GlobalValue, expr }),
 }
 
 InstWithManyResults: Span<InstType> = {
+    InstWithRegion,
+
     <l:@L> "(" <opcode:OverflowingUnaryOpcode> <operand:Operand> ")" <r:@R> => {
         let overflow = Some(Overflow::Overflowing);
         Span::new(span!(source_id, l, r), InstType::UnaryOp { opcode, overflow, operand })
@@ -449,6 +520,16 @@ InstWithManyResults: Span<InstType> = {
 
     <l:@L> "(" <opcode:PrimOpOpcode> <operands:Operand*> ")" <r:@R> => {
         Span::new(span!(source_id, l, r), InstType::PrimOp { opcode, operands })
+    }
+}
+
+InstWithRegion: Span<InstType> = {
+    <l:@L> "(" "if.true" <cond:SpannedValueId> <then_region:Region> <else_region:Region> ")" <r:@R> => {
+        Span::new(span!(source_id, l, r), InstType::If { opcode: Opcode::IfTrue, cond, then_region, else_region })
+    },
+
+    <l:@L> "(" "while.true" <operands:SpannedValueId*> <before:Region> <body:Region> ")" <r:@R> => {
+        Span::new(span!(source_id, l, r), InstType::While { opcode: Opcode::WhileTrue, operands, before, body })
     }
 }
 
@@ -620,6 +701,15 @@ U32: u32 = {
     }
 }
 
+U16: u16 = {
+    <l:@L> <i:int> <r:@R> =>? {
+        match u16::try_from(i) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::InvalidU16 { span: span!(source_id, l, r), value: i }.into()),
+        }
+    }
+}
+
 RawOffset: i32 = {
     <l:@L> <i:int> <r:@R> =>? {
         match i32::try_from(i) {
@@ -655,6 +745,11 @@ ValueId: crate::Value = {
     value_id,
 }
 
+#[inline]
+LocalId: LocalId = {
+    <id:U16> => LocalId::from_u16(id),
+}
+
 // LEXER
 // ================================================================================================
 
@@ -673,16 +768,20 @@ extern {
         "kernel" => Token::Kernel,
         "const" => Token::Const,
         "global" => Token::Global,
+        "local" => Token::Local,
         "data" => Token::Data,
         "type" => Token::Type,
         "func" => Token::Func,
+        "region" => Token::Region,
         "block" => Token::Block,
         "let" => Token::Let,
         "export" => Token::Export,
         "import" => Token::Import,
         "id" => Token::Id,
         "param" => Token::Param,
+        "params" => Token::Params,
         "result" => Token::Result,
+        "results" => Token::Results,
         "cc" => Token::Cc,
         "fast" => Token::Fast,
         "wasm" => Token::Wasm,
@@ -697,6 +796,8 @@ extern {
         "br" => Token::Br,
         "condbr" => Token::CondBr,
         "switch" => Token::Switch,
+        "if.true" => Token::IfTrue,
+        "while.true" => Token::WhileTrue,
         "test" => Token::Test,
         "load" => Token::Load,
         "memcpy" => Token::MemCpy,

@@ -33,7 +33,7 @@ impl Rule<Function> for FunctionValidator {
 
         // Ensure basic integrity of the function body
         let mut rules = BlockValidator::new(&function.dfg, function.id.span());
-        for (_, block) in function.dfg.blocks() {
+        for block in function.dfg.body().blocks() {
             rules.validate(block, diagnostics)?;
         }
 
@@ -44,7 +44,7 @@ impl Rule<Function> for FunctionValidator {
         // Verify value usage
         let mut rules = DefsDominateUses::new(&function.dfg, &domtree)
             .chain(TypeCheck::new(&function.signature, &function.dfg));
-        for (_, block) in function.dfg.blocks() {
+        for block in function.dfg.body().blocks() {
             rules.validate(block, diagnostics)?;
         }
 

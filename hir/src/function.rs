@@ -1,9 +1,9 @@
 use cranelift_entity::entity_impl;
 use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink};
 
-use self::formatter::PrettyPrint;
 use crate::{
     diagnostics::{miette, Diagnostic, Spanned},
+    formatter::PrettyPrint,
     *,
 };
 
@@ -530,7 +530,19 @@ impl formatter::PrettyPrint for Function {
         let signature =
             (const_text(" ") + self.signature.render()) | indent(6, nl() + self.signature.render());
 
-        let body = self.dfg.blocks().fold(nl(), |acc, (_, block_data)| {
+        let locals = self.dfg.locals().fold(Document::Empty, |acc, local| {
+            acc + indent(
+                6,
+                nl() + const_text("(")
+                    + const_text("local")
+                    + const_text(" ")
+                    + display(local.id.as_usize())
+                    + text(format!("{}", &local.ty))
+                    + const_text(")"),
+            )
+        });
+
+        let body = self.dfg.body().blocks().iter().fold(nl(), |acc, block_data| {
             let open = const_text("(")
                 + const_text("block")
                 + const_text(" ")
@@ -587,7 +599,7 @@ impl formatter::PrettyPrint for Function {
             }
         });
 
-        header + signature + body + nl() + const_text(")")
+        header + signature + locals + body + nl() + const_text(")")
     }
 }
 impl fmt::Display for Function {
@@ -610,7 +622,8 @@ impl PartialEq for Function {
 
         // We expect the blocks to be laid out in the same order, and to have the same parameter
         // lists
-        for (block_id, block) in self.dfg.blocks() {
+        for block in self.dfg.body().blocks() {
+            let block_id = block.id;
             if let Some(other_block) = other.dfg.blocks.get(block_id) {
                 if block.params.as_slice(&self.dfg.value_lists)
                     != other_block.params.as_slice(&other.dfg.value_lists)
@@ -670,47 +683,35 @@ struct CfgPrinter<'a> {
 }
 impl<'a> fmt::Display for CfgPrinter<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::collections::{BTreeSet, VecDeque};
-
         f.write_str("flowchart TB\n")?;
 
-        let mut block_q = VecDeque::from([self.function.dfg.entry_block()]);
-        let mut visited = BTreeSet::<Block>::default();
-        while let Some(block_id) = block_q.pop_front() {
-            if !visited.insert(block_id) {
-                continue;
-            }
-            if let Some(last_inst) = self.function.dfg.last_inst(block_id) {
-                match self.function.dfg.analyze_branch(last_inst) {
-                    BranchInfo::NotABranch => {
-                        // Must be a return or unreachable, print opcode for readability
-                        let opcode = self.function.dfg.inst(last_inst).opcode();
-                        writeln!(f, "    {block_id} --> {opcode}")?;
-                    }
-                    BranchInfo::SingleDest(info) => {
-                        assert!(
-                            self.function.dfg.is_block_linked(info.destination),
-                            "reference to detached block in attached block {}",
-                            info.destination
-                        );
-                        writeln!(f, "    {block_id} --> {}", info.destination)?;
-                        block_q.push_back(info.destination);
-                    }
-                    BranchInfo::MultiDest(ref infos) => {
-                        for info in infos {
-                            assert!(
-                                self.function.dfg.is_block_linked(info.destination),
-                                "reference to detached block in attached block {}",
-                                info.destination
-                            );
-                            writeln!(f, "    {block_id} --> {}", info.destination)?;
-                            block_q.push_back(info.destination);
+        // Generate subgraph blocks for each region
+        for (region_id, region) in self.function.dfg.regions() {
+            writeln!(f, "    subgraph {region_id}")?;
+            for block in region.blocks() {
+                if let Some(last_inst) = block.last() {
+                    let block_id = block.id;
+                    match self.function.dfg.analyze_branch(last_inst) {
+                        BranchInfo::NotABranch => {
+                            continue;
+                        }
+                        BranchInfo::SingleDest(succ) => {
+                            let dest = succ.destination;
+                            writeln!(f, "        {block_id} --> {dest}")?;
+                        }
+                        BranchInfo::MultiDest(succs) => {
+                            for succ in succs.iter() {
+                                let dest = succ.destination;
+                                writeln!(f, "        {block_id} --> {dest}")?;
+                            }
                         }
                     }
                 }
             }
+            writeln!(f, "    end")?;
         }
 
-        Ok(())
+        writeln!(f, "    entry --> {}", self.function.dfg.body_id())?;
+        writeln!(f, "    {} --> ret", self.function.dfg.body_id())
     }
 }

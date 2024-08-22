@@ -110,9 +110,11 @@ impl ConversionPass for ConvertAstToHir {
 
         let mut functions = crate::FunctionList::default();
         let mut values_by_id = ValuesById::default();
+        let mut locals_by_id = LocalsById::default();
         let mut used_imports = BTreeSet::<FunctionIdent>::default();
         let mut inst_results = InstResults::default();
         for mut function in worklist.into_iter() {
+            locals_by_id.clear();
             values_by_id.clear();
             inst_results.clear();
 
@@ -120,43 +122,68 @@ impl ConversionPass for ConvertAstToHir {
                 module: module.name,
                 function: function.name,
             };
-
             is_valid &= function.is_declaration_valid(&session.diagnostics);
-            let entry = function.blocks[0].id;
-            let mut blocks_by_id = match function.populate_block_map(&session.diagnostics) {
-                Ok(blocks) => blocks,
-                Err(blocks) => {
-                    is_valid = false;
-                    blocks
+
+            for local in core::mem::take(&mut function.locals) {
+                match locals_by_id.entry(local.id) {
+                    alloc::collections::btree_map::Entry::Vacant(entry) => {
+                        entry.insert(local);
+                    }
+                    alloc::collections::btree_map::Entry::Occupied(entry) => {
+                        session
+                            .diagnostics
+                            .diagnostic(Severity::Error)
+                            .with_message("invalid local variable declaration")
+                            .with_primary_label(
+                                local.span(),
+                                "a local with the same id has already been declared",
+                            )
+                            .with_secondary_label(entry.get().span(), "previously declared here")
+                            .emit();
+                        is_valid &= false;
+                    }
                 }
-            };
-            let mut blockq = VecDeque::from([entry]);
+            }
+
+            let body_id = function.body.id;
+            let (regions_by_id, mut blocks_by_id) =
+                match function.populate_region_and_block_maps(&session.diagnostics) {
+                    Ok(maps) => maps,
+                    Err(maps) => {
+                        is_valid = false;
+                        maps
+                    }
+                };
+            let mut blockq = VecDeque::from_iter(blocks_by_id.keys().copied());
 
             // Build the HIR function
             let mut f = Box::new(crate::Function::new_uninit(id, function.signature));
             // Move attributes from the AST to the DFG
             f.dfg.attrs = function.attrs;
-            // The entry block is always the first in the layout
-            f.dfg.entry = entry;
-            // Visit each block and build it, but do not yet write to the DataFlowGraph
-            let mut visited = BTreeSet::<crate::Block>::default();
+            // The entry region is the only region allowed in the function body
+            f.dfg.entry = body_id;
+            // Add all locals to the function
+            for local in locals_by_id.values() {
+                f.dfg.locals[local.id] = local.clone().into_inner();
+            }
+            // Add all regions to the function
+            for (_, region) in regions_by_id.into_iter() {
+                f.dfg.regions.append(region.id, region);
+            }
+            // Add all blocks to their corresponding regions, only after validating their contents
             while let Some(block_id) = blockq.pop_front() {
-                // Do not visit the same block twice
-                if !visited.insert(block_id) {
-                    continue;
-                }
-
-                let mut block_data = crate::BlockData::new(block_id);
-                let block = blocks_by_id.remove(&block_id).unwrap();
+                let block = blocks_by_id.get_mut(&block_id).unwrap();
+                let body = core::mem::take(&mut block.body);
+                let mut block_data = crate::BlockData::new(block.region_id, block_id);
 
                 // Ensure block parameters are not yet defined
-                for (num, param) in block.params.into_iter().enumerate() {
+                for (num, param) in block.params.iter().enumerate() {
                     match try_insert_param_value(
                         param.id,
                         param.span(),
                         block.id,
                         num as u16,
-                        param.ty,
+                        param.ty.clone(),
                         &mut values_by_id,
                         &session.diagnostics,
                     ) {
@@ -170,14 +197,13 @@ impl ConversionPass for ConvertAstToHir {
                 }
 
                 // Populate the block with instructions from the AST
-                for (num, inst) in block.body.into_iter().enumerate() {
+                for (num, inst) in body.into_iter().enumerate() {
                     is_valid &= try_insert_inst(
                         inst,
                         num as u16,
                         &mut block_data,
-                        &mut blockq,
                         &blocks_by_id,
-                        &visited,
+                        &mut locals_by_id,
                         &mut values_by_id,
                         &mut inst_results,
                         &mut used_imports,
@@ -187,7 +213,12 @@ impl ConversionPass for ConvertAstToHir {
                         &session.diagnostics,
                     );
                 }
+                let region_id = block_data.region;
                 f.dfg.blocks.append(block_id, block_data);
+                let block = unsafe {
+                    UnsafeRef::from_raw(f.dfg.blocks.get_raw(block_id).unwrap().as_ptr())
+                };
+                f.dfg.regions[region_id].blocks.push_back(block);
             }
 
             // Now that all of the blocks have been visited,
@@ -259,9 +290,8 @@ fn try_insert_inst(
     mut inst: Inst,
     num: u16,
     block_data: &mut crate::BlockData,
-    blockq: &mut VecDeque<crate::Block>,
     blocks_by_id: &BlocksById,
-    visited_blocks: &BTreeSet<crate::Block>,
+    locals_by_id: &mut LocalsById,
     values_by_id: &mut ValuesById,
     inst_results: &mut InstResults,
     used_imports: &mut BTreeSet<FunctionIdent>,
@@ -371,31 +401,27 @@ fn try_insert_inst(
             opcode: op,
             successor,
         } => {
-            match is_valid_successor(
+            if is_valid_successor(
+                block_data.id,
                 &successor,
                 span,
                 blocks_by_id,
-                visited_blocks,
                 values_by_id,
                 diagnostics,
             ) {
-                Ok(next) => {
-                    if let Some(next) = next {
-                        blockq.push_back(next);
-                    }
-                    let args = crate::ValueList::from_iter(
-                        successor.args.iter().map(|arg| arg.into_inner()),
-                        &mut function.dfg.value_lists,
-                    );
-                    Some(Instruction::Br(crate::Br {
-                        op,
-                        successor: crate::Successor {
-                            destination: successor.id,
-                            args,
-                        },
-                    }))
-                }
-                Err(_) => None,
+                let args = crate::ValueList::from_iter(
+                    successor.args.iter().map(|arg| arg.into_inner()),
+                    &mut function.dfg.value_lists,
+                );
+                Some(Instruction::Br(crate::Br {
+                    op,
+                    successor: crate::Successor {
+                        destination: successor.id,
+                        args,
+                    },
+                }))
+            } else {
+                None
             }
         }
         InstType::CondBr {
@@ -406,41 +432,23 @@ fn try_insert_inst(
         } => {
             let mut is_valid = is_valid_value_reference(&cond, span, values_by_id, diagnostics);
 
-            match is_valid_successor(
+            is_valid &= is_valid_successor(
+                block_data.id,
                 &then_dest,
                 span,
                 blocks_by_id,
-                visited_blocks,
                 values_by_id,
                 diagnostics,
-            ) {
-                Ok(next) => {
-                    if let Some(next) = next {
-                        blockq.push_back(next);
-                    }
-                }
-                Err(_) => {
-                    is_valid = false;
-                }
-            }
+            );
 
-            match is_valid_successor(
+            is_valid &= is_valid_successor(
+                block_data.id,
                 &else_dest,
                 span,
                 blocks_by_id,
-                visited_blocks,
                 values_by_id,
                 diagnostics,
-            ) {
-                Ok(next) => {
-                    if let Some(next) = next {
-                        blockq.push_back(next);
-                    }
-                }
-                Err(_) => {
-                    is_valid = false;
-                }
-            }
+            );
 
             if is_valid {
                 let then_args = crate::ValueList::from_iter(
@@ -465,6 +473,55 @@ fn try_insert_inst(
                 }))
             } else {
                 None
+            }
+        }
+        InstType::If {
+            opcode,
+            cond,
+            then_region,
+            else_region,
+        } => {
+            if is_valid_value_reference(&cond, span, values_by_id, diagnostics) {
+                Some(Instruction::If(crate::If {
+                    op: opcode,
+                    cond: cond.into_inner(),
+                    then_region: then_region.id,
+                    else_region: else_region.id,
+                }))
+            } else {
+                None
+            }
+        }
+        InstType::While {
+            opcode,
+            operands,
+            before,
+            body,
+        } => {
+            if operands.is_empty() {
+                Some(Instruction::While(crate::While {
+                    op: opcode,
+                    args: Default::default(),
+                    before: before.id,
+                    body: body.id,
+                }))
+            } else {
+                let is_valid =
+                    is_valid_value_references(operands.as_slice(), span, values_by_id, diagnostics);
+                if is_valid {
+                    let args = crate::ValueList::from_iter(
+                        operands.iter().map(|arg| arg.into_inner()),
+                        &mut function.dfg.value_lists,
+                    );
+                    Some(Instruction::While(crate::While {
+                        op: opcode,
+                        args,
+                        before: before.id,
+                        body: body.id,
+                    }))
+                } else {
+                    None
+                }
             }
         }
         InstType::Switch {
@@ -508,46 +565,28 @@ fn try_insert_inst(
                         args: successor_args,
                     },
                 });
-                match is_valid_successor(
+                is_valid &= is_valid_successor(
+                    block_data.id,
                     &successor,
                     span,
                     blocks_by_id,
-                    visited_blocks,
                     values_by_id,
                     diagnostics,
-                ) {
-                    Ok(next) => {
-                        if let Some(next) = next {
-                            blockq.push_back(next);
-                        }
-                    }
-                    Err(_) => {
-                        is_valid = false;
-                    }
-                }
+                );
             }
 
             let fallback_args = crate::ValueList::from_iter(
                 fallback.args.iter().map(|arg| arg.into_inner()),
                 &mut function.dfg.value_lists,
             );
-            match is_valid_successor(
+            is_valid &= is_valid_successor(
+                block_data.id,
                 &fallback,
                 span,
                 blocks_by_id,
-                visited_blocks,
                 values_by_id,
                 diagnostics,
-            ) {
-                Ok(next) => {
-                    if let Some(next) = next {
-                        blockq.push_back(next);
-                    }
-                }
-                Err(_) => {
-                    is_valid = false;
-                }
-            }
+            );
 
             if is_valid {
                 Some(Instruction::Switch(crate::Switch {
@@ -819,6 +858,49 @@ fn try_insert_inst(
         } => {
             todo!()
         }
+        InstType::LocalVar {
+            opcode,
+            local,
+            operands,
+        } => {
+            if locals_by_id.contains_key(&local) {
+                if operands.is_empty() {
+                    Some(Instruction::LocalVar(crate::LocalVarOp {
+                        op: opcode,
+                        local,
+                        args: Default::default(),
+                    }))
+                } else {
+                    let is_valid = is_valid_value_references(
+                        operands.as_slice(),
+                        span,
+                        values_by_id,
+                        diagnostics,
+                    );
+                    if is_valid {
+                        let args = crate::ValueList::from_iter(
+                            operands.iter().map(|arg| arg.into_inner()),
+                            &mut function.dfg.value_lists,
+                        );
+                        Some(Instruction::LocalVar(crate::LocalVarOp {
+                            op: opcode,
+                            local,
+                            args,
+                        }))
+                    } else {
+                        None
+                    }
+                }
+            } else {
+                diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message("invalid local variable reference")
+                    .with_primary_label(span, "no such local has been declared")
+                    .emit();
+
+                None
+            }
+        }
     };
 
     // If the instruction data is invalid, we still need to handle the instruction results
@@ -857,30 +939,22 @@ fn try_insert_inst(
 }
 
 fn is_valid_successor(
+    current_block: crate::Block,
     successor: &Successor,
     parent_span: SourceSpan,
     blocks_by_id: &BlocksById,
-    visited: &BTreeSet<crate::Block>,
     values_by_id: &ValuesById,
     diagnostics: &DiagnosticsHandler,
-) -> Result<Option<crate::Block>, crate::Block> {
-    let is_visited = visited.contains(&successor.id);
+) -> bool {
+    let is_current_block = current_block == successor.id;
     let is_valid = is_valid_value_references(
         successor.args.as_slice(),
         parent_span,
         values_by_id,
         diagnostics,
     );
-    if blocks_by_id.contains_key(&successor.id) || is_visited {
-        if is_valid {
-            if is_visited {
-                Ok(None)
-            } else {
-                Ok(Some(successor.id))
-            }
-        } else {
-            Err(successor.id)
-        }
+    if blocks_by_id.contains_key(&successor.id) || is_current_block {
+        is_valid
     } else {
         diagnostics
             .diagnostic(Severity::Error)
@@ -888,7 +962,7 @@ fn is_valid_successor(
             .with_primary_label(successor.span, "invalid successor: the named block does not exist")
             .with_secondary_label(parent_span, "found in this instruction")
             .emit();
-        Err(successor.id)
+        false
     }
 }
 

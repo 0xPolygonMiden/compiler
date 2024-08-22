@@ -10,9 +10,10 @@ use crate::{
 };
 
 pub struct DataFlowGraph {
-    pub entry: Block,
+    pub entry: RegionId,
     pub attrs: AttributeSet,
-    pub blocks: OrderedArenaMap<Block, BlockData>,
+    pub regions: OrderedArenaMap<RegionId, Region>,
+    pub blocks: ArenaMap<Block, BlockData>,
     pub insts: ArenaMap<Inst, InstNode>,
     pub results: SecondaryMap<Inst, ValueList>,
     pub values: PrimaryMap<Value, ValueData>,
@@ -25,9 +26,14 @@ pub struct DataFlowGraph {
 impl Default for DataFlowGraph {
     fn default() -> Self {
         let mut dfg = Self::new_uninit();
-        let entry = dfg.blocks.create();
+        let entry_block = dfg.blocks.alloc_key();
+        let entry = dfg.regions.create();
         dfg.entry = entry;
-        dfg.blocks.append(entry, BlockData::new(entry));
+        dfg.blocks.append(entry_block, BlockData::new(entry, entry_block));
+        let entry_block =
+            unsafe { UnsafeRef::from_raw(dfg.blocks.get_raw(entry_block).unwrap().as_ptr()) };
+        dfg.regions
+            .append(entry, Region::new(SourceSpan::default(), entry, entry_block));
         dfg
     }
 }
@@ -35,9 +41,10 @@ impl DataFlowGraph {
     /// Create a new, completely uninitialized DataFlowGraph
     pub fn new_uninit() -> Self {
         Self {
-            entry: Block::from_u32(0),
+            entry: RegionId::from_u32(0),
             attrs: AttributeSet::default(),
-            blocks: OrderedArenaMap::new(),
+            regions: OrderedArenaMap::new(),
+            blocks: ArenaMap::new(),
             insts: ArenaMap::new(),
             results: SecondaryMap::new(),
             values: PrimaryMap::new(),
@@ -378,6 +385,23 @@ impl DataFlowGraph {
                         self.append_result(inst, ty);
                     }
                 }
+                Instruction::If(ref op) => {
+                    let results = self.region(op.then_region).results.clone();
+                    assert_eq!(
+                        results,
+                        self.region(op.else_region).results,
+                        "mismatched region signatures in `if.true`"
+                    );
+                    for ty in results.into_iter() {
+                        self.append_result(inst, ty);
+                    }
+                }
+                Instruction::While(ref op) => {
+                    let results = self.region(op.before).results.clone();
+                    for ty in results.into_iter() {
+                        self.append_result(inst, ty);
+                    }
+                }
                 ix => {
                     let overflow = ix.overflow();
                     for ty in opcode.results(overflow, ctrl_ty).into_iter() {
@@ -399,6 +423,13 @@ impl DataFlowGraph {
             match self.insts[inst].data.deref() {
                 Instruction::InlineAsm(ref asm) => {
                     new_results.extend(asm.results.as_slice().iter().cloned());
+                }
+                Instruction::If(ref op) => {
+                    new_results
+                        .extend(self.region(op.then_region).results.as_slice().iter().cloned());
+                }
+                Instruction::While(ref op) => {
+                    new_results.extend(self.region(op.before).results.as_slice().iter().cloned());
                 }
                 ix => {
                     let overflow = ix.overflow();
@@ -594,36 +625,107 @@ impl DataFlowGraph {
         self.insts[inst].analyze_branch(&self.value_lists)
     }
 
-    pub fn blocks(&self) -> impl Iterator<Item = (Block, &BlockData)> {
-        Blocks {
-            cursor: self.blocks.cursor(),
+    pub fn regions(&self) -> impl Iterator<Item = (RegionId, &Region)> {
+        Regions {
+            cursor: self.regions.cursor(),
         }
     }
 
-    /// Get the block identifier for the entry block
+    /// Get the region identifier for the region representing the body of the current function
     #[inline(always)]
-    pub fn entry_block(&self) -> Block {
+    pub fn body_id(&self) -> RegionId {
         self.entry
+    }
+
+    /// Get a reference to the region representing the body of the current function
+    #[inline]
+    pub fn body(&self) -> &Region {
+        &self.regions[self.entry]
+    }
+
+    /// Get a reference to the region representing the body of the current function
+    #[inline]
+    pub fn body_mut(&mut self) -> &mut Region {
+        &mut self.regions[self.entry]
+    }
+
+    /// Get a reference to the given region
+    #[inline(always)]
+    pub fn region(&self, id: RegionId) -> &Region {
+        &self.regions[id]
+    }
+
+    /// Get a mutable reference to the given region
+    #[inline(always)]
+    pub fn region_mut(&mut self, id: RegionId) -> &mut Region {
+        &mut self.regions[id]
+    }
+
+    pub fn region_args(&self, region: RegionId) -> &[Value] {
+        let block = self.region(region).entry_block();
+        block.params.as_slice(&self.value_lists)
+    }
+
+    pub fn is_region_linked(&self, region: RegionId) -> bool {
+        self.regions.contains(region)
+    }
+
+    pub fn is_region_empty(&self, region: RegionId) -> bool {
+        self.regions[region].is_empty()
+    }
+
+    pub fn create_region(&mut self) -> RegionId {
+        let id = self.regions.create();
+        let block_id = self.blocks.alloc_key();
+        let block = BlockData::new(id, block_id);
+        self.blocks.append(block_id, block);
+        let block = unsafe { UnsafeRef::from_raw(self.blocks.get_raw(block_id).unwrap().as_ptr()) };
+        self.regions.append(id, Region::new(SourceSpan::default(), id, block));
+        id
+    }
+
+    /// Removes `region` from the function layout, without destroying it's data
+    pub fn detach_region(&mut self, region: RegionId) {
+        self.regions.remove(region);
+    }
+
+    pub fn blocks_in(&self, region: RegionId) -> impl Iterator<Item = &BlockData> + '_ {
+        self.region(region).blocks().iter()
+    }
+
+    /// Get the block identifier for the entry block
+    #[inline]
+    pub fn entry_block(&self) -> Block {
+        self.regions[self.entry].entry_block().id
     }
 
     /// Get a reference to the data for the entry block
     #[inline]
     pub fn entry(&self) -> &BlockData {
-        &self.blocks[self.entry]
+        &self.blocks[self.entry_block()]
     }
 
     /// Get a mutable reference to the data for the entry block
     #[inline]
     pub fn entry_mut(&mut self) -> &mut BlockData {
-        &mut self.blocks[self.entry]
+        let entry = self.entry_block();
+        &mut self.blocks[entry]
     }
 
-    pub(super) fn last_block(&self) -> Option<Block> {
-        self.blocks.last().map(|b| b.key())
+    pub(super) fn last_block(&self) -> &BlockData {
+        self.last_block_in(self.entry)
+    }
+
+    pub(super) fn last_block_in(&self, region: RegionId) -> &BlockData {
+        self.region(region).last_block()
     }
 
     pub fn num_blocks(&self) -> usize {
-        self.blocks.iter().count()
+        self.body().len()
+    }
+
+    pub fn num_blocks_in(&self, region: RegionId) -> usize {
+        self.region(region).len()
     }
 
     /// Get an immutable reference to the block data for `block`
@@ -660,39 +762,70 @@ impl DataFlowGraph {
     }
 
     pub fn is_block_linked(&self, block: Block) -> bool {
-        self.blocks.contains(block)
+        if self.blocks.contains(block) {
+            let data = self.block(block);
+            data.is_linked() && self.is_region_linked(data.region)
+        } else {
+            false
+        }
     }
 
     pub fn is_block_empty(&self, block: Block) -> bool {
         self.blocks[block].is_empty()
     }
 
+    #[inline]
     pub fn create_block(&mut self) -> Block {
-        let id = self.blocks.create();
-        let data = BlockData::new(id);
+        self.create_block_in(self.entry)
+    }
+
+    pub fn create_block_in(&mut self, region: RegionId) -> Block {
+        let id = self.blocks.alloc_key();
+        let data = BlockData::new(region, id);
         self.blocks.append(id, data);
+        let block = unsafe { UnsafeRef::from_raw(self.blocks.get_raw(id).unwrap().as_ptr()) };
+        self.regions[region].blocks.push_back(block);
         id
     }
 
+    #[inline]
     pub fn append_block(&mut self, block: Block) {
-        self.blocks.append(block, BlockData::new(block));
+        self.append_block_to(block, self.entry)
     }
 
-    /// Creates a new block, inserted into the function layout just after `block`
+    pub fn append_block_to(&mut self, block: Block, region: RegionId) {
+        self.blocks.append(block, BlockData::new(region, block));
+        let block = unsafe { UnsafeRef::from_raw(self.blocks.get_raw(block).unwrap().as_ptr()) };
+        self.regions[region].blocks.push_back(block);
+    }
+
+    /// Creates a new block, inserted into the containing region of `block`, immediately after it
+    /// in the block layout of the region.
     pub fn create_block_after(&mut self, block: Block) -> Block {
-        let id = self.blocks.create();
-        let data = BlockData::new(id);
+        let region = self.block(block).region;
+        let id = self.blocks.alloc_key();
+        let data = BlockData::new(region, id);
         assert!(
             self.blocks.get(block).is_some(),
             "cannot insert a new block after {block}, it is not linked"
         );
-        self.blocks.insert_after(id, block, data);
+        self.blocks.append(id, data);
+        let new_block = unsafe { UnsafeRef::from_raw(self.blocks.get_raw(id).unwrap().as_ptr()) };
+        let after = unsafe { self.blocks.get_raw(block).unwrap().as_ptr() };
+        let mut cursor = unsafe { self.regions[region].blocks.cursor_mut_from_ptr(after) };
+        cursor.insert_after(new_block);
         id
     }
 
-    /// Removes `block` from the body of this function, without destroying it's data
+    /// Removes `block` from its containing region, without destroying it's data
     pub fn detach_block(&mut self, block: Block) {
-        self.blocks.remove(block);
+        let block_data = self.block(block);
+        let region = block_data.region;
+        if block_data.is_linked() {
+            let block = unsafe { self.blocks.get_raw(block).unwrap().as_ptr() };
+            let mut cursor = unsafe { self.regions[region].blocks.cursor_mut_from_ptr(block) };
+            cursor.remove();
+        }
     }
 
     pub fn num_block_params(&self, block: Block) -> usize {
@@ -890,11 +1023,11 @@ impl IndexMut<Inst> for DataFlowGraph {
     }
 }
 
-struct Blocks<'f> {
-    cursor: intrusive_collections::linked_list::Cursor<'f, LayoutAdapter<Block, BlockData>>,
+struct Regions<'f> {
+    cursor: intrusive_collections::linked_list::Cursor<'f, LayoutAdapter<RegionId, Region>>,
 }
-impl<'f> Iterator for Blocks<'f> {
-    type Item = (Block, &'f BlockData);
+impl<'f> Iterator for Regions<'f> {
+    type Item = (RegionId, &'f Region);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor.is_null() {

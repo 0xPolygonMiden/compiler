@@ -1,4 +1,4 @@
-use crate::{Block, Function, ProgramPoint};
+use crate::{Block, Function, ProgramPoint, RegionId};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Insert {
@@ -40,6 +40,19 @@ impl InsertionPoint {
                 .dfg
                 .inst_block(inst)
                 .expect("cannot insert relative to detached instruction"),
+        }
+    }
+
+    pub fn region(&self, function: &Function) -> RegionId {
+        match self.at {
+            ProgramPoint::Block(block) => function.dfg.block(block).region,
+            ProgramPoint::Inst(inst) => {
+                let block = function
+                    .dfg
+                    .inst_block(inst)
+                    .expect("cannot insert relative to detached instruction");
+                function.dfg.block(block).region
+            }
         }
     }
 }

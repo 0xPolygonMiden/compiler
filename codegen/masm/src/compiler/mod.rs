@@ -145,8 +145,9 @@ pub fn default_function_rewrites(session: &Session) -> RewriteSet<hir::Function>
     let mut rewrites = RewriteSet::default();
     if session.should_codegen() {
         rewrites.push(transforms::SplitCriticalEdges);
-        rewrites.push(transforms::Treeify);
         rewrites.push(transforms::InlineBlocks);
+        //rewrites.push(transforms::Treeify);
+        //rewrites.push(transforms::InlineBlocks);
         rewrites.push(transforms::ApplySpills);
     }
 
