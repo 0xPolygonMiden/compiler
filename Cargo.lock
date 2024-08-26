@@ -2856,7 +2856,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
@@ -3037,6 +3037,14 @@ dependencies = [
  "miden-core",
  "tracing",
  "winter-prover",
+]
+
+[[package]]
+name = "miden-sdk"
+version = "0.0.1"
+dependencies = [
+ "miden-base-sys",
+ "miden-stdlib-sys",
 ]
 
 [[package]]
@@ -3243,7 +3251,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-macros"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -3284,7 +3292,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-session"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "atty",
  "clap",

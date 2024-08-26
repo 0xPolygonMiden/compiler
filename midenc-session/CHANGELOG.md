@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.1...midenc-session-v0.0.2) - 2024-08-16
+
+### Added
+- *(codegen)* propagate source spans from hir to masm
+
+### Fixed
+- add tx kernel library with stubs and link it on `-l miden`
+- infer link libraries from target env
+- tweak session init handling of outputs
+- various tests, cli bugs, vm test executor, test builder api
+- *(cli)* improve help output, hide plumbing flags
+- clap error formatting, unused deps
+
+### Other
+- delete `miden-tx-kernel-sys` crate and move the code to `miden-base-sys`
+- rename `midenc-tx-kernel` to `miden-base-sys` and move it to
+- update to miden v0.10.3
+- update to miden v0.10.2
+- improve behavior of frontend config
+- clean up driver init and output config
+- fix various clippy warnings, bug in wasm br_table lowering, expect output
+- move miden-vm deps to latest commit included in 0.10 releasef
+- support compiled libraries, linker flags
+- update to latest miden vm patchset
+- unify diagnostics infa between compiler, assembler, vm
+- unify compilation, rodata init, test harness
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.0...midenc-session-v0.0.1) - 2024-07-18
 
 ### Added

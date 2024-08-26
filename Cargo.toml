@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "codegen/*",
+    "frontend-wasm",
     "hir",
     "hir-analysis",
     "hir-macros",
@@ -13,12 +14,12 @@ members = [
     "midenc-debug",
     "midenc-driver",
     "midenc-session",
-    "sdk/base-sys",
+    "sdk/*",
     "tools/*",
-    "frontend-wasm",
     "tests/integration",
 ]
 exclude = [
+    "sdk/.cargo",
     "tests/rust-apps/fib",
     "tests/rust-apps-wasm",
     "cargo-ext/tests/data",
@@ -85,7 +86,7 @@ midenc-codegen-masm = { path = "codegen/masm" }
 miden-diagnostics = "0.1"
 midenc-hir = { version = "0.0.1", path = "hir" }
 midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }
-midenc-hir-macros = { version = "0.0.1", path = "hir-macros" }
+midenc-hir-macros = { version = "0.0.2", path = "hir-macros" }
 midenc-hir-symbol = { version = "0.0.1", path = "hir-symbol" }
 midenc-hir-transform = { version = "0.0.1", path = "hir-transform" }
 midenc-hir-type = { version = "0.0.1", path = "hir-type" }
@@ -94,7 +95,7 @@ midenc-frontend-wasm = { version = "0.0.1", path = "frontend-wasm" }
 midenc-compile = { version = "0.0.1", path = "midenc-compile" }
 midenc-driver = { version = "0.0.1", path = "midenc-driver" }
 midenc-debug = { version = "0.0.1", path = "midenc-debug" }
-midenc-session = { version = "0.0.1", path = "midenc-session" }
+midenc-session = { version = "0.0.2", path = "midenc-session" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
