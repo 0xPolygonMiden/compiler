@@ -7,7 +7,7 @@ use std::{
 use cranelift_entity::{packed_option::PackedOption, SecondaryMap};
 use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult, PreservedAnalyses},
-    Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint, Value,
+    Block, BranchInfo, DataFlowGraph, Function, Inst, ProgramPoint, RegionId, Value,
 };
 use midenc_session::Session;
 use smallvec::SmallVec;
@@ -90,11 +90,35 @@ impl DominatorTree {
         domtree
     }
 
+    pub fn with_region(region: RegionId, dfg: &DataFlowGraph, cfg: &ControlFlowGraph) -> Self {
+        let block_capacity = dfg.region(region).len();
+        let mut domtree = Self {
+            nodes: SecondaryMap::with_capacity(block_capacity),
+            postorder: Vec::with_capacity(block_capacity),
+            stack: Vec::new(),
+            valid: false,
+        };
+        domtree.compute_region(region, dfg, cfg);
+        domtree
+    }
+
     /// Reset and compute a CFG post-order and dominator tree.
     pub fn compute(&mut self, func: &Function, cfg: &ControlFlowGraph) {
         debug_assert!(cfg.is_valid());
         self.compute_postorder(func);
         self.compute_domtree(func, cfg);
+        self.valid = true;
+    }
+
+    pub fn compute_region(
+        &mut self,
+        region: RegionId,
+        dfg: &DataFlowGraph,
+        cfg: &ControlFlowGraph,
+    ) {
+        debug_assert!(cfg.is_valid());
+        self.compute_postorder_region(region, dfg);
+        self.compute_domtree_region(region, dfg, cfg);
         self.valid = true;
     }
 
@@ -354,6 +378,56 @@ impl DominatorTree {
                             // any effect on the computation of dominators, and is purely for other
                             // consumers of the postorder we cache here.
                             match func.dfg.analyze_branch(inst) {
+                                BranchInfo::NotABranch => (),
+                                BranchInfo::SingleDest(successor) => {
+                                    if self.nodes[successor.destination].rpo_number == 0 {
+                                        self.stack.push((Visit::First, successor.destination));
+                                    }
+                                }
+                                BranchInfo::MultiDest(ref successors) => {
+                                    for successor in successors.iter().rev() {
+                                        if self.nodes[successor.destination].rpo_number == 0 {
+                                            self.stack.push((Visit::First, successor.destination));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Visit::Last => {
+                    // We've finished all this node's successors.
+                    self.postorder.push(block);
+                }
+            }
+        }
+    }
+
+    fn compute_postorder_region(&mut self, region_id: RegionId, dfg: &DataFlowGraph) {
+        self.clear();
+        let region = dfg.region(region_id);
+        self.nodes.resize(region.len());
+
+        self.stack.push((Visit::First, region.entry_block().id));
+
+        while let Some((visit, block)) = self.stack.pop() {
+            match visit {
+                Visit::First => {
+                    if self.nodes[block].rpo_number == 0 {
+                        // This is the first time we pop the block, so we need to scan its
+                        // successors and then revisit it.
+                        self.nodes[block].rpo_number = SEEN;
+                        self.stack.push((Visit::Last, block));
+                        if let Some(inst) = dfg.last_inst(block) {
+                            // Heuristic: chase the children in reverse. This puts the first
+                            // successor block first in the postorder, all other things being
+                            // equal, which tends to prioritize loop backedges over out-edges,
+                            // putting the edge-block closer to the loop body and minimizing
+                            // live-ranges in linear instruction space. This heuristic doesn't have
+                            // any effect on the computation of dominators, and is purely for other
+                            // consumers of the postorder we cache here.
+                            match dfg.analyze_branch(inst) {
                                 BranchInfo::NotABranch => (),
                                 BranchInfo::SingleDest(successor) => {
                                     if self.nodes[successor.destination].rpo_number == 0 {

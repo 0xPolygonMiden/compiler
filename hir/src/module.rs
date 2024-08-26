@@ -856,6 +856,11 @@ impl<'m> ModuleFunctionBuilder<'m> {
     }
 
     #[inline]
+    pub fn create_region(&mut self) -> RegionId {
+        self.data_flow_graph_mut().create_region()
+    }
+
+    #[inline]
     pub fn switch_to_block(&mut self, block: Block) {
         self.position = block;
     }

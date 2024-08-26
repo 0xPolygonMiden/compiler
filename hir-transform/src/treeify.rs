@@ -413,7 +413,16 @@ impl RewritePass for Treeify {
                     }
 
                     // Copy this block and its successors
-                    treeify(b, p, function, &mut block_infos, &mut block_q, value_map, block_map)?;
+                    treeify(
+                        b,
+                        p,
+                        function,
+                        &mut block_infos,
+                        &mut block_q,
+                        value_map,
+                        block_map,
+                        session,
+                    )?;
                 }
 
                 // Mark the control flow graph as modified
@@ -461,6 +470,7 @@ fn treeify(
     block_q: &mut VecDeque<CopyBlock>,
     mut value_map: ScopedMap<ValueId, ValueId>,
     mut block_map: ScopedMap<BlockId, BlockId>,
+    session: &Session,
 ) -> Result<(), Report> {
     // Check if we're dealing with a loop header
     let is_loop = block_infos.is_loop_header(b).is_some();
@@ -524,7 +534,11 @@ fn treeify(
             }
         }
     });
-    assert!(seen);
+    if !seen {
+        function.write_to_stdout(session).unwrap();
+        println!("{}", function.cfg_printer());
+    }
+    assert!(seen, "expected to have observed predecessor {p:?} from {b} in {}", &function.id);
 
     // 4. Copy contents of `b` to `b'`, inserting defs in the lookup table, and mapping operands to
     //    their new "corrected" values

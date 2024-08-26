@@ -11,7 +11,6 @@ use crate::{
 
 pub struct DataFlowGraph {
     pub entry: RegionId,
-    pub attrs: AttributeSet,
     pub regions: OrderedArenaMap<RegionId, Region>,
     pub blocks: ArenaMap<Block, BlockData>,
     pub insts: ArenaMap<Inst, InstNode>,
@@ -32,8 +31,10 @@ impl Default for DataFlowGraph {
         dfg.blocks.append(entry_block, BlockData::new(entry, entry_block));
         let entry_block =
             unsafe { UnsafeRef::from_raw(dfg.blocks.get_raw(entry_block).unwrap().as_ptr()) };
-        dfg.regions
-            .append(entry, Region::new(SourceSpan::default(), entry, entry_block));
+        dfg.regions.append(
+            entry,
+            Region::new(SourceSpan::default(), entry, entry_block, Default::default()),
+        );
         dfg
     }
 }
@@ -42,7 +43,6 @@ impl DataFlowGraph {
     pub fn new_uninit() -> Self {
         Self {
             entry: RegionId::from_u32(0),
-            attrs: AttributeSet::default(),
             regions: OrderedArenaMap::new(),
             blocks: ArenaMap::new(),
             insts: ArenaMap::new(),
@@ -54,38 +54,6 @@ impl DataFlowGraph {
             locals: PrimaryMap::new(),
             constants: ConstantPool::default(),
         }
-    }
-
-    /// Return the value associated with attribute `name` for this function
-    pub fn get_attribute<Q>(&self, name: &Q) -> Option<&AttributeValue>
-    where
-        Symbol: std::borrow::Borrow<Q>,
-        Q: Ord + ?Sized,
-    {
-        self.attrs.get(name)
-    }
-
-    /// Return true if this function has an attributed named `name`
-    pub fn has_attribute<Q>(&self, name: &Q) -> bool
-    where
-        Symbol: std::borrow::Borrow<Q>,
-        Q: Ord + ?Sized,
-    {
-        self.attrs.has(name)
-    }
-
-    /// Set the attribute `name` with `value` for this function.
-    pub fn set_attribute(&mut self, name: impl Into<Symbol>, value: impl Into<AttributeValue>) {
-        self.attrs.insert(name, value);
-    }
-
-    /// Remove any attribute with the given name from this function
-    pub fn remove_attribute<Q>(&mut self, name: &Q)
-    where
-        Symbol: std::borrow::Borrow<Q>,
-        Q: Ord + ?Sized,
-    {
-        self.attrs.remove(name);
     }
 
     /// Returns an [ExternalFunction] given its [FunctionIdent]
@@ -622,7 +590,44 @@ impl DataFlowGraph {
     }
 
     pub fn analyze_branch(&self, inst: Inst) -> BranchInfo<'_> {
-        self.insts[inst].analyze_branch(&self.value_lists)
+        let node = &self.insts[inst];
+        match node.analyze_branch(&self.value_lists) {
+            BranchInfo::NotABranch => match &*node.data {
+                Instruction::If(If {
+                    then_region,
+                    else_region,
+                    ..
+                }) => BranchInfo::MultiDest(vec![
+                    SuccessorInfo {
+                        destination: self.region(*then_region).entry_block().id,
+                        args: &[],
+                    },
+                    SuccessorInfo {
+                        destination: self.region(*else_region).entry_block().id,
+                        args: &[],
+                    },
+                ]),
+                Instruction::While(While { before, args, .. }) => {
+                    BranchInfo::SingleDest(SuccessorInfo {
+                        destination: self.region(*before).entry_block().id,
+                        args: args.as_slice(&self.value_lists),
+                    })
+                }
+                Instruction::Ret(Ret {
+                    op: Opcode::Yield,
+                    args,
+                    ..
+                }) => {
+                    let current_region = self.block(node.block).region;
+                    BranchInfo::SingleDest(SuccessorInfo {
+                        destination: self.region(current_region).exit,
+                        args: args.as_slice(&self.value_lists),
+                    })
+                }
+                _ => BranchInfo::NotABranch,
+            },
+            branch_info => branch_info,
+        }
     }
 
     pub fn regions(&self) -> impl Iterator<Item = (RegionId, &Region)> {
@@ -680,7 +685,8 @@ impl DataFlowGraph {
         let block = BlockData::new(id, block_id);
         self.blocks.append(block_id, block);
         let block = unsafe { UnsafeRef::from_raw(self.blocks.get_raw(block_id).unwrap().as_ptr()) };
-        self.regions.append(id, Region::new(SourceSpan::default(), id, block));
+        self.regions
+            .append(id, Region::new(SourceSpan::default(), id, block, Default::default()));
         id
     }
 
@@ -721,7 +727,7 @@ impl DataFlowGraph {
     }
 
     pub fn num_blocks(&self) -> usize {
-        self.body().len()
+        self.regions().map(|(_, region)| region.len()).sum::<usize>()
     }
 
     pub fn num_blocks_in(&self, region: RegionId) -> usize {

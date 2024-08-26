@@ -1,5 +1,6 @@
 extern crate proc_macro;
 
+mod op;
 mod spanned;
 
 use inflector::cases::kebabcase::to_kebab_case;
@@ -18,6 +19,25 @@ pub fn derive_spanned(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         Data::Union(_) => {
             Err(Error::new(name.span(), "deriving Spanned on unions is not currently supported"))
         }
+    };
+    match result {
+        Ok(ts) => ts,
+        Err(err) => err.into_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(Op, attributes(operand, result, successor, region, interfaces))]
+pub fn derive_op(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse into syntax tree
+    let derive = parse_macro_input!(input as DeriveInput);
+    // Structure name
+    let name = derive.ident;
+    let result = match derive.data {
+        Data::Struct(data) => op::derive_op_struct(name, data, derive.generics),
+        Data::Union(_) | Data::Enum(_) => Err(Error::new(
+            name.span(),
+            "deriving Op on enums/unions is not currently supported",
+        )),
     };
     match result {
         Ok(ts) => ts,

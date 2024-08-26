@@ -21,6 +21,14 @@ pub struct Region {
     #[span]
     pub span: SourceSpan,
     pub id: RegionId,
+    /// The block to which control is transferred on exit from this region
+    ///
+    /// The exit block must have a parameter list that matches the result types of the region,
+    /// i.e. the results will be supplied as arguments to the exit block's parameter list
+    ///
+    /// This block is not part of the region itself, but instead represents something like a
+    /// continuation, which tells us how control should be transferred out of the region.
+    pub exit: Block,
     /// The arguments expected by this region
     pub params: Vec<Type>,
     /// The results returned from this region
@@ -29,13 +37,19 @@ pub struct Region {
     pub blocks: BlockList,
 }
 impl Region {
-    pub(crate) fn new(span: SourceSpan, id: RegionId, entry: UnsafeRef<BlockData>) -> Self {
+    pub(crate) fn new(
+        span: SourceSpan,
+        id: RegionId,
+        entry: UnsafeRef<BlockData>,
+        exit: Block,
+    ) -> Self {
         let mut blocks = LinkedList::default();
         blocks.push_back(entry);
         Self {
             link: Default::default(),
             span,
             id,
+            exit,
             params: vec![],
             results: vec![],
             blocks,
@@ -47,6 +61,7 @@ impl Region {
             link: Default::default(),
             span,
             id,
+            exit: Default::default(),
             params: vec![],
             results: vec![],
             blocks: LinkedList::default(),
@@ -177,18 +192,22 @@ impl<'a> formatter::PrettyPrint for DisplayRegion<'a> {
         let header =
             const_text("(") + const_text("region") + const_text(" ") + display(self.region.id);
 
-        let params = self.region.params.iter().fold(Document::Empty, |acc, param| {
-            if acc.is_empty() {
-                text(format!("{param}"))
-            } else {
-                acc + const_text(" ") + text(format!("{param}"))
-            }
-        });
+        let params = if self.region.params.is_empty() {
+            Document::Empty
+        } else {
+            self.region
+                .params
+                .iter()
+                .fold(const_text("(") + const_text("params"), |acc, param| {
+                    acc + const_text(" ") + text(format!("{param}"))
+                })
+                + const_text(")")
+        };
 
         let params_and_results = if self.region.results.is_empty() {
             params
         } else {
-            let open = const_text("(") + const_text("result");
+            let open = const_text("(") + const_text("results");
             let results = self
                 .region
                 .results

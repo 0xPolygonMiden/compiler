@@ -8,7 +8,8 @@
 // for details
 #![feature(trait_upcasting)]
 #![feature(debug_closure_helpers)]
-pub mod parser;
+#![feature(allocator_api)]
+#![feature(ptr_metadata)]
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -131,6 +132,7 @@ mod block;
 mod builder;
 mod component;
 mod constants;
+mod context;
 mod dataflow;
 mod display;
 pub mod formatter;
@@ -139,10 +141,14 @@ mod globals;
 mod ident;
 mod immediates;
 mod insert;
-mod instruction;
+// REMOVE:
+//mod instruction;
 mod layout;
 mod locals;
 mod module;
+mod operation;
+mod ops;
+//pub mod parser;
 pub mod pass;
 mod program;
 mod region;
@@ -150,6 +156,7 @@ mod segments;
 pub mod testing;
 #[cfg(test)]
 mod tests;
+mod traits;
 mod value;
 
 use core::fmt;
@@ -164,6 +171,7 @@ pub use self::{
     builder::{DefaultInstBuilder, FunctionBuilder, InstBuilder, InstBuilderBase, ReplaceBuilder},
     component::*,
     constants::{Constant, ConstantData, ConstantPool, IntoBytes},
+    context::Context,
     dataflow::DataFlowGraph,
     display::{Decorator, DisplayValues},
     function::*,
@@ -171,10 +179,13 @@ pub use self::{
     ident::{demangle, FunctionIdent, Ident},
     immediates::Immediate,
     insert::{Insert, InsertionPoint},
-    instruction::*,
+    // REMOVE:
+    //instruction::*,
     layout::{ArenaMap, LayoutAdapter, LayoutNode, OrderedArenaMap},
     locals::{Local, LocalId},
     module::*,
+    operation::{FromOperationRef, Op, OpExt, OpId, Operation},
+    ops::*,
     pass::{
         AnalysisKey, ConversionPassRegistration, ModuleRewritePassAdapter, PassInfo,
         RewritePassRegistration,
@@ -195,21 +206,21 @@ pub use self::{
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ProgramPoint {
     /// An instruction in the function.
-    Inst(Inst),
+    Inst(OpId),
     /// A block header.
     Block(Block),
 }
 impl ProgramPoint {
     /// Get the instruction we know is inside.
-    pub fn unwrap_inst(self) -> Inst {
+    pub fn unwrap_inst(self) -> OpId {
         match self {
             Self::Inst(x) => x,
             Self::Block(x) => panic!("expected inst: {}", x),
         }
     }
 }
-impl From<Inst> for ProgramPoint {
-    fn from(inst: Inst) -> Self {
+impl From<OpId> for ProgramPoint {
+    fn from(inst: OpId) -> Self {
         Self::Inst(inst)
     }
 }

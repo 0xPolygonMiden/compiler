@@ -377,6 +377,7 @@ pub type FunctionList = LinkedList<FunctionListAdapter>;
 pub struct Function {
     link: LinkedListLink,
     #[span]
+    op: Operation,
     #[analysis_key]
     pub id: FunctionIdent,
     pub signature: Signature,
@@ -388,7 +389,9 @@ impl Function {
     /// The resulting function will be given default internal linkage, i.e. it will only
     /// be visible within it's containing [Module].
     pub fn new(id: FunctionIdent, signature: Signature) -> Self {
+        let mut op = Operation::new(id.span());
         let mut dfg = DataFlowGraph::default();
+        op.regions.push(dfg.entry);
         let entry = dfg.entry_block();
         for param in signature.params() {
             dfg.append_block_param(entry, param.ty.clone(), id.span());
@@ -402,6 +405,7 @@ impl Function {
         );
         Self {
             link: Default::default(),
+            op,
             id,
             signature,
             dfg,
@@ -414,6 +418,7 @@ impl Function {
     ///
     /// This is primarily intended for use by the IR parser.
     pub(crate) fn new_uninit(id: FunctionIdent, signature: Signature) -> Self {
+        let op = Operation::new(id.span());
         let mut dfg = DataFlowGraph::new_uninit();
         dfg.imports.insert(
             id,
@@ -424,6 +429,7 @@ impl Function {
         );
         Self {
             link: Default::default(),
+            op,
             id,
             signature,
             dfg,
@@ -482,15 +488,6 @@ impl Function {
         self.signature.cc = cc;
     }
 
-    /// Return true if this function has attribute `name`
-    pub fn has_attribute<Q>(&self, name: &Q) -> bool
-    where
-        Q: Ord + ?Sized,
-        Symbol: std::borrow::Borrow<Q>,
-    {
-        self.dfg.has_attribute(name)
-    }
-
     /// Iterate over all of the external functions imported by this function
     pub fn imports<'a, 'b: 'a>(&'b self) -> impl Iterator<Item = &'a ExternalFunction> + 'a {
         self.dfg.imports().filter(|ext| ext.id != self.id)
@@ -502,6 +499,39 @@ impl Function {
 
     pub fn cfg_printer(&self) -> impl fmt::Display + '_ {
         CfgPrinter { function: self }
+    }
+}
+impl Op for Function {
+    type Id = FunctionIdent;
+
+    #[inline(always)]
+    fn id(&self) -> Self::Id {
+        self.id
+    }
+
+    #[inline(always)]
+    fn name(&self) -> &'static str {
+        "func"
+    }
+
+    #[inline(always)]
+    fn parent(&self) -> Option<OpId> {
+        None
+    }
+
+    #[inline(always)]
+    fn parent_block(&self) -> Option<Block> {
+        None
+    }
+
+    #[inline(always)]
+    fn as_operation(&self) -> &Operation {
+        &self.op
+    }
+
+    #[inline(always)]
+    fn as_operation_mut(&mut self) -> &mut Operation {
+        &mut self.op
     }
 }
 impl fmt::Debug for Function {

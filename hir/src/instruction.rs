@@ -479,6 +479,8 @@ pub enum Opcode {
     WhileTrue,
     Ret,
     Yield,
+    /// A primop used to specify the condition for `while.true` in its `before` region
+    Condition,
     Unreachable,
     InlineAsm,
     /// NOTE: Internal Use Only!
@@ -495,7 +497,13 @@ impl Opcode {
     pub fn is_terminator(&self) -> bool {
         matches!(
             self,
-            Self::Br | Self::CondBr | Self::Switch | Self::Ret | Self::Yield | Self::Unreachable
+            Self::Br
+                | Self::CondBr
+                | Self::Switch
+                | Self::Ret
+                | Self::Yield
+                | Self::Condition
+                | Self::Unreachable
         )
     }
 
@@ -505,6 +513,10 @@ impl Opcode {
 
     pub fn is_branch(&self) -> bool {
         matches!(self, Self::Br | Self::CondBr | Self::Switch)
+    }
+
+    pub fn is_return_like(&self) -> bool {
+        matches!(self, Self::Ret | Self::Yield)
     }
 
     pub fn is_call(&self) -> bool {
@@ -584,7 +596,8 @@ impl Opcode {
             | Self::Spill
             | Self::Reload
             | Self::IfTrue
-            | Self::WhileTrue => true,
+            | Self::WhileTrue
+            | Self::Condition => true,
             // These opcodes are not
             Self::ImmI1
             | Self::ImmU8
@@ -737,6 +750,8 @@ impl Opcode {
             // While loops do not require arguments, the condition is evaluated inside the
             // first region of the instruction, so it is not expected as an argument.
             Self::WhileTrue => 0,
+            // Loop conditions always have a single boolean argument
+            Self::Condition => 1,
             // The following require no arguments
             Self::Ret
             | Self::Yield
@@ -764,8 +779,11 @@ impl Opcode {
             | Self::Br
             | Self::CondBr
             | Self::Switch
+            | Self::IfTrue
+            | Self::WhileTrue
             | Self::Ret
             | Self::Yield
+            | Self::Condition
             | Self::Unreachable
             | Self::Spill => smallvec![],
             // These ops have fixed result types
@@ -822,9 +840,7 @@ impl Opcode {
             | Self::Rotr
             | Self::MemGrow
             | Self::MemSize
-            | Self::Reload
-            | Self::IfTrue
-            | Self::WhileTrue => {
+            | Self::Reload => {
                 smallvec![ctrl_ty]
             }
             // These ops always return a usize/u32 type
@@ -934,6 +950,7 @@ impl fmt::Display for Opcode {
             Self::Reload => f.write_str("reload"),
             Self::IfTrue => f.write_str("if.true"),
             Self::WhileTrue => f.write_str("while.true"),
+            Self::Condition => f.write_str("condition"),
         }
     }
 }
@@ -1488,57 +1505,61 @@ impl<'a> formatter::PrettyPrint for InstPrettyPrinter<'a> {
                 ref then_region,
                 ref else_region,
                 ..
-            }) => (
-                vec![],
-                vec![
-                    display(*cond),
-                    indent(
-                        4,
-                        self.dfg
-                            .region(*then_region)
-                            .pretty_print(self.current_function, self.dfg)
-                            .render(),
-                    ),
-                    indent(
-                        4,
-                        self.dfg
-                            .region(*else_region)
-                            .pretty_print(self.current_function, self.dfg)
-                            .render(),
-                    ),
-                ],
-            ),
+            }) => {
+                let then_region = indent(
+                    4,
+                    self.dfg
+                        .region(*then_region)
+                        .pretty_print(self.current_function, self.dfg)
+                        .render(),
+                );
+                let else_region = indent(
+                    4,
+                    self.dfg
+                        .region(*else_region)
+                        .pretty_print(self.current_function, self.dfg)
+                        .render(),
+                );
+                (
+                    vec![],
+                    vec![
+                        display(*cond),
+                        const_text(" ") + then_region + const_text(" else ") + else_region,
+                    ],
+                )
+            }
             Instruction::While(While {
                 ref args,
                 ref before,
                 ref body,
                 ..
             }) => {
-                let args = const_text("(")
-                    + args
-                        .as_slice(&self.dfg.value_lists)
-                        .iter()
-                        .copied()
-                        .fold(Document::Empty, |acc, arg| acc + const_text(" ") + display(arg))
-                    + const_text(")");
+                let args = args.as_slice(&self.dfg.value_lists);
+                let args = if args.is_empty() {
+                    const_text(" ")
+                } else {
+                    const_text("(")
+                        + args
+                            .iter()
+                            .copied()
+                            .fold(Document::Empty, |acc, arg| acc + const_text(" ") + display(arg))
+                        + const_text(")")
+                        + const_text(" ")
+                };
+                let exit = self.dfg.region(*before).exit;
+                let before = indent(
+                    4,
+                    self.dfg.region(*before).pretty_print(self.current_function, self.dfg).render(),
+                );
+                let body = indent(
+                    4,
+                    self.dfg.region(*body).pretty_print(self.current_function, self.dfg).render(),
+                );
                 (
                     vec![],
                     vec![
                         args,
-                        indent(
-                            4,
-                            self.dfg
-                                .region(*before)
-                                .pretty_print(self.current_function, self.dfg)
-                                .render(),
-                        ),
-                        indent(
-                            4,
-                            self.dfg
-                                .region(*body)
-                                .pretty_print(self.current_function, self.dfg)
-                                .render(),
-                        ),
+                        before + const_text(" do ") + body + const_text(" else ") + display(exit),
                     ],
                 )
             }

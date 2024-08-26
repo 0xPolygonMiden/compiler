@@ -26,8 +26,13 @@ lalrpop = { version = "0.20", default-features = false }
 
 [dependencies]
 anyhow.workspace = true
+blink-alloc = { version = "0.3", default-features = false, features = [
+    "alloc",
+    "nightly",
+] }
 either.workspace = true
 cranelift-entity.workspace = true
+downcast-rs = { version = "1.2", default-features = false }
 intrusive-collections.workspace = true
 inventory.workspace = true
 lalrpop-util = "0.20"

@@ -2,7 +2,7 @@ use cranelift_bforest as bforest;
 use cranelift_entity::SecondaryMap;
 use midenc_hir::{
     pass::{Analysis, AnalysisManager, AnalysisResult},
-    Block, DataFlowGraph, Function, Inst, Instruction,
+    Block, DataFlowGraph, Function, If, Inst, Instruction, Opcode, Ret, RetImm, While,
 };
 use midenc_session::Session;
 
@@ -104,14 +104,35 @@ impl ControlFlowGraph {
         cfg
     }
 
+    /// Obtain a control flow graph computed over `region`.
+    pub fn with_region(region: RegionId, dfg: &DataFlowGraph) -> Self {
+        let mut cfg = Self::new();
+        cfg.compute_region(region, dfg);
+        cfg
+    }
+
     /// Compute the control flow graph for `dfg`.
     ///
     /// NOTE: This will reset the current state of this graph.
     pub fn compute(&mut self, dfg: &DataFlowGraph) {
         self.clear();
-        self.data.resize(dfg.num_blocks());
+        let num_blocks = dfg.regions().map(|(_, region)| region.len()).sum::<usize>();
+        self.data.resize(num_blocks);
 
-        for block in dfg.body().blocks() {
+        for (_, region) in dfg.regions() {
+            for block in region.blocks() {
+                self.compute_block(dfg, block.id);
+            }
+        }
+
+        self.valid = true;
+    }
+
+    pub fn compute_region(&mut self, region: RegionId, dfg: &DataFlowGraph) {
+        self.clear();
+        let region = dfg.region(region);
+        self.data.resize(region.len() + 1);
+        for block in region.blocks() {
             self.compute_block(dfg, block.id);
         }
 
@@ -245,6 +266,34 @@ pub(crate) fn visit_block_succs<F: FnMut(Inst, Block, bool)>(
                 for arm in arms.as_slice() {
                     visit(inst, arm.successor.destination, true);
                 }
+            }
+
+            Instruction::If(If {
+                then_region,
+                else_region,
+                ..
+            }) => {
+                let then_region = dfg.region(*then_region);
+                let else_region = dfg.region(*else_region);
+                visit(inst, then_region.entry_block().id, false);
+                visit(inst, else_region.entry_block().id, false);
+            }
+
+            Instruction::While(While { before, .. }) => {
+                let before_region = dfg.region(*before);
+                visit(inst, before_region.entry_block().id, false);
+            }
+
+            Instruction::Ret(Ret {
+                op: Opcode::Yield, ..
+            })
+            | Instruction::RetImm(RetImm {
+                op: Opcode::Yield, ..
+            }) => {
+                // Like an unconditional branch to the containing region's exit block
+                let region_id = dfg.block(block).region;
+                let exit = dfg.region(region_id).exit;
+                visit(inst, exit, false)
             }
 
             inst => debug_assert!(!inst.opcode().is_branch()),

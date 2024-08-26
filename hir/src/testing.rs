@@ -283,6 +283,94 @@ pub fn fib1(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent
         .expect("unexpected validation error, see diagnostics output")
 }
 
+/// Same as `fib1`, but uses the `while.true` instruction with regions
+///
+/// ```text,ignore
+/// module test
+///
+/// pub fn fib(u32) -> u32 {
+/// entry(n: u32):
+///   a0 = const.u32 0 : u32;
+///   b0 = const.u32 1 : u32;
+///   n0 = const.u32 0 : u32;
+///   while.true(a0, b0, n0) {
+///     blk0(a1: u32, b1: u32, n1: u32):
+///       should_continue = lt n1, n : i1;
+///       condition(should_continue), a1
+///   } do {
+///      blk1(a2: u32):
+///        b2 = add.checked a2, b1 : u32;
+///        n2 = incr.wrapping n1 : u32;
+///        yield b1, b2, n2;
+///   } else blk2
+///
+/// blk2(result: u32):
+///   ret result;
+/// }
+/// ```
+pub fn fib1_region_based(builder: &mut ModuleBuilder, context: &TestContext) -> FunctionIdent {
+    // Declare the `fib` function, with the appropriate type signature
+    let sig = Signature {
+        params: vec![AbiParam::new(Type::U32)],
+        results: vec![AbiParam::new(Type::U32)],
+        cc: CallConv::SystemV,
+        linkage: Linkage::External,
+    };
+    let mut fb = builder.function("fib", sig).expect("unexpected symbol conflict");
+
+    let body = fb.current_region();
+    let entry = fb.current_block();
+    // Get the value for `n`
+    let n = {
+        let args = fb.block_params(entry);
+        args[0]
+    };
+
+    // This region holds the loop header/latch
+    let before_region = fb.create_region();
+    // This region holds the loop body
+    let loop_body_region = fb.create_region();
+
+    // This block corresponds to `blk0` in the example
+    let loop_header = fb.create_block_in(before_region);
+    let a1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+    let b1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+    let n1 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+
+    // This block corresponds to `blk1` in the example
+    let loop_body = fb.create_block_in(loop_body_region);
+    let a2 = fb.append_block_param(loop_header, Type::U32, context.current_span());
+
+    // This block corresponds to `blk2` in the example
+    let loop_exit = fb.create_block_in(body);
+    let result = fb.append_block_param(loop_exit, Type::U32, context.current_span());
+
+    // Now, starting from the entry block, we build out the rest of the function in control flow
+    // order
+    fb.switch_to_block(entry);
+    let a0 = fb.ins().u32(0, context.current_span());
+    let b0 = fb.ins().u32(1, context.current_span());
+    let i0 = fb.ins().u32(0, context.current_span());
+    fb.ins()
+        .while_true(&[a0, b0, i0], before_region, loop_body_region, context.current_span());
+
+    fb.switch_to_block(loop_header);
+    let continue_flag = fb.ins().lt(n1, n, context.current_span());
+    fb.ins().condition(continue_flag, &[a1], context.current_span());
+
+    fb.switch_to_block(loop_body);
+    let b2 = fb.ins().add_checked(a2, b1, context.current_span());
+    let n2 = fb.ins().incr_wrapping(n1, context.current_span());
+    fb.ins().r#yield(&[b1, b2, n2], context.current_span());
+
+    fb.switch_to_block(loop_exit);
+    fb.ins().ret(Some(result), context.current_span());
+
+    // We're done
+    fb.build(&context.session.diagnostics)
+        .expect("unexpected validation error, see diagnostics output")
+}
+
 /// Construct an implementation of a function which computes the sum
 /// of a matrix of u32 values, with dimensions `rows` by `cols`.
 ///

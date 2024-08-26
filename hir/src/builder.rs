@@ -1,3 +1,5 @@
+use cranelift_entity::packed_option::ReservedValue;
+
 use crate::{diagnostics::Span, *};
 
 pub struct FunctionBuilder<'f> {
@@ -1463,6 +1465,20 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         span: SourceSpan,
     ) -> Inst {
         require_integer!(self, cond, Type::I1);
+        let exit_then = self.data_flow_graph().region(then_region).exit;
+        let exit_else = self.data_flow_graph().region(else_region).exit;
+        assert!(
+            !exit_then.is_reserved_value(),
+            "expected 'if.true' regions to have valid exit block"
+        );
+        assert!(
+            !exit_else.is_reserved_value(),
+            "expected 'if.true' regions to have valid exit block"
+        );
+        assert_eq!(
+            exit_then, exit_else,
+            "expected both 'if.true' regions to exit to the same block"
+        );
         self.If(cond, then_region, else_region, span).0
     }
 
@@ -1473,6 +1489,23 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         body_region: RegionId,
         span: SourceSpan,
     ) -> Inst {
+        let (enter_before, exit_before) = {
+            let before = self.data_flow_graph().region(before_region);
+            (before.entry_block().id, before.exit)
+        };
+        let exit_body = self.data_flow_graph().region(body_region).exit;
+        assert!(
+            !exit_before.is_reserved_value(),
+            "expected 'while.true' before region to have valid exit block"
+        );
+        assert!(
+            !exit_body.is_reserved_value(),
+            "expected 'while.true' body region to have valid exit block"
+        );
+        assert_eq!(
+            exit_body, enter_before,
+            "expected 'while.true' body region to exit to its before region"
+        );
         let mut vlist = ValueList::default();
         {
             let pool = &mut self.data_flow_graph_mut().value_lists;
@@ -1507,12 +1540,15 @@ pub trait InstBuilder<'f>: InstBuilderBase<'f> {
         self.Ret(Opcode::Yield, vlist, span).0
     }
 
-    fn yield_imm(self, arg: Immediate, span: SourceSpan) -> Inst {
-        let data = Instruction::RetImm(RetImm {
-            op: Opcode::Yield,
-            arg,
-        });
-        self.build(data, Type::Unit, span).0
+    fn condition(mut self, cond: Value, args: &[Value], span: SourceSpan) -> Inst {
+        require_integer!(self, cond, Type::I1);
+        let mut vlist = ValueList::default();
+        {
+            let pool = &mut self.data_flow_graph_mut().value_lists;
+            vlist.push(cond, pool);
+            vlist.extend(args.iter().copied(), pool);
+        }
+        self.PrimOp(Opcode::Condition, Type::Unit, vlist, span).0
     }
 
     fn unreachable(self, span: SourceSpan) -> Inst {

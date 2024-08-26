@@ -1267,19 +1267,10 @@ impl<'a> InstTypeChecker<'a> {
                 inst => panic!("invalid opcode '{opcode}' for {inst:#?}"),
             },
             Opcode::Br => InstPattern::Any,
-            Opcode::CondBr => InstPattern::Exact(vec![Type::I1.into()], vec![]),
+            Opcode::CondBr | Opcode::IfTrue => InstPattern::Exact(vec![Type::I1.into()], vec![]),
             Opcode::Switch => InstPattern::Exact(vec![Type::U32.into()], vec![]),
-            Opcode::IfTrue => {
-                let results = dfg
-                    .inst_results(node.key)
-                    .iter()
-                    .copied()
-                    .map(|value| dfg.value_type(value).clone().into())
-                    .collect();
-                InstPattern::Exact(vec![Type::I1.into()], results)
-            }
             Opcode::WhileTrue => InstPattern::Any,
-            Opcode::Ret | Opcode::Yield => InstPattern::Any,
+            Opcode::Ret | Opcode::Yield | Opcode::Condition => InstPattern::Any,
             Opcode::Unreachable => InstPattern::Empty,
             Opcode::InlineAsm => InstPattern::Any,
             Opcode::Spill | Opcode::Reload => InstPattern::Any,
