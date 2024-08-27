@@ -34,7 +34,9 @@ pub struct Program {
     entrypoint: FunctionIdent,
     /// The base address of the dynamic heap, as computed by the codegen backend
     ///
-    /// Defaults to an offset which is two 64k pages from the start of linear memory
+    /// Defaults to an offset which is two 64k pages from the start of linear memory,
+    /// or, if available, the next byte following the both the reserved linear memory region as
+    /// declared in HIR, and the global variables of the program.
     heap_base: u32,
 }
 impl Program {
@@ -75,8 +77,6 @@ impl Program {
         program: &hir::Program,
         globals: &GlobalVariableAnalysis<hir::Program>,
     ) -> Result<Self, Report> {
-        use crate::codegen::PAGE_SIZE;
-
         let Some(entrypoint) = program.entrypoint() else {
             return Err(Report::msg("invalid program: no entrypoint"));
         };
@@ -84,9 +84,11 @@ impl Program {
 
         // Compute the first page boundary after the end of the globals table to use as the start
         // of the dynamic heap when the program is executed
-        let heap_base =
-            u32::try_from(program.globals().size_in_bytes().next_multiple_of(PAGE_SIZE as usize))
-                .expect("unable to allocate dynamic heap: global table too large");
+        let heap_base = program.reserved_memory_bytes()
+            + u32::try_from(
+                program.globals().size_in_bytes().next_multiple_of(program.page_size() as usize),
+            )
+            .expect("unable to allocate dynamic heap: global table too large");
         Ok(Self {
             library,
             entrypoint,
