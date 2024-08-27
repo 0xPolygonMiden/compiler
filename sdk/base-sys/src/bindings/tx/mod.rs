@@ -32,7 +32,9 @@ pub fn get_inputs() -> Vec<Felt> {
         // and return the number of inputs
         extern_note_get_inputs(inputs.as_mut_ptr())
     };
-    inputs.truncate(num_inputs);
+    unsafe {
+        inputs.set_len(num_inputs);
+    }
     inputs
 }
 
