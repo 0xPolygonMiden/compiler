@@ -672,6 +672,7 @@ impl CompilerTestBuilder {
     ) -> Self {
         let name = name.into();
         let stdlib_sys_path = stdlib_sys_crate_path();
+        let sdk_alloc_path = sdk_alloc_crate_path();
         let proj = project(name.as_ref())
             .file(
                 "Cargo.toml",
@@ -684,7 +685,7 @@ impl CompilerTestBuilder {
                 authors = []
 
                 [dependencies]
-                wee_alloc = {{ version = "0.4.5", default-features = false}}
+                miden-sdk-alloc = {{ path = "{sdk_alloc_path}" }}
                 miden-stdlib-sys = {{ path = "{stdlib_sys_path}" }}
 
                 [lib]
@@ -696,6 +697,7 @@ impl CompilerTestBuilder {
                 opt-level = "z"
                 debug = true
             "#,
+                    sdk_alloc_path = sdk_alloc_path.display(),
                     stdlib_sys_path = stdlib_sys_path.display(),
                 )
                 .as_str(),
@@ -714,7 +716,7 @@ impl CompilerTestBuilder {
 
 
                 #[global_allocator]
-                static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+                static ALLOC: miden_sdk_alloc::BumpAlloc = miden_sdk_alloc::BumpAlloc::new();
 
                 extern crate miden_stdlib_sys;
                 use miden_stdlib_sys::*;
@@ -746,6 +748,7 @@ impl CompilerTestBuilder {
     ) -> Self {
         let name = name.into();
         let sdk_path = sdk_crate_path();
+        let sdk_alloc_path = sdk_alloc_crate_path();
         let proj = project(name.as_ref())
             .file(
                 "Cargo.toml",
@@ -757,7 +760,7 @@ edition = "2021"
 authors = []
 
 [dependencies]
-wee_alloc = {{ version = "0.4.5", default-features = false}}
+miden-sdk-alloc = {{ path = "{sdk_alloc_path}" }}
 miden-sdk = {{ path = "{sdk_path}" }}
 
 [lib]
@@ -770,6 +773,7 @@ opt-level = "z"
 debug = true
 "#,
                     sdk_path = sdk_path.display(),
+                    sdk_alloc_path = sdk_alloc_path.display(),
                 )
                 .as_str(),
             )
@@ -786,7 +790,7 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
 
 
 #[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+static ALLOC: miden_sdk_alloc::BumpAlloc = miden_sdk_alloc::BumpAlloc::new();
 
 extern crate miden_sdk;
 use miden_sdk::*;
@@ -1155,6 +1159,11 @@ fn format_report(report: miden_assembly::diagnostics::Report) -> String {
 fn stdlib_sys_crate_path() -> PathBuf {
     let cwd = std::env::current_dir().unwrap();
     cwd.parent().unwrap().parent().unwrap().join("sdk").join("stdlib-sys")
+}
+
+fn sdk_alloc_crate_path() -> PathBuf {
+    let cwd = std::env::current_dir().unwrap();
+    cwd.parent().unwrap().parent().unwrap().join("sdk").join("alloc")
 }
 
 pub fn sdk_crate_path() -> PathBuf {

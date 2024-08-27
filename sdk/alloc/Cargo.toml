@@ -1,6 +1,6 @@
 [package]
-name = "miden-sdk"
-description = "Miden SDK"
+name = "miden-sdk-alloc"
+description = "A simple bump allocator for Miden SDK programs"
 version = "0.0.1"
 rust-version.workspace = true
 authors.workspace = true
@@ -15,6 +15,3 @@ edition.workspace = true
 crate-type = ["rlib"]
 
 [dependencies]
-miden-sdk-alloc = { path = "../alloc" }
-miden-stdlib-sys = { path = "../stdlib-sys" }
-miden-base-sys = { path = "../base-sys", features = ["bindings"] }
