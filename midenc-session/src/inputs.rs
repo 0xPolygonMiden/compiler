@@ -1,10 +1,105 @@
+use alloc::{borrow::Cow, format, string::String, vec, vec::Vec};
+use core::fmt;
 use std::{
     ffi::OsStr,
-    fmt,
     path::{Path, PathBuf},
 };
 
-use miden_diagnostics::FileName;
+#[derive(Clone)]
+pub struct FileName {
+    name: Cow<'static, str>,
+    is_path: bool,
+}
+impl Eq for FileName {}
+impl PartialEq for FileName {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+impl PartialOrd for FileName {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for FileName {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+impl fmt::Debug for FileName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+impl fmt::Display for FileName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+#[cfg(feature = "std")]
+impl AsRef<std::path::Path> for FileName {
+    fn as_ref(&self) -> &std::path::Path {
+        std::path::Path::new(self.name.as_ref())
+    }
+}
+#[cfg(feature = "std")]
+impl From<std::path::PathBuf> for FileName {
+    fn from(path: std::path::PathBuf) -> Self {
+        Self {
+            name: path.to_string_lossy().into_owned().into(),
+            is_path: true,
+        }
+    }
+}
+impl From<&'static str> for FileName {
+    fn from(name: &'static str) -> Self {
+        Self {
+            name: Cow::Borrowed(name),
+            is_path: false,
+        }
+    }
+}
+impl From<String> for FileName {
+    fn from(name: String) -> Self {
+        Self {
+            name: Cow::Owned(name),
+            is_path: false,
+        }
+    }
+}
+impl AsRef<str> for FileName {
+    fn as_ref(&self) -> &str {
+        self.name.as_ref()
+    }
+}
+impl FileName {
+    pub fn is_path(&self) -> bool {
+        self.is_path
+    }
+
+    #[cfg(feature = "std")]
+    pub fn as_path(&self) -> &std::path::Path {
+        self.as_ref()
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    #[cfg(feature = "std")]
+    pub fn file_name(&self) -> Option<&str> {
+        self.as_path().file_name().and_then(|name| name.to_str())
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn file_name(&self) -> Option<&str> {
+        match self.name.rsplit_once('/') {
+            Some((_, name)) => Some(name),
+            None => Some(self.name.as_ref()),
+        }
+    }
+}
 
 /// An error that occurs when detecting the file type of an input
 #[derive(Debug, thiserror::Error)]
@@ -44,7 +139,7 @@ impl InputFile {
     pub fn empty() -> Self {
         Self {
             file: InputType::Stdin {
-                name: FileName::Virtual("empty".into()),
+                name: "empty".into(),
                 input: vec![],
             },
             file_type: FileType::Wasm,
@@ -88,7 +183,7 @@ impl InputFile {
 
     pub fn file_name(&self) -> FileName {
         match &self.file {
-            InputType::Real(ref path) => FileName::Real(path.clone()),
+            InputType::Real(ref path) => path.clone().into(),
             InputType::Stdin { name, .. } => name.clone(),
         }
     }
@@ -134,12 +229,10 @@ impl clap::builder::TypedValueParser for InputFileParser {
         use clap::error::{Error, ErrorKind};
 
         let input_file = match value.to_str() {
-            Some("-") => InputFile::from_stdin(FileName::Virtual("stdin".into())).map_err(
-                |err| match err {
-                    InvalidInputError::Io(err) => Error::raw(ErrorKind::Io, err),
-                    err => Error::raw(ErrorKind::ValueValidation, err),
-                },
-            )?,
+            Some("-") => InputFile::from_stdin("stdin".into()).map_err(|err| match err {
+                InvalidInputError::Io(err) => Error::raw(ErrorKind::Io, err),
+                err => Error::raw(ErrorKind::ValueValidation, err),
+            })?,
             Some(_) | None => {
                 InputFile::from_path(PathBuf::from(value)).map_err(|err| match err {
                     InvalidInputError::Io(err) => Error::raw(ErrorKind::Io, err),
@@ -177,6 +270,7 @@ pub enum FileType {
     Hir,
     Masm,
     Mast,
+    Masp,
     Wasm,
     Wat,
 }
@@ -186,6 +280,7 @@ impl fmt::Display for FileType {
             Self::Hir => f.write_str("hir"),
             Self::Masm => f.write_str("masm"),
             Self::Mast => f.write_str("mast"),
+            Self::Masp => f.write_str("masp"),
             Self::Wasm => f.write_str("wasm"),
             Self::Wat => f.write_str("wat"),
         }
@@ -199,6 +294,10 @@ impl FileType {
 
         if bytes.starts_with(b"MAST\0") {
             return Ok(FileType::Mast);
+        }
+
+        if bytes.starts_with(b"MASP\0") {
+            return Ok(FileType::Masp);
         }
 
         fn is_masm_top_level_item(line: &str) -> bool {
@@ -234,6 +333,7 @@ impl TryFrom<&Path> for FileType {
             Some("hir") => Ok(FileType::Hir),
             Some("masm") => Ok(FileType::Masm),
             Some("masl") | Some("mast") => Ok(FileType::Mast),
+            Some("masp") => Ok(FileType::Masp),
             Some("wasm") => Ok(FileType::Wasm),
             Some("wat") => Ok(FileType::Wat),
             _ => Err(InvalidInputError::UnsupportedFileType(path.to_path_buf())),

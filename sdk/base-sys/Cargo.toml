@@ -24,6 +24,6 @@ miden-assembly.workspace = true
 default = []
 
 # User facing Rust bindings
-"bindings" = ["miden-stdlib-sys"]
+"bindings" = ["dep:miden-stdlib-sys"]
 # MASL library for Miden rollup (tx kernel, etc.) used by the compiler in the link phase
 "masl-lib" = []

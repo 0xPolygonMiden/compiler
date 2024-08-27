@@ -497,6 +497,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
+name = "bitcode"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee1bce7608560cd4bf0296a4262d0dbf13e6bcec5ff2105724c8ab88cc7fc784"
+dependencies = [
+ "arrayvec",
+ "bytemuck",
+ "glam",
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -568,6 +580,12 @@ name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
+
+[[package]]
+name = "bytemuck"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fd4c6dcc3b0aea2f5c0b4b82c2b15fe39ddbc76041a310848f4706edf76bb31"
 
 [[package]]
 name = "byteorder"
@@ -2026,6 +2044,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c28091a37a5d09b555cb6628fd954da299b536433834f5b8e59eba78e0cbbf8a"
+
+[[package]]
 name = "glob"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3044,8 +3068,13 @@ name = "miden-sdk"
 version = "0.0.1"
 dependencies = [
  "miden-base-sys",
+ "miden-sdk-alloc",
  "miden-stdlib-sys",
 ]
+
+[[package]]
+name = "miden-sdk-alloc"
+version = "0.0.1"
 
 [[package]]
 name = "miden-stdlib"
@@ -3094,6 +3123,7 @@ name = "midenc-codegen-masm"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "bitcode",
  "cranelift-entity",
  "env_logger 0.11.5",
  "intrusive-collections",
@@ -3112,6 +3142,8 @@ dependencies = [
  "petgraph",
  "proptest",
  "rustc-hash",
+ "serde",
+ "serde_bytes",
  "smallvec",
 ]
 
@@ -3125,7 +3157,6 @@ dependencies = [
  "inventory",
  "log",
  "miden-assembly",
- "miden-diagnostics",
  "miden-thiserror",
  "midenc-codegen-masm",
  "midenc-frontend-wasm",
@@ -3155,10 +3186,12 @@ dependencies = [
  "midenc-session",
  "proptest",
  "ratatui",
+ "serde",
  "signal-hook",
  "syntect",
  "tokio",
  "tokio-util",
+ "toml",
  "tui-input",
 ]
 
@@ -3227,6 +3260,9 @@ dependencies = [
  "pretty_assertions",
  "rustc-demangle",
  "rustc-hash",
+ "serde",
+ "serde_bytes",
+ "serde_repr",
  "smallvec",
  "typed-arena",
  "unicode-width",
@@ -3264,7 +3300,9 @@ name = "midenc-hir-symbol"
 version = "0.0.1"
 dependencies = [
  "Inflector",
+ "bitcode",
  "rustc-hash",
+ "serde",
  "toml",
 ]
 
@@ -3274,7 +3312,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "inventory",
- "miden-diagnostics",
+ "log",
  "midenc-hir",
  "midenc-hir-analysis",
  "midenc-session",
@@ -3287,6 +3325,8 @@ dependencies = [
 name = "midenc-hir-type"
 version = "0.0.1"
 dependencies = [
+ "serde",
+ "serde_repr",
  "smallvec",
 ]
 
@@ -3294,17 +3334,20 @@ dependencies = [
 name = "midenc-session"
 version = "0.0.2"
 dependencies = [
- "atty",
  "clap",
  "inventory",
+ "log",
  "miden-assembly",
  "miden-base-sys",
  "miden-core",
- "miden-diagnostics",
  "miden-stdlib",
  "miden-thiserror",
  "midenc-hir-macros",
  "midenc-hir-symbol",
+ "parking_lot",
+ "serde",
+ "serde_repr",
+ "termcolor",
 ]
 
 [[package]]
@@ -4659,18 +4702,27 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.204"
+version = "1.0.208"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc76f558e0cbb2a839d37354c575f1dc3fdc6546b5be373ba43d95f231bf7c12"
+checksum = "cff085d2cb684faa248efb494c39b68e522822ac0de72ccf08109abde717cfb2"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
-name = "serde_derive"
-version = "1.0.204"
+name = "serde_bytes"
+version = "0.11.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0cd7e117be63d3c3678776753929474f3b04a43a080c744d6b0ae2a8c28e222"
+checksum = "387cc504cb06bb40a96c8e04e951fe01854cf6bc921053c954e4a606d9675c6a"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.208"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24008e81ff7613ed8e5ba0cfaf24e2c2f1e5b8a0495711e44fcd4882fca62bcf"
 dependencies = [
  "proc-macro2",
  "quote",

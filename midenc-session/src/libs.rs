@@ -1,8 +1,9 @@
+use alloc::{borrow::Cow, boxed::Box, format, str::FromStr, string::ToString};
+use core::fmt;
 use std::{
-    borrow::Cow,
     ffi::OsStr,
     path::{Path, PathBuf},
-    str::FromStr,
+    sync::LazyLock,
 };
 
 use miden_assembly::{Library as CompiledLibrary, LibraryNamespace};
@@ -14,8 +15,16 @@ use crate::{
     Session,
 };
 
+static STDLIB: LazyLock<StdLibrary> = LazyLock::new(StdLibrary::default);
+static BASE: LazyLock<MidenTxKernelLibrary> = LazyLock::new(MidenTxKernelLibrary::default);
+
 /// The types of libraries that can be linked against during compilation
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
+#[repr(u8)]
 pub enum LibraryKind {
     /// A compiled MAST library
     #[default]
@@ -23,7 +32,14 @@ pub enum LibraryKind {
     /// A source-form MASM library, using the standard project layout
     Masm,
 }
-
+impl fmt::Display for LibraryKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mast => f.write_str("mast"),
+            Self::Masm => f.write_str("masm"),
+        }
+    }
+}
 impl FromStr for LibraryKind {
     type Err = ();
 
@@ -38,6 +54,7 @@ impl FromStr for LibraryKind {
 
 /// A library requested by the user to be linked against during compilation
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LinkLibrary {
     /// The name of the library.
     ///
@@ -47,6 +64,7 @@ pub struct LinkLibrary {
     /// will be the basename of the file specified in the path.
     pub name: Cow<'static, str>,
     /// If specified, the path from which this library should be loaded
+    #[cfg_attr(feature = "serde", serde(default))]
     pub path: Option<PathBuf>,
     /// The kind of library to load.
     ///
@@ -62,8 +80,8 @@ impl LinkLibrary {
 
         // Handle libraries shipped with the compiler, or via Miden crates
         match self.name.as_ref() {
-            "std" => return Ok(StdLibrary::default().into()),
-            "base" => return Ok(MidenTxKernelLibrary::default().into()),
+            "std" => return Ok((*STDLIB).as_ref().clone()),
+            "base" => return Ok((*BASE).as_ref().clone()),
             _ => (),
         }
 

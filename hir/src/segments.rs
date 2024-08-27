@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use core::{
     fmt,
     hash::{Hash, Hasher},
@@ -215,7 +216,7 @@ pub struct DataSegment {
     /// By default this will be the same size as `init`, unless explicitly given.
     size: u32,
     /// The data to initialize this segment with, may not be larger than `size`
-    init: ConstantData,
+    init: Arc<ConstantData>,
     /// Whether or not this segment is intended to be read-only data
     readonly: bool,
     /// Whether or not this segment starts as all zeros
@@ -305,7 +306,7 @@ impl DataSegment {
             link: Default::default(),
             offset,
             size,
-            init,
+            init: Arc::new(init),
             readonly,
             zeroed,
         })
@@ -322,8 +323,8 @@ impl DataSegment {
     }
 
     /// Get a reference to this segment's initializer data
-    pub const fn init(&self) -> &ConstantData {
-        &self.init
+    pub fn init(&self) -> Arc<ConstantData> {
+        Arc::clone(&self.init)
     }
 
     /// Returns true if this segment is intended to be read-only

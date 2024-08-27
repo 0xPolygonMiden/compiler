@@ -29,7 +29,6 @@ use crate::{
 /// contention. The intuition is that, in general, changes at the [Program] level are relatively
 /// infrequent, i.e. only when declaring a new [Module], or [GlobalVariable], do we actually need to
 /// mutate the structure. In all other situations, changes are scoped at the [Module] level.
-#[derive(Default)]
 pub struct Program {
     /// This tree stores all of the modules being compiled as part of the current program.
     modules: RBTree<ModuleTreeAdapter>,
@@ -45,6 +44,12 @@ pub struct Program {
     /// that function will be used instead. If there are multiple functions with the `entrypoint`
     /// attribute, and this field is `None`, the linker will raise an error.
     entrypoint: Option<FunctionIdent>,
+    /// The page size used by this program.
+    ///
+    /// If multiple modules with different page sizes are present, the largest size is used.
+    page_size: u32,
+    /// The size (in pages) of the reserved linear memory region (starting from offset 0)
+    reserved_memory_pages: u32,
     /// The data segments gathered from all modules in the program, and laid out in address order.
     segments: DataSegmentTable,
     /// The global variable table produced by linking the global variable tables of all
@@ -53,11 +58,43 @@ pub struct Program {
     globals: GlobalVariableTable,
 }
 
+impl Default for Program {
+    fn default() -> Self {
+        Self {
+            page_size: 64 * 1024,
+            reserved_memory_pages: 0,
+            modules: Default::default(),
+            libraries: Default::default(),
+            entrypoint: Default::default(),
+            segments: Default::default(),
+            globals: Default::default(),
+        }
+    }
+}
+
 impl Program {
     /// Create a new, empty [Program].
     #[inline(always)]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Get the default page size for this program
+    #[inline]
+    pub const fn page_size(&self) -> u32 {
+        self.page_size
+    }
+
+    /// Get the size of the reserved linear memory (in pages) region for this program
+    #[inline]
+    pub const fn reserved_memory_pages(&self) -> u32 {
+        self.reserved_memory_pages
+    }
+
+    /// Get the size of the reserved linear memory (in bytes) region for this program
+    #[inline]
+    pub const fn reserved_memory_bytes(&self) -> u32 {
+        self.reserved_memory_pages * self.page_size
     }
 
     /// Add to the set of libraries this [Program] will be assembled with
@@ -153,6 +190,8 @@ pub struct ProgramBuilder<'a> {
     /// The set of libraries we're linking against
     libraries: BTreeMap<RpoDigest, CompiledLibrary>,
     entry: Option<FunctionIdent>,
+    page_size: u32,
+    reserved_memory_size: u32,
     diagnostics: &'a DiagnosticsHandler,
 }
 impl<'a> ProgramBuilder<'a> {
@@ -162,6 +201,8 @@ impl<'a> ProgramBuilder<'a> {
             extern_modules: Default::default(),
             libraries: Default::default(),
             entry: None,
+            page_size: 64 * 1024,
+            reserved_memory_size: 0,
             diagnostics,
         }
     }
@@ -193,6 +234,9 @@ impl<'a> ProgramBuilder<'a> {
             return Err(ModuleConflictError::new(module_name));
         }
 
+        self.page_size = core::cmp::max(self.page_size, module.page_size());
+        self.reserved_memory_size =
+            core::cmp::max(self.reserved_memory_size, module.reserved_memory_pages());
         self.modules.insert(module_name, module);
 
         Ok(())
@@ -245,6 +289,8 @@ impl<'a> ProgramBuilder<'a> {
     /// Link a [Program] from the current [ProgramBuilder] state
     pub fn link(self) -> Result<Box<Program>, Report> {
         let mut linker = Linker::new(self.diagnostics);
+        linker.with_page_size(self.page_size);
+        linker.reserve_memory(self.reserved_memory_size);
 
         let entrypoint = self.entry.or_else(|| self.modules.values().find_map(|m| m.entrypoint()));
         if let Some(entry) = entrypoint {

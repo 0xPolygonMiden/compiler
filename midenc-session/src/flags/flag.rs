@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CompileFlag {
     pub name: &'static str,
     pub short: Option<char>,
@@ -73,7 +73,7 @@ impl CompileFlag {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FlagAction {
     Set,
     Append,
@@ -81,6 +81,18 @@ pub enum FlagAction {
     SetFalse,
     Count,
 }
+impl FlagAction {
+    pub fn is_boolean(&self) -> bool {
+        matches!(self, Self::SetTrue | Self::SetFalse)
+    }
+
+    pub fn as_boolean_value(&self) -> bool {
+        assert!(self.is_boolean());
+        self == &Self::SetTrue
+    }
+}
+
+#[cfg(feature = "std")]
 impl From<FlagAction> for clap::ArgAction {
     fn from(action: FlagAction) -> Self {
         match action {

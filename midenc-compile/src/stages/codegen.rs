@@ -24,6 +24,7 @@ impl Stage for CodegenStage {
         } = linker_output;
         match linked {
             Left(program) => {
+                log::debug!("lowering hir program to masm");
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Program>::default();
                 let mut artifact = convert_to_masm.convert(program, analyses, session)?;
 
@@ -35,16 +36,22 @@ impl Stage for CodegenStage {
 
                 // Ensure intrinsics modules are linked
                 for intrinsics_module in required_intrinsics_modules(session) {
+                    log::debug!(
+                        "adding required intrinsic module '{}' to masm program",
+                        intrinsics_module.id
+                    );
                     artifact.insert(Box::new(intrinsics_module));
                 }
                 // Link in any MASM inputs provided to the compiler
                 for module in masm_modules.into_iter() {
+                    log::debug!("adding external masm module '{}' to masm program", module.id);
                     artifact.insert(module);
                 }
 
                 Ok(Left(artifact))
             }
             Right(ir) => {
+                log::debug!("lowering unlinked hir modules to masm");
                 let mut convert_to_masm = masm::ConvertHirToMasm::<hir::Module>::default();
                 for module in ir.into_iter() {
                     let masm_module = convert_to_masm.convert(module, analyses, session)?;

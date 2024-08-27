@@ -11,5 +11,11 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 
+[features]
+default = ["serde"]
+serde = ["dep:serde", "dep:serde_repr"]
+
 [dependencies]
 smallvec.workspace = true
+serde = { workspace = true, optional = true }
+serde_repr = { workspace = true, optional = true }

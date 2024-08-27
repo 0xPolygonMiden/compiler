@@ -161,13 +161,7 @@ pub struct Linker<'a> {
 impl<'a> Linker<'a> {
     /// Create a [Linker] for a new, empty [Program].
     pub fn new(diagnostics: &'a DiagnosticsHandler) -> Self {
-        let mut program = Box::new(Program::new());
-
-        // We reserve the first page of memory for the shadow stack
-        program
-            .segments
-            .declare(0, 64 * 1024, vec![].into(), false)
-            .expect("unexpected error declaring shadow stack segment");
+        let program = Box::new(Program::new());
 
         Self {
             diagnostics,
@@ -185,6 +179,18 @@ impl<'a> Linker<'a> {
             globals: DiGraphMap::new(),
             renamed: Default::default(),
         }
+    }
+
+    pub fn reserve_memory(&mut self, size: u32) {
+        self.program.reserved_memory_pages = size;
+    }
+
+    pub fn with_page_size(&mut self, page_size: u32) -> &mut Self {
+        if self.program.page_size > 0 {
+            assert!(page_size.is_power_of_two());
+            self.program.page_size = page_size;
+        }
+        self
     }
 
     /// Set the entrypoint for the linked program
@@ -330,7 +336,7 @@ impl<'a> Linker<'a> {
             // If an initializer was set, we need to import the constant data too
             if let Some(init) = imported_global.init.take() {
                 let data = module.globals.get_constant(init).clone();
-                imported_global.init = Some(self.program.globals.insert_constant(data));
+                imported_global.init = Some(self.program.globals.insert_refcounted_constant(data));
             }
             let (id, renamed) = self.program.globals.try_insert(imported_global)?;
             let name = self.program.globals.get(id).name;

@@ -14,6 +14,7 @@ use midenc_hir_analysis::GlobalVariableAnalysis;
 use midenc_session::{Emit, Session};
 
 use super::{module::Modules, *};
+use crate::packaging::Rodata;
 
 inventory::submit! {
     midenc_session::CompileFlag::new("test_harness")
@@ -33,7 +34,9 @@ pub struct Program {
     entrypoint: FunctionIdent,
     /// The base address of the dynamic heap, as computed by the codegen backend
     ///
-    /// Defaults to an offset which is two 64k pages from the start of linear memory
+    /// Defaults to an offset which is two 64k pages from the start of linear memory,
+    /// or, if available, the next byte following the both the reserved linear memory region as
+    /// declared in HIR, and the global variables of the program.
     heap_base: u32,
 }
 impl Program {
@@ -45,7 +48,7 @@ impl Program {
     ///
     /// You should generally prefer to use [Program::from_hir], but this constructor allows you to
     /// manually produce a MASM program from its constituent parts.
-    pub fn new<M>(entrypoint: FunctionIdent, segments: DataSegmentTable, modules: M) -> Self
+    pub fn new<M>(entrypoint: FunctionIdent, segments: &DataSegmentTable, modules: M) -> Self
     where
         M: IntoIterator<Item = Box<Module>>,
     {
@@ -74,8 +77,6 @@ impl Program {
         program: &hir::Program,
         globals: &GlobalVariableAnalysis<hir::Program>,
     ) -> Result<Self, Report> {
-        use crate::codegen::PAGE_SIZE;
-
         let Some(entrypoint) = program.entrypoint() else {
             return Err(Report::msg("invalid program: no entrypoint"));
         };
@@ -83,14 +84,21 @@ impl Program {
 
         // Compute the first page boundary after the end of the globals table to use as the start
         // of the dynamic heap when the program is executed
-        let heap_base =
-            u32::try_from(program.globals().size_in_bytes().next_multiple_of(PAGE_SIZE as usize))
-                .expect("unable to allocate dynamic heap: global table too large");
+        let heap_base = program.reserved_memory_bytes()
+            + u32::try_from(
+                program.globals().size_in_bytes().next_multiple_of(program.page_size() as usize),
+            )
+            .expect("unable to allocate dynamic heap: global table too large");
         Ok(Self {
             library,
             entrypoint,
             heap_base,
         })
+    }
+
+    /// Get the raw [Rodata] segments for this program
+    pub fn rodatas(&self) -> &[Rodata] {
+        self.library.rodata.as_slice()
     }
 
     /// Link this [Program] against the given kernel during assembly
@@ -173,111 +181,29 @@ impl Program {
         // Emit data segment initialization code
         //
         // NOTE: This depends on the program being executed with the data for all data
-        // segments having been pushed on the advice stack in the same order as visited
-        // here, with the same encoding. The program will fail to execute if it is not
-        // set up correctly.
+        // segments having been placed in the advice map with the same commitment and
+        // encoding used here. The program will fail to execute if this is not set up
+        // correctly.
         //
-        // TODO(pauls): To facilitate automation of this, we should emit a file to disk
-        // that includes the raw encoding of the data we expect to be placed on the advice
-        // stack, in a manner which allows us to simply read that file as an array of felt
-        // and use that directly via `AdviceInputs`
+        // TODO(pauls): To facilitate automation of this, we should emit an inputs file to
+        // disk that maps each segment to a commitment and its data encoded as binary. This
+        // can then be loaded into the advice provider during VM init.
         let pipe_preimage_to_memory = "std::mem::pipe_preimage_to_memory".parse().unwrap();
-        for segment in self.library.segments.iter() {
-            // Don't bother emitting anything for zeroed segments
-            if segment.is_zeroed() {
-                continue;
-            }
-            let size = segment.size();
-            let offset = segment.offset();
-            let base = NativePtr::from_ptr(offset);
-            let segment_data = segment.init();
-
-            // TODO(pauls): Do we ever have a need for data segments which are not aligned
-            // to an word boundary? If so, we need to implement that
-            // support when emitting the entry for a program
-            assert_eq!(
-                base.offset,
-                0,
-                "unsupported data segment alignment {}: must be aligned to a 32 byte boundary",
-                base.alignment()
-            );
-            assert_eq!(
-                base.index,
-                0,
-                "unsupported data segment alignment {}: must be aligned to a 32 byte boundary",
-                base.alignment()
-            );
-
-            // Compute the commitment for the data
-            let num_elements = size.next_multiple_of(4) / 4;
-            let num_words = num_elements.next_multiple_of(4) / 4;
-            let mut elements = Vec::with_capacity(num_elements as usize);
-            // TODO(pauls): If the word containing the first element overlaps with the
-            // previous segment, then ensure the overlapping elements
-            // are mixed together, so that the data is preserved, and
-            // the commitment is correct
-            let mut iter = segment_data.as_slice().iter().copied().array_chunks::<4>();
-            elements.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_be_bytes(bytes) as u64)));
-            if let Some(remainder) = iter.into_remainder() {
-                let mut chunk = [0u8; 4];
-                for (i, byte) in remainder.into_iter().enumerate() {
-                    chunk[i] = byte;
-                }
-                elements.push(Felt::new(u32::from_be_bytes(chunk) as u64));
-            }
-            elements.resize(num_elements as usize, Felt::ZERO);
-            let digest = Rpo256::hash_elements(&elements);
+        for rodata in self.library.rodata.iter() {
             let span = SourceSpan::default();
 
-            // COM
-            block.push(Op::Pushw(digest.into()), span);
+            // Move rodata from advice map to advice stack
+            block.push(Op::Pushw(rodata.digest.into()), span); // COM
+            block.push(Op::AdvInjectPushMapVal, span);
             // write_ptr
-            block.push(Op::PushU32(base.waddr), span);
+            block.push(Op::PushU32(rodata.start.waddr), span);
             // num_words
-            block.push(Op::PushU32(num_words), span);
+            block.push(Op::PushU32(rodata.size_in_words() as u32), span);
             // [num_words, write_ptr, COM, ..] -> [write_ptr']
             block.push(Op::Exec(pipe_preimage_to_memory), span);
             // drop write_ptr'
             block.push(Op::Drop, span);
         }
-    }
-
-    /// Get the expected [miden_processor::AdviceInputs] needed to execute this program.
-    pub fn advice_inputs(&self) -> miden_processor::AdviceInputs {
-        use miden_processor::AdviceInputs;
-
-        let mut stack = Vec::with_capacity(
-            self.library
-                .segments
-                .iter()
-                .map(|segment| segment.size() as usize)
-                .sum::<usize>()
-                / 4,
-        );
-
-        let mut current_size = 0usize;
-        for segment in self.library.segments.iter() {
-            if segment.is_zeroed() {
-                continue;
-            }
-            let size = segment.size() as usize;
-            let num_elements = size.next_multiple_of(4) / 4;
-            let num_words = num_elements.next_multiple_of(4) / 4;
-            let mut iter = segment.init().as_slice().iter().copied().array_chunks::<4>();
-            stack.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_be_bytes(bytes) as u64)));
-            if let Some(remainder) = iter.into_remainder() {
-                let mut chunk = [0u8; 4];
-                for (i, byte) in remainder.into_iter().enumerate() {
-                    chunk[i] = byte;
-                }
-                stack.push(Felt::new(u32::from_be_bytes(chunk) as u64));
-            }
-            let num_elements_with_padding = num_words * 4;
-            stack.resize(current_size + num_elements_with_padding, Felt::ZERO);
-            current_size += num_elements_with_padding;
-        }
-
-        AdviceInputs::default().with_stack(stack)
     }
 
     #[inline(always)]
@@ -355,16 +281,27 @@ impl Program {
 
         let debug_mode = session.options.emit_debug_decorators();
 
+        log::debug!(
+            "assembling executable with entrypoint '{}' (debug_mode={})",
+            self.entrypoint,
+            debug_mode
+        );
         let mut assembler =
             Assembler::new(session.source_manager.clone()).with_debug_mode(debug_mode);
 
         // Link extra libraries
         for library in self.library.libraries.iter() {
+            if log::log_enabled!(log::Level::Debug) {
+                for module in library.module_infos() {
+                    log::debug!("registering '{}' with assembler", module.path());
+                }
+            }
             assembler.add_library(library)?;
         }
 
         // Assemble library
         for module in self.library.modules.iter() {
+            log::debug!("adding '{}' to assembler", module.id.as_str());
             let kind = module.kind;
             let module = module.to_ast(debug_mode).map(Box::new)?;
             assembler.add_module_with_options(
@@ -433,8 +370,8 @@ pub struct Library {
     libraries: Vec<CompiledLibrary>,
     /// The kernel library to link against
     kernel: Option<KernelLibrary>,
-    /// The data segment table for this program
-    pub segments: DataSegmentTable,
+    /// The rodata segments of this program keyed by the offset of the segment
+    rodata: Vec<Rodata>,
     /// The address of the `__stack_pointer` global, if such a global has been defined
     stack_pointer: Option<u32>,
 }
@@ -448,7 +385,7 @@ impl Library {
     ///
     /// You should generally prefer to use [Library::from_hir], but this constructor allows you to
     /// manually produce a MASM program from its constituent parts.
-    pub fn new<M>(segments: DataSegmentTable, modules: M) -> Self
+    pub fn new<M>(segments: &DataSegmentTable, modules: M) -> Self
     where
         M: IntoIterator<Item = Box<Module>>,
     {
@@ -457,11 +394,12 @@ impl Library {
             module_tree.insert(module);
         }
         let modules = Modules::Open(module_tree);
+        let rodata = compute_rodata(segments);
         Self {
             modules,
             libraries: vec![],
             kernel: None,
-            segments,
+            rodata,
             stack_pointer: None,
         }
     }
@@ -484,13 +422,18 @@ impl Library {
         } else {
             None
         };
+        let rodata = compute_rodata(program.segments());
         Self {
             modules: Modules::default(),
             libraries: vec![],
             kernel: None,
-            segments: program.segments().clone(),
+            rodata,
             stack_pointer,
         }
+    }
+
+    pub fn rodatas(&self) -> &[Rodata] {
+        self.rodata.as_slice()
     }
 
     /// Link this [Library] against the given kernel during assembly
@@ -574,18 +517,29 @@ impl Library {
         use miden_assembly::Assembler;
 
         let debug_mode = session.options.emit_debug_decorators();
+        log::debug!(
+            "assembling library of {} modules (debug_mode={})",
+            self.modules().count(),
+            debug_mode
+        );
 
         let mut assembler =
             Assembler::new(session.source_manager.clone()).with_debug_mode(debug_mode);
 
         // Link extra libraries
         for library in self.libraries.iter() {
+            if log::log_enabled!(log::Level::Debug) {
+                for module in library.module_infos() {
+                    log::debug!("registering '{}' with assembler", module.path());
+                }
+            }
             assembler.add_library(library)?;
         }
 
         // Assemble library
         let mut modules = Vec::with_capacity(self.modules.len());
         for module in self.modules.iter() {
+            log::debug!("adding '{}' to assembler", module.id.as_str());
             let module = module.to_ast(debug_mode).map(Box::new)?;
             modules.push(module);
         }
@@ -637,4 +591,73 @@ impl Emit for Library {
         );
         writer.write_fmt(format_args!("{}\n", self))
     }
+}
+
+/// Compute the metadata for each non-empty rodata segment in the program.
+///
+/// This consists of the data itself, as well as a content digest, which will be used to place
+/// that data in the advice map when the program starts.
+fn compute_rodata(segments: &DataSegmentTable) -> Vec<Rodata> {
+    let mut rodatas = Vec::with_capacity(segments.iter().count());
+
+    for segment in segments.iter() {
+        // Don't bother emitting anything for zeroed segments
+        if segment.is_zeroed() {
+            continue;
+        }
+        let size = segment.size();
+        let offset = segment.offset();
+        let base = NativePtr::from_ptr(offset);
+        let segment_data = segment.init();
+
+        // TODO(pauls): Do we ever have a need for data segments which are not aligned
+        // to an word boundary? If so, we need to implement that
+        // support when emitting the entry for a program
+        assert_eq!(
+            base.offset,
+            0,
+            "unsupported data segment alignment {}: must be aligned to a 32 byte boundary",
+            base.alignment()
+        );
+        assert_eq!(
+            base.index,
+            0,
+            "unsupported data segment alignment {}: must be aligned to a 32 byte boundary",
+            base.alignment()
+        );
+
+        // Compute the commitment for the data
+        let num_elements = (size.next_multiple_of(4) / 4) as usize;
+        let num_words = num_elements.next_multiple_of(4) / 4;
+        let padding = (num_words * 4).abs_diff(num_elements);
+        let mut elements = Vec::with_capacity(num_elements + padding);
+        // TODO(pauls): If the word containing the first element overlaps with the
+        // previous segment, then ensure the overlapping elements
+        // are mixed together, so that the data is preserved, and
+        // the commitment is correct
+        let mut iter = segment_data.as_slice().iter().copied().array_chunks::<4>();
+        elements.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_be_bytes(bytes) as u64)));
+        if let Some(remainder) = iter.into_remainder() {
+            let mut chunk = [0u8; 4];
+            for (i, byte) in remainder.into_iter().enumerate() {
+                chunk[i] = byte;
+            }
+            elements.push(Felt::new(u32::from_be_bytes(chunk) as u64));
+        }
+        elements.resize(num_elements + padding, Felt::ZERO);
+        let digest = Rpo256::hash_elements(&elements);
+
+        log::debug!(
+            "computed commitment for data segment at offset {offset} ({size} bytes, \
+             {num_elements} elements): '{digest}'"
+        );
+
+        rodatas.push(Rodata {
+            digest,
+            start: base,
+            data: segment_data,
+        });
+    }
+
+    rodatas
 }

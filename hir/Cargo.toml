@@ -14,6 +14,12 @@ edition.workspace = true
 [features]
 default = ["std"]
 std = ["rustc-demangle/std"]
+serde = [
+    "dep:serde",
+    "dep:serde_repr",
+    "dep:serde_bytes",
+    "midenc-hir-symbol/serde",
+]
 
 [build-dependencies]
 lalrpop = { version = "0.20", default-features = false }
@@ -39,6 +45,9 @@ petgraph.workspace = true
 paste.workspace = true
 rustc-hash.workspace = true
 rustc-demangle = "0.1.19"
+serde = { workspace = true, optional = true }
+serde_repr = { workspace = true, optional = true }
+serde_bytes = { workspace = true, optional = true }
 smallvec.workspace = true
 thiserror.workspace = true
 typed-arena = "2.0"

@@ -1,10 +1,10 @@
 use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
-use clap::{builder::ArgPredicate, ColorChoice, Parser};
+use clap::{builder::ArgPredicate, Parser};
 use midenc_session::{
-    diagnostics::{ColorChoice as MDColorChoice, DefaultSourceManager, Emitter},
-    DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType, OutputTypeSpec,
-    OutputTypes, ProjectType, Session, TargetEnv, Verbosity, Warnings,
+    diagnostics::{DefaultSourceManager, Emitter},
+    ColorChoice, DebugInfo, InputFile, LinkLibrary, OptLevel, Options, OutputFile, OutputType,
+    OutputTypeSpec, OutputTypes, ProjectType, Session, TargetEnv, Verbosity, Warnings,
 };
 
 /// Compile a program from WebAssembly or Miden IR, to Miden Assembly.
@@ -221,7 +221,7 @@ pub struct Compiler {
         value_name = "OPT[=VALUE]",
         help_heading = "Compiler"
     )]
-    pub codegen: Option<CodegenOptions>,
+    pub codegen: Vec<String>,
     /// Set an unstable compiler option
     ///
     /// Use `-Z help` to print available options
@@ -231,7 +231,7 @@ pub struct Compiler {
         value_name = "OPT[=VALUE]",
         help_heading = "Compiler"
     )]
-    pub unstable: Option<UnstableOptions>,
+    pub unstable: Vec<String>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -241,28 +241,42 @@ pub struct CodegenOptions {
     #[arg(
         long,
         conflicts_with_all(["analyze_only", "link_only"]),
+        default_value_t = false,
     )]
     pub parse_only: bool,
     /// Tell the compiler to exit after it has performed semantic analysis on the inputs
     #[arg(
         long,
         conflicts_with_all(["parse_only", "link_only"]),
+        default_value_t = false,
     )]
     pub analyze_only: bool,
     /// Tell the compiler to exit after linking the inputs, without generating Miden Assembly
     #[arg(
         long,
         conflicts_with_all(["no_link"]),
+        default_value_t = false,
     )]
     pub link_only: bool,
     /// Tell the compiler to generate Miden Assembly from the inputs without linking them
-    #[arg(long)]
+    #[arg(long, default_value_t = false)]
     pub no_link: bool,
 }
 
 #[derive(Debug, Clone, Parser)]
 #[command(name = "-Z")]
 pub struct UnstableOptions {
+    /// Print the CFG after each HIR pass is applied
+    #[arg(long, default_value_t = false, help_heading = "Passes")]
+    pub print_cfg_after_all: bool,
+    /// Print the CFG after running a specific HIR pass
+    #[arg(
+        long,
+        value_name = "PASS",
+        value_delimiter = ',',
+        help_heading = "Passes"
+    )]
+    pub print_cfg_after_pass: Vec<String>,
     /// Print the IR after each pass is applied
     #[arg(long, default_value_t = false, help_heading = "Passes")]
     pub print_ir_after_all: bool,
@@ -276,31 +290,11 @@ pub struct UnstableOptions {
     pub print_ir_after_pass: Vec<String>,
 }
 
-impl clap::builder::ValueParserFactory for CodegenOptions {
-    type Parser = CodegenOptionsParser;
-
-    fn value_parser() -> Self::Parser {
-        CodegenOptionsParser
-    }
-}
-
-#[doc(hidden)]
-#[derive(Clone)]
-pub struct CodegenOptionsParser;
-impl clap::builder::TypedValueParser for CodegenOptionsParser {
-    type Value = CodegenOptions;
-
-    fn parse_ref(
-        &self,
-        _cmd: &clap::Command,
-        _arg: Option<&clap::Arg>,
-        value: &std::ffi::OsStr,
-    ) -> Result<Self::Value, clap::error::Error> {
-        use clap::error::{Error, ErrorKind};
-
+impl CodegenOptions {
+    fn parse_argv(argv: Vec<String>) -> Self {
         let command = <CodegenOptions as clap::CommandFactory>::command()
             .no_binary_name(true)
-            .arg_required_else_help(true)
+            .arg_required_else_help(false)
             .help_template(
                 "\
 Available codegen options:
@@ -312,51 +306,31 @@ Usage: midenc compile -C <opt>
 NOTE: When specifying these options, strip the leading '--'",
             );
 
-        let option = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
-        let mut argv = match option.split_once('=') {
-            None => vec![option],
-            Some((opt, value)) => vec![opt, value],
+        let argv = if argv.iter().any(|arg| matches!(arg.as_str(), "--help" | "-h" | "help")) {
+            vec!["--help".to_string()]
+        } else {
+            argv.into_iter()
+                .flat_map(|arg| match arg.split_once('=') {
+                    None => vec![format!("--{arg}")],
+                    Some((opt, value)) => {
+                        vec![format!("--{opt}"), value.to_string()]
+                    }
+                })
+                .collect::<Vec<_>>()
         };
 
-        if option == "help" || option == "h" {
-            argv.clear();
-            argv.push("--help");
-        }
-
         let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
-        let opts = <CodegenOptions as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+        <CodegenOptions as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<CodegenOptions>)
-            .unwrap_or_else(|err| err.exit());
-
-        Ok(opts)
+            .unwrap_or_else(|err| err.exit())
     }
 }
 
-impl clap::builder::ValueParserFactory for UnstableOptions {
-    type Parser = UnstableOptionsParser;
-
-    fn value_parser() -> Self::Parser {
-        UnstableOptionsParser
-    }
-}
-
-#[doc(hidden)]
-#[derive(Clone)]
-pub struct UnstableOptionsParser;
-impl clap::builder::TypedValueParser for UnstableOptionsParser {
-    type Value = UnstableOptions;
-
-    fn parse_ref(
-        &self,
-        _cmd: &clap::Command,
-        _arg: Option<&clap::Arg>,
-        value: &std::ffi::OsStr,
-    ) -> Result<Self::Value, clap::error::Error> {
-        use clap::error::{Error, ErrorKind};
-
+impl UnstableOptions {
+    fn parse_argv(argv: Vec<String>) -> Self {
         let command = <UnstableOptions as clap::CommandFactory>::command()
             .no_binary_name(true)
-            .arg_required_else_help(true)
+            .arg_required_else_help(false)
             .help_template(
                 "\
 Available unstable options:
@@ -368,23 +342,23 @@ Usage: midenc compile -Z <opt>
 NOTE: When specifying these options, strip the leading '--'",
             );
 
-        let option = value.to_str().ok_or_else(|| Error::new(ErrorKind::InvalidUtf8))?;
-        let mut argv = match option.split_once('=') {
-            None => vec![option],
-            Some((opt, value)) => vec![opt, value],
+        let argv = if argv.iter().any(|arg| matches!(arg.as_str(), "--help" | "-h" | "help")) {
+            vec!["--help".to_string()]
+        } else {
+            argv.into_iter()
+                .flat_map(|arg| match arg.split_once('=') {
+                    None => vec![format!("--{arg}")],
+                    Some((opt, value)) => {
+                        vec![format!("--{opt}"), value.to_string()]
+                    }
+                })
+                .collect::<Vec<_>>()
         };
 
-        if option == "help" || option == "h" {
-            argv.clear();
-            argv.push("--help");
-        }
-
         let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
-        let opts = <UnstableOptions as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+        <UnstableOptions as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
             .map_err(format_error::<UnstableOptions>)
-            .unwrap_or_else(|err| err.exit());
-
-        Ok(opts)
+            .unwrap_or_else(|err| err.exit())
     }
 }
 
@@ -400,7 +374,7 @@ impl Compiler {
             .into_iter()
             .chain(argv.into_iter().map(|arg| arg.into()));
         let command = <Self as clap::CommandFactory>::command();
-        let command = crate::register_flags(command);
+        let command = midenc_session::flags::register_flags(command);
         let mut matches = command.try_get_matches_from(argv).unwrap_or_else(|err| err.exit());
         let compile_matches = matches.clone();
 
@@ -409,7 +383,7 @@ impl Compiler {
             .unwrap_or_else(|err| err.exit());
 
         let inputs = inputs.into_iter().collect();
-        opts.into_session(inputs, emitter).with_arg_matches(compile_matches)
+        opts.into_session(inputs, emitter).with_extra_flags(compile_matches.into())
     }
 
     /// Use this configuration to obtain a [Session] used for compilation
@@ -422,13 +396,6 @@ impl Compiler {
             .working_dir
             .unwrap_or_else(|| std::env::current_dir().expect("no working directory available"));
 
-        // Map clap color choices to internal color choice
-        let color = match self.color {
-            ColorChoice::Auto => MDColorChoice::Auto,
-            ColorChoice::Always => MDColorChoice::Always,
-            ColorChoice::Never => MDColorChoice::Never,
-        };
-
         // Determine if a specific output file has been requested
         let output_file = match self.output_file {
             Some(path) => Some(OutputFile::Real(path)),
@@ -439,10 +406,10 @@ impl Compiler {
         // Initialize output types
         let mut output_types = OutputTypes::new(self.output_types).unwrap_or_else(|err| err.exit());
         if output_types.is_empty() {
-            output_types.insert(OutputType::Mast, output_file.clone());
-        } else if output_file.is_some() && output_types.get(&OutputType::Mast).is_some() {
+            output_types.insert(OutputType::Masp, output_file.clone());
+        } else if output_file.is_some() && output_types.get(&OutputType::Masp).is_some() {
             // The -o flag overrides --emit
-            output_types.insert(OutputType::Mast, output_file.clone());
+            output_types.insert(OutputType::Masp, output_file.clone());
         }
 
         // Convert --exe or --lib to project type
@@ -452,9 +419,12 @@ impl Compiler {
             ProjectType::Library
         };
 
+        let codegen = CodegenOptions::parse_argv(self.codegen);
+        let unstable = UnstableOptions::parse_argv(self.unstable);
+
         // Consolidate all compiler options
         let mut options = Options::new(self.name, self.target, project_type, cwd, self.sysroot)
-            .with_color(color)
+            .with_color(self.color)
             .with_verbosity(self.verbosity)
             .with_warnings(self.warn)
             .with_debug_info(self.debug)
@@ -463,16 +433,14 @@ impl Compiler {
         options.search_paths = self.search_path;
         options.link_libraries = self.link_libraries;
         options.entrypoint = self.entrypoint;
-        if let Some(unstable) = self.unstable {
-            options.print_ir_after_all = unstable.print_ir_after_all;
-            options.print_ir_after_pass = unstable.print_ir_after_pass;
-        }
-        if let Some(codegen) = self.codegen {
-            options.parse_only = codegen.parse_only;
-            options.analyze_only = codegen.analyze_only;
-            options.link_only = codegen.link_only;
-            options.no_link = codegen.no_link;
-        }
+        options.parse_only = codegen.parse_only;
+        options.analyze_only = codegen.analyze_only;
+        options.link_only = codegen.link_only;
+        options.no_link = codegen.no_link;
+        options.print_cfg_after_all = unstable.print_cfg_after_all;
+        options.print_cfg_after_pass = unstable.print_cfg_after_pass;
+        options.print_ir_after_all = unstable.print_ir_after_all;
+        options.print_ir_after_pass = unstable.print_ir_after_pass;
 
         // Establish --target-dir
         let target_dir = if self.target_dir.is_absolute() {

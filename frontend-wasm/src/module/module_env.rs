@@ -273,7 +273,11 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
                     EntityType::Function(sig_index)
                 }
                 TypeRef::Memory(ty) => {
-                    self.result.module.num_imported_memories += 1;
+                    self.result.module.memories.push(super::Memory {
+                        minimum: ty.initial,
+                        maximum: ty.maximum,
+                        imported: true,
+                    });
                     EntityType::Memory(ty.into())
                 }
                 TypeRef::Global(ty) => {
@@ -358,6 +362,10 @@ impl<'a, 'data> ModuleEnvironment<'a, 'data> {
         self.validator.memory_section(&memories).into_diagnostic()?;
         let cnt = usize::try_from(memories.count()).unwrap();
         assert_eq!(cnt, 1, "only one memory per module is supported");
+        for memory in memories {
+            let memory = memory.into_diagnostic()?;
+            self.result.module.memories.push(memory.into());
+        }
         Ok(())
     }
 

@@ -1,4 +1,5 @@
 mod felt;
+mod mem;
 
 use std::{collections::HashSet, sync::OnceLock};
 
@@ -15,6 +16,7 @@ fn modules() -> &'static HashSet<&'static str> {
     static MODULES: OnceLock<HashSet<&'static str>> = OnceLock::new();
     MODULES.get_or_init(|| {
         let mut s = HashSet::default();
+        s.insert("intrinsics::mem");
         s.insert(felt::INTRINSICS_FELT_MODULE_NAME);
         s
     })
@@ -28,6 +30,7 @@ pub fn convert_intrinsics_call(
     span: SourceSpan,
 ) -> Vec<Value> {
     match func_id.module.as_symbol().as_str() {
+        "intrinsics::mem" => mem::convert_mem_intrinsics(func_id, args, builder, span),
         felt::INTRINSICS_FELT_MODULE_NAME => {
             felt::convert_felt_intrinsics(func_id, args, builder, span)
         }

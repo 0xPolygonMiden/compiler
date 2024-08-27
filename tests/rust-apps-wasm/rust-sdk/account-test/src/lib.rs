@@ -1,9 +1,9 @@
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 extern crate alloc;
 
 use miden_sdk::*;
+
+#[global_allocator]
+static ALLOC: BumpAlloc = BumpAlloc::new();
 
 pub struct Account;
 

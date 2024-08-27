@@ -5,12 +5,14 @@ use std::{
 
 use midenc_hir::{
     self as hir,
-    diagnostics::Report,
     pass::{AnalysisManager, RewritePass, RewriteResult},
     Block as BlockId, Value as ValueId, *,
 };
 use midenc_hir_analysis::{BlockPredecessor, ControlFlowGraph, DominatorTree, Loop, LoopAnalysis};
-use midenc_session::Session;
+use midenc_session::{
+    diagnostics::{IntoDiagnostic, Report},
+    Session,
+};
 use smallvec::{smallvec, SmallVec};
 
 use crate::adt::ScopedMap;
@@ -41,11 +43,12 @@ use crate::adt::ScopedMap;
 ///    proceed
 /// 2. For each P, clone B to a new block B', and rewrite P such that it branches to B' rather than
 ///    B.
-/// 3. For each successor S of B: a. If S is a loop header, and S appears before B in the reverse
-///    postorder sort of the CFG, then it is a loopback edge, so the corresponding edge from B' to S
-///    is left intact. b. If S is a loop header, but S appears after B in the reverse postorder sort
-///    of the CFG, then it is treated like other blocks (see c.) c. Otherwise, clone S to S', and
-///    rewrite B' to branch to S' instead of S.
+/// 3. For each successor S of B:
+///   a. If S is a loop header, and S appears before B in the reverse postorder sort of the CFG,
+///      then it is a loopback edge, so the corresponding edge from B' to S is left intact.
+///   b. If S is a loop header, but S appears after B in the reverse postorder sort of the CFG,
+///      then it is treated like other blocks (see c.)
+///   c. Otherwise, clone S to S', and rewrite B' to branch to S' instead of S.
 /// 4. Repeat step 2 for the successors of S, recursively, until the subgraph reachable from B
 ///
 /// Since we are treeifying blocks from the leaves of the CFG to the root, and because we do not
@@ -374,6 +377,7 @@ impl RewritePass for Treeify {
             if predecessors.len() < 2 {
                 continue;
             }
+            log::trace!("found candidate for treeification: {b}");
 
             // For each predecessor, create a clone of B and all of its successors, with
             // the exception of successors which are loop headers where the loop header
@@ -382,6 +386,7 @@ impl RewritePass for Treeify {
             // the subgraph rooted at B.
             for p in predecessors {
                 assert!(block_q.is_empty());
+                log::trace!("scheduling copy of {b} for predecessor {}", p.block);
                 block_q.push_back(CopyBlock::new(b, p));
                 let root = b;
 
@@ -399,6 +404,11 @@ impl RewritePass for Treeify {
                     if block_infos.is_loop_header(b).is_some()
                         && block_infos.rpo_cmp(b, root).is_lt()
                     {
+                        log::trace!(
+                            "skipping copy of {b} for {} as {b} dominates {root} (i.e. it is a \
+                             loopback edge)",
+                            p.block
+                        );
                         continue;
                     }
 
@@ -431,6 +441,13 @@ impl RewritePass for Treeify {
             }
         }
 
+        session.print(&function, Self::FLAG).into_diagnostic()?;
+        if session.should_print_cfg(Self::FLAG) {
+            use std::io::Write;
+            let cfg = function.cfg_printer();
+            let mut stdout = std::io::stdout().lock();
+            write!(&mut stdout, "{cfg}").into_diagnostic()?;
+        }
         Ok(())
     }
 }
@@ -448,9 +465,15 @@ fn treeify(
     // Check if we're dealing with a loop header
     let is_loop = block_infos.is_loop_header(b).is_some();
 
+    log::trace!(
+        "starting treeification for {b} from {} (is {b} loop header? {is_loop})",
+        p.block
+    );
+
     // 1. Create a new block `b'`, without block arguments, unless it is a loop header,
     // in which case we want to preserve the block arguments, just with new value ids
     let b_prime = function.dfg.create_block_after(p.block);
+    log::trace!("created block {b_prime} as clone of {b}");
     block_map.insert(b, b_prime);
     block_infos.insert_copy(b_prime, b);
 
@@ -492,6 +515,7 @@ fn treeify(
     //    this is not a loop header.
     let mut seen = false; // Only update the first occurrance of this predecessor
     update_predecessor(function, p, |successor, pool| {
+        log::trace!("maybe updating successor {} of {}", successor.destination, p.block);
         if successor.destination == b && !seen {
             seen = true;
             successor.destination = b_prime;

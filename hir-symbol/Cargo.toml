@@ -11,7 +11,13 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 
+[features]
+default = []
+serde = ["dep:bitcode", "dep:serde"]
+
 [dependencies]
+bitcode = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 
 [build-dependencies]
 Inflector.workspace = true

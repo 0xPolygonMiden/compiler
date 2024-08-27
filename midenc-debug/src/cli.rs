@@ -2,8 +2,8 @@ use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 use clap::{ColorChoice, Parser};
 use midenc_session::{
-    diagnostics::{ColorChoice as MDColorChoice, DefaultSourceManager, Emitter},
-    InputFile, LinkLibrary, Options, ProjectType, Session, TargetEnv,
+    diagnostics::{DefaultSourceManager, Emitter},
+    ColorChoice as MDColorChoice, InputFile, LinkLibrary, Options, ProjectType, Session, TargetEnv,
 };
 
 /// Run a compiled Miden program with the Miden VM

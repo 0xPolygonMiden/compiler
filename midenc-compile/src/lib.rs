@@ -23,58 +23,18 @@ pub type CompilerResult<T> = Result<T, Report>;
 #[diagnostic()]
 pub struct CompilerStopped;
 
-/// Register dynamic flags to be shown via `midenc help compile`
-pub fn register_flags(cmd: clap::Command) -> clap::Command {
-    use midenc_session::CompileFlag;
-
-    inventory::iter::<CompileFlag>.into_iter().fold(cmd, |cmd, flag| {
-        let arg = clap::Arg::new(flag.name)
-            .long(flag.long.unwrap_or(flag.name))
-            .action(clap::ArgAction::from(flag.action));
-        let arg = if let Some(help) = flag.help {
-            arg.help(help)
-        } else {
-            arg
-        };
-        let arg = if let Some(help_heading) = flag.help_heading {
-            arg.help_heading(help_heading)
-        } else {
-            arg
-        };
-        let arg = if let Some(short) = flag.short {
-            arg.short(short)
-        } else {
-            arg
-        };
-        let arg = if let Some(env) = flag.env {
-            arg.env(env)
-        } else {
-            arg
-        };
-        let arg = if let Some(value) = flag.default_missing_value {
-            arg.default_missing_value(value)
-        } else {
-            arg
-        };
-        let arg = if let Some(value) = flag.default_value {
-            arg.default_value(value)
-        } else {
-            arg
-        };
-        let arg = if let Some(value) = flag.hide {
-            arg.hide(value)
-        } else {
-            arg
-        };
-        cmd.arg(arg)
-    })
-}
-
 /// Run the compiler using the provided [Session]
 pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
+    use midenc_hir::formatter::DisplayHex;
     let mut analyses = AnalysisManager::new();
+    log::info!("starting compilation session");
     match compile_inputs(session.inputs.clone(), &mut analyses, &session)? {
         Artifact::Assembled(ref mast) => {
+            log::info!(
+                "succesfully assembled mast package '{}' with digest {}",
+                mast.name,
+                DisplayHex::new(&mast.digest.as_bytes())
+            );
             session
                 .emit(OutputMode::Text, mast)
                 .into_diagnostic()
@@ -84,7 +44,14 @@ pub fn compile(session: Rc<Session>) -> CompilerResult<()> {
                 .into_diagnostic()
                 .wrap_err("failed to serialize 'mast' artifact")
         }
-        Artifact::Linked(_) | Artifact::Lowered(_) => Ok(()),
+        Artifact::Linked(_) => {
+            log::debug!("no outputs requested by user: pipeline stopped after linking");
+            Ok(())
+        }
+        Artifact::Lowered(_) => {
+            log::debug!("no outputs requested by user: pipeline stopped before linking");
+            Ok(())
+        }
     }
 }
 

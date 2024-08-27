@@ -22,7 +22,7 @@ pub struct MoveUpAndSwap;
 impl Tactic for MoveUpAndSwap {
     fn apply(&mut self, builder: &mut SolutionBuilder) -> TacticResult {
         if builder.requires_copies() || builder.arity() < 2 {
-            log::debug!(
+            log::trace!(
                 "cannot apply tactic when there are required copies ({}) or fewer than 2 operands \
                  ({})",
                 builder.requires_copies(),
@@ -35,7 +35,7 @@ impl Tactic for MoveUpAndSwap {
         let actual0 = builder.unwrap_current(0);
         if actual0 == expected0 {
             let Some(expected1) = builder.get_expected(1) else {
-                log::debug!(
+                log::trace!(
                     "top two operands on the stack are already in position, returning possible \
                      solution"
                 );
@@ -43,7 +43,7 @@ impl Tactic for MoveUpAndSwap {
             };
             let move_from = builder.unwrap_current_position(&expected1);
             if move_from == 1 {
-                log::debug!("abandoning tactic because operand at index 1 is already in position");
+                log::trace!("abandoning tactic because operand at index 1 is already in position");
                 return Err(TacticError::NotApplicable);
             }
             log::trace!(

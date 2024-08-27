@@ -10,9 +10,12 @@ use miden_processor::{
     AdviceInputs, ContextId, ExecutionError, Felt, MastForest, MemAdviceProvider, Process,
     ProcessState, RowIndex, StackOutputs, VmState, VmStateIterator,
 };
-use midenc_codegen_masm::NativePtr;
+use midenc_codegen_masm::{NativePtr, Package};
 use midenc_hir::Type;
-use midenc_session::Session;
+use midenc_session::{
+    diagnostics::{IntoDiagnostic, Report},
+    Session,
+};
 
 use super::{DebugExecutor, DebuggerHost, ExecutionTrace, TraceEvent};
 use crate::{debug::CallStack, felt::PopFromStack, TestFelt};
@@ -38,6 +41,48 @@ impl Executor {
         }
     }
 
+    pub fn for_package(
+        package: &Package,
+        args: Vec<Felt>,
+        session: &Session,
+    ) -> Result<Self, Report> {
+        use midenc_hir::formatter::DisplayHex;
+        log::debug!(
+            "creating executor for package '{}' (digest={})",
+            package.name,
+            DisplayHex::new(&package.digest.as_bytes())
+        );
+
+        let mut exec = Self::new(args);
+
+        for link_library in package.manifest.link_libraries.iter() {
+            log::debug!(
+                "loading link library from package manifest: {} (kind = {}, from = {:#?})",
+                link_library.name.as_ref(),
+                link_library.kind,
+                link_library.path.as_ref().map(|p| p.display())
+            );
+            let library = link_library.load(session)?;
+            log::debug!("library loaded succesfully");
+            exec.with_library(&library);
+        }
+
+        for rodata in package.rodata.iter() {
+            log::debug!(
+                "adding rodata segment for offset {} (size {}) to advice map: {}",
+                rodata.start.as_ptr(),
+                rodata.size_in_bytes(),
+                DisplayHex::new(&rodata.digest.as_bytes())
+            );
+            exec.advice
+                .extend_map([(rodata.digest, rodata.to_elements().map_err(Report::msg)?)]);
+        }
+
+        log::debug!("executor created");
+
+        Ok(exec)
+    }
+
     /// Set the contents of memory for the shadow stack frame of the entrypoint
     pub fn with_advice_inputs(&mut self, advice: AdviceInputs) -> &mut Self {
         self.advice.extend(advice);
@@ -53,6 +98,8 @@ impl Executor {
     /// Convert this [Executor] into a [DebugExecutor], which captures much more information
     /// about the program being executed, and must be stepped manually.
     pub fn into_debug(mut self, program: &Program, session: &Session) -> DebugExecutor {
+        log::debug!("creating debug executor");
+
         let advice_provider = MemAdviceProvider::from(self.advice);
         let mut host = DebuggerHost::new(advice_provider);
         for lib in core::mem::take(&mut self.libraries) {

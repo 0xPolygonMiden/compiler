@@ -28,7 +28,7 @@ pub struct MoveDownAndSwap;
 impl Tactic for MoveDownAndSwap {
     fn apply(&mut self, builder: &mut SolutionBuilder) -> TacticResult {
         if builder.requires_copies() || builder.arity() < 2 {
-            log::debug!(
+            log::trace!(
                 "cannot apply tactic when there are required copies ({}) or fewer than 2 operands \
                  ({})",
                 builder.requires_copies(),
@@ -39,7 +39,7 @@ impl Tactic for MoveDownAndSwap {
 
         // If the top operand is already in position, this tactic cannot be applied
         if builder.is_expected(0) {
-            log::debug!("abandoning tactic: operand at index 0 is already in position");
+            log::trace!("abandoning tactic: operand at index 0 is already in position");
             return Err(TacticError::NotApplicable);
         }
 

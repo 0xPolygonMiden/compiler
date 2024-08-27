@@ -6,7 +6,7 @@ use miden_processor::{
 };
 
 use super::ExecutionTrace;
-use crate::{CallStack, TestFelt};
+use crate::{CallFrame, CallStack, TestFelt};
 
 /// A special version of [crate::Executor] which provides finer-grained control over execution,
 /// and captures a ton of information about the program being executed, so as to make it possible
@@ -42,9 +42,11 @@ impl DebugExecutor {
     ///
     /// If the program has already reached its termination state, it returns the same result
     /// as the previous time it was called.
-    pub fn step(&mut self) -> Result<(), ExecutionError> {
+    ///
+    /// Returns the call frame exited this cycle, if any
+    pub fn step(&mut self) -> Result<Option<CallFrame>, ExecutionError> {
         if self.stopped {
-            return self.result.as_ref().map(|_| ()).map_err(|err| err.clone());
+            return self.result.as_ref().map(|_| None).map_err(|err| err.clone());
         }
         match self.iter.next() {
             Some(Ok(state)) => {
@@ -61,11 +63,11 @@ impl DebugExecutor {
                     self.recent.push_back(op);
                 }
 
-                self.callstack.next(&state);
+                let exited = self.callstack.next(&state);
 
                 self.last = Some(state);
 
-                Ok(())
+                Ok(exited)
             }
             Some(Err(err)) => {
                 self.stopped = true;
@@ -73,7 +75,7 @@ impl DebugExecutor {
             }
             None => {
                 self.stopped = true;
-                Ok(())
+                Ok(None)
             }
         }
     }

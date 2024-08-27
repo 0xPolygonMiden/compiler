@@ -173,7 +173,7 @@ impl Tui {
                 self.task.abort();
             }
             if counter > 100 {
-                log::error!("Failed to abort task in 100 milliseconds for unknown reason");
+                log::debug!("Failed to abort task in 100 milliseconds for unknown reason");
                 break;
             }
         }

@@ -6,7 +6,7 @@ use midenc_hir::{
     Block as BlockId, *,
 };
 use midenc_hir_analysis::ControlFlowGraph;
-use midenc_session::Session;
+use midenc_session::{diagnostics::IntoDiagnostic, Session};
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
@@ -34,7 +34,7 @@ impl RewritePass for SplitCriticalEdges {
         &mut self,
         function: &mut Self::Entity,
         analyses: &mut AnalysisManager,
-        _session: &Session,
+        session: &Session,
     ) -> RewriteResult {
         // Search for blocks with multiple successors with edges to blocks with
         // multiple predecessors; these blocks form critical edges in the control
@@ -134,6 +134,14 @@ impl RewritePass for SplitCriticalEdges {
         }
 
         analyses.insert(function.id, cfg);
+
+        session.print(&function, Self::FLAG).into_diagnostic()?;
+        if session.should_print_cfg(Self::FLAG) {
+            use std::io::Write;
+            let cfg = function.cfg_printer();
+            let mut stdout = std::io::stdout().lock();
+            write!(&mut stdout, "{cfg}").into_diagnostic()?;
+        }
 
         Ok(())
     }

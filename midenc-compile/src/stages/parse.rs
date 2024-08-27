@@ -46,6 +46,10 @@ impl Stage for ParseStage {
                     "invalid input: mast libraries are not supported as inputs, did you mean to \
                      use '-l'?",
                 )),
+                FileType::Masp => Err(Report::msg(
+                    "invalid input: mast packages are not supported as inputs, did you mean to \
+                     use '-l'?",
+                )),
             },
             InputType::Stdin { name, ref input } => match file_type {
                 FileType::Hir => self.parse_ast_from_bytes(input, session),
@@ -53,7 +57,7 @@ impl Stage for ParseStage {
                     input,
                     session,
                     &WasmTranslationConfig {
-                        source_name: name.as_str().unwrap().to_string().into(),
+                        source_name: name.as_str().to_string().into(),
                         ..Default::default()
                     },
                 ),
@@ -61,15 +65,17 @@ impl Stage for ParseStage {
                     input,
                     session,
                     &WasmTranslationConfig {
-                        source_name: name.as_str().unwrap().to_string().into(),
+                        source_name: name.as_str().to_string().into(),
                         ..Default::default()
                     },
                 ),
-                FileType::Masm => {
-                    self.parse_masm_from_bytes(name.as_str().unwrap(), input, session)
-                }
+                FileType::Masm => self.parse_masm_from_bytes(name.as_str(), input, session),
                 FileType::Mast => Err(Report::msg(
                     "invalid input: mast libraries are not supported as inputs, did you mean to \
+                     use '-l'?",
+                )),
+                FileType::Masp => Err(Report::msg(
+                    "invalid input: mast packages are not supported as inputs, did you mean to \
                      use '-l'?",
                 )),
             },
@@ -103,6 +109,7 @@ impl ParseStage {
     ) -> CompilerResult<ParseOutput> {
         use std::io::Read;
 
+        log::debug!("parsing hir from wasm at {}", path.display());
         let mut file = std::fs::File::open(path)
             .into_diagnostic()
             .wrap_err("could not open input for reading")?;
@@ -123,6 +130,7 @@ impl ParseStage {
         config: &WasmTranslationConfig,
     ) -> CompilerResult<ParseOutput> {
         let module = wasm::translate(bytes, config, session)?.unwrap_one_module();
+        log::debug!("parsed hir module from wasm bytes: {}", module.name.as_str());
 
         Ok(ParseOutput::Hir(module))
     }

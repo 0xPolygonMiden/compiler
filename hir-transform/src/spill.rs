@@ -10,7 +10,7 @@ use midenc_hir::{
 use midenc_hir_analysis::{
     spill::Placement, ControlFlowGraph, DominanceFrontier, DominatorTree, SpillAnalysis, Use, User,
 };
-use midenc_session::Session;
+use midenc_session::{diagnostics::IntoDiagnostic, Emit, Session};
 use rustc_hash::FxHashSet;
 
 /// This pass places spills of SSA values to temporaries to cap the depth of the operand stack.
@@ -63,7 +63,16 @@ impl RewritePass for ApplySpills {
         rewrites.push(maybe_rerun_block_inliner);
 
         // Apply the above collectively
-        rewrites.apply(function, analyses, session)
+        rewrites.apply(function, analyses, session)?;
+
+        session.print(&function, Self::FLAG).into_diagnostic()?;
+        if session.should_print_cfg(Self::FLAG) {
+            use std::io::Write;
+            let cfg = function.cfg_printer();
+            let mut stdout = std::io::stdout().lock();
+            write!(&mut stdout, "{cfg}").into_diagnostic()?;
+        }
+        Ok(())
     }
 }
 
@@ -229,6 +238,10 @@ impl RewritePass for InsertSpills {
         // Save the updated analysis results, and mark it preserved for later passes
         analyses.insert(function.id, spills);
         analyses.mark_preserved::<SpillAnalysis>(&function.id);
+
+        if session.options.print_ir_after_all {
+            function.write_to_stdout(session).into_diagnostic()?;
+        }
 
         Ok(())
     }

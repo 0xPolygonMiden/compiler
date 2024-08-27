@@ -3,10 +3,10 @@
 #![allow(unused)]
 
 mod cli;
+mod config;
 mod debug;
 mod exec;
 mod felt;
-mod inputs;
 mod logger;
 mod ui;
 
@@ -19,16 +19,16 @@ use midenc_session::{
 
 pub use self::{
     cli::Debugger,
+    config::DebuggerConfig,
     debug::*,
     exec::*,
     felt::{Felt, Felt as TestFelt, PopFromStack, PushToStack},
-    inputs::ProgramInputs,
 };
 
 pub type ExecutionResult<T> = Result<T, Report>;
 
 pub fn run(
-    inputs: Option<ProgramInputs>,
+    inputs: Option<DebuggerConfig>,
     args: Vec<miden_processor::Felt>,
     session: Rc<Session>,
     logger: Box<dyn log::Log>,
@@ -39,7 +39,7 @@ pub fn run(
 }
 
 pub fn trace(
-    _options: Option<ProgramInputs>,
+    _options: Option<DebuggerConfig>,
     _args: Vec<String>,
     _session: Rc<Session>,
 ) -> ExecutionResult<ExecutionTrace> {
@@ -47,7 +47,7 @@ pub fn trace(
 }
 
 pub async fn start_ui(
-    inputs: Option<ProgramInputs>,
+    inputs: Option<DebuggerConfig>,
     args: Vec<miden_processor::Felt>,
     session: Rc<Session>,
     logger: Box<dyn log::Log>,

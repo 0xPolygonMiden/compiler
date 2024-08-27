@@ -16,8 +16,8 @@ pub struct CoreAsset {
 }
 
 impl CoreAsset {
-    pub fn new(word: Word) -> Self {
-        CoreAsset { inner: word }
+    pub fn new(word: impl Into<Word>) -> Self {
+        CoreAsset { inner: word.into() }
     }
 
     pub fn as_word(&self) -> Word {

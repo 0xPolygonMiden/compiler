@@ -8,6 +8,7 @@ pub use midenc_hir::{
     Local, LocalId, MasmBlock as Block, MasmBlockId as BlockId, MasmImport as Import, MasmOp as Op,
     ModuleImportInfo,
 };
+use serde::{Deserialize, Serialize};
 
 pub use self::{
     function::{FrozenFunctionList, Function, FunctionList},
@@ -18,7 +19,7 @@ pub use self::{
 
 /// This represents a descriptor for a pointer translated from the IR into a form suitable for
 /// referencing data in Miden's linear memory.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NativePtr {
     /// This is the address of the word containing the first byte of data
     pub waddr: u32,

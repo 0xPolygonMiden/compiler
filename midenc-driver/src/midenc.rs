@@ -3,6 +3,7 @@ use std::{ffi::OsString, path::PathBuf, rc::Rc, sync::Arc};
 use clap::{ColorChoice, Parser, Subcommand};
 use log::Log;
 use midenc_compile as compile;
+#[cfg(feature = "debug")]
 use midenc_debug as debugger;
 use midenc_hir::FunctionIdent;
 use midenc_session::{
@@ -96,6 +97,7 @@ enum Commands {
     /// Run a program under the interactive Miden VM debugger
     ///
     /// This command starts a TUI-based interactive debugger with the given program loaded.
+    #[cfg(feature = "debug")]
     Debug {
         /// Specify the path to a Miden program file to execute.
         ///
@@ -110,7 +112,7 @@ enum Commands {
         /// access during execution. The inputs file is a JSON file which describes
         /// what the inputs are, or where to source them from.
         #[arg(long, value_name = "FILE")]
-        inputs: Option<debugger::ProgramInputs>,
+        inputs: Option<debugger::DebuggerConfig>,
         /// Arguments to place on the operand stack before calling the program entrypoint.
         ///
         /// Arguments will be pushed on the operand stack in the order of appearance,
@@ -128,12 +130,17 @@ enum Commands {
 }
 
 impl Midenc {
-    pub fn run<P, A>(cwd: P, args: A, logger: Box<dyn Log>) -> Result<(), Report>
+    pub fn run<P, A>(
+        cwd: P,
+        args: A,
+        logger: Box<dyn Log>,
+        filter: log::LevelFilter,
+    ) -> Result<(), Report>
     where
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
     {
-        Self::run_with_emitter(cwd, args, None, logger)
+        Self::run_with_emitter(cwd, args, None, logger, filter)
     }
 
     pub fn run_with_emitter<P, A>(
@@ -141,13 +148,14 @@ impl Midenc {
         args: A,
         emitter: Option<Arc<dyn Emitter>>,
         logger: Box<dyn Log>,
+        filter: log::LevelFilter,
     ) -> Result<(), Report>
     where
         P: Into<PathBuf>,
         A: IntoIterator<Item = OsString>,
     {
         let command = <Self as clap::CommandFactory>::command();
-        let command = command.mut_subcommand("compile", compile::register_flags);
+        let command = command.mut_subcommand("compile", midenc_session::flags::register_flags);
 
         let mut matches = command.try_get_matches_from(args).map_err(ClapDiagnostic::from)?;
         let compile_matches = matches.subcommand_matches("compile").cloned().unwrap_or_default();
@@ -155,7 +163,7 @@ impl Midenc {
             .map_err(format_error::<Self>)
             .map_err(ClapDiagnostic::from)?;
 
-        cli.invoke(cwd.into(), emitter, logger, compile_matches)
+        cli.invoke(cwd.into(), emitter, logger, filter, compile_matches)
     }
 
     fn invoke(
@@ -163,18 +171,22 @@ impl Midenc {
         cwd: PathBuf,
         emitter: Option<Arc<dyn Emitter>>,
         logger: Box<dyn Log>,
+        filter: log::LevelFilter,
         matches: clap::ArgMatches,
     ) -> Result<(), Report> {
         match self.command {
             Commands::Compile { input, mut options } => {
                 log::set_boxed_logger(logger)
                     .unwrap_or_else(|err| panic!("failed to install logger: {err}"));
+                log::set_max_level(filter);
                 if options.working_dir.is_none() {
                     options.working_dir = Some(cwd);
                 }
-                let session = options.into_session(vec![input], emitter).with_arg_matches(matches);
+                let session =
+                    options.into_session(vec![input], emitter).with_extra_flags(matches.into());
                 compile::compile(Rc::new(session))
             }
+            #[cfg(feature = "debug")]
             Commands::Debug {
                 input,
                 inputs,

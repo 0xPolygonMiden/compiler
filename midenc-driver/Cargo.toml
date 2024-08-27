@@ -13,11 +13,18 @@ license.workspace = true
 readme.workspace = true
 edition.workspace = true
 
+[features]
+default = ["all"]
+all = ["std", "debug"]
+debug = ["dep:midenc-debug"]
+std = ["alloc", "log/std", "clap/std", "clap/color", "clap/env"]
+alloc = ["clap/help", "clap/usage", "clap/error-context", "clap/suggestions"]
+
 [dependencies]
 clap.workspace = true
 log.workspace = true
 midenc-hir.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true
-midenc-debug.workspace = true
+midenc-debug = { workspace = true, optional = true }
 thiserror.workspace = true

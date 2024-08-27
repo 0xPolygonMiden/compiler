@@ -7,7 +7,7 @@ use midenc_hir::{
 use midenc_session::Session;
 use wasmparser::Validator;
 
-use super::{module_translation_state::ModuleTranslationState, Module};
+use super::{module_translation_state::ModuleTranslationState, MemoryIndex, Module};
 use crate::{
     error::WasmResult,
     intrinsics::is_miden_intrinsics_module,
@@ -91,7 +91,15 @@ pub fn build_ir_module(
     session: &Session,
 ) -> WasmResult<midenc_hir::Module> {
     let name = parsed_module.module.name();
+    let memory_size = parsed_module
+        .module
+        .memories
+        .get(MemoryIndex::from_u32(0))
+        .map(|mem| mem.minimum as u32);
     let mut module_builder = ModuleBuilder::new(name.as_str());
+    if let Some(memory_size) = memory_size {
+        module_builder.with_reserved_memory_pages(memory_size);
+    }
     build_globals(&parsed_module.module, &mut module_builder, &session.diagnostics)?;
     build_data_segments(parsed_module, &mut module_builder, &session.diagnostics)?;
     let addr2line = addr2line::Context::from_dwarf(gimli::Dwarf {
