@@ -3220,7 +3220,6 @@ dependencies = [
  "indexmap 2.2.6",
  "log",
  "miden-core",
- "miden-integration-tests",
  "miden-thiserror",
  "midenc-hir",
  "midenc-hir-type",

@@ -33,4 +33,3 @@ wasmparser = "0.214"
 [dev-dependencies]
 wat.workspace = true
 expect-test.workspace = true
-miden-integration-tests.workspace = true

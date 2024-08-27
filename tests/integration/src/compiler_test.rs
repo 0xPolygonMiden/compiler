@@ -222,7 +222,7 @@ impl CompilerTestBuilder {
         let entrypoint = match source {
             CompilerTestInputType::Cargo(ref mut config) => config.entrypoint.take(),
             CompilerTestInputType::CargoComponent(ref mut config) => config.entrypoint.take(),
-            CompilerTestInputType::Rustc(_) => None,
+            CompilerTestInputType::Rustc(_) => Some("__main".into()),
         };
         let name = match source {
             CompilerTestInputType::Cargo(ref mut config) => config.name.as_ref(),
