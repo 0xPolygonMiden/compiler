@@ -12,6 +12,9 @@ use core::{
 #[cfg(target_family = "wasm")]
 const PAGE_SIZE: usize = 2usize.pow(16);
 
+/// We require all allocations to be minimally word-aligned, i.e. 32 byte alignment
+const MIN_ALIGN: usize = 32;
+
 /// The linear memory heap must not spill over into the region reserved for procedure
 /// locals, which begins at 2^30 in Miden's address space.
 const HEAP_END: *mut u8 = (2usize.pow(30) / 4) as *mut u8;
@@ -71,7 +74,19 @@ impl BumpAlloc {
 
 unsafe impl GlobalAlloc for BumpAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let layout = layout.pad_to_align();
+        // Force allocations to be at minimally word-aligned. This is wasteful of memory, but
+        // we don't need to be particularly conservative with memory anyway, as most, if not all,
+        // Miden programs will be relatively short-lived. This makes interop at the Rust/Miden
+        // call boundary less expensive, as we can typically pass pointers directly to Miden,
+        // whereas without this alignment guarantee, we would have to set up temporary buffers for
+        // Miden code to write to, and then copy out of that buffer to whatever Rust type, e.g.
+        // `Vec`, we actually want.
+        //
+        // NOTE: This cannot fail, because we're always meeting minimum alignment requirements
+        let layout = layout
+            .align_to(core::cmp::max(layout.align(), MIN_ALIGN))
+            .unwrap()
+            .pad_to_align();
         let size = layout.size();
         let align = layout.align();
 
