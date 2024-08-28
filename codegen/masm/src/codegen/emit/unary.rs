@@ -64,7 +64,7 @@ impl<'a> OpEmitter<'a> {
             (Type::I8 | Type::U8, _) if n <= 8 => self.trunc_int32(n, span),
             (src, dst) => unimplemented!("unsupported truncation of {src} to {dst}"),
         }
-        self.stack.push(dst.clone());
+        self.push(dst.clone());
     }
 
     /// Zero-extend an unsigned integral value of type `src` to type `dst`
@@ -124,7 +124,7 @@ impl<'a> OpEmitter<'a> {
             ),
             (src, dst) => panic!("unsupported zero-extension from {src} to {dst}"),
         }
-        self.stack.push(dst.clone());
+        self.push(dst.clone());
     }
 
     /// Sign-extend an integral value of type `src` to type `dst`
@@ -179,7 +179,7 @@ impl<'a> OpEmitter<'a> {
             ) => self.sext_smallint(src_bits, dst_bits, span),
             (src, dst) => panic!("unsupported sign-extension from {src} to {dst}"),
         }
-        self.stack.push(dst.clone());
+        self.push(dst.clone());
     }
 
     pub fn bitcast(&mut self, dst: &Type, _span: SourceSpan) {
@@ -189,7 +189,7 @@ impl<'a> OpEmitter<'a> {
             src.is_integer() && dst.is_integer(),
             "invalid cast of {src} to {dst}: only integer-to-integer bitcasts are supported"
         );
-        self.stack.push(dst.clone());
+        self.push(dst.clone());
     }
 
     /// Convert between two integral types, given as `src` and `dst`,
@@ -338,7 +338,7 @@ impl<'a> OpEmitter<'a> {
             (Type::I1, _) => self.zext_smallint(src_bits, dst_bits, span),
             (src, dst) => unimplemented!("unsupported cast from {src} to {dst}"),
         }
-        self.stack.push(dst.clone());
+        self.push(dst.clone());
     }
 
     /// Cast `arg` to a pointer value
@@ -349,11 +349,11 @@ impl<'a> OpEmitter<'a> {
         match arg.ty() {
             // We allow i32 here because Wasm uses it
             Type::U32 | Type::I32 => {
-                self.stack.push(ty.clone());
+                self.push(ty.clone());
             }
             Type::Felt => {
                 self.emit(Op::U32Assert, span);
-                self.stack.push(ty.clone());
+                self.push(ty.clone());
             }
             int => panic!("invalid inttoptr cast: cannot cast value of type {int} to {ty}"),
         }
@@ -397,7 +397,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => panic!("expected integral type for is_odd opcode, got {ty}"),
         }
-        self.stack.push(Type::I1);
+        self.push(Type::I1);
     }
 
     /// Compute the integral base-2 logarithm of the value on top of the operand stack, and
@@ -441,13 +441,13 @@ impl<'a> OpEmitter<'a> {
                     ],
                     span,
                 );
-                self.stack.push(Type::U32);
+                self.push(Type::U32);
             }
             Type::I1 => {
                 // 2^0 == 1
                 let _ = self.stack.pop();
                 self.emit_all(&[Op::Drop, Op::PushU8(0)], span);
-                self.stack.push(Type::U32);
+                self.push(Type::U32);
             }
             ty if !ty.is_integer() => {
                 panic!("invalid ilog2 on {ty}: only integral types are supported")
@@ -512,7 +512,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("popcnt for {ty} is not supported"),
         }
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 
     /// Count the number of leading zero bits in the integral value on top of the operand stack,
@@ -589,7 +589,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("clz for {ty} is not supported"),
         }
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 
     /// Count the number of leading one bits in the integral value on top of the operand stack,
@@ -676,7 +676,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("clo for {ty} is not supported"),
         }
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 
     /// Count the number of trailing zero bits in the integral value on top of the operand stack,
@@ -764,7 +764,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("ctz for {ty} is not supported"),
         }
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 
     /// Count the number of trailing one bits in the integral value on top of the operand stack,
@@ -817,7 +817,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("cto for {ty} is not supported"),
         }
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 
     /// Invert the bitwise representation of the integral value on top of the operand stack.
@@ -863,7 +863,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("bnot for {ty} is not supported"),
         }
-        self.stack.push(ty);
+        self.push(ty);
     }
 
     /// Invert the boolean value on top of the operand stack.
@@ -873,7 +873,7 @@ impl<'a> OpEmitter<'a> {
         let arg = self.stack.pop().expect("operand stack is empty");
         assert_eq!(arg.ty(), Type::I1, "logical NOT requires a boolean value");
         self.emit(Op::Not, span);
-        self.stack.push(Type::I1);
+        self.push(Type::I1);
     }
 
     /// Compute 2^N, where N is the integral value on top of the operand stack, as
@@ -923,7 +923,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("pow2 for {ty} is not supported"),
         }
-        self.stack.push(ty);
+        self.push(ty);
     }
 
     /// Increment the operand on top of the stack by 1.
@@ -958,7 +958,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("incr for {ty} is not supported"),
         }
-        self.stack.push(ty);
+        self.push(ty);
     }
 
     /// Compute the modular multiplicative inverse of the operand on top of the stack, `n`, i.e.

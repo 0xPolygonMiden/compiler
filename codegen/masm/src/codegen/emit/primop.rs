@@ -211,7 +211,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("support for assert_eq on {ty} is not implemented"),
         }
-        self.stack.push(ty);
+        self.push(ty);
     }
 
     /// Execute the given procedure.
@@ -328,7 +328,7 @@ impl<'a> OpEmitter<'a> {
         }
 
         for result in signature.results.iter().rev() {
-            self.stack.push(result.ty.clone());
+            self.push(result.ty.clone());
         }
 
         self.emit(Op::Exec(callee), span);

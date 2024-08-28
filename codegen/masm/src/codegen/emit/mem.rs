@@ -15,7 +15,7 @@ impl<'a> OpEmitter<'a> {
             Type::Ptr(pointee) => {
                 let local = self.function.alloc_local(pointee.as_ref().clone());
                 self.emit(Op::LocAddr(local), span);
-                self.stack.push(ptr.clone());
+                self.push(ptr.clone());
             }
             ty => panic!("expected a pointer type, got {ty}"),
         }
@@ -25,14 +25,14 @@ impl<'a> OpEmitter<'a> {
     #[allow(unused)]
     pub fn heap_base(&mut self, span: SourceSpan) {
         self.emit(Op::Exec("intrinsics::mem::heap_base".parse().unwrap()), span);
-        self.stack.push(Type::Ptr(Box::new(Type::U8)));
+        self.push(Type::Ptr(Box::new(Type::U8)));
     }
 
     /// Return the address of the top of the heap
     #[allow(unused)]
     pub fn heap_top(&mut self, span: SourceSpan) {
         self.emit(Op::Exec("intrinsics::mem::heap_top".parse().unwrap()), span);
-        self.stack.push(Type::Ptr(Box::new(Type::U8)));
+        self.push(Type::Ptr(Box::new(Type::U8)));
     }
 
     /// Grow the heap (from the perspective of Wasm programs) by N pages, returning the previous
@@ -40,13 +40,13 @@ impl<'a> OpEmitter<'a> {
     pub fn mem_grow(&mut self, span: SourceSpan) {
         let _num_pages = self.stack.pop().expect("operand stack is empty");
         self.emit(Op::Exec("intrinsics::mem::memory_grow".parse().unwrap()), span);
-        self.stack.push(Type::I32);
+        self.push(Type::I32);
     }
 
     /// Returns the size (in pages) of the heap (from the perspective of Wasm programs)
     pub fn mem_size(&mut self, span: SourceSpan) {
         self.emit(Op::Exec("intrinsics::mem::memory_size".parse().unwrap()), span);
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 }
 
@@ -60,7 +60,7 @@ impl<'a> OpEmitter<'a> {
     pub fn load_local(&mut self, local: hir::LocalId, span: SourceSpan) {
         let ty = self.function.local(local).ty.clone();
         self.emit(Op::LocAddr(local), span);
-        self.stack.push(Type::Ptr(Box::new(ty.clone())));
+        self.push(Type::Ptr(Box::new(ty.clone())));
         self.load(ty, span)
     }
 
@@ -86,7 +86,7 @@ impl<'a> OpEmitter<'a> {
                     }
                     ty => todo!("support for loading {ty} is not yet implemented"),
                 }
-                self.stack.push(ty);
+                self.push(ty);
             }
             ty if !ty.is_pointer() => {
                 panic!("invalid operand to load: expected pointer, got {ty}")
@@ -111,7 +111,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => todo!("support for loading {ty} is not yet implemented"),
         }
-        self.stack.push(ty);
+        self.push(ty);
     }
 
     /// Emit a sequence of instructions to translate a raw pointer value to
@@ -942,7 +942,7 @@ impl<'a> OpEmitter<'a> {
     pub fn store_local(&mut self, local: hir::LocalId, span: SourceSpan) {
         let ty = self.function.local(local).ty.clone();
         self.emit(Op::LocAddr(local), span);
-        self.stack.push(Type::Ptr(Box::new(ty)));
+        self.push(Type::Ptr(Box::new(ty)));
         self.store(span)
     }
 
@@ -1046,11 +1046,11 @@ impl<'a> OpEmitter<'a> {
         );
 
         // Loop body - move value to top of stack, swap with pointer
-        self.stack.push(value);
-        self.stack.push(count);
-        self.stack.push(dst.clone());
-        self.stack.push(dst.ty());
-        self.stack.push(dst.ty());
+        self.push(value);
+        self.push(count);
+        self.push(dst.clone());
+        self.push(dst.ty());
+        self.push(dst.ty());
         self.dup(4, span); // [value, aligned_dst, i, dst, count, value]
         self.swap(1, span); // [aligned_dst, value, i, dst, count, value]
 
@@ -1166,12 +1166,12 @@ impl<'a> OpEmitter<'a> {
         );
 
         // Load the source value
-        self.stack.push(count.clone());
-        self.stack.push(dst.clone());
-        self.stack.push(src.clone());
-        self.stack.push(Type::U32);
-        self.stack.push(dst.clone());
-        self.stack.push(src.clone());
+        self.push(count.clone());
+        self.push(dst.clone());
+        self.push(src.clone());
+        self.push(Type::U32);
+        self.push(dst.clone());
+        self.push(src.clone());
         self.load(value_ty.clone(), span); // [value, new_dst, i, src, dst, count]
 
         // Write to the destination
