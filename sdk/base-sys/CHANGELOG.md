@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/miden-base-sys-v0.0.1...miden-base-sys-v0.0.2) - 2024-08-28
+
+### Fixed
+- *(sdk)* be more explicit about alignment of felt/word types
+- *(sdk)* improper handling of get_inputs vec after return into rust
+
+### Other
+- remove miden-diagnostics, start making midenc-session no-std-compatible
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/miden-base-sys-v0.0.0...miden-base-sys-v0.0.1) - 2024-08-16
 
 ### Fixed

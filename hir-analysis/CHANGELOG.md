@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-analysis-v0.0.1...midenc-hir-analysis-v0.0.2) - 2024-08-28
+
+### Fixed
+- *(frontend-wasm)* reserve memory allocated for use by rust
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-analysis-v0.0.0...midenc-hir-analysis-v0.0.1) - 2024-07-18
 
 ### Added

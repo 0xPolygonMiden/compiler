@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.1...midenc-codegen-masm-v0.0.2) - 2024-08-28
+
+### Added
+- implement packaging prototype
+
+### Fixed
+- *(frontend-wasm)* reserve memory allocated for use by rust
+- regression in midenc compile
+- use less fragile method for rodata segment init
+
+### Other
+- Merge pull request [#269](https://github.com/0xPolygonMiden/compiler/pull/269) from 0xPolygonMiden/greenhat/i267-store-load-dw
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.0...midenc-codegen-masm-v0.0.1) - 2024-07-18
 
 ### Added

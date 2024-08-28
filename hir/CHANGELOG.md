@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-v0.0.1...midenc-hir-v0.0.2) - 2024-08-28
+
+### Added
+- implement packaging prototype
+
+### Fixed
+- *(frontend-wasm)* reserve memory allocated for use by rust
+- inoperative --print-ir-after-*, add --print-cfg-after-*
+- regression in midenc compile
+- use less fragile method for rodata segment init
+
+### Other
+- remove miden-diagnostics, start making midenc-session no-std-compatible
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-v0.0.0...midenc-hir-v0.0.1) - 2024-07-18
 
 ### Added
