@@ -564,11 +564,10 @@ fn compute_rodata(
 
     // Convert global variable initializers to a data segment, and place it at the computed
     // global table offset in linear memory.
-    let extra = if globals.len() > 0 {
+    let extra = if !globals.is_empty() {
         let size = globals.size_in_bytes();
         let offset = global_table_offset;
-        let mut data = Vec::<u8>::with_capacity(size);
-        data.resize(size, 0);
+        let mut data = vec![0; size];
         for gv in globals.iter() {
             if let Some(init) = gv.initializer() {
                 let offset = unsafe { globals.offset_of(gv.id()) } as usize;
