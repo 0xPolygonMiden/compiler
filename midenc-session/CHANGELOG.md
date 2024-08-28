@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.2...midenc-session-v0.0.3) - 2024-08-28
+
+### Added
+- implement packaging prototype
+
+### Fixed
+- inoperative --print-ir-after-*, add --print-cfg-after-*
+- incorrect handling of -C/-Z and --emit=hir options
+- regression in midenc compile
+- address overhead of deserializing the stdlib
+
+### Other
+- remove miden-diagnostics, start making midenc-session no-std-compatible
+
 ## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.1...midenc-session-v0.0.2) - 2024-08-16
 
 ### Added

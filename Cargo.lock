@@ -2880,7 +2880,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
@@ -3087,7 +3087,7 @@ dependencies = [
 
 [[package]]
 name = "miden-stdlib-sys"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "miden-thiserror"
@@ -3120,7 +3120,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-codegen-masm"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "bitcode",
@@ -3232,7 +3232,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "cranelift-entity",
@@ -3269,7 +3269,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-analysis"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "cranelift-bforest",
@@ -3296,7 +3296,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-symbol"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "Inflector",
  "bitcode",
@@ -3307,7 +3307,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-transform"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "inventory",
@@ -3322,7 +3322,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-type"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "serde",
  "serde_repr",
@@ -3331,7 +3331,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-session"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "clap",
  "inventory",

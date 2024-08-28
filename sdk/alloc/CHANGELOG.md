@@ -1,0 +1,22 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/miden-sdk-alloc-v0.0.0...miden-sdk-alloc-v0.0.1) - 2024-08-28
+
+### Added
+- *(sdk)* introduce miden-sdk-alloc
+
+### Other
+- set `miden-sdk-alloc` version to `0.0.0` to be in sync with
+- fix typos ([#243](https://github.com/0xPolygonMiden/compiler/pull/243))
+- a few minor improvements
+- set up mdbook deploy
+- add guides for compiling rust->masm
+- add mdbook skeleton
+- provide some initial usage instructions
+- Initial commit

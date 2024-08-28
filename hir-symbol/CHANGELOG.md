@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-symbol-v0.0.1...midenc-hir-symbol-v0.0.2) - 2024-08-28
+
+### Added
+- implement packaging prototype
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-symbol-v0.0.0...midenc-hir-symbol-v0.0.1) - 2024-07-18
 
 ### Added
