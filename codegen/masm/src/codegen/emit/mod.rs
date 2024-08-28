@@ -157,7 +157,7 @@ impl<'a> DerefMut for InstOpEmitter<'a> {
 impl<'a> Drop for InstOpEmitter<'a> {
     fn drop(&mut self) {
         let results = self.dfg.inst_results(self.inst);
-        for (i, result) in results.iter().copied().rev().enumerate() {
+        for (i, result) in results.iter().copied().enumerate() {
             self.emitter.stack.rename(i, result);
         }
     }
