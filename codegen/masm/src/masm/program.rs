@@ -7,8 +7,8 @@ use miden_assembly::{
 };
 use miden_core::crypto::hash::Rpo256;
 use midenc_hir::{
-    self as hir, diagnostics::Report, DataSegmentTable, Felt, FieldElement, FunctionIdent, Ident,
-    SourceSpan,
+    self as hir, diagnostics::Report, DataSegmentTable, Felt, FieldElement, FunctionIdent,
+    GlobalVariableTable, Ident, SourceSpan,
 };
 use midenc_hir_analysis::GlobalVariableAnalysis;
 use midenc_session::{Emit, Session};
@@ -40,29 +40,6 @@ pub struct Program {
     heap_base: u32,
 }
 impl Program {
-    /// Create a new [Program] initialized from a [DataSegmentTable], a set of [Module]s, and an
-    /// optional entrypoint function.
-    ///
-    /// A `main.masm` module will be generated which invokes the given entrypoint on startup, after
-    /// initializing the global heap of the root context, based on the provided data segment table.
-    ///
-    /// You should generally prefer to use [Program::from_hir], but this constructor allows you to
-    /// manually produce a MASM program from its constituent parts.
-    pub fn new<M>(entrypoint: FunctionIdent, segments: &DataSegmentTable, modules: M) -> Self
-    where
-        M: IntoIterator<Item = Box<Module>>,
-    {
-        use crate::codegen::PAGE_SIZE;
-
-        let library = Library::new(segments, modules);
-        Self {
-            library,
-            entrypoint,
-            // By default, we assume the first two pages are reserved for shadow stack and globals
-            heap_base: 2 * PAGE_SIZE,
-        }
-    }
-
     /// Create a new [Program] initialized from an [hir::Program].
     ///
     /// The resulting [Program] will have the following:
@@ -381,29 +358,6 @@ impl Library {
         Self::default()
     }
 
-    /// Create a new [Library] initialized from a [DataSegmentTable] and a set of [Module]s.
-    ///
-    /// You should generally prefer to use [Library::from_hir], but this constructor allows you to
-    /// manually produce a MASM program from its constituent parts.
-    pub fn new<M>(segments: &DataSegmentTable, modules: M) -> Self
-    where
-        M: IntoIterator<Item = Box<Module>>,
-    {
-        let mut module_tree = ModuleTree::default();
-        for module in modules {
-            module_tree.insert(module);
-        }
-        let modules = Modules::Open(module_tree);
-        let rodata = compute_rodata(segments);
-        Self {
-            modules,
-            libraries: vec![],
-            kernel: None,
-            rodata,
-            stack_pointer: None,
-        }
-    }
-
     /// Create a new [Library] initialized from an [hir::Program].
     ///
     /// The resulting [Library] will have the following:
@@ -422,7 +376,11 @@ impl Library {
         } else {
             None
         };
-        let rodata = compute_rodata(program.segments());
+        let rodata = compute_rodata(
+            globals.layout().global_table_offset(),
+            program.globals(),
+            program.segments(),
+        );
         Self {
             modules: Modules::default(),
             libraries: vec![],
@@ -597,18 +555,53 @@ impl Emit for Library {
 ///
 /// This consists of the data itself, as well as a content digest, which will be used to place
 /// that data in the advice map when the program starts.
-fn compute_rodata(segments: &DataSegmentTable) -> Vec<Rodata> {
-    let mut rodatas = Vec::with_capacity(segments.iter().count());
+fn compute_rodata(
+    global_table_offset: u32,
+    globals: &GlobalVariableTable,
+    segments: &DataSegmentTable,
+) -> Vec<Rodata> {
+    let mut rodatas = Vec::with_capacity(segments.iter().count() + 1);
 
-    for segment in segments.iter() {
-        // Don't bother emitting anything for zeroed segments
-        if segment.is_zeroed() {
-            continue;
+    // Convert global variable initializers to a data segment, and place it at the computed
+    // global table offset in linear memory.
+    let extra = if globals.len() > 0 {
+        let size = globals.size_in_bytes();
+        let offset = global_table_offset;
+        let mut data = Vec::<u8>::with_capacity(size);
+        data.resize(size, 0);
+        for gv in globals.iter() {
+            if let Some(init) = gv.initializer() {
+                let offset = unsafe { globals.offset_of(gv.id()) } as usize;
+                let init = globals.get_constant(init);
+                let init_bytes = init.as_slice();
+                assert!(offset + init_bytes.len() <= data.len());
+                let dst = &mut data[offset..(offset + init_bytes.len())];
+                dst.copy_from_slice(init_bytes);
+            }
         }
-        let size = segment.size();
-        let offset = segment.offset();
+        // Don't bother emitting anything for zeroed segments
+        if data.iter().any(|&b| b != 0) {
+            Some((size as u32, offset, Arc::new(midenc_hir::ConstantData::from(data))))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Process all segments, ignoring zeroed segments (as Miden's memory is always zeroed)
+    for (size, offset, segment_data) in segments
+        .iter()
+        .filter_map(|segment| {
+            if segment.is_zeroed() {
+                None
+            } else {
+                Some((segment.size(), segment.offset(), segment.init()))
+            }
+        })
+        .chain(extra)
+    {
         let base = NativePtr::from_ptr(offset);
-        let segment_data = segment.init();
 
         // TODO(pauls): Do we ever have a need for data segments which are not aligned
         // to an word boundary? If so, we need to implement that
@@ -636,13 +629,13 @@ fn compute_rodata(segments: &DataSegmentTable) -> Vec<Rodata> {
         // are mixed together, so that the data is preserved, and
         // the commitment is correct
         let mut iter = segment_data.as_slice().iter().copied().array_chunks::<4>();
-        elements.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_be_bytes(bytes) as u64)));
+        elements.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_le_bytes(bytes) as u64)));
         if let Some(remainder) = iter.into_remainder() {
             let mut chunk = [0u8; 4];
             for (i, byte) in remainder.into_iter().enumerate() {
                 chunk[i] = byte;
             }
-            elements.push(Felt::new(u32::from_be_bytes(chunk) as u64));
+            elements.push(Felt::new(u32::from_le_bytes(chunk) as u64));
         }
         elements.resize(num_elements + padding, Felt::ZERO);
         let digest = Rpo256::hash_elements(&elements);

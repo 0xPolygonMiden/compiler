@@ -3,8 +3,6 @@ use midenc_hir::{self as hir, Felt, FieldElement, SourceSpan, StructType, Type};
 use super::OpEmitter;
 use crate::masm::{NativePtr, Op};
 
-pub(crate) const PAGE_SIZE: u32 = 64 * 1024;
-
 /// Allocation
 impl<'a> OpEmitter<'a> {
     /// Allocate a procedure-local memory slot of sufficient size to store a value
