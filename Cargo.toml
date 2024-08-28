@@ -90,7 +90,7 @@ miden-stdlib = { version = "0.10.3" }
 #miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
-midenc-codegen-masm = { path = "codegen/masm" }
+midenc-codegen-masm = { version = "0.0.2", path = "codegen/masm" }
 midenc-hir = { version = "0.0.2", path = "hir" }
 midenc-hir-analysis = { version = "0.0.2", path = "hir-analysis" }
 midenc-hir-macros = { version = "0.0.2", path = "hir-macros" }
