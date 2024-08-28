@@ -327,7 +327,7 @@ impl<'a> OpEmitter<'a> {
             }
         }
 
-        for result in signature.results.iter() {
+        for result in signature.results.iter().rev() {
             self.stack.push(result.ty.clone());
         }
 
