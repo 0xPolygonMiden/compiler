@@ -1,0 +1,87 @@
+# mod test_rust_d63291a98b435c53f58385d5782fb46f0b0b78bee8e860843e7223106d66f7d6
+
+export."__main"
+    push.5
+    push.1048576
+    exec.sum_arr
+    push.5
+    push.1048596
+    exec.sum_arr
+    u32wrapping_add
+end
+
+
+export.sum_arr
+    push.0
+    dup.2
+    eq.0
+    neq.0
+    if.true
+        movdn.2 drop drop
+    else
+        swap.1
+        dup.0
+        push.4
+        movup.2
+        swap.1
+        u32wrapping_add
+        dup.1
+        dup.0
+        u32mod.16
+        dup.0
+        u32mod.4
+        swap.1
+        u32div.4
+        movup.2
+        u32div.16
+        exec.::intrinsics::mem::load_sw
+        movup.3
+        u32wrapping_add
+        movup.2
+        u32mod.4
+        assertz.err=250
+        push.4294967295
+        movup.3
+        swap.1
+        u32wrapping_add
+        dup.0
+        neq.0
+        push.1
+        while.true
+            if.true
+                swap.2
+                dup.0
+                push.4
+                movup.2
+                swap.1
+                u32wrapping_add
+                dup.1
+                dup.0
+                u32mod.16
+                dup.0
+                u32mod.4
+                swap.1
+                u32div.4
+                movup.2
+                u32div.16
+                exec.::intrinsics::mem::load_sw
+                movup.3
+                u32wrapping_add
+                movup.2
+                u32mod.4
+                assertz.err=250
+                push.4294967295
+                movup.3
+                swap.1
+                u32wrapping_add
+                dup.0
+                neq.0
+                push.1
+            else
+                drop swap.1 drop push.0
+            end
+        end
+    end
+end
+
+

@@ -552,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
