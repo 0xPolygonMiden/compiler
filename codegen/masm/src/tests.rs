@@ -573,7 +573,7 @@ fn codegen_mem_store_dw_load_dw() {
                 "store_load_dw",
                 Signature::new(
                     [AbiParam::new(Type::U32), AbiParam::new(Type::U64)],
-                    [AbiParam::new(Type::U32)],
+                    [AbiParam::new(Type::U64)],
                 ),
             )
             .expect("unexpected symbol conflict");
@@ -835,16 +835,15 @@ impl ToCanonicalRepr for u64 {
     }
 
     fn canonicalize(self) -> SmallVec<[Felt; 4]> {
-        let bytes = self.to_be_bytes();
-        let a = Felt::new(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64);
-        let b = Felt::new(u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as u64);
-        smallvec![a, b]
+        let lo = self.rem_euclid(2u64.pow(32));
+        let hi = self.div_euclid(2u64.pow(32));
+        smallvec![Felt::new(hi), Felt::new(lo)]
     }
 
     fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
-        let hi = <u32 as ToCanonicalRepr>::from_stack(stack) as u64;
-        let lo = <u32 as ToCanonicalRepr>::from_stack(stack) as u64;
-        (hi << 32) | lo
+        let hi = stack.pop().unwrap().as_int() * 2u64.pow(32);
+        let lo = stack.pop().unwrap().as_int();
+        hi + lo
     }
 }
 
@@ -868,18 +867,17 @@ impl ToCanonicalRepr for i128 {
     }
 
     fn canonicalize(self) -> SmallVec<[Felt; 4]> {
-        let bytes = self.to_be_bytes();
-        let a = Felt::new(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64);
-        let b = Felt::new(u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as u64);
-        let c = Felt::new(u32::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]) as u64);
-        let d = Felt::new(u32::from_be_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]) as u64);
-        smallvec![a, b, c, d]
+        let lo = self.rem_euclid(2i128.pow(64));
+        let hi = self.div_euclid(2i128.pow(64));
+        let mut out = (hi as u64).canonicalize();
+        out.extend_from_slice(&(lo as u64).canonicalize());
+        out
     }
 
     fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
-        let hi = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
+        let hi = (<u64 as ToCanonicalRepr>::from_stack(stack) as i128) * 2i128.pow(64);
         let lo = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
-        (hi << 64) | lo
+        hi + lo
     }
 }
 
