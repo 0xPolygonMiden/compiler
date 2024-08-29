@@ -48,6 +48,7 @@ clap = { version = "4.1", default-features = false, features = [
     "derive",
     "std",
     "env",
+    "help",
 ] }
 cranelift-entity = "0.108"
 cranelift-bforest = "0.108"
