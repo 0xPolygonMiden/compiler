@@ -448,11 +448,12 @@ export.load_dw # [waddr, index, offset]
                     # re-align it, and we're done
                     exec.realign_dw
                 else
-                    # memory layout: [hi, ..], [<unused>, <unused>, mid, lo]
+                    # memory layout: [hi, ..], [<unused>, <unused>, lo, mid]
                     # load the two least-significant elements from the next word first
                     dup.0 u32overflowing_add.1 assertz # [waddr + 1, waddr, offset]
                     padw movup.4         # [waddr + 1, 0, 0, 0, 0, waddr, offset]
-                    mem_loadw drop drop  # [mid, lo, waddr, offset]
+                    mem_loadw drop drop  # [lo, mid, waddr, offset]
+                    swap.1 # [mid, lo, waddr, offset]
                     # load the most significant element from the first word
                     padw movup.6 # [waddr, 0, 0, 0, 0, mid, lo, offset]
                     mem_loadw movdn.3 drop drop drop # [hi, mid, lo, offset]
