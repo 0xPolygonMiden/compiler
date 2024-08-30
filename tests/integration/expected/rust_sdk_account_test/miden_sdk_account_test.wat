@@ -264,6 +264,15 @@
     end
   )
   (func $test_blake3_hash_1to1 (;35;) (type 19) (param i32 i32)
+    (local i32 i32)
+    global.get $__stack_pointer
+    local.tee 2
+    i32.const 32
+    i32.sub
+    i32.const -32
+    i32.and
+    local.tee 3
+    global.set $__stack_pointer
     local.get 1
     i32.load align=1
     local.get 1
@@ -280,8 +289,32 @@
     i32.load offset=24 align=1
     local.get 1
     i32.load offset=28 align=1
-    local.get 0
+    local.get 3
     call $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_1to1
+    local.get 0
+    i32.const 24
+    i32.add
+    local.get 3
+    i64.load offset=24
+    i64.store align=1
+    local.get 0
+    i32.const 16
+    i32.add
+    local.get 3
+    i64.load offset=16
+    i64.store align=1
+    local.get 0
+    i32.const 8
+    i32.add
+    local.get 3
+    i64.load offset=8
+    i64.store align=1
+    local.get 0
+    local.get 3
+    i64.load
+    i64.store align=1
+    local.get 2
+    global.set $__stack_pointer
   )
   (func $test_blake3_hash_2to1 (;36;) (type 19) (param i32 i32)
     local.get 1
