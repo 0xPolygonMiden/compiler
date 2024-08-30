@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-debug-v0.0.1...midenc-debug-v0.0.2) - 2024-08-30
+
+### Fixed
+- *(codegen)* broken return via pointer transformation
+- *(debugger)* infinite loop in breakpoint id computation
+
+### Other
+- fix clippy warnings in tests
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-debug-v0.0.0...midenc-debug-v0.0.1) - 2024-08-16
 
 ### Other
