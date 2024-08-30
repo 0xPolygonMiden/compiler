@@ -208,8 +208,8 @@ mod tests {
         let file = toml::from_str::<DebuggerConfig>(&text).unwrap();
         assert!(file.inputs.values().is_empty());
         assert!(file.advice_inputs.stack().is_empty());
-        assert_eq!(file.options.enable_tracing(), true);
-        assert_eq!(file.options.enable_debugging(), true);
+        assert!(file.options.enable_tracing());
+        assert!(file.options.enable_debugging());
         assert_eq!(file.options.max_cycles(), u32::MAX);
         assert_eq!(file.options.expected_cycles(), 64);
     }
@@ -226,8 +226,8 @@ mod tests {
         let file = DebuggerConfig::parse_str(&text).unwrap();
         assert!(file.inputs.values().is_empty());
         assert!(file.advice_inputs.stack().is_empty());
-        assert_eq!(file.options.enable_tracing(), true);
-        assert_eq!(file.options.enable_debugging(), true);
+        assert!(file.options.enable_tracing());
+        assert!(file.options.enable_debugging());
         assert_eq!(file.options.max_cycles(), 1000);
         assert_eq!(file.options.expected_cycles(), 64);
     }
@@ -246,8 +246,8 @@ mod tests {
         let file = DebuggerConfig::parse_str(&text).unwrap();
         assert_eq!(file.inputs.values(), &[RawFelt::new(3), RawFelt::new(2), RawFelt::new(1)]);
         assert!(file.advice_inputs.stack().is_empty());
-        assert_eq!(file.options.enable_tracing(), true);
-        assert_eq!(file.options.enable_debugging(), true);
+        assert!(file.options.enable_tracing());
+        assert!(file.options.enable_debugging());
         assert_eq!(file.options.max_cycles(), 1000);
         assert_eq!(file.options.expected_cycles(), 64);
     }
@@ -283,8 +283,8 @@ mod tests {
             file.advice_inputs.mapped_values(&digest),
             Some([RawFelt::new(1), RawFelt::new(2), RawFelt::new(3), RawFelt::new(4)].as_slice())
         );
-        assert_eq!(file.options.enable_tracing(), true);
-        assert_eq!(file.options.enable_debugging(), true);
+        assert!(file.options.enable_tracing());
+        assert!(file.options.enable_debugging());
         assert_eq!(file.options.max_cycles(), 1000);
         assert_eq!(file.options.expected_cycles(), 64);
     }

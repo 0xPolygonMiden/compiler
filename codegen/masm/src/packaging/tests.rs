@@ -105,8 +105,7 @@ fn example_package(context: &TestContext) -> Result<Arc<Package>, Report> {
     let offset_u64 = foo_ty.get(2).offset as usize;
     let foo_ty = Type::Struct(foo_ty);
     let foo_size = foo_ty.size_in_bytes();
-    let mut data = Vec::<u8>::with_capacity(foo_size);
-    data.resize(foo_size, 0);
+    let mut data = vec![0u8; foo_size];
     unsafe {
         let data_ptr_range = data.as_mut_ptr_range();
         core::ptr::write(data_ptr_range.start.byte_add(offset_u8), 1u8);
