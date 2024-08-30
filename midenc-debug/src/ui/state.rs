@@ -151,6 +151,7 @@ impl State {
                 .any(|bp| bp.id == candidate)
             {
                 candidate = next;
+                next = candidate.wrapping_add(1);
                 continue;
             }
             self.next_breakpoint_id = next;

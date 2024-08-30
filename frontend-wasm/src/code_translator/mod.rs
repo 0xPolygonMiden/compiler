@@ -259,15 +259,21 @@ pub fn translate_operator(
         /******************************* Unary Operators *************************************/
         Operator::I32Clz | Operator::I64Clz => {
             let val = state.pop1();
-            state.push1(builder.ins().clz(val, span));
+            let count = builder.ins().clz(val, span);
+            // To ensure we match the Wasm semantics, treat the output of clz as an i32
+            state.push1(builder.ins().bitcast(count, Type::I32, span));
         }
         Operator::I32Ctz | Operator::I64Ctz => {
             let val = state.pop1();
-            state.push1(builder.ins().ctz(val, span));
+            let count = builder.ins().ctz(val, span);
+            // To ensure we match the Wasm semantics, treat the output of ctz as an i32
+            state.push1(builder.ins().bitcast(count, Type::I32, span));
         }
         Operator::I32Popcnt | Operator::I64Popcnt => {
             let val = state.pop1();
-            state.push1(builder.ins().popcnt(val, span));
+            let count = builder.ins().popcnt(val, span);
+            // To ensure we match the Wasm semantics, treat the output of popcnt as an i32
+            state.push1(builder.ins().bitcast(count, Type::I32, span));
         }
         Operator::I32Extend8S | Operator::I32Extend16S => {
             let val = state.pop1();
@@ -749,7 +755,7 @@ fn translate_br_if(
     state: &mut FuncTranslationState,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let cond = state.pop1();
+    let cond = state.pop1_bitcasted(Type::I32, builder, span);
     let (br_destination, inputs) = translate_br_if_args(relative_depth, state);
     let next_block = builder.create_block();
     let then_dest = br_destination;

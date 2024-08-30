@@ -244,17 +244,18 @@ impl ExecutionTrace {
             }
             n => {
                 let mut buf = VecDeque::default();
-                let chunks_needed = n / 4;
+                let chunks_needed = ((n / 4) as u32) + ((n % 4) > 0) as u32;
                 if ptr.offset > 0 {
-                    todo!()
-                } else if ptr.index > 0 {
                     todo!()
                 } else {
                     for i in 0..chunks_needed {
-                        let word = self
-                            .read_memory_word_in_context(ptr.waddr + i as u32, ctx, clk)
+                        let abs_i = i + ptr.index as u32;
+                        let word = ptr.waddr + (abs_i / 4);
+                        let index = (abs_i % 4) as u8;
+                        let elem = self
+                            .read_memory_element_in_context(word, index, ctx, clk)
                             .expect("invalid memory access");
-                        buf.extend(word.into_iter().map(TestFelt));
+                        buf.push_back(TestFelt(elem));
                     }
                 }
                 Some(T::try_pop(&mut buf).unwrap_or_else(|| {

@@ -178,6 +178,11 @@ impl<'a> ConversionPass for ConvertHirToMasm<&'a hir::Function> {
             let scheduler = Scheduler::new(f, &mut f_prime, &domtree, &loops, &liveness);
             let schedule = scheduler.build();
 
+            /*
+                       if f.id.function.as_str().contains("get_inputs") {
+                           dbg!(&schedule);
+                       }
+            */
             let emitter =
                 FunctionEmitter::new(f, &mut f_prime, &domtree, &loops, &liveness, &globals);
             emitter.emit(schedule, stack);

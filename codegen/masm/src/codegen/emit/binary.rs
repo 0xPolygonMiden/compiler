@@ -360,10 +360,10 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("add is not yet implemented for {ty}"),
         }
-        self.push(ty);
         if overflow.is_overflowing() {
             self.push(Type::I1);
         }
+        self.push(ty);
     }
 
     pub fn add_imm(&mut self, imm: Immediate, overflow: Overflow, span: SourceSpan) {
@@ -393,10 +393,10 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("add is not yet implemented for {ty}"),
         }
-        self.push(ty);
         if overflow.is_overflowing() {
             self.push(Type::I1);
         }
+        self.push(ty);
     }
 
     pub fn sub(&mut self, overflow: Overflow, span: SourceSpan) {
@@ -425,10 +425,10 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("sub is not yet implemented for {ty}"),
         }
-        self.push(ty);
         if overflow.is_overflowing() {
             self.push(Type::I1);
         }
+        self.push(ty);
     }
 
     pub fn sub_imm(&mut self, imm: Immediate, overflow: Overflow, span: SourceSpan) {
@@ -457,10 +457,10 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("sub is not yet implemented for {ty}"),
         }
-        self.push(ty);
         if overflow.is_overflowing() {
             self.push(Type::I1);
         }
+        self.push(ty);
     }
 
     pub fn mul(&mut self, overflow: Overflow, span: SourceSpan) {
@@ -505,10 +505,10 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("mul for {ty} is not supported"),
         }
-        self.push(ty);
         if overflow.is_overflowing() {
             self.push(Type::I1);
         }
+        self.push(ty);
     }
 
     pub fn mul_imm(&mut self, imm: Immediate, overflow: Overflow, span: SourceSpan) {
@@ -539,10 +539,10 @@ impl<'a> OpEmitter<'a> {
             }
             ty => unimplemented!("mul for {ty} is not supported"),
         }
-        self.push(ty);
         if overflow.is_overflowing() {
             self.push(Type::I1);
         }
+        self.push(ty);
     }
 
     pub fn checked_div(&mut self, span: SourceSpan) {

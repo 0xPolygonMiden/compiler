@@ -6,7 +6,6 @@ use midenc_hir::{
     adt::SparseMap,
     assert_matches,
     diagnostics::{SourceSpan, Span},
-    Type,
 };
 use midenc_hir_analysis::{
     DominatorTree, GlobalVariableLayout, LivenessAnalysis, Loop, LoopAnalysis,
@@ -461,6 +460,8 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     }
 
     fn emit_global_value(&mut self, inst_info: &InstInfo, op: &hir::GlobalValueOp) {
+        use midenc_hir::Immediate;
+
         assert_eq!(op.op, hir::Opcode::GlobalValue);
         let addr = self
             .function
@@ -475,14 +476,35 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
             });
         let span = self.function.f.dfg.inst_span(inst_info.inst);
         match self.function.f.dfg.global_value(op.global) {
-            hir::GlobalValueData::Load { ref ty, .. } => {
+            hir::GlobalValueData::Load { ref ty, offset, .. } => {
                 let mut emitter = self.inst_emitter(inst_info.inst);
+                let offset = *offset;
+                let addr = if offset >= 0 {
+                    addr + (offset as u32)
+                } else {
+                    addr - offset.unsigned_abs()
+                };
                 emitter.load_imm(addr, ty.clone(), span);
             }
-            hir::GlobalValueData::IAddImm { .. } | hir::GlobalValueData::Symbol { .. } => {
+            global @ (hir::GlobalValueData::IAddImm { .. }
+            | hir::GlobalValueData::Symbol { .. }) => {
+                let ty = self
+                    .function
+                    .f
+                    .dfg
+                    .value_type(self.function.f.dfg.first_result(inst_info.inst))
+                    .clone();
                 let mut emitter = self.inst_emitter(inst_info.inst);
-                emitter.stack_mut().push(addr);
-                emitter.inttoptr(&Type::Ptr(Type::U8.into()), span);
+                let offset = global.offset();
+                let addr = if offset >= 0 {
+                    addr + (offset as u32)
+                } else {
+                    addr - offset.unsigned_abs()
+                };
+                emitter.literal(Immediate::U32(addr), span);
+                // "cast" the immediate to the expected type
+                emitter.stack_mut().pop();
+                emitter.stack_mut().push(ty);
             }
         }
     }

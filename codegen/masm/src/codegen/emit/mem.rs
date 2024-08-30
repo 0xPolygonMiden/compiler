@@ -3,8 +3,6 @@ use midenc_hir::{self as hir, Felt, FieldElement, SourceSpan, StructType, Type};
 use super::OpEmitter;
 use crate::masm::{NativePtr, Op};
 
-pub(crate) const PAGE_SIZE: u32 = 64 * 1024;
-
 /// Allocation
 impl<'a> OpEmitter<'a> {
     /// Allocate a procedure-local memory slot of sufficient size to store a value
@@ -17,7 +15,7 @@ impl<'a> OpEmitter<'a> {
             Type::Ptr(pointee) => {
                 let local = self.function.alloc_local(pointee.as_ref().clone());
                 self.emit(Op::LocAddr(local), span);
-                self.stack.push(ptr.clone());
+                self.push(ptr.clone());
             }
             ty => panic!("expected a pointer type, got {ty}"),
         }
@@ -27,14 +25,14 @@ impl<'a> OpEmitter<'a> {
     #[allow(unused)]
     pub fn heap_base(&mut self, span: SourceSpan) {
         self.emit(Op::Exec("intrinsics::mem::heap_base".parse().unwrap()), span);
-        self.stack.push(Type::Ptr(Box::new(Type::U8)));
+        self.push(Type::Ptr(Box::new(Type::U8)));
     }
 
     /// Return the address of the top of the heap
     #[allow(unused)]
     pub fn heap_top(&mut self, span: SourceSpan) {
         self.emit(Op::Exec("intrinsics::mem::heap_top".parse().unwrap()), span);
-        self.stack.push(Type::Ptr(Box::new(Type::U8)));
+        self.push(Type::Ptr(Box::new(Type::U8)));
     }
 
     /// Grow the heap (from the perspective of Wasm programs) by N pages, returning the previous
@@ -42,13 +40,13 @@ impl<'a> OpEmitter<'a> {
     pub fn mem_grow(&mut self, span: SourceSpan) {
         let _num_pages = self.stack.pop().expect("operand stack is empty");
         self.emit(Op::Exec("intrinsics::mem::memory_grow".parse().unwrap()), span);
-        self.stack.push(Type::I32);
+        self.push(Type::I32);
     }
 
     /// Returns the size (in pages) of the heap (from the perspective of Wasm programs)
     pub fn mem_size(&mut self, span: SourceSpan) {
         self.emit(Op::Exec("intrinsics::mem::memory_size".parse().unwrap()), span);
-        self.stack.push(Type::U32);
+        self.push(Type::U32);
     }
 }
 
@@ -62,7 +60,7 @@ impl<'a> OpEmitter<'a> {
     pub fn load_local(&mut self, local: hir::LocalId, span: SourceSpan) {
         let ty = self.function.local(local).ty.clone();
         self.emit(Op::LocAddr(local), span);
-        self.stack.push(Type::Ptr(Box::new(ty.clone())));
+        self.push(Type::Ptr(Box::new(ty.clone())));
         self.load(ty, span)
     }
 
@@ -88,7 +86,7 @@ impl<'a> OpEmitter<'a> {
                     }
                     ty => todo!("support for loading {ty} is not yet implemented"),
                 }
-                self.stack.push(ty);
+                self.push(ty);
             }
             ty if !ty.is_pointer() => {
                 panic!("invalid operand to load: expected pointer, got {ty}")
@@ -113,7 +111,7 @@ impl<'a> OpEmitter<'a> {
             }
             ty => todo!("support for loading {ty} is not yet implemented"),
         }
-        self.stack.push(ty);
+        self.push(ty);
     }
 
     /// Emit a sequence of instructions to translate a raw pointer value to
@@ -177,10 +175,9 @@ impl<'a> OpEmitter<'a> {
                     &[
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
-                        Op::Movup(4),
-                        Op::Movup(4),
                         Op::Drop,
                         Op::Drop,
+                        Op::Swap(1),
                         Op::Drop,
                     ],
                     span,
@@ -192,8 +189,8 @@ impl<'a> OpEmitter<'a> {
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
                         Op::Drop,
+                        Op::Movdn(2),
                         Op::Drop,
-                        Op::Swap(1),
                         Op::Drop,
                     ],
                     span,
@@ -201,7 +198,14 @@ impl<'a> OpEmitter<'a> {
             }
             3 => {
                 self.emit_all(
-                    &[Op::Padw, Op::MemLoadwImm(ptr.waddr), Op::Drop, Op::Drop, Op::Drop],
+                    &[
+                        Op::Padw,
+                        Op::MemLoadwImm(ptr.waddr),
+                        Op::Movdn(3),
+                        Op::Drop,
+                        Op::Drop,
+                        Op::Drop,
+                    ],
                     span,
                 );
             }
@@ -233,18 +237,13 @@ impl<'a> OpEmitter<'a> {
                         // Load a quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
-                        // Move the two elements across which the desired machine word spans
-                        // to the bottom of the stack temporarily
-                        Op::Movdn(4),
-                        Op::Movdn(4),
-                        // Drop the unused elements
                         Op::Drop,
                         Op::Drop,
-                        // Shift the high bits left by the offset
-                        Op::U32ShlImm(ptr.offset as u32),
-                        // Move the low bits to the top and shift them right
-                        Op::Swap(1),
+                        // shift low bits
                         Op::U32ShrImm(rshift),
+                        // shift high bits left by the offset
+                        Op::Swap(1),
+                        Op::U32ShlImm(ptr.offset as u32),
                         // OR the high and low bits together
                         Op::U32Or,
                     ],
@@ -256,12 +255,11 @@ impl<'a> OpEmitter<'a> {
                     // Load a quad-word
                     Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
-                    // Drop the first unused element
+                    // Drop w3, w2
                     Op::Drop,
-                    // Move the desired element past the last two unused
-                    Op::Movdn(3),
-                    // Drop the remaining unused elements
                     Op::Drop,
+                    // Drop w1
+                    Op::Swap(1),
                     Op::Drop,
                 ],
                 span,
@@ -272,19 +270,15 @@ impl<'a> OpEmitter<'a> {
                         // Load a quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop the first unused element
+                        // Drop unused elements
                         Op::Drop,
-                        // Move the two elements across which the desired machine word spans
-                        // to the bottom of the stack temporarily
-                        Op::Movdn(3),
-                        Op::Movdn(3),
-                        // Drop the remaining unused element
+                        Op::Movup(2),
                         Op::Drop,
-                        // Shift the high bits left by the offset
-                        Op::U32ShlImm(ptr.offset as u32),
-                        // Move the low bits to the top and shift them right
-                        Op::Swap(1),
+                        // Shift the low bits
                         Op::U32ShrImm(rshift),
+                        // Shift the high bits
+                        Op::Swap(1),
+                        Op::U32ShlImm(ptr.offset as u32),
                         // OR the high and low bits together
                         Op::U32Or,
                     ],
@@ -296,11 +290,12 @@ impl<'a> OpEmitter<'a> {
                     // Load a quad-word
                     Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
-                    // Drop the first two unused elements
+                    // Drop w3
                     Op::Drop,
+                    // Move w2 to bottom
+                    Op::Movdn(2),
+                    // Drop w1, w0
                     Op::Drop,
-                    // Swap the last remaining unused element to the top and drop it
-                    Op::Swap(1),
                     Op::Drop,
                 ],
                 span,
@@ -311,14 +306,15 @@ impl<'a> OpEmitter<'a> {
                         // Load a quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop the first two unused elements
+                        // Drop unused elements
+                        Op::Movup(3),
+                        Op::Movup(3),
                         Op::Drop,
                         Op::Drop,
-                        // Shift the high bits left by the offset
-                        Op::U32ShlImm(ptr.offset as u32),
-                        // Move the low bits to the top and shift them right
-                        Op::Swap(1),
+                        // Shift low bits
                         Op::U32ShrImm(rshift),
+                        // Shift high bits
+                        Op::U32ShlImm(ptr.offset as u32),
                         // OR the high and low bits together
                         Op::U32Or,
                     ],
@@ -330,6 +326,8 @@ impl<'a> OpEmitter<'a> {
                     // Load a quad-word
                     Op::Padw,
                     Op::MemLoadwImm(ptr.waddr),
+                    // Move w3 to bottom
+                    Op::Movdn(3),
                     // Drop the three unused elements
                     Op::Drop,
                     Op::Drop,
@@ -341,24 +339,18 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(
                     &[
                         // Load the quad-word containing the low bits
-                        Op::Padw,
-                        Op::MemLoadwImm(ptr.waddr + 1),
-                        // Move the element we need to the bottom temporarily
-                        Op::Movdn(4),
-                        // Drop the unused elements
-                        Op::Drop,
-                        Op::Drop,
-                        Op::Drop,
-                        // Shift the low bits right by the offset
+                        Op::MemLoadImm(ptr.waddr + 1),
+                        // Shift the low bits
                         Op::U32ShrImm(rshift),
                         // Load the quad-word containing the high bits
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop the unused elements
+                        // Drop unused elements
+                        Op::Movdn(3),
                         Op::Drop,
                         Op::Drop,
                         Op::Drop,
-                        // Shift the high bits left by the offset
+                        // Shift the high bits
                         Op::U32ShlImm(ptr.offset as u32),
                         // OR the high and low bits together
                         Op::U32Or,
@@ -408,6 +400,8 @@ impl<'a> OpEmitter<'a> {
                         // Move the unused element to the top and drop it
                         Op::Movup(4),
                         Op::Drop,
+                        // Move into stack order for realign_dw
+                        Op::Swap(2),
                     ],
                     span,
                 );
@@ -437,6 +431,8 @@ impl<'a> OpEmitter<'a> {
                         Op::MemLoadwImm(ptr.waddr),
                         // Drop the unused element
                         Op::Drop,
+                        // Move into stack order for realign_dw
+                        Op::Swap(2),
                     ],
                     span,
                 );
@@ -476,6 +472,8 @@ impl<'a> OpEmitter<'a> {
                         // Drop the two unused elements
                         Op::Drop,
                         Op::Drop,
+                        // Move into stack order for realign_dw
+                        Op::Swap(2),
                     ],
                     span,
                 );
@@ -515,6 +513,8 @@ impl<'a> OpEmitter<'a> {
                         Op::Drop,
                         Op::Drop,
                         Op::Drop,
+                        // Move into stack order for realign_dw
+                        Op::Swap(2),
                     ],
                     span,
                 );
@@ -537,22 +537,41 @@ impl<'a> OpEmitter<'a> {
         let aligned = ptr.is_element_aligned();
         match ptr.index {
             // Naturally-aligned
-            0 if aligned => self.emit_all(&[Op::Padw, Op::MemLoadwImm(ptr.waddr)], span),
+            0 if aligned => self.emit_all(
+                &[
+                    // Load the word
+                    Op::Padw,
+                    // [w3, w2, w1, w0]
+                    Op::MemLoadwImm(ptr.waddr),
+                    // Swap the element order to lowest-address-first
+                    // [w2, w3, w1, w0]
+                    Op::Swap(1),
+                    // [w1, w3, w2, w0]
+                    Op::Swap(2),
+                    // [w3, w1, w2, w0]
+                    Op::Swap(1),
+                    // [w0, w1, w2, w3]
+                    Op::Swap(3),
+                ],
+                span,
+            ),
             0 => {
                 // An unaligned quad-word load spans five elements
                 self.emit_all(
                     &[
-                        // Load second quad-word
-                        Op::Padw,
-                        Op::MemLoadwImm(ptr.waddr + 1),
-                        // Drop all but the first element
-                        Op::Movdn(4),
-                        Op::Drop,
-                        Op::Drop,
-                        Op::Drop,
+                        // Load first element of second quad-word
+                        // [e]
+                        Op::MemLoadImm(ptr.waddr + 1),
                         // Load first quad-word
                         Op::Padw,
+                        // [d, c, b, a, e]
                         Op::MemLoadwImm(ptr.waddr),
+                        // [a, c, b, d, e]
+                        Op::Swap(3),
+                        // [c, a, b, d, e]
+                        Op::Swap(1),
+                        // [a, b, c, d, e]
+                        Op::Movdn(2),
                     ],
                     span,
                 );
@@ -561,17 +580,18 @@ impl<'a> OpEmitter<'a> {
             1 if aligned => {
                 self.emit_all(
                     &[
-                        // Load second quad-word
-                        Op::Padw,
-                        Op::MemLoadwImm(ptr.waddr + 1),
-                        // Drop last element
-                        Op::Movup(4),
-                        Op::Drop,
+                        // Load first element of second quad-word
+                        // [d]
+                        Op::MemLoadImm(ptr.waddr + 1),
                         // Load first quad-word
                         Op::Padw,
+                        // [c, b, a, _, d]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop first element
+                        // [_, b, a, c, d]
+                        Op::Swap(3),
                         Op::Drop,
+                        // [a, b, c, d]
+                        Op::Swap(1),
                     ],
                     span,
                 );
@@ -580,19 +600,28 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned double-word load spans five elements
                 self.emit_all(
                     &[
-                        // Load second quad-word
+                        // Load first two elements of second quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr + 1),
-                        // Drop all but the first two elements
-                        Op::Movdn(4),
-                        Op::Movdn(4),
                         Op::Drop,
+                        // [e, d]
                         Op::Drop,
-                        // Load first quad-word
+                        // Load last three elements of first quad-word
                         Op::Padw,
+                        // [c, b, a, _, e, d]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop the first word
+                        // [_, b, a, c, e, d]
+                        Op::Swap(3),
+                        // [b, a, c, e, d]
                         Op::Drop,
+                        // [e, a, c, b, d]
+                        Op::Swap(3),
+                        // [d, a, c, b, e]
+                        Op::Swap(4),
+                        // [b, a, c, d, e]
+                        Op::Swap(3),
+                        // [a, b, c, d, e]
+                        Op::Swap(1),
                     ],
                     span,
                 );
@@ -601,18 +630,24 @@ impl<'a> OpEmitter<'a> {
             2 if aligned => {
                 self.emit_all(
                     &[
-                        // Load second quad-word
+                        // Load first two elements of second quad-word
                         Op::Padw,
+                        // [_, _, d, c]
                         Op::MemLoadwImm(ptr.waddr),
                         // Drop last two elements
-                        Op::Movup(4),
-                        Op::Movup(4),
                         Op::Drop,
+                        // [d, c]
                         Op::Drop,
-                        // Load first quad-word
+                        // Load last two elements of first quad-word
                         Op::Padw,
+                        // [b, a, _, _, d, c]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop first two elements
+                        // [d, a, _, _, b, c]
+                        Op::Swap(4),
+                        // [a, _, _, b, c, d]
+                        Op::Movdn(5),
+                        // [_, _, a, b, c, d]
+                        Op::Swap(2),
                         Op::Drop,
                         Op::Drop,
                     ],
@@ -623,17 +658,27 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned double-word load spans five elements
                 self.emit_all(
                     &[
-                        // Load the second quad-word
+                        // Load the first three elements of the second quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr + 1),
-                        // Drop the last element
-                        Op::Movup(4),
+                        // [e, d, c]
                         Op::Drop,
-                        // Load the first quad-word
+                        // Load the last two elements of the first quad-word
                         Op::Padw,
+                        // [b, a, _, _, e, d, c]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop the two unused elements
+                        // [a, _, _, b, e, d, c]
+                        Op::Movdn(3),
+                        // [_, _, a, b, e, d, c]
+                        Op::Movdn(2),
+                        // [c, _, a, b, e, d, _]
+                        Op::Swap(6),
+                        // [e, _, a, b, c, d, _]
+                        Op::Swap(4),
+                        // [_, _, a, b, c, d, e]
+                        Op::Swap(6),
                         Op::Drop,
+                        // [a, b, c, d, e]
                         Op::Drop,
                     ],
                     span,
@@ -643,15 +688,14 @@ impl<'a> OpEmitter<'a> {
             3 if aligned => {
                 self.emit_all(
                     &[
-                        // Load second word, drop last element
+                        // Load first three elements of second quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr + 1),
-                        Op::Movup(4),
                         Op::Drop,
-                        // Load first word
+                        // Load last element of first quad-word
                         Op::Padw,
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop first three elements
+                        Op::Movdn(3),
                         Op::Drop,
                         Op::Drop,
                         Op::Drop,
@@ -663,16 +707,28 @@ impl<'a> OpEmitter<'a> {
                 // An unaligned quad-word load spans five elements,
                 self.emit_all(
                     &[
-                        // Load second word
+                        // Load second quad-word
                         Op::Padw,
+                        // [e, d, c, b]
                         Op::MemLoadwImm(ptr.waddr + 1),
-                        // Load first word
+                        // Load last element of first quad-word
                         Op::Padw,
+                        // [a, _, _, _, e, d, c, b]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Drop unused elements
+                        // [_, _, _, a, e, d, c, b]
+                        Op::Movdn(3),
                         Op::Drop,
                         Op::Drop,
+                        // [a, e, d, c, b]
                         Op::Drop,
+                        // [e, a, d, c, b]
+                        Op::Swap(1),
+                        // [b, a, d, c, e]
+                        Op::Swap(4),
+                        // [d, a, b, c, e]
+                        Op::Swap(2),
+                        // [a, b, c, d, e]
+                        Op::Movdn(3),
                     ],
                     span,
                 );
@@ -721,72 +777,8 @@ impl<'a> OpEmitter<'a> {
     /// have to perform a sequence of shifts and masks to get the bits where they belong. This
     /// function performs those steps, with the assumption that the caller has three values on
     /// the operand stack representing any unaligned double-word value
-    fn realign_double_word(&mut self, ptr: NativePtr, span: SourceSpan) {
-        // The stack starts as: [chunk_hi, chunk_mid, chunk_lo]
-        //
-        // We will refer to the parts of our desired double-word value
-        // as two parts, `x_hi` and `x_lo`.
-        self.emit_all(
-            &[
-                // Re-align the high bits by shifting out the offset
-                //
-                // This gives us the first half of the first word.
-                //
-                // [x_hi_hi, chunk_mid, chunk__lo]
-                Op::U32ShlImm(ptr.offset as u32),
-                // Move the value below the other chunks temporarily
-                //
-                // [chunk_mid, chunk_lo, x_hi_hi]
-                Op::Movdn(3),
-                // We must split the middle chunk into two parts,
-                // one containing the bits to be combined with the
-                // first machine word; the other to be combined with
-                // the second machine word.
-                //
-                // First, we duplicate the chunk, since we need two
-                // copies of it:
-                //
-                // [chunk_mid, chunk_mid, chunk_lo, x_hi_hi]
-                Op::Dup(0),
-                // Then, we shift the chunk right by 32 - offset bits,
-                // re-aligning the low bits of the first word, and
-                // isolating them.
-                //
-                // [x_hi_lo, chunk_mid, chunk_lo, x_hi_hi]
-                Op::U32ShrImm(32 - ptr.offset as u32),
-                // Move the high bits back to the top
-                //
-                // [x_hi_hi, x_hi_lo, chunk_mid, chunk_lo]
-                Op::Movup(3),
-                // OR the two parts of the `x_hi` chunk together
-                //
-                // [x_hi, chunk_mid, chunk_lo]
-                Op::U32Or,
-                // Move `x_hi` to the bottom for later
-                Op::Movdn(2),
-                // Now, we need to re-align the high bits of the second word
-                // by shifting the remaining copy of the middle chunk, similar
-                // to what we did at the very beginning.
-                //
-                // This gives us the first half of the second word.
-                //
-                // [x_lo_hi, chunk_lo, x_hi]
-                Op::U32ShlImm(ptr.offset as u32),
-                // Next, swap the low bit chunk to the top temporarily
-                Op::Swap(1),
-                // Shift the value right, as done previously for the middle chunk
-                Op::U32ShrImm(32 - ptr.offset as u32),
-                // OR the two halves together, giving us our second word, `x_lo`
-                //
-                // [x_lo, x_hi]
-                Op::U32Or,
-                // Swap the words so they are in the correct order
-                //
-                // [x_hi, x_lo]
-                Op::Swap(1),
-            ],
-            span,
-        );
+    fn realign_double_word(&mut self, _ptr: NativePtr, span: SourceSpan) {
+        self.emit(Op::Exec("intrinsics::mem::realign_dw".parse().unwrap()), span);
     }
 
     /// This handles emitting code that handles aligning an unaligned quad machine-word value
@@ -944,7 +936,7 @@ impl<'a> OpEmitter<'a> {
     pub fn store_local(&mut self, local: hir::LocalId, span: SourceSpan) {
         let ty = self.function.local(local).ty.clone();
         self.emit(Op::LocAddr(local), span);
-        self.stack.push(Type::Ptr(Box::new(ty)));
+        self.push(Type::Ptr(Box::new(ty)));
         self.store(span)
     }
 
@@ -1048,11 +1040,11 @@ impl<'a> OpEmitter<'a> {
         );
 
         // Loop body - move value to top of stack, swap with pointer
-        self.stack.push(value);
-        self.stack.push(count);
-        self.stack.push(dst.clone());
-        self.stack.push(dst.ty());
-        self.stack.push(dst.ty());
+        self.push(value);
+        self.push(count);
+        self.push(dst.clone());
+        self.push(dst.ty());
+        self.push(dst.ty());
         self.dup(4, span); // [value, aligned_dst, i, dst, count, value]
         self.swap(1, span); // [aligned_dst, value, i, dst, count, value]
 
@@ -1168,12 +1160,12 @@ impl<'a> OpEmitter<'a> {
         );
 
         // Load the source value
-        self.stack.push(count.clone());
-        self.stack.push(dst.clone());
-        self.stack.push(src.clone());
-        self.stack.push(Type::U32);
-        self.stack.push(dst.clone());
-        self.stack.push(src.clone());
+        self.push(count.clone());
+        self.push(dst.clone());
+        self.push(src.clone());
+        self.push(Type::U32);
+        self.push(dst.clone());
+        self.push(src.clone());
         self.load(value_ty.clone(), span); // [value, new_dst, i, src, dst, count]
 
         // Write to the destination
@@ -1209,9 +1201,24 @@ impl<'a> OpEmitter<'a> {
         let aligned = ptr.is_element_aligned();
         match ptr.index {
             // Naturally-aligned
-            0 if aligned => self.emit_all(&[Op::Padw, Op::MemLoadwImm(ptr.waddr)], span),
+            0 if aligned => self.emit_all(
+                &[
+                    // Stack: [a, b, c, d]
+                    // Swap to highest-address-first order
+                    // [d, b, c, a]
+                    Op::Swap(3),
+                    // [c, d, b, a]
+                    Op::Movup(2),
+                    // [d, c, b, a]
+                    Op::Swap(1),
+                    // Write to heap
+                    Op::MemStorewImm(ptr.waddr),
+                    Op::Dropw,
+                ],
+                span,
+            ),
             _ => {
-                todo!()
+                todo!("quad-word stores currently require 32-byte alignment")
             }
         }
     }
@@ -1230,9 +1237,35 @@ impl<'a> OpEmitter<'a> {
         let aligned = ptr.is_element_aligned();
         match ptr.index {
             // Naturally-aligned
-            0 if aligned => self.emit_all(&[Op::Padw, Op::MemLoadwImm(ptr.waddr)], span),
+            0 if aligned => self.emit_all(
+                &[
+                    // Swap value to highest-address-first order
+                    Op::Swap(1),
+                    // Load existing word
+                    Op::Padw,
+                    // [d, c, b, a, v_lo, v_hi]
+                    Op::MemLoadwImm(ptr.waddr),
+                    // Replace bottom two elements with value
+                    // [b, c, d, a, v_lo, v_hi]
+                    Op::Swap(2),
+                    // [c, d, a, v_lo, v_hi]
+                    Op::Drop,
+                    // [a, d, c, v_lo, v_hi]
+                    Op::Swap(2),
+                    // [d, c, v_lo, v_hi]
+                    Op::Drop,
+                    Op::MemStorewImm(ptr.waddr),
+                    Op::Dropw,
+                ],
+                span,
+            ),
             _ => {
-                todo!()
+                // TODO: Optimize double-word stores when pointer is contant
+                self.emit_all(
+                    &[Op::PushU8(ptr.offset), Op::PushU8(ptr.index), Op::PushU32(ptr.waddr)],
+                    span,
+                );
+                self.emit(Op::Exec("intrinsics::mem::store_dw".parse().unwrap()), span);
             }
         }
     }
@@ -1260,39 +1293,36 @@ impl<'a> OpEmitter<'a> {
                 let mask_lo = u32::MAX >> (ptr.offset as u32);
                 self.emit_all(
                     &[
-                        // Load the full quad-word on to the operand stack
+                        // Load the word
                         Op::Padw,
+                        // [w3, w2, w1, w0, value]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Manipulate the bits of the first two elements, such that the 32-bit
-                        // word we're storing is placed at the correct offset from the start
-                        // of the memory cell when viewing the cell as a set of 4 32-bit chunks
-                        //
-                        // First, mask out the bits we plan to overwrite with the store op from the
-                        // first two elements
-                        Op::Swap(1),
+                        // [w1, w3, w2, w0, value]
+                        Op::Movup(2),
                         Op::PushU32(mask_lo),
+                        // [w1_masked, w3, w2, w0, value]
                         Op::U32And,
-                        Op::Swap(1),
+                        // [w0, w1_masked, w3, w2, value]
+                        Op::Movup(3),
                         Op::PushU32(mask_hi),
+                        // [w0_masked, w1_masked, w3, w2, value]
                         Op::U32And,
-                        // Now, we need to shift/mask/split the 32-bit value into two elements,
-                        // then combine them with the preserved bits of the
-                        // original contents of the cell
-                        //
-                        // We start with the bits belonging to the first element in the cell
+                        // [value, w0_masked, w1_masked, w3, w2, value]
                         Op::Dup(4),
+                        // [value, w0_masked, w1_masked, w3, w2, value]
                         Op::U32ShrImm(ptr.offset as u32),
+                        // [w0', w1_masked, w3, w2, value]
                         Op::U32Or,
-                        // Then the bits belonging to the second element in the cell
+                        // [w1_masked, w0', w3, w2, value]
+                        Op::Swap(1),
                         Op::Movup(4),
                         Op::U32ShlImm(rshift),
-                        Op::Movup(2),
+                        // [w1', w0', w3, w2]
                         Op::U32Or,
-                        // Make sure the elements of the cell are in order
-                        Op::Swap(1),
-                        // Write the word back to the cell
+                        Op::Movup(3),
+                        // [w3, w2, w1', w0']
+                        Op::Movup(3),
                         Op::MemStorewImm(ptr.waddr),
-                        // Clean up the operand stack
                         Op::Dropw,
                     ],
                     span,
@@ -1302,10 +1332,13 @@ impl<'a> OpEmitter<'a> {
                 &[
                     // Load a quad-word
                     Op::Padw,
+                    // [d, c, _, a, value]
                     Op::MemLoadwImm(ptr.waddr),
-                    // Replace the stored element
+                    // [value, d, c, _, a]
                     Op::Movup(4),
-                    Op::Swap(2),
+                    // [_, d, c, value, a]
+                    Op::Swap(3),
+                    // [d, c, value, a]
                     Op::Drop,
                     // Write the word back to the cell
                     Op::MemStorewImm(ptr.waddr),
@@ -1319,40 +1352,37 @@ impl<'a> OpEmitter<'a> {
                 let mask_lo = u32::MAX >> (ptr.offset as u32);
                 self.emit_all(
                     &[
-                        // Load the full quad-word on to the operand stack
                         Op::Padw,
+                        // the load is across both the second and third elements
+                        // [w3, w2, w1, w0, value]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Manipulate the bits of the middle two elements, such that the 32-bit
-                        // word we're storing is placed at the correct offset from the start
-                        // of the memory cell when viewing the cell as a set of 4 32-bit chunks
-                        //
-                        // First, mask out the bits we plan to overwrite with the store op from the
-                        // first two elements
-                        Op::Swap(2), // [elem3, elem2, elem1, elem4, value]
+                        // [w2, w3, w1, w0, value]
+                        Op::Swap(1),
                         Op::PushU32(mask_lo),
+                        // [w2_masked, w3, w1, w0, value]
                         Op::U32And,
-                        Op::Swap(1), // [elem2, elem3, elem1, elem4, value]
+                        // [w1, w2_masked, w3, w0, value]
+                        Op::Movup(2),
                         Op::PushU32(mask_hi),
+                        // [w1_masked, w2_masked, w3, w0, value]
                         Op::U32And,
-                        // Now, we need to shift/mask/split the 32-bit value into two elements,
-                        // then combine them with the preserved bits of the
-                        // original contents of the cell
-                        //
-                        // We start with the bits belonging to the second element in the cell
-                        Op::Dup(4), // [value, elem2, elem3, elem1, elem4, value]
+                        // [value, w1_masked, w2_masked, w3, w0, value]
+                        Op::Dup(4),
                         Op::U32ShrImm(ptr.offset as u32),
+                        // [w1', w2_masked, w3, w0, value]
                         Op::U32Or,
-                        // Then the bits belonging to the third element in the cell
+                        // [w2_masked, w1', w3, w0, value]
+                        Op::Swap(1),
+                        // [value, w2_masked, w1', w3, w0]
                         Op::Movup(4),
                         Op::U32ShlImm(rshift),
-                        Op::Movup(2),
-                        Op::U32Or, // [elem3, elem2, elem1, elem4]
-                        // Make sure the elements of the cell are in order
-                        Op::Swap(1),
-                        Op::Movup(2), // [elem1, elem2, elem3, elem4]
-                        // Write the word back to the cell
+                        // [w2', w1', w3, w0, value]
+                        Op::U32Or,
+                        // [w0, w2', w1', w3, value]
+                        Op::Movup(3),
+                        // [w3, w2', w1', w0, value]
+                        Op::Swap(3),
                         Op::MemStorewImm(ptr.waddr),
-                        // Clean up the operand stack
                         Op::Dropw,
                     ],
                     span,
@@ -1362,10 +1392,12 @@ impl<'a> OpEmitter<'a> {
                 &[
                     // Load a quad-word
                     Op::Padw,
+                    // [d, _, b, a, value]
                     Op::MemLoadwImm(ptr.waddr),
-                    // Replace the stored element
-                    Op::Movup(5),
-                    Op::Swap(3),
+                    // [value, d, _, b, a]
+                    Op::Movup(4),
+                    // [_, d, value, b, a]
+                    Op::Swap(2),
                     Op::Drop,
                     // Write the word back to the cell
                     Op::MemStorewImm(ptr.waddr),
@@ -1379,40 +1411,31 @@ impl<'a> OpEmitter<'a> {
                 let mask_lo = u32::MAX >> (ptr.offset as u32);
                 self.emit_all(
                     &[
-                        // Load the full quad-word on to the operand stack
+                        // the load is across both the third and fourth elements
                         Op::Padw,
+                        // [w3, w2, w1, w0, value]
                         Op::MemLoadwImm(ptr.waddr),
-                        // Manipulate the bits of the last two elements, such that the 32-bit
-                        // word we're storing is placed at the correct offset from the start
-                        // of the memory cell when viewing the cell as a set of 4 32-bit chunks
-                        //
-                        // First, mask out the bits we plan to overwrite with the store op from the
-                        // first two elements
-                        Op::Swap(3), // [elem4, elem2, elem3, elem1, value]
                         Op::PushU32(mask_lo),
+                        // [w3_masked, w2, w1, w0, value]
                         Op::U32And,
-                        Op::Movup(2), // [elem3, elem4, elem2, elem1, value]
+                        // [w2, w3_masked, w1, w0, value]
+                        Op::Swap(1),
                         Op::PushU32(mask_hi),
+                        // [w2_masked, w3_masked, w1, w0, value]
                         Op::U32And,
-                        // Now, we need to shift/mask/split the 32-bit value into two elements,
-                        // then combine them with the preserved bits of the
-                        // original contents of the cell
-                        //
-                        // We start with the bits belonging to the third element in the cell
-                        Op::Dup(4), // [value, elem3, elem4, elem2, elem1, value]
+                        // [value, w2_masked, w3_masked, w1, w0, value]
+                        Op::Dup(4),
                         Op::U32ShrImm(ptr.offset as u32),
+                        // [w2', w3_masked, w1, w0, value]
                         Op::U32Or,
-                        // Then the bits belonging to the fourth element in the cell
+                        // [w3_masked, w2', w1, w0, value]
+                        Op::Swap(1),
+                        // [value, w3_masked, w2', w1, w0]
                         Op::Movup(4),
                         Op::U32ShlImm(rshift),
-                        Op::Movup(2),
-                        Op::U32Or, // [elem4, elem3, elem2, elem1]
-                        // Make sure the elements of the cell are in order
-                        Op::Swap(2),  // [elem2, elem3, elem4, elem1]
-                        Op::Movup(3), // [elem1, elem2, elem3, elem4]
-                        // Write the word back to the cell
+                        // [w3', w2', w1, w0]
+                        Op::U32Or,
                         Op::MemStorewImm(ptr.waddr),
-                        // Clean up the operand stack
                         Op::Dropw,
                     ],
                     span,
@@ -1422,10 +1445,12 @@ impl<'a> OpEmitter<'a> {
                 &[
                     // Load a quad-word
                     Op::Padw,
+                    // [_, c, b, a, value]
                     Op::MemLoadwImm(ptr.waddr),
-                    // Replace the stored element
-                    Op::Movup(4),
+                    // [c, b, a, value]
                     Op::Drop,
+                    // [value, c, b, a]
+                    Op::Movup(3),
                     // Write the word back to the cell
                     Op::MemStorewImm(ptr.waddr),
                     // Clean up the operand stack
@@ -1442,39 +1467,35 @@ impl<'a> OpEmitter<'a> {
                 let mask_lo = u32::MAX >> (ptr.offset as u32);
                 self.emit_all(
                     &[
-                        // Load the full quad-word on to the operand stack
-                        Op::Padw,
-                        Op::MemLoadwImm(ptr.waddr),
-                        // Manipulate the bits of the last element, such that the "high" bits
-                        // of the 32-bit word we're storing is placed at the correct offset from
-                        // the start of the memory cell when viewing the
-                        // cell as a set of 4 32-bit chunks
-                        //
-                        // First, mask out the bits we plan to overwrite with the store op from the
-                        // last element
-                        Op::Swap(3), // [elem4, elem2, elem3, elem1, value]
+                        // the load crosses a word boundary, start with the element containing
+                        // the highest-addressed bits
+                        // [w0, value]
+                        Op::MemLoadImm(ptr.waddr + 1),
                         Op::PushU32(mask_lo),
+                        // [w0_masked, value]
                         Op::U32And,
-                        // Now, we need to shift/mask/split the 32-bit value into the bits that
-                        // will be merged with this word
-                        Op::Dup(4), // [value, elem4, elem2, elem3, elem1, value]
-                        Op::U32ShrImm(ptr.offset as u32),
+                        // [value, w0_masked, value]
+                        Op::Dup(1),
+                        // [w0', value]
+                        Op::U32ShlImm(rshift),
                         Op::U32Or,
-                        // Move the fourth element back into place
-                        Op::Swap(3), // [elem1, elem2, elem3, elem4, value]
-                        // Write the first word and clear the operand stack
+                        // Store it
+                        // [value]
+                        Op::MemStoreImm(ptr.waddr + 1),
+                        // Load the first word
+                        Op::Padw,
+                        // [w3, w2, w1, w0, value]
+                        Op::MemLoadwImm(ptr.waddr),
+                        Op::PushU32(mask_hi),
+                        // [w3_masked, w2, w1, w0, value]
+                        Op::U32And,
+                        // [value, w3_masked, w2, w1, w0]
+                        Op::Movup(4),
+                        Op::U32ShrImm(ptr.offset as u32),
+                        // [w3', w2, w1, w0]
+                        Op::U32Or,
                         Op::MemStorewImm(ptr.waddr),
                         Op::Dropw,
-                        // Compute the bits of the value that we'll merge into the second word
-                        Op::U32ShlImm(rshift),
-                        // Load the first element of the second word
-                        Op::MemLoadImm(ptr.waddr + 1),
-                        // Mask out the bits we plan to overwrite
-                        Op::PushU32(mask_hi),
-                        Op::U32And,
-                        // Merge the bits and write back the second word
-                        Op::U32Or,
-                        Op::MemStoreImm(ptr.waddr + 1),
                     ],
                     span,
                 );
@@ -1502,9 +1523,13 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(
                     &[
                         Op::Padw,
+                        // [d, c, _, a, value]
                         Op::MemLoadwImm(ptr.waddr),
+                        // [value, d, c, _, a]
                         Op::Movup(4),
-                        Op::Swap(2),
+                        // [_, d, c, value, a]
+                        Op::Swap(3),
+                        // [d, c, value, a]
                         Op::Drop,
                         Op::MemStorewImm(ptr.waddr),
                         Op::Dropw,
@@ -1516,9 +1541,12 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(
                     &[
                         Op::Padw,
+                        // [d, _, b, a, value]
                         Op::MemLoadwImm(ptr.waddr),
+                        // [value, d, _, b, a]
                         Op::Movup(4),
-                        Op::Swap(3),
+                        // [_, d, value, b, a]
+                        Op::Swap(2),
                         Op::Drop,
                         Op::MemStorewImm(ptr.waddr),
                         Op::Dropw,
@@ -1530,9 +1558,12 @@ impl<'a> OpEmitter<'a> {
                 self.emit_all(
                     &[
                         Op::Padw,
+                        // [_, c, b, a, value]
                         Op::MemLoadwImm(ptr.waddr),
-                        Op::Movup(3),
+                        // [c, b, a, value]
                         Op::Drop,
+                        // [value, c, b, a]
+                        Op::Movup(3),
                         Op::MemStorewImm(ptr.waddr),
                         Op::Dropw,
                     ],

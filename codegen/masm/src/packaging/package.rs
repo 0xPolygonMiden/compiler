@@ -168,13 +168,13 @@ impl Rodata {
         let data = self.data.as_slice();
         let mut felts = Vec::with_capacity(data.len() / 4);
         let mut iter = data.iter().copied().array_chunks::<4>();
-        felts.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_be_bytes(bytes) as u64)));
+        felts.extend(iter.by_ref().map(|bytes| Felt::new(u32::from_le_bytes(bytes) as u64)));
         if let Some(remainder) = iter.into_remainder() {
             let mut chunk = [0u8; 4];
             for (i, byte) in remainder.into_iter().enumerate() {
                 chunk[i] = byte;
             }
-            felts.push(Felt::new(u32::from_be_bytes(chunk) as u64));
+            felts.push(Felt::new(u32::from_le_bytes(chunk) as u64));
         }
 
         let padding = (self.size_in_words() * 4).abs_diff(felts.len());
