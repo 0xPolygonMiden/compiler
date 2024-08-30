@@ -290,7 +290,7 @@ args = ["serve", "--open", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
 description = "Runs clippy on the workspace"
 category = "Development"
 command = "cargo"
-args = ["clippy", "--all", "--", "-D", "clippy::all", "-D", "warnings"]
+args = ["clippy", "--all", "--all-targets", "--", "-D", "clippy::all", "-D", "warnings"]
 dependencies = ["install-clippy"]
 
 [tasks.install-clippy]
