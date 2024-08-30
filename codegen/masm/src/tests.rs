@@ -16,6 +16,9 @@ use super::*;
 
 const MEMORY_SIZE_BYTES: u32 = 1048576 * 2; // Twice the size of the default Rust shadow stack size
 const MEMORY_SIZE_VM_WORDS: u32 = MEMORY_SIZE_BYTES / 16;
+/// In miden-sdk-alloc we require all allocations to be minimally word-aligned, i.e. 32 byte
+/// alignment
+const MIN_ALIGN: u32 = 32;
 
 #[cfg(test)]
 #[allow(unused_macros)]
@@ -635,6 +638,87 @@ fn codegen_mem_store_dw_load_dw() {
             prop_assert_eq!(out, value);
             Ok(())
         })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_felt_load_felt() {
+    let context = TestContext::default();
+    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
+    let mut mb = builder.module("test");
+    let id = {
+        let mut fb = mb
+            .function(
+                "store_load_felt",
+                Signature::new(
+                    [AbiParam::new(Type::U32), AbiParam::new(Type::Felt)],
+                    [AbiParam::new(Type::Felt)],
+                ),
+            )
+            .expect("unexpected symbol conflict");
+        let entry = fb.current_block();
+        let (ptr_u32, value) = {
+            let args = fb.block_params(entry);
+            (args[0], args[1])
+        };
+        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::Felt.into()), SourceSpan::UNKNOWN);
+        fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
+        let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
+        fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
+        fb.build().expect("unexpected error building function")
+    };
+
+    mb.build().expect("unexpected error constructing test module");
+
+    let program = builder.with_entrypoint(id).link().expect("failed to link program");
+
+    let ir_module = program
+        .modules()
+        .iter()
+        .take(1)
+        .collect::<Vec<&midenc_hir::Module>>()
+        .first()
+        .expect("no module in IR program")
+        .to_string();
+
+    eprintln!("{}", ir_module.as_str());
+
+    let mut compiler = MasmCompiler::new(&context.session);
+    let program = compiler
+        .compile(program)
+        .expect("compilation failed")
+        .unwrap_executable()
+        .freeze();
+
+    eprintln!("{}", program);
+
+    fn roundtrip(program: Arc<Program>, ptr: u32, value: Felt) -> Felt {
+        eprintln!("---------------------------------");
+        eprintln!("testing store_felt/load_felt ptr: {ptr}, value: {value}");
+        eprintln!("---------------------------------");
+        let mut harness = TestByEmulationHarness::with_emulator_config(
+            MEMORY_SIZE_VM_WORDS as usize,
+            Emulator::DEFAULT_HEAP_START as usize,
+            Emulator::DEFAULT_LOCALS_START as usize,
+            true,
+        );
+        let mut stack = harness
+            .execute_program(program.clone(), &[Felt::new(ptr as u64), value])
+            .expect("execution failed");
+        stack.pop().unwrap()
+    }
+
+    TestRunner::new(Config::with_cases(1024))
+        .run(
+            &(0u32..(MEMORY_SIZE_BYTES / MIN_ALIGN - 1), (0u64..u64::MAX).prop_map(Felt::new)),
+            move |(word_ptr, value)| {
+                // a felt memory pointer must be naturally aligned, i.e. a multiple of MIN_ALIGN
+                let ptr = word_ptr * MIN_ALIGN;
+                let out = roundtrip(program.clone(), ptr, value);
+                prop_assert_eq!(out, value);
+                Ok(())
+            },
+        )
         .unwrap();
 }
 
