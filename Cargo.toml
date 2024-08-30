@@ -85,7 +85,7 @@ indexmap = "2.2"
 miden-assembly = { version = "0.10.3" }
 miden-core = { version = "0.10.3" }
 miden-processor = { version = "0.10.3" }
-miden-stdlib = { version = "0.10.3" }
+miden-stdlib = { version = "0.10.3", features = ["with-debug-info"] }
 #miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }

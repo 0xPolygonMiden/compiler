@@ -131,24 +131,10 @@ impl Program {
         // Advice Stack: [dest_ptr, num_words, ...]
         block.push(Op::AdvPush(2), span); // => [num_words, dest_ptr] on operand stack
         block.push(Op::Exec("std::mem::pipe_words_to_memory".parse().unwrap()), span);
-        // Drop the commitment
+        // Drop HASH
+        block.push(Op::Dropw, span);
+        // Drop dest_ptr
         block.push(Op::Drop, span);
-        // If we know the stack pointer address, update it to the value of `'write_ptr`, but cast
-        // into the Rust address space (multiplying it by 16). So a word address of 1, is equal to
-        // a byte address of 16, because each field element holds 4 bytes, and there are 4 elements
-        // in a word.
-        //
-        // If we don't know the stack pointer, just drop the `'write_ptr` value
-        if let Some(sp) = self.stack_pointer() {
-            block.push(Op::U32OverflowingMulImm(16), span);
-            block.push(Op::Assertz, span);
-            // Align the stack pointer to a word boundary
-            let elem_addr = (sp / 4) + (sp % 4 > 0) as u32;
-            let word_addr = (elem_addr / 4) + (elem_addr % 4 > 0) as u32;
-            block.push(Op::MemStoreImm(word_addr), span);
-        } else {
-            block.push(Op::Drop, span);
-        }
     }
 
     /// Emit the sequence of instructions necessary to consume rodata from the advice stack and

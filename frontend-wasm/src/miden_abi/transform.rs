@@ -115,20 +115,17 @@ pub fn return_via_pointer(
     let ptr_arg = *args.last().unwrap();
     let ptr_arg_ty = builder.data_flow_graph().value_type(ptr_arg).clone();
     assert_eq!(ptr_arg_ty, I32);
-    let ptr_u32 = builder.ins().cast(ptr_arg, U32, span);
+    let ptr_u32 = builder.ins().bitcast(ptr_arg, U32, span);
+    let result_ty = midenc_hir::StructType::new(
+        results.iter().map(|v| builder.data_flow_graph().value_type(*v).clone()),
+    );
     for (idx, value) in results.iter().enumerate() {
         let value_ty = builder.data_flow_graph().value_type(*value).clone();
-        let value_size = value_ty.aligned_size_in_bytes();
         let eff_ptr = if idx == 0 {
             // We're assuming here that the base pointer is of the correct alignment
             ptr_u32
         } else {
-            // We're computing the offset from Rust's perspective, so multiply the index by the
-            // aligned size in bytes to get the next aligned address. Note that this presumes
-            // that the pointer we have been given has the required minimum alignment, if it does
-            // not, then we'll be writing to the wrong locations in memory.
-            let offset = u32::try_from(idx * value_size).expect("offset overflow");
-            let imm = Immediate::U32(offset);
+            let imm = Immediate::U32(result_ty.get(idx).offset);
             builder.ins().add_imm_checked(ptr_u32, imm, span)
         };
         let addr = builder.ins().inttoptr(eff_ptr, Ptr(value_ty.into()), span);

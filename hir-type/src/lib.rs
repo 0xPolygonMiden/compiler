@@ -402,7 +402,7 @@ pub struct StructField {
     pub index: u8,
     /// The specified alignment for this field
     pub align: u16,
-    /// The offset of this field relative to the previous field, or from the base of the struct
+    /// The offset of this field relative to the base of the struct
     pub offset: u32,
     /// The type of this field
     pub ty: Type,

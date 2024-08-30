@@ -3,9 +3,14 @@
 use.std::crypto::hashes::blake3
 
 export.entrypoint
-    mem_load.0x00001000
+    mem_load.0x00010000
     push.32
+    dup.1
+    swap.1
     u32wrapping_sub
+    push.4294967264
+    u32and
+    push.1048576
     dup.1
     swap.1
     dup.0
@@ -18,15 +23,7 @@ export.entrypoint
     u32div.16
     exec.::intrinsics::mem::store_sw
     dup.0
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.3
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.4
     add.28
     u32assert
     dup.0
@@ -38,11 +35,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    dup.4
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.5
     add.24
     u32assert
     dup.0
@@ -54,11 +47,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    dup.5
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.6
     add.20
     u32assert
     dup.0
@@ -70,11 +59,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    dup.6
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.7
     add.16
     u32assert
     dup.0
@@ -86,11 +71,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    dup.7
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.8
     add.12
     u32assert
     dup.0
@@ -102,11 +83,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    dup.8
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.9
     add.8
     u32assert
     dup.0
@@ -118,11 +95,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    dup.9
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    dup.10
     add.4
     u32assert
     dup.0
@@ -134,11 +107,7 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    movup.10
-    dup.0
-    push.2147483648
-    u32lte
-    assert
+    movup.11
     dup.0
     u32mod.16
     dup.0
@@ -150,8 +119,6 @@ export.entrypoint
     exec.::intrinsics::mem::load_sw
     exec.::std::crypto::hashes::blake3::hash_1to1
     dup.8
-    movup.8
-    swap.1
     dup.0
     u32mod.16
     dup.0
@@ -162,10 +129,8 @@ export.entrypoint
     u32div.16
     exec.::intrinsics::mem::store_sw
     dup.7
-    add.8
+    add.4
     u32assert
-    movup.7
-    swap.1
     dup.0
     u32mod.16
     dup.0
@@ -176,10 +141,8 @@ export.entrypoint
     u32div.16
     exec.::intrinsics::mem::store_sw
     dup.6
-    add.16
+    add.8
     u32assert
-    movup.6
-    swap.1
     dup.0
     u32mod.16
     dup.0
@@ -190,8 +153,167 @@ export.entrypoint
     u32div.16
     exec.::intrinsics::mem::store_sw
     dup.5
+    add.12
+    u32assert
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_sw
+    dup.4
+    add.16
+    u32assert
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_sw
+    dup.3
+    add.20
+    u32assert
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_sw
+    dup.2
     add.24
     u32assert
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_sw
+    dup.2
+    add.24
+    u32assert
+    movup.2
+    add.28
+    u32assert
+    movup.2
+    swap.1
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_sw
+    dup.1
+    add.16
+    u32assert
+    dup.1
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::load_dw
+    push.24
+    dup.7
+    swap.1
+    u32wrapping_add
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_dw
+    dup.2
+    add.8
+    u32assert
+    dup.1
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::load_dw
+    push.16
+    dup.8
+    swap.1
+    u32wrapping_add
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_dw
+    movup.3
+    dup.1
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::load_dw
+    push.8
+    dup.8
+    swap.1
+    u32wrapping_add
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_dw
+    dup.0
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::load_dw
+    movup.7
+    dup.0
+    u32mod.16
+    dup.0
+    u32mod.4
+    swap.1
+    u32div.4
+    movup.2
+    u32div.16
+    exec.::intrinsics::mem::store_dw
+    push.1048576
     movup.5
     swap.1
     dup.0
@@ -203,201 +325,14 @@ export.entrypoint
     movup.2
     u32div.16
     exec.::intrinsics::mem::store_sw
-    dup.4
-    add.32
-    u32assert
-    movup.4
-    swap.1
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_sw
-    dup.3
-    add.40
-    u32assert
-    movup.3
-    swap.1
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_sw
-    dup.2
-    add.48
-    u32assert
-    movup.2
-    swap.1
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_sw
-    swap.1
-    add.56
-    u32assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_sw
-    push.24
-    dup.1
-    swap.1
-    u32wrapping_add
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::load_dw
-    push.24
-    dup.4
-    swap.1
-    u32wrapping_add
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_dw
-    push.16
-    dup.1
-    swap.1
-    u32wrapping_add
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::load_dw
-    push.16
-    dup.4
-    swap.1
-    u32wrapping_add
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_dw
-    push.8
-    dup.1
-    swap.1
-    u32wrapping_add
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::load_dw
-    push.8
-    dup.4
-    swap.1
-    u32wrapping_add
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_dw
-    dup.0
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::load_dw
-    movup.3
-    dup.0
-    push.2147483648
-    u32lte
-    assert
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_dw
-    push.32
-    u32wrapping_add
-    dup.0
-    u32mod.16
-    dup.0
-    u32mod.4
-    swap.1
-    u32div.4
-    movup.2
-    u32div.16
-    exec.::intrinsics::mem::store_sw
+    u32mod.8
+    assertz.err=250
+    u32mod.8
+    assertz.err=250
+    u32mod.8
+    assertz.err=250
+    u32mod.8
+    assertz.err=250
 end
 
 
