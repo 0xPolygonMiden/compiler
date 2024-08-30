@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.3...midenc-session-v0.0.4) - 2024-08-30
+
+### Other
+- update Cargo.toml dependencies
+
 ## [0.0.3](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.2...midenc-session-v0.0.3) - 2024-08-28
 
 ### Added

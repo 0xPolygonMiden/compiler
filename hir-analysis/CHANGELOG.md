@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-analysis-v0.0.2...midenc-hir-analysis-v0.0.3) - 2024-08-30
+
+### Other
+- Merge pull request [#284](https://github.com/0xPolygonMiden/compiler/pull/284) from 0xPolygonMiden/bitwalker/abi-transform-test-fixes
+
 ## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-hir-analysis-v0.0.1...midenc-hir-analysis-v0.0.2) - 2024-08-28
 
 ### Fixed

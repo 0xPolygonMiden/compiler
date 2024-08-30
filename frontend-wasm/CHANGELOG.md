@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-frontend-wasm-v0.0.1...midenc-frontend-wasm-v0.0.2) - 2024-08-30
+
+### Fixed
+- *(codegen)* broken return via pointer transformation
+- *(frontend-wasm)* do not apply redundant casts
+- *(frontend-wasm)* incorrect types applied to certain primops
+
+### Other
+- Merge pull request [#284](https://github.com/0xPolygonMiden/compiler/pull/284) from 0xPolygonMiden/bitwalker/abi-transform-test-fixes
+- update expect tests due to codegen changes
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-frontend-wasm-v0.0.0...midenc-frontend-wasm-v0.0.1) - 2024-07-18
 
 ### Added
