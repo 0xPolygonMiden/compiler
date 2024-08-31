@@ -1,7 +1,7 @@
 [package]
 name = "midenc"
 description = "The compiler frontend/executable for Miden"
-version = "0.0.2"
+version = "0.0.4"
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
