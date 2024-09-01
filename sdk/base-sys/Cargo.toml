@@ -1,7 +1,7 @@
 [package]
 name = "miden-base-sys"
 description = "Miden rollup Rust bingings and MASM library"
-version = "0.0.4"
+version = "0.0.5"
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
@@ -15,7 +15,7 @@ edition.workspace = true
 
 [dependencies]
 miden-assembly.workspace = true
-miden-stdlib-sys = { version = "0.0.4", path = "../stdlib-sys", optional = true }
+miden-stdlib-sys = { version = "0.0.5", path = "../stdlib-sys", optional = true }
 
 [build-dependencies]
 miden-assembly.workspace = true
