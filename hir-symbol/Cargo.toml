@@ -13,10 +13,9 @@ edition.workspace = true
 
 [features]
 default = []
-serde = ["dep:bitcode", "dep:serde"]
+serde = ["dep:serde"]
 
 [dependencies]
-bitcode = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 
 [build-dependencies]
