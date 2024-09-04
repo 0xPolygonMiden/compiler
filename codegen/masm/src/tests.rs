@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use midenc_hir::{
     self as hir,
@@ -500,18 +500,18 @@ fn i32_checked_neg() {
     harness.invoke(neg, &[min]).expect("execution failed");
 }
 
-#[test]
-fn codegen_mem_store_sw_load_sw() {
+fn roundtrip_store_t_load_t<T: ToCanonicalRepr + Display>(ty: Type) -> impl Fn(u32, T) -> T {
     let context = TestContext::default();
     let mut builder = ProgramBuilder::new(&context.session.diagnostics);
     let mut mb = builder.module("test");
+    let type_name = ty.to_string();
     let id = {
         let mut fb = mb
             .function(
-                "store_load_sw",
+                format!("store_load_{type_name}").as_str(),
                 Signature::new(
-                    [AbiParam::new(Type::U32), AbiParam::new(Type::U32)],
-                    [AbiParam::new(Type::U32)],
+                    [AbiParam::new(Type::U32), AbiParam::new(ty.clone())],
+                    [AbiParam::new(ty.clone())],
                 ),
             )
             .expect("unexpected symbol conflict");
@@ -520,72 +520,7 @@ fn codegen_mem_store_sw_load_sw() {
             let args = fb.block_params(entry);
             (args[0], args[1])
         };
-        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::U32.into()), SourceSpan::UNKNOWN);
-        fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
-        let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
-        fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
-        fb.build().expect("unexpected error building function")
-    };
-
-    mb.build().expect("unexpected error constructing test module");
-
-    let program = builder.with_entrypoint(id).link().expect("failed to link program");
-
-    let mut compiler = MasmCompiler::new(&context.session);
-    let program = compiler
-        .compile(program)
-        .expect("compilation failed")
-        .unwrap_executable()
-        .freeze();
-
-    // eprintln!("{}", program);
-
-    fn roundtrip(program: Arc<Program>, ptr: u32, value: u32) -> u32 {
-        eprintln!("---------------------------------");
-        eprintln!("testing store_sw/load_sw ptr: {ptr}, value: {value}");
-        eprintln!("---------------------------------");
-        let mut harness = TestByEmulationHarness::with_emulator_config(
-            MEMORY_SIZE_VM_WORDS as usize,
-            Emulator::DEFAULT_HEAP_START as usize,
-            Emulator::DEFAULT_LOCALS_START as usize,
-            true,
-        );
-        let mut stack = harness
-            .execute_program(program.clone(), &[Felt::new(ptr as u64), Felt::new(value as u64)])
-            .expect("execution failed");
-        stack.pop().unwrap().as_int() as u32
-    }
-
-    TestRunner::new(Config::with_cases(1024))
-        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u32>()), move |(ptr, value)| {
-            let out = roundtrip(program.clone(), ptr, value);
-            prop_assert_eq!(out, value);
-            Ok(())
-        })
-        .unwrap();
-}
-
-#[test]
-fn codegen_mem_store_dw_load_dw() {
-    let context = TestContext::default();
-    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
-    let mut mb = builder.module("test");
-    let id = {
-        let mut fb = mb
-            .function(
-                "store_load_dw",
-                Signature::new(
-                    [AbiParam::new(Type::U32), AbiParam::new(Type::U64)],
-                    [AbiParam::new(Type::U64)],
-                ),
-            )
-            .expect("unexpected symbol conflict");
-        let entry = fb.current_block();
-        let (ptr_u32, value) = {
-            let args = fb.block_params(entry);
-            (args[0], args[1])
-        };
-        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::U64.into()), SourceSpan::UNKNOWN);
+        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(ty.into()), SourceSpan::UNKNOWN);
         fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
         let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
         fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
@@ -616,9 +551,9 @@ fn codegen_mem_store_dw_load_dw() {
 
     eprintln!("{}", program);
 
-    fn roundtrip(program: Arc<Program>, ptr: u32, value: u64) -> u64 {
+    move |ptr: u32, value: T| -> T {
         eprintln!("---------------------------------");
-        eprintln!("testing store_dw/load_dw ptr: {ptr}, value: {value}");
+        eprintln!("testing store {type_name}/load {type_name} ptr: {ptr}, value: {value}");
         eprintln!("---------------------------------");
         let mut harness = TestByEmulationHarness::with_emulator_config(
             MEMORY_SIZE_VM_WORDS as usize,
@@ -626,101 +561,93 @@ fn codegen_mem_store_dw_load_dw() {
             Emulator::DEFAULT_LOCALS_START as usize,
             true,
         );
+
         let mut args: SmallVec<[Felt; 4]> = smallvec!(Felt::new(ptr as u64));
         args.extend(value.canonicalize());
         let mut stack = harness.execute_program(program.clone(), &args).expect("execution failed");
-        u64::from_stack(&mut stack)
+        ToCanonicalRepr::from_stack(&mut stack)
     }
-
-    TestRunner::new(Config::with_cases(1024))
-        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u64>()), move |(ptr, value)| {
-            let out = roundtrip(program.clone(), ptr, value);
-            prop_assert_eq!(out, value);
-            Ok(())
-        })
-        .unwrap();
 }
 
 #[test]
-fn codegen_mem_store_felt_load_felt() {
-    let context = TestContext::default();
-    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
-    let mut mb = builder.module("test");
-    let id = {
-        let mut fb = mb
-            .function(
-                "store_load_felt",
-                Signature::new(
-                    [AbiParam::new(Type::U32), AbiParam::new(Type::Felt)],
-                    [AbiParam::new(Type::Felt)],
-                ),
-            )
-            .expect("unexpected symbol conflict");
-        let entry = fb.current_block();
-        let (ptr_u32, value) = {
-            let args = fb.block_params(entry);
-            (args[0], args[1])
-        };
-        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::Felt.into()), SourceSpan::UNKNOWN);
-        fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
-        let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
-        fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
-        fb.build().expect("unexpected error building function")
-    };
-
-    mb.build().expect("unexpected error constructing test module");
-
-    let program = builder.with_entrypoint(id).link().expect("failed to link program");
-
-    let ir_module = program
-        .modules()
-        .iter()
-        .take(1)
-        .collect::<Vec<&midenc_hir::Module>>()
-        .first()
-        .expect("no module in IR program")
-        .to_string();
-
-    eprintln!("{}", ir_module.as_str());
-
-    let mut compiler = MasmCompiler::new(&context.session);
-    let program = compiler
-        .compile(program)
-        .expect("compilation failed")
-        .unwrap_executable()
-        .freeze();
-
-    eprintln!("{}", program);
-
-    fn roundtrip(program: Arc<Program>, ptr: u32, value: Felt) -> Felt {
-        eprintln!("---------------------------------");
-        eprintln!("testing store_felt/load_felt ptr: {ptr}, value: {value}");
-        eprintln!("---------------------------------");
-        let mut harness = TestByEmulationHarness::with_emulator_config(
-            MEMORY_SIZE_VM_WORDS as usize,
-            Emulator::DEFAULT_HEAP_START as usize,
-            Emulator::DEFAULT_LOCALS_START as usize,
-            true,
-        );
-        let mut stack = harness
-            .execute_program(program.clone(), &[Felt::new(ptr as u64), value])
-            .expect("execution failed");
-        stack.pop().unwrap()
-    }
-
+fn codegen_mem_store_load_felt() {
+    let roundtrip = roundtrip_store_t_load_t::<Felt>(Type::Felt);
     TestRunner::new(Config::with_cases(1024))
         .run(
             &(0u32..(MEMORY_SIZE_BYTES / MIN_ALIGN - 1), (0u64..u64::MAX).prop_map(Felt::new)),
             move |(word_ptr, value)| {
                 // a felt memory pointer must be naturally aligned, i.e. a multiple of MIN_ALIGN
                 let ptr = word_ptr * MIN_ALIGN;
-                let out = roundtrip(program.clone(), ptr, value);
+                let out = roundtrip(ptr, value);
                 prop_assert_eq!(out, value);
                 Ok(())
             },
         )
         .unwrap();
 }
+
+#[test]
+fn codegen_mem_store_load_u32() {
+    let roundtrip = roundtrip_store_t_load_t::<u32>(Type::U32);
+    TestRunner::new(Config::with_cases(1024))
+        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u32>()), move |(ptr, value)| {
+            let out = roundtrip(ptr, value);
+            prop_assert_eq!(out, value);
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_load_i32() {
+    let roundtrip = roundtrip_store_t_load_t::<i32>(Type::I32);
+    TestRunner::new(Config::with_cases(1024))
+        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<i32>()), move |(ptr, value)| {
+            let out = roundtrip(ptr, value);
+            prop_assert_eq!(out, value);
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_load_u64() {
+    let roundtrip = roundtrip_store_t_load_t::<u64>(Type::U64);
+    TestRunner::new(Config::with_cases(1024))
+        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u64>()), move |(ptr, value)| {
+            let out = roundtrip(ptr, value);
+            prop_assert_eq!(out, value);
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_load_i64() {
+    let roundtrip = roundtrip_store_t_load_t::<i64>(Type::I64);
+    TestRunner::new(Config::with_cases(1024))
+        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<i64>()), move |(ptr, value)| {
+            let out = roundtrip(ptr, value);
+            prop_assert_eq!(out, value);
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_load_u8() {
+    let roundtrip = roundtrip_store_t_load_t(Type::U8);
+    assert_eq!(roundtrip(0, 1), 1);
+    // TestRunner::new(Config::with_cases(32))
+    //     .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u8>()), move |(ptr, value)| {
+    //         let out = roundtrip(ptr, value);
+    //         prop_assert_eq!(out, value);
+    //         Ok(())
+    //     })
+    //     .unwrap();
+}
+
+// TODO: cover i8, u16, i16 cases
 
 #[allow(unused)]
 macro_rules! proptest_unary_numeric_op {
@@ -962,6 +889,20 @@ impl ToCanonicalRepr for i128 {
         let hi = (<u64 as ToCanonicalRepr>::from_stack(stack) as i128) * 2i128.pow(64);
         let lo = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
         hi + lo
+    }
+}
+
+impl ToCanonicalRepr for Felt {
+    fn ir_type() -> Type {
+        Type::Felt
+    }
+
+    fn canonicalize(self) -> SmallVec<[Felt; 4]> {
+        smallvec![self]
+    }
+
+    fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
+        stack.pop().unwrap()
     }
 }
 
