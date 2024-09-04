@@ -30,9 +30,7 @@ midenc-hir-transform.workspace = true
 midenc-codegen-masm.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true
-midenc-driver.workspace = true
 midenc-debug.workspace = true
-miden-integration-tests-rust-fib = { path = "../rust-apps/fib" }
 wasmprinter = "0.2.80"
 proptest.workspace = true
 sha2 = "0.10"
@@ -43,3 +41,4 @@ blake3.workspace = true
 concat-idents = "1.1"
 env_logger.workspace = true
 miden-core.workspace = true
+miden-integration-tests-rust-fib = { path = "../rust-apps/fib" }
