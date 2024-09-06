@@ -8,7 +8,7 @@ use miden_assembly::Library as CompiledLibrary;
 use miden_core::{Program, StackInputs, Word};
 use miden_processor::{
     AdviceInputs, ContextId, ExecutionError, Felt, MastForest, MemAdviceProvider, Process,
-    ProcessState, RowIndex, StackOutputs, VmState, VmStateIterator,
+    ProcessState, RowIndex, StackOutputs, TraceLenSummary, VmState, VmStateIterator,
 };
 use midenc_codegen_masm::NativePtr;
 pub use midenc_hir::TraceEvent;
@@ -39,7 +39,8 @@ pub struct ExecutionTrace {
     pub(super) root_context: ContextId,
     pub(super) last_cycle: RowIndex,
     pub(super) chiplets: Chiplets,
-    pub(super) outputs: VecDeque<TestFelt>,
+    pub(super) outputs: StackOutputs,
+    pub(super) trace_len_summary: TraceLenSummary,
 }
 
 impl ExecutionTrace {
@@ -48,14 +49,27 @@ impl ExecutionTrace {
     where
         T: PopFromStack,
     {
-        let mut stack = self.outputs.clone();
+        let mut stack =
+            VecDeque::from_iter(self.outputs.clone().stack().iter().copied().map(TestFelt));
         T::try_pop(&mut stack)
     }
 
     /// Consume the [ExecutionTrace], extracting just the outputs on the operand stack
     #[inline]
-    pub fn into_outputs(self) -> VecDeque<TestFelt> {
+    pub fn into_outputs(self) -> StackOutputs {
         self.outputs
+    }
+
+    /// Return a reference to the operand stack outputs
+    #[inline]
+    pub fn outputs(&self) -> &StackOutputs {
+        &self.outputs
+    }
+
+    /// Return a reference to the trace length summary
+    #[inline]
+    pub fn trace_len_summary(&self) -> &TraceLenSummary {
+        &self.trace_len_summary
     }
 
     /// Read the word at the given Miden memory address

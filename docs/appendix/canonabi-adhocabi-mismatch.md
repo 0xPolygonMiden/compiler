@@ -1,31 +1,74 @@
-TL;DR: The compiler will recognize the functions with a mismatch between the canonical ABI and the tx kernel ad-hoc ABI and generate an adapter function that will call the tx kernel function and convert function arguments and result. For most TX kernel functions, the adapter function can be generated automatically. See below for the functions that require manual adapter functions.
+# Canonical ABI vs Miden ABI Incompatibility
 
-# Canonical ABI vs Miden (tx kernel) ABI mismatch and how to resolve it.
+This document describes an issue that arises when trying to map the ad-hoc calling convention/ABI
+used by various Miden Assembly procedures, such as those comprising the transaction kernel, and
+the "canonical" ABI(s) representable in Rust. It proposes a solution to this problem in the form
+of _adapter functions_, where the details of a given adapter are one of a closed set of known
+ABI _transformation strategies_.
 
-From the analisys of all the functions in the tx kernel API the Canonical ABI rule that mostly causes the mismatch between the Canonical ABI and the Miden ABI is that anything larger than 8 bytes (i64) is returned via a pointer passed as an argument.
+## Summary
 
-We want to recognize the functions with a mismatch between the Canonical ABI and the Miden ABI and make the compiler generate an adapter function that will call the tx kernel function and convert function arguments and result. 
+The gist of the problem is that in Miden, the size and number of procedure results is only constrained
+by the maximum addressable operand stack depth. In most programming languages, particularly those in
+which interop is typically performed using some variant of the C ABI (commonly the one described
+in the System V specification), the number of results is almost always limited to a single result,
+and the size of the result type is almost always limited to the size of a single machine word, in
+some cases two. On these platforms, procedure results of greater arity or size are typically handled
+by reserving space in the caller's stack frame, and implicitly prepending the parameter list of the
+callee with an extra parameter: a pointer to the memory allocated for the return value. The callee
+will directly write the return value via this pointer, instead of returning a value in a register.
 
-For the complete list of the tx kernel functions in WIT format, see the [miden.wit](https://github.com/0xPolygonMiden/compiler/blob/18ead77410b27d97e96c96d36b573e289323f737/tests/rust-apps-wasm/sdk/sdk/wit/miden.wit)
-For most TX kernel functions, the adapter function can be generated automatically using the pattern recognition and adapter functions below. 
+In the case of Rust, this means that attempting to represent a procedure that returns multiple values,
+or returns a larger-than-machine-word type, such as `Word`, will trigger the implicit transformation
+described above, as this is allowed by the standard Rust calling conventions. Since various Miden
+procedures that are part of the standard library and the transaction kernel are affected by this,
+the question becomes "how do we define bindings for these procedures in Rust?".
 
-## Required changes in other parts of the compiler
+The solution is to have the compiler emit glue code that closes the gap between the two ABIs. It
+does so by generating adapter functions, which wrap functions that have an ABI unrepresentable in
+Rust, and orchestrate lifting/lowering arguments and results between the adapter and the "real"
+function.
 
-To make compiler aware of tx kernel function signatures they will be passed along the MAST hash root for every import in the Wasm component.
+When type signatures are available for all Miden Assembly procedures, we can completely automate
+this process. For now, we will require a manually curated list of known procedures, their signatures,
+and the strategy used to "adapt" those procedures for binding in Rust.
 
-## Adapters generation
+## Background
 
-The compiler will analyze every component import to recognize the Miden ABI pattern and generate an adapter function if needed. This can be done in a transformation pass or as part of the MASM code generation.
+After analyzing all of the functions in the transaction kernel API, the most common cause of a mismatch
+between Miden and Rust ABIs, is due to implicit "sret" parameters, i.e. the transformation mentioned
+above which inserts an implicit pointer to the caller's stack frame for the callee to write the return
+value to, rather than doing so in a register (or in our case, on the operand stack). This seems to
+happen for any type that is larger than 8 bytes (i64).
 
-## Miden ABI pattern recognition
+!!! tip
 
-The following pseudo-code can be used to recognize the Miden ABI pattern:
+    For a complete list of the transaction kernel functions, in WIT format, see
+    [miden.wit](https://github.com/0xPolygonMiden/compiler/blob/main/tests/rust-apps-wasm/wit-sdk/sdk/wit/miden.wit).
+
+For most transaction kernel functions, the adapter function can be generated automatically using the
+pattern recognition and adapter functions described below.
+
+### Prerequisites
+
+* The compiler must know the type signature for any function we wish to apply the adapter strategy to
+
+### Implementation
+
+The compiler will analyze every component import to determine if that import requires an adapter,
+as determined by matching against a predefined set of patterns. The adapter generation will take
+place in the frontend, as it has access to all of the needed information, and ensures that we do
+not have any transformations or analyses that make decisions on the un-adapted procedure.
+
+The following pseudo-code can be used to recognize the various Miden ABI patterns:
 
 ```rust
 pub enum MidenAbiPattern {
+    /// Calling this procedure will require an sret parameter on the Rust side, so
+    /// we need to emit an adapter that will lift/lower calls according to that
+    /// strategy.
     ReturnViaPointer,
-    /// The Wasm core function type is the same as the tx kernel ad-hoc signature
-    /// The tx kernel function can be called directly without any modifications.
+    /// The underlying procedure is fully representable in Rust, and requires no adaptation.
     NoAdapterNeeded,
 }
 
@@ -65,15 +108,13 @@ pub fn recognize_miden_abi_pattern(
 }
 ```
 
-## Adapter function code generation
-
-The following pseudo-code can be used to generate the adapter function:
+The following pseudo-code can then be used to generate the adapter function:
 
 ```rust
 pub fn generate_adapter(recognition: MidenAbiPatternRecognition) {
     match recognition.pattern {
         Some(pattern) => generate_adapter(
-            pattern, 
+            pattern,
             recognition.component_function,
             recognition.wasm_core_function,
             recognition.tx_kernel_function
@@ -93,28 +134,37 @@ pub fn use_manual_adapter(...) {
 }
 ```
 
-The manual adapter library is a collection of adapter functions that are used when the compiler can't generate an adapter function automatically so its expected to be provided. The manual adapter library is a part of the Miden compiler.
-
+The manual adapter library is a collection of adapter functions that are used when the compiler
+can't generate an adapter function automatically so its expected to be provided. The manual adapter
+library is a part of the Miden compiler. It is not anticipated that we will have many, or any, of
+these; however in the near term we are going to manually map procedures to their adapter strategies,
+as we have not yet automated the pattern recognition step.
 
 ### Return-via-pointer Adapter
 
-The return value is expected to be returned by storing its flattened representation in a pointer passed as an argument.
+The return value is expected to be returned by storing its flattened representation in a pointer
+passed as an argument.
 
-Recognize this Miden ABI pattern by looking at the Wasm component function type. If the return value is bigger than 64 bits, expect the last argument in the Wasm core(HIR) signature to be `i32` (a pointer).
+Recognize this Miden ABI pattern by looking at the Wasm component function type. If the return value
+is bigger than 64 bits, expect the last argument in the Wasm core(HIR) signature to be `i32` (a pointer).
 
-The adapter function calls the tx kernel function and stores the result in the provided pointer(the last argument of the wasm core function).
+The adapter function calls the tx kernel function and stores the result in the provided pointer (the
+last argument of the Wasm core function).
 
-Here is the pseudo-code for generating the adapter function for the Return-via-pointer Miden ABI pattern:
+Here is the pseudo-code for generating the adapter function for the return-via-pointer Miden ABI
+pattern:
+
 ```rust
-    let ptr = wasm_core_function.params.last();
-    let adapter_function = FunctionBuilder::new(wasm_core_function.clone());
-    let tx_kernel_function_params = wasm_core_function.params.drop_last();
-    let tx_kernel_func_val = adapter_function.call(tx_kernel_function, tx_kernel_function_params);
-    adapter_function.store(tx_kernel_func_val, ptr);
-    adapter_function.build();
+let ptr = wasm_core_function.params.last();
+let adapter_function = FunctionBuilder::new(wasm_core_function.clone());
+let tx_kernel_function_params = wasm_core_function.params.drop_last();
+let tx_kernel_func_val = adapter_function.call(tx_kernel_function, tx_kernel_function_params);
+adapter_function.store(tx_kernel_func_val, ptr);
+adapter_function.build();
 ```
 
 Here is how the adapter might look like in a pseudo-code for the `add_asset` function:
+
 ```
 /// Takes an Asset as an argument and returns a new Asset
 func wasm_core_add_asset(v0: f64, v1: f64, v2: f64, v3: f64, ptr: i32) {
@@ -124,7 +174,7 @@ func wasm_core_add_asset(v0: f64, v1: f64, v2: f64, v3: f64, ptr: i32) {
 }
 ```
 
-### No-adapter-needed
+### No-op Adapter
 
 No adapter is needed. The Wasm core function type is the same as the tx kernel ad-hoc signature.
 
@@ -135,12 +185,17 @@ For example, the `get_id` function falls under this Miden ABI pattern and its ca
 
 ## Transaction kernel functions that require manual adapter functions:
 
-### `get_assets` 
+### `get_assets`
 
-`get_assets:func() -> list<core-asset>` in the `note` interface is the only function that requires attention. In Canonical ABI, any function that returns a dynamic list of items needs to allocate memory in the caller's module due to the shared-nothing nature of the Wasm component model. For this case, a `realloc` function is passed as a part of lift/lower Canonical ABI options for the caller to allocate memory in the caller's module. 
+`get_assets:func() -> list<core-asset>` in the `note` interface is the only function that requires attention.
+In Canonical ABI, any function that returns a dynamic list of items needs to allocate memory in the caller's
+module due to the shared-nothing nature of the Wasm component model. For this case, a `realloc` function
+is passed as a part of lift/lower Canonical ABI options for the caller to allocate memory in the caller's
+module.
 
 Here are the signatures of the `get_assets` function in the WIT, core Wasm, and the tx kernel ad-hoc ABI:
 Comment from the `miden-base`
+
 ```
 #! Writes the assets of the currently executing note into memory starting at the specified address.
 #!
@@ -157,16 +212,24 @@ Wasm component function type:
 Wasm core signature:
 `wasm_core_get_assets(i32) -> ()`
 
-If we add a new `get_assets_count: func() -> u32;` function to the tx kernel and add the assets count parameter to the `get_assets` function (`get_assets: func(assets_count: u32) -> list<core-asset>;`) we should have everything we need to manually write the adapter function for the `get_assets` function. 
+If we add a new `get_assets_count: func() -> u32;` function to the tx kernel and add the assets count
+parameter to the `get_assets` function (`get_assets: func(assets_count: u32) -> list<core-asset>;`)
+we should have everything we need to manually write the adapter function for the `get_assets`
+function.
 
-The list is expected to be returned by storing the pointer to its first item in a `ptr` pointer passed as an argument and item count at `ptr + 4 bytes` address (`ptr` points to two pointers).
+The list is expected to be returned by storing the pointer to its first item in a `ptr` pointer
+passed as an argument and item count at `ptr + 4 bytes` address (`ptr` points to two pointers).
 
-We could try to recognize this Miden ABI pattern by looking at the Wasm component function type. If the return value is a list, expect the last argument in the Wasm core(HIR) signature to be `i32` (a pointer). The problem is recognizing the list count parameter in the Wasm core(HIR) signature.
+We could try to recognize this Miden ABI pattern by looking at the Wasm component function type. If
+the return value is a list, expect the last argument in the Wasm core(HIR) signature to be `i32`
+(a pointer). The problem is recognizing the list count parameter in the Wasm core(HIR) signature.
 
-The adapter function calls allocates `asset_count * item_size` memory via the `realloc` call and passes the pointer to the newly allocated memory to the tx kernel function.
+The adapter function calls allocates `asset_count * item_size` memory via the `realloc` call and
+passes the pointer to the newly allocated memory to the tx kernel function.
 
 Here is how the adapter function might look like in a pseudo-code for the `get_assets` function:
-```
+
+```rust
 func wasm_core_get_assets(asset_count: u32, ptr_ptr: i32) {
     mem_size = asset_count * item_size;
     ptr = realloc(mem_size);
@@ -174,17 +237,23 @@ func wasm_core_get_assets(asset_count: u32, ptr_ptr: i32) {
     assert(actual_asset_count == asset_count);
     store ptr in ptr_ptr;
     store account_count in ptr_ptr + 4;
-
 }
 ```
 
-**Since the `get_assets` tx kernel function in the current form can trash the provided memory if the actual assets count differs from the returned by `get_assets_count`, we can introduce the asset count parameter to the `get_assets` tx kernel function and check that it the same as the actual assets count written to memory.**
+!!! note
+
+    Since the `get_assets` tx kernel function in the current form can trash the provided memory if
+    the actual assets count differs from the returned by `get_assets_count`, we can introduce the
+    asset count parameter to the `get_assets` tx kernel function and check that it the same as the
+    actual assets count written to memory.
 
 
-## The example of some functions signatures 
+## The example of some functions signatures
 
 ### `add_asset` (return-via-pointer Miden ABI pattern)
+
 Comment from the `miden-base`
+
 ```
 #! Add the specified asset to the vault.
 #!
@@ -214,6 +283,7 @@ Tx kernel ad-hoc signature:
 
 
 ### `get_id` (no-adapter-needed Miden ABI pattern)
+
 Comment from the `miden-base`
 ```
 #! Returns the account id.

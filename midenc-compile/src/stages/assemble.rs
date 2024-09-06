@@ -44,6 +44,8 @@ impl Stage for AssembleStage {
                     "successfully assembled mast artifact with digest {}",
                     DisplayHex::new(&mast.digest().as_bytes())
                 );
+                session.emit(OutputMode::Text, &mast).into_diagnostic()?;
+                session.emit(OutputMode::Binary, &mast).into_diagnostic()?;
                 Ok(Artifact::Assembled(masm::Package::new(mast, &masm_artifact, session)))
             }
             Left(masm_artifact) => {

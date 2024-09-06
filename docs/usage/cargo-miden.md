@@ -1,48 +1,64 @@
-# Miden Cargo Extension
+# Getting Started with Cargo
 
-`cargo-miden` crate provides a cargo extension that allows you to compile Rust code to Miden VM MASM.
+As part of the Miden compiler toolchain, we provide a Cargo extension, `cargo-miden`, which provides
+a template to spin up a new Miden project in Rust, and takes care of orchestrating `rustc` and
+`midenc` to compile the Rust crate to a Miden package.
 
 ## Installation
 
-In order to install(build) the extension, you need to have the nightly Rust toolchain installed:
+!!! warning
 
-```bash
-rustup toolchain install nightly-2024-05-07
-```
+    Currently, `midenc` (and as a result, `cargo-miden`), requires the nightly Rust toolchain, so
+    make sure you have it installed first:
 
-To install the extension, run:
+    ```bash
+    rustup toolchain install nightly-2024-05-07
+    ```
+
+    NOTE: You can also use the latest nightly, but the specific nightly shown here is known to
+    work.
+
+To install the extension, simply run the following in your shell:
 
 ```bash
 cargo +nightly-2024-05-07 install cargo-miden
 ```
 
-## Usage
+This will take a minute to compile, but once complete, you can run `cargo help miden` or just
+`cargo miden` to see the set of available commands and options.
 
-### Getting help
-To get help with the extension, run:
+To get help for a specific command, use `cargo miden help <command>` or `cargo miden <command> --help`.
 
-```bash
-cargo miden
-```
+## Creating a new project
 
-Or for help with a specific command:
+Your first step will be to create a new Rust project set up for compiling to Miden:
 
 ```bash
-cargo miden <command> --help
+cargo miden new foo
 ```
 
-### Creating a new project
-To create a new Miden VM project, run:
+In this above example, this will create a new directory `foo`, containing a Cargo project for a
+crate named `foo`, generated from our Miden project template.
+
+The template we use sets things up so that you can pretty much just build and run. Since the
+toolchain depends on Rust's native WebAssembly target, it is set up just like a minimal WebAssembly
+crate, with some additional tweaks for Miden specfically.
+
+Out of the box, you will get a Rust crate that depends on the Miden SDK, and sets the global
+allocator to a simple bump allocator we provide as part of the SDK, and is well suited for most
+Miden use cases, avoiding the overhead of more complex allocators.
+
+As there is no panic infrastructure, `panic = "abort"` is set, and the panic handler is configured
+to use the native WebAssembly `unreachable` intrinsic, so the compiler will strip out all of the
+usual panic formatting code.
+
+### Compiling to Miden Assembly
+
+Now that you've created your project, compiling it to Miden Assembly is as easy as running the
+following command from the root of the project directory:
 
 ```bash
-cargo miden new <project-name>
+cargo miden build
 ```
 
-### Compiling a project
-To compile a Rust crate to Miden VM MASM, run:
-
-```bash
-cargo miden build 
-```
-
-Without any additional arguments, this will compile the library target in the target directory in the `miden` folder.
+This will emit the compiled artifacts to `target/miden`.

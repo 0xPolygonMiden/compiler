@@ -25,6 +25,7 @@ pub struct State {
     pub breakpoints_hit: Vec<Breakpoint>,
     pub next_breakpoint_id: u8,
     pub stopped: bool,
+    pub execution_duration: std::time::Duration,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
@@ -67,7 +68,9 @@ impl State {
             trace_executor.with_library(&lib);
         }
 
+        let now = std::time::Instant::now();
         let execution_trace = trace_executor.capture_trace(&program, &session);
+        let execution_duration = now.elapsed();
 
         Ok(Self {
             package,
@@ -81,6 +84,7 @@ impl State {
             breakpoints_hit: vec![],
             next_breakpoint_id: 0,
             stopped: true,
+            execution_duration,
         })
     }
 

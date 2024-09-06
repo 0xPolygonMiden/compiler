@@ -15,17 +15,17 @@ There are four calling conventions represented in the compiler:
 - `Kernel`, this is a special calling convention that is used when defining kernel modules in the IR.
   Functions which are part of the kernel's public API are required to use this convention, and it is not
   possible to call a function via `syscall` if the callee is not defined with this convention. Because of
-  the semantics of `syscall`, this convention is highly restrictive. In particular, it is not permitted to 
+  the semantics of `syscall`, this convention is highly restrictive. In particular, it is not permitted to
   pass pointer arguments, or aggregates containing pointers, as `syscall` involves a context switch, and
   thus memory in the caller is not accessible to the callee, and vice versa.
 - `Contract`, this is a special calling convention that is used when defining smart contract functions, i.e.
   functions that can be `call`'d. The compiler will not permit you to `call` a function if the callee is not
-  defined with this convention, and functions with this convention cannot be called via `exec`. Like `syscall`, 
+  defined with this convention, and functions with this convention cannot be called via `exec`. Like `syscall`,
   the `call` instruction involves a context switch, however, unlike the `Kernel` convention, the `Contract`
   convention is allowed to have types in its signature that are/contain pointers, with certain caveats around
   those pointers.
-  
-  
+
+
 All four conventions above are based on the System V C ABI, tailored to the Miden VM. The only exception is
 `Fast`, which may modify the ABI arbitrarily as it sees fit, and makes no guarantees about what modifications,
 if any, it will make.
@@ -77,19 +77,20 @@ the section on the memory model below for more details.
 [^8]: An `enum` is `i32` if all members of the enumeration can be represented by an `int`/`unsigned int`, otherwise it
 uses i64.
 
-> [!NOTE] 
-> The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is 
-> larger than that must be allocated in linear memory, or in an automatic allocation (function-local memory), and passed 
-> around by reference.
+!!! note
 
-The native scalar type for the Miden VM is a "field element", specifically a 64-bit value representing an integer 
+    The compiler does not support scalars larger than one word (128 bits) at this time. As a result, anything that is
+    larger than that must be allocated in linear memory, or in an automatic allocation (function-local memory), and passed
+    around by reference.
+
+The native scalar type for the Miden VM is a "field element", specifically a 64-bit value representing an integer
 in the "Goldilocks" field, i.e. `0..(2^64-2^32+1)`. A number of instructions in the VM operate on field elements directly.
-However, the native integral/pointer type, i.e. a "machine word", is actually `u32`. This is because a field element 
+However, the native integral/pointer type, i.e. a "machine word", is actually `u32`. This is because a field element
 can fully represent 32-bit integers, but not the full 64-bit integer range. Values of `u32` type are valid field element
-values, and can be used anywhere that a field element is expected (barring other constraints). 
+values, and can be used anywhere that a field element is expected (barring other constraints).
 
 Miden also has the notion of a "word", not to be confused with a "machine word" (by which we mean the native integral
-type used to represent pointers), which corresponds to a set of 4 field elements. Words are commonly used in Miden, 
+type used to represent pointers), which corresponds to a set of 4 field elements. Words are commonly used in Miden,
 particularly to represent hashes, and a number of VM instructions operate on word-sized operands. As an aside, 128-bit
 integer values are represented using a word, or two 64-bit limbs (each limb consisting of two 32-bit limbs).
 
@@ -177,7 +178,7 @@ emulation will come from values which cross an element or word boundary.
 
 # Function Calls
 
-This section describes the conventions followed when executing a function call via `exec`, including how arguments are passed on the 
+This section describes the conventions followed when executing a function call via `exec`, including how arguments are passed on the
 operand stack, stack frames, etc. Later, we'll cover the differences when executing calls via `call` or `syscall`.
 
 ## Locals and the stack frame
@@ -205,11 +206,11 @@ those are described below in the section covering the operand stack.
 Miden is a [Harvard](https://en.wikipedia.org/wiki/Harvard_architecture) architecture; as such, code and data are not in the same memory
 space. More precisely, in Miden, code is only addressable via the hash of the MAST root of that code, which must correspond to code that
 has been loaded into the VM. The hash of the MAST root of a function can be used to call that function both directly and indirectly, but
-that is the only action you can take with it. Code can not be generated and called on the fly, and it is not stored anywhere that is 
-accessible to code that is currently executing. 
+that is the only action you can take with it. Code can not be generated and called on the fly, and it is not stored anywhere that is
+accessible to code that is currently executing.
 
 One consequence of this is that there are no return addresses or instruction pointers visible to executing code. The runtime call stack is
-managed by the VM itself, and is not exposed to executing code in any way. This means that address-taken local C variables need to be on a 
+managed by the VM itself, and is not exposed to executing code in any way. This means that address-taken local C variables need to be on a
 separate stack in linear memory (which we refer to as a "shadow stack"). Not all functions necessarily require a frame in the shadow stack,
 as it cannot be used to perform unwinding, so only functions which have locals require a frame.
 
@@ -218,7 +219,7 @@ number of locals, will be automatically allocated sufficient space for those loc
 you use the `locaddr` instruction to get the actual address of a local, that address can be passed as an argument to callees (within the
 constraints of the callee's calling convention).
 
-Languages with more elaborate requirements with regard to the stack will need to implement their own shadow stack, and emit code in function 
+Languages with more elaborate requirements with regard to the stack will need to implement their own shadow stack, and emit code in function
 prologues/epilogues to manage it.
 
 ### The operand stack
@@ -226,7 +227,7 @@ prologues/epilogues to manage it.
 The Miden virtual machine is a stack machine, not a register machine. Rather than having a fixed set of registers that are used to
 store and manipulate scalar values, the Miden VM has the operand stack, which can hold an arbitrary number of operands (where each
 operand is a single field element), of which the first 16 can be directly manipulated using special stack instructions. The operand
-stack is, as the name implies, a last-in/first-out data structure. 
+stack is, as the name implies, a last-in/first-out data structure.
 
 The following are basic rules all conventions are expected to follow with regard to the operand stack:
 
@@ -249,7 +250,7 @@ then one of the following must happen:
 
 Miden Abstract Syntax Trees (MASTs) do not have any notion of functions, and as such are not aware of parameters, return values, etc. For
 this document, that's not a useful level of abstraction to examine. Even a step higher, Miden Assembly (MASM) has functions (procedures
-in MASM parlance), but no function signature, i.e. given a MASM procedure, there is no way to know how many arguments it expects, how 
+in MASM parlance), but no function signature, i.e. given a MASM procedure, there is no way to know how many arguments it expects, how
 many values it returns, let alone the types of arguments/return values. Instead, we're going to specify calling conventions in terms of
 Miden IR, which has a fairly expressive type system more or less equivalent to that of LLVM, and how that translates to Miden primitives.
 
@@ -276,18 +277,18 @@ unions, and arrays) contains just a single scalar value and is not specified to
 have greater than natural alignment.
 
 The compiler will automatically generate code that follows these rules, but if emitting MASM from your own backend, it is necessary to do so manually.
-For example, a function whose signature specifies that it returns a non-scalar struct by value, must actually be written such that it expects to receive 
-a pointer to memory allocated by the caller sufficient to hold the return value, as the first parameter of the function (i.e. the parameter is prepended 
+For example, a function whose signature specifies that it returns a non-scalar struct by value, must actually be written such that it expects to receive
+a pointer to memory allocated by the caller sufficient to hold the return value, as the first parameter of the function (i.e. the parameter is prepended
 to the parameter list). When returning, the function must write the return value to that pointer, rather than returning it on the operand stack. In this
 example, the return value is returned indirectly (by reference).
 
-A universal rule is that the arguments are passed in reverse order, i.e. the first argument in the parameter list of a function will be on top of the 
-operand stack. This is different than many Miden instructions which seemingly use the opposite convention, e.g. `add`, which expects the right-hand 
-operand on top of the stack, so `a + b` is represented like `push a, push b, add`. If we were to implement `add` as a function, it would instead be 
-`push b, push a, exec.add`. The rationale behind this is that, in general, the more frequently used arguments appear earlier in the parameter list, 
+A universal rule is that the arguments are passed in reverse order, i.e. the first argument in the parameter list of a function will be on top of the
+operand stack. This is different than many Miden instructions which seemingly use the opposite convention, e.g. `add`, which expects the right-hand
+operand on top of the stack, so `a + b` is represented like `push a, push b, add`. If we were to implement `add` as a function, it would instead be
+`push b, push a, exec.add`. The rationale behind this is that, in general, the more frequently used arguments appear earlier in the parameter list,
 and thus we want those closer to the top of the operand stack to reduce the amount of stack manipulation we need to do.
 
-Arguments/return values are laid out on the operand stack just like they would be as if you had just loaded it from memory, so all arguments are aligned, 
+Arguments/return values are laid out on the operand stack just like they would be as if you had just loaded it from memory, so all arguments are aligned,
 but may span multiple operands on the operand stack as necessary based on the size of the type (i.e. a struct type that contains a `u32` and a `i1`
 field would require two operands to represent). If the maximum number of operands allowed for the call is reached, any remaining arguments must be
 spilled to the caller's stack frame, or to the advice provider. The former is used in the case of `exec`/`dynexec`, while the latter is used for `call`
@@ -295,4 +296,3 @@ and `syscall`, as caller memory is not accessible to the callee with those instr
 
 While ostensibly 16 elements is the maximum number of operands on the operand stack that can represent function arguments, due to the way `dynexec`/`dyncall`
 work, it is actually limited to 12 elements, because at least 4 must be free to hold the hash of the function being indirectly called.
-
