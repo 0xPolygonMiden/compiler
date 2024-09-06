@@ -83,16 +83,15 @@ impl DebugExecutor {
     /// Consume the [DebugExecutor], converting it into an [ExecutionTrace] at the current cycle.
     pub fn into_execution_trace(self) -> ExecutionTrace {
         let last_cycle = self.cycle;
+        let trace_len_summary = *self.iter.trace_len_summary();
         let (_, _, _, chiplets, _) = self.iter.into_parts();
-        let outputs = self
-            .result
-            .map(|res| res.stack().iter().copied().map(TestFelt).collect::<VecDeque<_>>())
-            .unwrap_or_default();
+        let outputs = self.result.unwrap_or_default();
         ExecutionTrace {
             root_context: self.root_context,
             last_cycle: RowIndex::from(last_cycle),
             chiplets: Chiplets::new(move |context, clk| chiplets.get_mem_state_at(context, clk)),
             outputs,
+            trace_len_summary,
         }
     }
 }
