@@ -710,7 +710,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-miden"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "cargo-component",
@@ -2846,7 +2846,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
@@ -2902,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "miden-integration-tests"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "blake3",
@@ -2993,7 +2993,7 @@ dependencies = [
 
 [[package]]
 name = "miden-sdk"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "miden-base-sys",
  "miden-sdk-alloc",
@@ -3002,7 +3002,7 @@ dependencies = [
 
 [[package]]
 name = "miden-sdk-alloc"
-version = "0.0.5"
+version = "0.0.6"
 
 [[package]]
 name = "miden-stdlib"
@@ -3015,7 +3015,7 @@ dependencies = [
 
 [[package]]
 name = "miden-stdlib-sys"
-version = "0.0.5"
+version = "0.0.6"
 
 [[package]]
 name = "miden-thiserror"
@@ -3039,7 +3039,7 @@ dependencies = [
 
 [[package]]
 name = "midenc"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "env_logger 0.11.5",
  "human-panic",
@@ -3048,7 +3048,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-codegen-masm"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "bitcode",
@@ -3077,7 +3077,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-compile"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "clap",
  "either",
@@ -3097,7 +3097,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-debug"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "clap",
  "crossterm",
@@ -3125,7 +3125,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-driver"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "clap",
  "log",
@@ -3138,7 +3138,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-frontend-wasm"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "addr2line 0.24.1",
  "anyhow",
@@ -3160,7 +3160,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "cranelift-entity",
@@ -3196,7 +3196,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-analysis"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "cranelift-bforest",
@@ -3213,7 +3213,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-macros"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -3223,7 +3223,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-symbol"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "Inflector",
  "rustc-hash",
@@ -3233,7 +3233,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-transform"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "inventory",
@@ -3248,7 +3248,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-type"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "serde",
  "serde_repr",
@@ -3257,7 +3257,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-session"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "clap",
  "inventory",

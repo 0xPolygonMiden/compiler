@@ -26,8 +26,8 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.0.5"
-rust-version = "1.78"
+version = "0.0.6"
+rust-version = "1.80"
 authors = ["Miden contributors"]
 description = "An intermediate representation and compiler for Miden Assembly"
 repository = "https://github.com/0xPolygonMiden/compiler"
@@ -92,18 +92,18 @@ miden-stdlib = { version = "0.10.3", features = ["with-debug-info"] }
 #miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
-midenc-codegen-masm = { version = "0.0.5", path = "codegen/masm" }
-midenc-hir = { version = "0.0.5", path = "hir" }
-midenc-hir-analysis = { version = "0.0.5", path = "hir-analysis" }
-midenc-hir-macros = { version = "0.0.5", path = "hir-macros" }
-midenc-hir-symbol = { version = "0.0.5", path = "hir-symbol" }
-midenc-hir-transform = { version = "0.0.5", path = "hir-transform" }
-midenc-hir-type = { version = "0.0.5", path = "hir-type" }
-midenc-frontend-wasm = { version = "0.0.5", path = "frontend-wasm" }
-midenc-compile = { version = "0.0.5", path = "midenc-compile" }
-midenc-driver = { version = "0.0.5", path = "midenc-driver" }
-midenc-debug = { version = "0.0.5", path = "midenc-debug" }
-midenc-session = { version = "0.0.5", path = "midenc-session" }
+midenc-codegen-masm = { version = "0.0.6", path = "codegen/masm" }
+midenc-hir = { version = "0.0.6", path = "hir" }
+midenc-hir-analysis = { version = "0.0.6", path = "hir-analysis" }
+midenc-hir-macros = { version = "0.0.6", path = "hir-macros" }
+midenc-hir-symbol = { version = "0.0.6", path = "hir-symbol" }
+midenc-hir-transform = { version = "0.0.6", path = "hir-transform" }
+midenc-hir-type = { version = "0.0.6", path = "hir-type" }
+midenc-frontend-wasm = { version = "0.0.6", path = "frontend-wasm" }
+midenc-compile = { version = "0.0.6", path = "midenc-compile" }
+midenc-driver = { version = "0.0.6", path = "midenc-driver" }
+midenc-debug = { version = "0.0.6", path = "midenc-debug" }
+midenc-session = { version = "0.0.6", path = "midenc-session" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
