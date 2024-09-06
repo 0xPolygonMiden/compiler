@@ -45,7 +45,7 @@ impl OutputType {
             Self::Hir => "hir",
             Self::Masm => "masm",
             Self::Mast => "mast",
-            Self::Masl => "mast",
+            Self::Masl => "masl",
             Self::Masp => "masp",
         }
     }
