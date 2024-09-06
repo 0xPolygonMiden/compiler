@@ -237,16 +237,12 @@ program starts)
 
 However, this package format is not yet understood by the Miden VM itself. This means you cannot,
 currently, compile a package and then run it using `miden run` directly. Instead, you can use
-`midenc debug` to load and run code from a package, as the interactive debugger has native support
-for it. See [Debugging Programs](../usage/debugger.md) for more information on how to use the
-debugger.
-
-!!! note
-
-    In the next patch release, we expect to implement a `midenc run` command that simply executes
-    a program without attaching the debugger, which will largely resemble the eventual `miden run`
-    functionality. Once the package format is stabilized, using `midenc run` will no longer be
-    necessary.
+`midenc run` to load and run code from a package, as the compiler ships with the VM embedded for
+use with the interactive debugger, and provides native support for packaging on top of it. You can
+also use `midenc debug` to execute your program interactively in the debugger, depending on your
+needs. See [Debugging Programs](../usage/debugger.md) for more information on how to use the
+debugger, and `midenc help run` for more information on executing programs with the `midenc run`
+command.
 
 While it is possible to emit raw MAST from `midenc`, rather than the experimental package format,
 the resulting artifact cannot be run without some fragile and error-prone manual setup, in order

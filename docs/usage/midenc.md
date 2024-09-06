@@ -73,6 +73,7 @@ The `midenc` executable supports two primary functions at this time:
 
 * `midenc compile` to compile one of our supported input formats to Miden Assembly
 * `midenc debug` to run a Miden program attached to an interactive debugger
+* `midenc run` to run a Miden program non-interactively, equivalent to `miden run`
 
 ## Compilation
 
