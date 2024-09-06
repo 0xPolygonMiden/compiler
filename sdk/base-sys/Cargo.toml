@@ -15,7 +15,7 @@ edition.workspace = true
 
 [dependencies]
 miden-assembly.workspace = true
-miden-stdlib-sys = { version = "0.0.5", path = "../stdlib-sys", optional = true }
+miden-stdlib-sys = { version = "0.0.6", path = "../stdlib-sys", optional = true }
 
 [build-dependencies]
 miden-assembly.workspace = true
