@@ -14,15 +14,14 @@ Start by creating a new library crate:
 
     cargo new --lib wasm-fib && cd wasm-fib
 
-To compile to WebAssembly, you must have the appropriate Rust toolchain installed, and we
-will also need additional Cargo nightly features to build for Miden, so let's add a toolchain
-file to our project root so that `rustup` and `cargo` will know what we need, and use them by
-default:
+To compile to WebAssembly, you must have the appropriate Rust toolchain installed, so let's add
+a toolchain file to our project root so that `rustup` and `cargo` will know what we need, and use
+them by default:
 
     cat <<EOF > rust-toolchain.toml
     [toolchain]
-    channel = "nightly"
-    targets = ["wasm32-unknown-unknown"]
+    channel = "stable"
+    targets = ["wasm32-wasip1"]
     EOF
 
 Next, edit the `Cargo.toml` file as follows:
@@ -42,17 +41,17 @@ crate-type = ["cdylib"]
 # Use a tiny allocator in place of the default one, if we want
 # to make use of types in the `alloc` crate, e.g. String. We
 # don't need that now, but it's good information to have in hand.
-#wee_alloc = "0.4"
+#miden-sdk-alloc = "0.0.5"
 
 # When we build for Wasm, we'll use the release profile
 [profile.release]
-
 # Explicitly disable panic infrastructure on Wasm, as
 # there is no proper support for them anyway, and it
 # ensures that panics do not pull in a bunch of standard
 # library code unintentionally
 panic = "abort"
-
+# Enable debug information so that we get useful debugging output
+debug = true
 # Optimize the output for size
 opt-level = "z"
 ```
@@ -63,22 +62,18 @@ going to benefit from less code, even if conventionally that code would be less 
 to the difference in proving time accumulated due to extra instructions. That said, there are no hard
 and fast rules, but these defaults are good ones to start with.
 
-> [!TIP]
-> We recommended `wee_alloc` here, but any simple allocator will do, including a hand-written
-> bump allocator. The trade offs made by these small allocators are not generally suitable for long-
-> running, or allocation-heavy applications, as they "leak" memory (generally because they make little
-> to no attempt to recover freed allocations), however they are very useful for one-shot programs that
-> do minimal allocation, which is going to be the typical case for Miden programs.
+!!! tip
+
+    We reference a simple bump allocator provided by `miden-sdk-alloc` above, but any simple
+    allocator will do. The trade offs made by these small allocators are not generally suitable for
+    long-running, or allocation-heavy applications, as they "leak" memory (generally because they
+    make little to no attempt to recover freed allocations), however they are very useful for
+    one-shot programs that do minimal allocation, which is going to be the typical case for Miden
+    programs.
 
 Next, edit `src/lib.rs` as shown below:
 
-```rust,noplayground
-// This allows us to abort if the panic handler is invoked, but
-// it is gated behind a perma-unstable nightly feature
-#![feature(core_intrinsics)]
-// Disable the warning triggered by the use of the `core_intrinsics` feature
-#![allow(internal_features)]
-
+```rust
 // Do not link against libstd (i.e. anything defined in `std::`)
 #![no_std]
 
@@ -92,12 +87,13 @@ Next, edit `src/lib.rs` as shown below:
 // a good idea to use the allocator we pulled in as a dependency
 // in Cargo.toml, like so:
 //#[global_allocator]
-//static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+//static ALLOC: miden_sdk_alloc::BumpAlloc = miden_sdk_alloc::BumpAlloc::new();
 
 // Required for no-std crates
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
-    core::intrinsics::abort()
+    // Compiles to a trap instruction in WebAssembly
+    core::arch::wasm32::unreachable()
 }
 
 // Marking the function no_mangle ensures that it is exported
@@ -125,17 +121,17 @@ This exports our `fib` function from the library, making it callable from within
 
 All that remains is to compile to WebAssembly:
 
-    cargo build --release --target=wasm32-unknown-unknown
+    cargo build --release --target=wasm32-wasip1
 
-This places a `wasm_fib.wasm` file under the `target/wasm32-unknown-unknown/release/` directory, which
+This places a `wasm_fib.wasm` file under the `target/wasm32-wasip1/release/` directory, which
 we can then examine with [wasm2wat](https://github.com/WebAssembly/wabt) to set the code we generated:
 
-    wasm2wat target/wasm32-unknown-unknown/release/wasm_fib.wasm
+    wasm2wat target/wasm32-wasip1/release/wasm_fib.wasm
 
 Which dumps the following output (may differ slightly on your machine, depending on the specific compiler version):
 
 ```wat
-(module
+(module $wasm_fib.wasm
   (type (;0;) (func (param i32) (result i32)))
   (func $fib (type 0) (param i32) (result i32)
     (local i32 i32 i32)
@@ -166,17 +162,13 @@ Which dumps the following output (may differ slightly on your machine, depending
     end)
   (memory (;0;) 16)
   (global $__stack_pointer (mut i32) (i32.const 1048576))
-  (global (;1;) i32 (i32.const 1048576))
-  (global (;2;) i32 (i32.const 1048576))
   (export "memory" (memory 0))
-  (export "fib" (func $fib))
-  (export "__data_end" (global 1))
-  (export "__heap_base" (global 2)))
+  (export "fib" (func $fib)))
 ```
 
 Success!
 
 ## Next Steps
 
-In the next chapter, we will walk through how to take the WebAssembly module we just compiled, and lower
-it to Miden Assembly using `midenc`!
+In [Compiling WebAssembly to Miden Assembly](wasm_to_masm.md), we walk through how to take the
+WebAssembly module we just compiled, and lower it to Miden Assembly using `midenc`!
