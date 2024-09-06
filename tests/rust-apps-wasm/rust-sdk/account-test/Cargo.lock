@@ -552,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.0"
+version = "0.0.4"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
@@ -650,9 +650,10 @@ dependencies = [
 
 [[package]]
 name = "miden-sdk"
-version = "0.0.1"
+version = "0.0.4"
 dependencies = [
  "miden-base-sys",
+ "miden-sdk-alloc",
  "miden-stdlib-sys",
 ]
 
@@ -665,8 +666,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-sdk-alloc"
+version = "0.0.4"
+
+[[package]]
 name = "miden-stdlib-sys"
-version = "0.0.1"
+version = "0.0.4"
 
 [[package]]
 name = "miden-thiserror"

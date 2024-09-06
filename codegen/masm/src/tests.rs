@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-use std::{cell::RefCell, sync::Arc};
+use std::sync::Arc;
 
 use midenc_hir::{
     self as hir,
@@ -13,6 +13,12 @@ use proptest::prelude::*;
 use smallvec::{smallvec, SmallVec};
 
 use super::*;
+
+const MEMORY_SIZE_BYTES: u32 = 1048576 * 2; // Twice the size of the default Rust shadow stack size
+const MEMORY_SIZE_VM_WORDS: u32 = MEMORY_SIZE_BYTES / 16;
+/// In miden-sdk-alloc we require all allocations to be minimally word-aligned, i.e. 32 byte
+/// alignment
+const MIN_ALIGN: u32 = 32;
 
 #[cfg(test)]
 #[allow(unused_macros)]
@@ -496,8 +502,6 @@ fn i32_checked_neg() {
 
 #[test]
 fn codegen_mem_store_sw_load_sw() {
-    const MEMORY_SIZE_BYTES: u32 = 1048576 * 2; // Twice the size of the default Rust shadow stack size
-    const MEMORY_SIZE_VM_WORDS: u32 = MEMORY_SIZE_BYTES / 16;
     let context = TestContext::default();
     let mut builder = ProgramBuilder::new(&context.session.diagnostics);
     let mut mb = builder.module("test");
@@ -536,7 +540,7 @@ fn codegen_mem_store_sw_load_sw() {
 
     // eprintln!("{}", program);
 
-    fn test(program: Arc<Program>, ptr: u32, value: u32) -> u32 {
+    fn roundtrip(program: Arc<Program>, ptr: u32, value: u32) -> u32 {
         eprintln!("---------------------------------");
         eprintln!("testing store_sw/load_sw ptr: {ptr}, value: {value}");
         eprintln!("---------------------------------");
@@ -554,10 +558,167 @@ fn codegen_mem_store_sw_load_sw() {
 
     TestRunner::new(Config::with_cases(1024))
         .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u32>()), move |(ptr, value)| {
-            let out = test(program.clone(), ptr, value);
+            let out = roundtrip(program.clone(), ptr, value);
             prop_assert_eq!(out, value);
             Ok(())
         })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_dw_load_dw() {
+    let context = TestContext::default();
+    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
+    let mut mb = builder.module("test");
+    let id = {
+        let mut fb = mb
+            .function(
+                "store_load_dw",
+                Signature::new(
+                    [AbiParam::new(Type::U32), AbiParam::new(Type::U64)],
+                    [AbiParam::new(Type::U64)],
+                ),
+            )
+            .expect("unexpected symbol conflict");
+        let entry = fb.current_block();
+        let (ptr_u32, value) = {
+            let args = fb.block_params(entry);
+            (args[0], args[1])
+        };
+        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::U64.into()), SourceSpan::UNKNOWN);
+        fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
+        let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
+        fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
+        fb.build().expect("unexpected error building function")
+    };
+
+    mb.build().expect("unexpected error constructing test module");
+
+    let program = builder.with_entrypoint(id).link().expect("failed to link program");
+
+    let ir_module = program
+        .modules()
+        .iter()
+        .take(1)
+        .collect::<Vec<&midenc_hir::Module>>()
+        .first()
+        .expect("no module in IR program")
+        .to_string();
+
+    eprintln!("{}", ir_module.as_str());
+
+    let mut compiler = MasmCompiler::new(&context.session);
+    let program = compiler
+        .compile(program)
+        .expect("compilation failed")
+        .unwrap_executable()
+        .freeze();
+
+    eprintln!("{}", program);
+
+    fn roundtrip(program: Arc<Program>, ptr: u32, value: u64) -> u64 {
+        eprintln!("---------------------------------");
+        eprintln!("testing store_dw/load_dw ptr: {ptr}, value: {value}");
+        eprintln!("---------------------------------");
+        let mut harness = TestByEmulationHarness::with_emulator_config(
+            MEMORY_SIZE_VM_WORDS as usize,
+            Emulator::DEFAULT_HEAP_START as usize,
+            Emulator::DEFAULT_LOCALS_START as usize,
+            true,
+        );
+        let mut args: SmallVec<[Felt; 4]> = smallvec!(Felt::new(ptr as u64));
+        args.extend(value.canonicalize());
+        let mut stack = harness.execute_program(program.clone(), &args).expect("execution failed");
+        u64::from_stack(&mut stack)
+    }
+
+    TestRunner::new(Config::with_cases(1024))
+        .run(&(0u32..MEMORY_SIZE_BYTES - 4, any::<u64>()), move |(ptr, value)| {
+            let out = roundtrip(program.clone(), ptr, value);
+            prop_assert_eq!(out, value);
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn codegen_mem_store_felt_load_felt() {
+    let context = TestContext::default();
+    let mut builder = ProgramBuilder::new(&context.session.diagnostics);
+    let mut mb = builder.module("test");
+    let id = {
+        let mut fb = mb
+            .function(
+                "store_load_felt",
+                Signature::new(
+                    [AbiParam::new(Type::U32), AbiParam::new(Type::Felt)],
+                    [AbiParam::new(Type::Felt)],
+                ),
+            )
+            .expect("unexpected symbol conflict");
+        let entry = fb.current_block();
+        let (ptr_u32, value) = {
+            let args = fb.block_params(entry);
+            (args[0], args[1])
+        };
+        let ptr = fb.ins().inttoptr(ptr_u32, Type::Ptr(Type::Felt.into()), SourceSpan::UNKNOWN);
+        fb.ins().store(ptr, value, SourceSpan::UNKNOWN);
+        let loaded_value = fb.ins().load(ptr, SourceSpan::UNKNOWN);
+        fb.ins().ret(Some(loaded_value), SourceSpan::UNKNOWN);
+        fb.build().expect("unexpected error building function")
+    };
+
+    mb.build().expect("unexpected error constructing test module");
+
+    let program = builder.with_entrypoint(id).link().expect("failed to link program");
+
+    let ir_module = program
+        .modules()
+        .iter()
+        .take(1)
+        .collect::<Vec<&midenc_hir::Module>>()
+        .first()
+        .expect("no module in IR program")
+        .to_string();
+
+    eprintln!("{}", ir_module.as_str());
+
+    let mut compiler = MasmCompiler::new(&context.session);
+    let program = compiler
+        .compile(program)
+        .expect("compilation failed")
+        .unwrap_executable()
+        .freeze();
+
+    eprintln!("{}", program);
+
+    fn roundtrip(program: Arc<Program>, ptr: u32, value: Felt) -> Felt {
+        eprintln!("---------------------------------");
+        eprintln!("testing store_felt/load_felt ptr: {ptr}, value: {value}");
+        eprintln!("---------------------------------");
+        let mut harness = TestByEmulationHarness::with_emulator_config(
+            MEMORY_SIZE_VM_WORDS as usize,
+            Emulator::DEFAULT_HEAP_START as usize,
+            Emulator::DEFAULT_LOCALS_START as usize,
+            true,
+        );
+        let mut stack = harness
+            .execute_program(program.clone(), &[Felt::new(ptr as u64), value])
+            .expect("execution failed");
+        stack.pop().unwrap()
+    }
+
+    TestRunner::new(Config::with_cases(1024))
+        .run(
+            &(0u32..(MEMORY_SIZE_BYTES / MIN_ALIGN - 1), (0u64..u64::MAX).prop_map(Felt::new)),
+            move |(word_ptr, value)| {
+                // a felt memory pointer must be naturally aligned, i.e. a multiple of MIN_ALIGN
+                let ptr = word_ptr * MIN_ALIGN;
+                let out = roundtrip(program.clone(), ptr, value);
+                prop_assert_eq!(out, value);
+                Ok(())
+            },
+        )
         .unwrap();
 }
 
@@ -758,16 +919,15 @@ impl ToCanonicalRepr for u64 {
     }
 
     fn canonicalize(self) -> SmallVec<[Felt; 4]> {
-        let bytes = self.to_be_bytes();
-        let a = Felt::new(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64);
-        let b = Felt::new(u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as u64);
-        smallvec![a, b]
+        let lo = self.rem_euclid(2u64.pow(32));
+        let hi = self.div_euclid(2u64.pow(32));
+        smallvec![Felt::new(hi), Felt::new(lo)]
     }
 
     fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
-        let hi = <u32 as ToCanonicalRepr>::from_stack(stack) as u64;
-        let lo = <u32 as ToCanonicalRepr>::from_stack(stack) as u64;
-        (hi << 32) | lo
+        let hi = stack.pop().unwrap().as_int() * 2u64.pow(32);
+        let lo = stack.pop().unwrap().as_int();
+        hi + lo
     }
 }
 
@@ -791,18 +951,17 @@ impl ToCanonicalRepr for i128 {
     }
 
     fn canonicalize(self) -> SmallVec<[Felt; 4]> {
-        let bytes = self.to_be_bytes();
-        let a = Felt::new(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64);
-        let b = Felt::new(u32::from_be_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as u64);
-        let c = Felt::new(u32::from_be_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]) as u64);
-        let d = Felt::new(u32::from_be_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]) as u64);
-        smallvec![a, b, c, d]
+        let lo = self.rem_euclid(2i128.pow(64));
+        let hi = self.div_euclid(2i128.pow(64));
+        let mut out = (hi as u64).canonicalize();
+        out.extend_from_slice(&(lo as u64).canonicalize());
+        out
     }
 
     fn from_stack(stack: &mut OperandStack<Felt>) -> Self {
-        let hi = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
+        let hi = (<u64 as ToCanonicalRepr>::from_stack(stack) as i128) * 2i128.pow(64);
         let lo = <u64 as ToCanonicalRepr>::from_stack(stack) as i128;
-        (hi << 64) | lo
+        hi + lo
     }
 }
 

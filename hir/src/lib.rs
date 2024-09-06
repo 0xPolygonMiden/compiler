@@ -22,7 +22,9 @@ pub use intrusive_collections::UnsafeRef;
 pub use miden_core::{FieldElement, StarkField};
 pub use midenc_hir_macros::*;
 pub use midenc_hir_symbol::{symbols, Symbol};
-pub use midenc_hir_type::{AddressSpace, Alignable, FunctionType, StructType, Type, TypeRepr};
+pub use midenc_hir_type::{
+    self as types, AddressSpace, Alignable, FunctionType, StructType, Type, TypeRepr,
+};
 pub use midenc_session::diagnostics::{self, SourceSpan};
 
 /// Represents a field element in Miden

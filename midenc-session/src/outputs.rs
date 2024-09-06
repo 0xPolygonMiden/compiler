@@ -1,12 +1,10 @@
-use std::{
-    collections::BTreeMap,
-    ffi::OsStr,
-    fmt,
-    path::{Path, PathBuf},
-    str::FromStr,
+use alloc::{
+    borrow::ToOwned, boxed::Box, collections::BTreeMap, fmt, format, str::FromStr, string::String,
 };
-
-use clap::ValueEnum;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 /// The type of output to produce for a given [OutputType], when multiple options are available
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -18,7 +16,8 @@ pub enum OutputMode {
 }
 
 /// This enum represents the type of outputs the compiler can produce
-#[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, Copy, Clone, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(clap::ValueEnum))]
 pub enum OutputType {
     /// The compiler will emit the parse tree of the input, if applicable
     Ast,
@@ -29,13 +28,15 @@ pub enum OutputType {
     /// The compiler will emit a Merkalized Abstract Syntax Tree in text form
     Mast,
     /// The compiler will emit a MAST library in binary form
-    #[default]
     Masl,
+    /// The compiler will emit a MAST package in binary form
+    #[default]
+    Masp,
 }
 impl OutputType {
     /// Returns true if this output type is an intermediate artifact produced during compilation
     pub fn is_intermediate(&self) -> bool {
-        !matches!(self, Self::Mast | Self::Masl)
+        !matches!(self, Self::Mast | Self::Masl | Self::Masp)
     }
 
     pub fn extension(&self) -> &'static str {
@@ -44,28 +45,31 @@ impl OutputType {
             Self::Hir => "hir",
             Self::Masm => "masm",
             Self::Mast => "mast",
-            Self::Masl => "mast",
+            Self::Masl => "masl",
+            Self::Masp => "masp",
         }
     }
 
     pub fn shorthand_display() -> String {
         format!(
-            "`{}`, `{}`, `{}`, `{}`, `{}`",
+            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
             Self::Ast,
             Self::Hir,
             Self::Masm,
             Self::Mast,
-            Self::Masl
+            Self::Masl,
+            Self::Masp,
         )
     }
 
-    pub fn all() -> [OutputType; 5] {
+    pub fn all() -> [OutputType; 6] {
         [
             OutputType::Ast,
             OutputType::Hir,
             OutputType::Masm,
             OutputType::Mast,
             OutputType::Masl,
+            OutputType::Masp,
         ]
     }
 }
@@ -77,6 +81,7 @@ impl fmt::Display for OutputType {
             Self::Masm => f.write_str("masm"),
             Self::Mast => f.write_str("mast"),
             Self::Masl => f.write_str("masl"),
+            Self::Masp => f.write_str("masp"),
         }
     }
 }
@@ -90,6 +95,7 @@ impl FromStr for OutputType {
             "masm" => Ok(Self::Masm),
             "mast" => Ok(Self::Mast),
             "masl" => Ok(Self::Masl),
+            "masp" => Ok(Self::Masp),
             _ => Err(()),
         }
     }
@@ -119,11 +125,18 @@ impl OutputFile {
         matches!(self, Self::Stdout)
     }
 
+    #[cfg(feature = "std")]
     pub fn is_tty(&self) -> bool {
+        use std::io::IsTerminal;
         match self {
             Self::Real(_) => false,
-            Self::Stdout => atty::is(atty::Stream::Stdout),
+            Self::Stdout => std::io::stdout().is_terminal(),
         }
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn is_tty(&self) -> bool {
+        false
     }
 
     pub fn as_path(&self) -> Option<&Path> {
@@ -372,36 +385,29 @@ impl OutputTypes {
         self.0.len()
     }
 
-    pub fn parse_only(&self) -> bool {
-        self.0.keys().all(|k| matches!(k, OutputType::Ast))
-    }
-
-    pub fn should_analyze(&self) -> bool {
-        self.0.keys().any(|k| {
-            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
-        })
-    }
-
-    pub fn should_rewrite(&self) -> bool {
-        self.0.keys().any(|k| {
-            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
-        })
-    }
-
     pub fn should_link(&self) -> bool {
         self.0.keys().any(|k| {
-            matches!(k, OutputType::Hir | OutputType::Masm | OutputType::Mast | OutputType::Masl)
+            matches!(
+                k,
+                OutputType::Hir
+                    | OutputType::Masm
+                    | OutputType::Mast
+                    | OutputType::Masl
+                    | OutputType::Masp
+            )
         })
     }
 
     pub fn should_codegen(&self) -> bool {
-        self.0
-            .keys()
-            .any(|k| matches!(k, OutputType::Masm | OutputType::Mast | OutputType::Masl))
+        self.0.keys().any(|k| {
+            matches!(k, OutputType::Masm | OutputType::Mast | OutputType::Masl | OutputType::Masp)
+        })
     }
 
     pub fn should_assemble(&self) -> bool {
-        self.0.keys().any(|k| matches!(k, OutputType::Mast | OutputType::Masl))
+        self.0
+            .keys()
+            .any(|k| matches!(k, OutputType::Mast | OutputType::Masl | OutputType::Masp))
     }
 }
 
@@ -441,6 +447,7 @@ impl clap::builder::TypedValueParser for OutputTypeParser {
                 PossibleValue::new("masm").help("Miden Assembly (text)"),
                 PossibleValue::new("mast").help("Merkelized Abstract Syntax Tree (text)"),
                 PossibleValue::new("masl").help("Merkelized Abstract Syntax Tree (binary)"),
+                PossibleValue::new("masp").help("Miden Assembly Package Format (binary)"),
                 PossibleValue::new("all").help("All of the above"),
             ]
             .into_iter(),

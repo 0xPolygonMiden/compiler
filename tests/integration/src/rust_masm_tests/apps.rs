@@ -16,7 +16,7 @@ fn fib() {
     test.expect_ir(expect_file!["../../expected/fib.hir"]);
     test.expect_masm(expect_file!["../../expected/fib.masm"]);
     // let ir_masm = test.ir_masm_program();
-    let vm_program = &test.vm_masm_program();
+    let package = test.compiled_package();
 
     // Run the Rust and compiled MASM code against a bunch of random inputs and compare the results
     TestRunner::default()
@@ -25,8 +25,9 @@ fn fib() {
             let mut args = Vec::<Felt>::default();
             PushToStack::try_push(&a, &mut args);
 
-            let exec = Executor::new(args);
-            let output: u32 = exec.execute_into(vm_program, &test.session);
+            let exec = Executor::for_package(&package, args, &test.session)
+                .map_err(|err| TestCaseError::fail(err.to_string()))?;
+            let output: u32 = exec.execute_into(&package.unwrap_program(), &test.session);
             dbg!(output);
             prop_assert_eq!(rust_out, output);
             // args.reverse();

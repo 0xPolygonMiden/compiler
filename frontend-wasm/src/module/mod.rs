@@ -128,9 +128,6 @@ pub struct Module {
     /// Number of imported or aliased tables in the module.
     pub num_imported_tables: usize,
 
-    /// Number of imported or aliased memories in the module.
-    pub num_imported_memories: usize,
-
     /// Number of imported or aliased globals in the module.
     pub num_imported_globals: usize,
 
@@ -225,27 +222,10 @@ impl Module {
         index.index() < self.num_imported_tables
     }
 
-    /// Convert a `DefinedMemoryIndex` into a `MemoryIndex`.
-    #[inline]
-    pub fn memory_index(&self, defined_memory: DefinedMemoryIndex) -> MemoryIndex {
-        MemoryIndex::new(self.num_imported_memories + defined_memory.index())
-    }
-
-    /// Convert a `MemoryIndex` into a `DefinedMemoryIndex`. Returns None if the
-    /// index is an imported memory.
-    #[inline]
-    pub fn defined_memory_index(&self, memory: MemoryIndex) -> Option<DefinedMemoryIndex> {
-        if memory.index() < self.num_imported_memories {
-            None
-        } else {
-            Some(DefinedMemoryIndex::new(memory.index() - self.num_imported_memories))
-        }
-    }
-
     /// Test whether the given memory index is for an imported memory.
     #[inline]
     pub fn is_imported_memory(&self, index: MemoryIndex) -> bool {
-        index.index() < self.num_imported_memories
+        self.memories[index].imported
     }
 
     /// Convert a `DefinedGlobalIndex` into a `GlobalIndex`.

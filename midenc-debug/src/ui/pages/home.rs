@@ -173,10 +173,17 @@ impl Page for Home {
                         break true;
                     }
 
-                    if let Err(err) = state.executor.step() {
-                        // Execution terminated with an error
-                        state.execution_failed = Some(err);
-                        break true;
+                    let mut consume_most_recent_finish = false;
+                    match state.executor.step() {
+                        Ok(Some(exited)) if exited.should_break_on_exit() => {
+                            consume_most_recent_finish = true;
+                        }
+                        Ok(_) => (),
+                        Err(err) => {
+                            // Execution terminated with an error
+                            state.execution_failed = Some(err);
+                            break true;
+                        }
                     }
 
                     if breakpoints.is_empty() {
@@ -260,6 +267,19 @@ impl Page for Home {
 
                         true
                     });
+
+                    if consume_most_recent_finish {
+                        if let Some(id) = breakpoints.iter().rev().find_map(|bp| {
+                            if matches!(bp.ty, BreakpointType::Finish) {
+                                Some(bp.id)
+                            } else {
+                                None
+                            }
+                        }) {
+                            breakpoints.retain(|bp| bp.id != id);
+                            break true;
+                        }
+                    }
 
                     if !state.breakpoints_hit.is_empty() {
                         break true;
@@ -350,6 +370,11 @@ impl Page for Home {
                         EventResponse::Stop(Action::FocusFooter(":".into(), None))
                     }
                     KeyCode::Char('q') => EventResponse::Stop(Action::Quit),
+                    KeyCode::Char('e') => {
+                        state.create_breakpoint(BreakpointType::Finish);
+                        state.stopped = false;
+                        EventResponse::Stop(Action::Continue)
+                    }
                     // Only step if we're stopped, and execution has not terminated
                     KeyCode::Char('s') if state.stopped && !state.executor.stopped => {
                         state.create_breakpoint(BreakpointType::Step);

@@ -3,10 +3,10 @@
 #![allow(unused)]
 
 mod cli;
+mod config;
 mod debug;
 mod exec;
 mod felt;
-mod inputs;
 mod logger;
 mod ui;
 
@@ -14,21 +14,21 @@ use std::rc::Rc;
 
 use midenc_session::{
     diagnostics::{IntoDiagnostic, Report},
-    Session,
+    HumanDuration, Session,
 };
 
 pub use self::{
     cli::Debugger,
+    config::DebuggerConfig,
     debug::*,
     exec::*,
-    felt::{Felt, Felt as TestFelt, PopFromStack, PushToStack},
-    inputs::ProgramInputs,
+    felt::{bytes_to_words, Felt, Felt as TestFelt, PopFromStack, PushToStack},
 };
 
 pub type ExecutionResult<T> = Result<T, Report>;
 
 pub fn run(
-    inputs: Option<ProgramInputs>,
+    inputs: Option<DebuggerConfig>,
     args: Vec<miden_processor::Felt>,
     session: Rc<Session>,
     logger: Box<dyn log::Log>,
@@ -38,8 +38,64 @@ pub fn run(
     rt.block_on(async move { start_ui(inputs, args, session, logger).await })
 }
 
+pub fn run_noninteractively(
+    inputs: Option<DebuggerConfig>,
+    args: Vec<miden_processor::Felt>,
+    num_outputs: usize,
+    session: Rc<Session>,
+) -> ExecutionResult<()> {
+    use std::time::Instant;
+
+    use midenc_hir::formatter::ToHex;
+
+    println!("===============================================================================");
+    println!("Run program: {}", session.inputs[0].file_name());
+    println!("-------------------------------------------------------------------------------");
+
+    let state = ui::State::from_inputs(inputs, args, session)?;
+
+    println!(
+        "Executed program with hash {} in {}",
+        state.package.digest.to_hex(),
+        HumanDuration::from(state.execution_duration),
+    );
+
+    // write the stack outputs to the screen.
+    println!("Output: {:?}", state.execution_trace.outputs().stack_truncated(num_outputs));
+
+    // calculate the percentage of padded rows
+    let trace_len_summary = state.execution_trace.trace_len_summary();
+    let padding_percentage = (trace_len_summary.padded_trace_len() - trace_len_summary.trace_len())
+        * 100
+        / trace_len_summary.padded_trace_len();
+
+    // print the required cycles for each component
+    println!(
+        "VM cycles: {} extended to {} steps ({}% padding).
+├── Stack rows: {}
+├── Range checker rows: {}
+└── Chiplets rows: {}
+├── Hash chiplet rows: {}
+├── Bitwise chiplet rows: {}
+├── Memory chiplet rows: {}
+└── Kernel ROM rows: {}",
+        trace_len_summary.trace_len(),
+        trace_len_summary.padded_trace_len(),
+        padding_percentage,
+        trace_len_summary.main_trace_len(),
+        trace_len_summary.range_trace_len(),
+        trace_len_summary.chiplets_trace_len().trace_len(),
+        trace_len_summary.chiplets_trace_len().hash_chiplet_len(),
+        trace_len_summary.chiplets_trace_len().bitwise_chiplet_len(),
+        trace_len_summary.chiplets_trace_len().memory_chiplet_len(),
+        trace_len_summary.chiplets_trace_len().kernel_rom_len(),
+    );
+
+    Ok(())
+}
+
 pub fn trace(
-    _options: Option<ProgramInputs>,
+    _options: Option<DebuggerConfig>,
     _args: Vec<String>,
     _session: Rc<Session>,
 ) -> ExecutionResult<ExecutionTrace> {
@@ -47,7 +103,7 @@ pub fn trace(
 }
 
 pub async fn start_ui(
-    inputs: Option<ProgramInputs>,
+    inputs: Option<DebuggerConfig>,
     args: Vec<miden_processor::Felt>,
     session: Rc<Session>,
     logger: Box<dyn log::Log>,

@@ -423,10 +423,9 @@ impl<'a> BlockScheduler<'a> {
                     self.worklist.push(Plan::Drop(value));
                 }
                 // We will only ever observe the instruction node type as a treegraph root
-                // when it has no results (and thus no dependents/predecessors in the graph),
-                // because in all other cases it will always have a predecessor of Result type.
-                //
-                // In practice, we only observe these nodes when handling block terminators.
+                // when it has no results (and thus no dependents/predecessors in the graph), or
+                // multiple results, because in all other cases it will always have a single
+                // predecessor of Result type.
                 Node::Inst { id: inst, .. } => {
                     let inst_info = self.get_or_analyze_inst_info(inst, node_id);
                     self.plan_inst(inst_info);
@@ -510,7 +509,7 @@ impl<'a> BlockScheduler<'a> {
                 // definitely on us.
                 Node::Inst { id: inst, .. } => {
                     let inst_info = self.get_or_analyze_inst_info(inst, dependency_id);
-                    self.materialize_inst_results(inst_info);
+                    self.plan_inst(inst_info);
                 }
                 // This node type is never added as a pre-requisite
                 Node::Argument(_) => unreachable!(),
@@ -520,7 +519,15 @@ impl<'a> BlockScheduler<'a> {
 
     /// Schedule execution of a given instruction, see [Plan::Inst] docs for specific semantics.
     fn schedule_inst(&mut self, inst_info: Rc<InstInfo>, scheduled_ops: &mut Vec<ScheduleOp>) {
-        scheduled_ops.push(ScheduleOp::Inst(inst_info));
+        scheduled_ops.push(ScheduleOp::Inst(inst_info.clone()));
+        // Ensure that any unused results are dropped immediately
+        let inst_results = self.f.dfg.inst_results(inst_info.inst);
+        for result in inst_results.iter().copied() {
+            let is_used = inst_info.results.iter().any(|v| v.value == result && v.is_used());
+            if !is_used {
+                scheduled_ops.push(ScheduleOp::Drop(result));
+            }
+        }
     }
 
     /// Schedule instructions which were deferred until after an instruction executes.
@@ -573,7 +580,7 @@ impl<'a> BlockScheduler<'a> {
             .any(|p| p.dependent.is_instruction());
 
         if is_used || (has_side_effects && !has_dependent_insts) {
-            self.materialize_inst_results(inst_info);
+            self.plan_inst(inst_info);
         }
     }
 
@@ -613,17 +620,6 @@ impl<'a> BlockScheduler<'a> {
 
         // We're the first use of the referenced instruction, so materialize its
         // results, and drop any that have no uses.
-        self.materialize_inst_results(inst_info);
-    }
-
-    fn materialize_inst_results(&mut self, inst_info: Rc<InstInfo>) {
-        let inst_results = self.f.dfg.inst_results(inst_info.inst);
-        for result in inst_results.iter().copied() {
-            let is_used = inst_info.results.iter().any(|v| v.value == result && v.is_used());
-            if !is_used {
-                self.worklist.push(Plan::Drop(result));
-            }
-        }
         self.plan_inst(inst_info);
     }
 

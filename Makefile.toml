@@ -259,38 +259,35 @@ install_crate = { crate_name = "litcheck", test_arg = "--help" }
 [tasks.book]
 category = "Build"
 description = "Builds the compiler documentation"
-dependencies = ["mdbook", "mdbook-linkcheck", "mdbook-alerts"]
-command = "mdbook"
-args = ["build", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
-
-[tasks.mdbook]
-category = "Build"
-install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = [
-    "--help",
-] }
-
-[tasks.mdbook-linkcheck]
-category = "Build"
-install_crate = { crate_name = "mdbook-linkcheck" }
-
-[tasks.mdbook-alerts]
-category = "Build"
-install_crate = { crate_name = "mdbook-alerts" }
+command = "docs/mkdocs"
+args = ["build", "-d", "target/docs/site"]
 
 [tasks.serve-book]
 category = "Build"
 description = "Opens the compiler documentation"
-install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = [
-    "--help",
-] }
-command = "mdbook"
-args = ["serve", "--open", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/docs"]
+command = "docs/mkdocs"
+args = ["serve"]
+
+[tasks.mkdocs]
+category = "Documentation"
+description = "Run the mkdocs command-line tool"
+command = "docs/mkdocs"
+args = ["${@}"]
 
 [tasks.clippy]
 description = "Runs clippy on the workspace"
 category = "Development"
 command = "cargo"
-args = ["clippy", "--all", "--", "-D", "clippy::all", "-D", "warnings"]
+args = [
+    "clippy",
+    "--all",
+    "--all-targets",
+    "--",
+    "-D",
+    "clippy::all",
+    "-D",
+    "warnings",
+]
 dependencies = ["install-clippy"]
 
 [tasks.install-clippy]

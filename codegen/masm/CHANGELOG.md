@@ -6,6 +6,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.2...midenc-codegen-masm-v0.0.3) - 2024-08-30
+
+### Fixed
+- *(codegen)* broken return via pointer transformation
+- swap the lo and mid parts in the most shifted case in `load_dw`
+- *(codegen)* incorrect order of elements for word-oriented loads/stores
+- *(codegen)* make sure we always drop unused instruction results
+- *(codegen)* incorrect lowering of global.{load,iadd,symbol}
+- *(codegen)* incorrect handling of multi-result instructions
+- *(codegen)* ensure global initializers are set during rodata init
+- *(codegen)* ensure callee results are pushed on stack in correct order
+
+### Other
+- fix clippy warnings in tests
+- Merge pull request [#290](https://github.com/0xPolygonMiden/compiler/pull/290) from 0xPolygonMiden/greenhat/i263-mem-intrinsics-felts-tests
+- Merge pull request [#284](https://github.com/0xPolygonMiden/compiler/pull/284) from 0xPolygonMiden/bitwalker/abi-transform-test-fixes
+- *(codegen)* clippy suggested some improvements
+- *(codegen)* be consistent about the way in which we push to stack
+
+## [0.0.2](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.1...midenc-codegen-masm-v0.0.2) - 2024-08-28
+
+### Added
+- implement packaging prototype
+
+### Fixed
+- *(frontend-wasm)* reserve memory allocated for use by rust
+- regression in midenc compile
+- use less fragile method for rodata segment init
+
+### Other
+- Merge pull request [#269](https://github.com/0xPolygonMiden/compiler/pull/269) from 0xPolygonMiden/greenhat/i267-store-load-dw
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.0...midenc-codegen-masm-v0.0.1) - 2024-07-18
 
 ### Added

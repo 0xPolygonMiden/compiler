@@ -74,7 +74,22 @@ pub fn translate_operator(
         }
         Operator::LocalSet { local_index } => {
             let val = state.pop1();
-            builder.def_var(Variable::from_u32(*local_index), val);
+            let var = Variable::from_u32(*local_index);
+            let expected_ty = builder.variable_type(var);
+            let value_ty = builder.data_flow_graph().value_type(val);
+            let val = if expected_ty != value_ty {
+                if expected_ty == &I32 && value_ty == &U32 {
+                    builder.ins().bitcast(val, I32, span)
+                } else if expected_ty == &I64 && value_ty == &U64 {
+                    builder.ins().bitcast(val, I64, span)
+                } else {
+                    let expected_ty = expected_ty.clone();
+                    builder.ins().cast(val, expected_ty, span)
+                }
+            } else {
+                val
+            };
+            builder.def_var(var, val);
         }
         Operator::LocalTee { local_index } => {
             let val = state.peek1();
@@ -244,15 +259,21 @@ pub fn translate_operator(
         /******************************* Unary Operators *************************************/
         Operator::I32Clz | Operator::I64Clz => {
             let val = state.pop1();
-            state.push1(builder.ins().clz(val, span));
+            let count = builder.ins().clz(val, span);
+            // To ensure we match the Wasm semantics, treat the output of clz as an i32
+            state.push1(builder.ins().bitcast(count, Type::I32, span));
         }
         Operator::I32Ctz | Operator::I64Ctz => {
             let val = state.pop1();
-            state.push1(builder.ins().ctz(val, span));
+            let count = builder.ins().ctz(val, span);
+            // To ensure we match the Wasm semantics, treat the output of ctz as an i32
+            state.push1(builder.ins().bitcast(count, Type::I32, span));
         }
         Operator::I32Popcnt | Operator::I64Popcnt => {
             let val = state.pop1();
-            state.push1(builder.ins().popcnt(val, span));
+            let count = builder.ins().popcnt(val, span);
+            // To ensure we match the Wasm semantics, treat the output of popcnt as an i32
+            state.push1(builder.ins().bitcast(count, Type::I32, span));
         }
         Operator::I32Extend8S | Operator::I32Extend16S => {
             let val = state.pop1();
@@ -278,6 +299,13 @@ pub fn translate_operator(
             let (arg1, arg2) = state.pop2();
             // wrapping because the result is mod 2^N
             // https://www.w3.org/TR/wasm-core-1/#op-iadd
+            let value_type = builder.data_flow_graph().value_type(arg1);
+            let arg2 = if value_type != builder.data_flow_graph().value_type(arg2) {
+                let value_type = value_type.clone();
+                builder.ins().bitcast(arg2, value_type, span)
+            } else {
+                arg2
+            };
             state.push1(builder.ins().add_wrapping(arg1, arg2, span));
         }
         Operator::I32And | Operator::I64And => {
@@ -727,7 +755,7 @@ fn translate_br_if(
     state: &mut FuncTranslationState,
     span: SourceSpan,
 ) -> WasmResult<()> {
-    let cond = state.pop1();
+    let cond = state.pop1_bitcasted(Type::I32, builder, span);
     let (br_destination, inputs) = translate_br_if_args(relative_depth, state);
     let next_block = builder.create_block();
     let then_dest = br_destination;

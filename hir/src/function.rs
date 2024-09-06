@@ -33,6 +33,11 @@ entity_impl!(FuncRef, "fn");
 /// well-suited for a given function, to the extent that other constraints don't impose a choice
 /// on you.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
+#[repr(u8)]
 pub enum CallConv {
     /// This calling convention is what I like to call "chef's choice" - the
     /// compiler chooses it's own convention that optimizes for call performance.
@@ -72,6 +77,11 @@ impl fmt::Display for CallConv {
 /// Represents whether an argument or return value has a special purpose in
 /// the calling convention of a function.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
+#[repr(u8)]
 pub enum ArgumentPurpose {
     /// No special purpose, the argument is passed/returned by value
     #[default]
@@ -97,6 +107,11 @@ impl fmt::Display for ArgumentPurpose {
 ///
 /// It is for the latter scenario that argument extension is really relevant.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Serialize_repr, serde_repr::Deserialize_repr)
+)]
+#[repr(u8)]
 pub enum ArgumentExtension {
     /// Do not perform any extension, high bits have undefined contents
     #[default]
@@ -118,6 +133,7 @@ impl fmt::Display for ArgumentExtension {
 
 /// Describes a function parameter or result.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AbiParam {
     /// The type associated with this value
     pub ty: Type,
@@ -166,6 +182,7 @@ impl formatter::PrettyPrint for AbiParam {
 /// validate and emit code for a function, whether from the perspective of a caller,
 /// or the callee.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Signature {
     /// The arguments expected by this function
     pub params: Vec<AbiParam>,
@@ -622,6 +639,29 @@ impl PartialEq for Function {
 
         // We expect both functions to have the same imports
         self.dfg.imports == other.dfg.imports
+    }
+}
+impl midenc_session::Emit for Function {
+    fn name(&self) -> Option<crate::Symbol> {
+        Some(self.id.function.as_symbol())
+    }
+
+    fn output_type(&self, _mode: midenc_session::OutputMode) -> midenc_session::OutputType {
+        midenc_session::OutputType::Hir
+    }
+
+    fn write_to<W: std::io::Write>(
+        &self,
+        mut writer: W,
+        mode: midenc_session::OutputMode,
+        _session: &midenc_session::Session,
+    ) -> std::io::Result<()> {
+        assert_eq!(
+            mode,
+            midenc_session::OutputMode::Text,
+            "binary mode is not supported for HIR functions"
+        );
+        writer.write_fmt(format_args!("{}\n", self))
     }
 }
 

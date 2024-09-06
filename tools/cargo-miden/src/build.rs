@@ -30,7 +30,7 @@ pub fn build_masm(
         .wrap_err("Invalid input file")?;
     let output_file = output_folder
         .join(wasm_file_path.file_stem().expect("invalid wasm file path: no file stem"))
-        .with_extension(OutputType::Mast.extension());
+        .with_extension(OutputType::Masp.extension());
     let project_type = if is_bin { "--exe" } else { "--lib" };
     let args: Vec<&std::ffi::OsStr> = vec![
         "--output-dir".as_ref(),

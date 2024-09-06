@@ -102,14 +102,16 @@ fn hash_1to1(
     input: [u8; 32],
     extern_hash_1to1: unsafe extern "C" fn(u32, u32, u32, u32, u32, u32, u32, u32, *mut u8),
 ) -> [u8; 32] {
+    use crate::WordAligned;
+
     let input = unsafe { core::mem::transmute::<[u8; 32], [u32; 8]>(input) };
     unsafe {
-        let mut ret_area = ::core::mem::MaybeUninit::<[u8; 32]>::uninit();
+        let mut ret_area = ::core::mem::MaybeUninit::<WordAligned<[u8; 32]>>::uninit();
         let ptr = ret_area.as_mut_ptr() as *mut u8;
         extern_hash_1to1(
             input[0], input[1], input[2], input[3], input[4], input[5], input[6], input[7], ptr,
         );
-        ret_area.assume_init()
+        ret_area.assume_init().into_inner()
     }
 }
 

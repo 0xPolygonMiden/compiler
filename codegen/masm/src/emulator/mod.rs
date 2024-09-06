@@ -1488,13 +1488,17 @@ impl Emulator {
                 Op::MemLoadw => {
                     let addr = pop_addr!(self);
                     self.stack.dropw();
-                    self.stack.pushw(self.memory[addr]);
+                    let mut word = self.memory[addr];
+                    word.reverse();
+                    self.stack.pushw(word);
                 }
                 Op::MemLoadwImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
                     self.stack.dropw();
-                    self.stack.pushw(self.memory[addr]);
+                    let mut word = self.memory[addr];
+                    word.reverse();
+                    self.stack.pushw(word);
                 }
                 Op::MemStore => {
                     let addr = pop_addr!(self);
@@ -1519,8 +1523,9 @@ impl Emulator {
                 }
                 Op::MemStorew => {
                     let addr = pop_addr!(self);
-                    let word =
+                    let mut word =
                         self.stack.peekw().expect("operand stack does not contain a full word");
+                    word.reverse();
                     self.memory[addr] = word;
                     self.callstack.push(state);
                     return Ok(EmulatorEvent::MemoryWrite {
@@ -1531,8 +1536,9 @@ impl Emulator {
                 Op::MemStorewImm(addr) => {
                     let addr = addr as usize;
                     assert!(addr < self.memory.len() - 4, "out of bounds memory access");
-                    let word =
+                    let mut word =
                         self.stack.peekw().expect("operand stack does not contain a full word");
+                    word.reverse();
                     self.memory[addr] = word;
                     self.callstack.push(state);
                     return Ok(EmulatorEvent::MemoryWrite {

@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "codegen/*",
+    "frontend-wasm",
     "hir",
     "hir-analysis",
     "hir-macros",
@@ -13,19 +14,19 @@ members = [
     "midenc-debug",
     "midenc-driver",
     "midenc-session",
-    "sdk/base-sys",
+    "sdk/*",
     "tools/*",
-    "frontend-wasm",
     "tests/integration",
 ]
 exclude = [
+    "sdk/.cargo",
     "tests/rust-apps/fib",
     "tests/rust-apps-wasm",
     "cargo-ext/tests/data",
 ]
 
 [workspace.package]
-version = "0.0.0"
+version = "0.0.5"
 rust-version = "1.78"
 authors = ["Miden contributors"]
 description = "An intermediate representation and compiler for Miden Assembly"
@@ -42,7 +43,13 @@ publish = false
 [workspace.dependencies]
 anyhow = "1.0"
 bitflags = "2.4"
-clap = { version = "4.1", features = ["derive", "env"] }
+bitcode = { version = "0.6.3", default-features = false, features = ["serde"] }
+clap = { version = "4.1", default-features = false, features = [
+    "derive",
+    "std",
+    "env",
+    "help",
+] }
 cranelift-entity = "0.108"
 cranelift-bforest = "0.108"
 env_logger = "0.11"
@@ -61,6 +68,9 @@ petgraph = "0.6"
 pretty_assertions = "1.0"
 proptest = "1.4"
 rustc-hash = "1.1"
+serde = { version = "1.0.208", features = ["serde_derive", "alloc", "rc"] }
+serde_repr = "0.1.19"
+serde_bytes = "0.11.15"
 smallvec = { version = "1.13", features = [
     "union",
     "const_generics",
@@ -75,26 +85,25 @@ derive_more = "0.99"
 indexmap = "2.2"
 miden-assembly = { version = "0.10.3" }
 miden-core = { version = "0.10.3" }
+miden-parsing = "0.1"
 miden-processor = { version = "0.10.3" }
-miden-stdlib = { version = "0.10.3" }
+miden-stdlib = { version = "0.10.3", features = ["with-debug-info"] }
 #miden-assembly = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-core = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-processor = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
 #miden-stdlib = { git = "https://github.com/0xPolygonMiden/miden-vm", rev = "828557c28ca1d159bfe42195e7ea73256ce4aa06" }
-midenc-codegen-masm = { path = "codegen/masm" }
-miden-diagnostics = "0.1"
-midenc-hir = { version = "0.0.1", path = "hir" }
-midenc-hir-analysis = { version = "0.0.1", path = "hir-analysis" }
-midenc-hir-macros = { version = "0.0.1", path = "hir-macros" }
-midenc-hir-symbol = { version = "0.0.1", path = "hir-symbol" }
-midenc-hir-transform = { version = "0.0.1", path = "hir-transform" }
-midenc-hir-type = { version = "0.0.1", path = "hir-type" }
-miden-parsing = "0.1"
-midenc-frontend-wasm = { version = "0.0.1", path = "frontend-wasm" }
-midenc-compile = { version = "0.0.1", path = "midenc-compile" }
-midenc-driver = { version = "0.0.1", path = "midenc-driver" }
-midenc-debug = { version = "0.0.1", path = "midenc-debug" }
-midenc-session = { version = "0.0.1", path = "midenc-session" }
+midenc-codegen-masm = { version = "0.0.5", path = "codegen/masm" }
+midenc-hir = { version = "0.0.5", path = "hir" }
+midenc-hir-analysis = { version = "0.0.5", path = "hir-analysis" }
+midenc-hir-macros = { version = "0.0.5", path = "hir-macros" }
+midenc-hir-symbol = { version = "0.0.5", path = "hir-symbol" }
+midenc-hir-transform = { version = "0.0.5", path = "hir-transform" }
+midenc-hir-type = { version = "0.0.5", path = "hir-type" }
+midenc-frontend-wasm = { version = "0.0.5", path = "frontend-wasm" }
+midenc-compile = { version = "0.0.5", path = "midenc-compile" }
+midenc-driver = { version = "0.0.5", path = "midenc-driver" }
+midenc-debug = { version = "0.0.5", path = "midenc-debug" }
+midenc-session = { version = "0.0.5", path = "midenc-session" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
@@ -127,4 +136,7 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.onig]
+opt-level = 3
+
+[profile.dev.package.miden-crypto]
 opt-level = 3

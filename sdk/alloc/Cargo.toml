@@ -1,0 +1,17 @@
+[package]
+name = "miden-sdk-alloc"
+description = "A simple bump allocator for Miden SDK programs"
+version.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]

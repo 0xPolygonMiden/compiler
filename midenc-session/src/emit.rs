@@ -1,4 +1,5 @@
-use std::{fmt, fs::File, io::Write, path::Path, sync::Arc};
+use alloc::{boxed::Box, fmt, format, string::ToString, sync::Arc, vec};
+use std::{fs::File, io::Write, path::Path};
 
 use miden_core::{prettier::PrettyPrint, utils::Serializable};
 use midenc_hir_symbol::Symbol;
@@ -13,8 +14,9 @@ pub trait Emit {
     /// Write this item to standard output, inferring the best [OutputMode] based on whether or not
     /// stdout is a tty or not
     fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        use std::io::IsTerminal;
         let stdout = std::io::stdout().lock();
-        let mode = if atty::is(atty::Stream::Stdout) {
+        let mode = if stdout.is_terminal() {
             OutputMode::Text
         } else {
             OutputMode::Binary
@@ -42,6 +44,80 @@ pub trait Emit {
         mode: OutputMode,
         session: &Session,
     ) -> std::io::Result<()>;
+}
+
+impl<'a, T: Emit> Emit for &'a T {
+    #[inline]
+    fn name(&self) -> Option<Symbol> {
+        (**self).name()
+    }
+
+    #[inline]
+    fn output_type(&self, mode: OutputMode) -> OutputType {
+        (**self).output_type(mode)
+    }
+
+    #[inline]
+    fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        (**self).write_to_stdout(session)
+    }
+
+    #[inline]
+    fn write_to_file(
+        &self,
+        path: &Path,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to_file(path, mode, session)
+    }
+
+    #[inline]
+    fn write_to<W: Write>(
+        &self,
+        writer: W,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to(writer, mode, session)
+    }
+}
+
+impl<'a, T: Emit> Emit for &'a mut T {
+    #[inline]
+    fn name(&self) -> Option<Symbol> {
+        (**self).name()
+    }
+
+    #[inline]
+    fn output_type(&self, mode: OutputMode) -> OutputType {
+        (**self).output_type(mode)
+    }
+
+    #[inline]
+    fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        (**self).write_to_stdout(session)
+    }
+
+    #[inline]
+    fn write_to_file(
+        &self,
+        path: &Path,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to_file(path, mode, session)
+    }
+
+    #[inline]
+    fn write_to<W: Write>(
+        &self,
+        writer: W,
+        mode: OutputMode,
+        session: &Session,
+    ) -> std::io::Result<()> {
+        (**self).write_to(writer, mode, session)
+    }
 }
 
 impl<T: Emit> Emit for Box<T> {
@@ -268,8 +344,9 @@ impl Emit for miden_core::Program {
     }
 
     fn write_to_stdout(&self, session: &Session) -> std::io::Result<()> {
+        use std::io::IsTerminal;
         let mut stdout = std::io::stdout().lock();
-        let mode = if atty::is(atty::Stream::Stdout) {
+        let mode = if stdout.is_terminal() {
             OutputMode::Text
         } else {
             OutputMode::Binary
@@ -287,7 +364,8 @@ impl Emit for miden_core::Program {
         _session: &Session,
     ) -> std::io::Result<()> {
         match mode {
-            OutputMode::Text => writer.write_fmt(format_args!("{}", self)),
+            //OutputMode::Text => writer.write_fmt(format_args!("{}", self)),
+            OutputMode::Text => unimplemented!("emitting mast in text form is currently broken"),
             OutputMode::Binary => {
                 self.write_into(&mut writer);
                 Ok(())

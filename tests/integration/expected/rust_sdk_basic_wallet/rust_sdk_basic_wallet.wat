@@ -9,39 +9,41 @@
   (import "miden::account" "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_base_sys::bindings::tx::externs::extern_account_remove_asset (;1;) (type 0)))
   (import "miden::tx" "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_base_sys::bindings::tx::externs::extern_tx_create_note (;2;) (type 1)))
   (func $receive_asset (;3;) (type 2) (param i32)
-    (local i32)
+    (local i32 i32)
     global.get $__stack_pointer
-    i32.const 16
-    i32.sub
     local.tee 1
+    i32.const 32
+    i32.sub
+    i32.const -32
+    i32.and
+    local.tee 2
     global.set $__stack_pointer
-    local.get 1
+    local.get 2
     local.get 0
     call $miden_base_sys::bindings::tx::add_asset
     local.get 1
-    i32.const 16
-    i32.add
     global.set $__stack_pointer
   )
   (func $send_asset (;4;) (type 3) (param i32 f32 f32 i32)
-    (local i32)
+    (local i32 i32)
     global.get $__stack_pointer
-    i32.const 16
-    i32.sub
     local.tee 4
+    i32.const 32
+    i32.sub
+    i32.const -32
+    i32.and
+    local.tee 5
     global.set $__stack_pointer
-    local.get 4
+    local.get 5
     local.get 0
     call $miden_base_sys::bindings::tx::remove_asset
-    local.get 4
+    local.get 5
     local.get 1
     local.get 2
     local.get 3
     call $miden_base_sys::bindings::tx::create_note
     drop
     local.get 4
-    i32.const 16
-    i32.add
     global.set $__stack_pointer
   )
   (func $miden_base_sys::bindings::tx::add_asset (;5;) (type 4) (param i32 i32)

@@ -5,6 +5,7 @@ use miden_assembly::LibraryPath;
 use miden_core::{Felt, FieldElement};
 use miden_processor::ExecutionError;
 use midenc_debug::Executor;
+use midenc_session::{diagnostics::Report, Emit};
 
 use crate::{execute_emulator, CompilerTestBuilder};
 
@@ -19,12 +20,11 @@ fn setup_log() {
 }
 
 #[test]
-#[ignore = "pending rodata fixes"]
-fn test_get_inputs_4() {
-    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()]);
+fn test_get_inputs_4() -> Result<(), Report> {
+    test_get_inputs("4", vec![u32::MAX.into(), Felt::ONE, Felt::ZERO, u32::MAX.into()])
 }
 
-fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) {
+fn test_get_inputs(test_name: &str, expected_inputs: Vec<Felt>) -> Result<(), Report> {
     assert!(expected_inputs.len() == 4, "for now only word-sized inputs are supported");
     let masm = format!(
         "
@@ -53,13 +53,38 @@ end
     test.expect_ir(expect_file![format!("../../../expected/{artifact_name}.hir")]);
     test.expect_masm(expect_file![format!("../../../expected/{artifact_name}.masm")]);
 
-    let vm_program = test.vm_masm_program();
+    let package = test.compiled_package();
 
-    let exec = Executor::new(vec![]);
-    let trace = exec.execute(&vm_program, &test.session);
-    let vm_out = trace.into_outputs();
-    dbg!(&vm_out);
+    // Provide a place in memory where the vector returned by `get_inputs` should be stored
+    let out_addr = 18u32 * 65536;
+    let exec = Executor::for_package(&package, vec![Felt::new(out_addr as u64)], &test.session)?;
+    let trace = exec.execute(&package.unwrap_program(), &test.session);
+    // Verify that the vector contains the expected elements:
+    //
+    // Rust lays out the vector struct as follows (lowest addressed bytes first):
+    //
+    //     [capacity, buf_ptr, len]
+    //
+    // 1. Extract the data pointer and length from the vector written to out_addr
+    let data_ptr = trace.read_memory_element(out_addr / 16, 1).unwrap().as_int() as u32;
+    assert_ne!(data_ptr, 0, "expected non-null data pointer");
+    dbg!(data_ptr);
+    let len = trace.read_memory_element(out_addr / 16, 2).unwrap().as_int() as usize;
+    assert_eq!(
+        len,
+        expected_inputs.len(),
+        "expected vector to contain all of the expected inputs"
+    );
+    // 2. Read the vector elements via data_ptr and ensure they match the inputs
+    dbg!(len);
+    let word = trace.read_memory_word(data_ptr / 16).unwrap();
+    assert_eq!(
+        word.as_slice(),
+        expected_inputs.as_slice(),
+        "expected vector contents to match inputs"
+    );
 
     // let ir_program = test.ir_masm_program();
     // let emul_out = execute_emulator(ir_program.clone(), &[]);
+    Ok(())
 }

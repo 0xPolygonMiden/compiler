@@ -1,7 +1,7 @@
 [package]
 name = "miden-base-sys"
 description = "Miden rollup Rust bingings and MASM library"
-version = "0.0.0"
+version.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 repository.workspace = true
@@ -15,7 +15,7 @@ edition.workspace = true
 
 [dependencies]
 miden-assembly.workspace = true
-miden-stdlib-sys = { version = "0.0.1", path = "../stdlib-sys", optional = true }
+miden-stdlib-sys = { version = "0.0.5", path = "../stdlib-sys", optional = true }
 
 [build-dependencies]
 miden-assembly.workspace = true
@@ -24,6 +24,6 @@ miden-assembly.workspace = true
 default = []
 
 # User facing Rust bindings
-"bindings" = ["miden-stdlib-sys"]
+"bindings" = ["dep:miden-stdlib-sys"]
 # MASL library for Miden rollup (tx kernel, etc.) used by the compiler in the link phase
 "masl-lib" = []

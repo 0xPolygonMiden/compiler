@@ -366,6 +366,8 @@ pub struct Memory {
     pub minimum: u64,
     /// The maximum number of pages in the memory.
     pub maximum: Option<u64>,
+    /// Is this memory imported in the current [Module]
+    pub imported: bool,
 }
 
 impl From<wasmparser::MemoryType> for Memory {
@@ -373,6 +375,7 @@ impl From<wasmparser::MemoryType> for Memory {
         Memory {
             minimum: ty.initial,
             maximum: ty.maximum,
+            imported: false,
         }
     }
 }

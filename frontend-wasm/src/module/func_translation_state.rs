@@ -279,7 +279,11 @@ impl FuncTranslationState {
         span: SourceSpan,
     ) -> Value {
         let val = self.stack.pop().expect("attempted to pop a value from an empty stack");
-        builder.ins().cast(val, ty.clone(), span)
+        if builder.data_flow_graph().value_type(val) != &ty {
+            builder.ins().cast(val, ty, span)
+        } else {
+            val
+        }
     }
 
     /// Pop one value and bitcast it to the specified type.
@@ -290,7 +294,11 @@ impl FuncTranslationState {
         span: SourceSpan,
     ) -> Value {
         let val = self.stack.pop().expect("attempted to pop a value from an empty stack");
-        builder.ins().bitcast(val, ty.clone(), span)
+        if builder.data_flow_graph().value_type(val) != &ty {
+            builder.ins().bitcast(val, ty, span)
+        } else {
+            val
+        }
     }
 
     /// Peek at the top of the stack without popping it.
@@ -314,9 +322,17 @@ impl FuncTranslationState {
     ) -> (Value, Value) {
         let v2 = self.stack.pop().unwrap();
         let v1 = self.stack.pop().unwrap();
-        let v1_casted = builder.ins().cast(v1, ty.clone(), span);
-        let v2_casted = builder.ins().cast(v2, ty, span);
-        (v1_casted, v2_casted)
+        let v1 = if builder.data_flow_graph().value_type(v1) != &ty {
+            builder.ins().cast(v1, ty.clone(), span)
+        } else {
+            v1
+        };
+        let v2 = if builder.data_flow_graph().value_type(v2) != &ty {
+            builder.ins().cast(v2, ty, span)
+        } else {
+            v2
+        };
+        (v1, v2)
     }
 
     /// Pop two values. Bitcast them to the specified type. Return them in the order they were
@@ -329,9 +345,17 @@ impl FuncTranslationState {
     ) -> (Value, Value) {
         let v2 = self.stack.pop().unwrap();
         let v1 = self.stack.pop().unwrap();
-        let v1_casted = builder.ins().bitcast(v1, ty.clone(), span);
-        let v2_casted = builder.ins().bitcast(v2, ty, span);
-        (v1_casted, v2_casted)
+        let v1 = if builder.data_flow_graph().value_type(v1) != &ty {
+            builder.ins().bitcast(v1, ty.clone(), span)
+        } else {
+            v1
+        };
+        let v2 = if builder.data_flow_graph().value_type(v2) != &ty {
+            builder.ins().bitcast(v2, ty, span)
+        } else {
+            v2
+        };
+        (v1, v2)
     }
 
     /// Pop three values. Return them in the order they were pushed.

@@ -180,14 +180,14 @@ impl OperandMovementConstraintSolver {
                         match best_size {
                             Some(best_size) if best_size > solution_size => {
                                 best_solution = Some(solution);
-                                log::debug!(
+                                log::trace!(
                                     "a better solution ({solution_size} vs {best_size}) was found \
                                      using tactic {}",
                                     tactic.name()
                                 );
                             }
                             Some(best_size) => {
-                                log::debug!(
+                                log::trace!(
                                     "a solution of size {solution_size} was found using tactic \
                                      {}, but it is no better than the best found so far \
                                      ({best_size})",
@@ -196,7 +196,7 @@ impl OperandMovementConstraintSolver {
                             }
                             None => {
                                 best_solution = Some(solution);
-                                log::debug!(
+                                log::trace!(
                                     "an initial solution of size {solution_size} was found using \
                                      tactic {}",
                                     tactic.name()
@@ -204,7 +204,7 @@ impl OperandMovementConstraintSolver {
                             }
                         }
                     } else {
-                        log::debug!(
+                        log::trace!(
                             "a partial solution was found using tactic {}, but is not sufficient \
                              on its own",
                             tactic.name()
@@ -213,13 +213,13 @@ impl OperandMovementConstraintSolver {
                     }
                 }
                 Err(_) => {
-                    log::debug!("tactic {} could not be applied", tactic.name());
+                    log::trace!("tactic {} could not be applied", tactic.name());
                     builder.discard();
                 }
             }
             let remaining_fuel = self.fuel.saturating_sub(tactic.cost(&self.context));
             if remaining_fuel == 0 {
-                log::debug!("no more optimization fuel, using the best solution found so far");
+                log::trace!("no more optimization fuel, using the best solution found so far");
                 break;
             }
             self.fuel = remaining_fuel;

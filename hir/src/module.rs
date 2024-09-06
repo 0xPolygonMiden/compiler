@@ -66,6 +66,17 @@ pub struct Module {
     /// Documentation attached to this module, to be passed through to
     /// Miden Assembly during code generation.
     pub docs: Option<String>,
+    /// The size of the linear memory region (in pages) which is reserved by the module creator.
+    ///
+    /// For example, with rustc-compiled Wasm modules, it reserves 16 pages of memory for the
+    /// shadow stack, and if there is any static data, a minimum of 1 page for the static data.
+    /// As a result, we must ensure that we do not allocate any globals or other items in this
+    /// reserved region.
+    reserved_memory_pages: u32,
+    /// The page size (in bytes) used by this module.
+    ///
+    /// Set to 64k by default.
+    page_size: u32,
     /// The set of data segments allocated in this module
     pub(crate) segments: DataSegmentTable,
     /// The set of global variables declared in this module
@@ -122,7 +133,7 @@ impl formatter::PrettyPrint for Module {
                     + display(constant.as_u32())
                     + const_text(")")
                     + const_text(" ")
-                    + text(format!("{:#x}", constant_data))
+                    + text(format!("{:#x}", constant_data.as_ref()))
                     + const_text(")")
             })
             .reduce(|acc, doc| acc + nl() + doc)
@@ -184,6 +195,8 @@ impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Module")
             .field("name", &self.name)
+            .field("reserved_memory_pages", &self.reserved_memory_pages)
+            .field("page_size", &self.page_size)
             .field("is_kernel", &self.is_kernel)
             .field("docs", &self.docs)
             .field("segments", &self.segments)
@@ -220,6 +233,8 @@ impl PartialEq for Module {
     fn eq(&self, other: &Self) -> bool {
         let is_eq = self.name == other.name
             && self.is_kernel == other.is_kernel
+            && self.reserved_memory_pages == other.reserved_memory_pages
+            && self.page_size == other.page_size
             && self.docs == other.docs
             && self.segments.iter().eq(other.segments.iter())
             && self.globals.len() == other.globals.len()
@@ -305,11 +320,41 @@ impl Module {
             list_link: Default::default(),
             name,
             docs: None,
+            reserved_memory_pages: 0,
+            page_size: 64 * 1024,
             segments: Default::default(),
             globals: GlobalVariableTable::new(ConflictResolutionStrategy::None),
             functions: Default::default(),
             is_kernel,
         }
+    }
+
+    /// Get the page size to use by default for this module.
+    #[inline]
+    pub const fn page_size(&self) -> u32 {
+        self.page_size
+    }
+
+    /// Get the size (in pages) of the linear memory address space (starting from offset 0), which
+    /// is reserved for use by the caller.
+    #[inline]
+    pub const fn reserved_memory_pages(&self) -> u32 {
+        self.reserved_memory_pages
+    }
+
+    /// Get the size (in bytes) of the linear memory address space (starting from offset 0), which
+    /// is reserved for use by the caller.
+    #[inline]
+    pub const fn reserved_memory_bytes(&self) -> u32 {
+        self.reserved_memory_pages * self.page_size
+    }
+
+    /// Set the size of the reserved linear memory region.
+    ///
+    /// NOTE: Declared data segments can be placed in the reserved area, but global variables will
+    /// never be allocated in the reserved area.
+    pub fn set_reserved_memory_size(&mut self, size: u32) {
+        self.reserved_memory_pages = size;
     }
 
     /// Returns true if this module is a kernel module
@@ -678,6 +723,16 @@ impl ModuleBuilder {
 
     pub fn with_docs<S: Into<String>>(&mut self, docs: S) -> &mut Self {
         self.module.docs = Some(docs.into());
+        self
+    }
+
+    pub fn with_page_size(&mut self, page_size: u32) -> &mut Self {
+        self.module.page_size = page_size;
+        self
+    }
+
+    pub fn with_reserved_memory_pages(&mut self, num_pages: u32) -> &mut Self {
+        self.module.reserved_memory_pages = num_pages;
         self
     }
 

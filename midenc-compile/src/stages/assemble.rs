@@ -7,10 +7,10 @@ pub enum Artifact {
     /// The user requested MASM outputs, but
     Lowered(masm::ModuleTree),
     Linked(masm::MasmArtifact),
-    Assembled(masm::MastArtifact),
+    Assembled(masm::Package),
 }
 impl Artifact {
-    pub fn unwrap_mast(self) -> masm::MastArtifact {
+    pub fn unwrap_mast(self) -> masm::Package {
         match self {
             Self::Assembled(mast) => mast,
             Self::Linked(_) => {
@@ -35,13 +35,33 @@ impl Stage for AssembleStage {
         _analyses: &mut AnalysisManager,
         session: &Session,
     ) -> CompilerResult<Self::Output> {
+        use midenc_hir::formatter::DisplayHex;
+
         match input {
             Left(masm_artifact) if session.should_assemble() => {
-                masm_artifact.assemble(session).map(Artifact::Assembled)
+                let mast = masm_artifact.assemble(session)?;
+                log::debug!(
+                    "successfully assembled mast artifact with digest {}",
+                    DisplayHex::new(&mast.digest().as_bytes())
+                );
+                session.emit(OutputMode::Text, &mast).into_diagnostic()?;
+                session.emit(OutputMode::Binary, &mast).into_diagnostic()?;
+                Ok(Artifact::Assembled(masm::Package::new(mast, &masm_artifact, session)))
             }
-            Left(masm_artifact) => Ok(Artifact::Linked(masm_artifact)),
+            Left(masm_artifact) => {
+                log::debug!(
+                    "skipping assembly of mast package from masm artifact (should-assemble=false)"
+                );
+                Ok(Artifact::Linked(masm_artifact))
+            }
             Right(_masm_modules) if session.should_assemble() => todo!(), /* Ok(Artifact::Assembled(todo!())), */
-            Right(masm_modules) => Ok(Artifact::Lowered(masm_modules)),
+            Right(masm_modules) => {
+                log::debug!(
+                    "skipping assembly of mast package from unlinked modules \
+                     (should-assemble=false)"
+                );
+                Ok(Artifact::Lowered(masm_modules))
+            }
         }
     }
 }

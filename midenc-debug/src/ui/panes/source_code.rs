@@ -260,18 +260,9 @@ impl SourceCodePane {
     fn enable_syntax_highlighting(&mut self, state: &State) {
         use std::io::IsTerminal;
 
-        use midenc_session::diagnostics::ColorChoice;
+        use midenc_session::ColorChoice;
 
-        let nocolor = match state.session.options.color {
-            ColorChoice::Always | ColorChoice::AlwaysAnsi => false,
-            ColorChoice::Never => true,
-            ColorChoice::Auto => match std::env::var("NO_COLOR") {
-                _ if !std::io::stdout().is_terminal() => true,
-                Ok(value) => !matches!(value.as_str(), "0" | "false"),
-                _ => false,
-            },
-        };
-
+        let nocolor = !state.session.options.color.should_attempt_color();
         if nocolor {
             return;
         }

@@ -56,17 +56,6 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "891477e0c6a8957309ee5c45a6368af3ae14bb510732d2684ffa19af310920f9"
-dependencies = [
- "getrandom",
- "once_cell",
- "version_check",
-]
-
-[[package]]
-name = "ahash"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
@@ -385,17 +374,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "auth-git2"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -497,6 +475,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
+name = "bitcode"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee1bce7608560cd4bf0296a4262d0dbf13e6bcec5ff2105724c8ab88cc7fc784"
+dependencies = [
+ "arrayvec",
+ "bytemuck",
+ "glam",
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -568,6 +558,12 @@ name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
+
+[[package]]
+name = "bytemuck"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fd4c6dcc3b0aea2f5c0b4b82c2b15fe39ddbc76041a310848f4706edf76bb31"
 
 [[package]]
 name = "byteorder"
@@ -672,10 +668,11 @@ dependencies = [
 
 [[package]]
 name = "cargo-generate"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa7015584550945f11fdfb7af113d30e2727468ec281c1d7f28cc1019196c25d"
+checksum = "6a921a6f140ee9981c471b4ffdfc53372b8bc3fe417f83e87c124c6018ab6929"
 dependencies = [
+ "anstyle",
  "anyhow",
  "auth-git2",
  "clap",
@@ -706,13 +703,14 @@ dependencies = [
  "serde",
  "tempfile",
  "thiserror",
+ "time",
  "toml",
  "walkdir",
 ]
 
 [[package]]
 name = "cargo-miden"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "cargo-component",
@@ -864,6 +862,7 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
+ "terminal_size",
 ]
 
 [[package]]
@@ -883,25 +882,6 @@ name = "clap_lex"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
-
-[[package]]
-name = "codespan"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3362992a0d9f1dd7c3d0e89e0ab2bb540b7a95fea8cd798090e758fda2899b5e"
-dependencies = [
- "codespan-reporting",
-]
-
-[[package]]
-name = "codespan-reporting"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
-dependencies = [
- "termcolor",
- "unicode-width",
-]
 
 [[package]]
 name = "colorchoice"
@@ -1555,18 +1535,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "flurry"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0afc943ef18eebf6bc3335daeb8d338202093d18444a1784ea7f57fe7680f8"
-dependencies = [
- "ahash 0.7.8",
- "num_cpus",
- "parking_lot",
- "seize",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1789,9 +1757,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.18.3"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "232e6a7bfe35766bf715e55a88b39a700596c0ccfd88cd3680b4cdb40d66ef70"
+checksum = "b903b73e45dc0c6c596f2d37eccece7c1c8bb6e4407b001096387c63d0d93724"
 dependencies = [
  "bitflags 2.6.0",
  "libc",
@@ -1804,9 +1772,9 @@ dependencies = [
 
 [[package]]
 name = "gix-actor"
-version = "0.31.5"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0e454357e34b833cc3a00b6efbbd3dd4d18b24b9fb0c023876ec2645e8aa3f2"
+checksum = "fc19e312cd45c4a66cd003f909163dc2f8e1623e30a0c0c6df3776e89b308665"
 dependencies = [
  "bstr",
  "gix-date",
@@ -1818,9 +1786,9 @@ dependencies = [
 
 [[package]]
 name = "gix-config"
-version = "0.36.1"
+version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7580e05996e893347ad04e1eaceb92e1c0e6a3ffe517171af99bf6b6df0ca6e5"
+checksum = "78e797487e6ca3552491de1131b4f72202f282fb33f198b1c34406d765b42bb0"
 dependencies = [
  "bstr",
  "gix-config-value",
@@ -1839,9 +1807,9 @@ dependencies = [
 
 [[package]]
 name = "gix-config-value"
-version = "0.14.7"
+version = "0.14.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b328997d74dd15dc71b2773b162cb4af9a25c424105e4876e6d0686ab41c383e"
+checksum = "03f76169faa0dec598eac60f83d7fcdd739ec16596eca8fb144c88973dbe6f8c"
 dependencies = [
  "bitflags 2.6.0",
  "bstr",
@@ -1852,14 +1820,14 @@ dependencies = [
 
 [[package]]
 name = "gix-date"
-version = "0.8.7"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9eed6931f21491ee0aeb922751bd7ec97b4b2fe8fbfedcb678e2a2dce5f3b8c0"
+checksum = "35c84b7af01e68daf7a6bb8bb909c1ff5edb3ce4326f1f43063a5a96d3c3c8a5"
 dependencies = [
  "bstr",
  "itoa",
+ "jiff",
  "thiserror",
- "time",
 ]
 
 [[package]]
@@ -1879,19 +1847,20 @@ dependencies = [
 
 [[package]]
 name = "gix-fs"
-version = "0.10.2"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2184c40e7910529677831c8b481acf788ffd92427ed21fad65b6aa637e631b8"
+checksum = "f2bfe6249cfea6d0c0e0990d5226a4cb36f030444ba9e35e0639275db8f98575"
 dependencies = [
+ "fastrand 2.1.0",
  "gix-features",
  "gix-utils",
 ]
 
 [[package]]
 name = "gix-glob"
-version = "0.16.4"
+version = "0.16.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa7df15afa265cc8abe92813cd354d522f1ac06b29ec6dfa163ad320575cb447"
+checksum = "74908b4bbc0a0a40852737e5d7889f676f081e340d5451a16e5b4c50d592f111"
 dependencies = [
  "bitflags 2.6.0",
  "bstr",
@@ -1911,9 +1880,9 @@ dependencies = [
 
 [[package]]
 name = "gix-lock"
-version = "13.1.1"
+version = "14.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7c359f81f01b8352063319bcb39789b7ea0887b406406381106e38c4a34d049"
+checksum = "e3bc7fe297f1f4614774989c00ec8b1add59571dc9b024b4c00acb7dedd4e19d"
 dependencies = [
  "gix-tempfile",
  "gix-utils",
@@ -1922,9 +1891,9 @@ dependencies = [
 
 [[package]]
 name = "gix-object"
-version = "0.42.3"
+version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25da2f46b4e7c2fa7b413ce4dffb87f69eaf89c2057e386491f4c55cadbfe386"
+checksum = "2f5b801834f1de7640731820c2df6ba88d95480dc4ab166a5882f8ff12b88efa"
 dependencies = [
  "bstr",
  "gix-actor",
@@ -1941,9 +1910,9 @@ dependencies = [
 
 [[package]]
 name = "gix-path"
-version = "0.10.9"
+version = "0.10.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d23d5bbda31344d8abc8de7c075b3cf26e5873feba7c4a15d916bce67382bd9"
+checksum = "38d5b8722112fa2fa87135298780bc833b0e9f6c56cc82795d209804b3a03484"
 dependencies = [
  "bstr",
  "gix-trace",
@@ -1954,12 +1923,11 @@ dependencies = [
 
 [[package]]
 name = "gix-ref"
-version = "0.43.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd4aba68b925101cb45d6df328979af0681364579db889098a0de75b36c77b65"
+checksum = "ae0d8406ebf9aaa91f55a57f053c5a1ad1a39f60fdf0303142b7be7ea44311e5"
 dependencies = [
  "gix-actor",
- "gix-date",
  "gix-features",
  "gix-fs",
  "gix-hash",
@@ -1976,9 +1944,9 @@ dependencies = [
 
 [[package]]
 name = "gix-sec"
-version = "0.10.7"
+version = "0.10.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1547d26fa5693a7f34f05b4a3b59a90890972922172653bcb891ab3f09f436df"
+checksum = "0fe4d52f30a737bbece5276fab5d3a8b276dc2650df963e293d0673be34e7a5f"
 dependencies = [
  "bitflags 2.6.0",
  "gix-path",
@@ -1988,9 +1956,9 @@ dependencies = [
 
 [[package]]
 name = "gix-tempfile"
-version = "13.1.1"
+version = "14.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a761d76594f4443b675e85928e4902dec333273836bd386906f01e7e346a0d11"
+checksum = "046b4927969fa816a150a0cda2e62c80016fe11fb3c3184e4dddf4e542f108aa"
 dependencies = [
  "gix-fs",
  "libc",
@@ -2017,13 +1985,19 @@ dependencies = [
 
 [[package]]
 name = "gix-validate"
-version = "0.8.5"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c27dd34a49b1addf193c92070bcbf3beaf6e10f16a78544de6372e146a0acf"
+checksum = "81f2badbb64e57b404593ee26b752c26991910fd0d81fe6f9a71c1a8309b6c86"
 dependencies = [
  "bstr",
  "thiserror",
 ]
+
+[[package]]
+name = "glam"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c28091a37a5d09b555cb6628fd954da299b536433834f5b8e59eba78e0cbbf8a"
 
 [[package]]
 name = "glob"
@@ -2086,7 +2060,7 @@ version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
- "ahash 0.8.11",
+ "ahash",
  "allocator-api2",
  "serde",
 ]
@@ -2105,15 +2079,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -2473,6 +2438,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
+name = "jiff"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "437651126da47900d4d70255ab15f5c69510ca4e0d88c9f01b5b8d41a45c3a9b"
+dependencies = [
+ "jiff-tzdb-platform",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "jiff-tzdb"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05fac328b3df1c0f18a3c2ab6cb7e06e4e549f366017d796e3e66b6d6889abe6"
+
+[[package]]
+name = "jiff-tzdb-platform"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8da387d5feaf355954c2c122c194d6df9c57d865125a67984bb453db5336940"
+dependencies = [
+ "jiff-tzdb",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2573,9 +2563,9 @@ checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
 
 [[package]]
 name = "libgit2-sys"
-version = "0.16.2+1.7.2"
+version = "0.17.0+1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee4126d8b4ee5c9d9ea891dd875cfdc1e9d0950437179104b183d7d8a74d24e8"
+checksum = "10472326a8a6477c3c20a64547b0059e4b0d086869eee31e6d7da728a8eb7224"
 dependencies = [
  "cc",
  "libc",
@@ -2826,9 +2816,9 @@ dependencies = [
 
 [[package]]
 name = "miden-air"
-version = "0.10.2"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05e396af383ee2a38ca41f188173672cd70e221985eec4afcb854fe37d18fd1b"
+checksum = "2702f8adb96844e3521f49149f6c3d4773ecdd2a96a3169e3c025a2e3ee32b5e"
 dependencies = [
  "miden-core",
  "miden-thiserror",
@@ -2838,9 +2828,9 @@ dependencies = [
 
 [[package]]
 name = "miden-assembly"
-version = "0.10.3"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3aefae8d99d66c3f8666e917cb3ef976edb39247099311f695e5ba57305616d"
+checksum = "eae9cef4fbafb4fe26da18574bcdbd78815857cfe1099760782701ababb076c2"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -2856,7 +2846,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.0"
+version = "0.0.5"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
@@ -2864,9 +2854,9 @@ dependencies = [
 
 [[package]]
 name = "miden-core"
-version = "0.10.3"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e46df4105dc2ec15aa14182ce6de299720991bfb83a9b6aa9293c6ee2b12b18"
+checksum = "fc3f6db878d6b56c1566cd5b832908675566d3919b9a3523d630dfb5e2f7422d"
 dependencies = [
  "lock_api",
  "loom",
@@ -2902,33 +2892,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-diagnostics"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f3a82597c2a9babcff4c9283a95130a96aaf8e339954a083bb6582fc2520cf1"
-dependencies = [
- "atty",
- "codespan",
- "codespan-reporting",
- "flurry",
- "miden-diagnostics-macros",
- "parking_lot",
- "rustc-hash",
- "unicode-width",
-]
-
-[[package]]
-name = "miden-diagnostics-macros"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "491d10b0eb201ba767ccdf69bf77f9d5662caf55e9ef468264cccb7129edff62"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "miden-formatting"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2939,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "miden-integration-tests"
-version = "0.0.0"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "blake3",
@@ -2960,7 +2923,6 @@ dependencies = [
  "midenc-codegen-masm",
  "midenc-compile",
  "midenc-debug",
- "midenc-driver",
  "midenc-frontend-wasm",
  "midenc-hir",
  "midenc-hir-transform",
@@ -3018,20 +2980,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "miden-parsing"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d36dfec2c0319b3773a83627318f92a0212077bed80148c86e8b09af60cd1a88"
-dependencies = [
- "miden-diagnostics",
- "thiserror",
-]
-
-[[package]]
 name = "miden-processor"
-version = "0.10.3"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6afc2ccde2a0d6dc1580a6515b130700484042bee810d84fd3cf3e4616cac632"
+checksum = "01e7b212b152b69373e89b069a18cb01742ef2c3f9c328e7b24c44e44f022e52"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -3040,17 +2992,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden-sdk"
+version = "0.0.5"
+dependencies = [
+ "miden-base-sys",
+ "miden-sdk-alloc",
+ "miden-stdlib-sys",
+]
+
+[[package]]
+name = "miden-sdk-alloc"
+version = "0.0.5"
+
+[[package]]
 name = "miden-stdlib"
-version = "0.10.3"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9314d34d66a677f819aaf9912b2110b29a24a28db66e9bf1be687b6f29389d9e"
+checksum = "41623ad4f4ea6449760f70ab8928c682c3824d735d3e330f07e3d24d1ad20bfa"
 dependencies = [
  "miden-assembly",
 ]
 
 [[package]]
 name = "miden-stdlib-sys"
-version = "0.0.1"
+version = "0.0.5"
 
 [[package]]
 name = "miden-thiserror"
@@ -3074,7 +3039,7 @@ dependencies = [
 
 [[package]]
 name = "midenc"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "env_logger 0.11.5",
  "human-panic",
@@ -3083,9 +3048,10 @@ dependencies = [
 
 [[package]]
 name = "midenc-codegen-masm"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "anyhow",
+ "bitcode",
  "cranelift-entity",
  "env_logger 0.11.5",
  "intrusive-collections",
@@ -3104,12 +3070,14 @@ dependencies = [
  "petgraph",
  "proptest",
  "rustc-hash",
+ "serde",
+ "serde_bytes",
  "smallvec",
 ]
 
 [[package]]
 name = "midenc-compile"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "clap",
  "either",
@@ -3117,7 +3085,6 @@ dependencies = [
  "inventory",
  "log",
  "miden-assembly",
- "miden-diagnostics",
  "miden-thiserror",
  "midenc-codegen-masm",
  "midenc-frontend-wasm",
@@ -3130,7 +3097,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-debug"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "clap",
  "crossterm",
@@ -3147,16 +3114,18 @@ dependencies = [
  "midenc-session",
  "proptest",
  "ratatui",
+ "serde",
  "signal-hook",
  "syntect",
  "tokio",
  "tokio-util",
+ "toml",
  "tui-input",
 ]
 
 [[package]]
 name = "midenc-driver"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "clap",
  "log",
@@ -3169,7 +3138,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-frontend-wasm"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "addr2line 0.24.1",
  "anyhow",
@@ -3179,7 +3148,6 @@ dependencies = [
  "indexmap 2.2.6",
  "log",
  "miden-core",
- "miden-integration-tests",
  "miden-thiserror",
  "midenc-hir",
  "midenc-hir-type",
@@ -3192,7 +3160,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "cranelift-entity",
@@ -3206,7 +3174,6 @@ dependencies = [
  "log",
  "miden-assembly",
  "miden-core",
- "miden-parsing",
  "miden-thiserror",
  "midenc-hir-macros",
  "midenc-hir-symbol",
@@ -3219,6 +3186,9 @@ dependencies = [
  "pretty_assertions",
  "rustc-demangle",
  "rustc-hash",
+ "serde",
+ "serde_bytes",
+ "serde_repr",
  "smallvec",
  "typed-arena",
  "unicode-width",
@@ -3226,7 +3196,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-analysis"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "cranelift-bforest",
@@ -3243,7 +3213,7 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-macros"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -3253,20 +3223,21 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-symbol"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "Inflector",
  "rustc-hash",
+ "serde",
  "toml",
 ]
 
 [[package]]
 name = "midenc-hir-transform"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "inventory",
- "miden-diagnostics",
+ "log",
  "midenc-hir",
  "midenc-hir-analysis",
  "midenc-session",
@@ -3277,26 +3248,31 @@ dependencies = [
 
 [[package]]
 name = "midenc-hir-type"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
+ "serde",
+ "serde_repr",
  "smallvec",
 ]
 
 [[package]]
 name = "midenc-session"
-version = "0.0.1"
+version = "0.0.5"
 dependencies = [
- "atty",
  "clap",
  "inventory",
+ "log",
  "miden-assembly",
  "miden-base-sys",
  "miden-core",
- "miden-diagnostics",
  "miden-stdlib",
  "miden-thiserror",
  "midenc-hir-macros",
  "midenc-hir-symbol",
+ "parking_lot",
+ "serde",
+ "serde_repr",
+ "termcolor",
 ]
 
 [[package]]
@@ -3529,25 +3505,6 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
-]
-
-[[package]]
-name = "num_cpus"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
-dependencies = [
- "hermit-abi 0.3.9",
- "libc",
-]
-
-[[package]]
-name = "num_threads"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
-dependencies = [
- "libc",
 ]
 
 [[package]]
@@ -4363,11 +4320,11 @@ dependencies = [
 
 [[package]]
 name = "rhai"
-version = "1.17.1"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6273372244d04a8a4b0bec080ea1e710403e88c5d9d83f9808b2bfa64f0982a"
+checksum = "61797318be89b1a268a018a92a7657096d83f3ecb31418b9e9c16dcbb043b702"
 dependencies = [
- "ahash 0.8.11",
+ "ahash",
  "bitflags 2.6.0",
  "instant",
  "num-traits",
@@ -4616,16 +4573,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "seize"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e5739de653b129b0a59da381599cf17caf24bc586f6a797c52d3d6147c5b85a"
-dependencies = [
- "num_cpus",
- "once_cell",
-]
-
-[[package]]
 name = "semver"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4651,18 +4598,27 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.204"
+version = "1.0.208"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc76f558e0cbb2a839d37354c575f1dc3fdc6546b5be373ba43d95f231bf7c12"
+checksum = "cff085d2cb684faa248efb494c39b68e522822ac0de72ccf08109abde717cfb2"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
-name = "serde_derive"
-version = "1.0.204"
+name = "serde_bytes"
+version = "0.11.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0cd7e117be63d3c3678776753929474f3b04a43a080c744d6b0ae2a8c28e222"
+checksum = "387cc504cb06bb40a96c8e04e951fe01854cf6bc921053c954e4a606d9675c6a"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.208"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24008e81ff7613ed8e5ba0cfaf24e2c2f1e5b8a0495711e44fcd4882fca62bcf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5191,9 +5147,7 @@ checksum = "5dfd88e563464686c916c7e46e623e520ddc6d79fa6641390f2e3fa86e83e885"
 dependencies = [
  "deranged",
  "itoa",
- "libc",
  "num-conv",
- "num_threads",
  "powerfmt",
  "serde",
  "time-core",
@@ -5964,7 +5918,7 @@ version = "0.214.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5309c1090e3e84dad0d382f42064e9933fdaedb87e468cc239f0eabea73ddcb6"
 dependencies = [
- "ahash 0.8.11",
+ "ahash",
  "bitflags 2.6.0",
  "hashbrown 0.14.5",
  "indexmap 2.2.6",

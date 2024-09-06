@@ -34,7 +34,10 @@ impl Analysis for GlobalVariableAnalysis<Program> {
         _session: &Session,
     ) -> AnalysisResult<Self> {
         let mut layout = GlobalVariableLayout {
-            global_table_offset: program.segments().next_available_offset(),
+            global_table_offset: core::cmp::max(
+                program.reserved_memory_bytes().next_multiple_of(32),
+                program.segments().next_available_offset(),
+            ),
             ..GlobalVariableLayout::default()
         };
 
@@ -69,7 +72,10 @@ impl Analysis for GlobalVariableAnalysis<Module> {
         _session: &Session,
     ) -> AnalysisResult<Self> {
         let mut layout = GlobalVariableLayout {
-            global_table_offset: module.segments().next_available_offset(),
+            global_table_offset: core::cmp::max(
+                module.reserved_memory_bytes().next_multiple_of(32),
+                module.segments().next_available_offset(),
+            ),
             ..GlobalVariableLayout::default()
         };
 

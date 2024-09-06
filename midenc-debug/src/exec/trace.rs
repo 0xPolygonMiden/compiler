@@ -8,7 +8,7 @@ use miden_assembly::Library as CompiledLibrary;
 use miden_core::{Program, StackInputs, Word};
 use miden_processor::{
     AdviceInputs, ContextId, ExecutionError, Felt, MastForest, MemAdviceProvider, Process,
-    ProcessState, RowIndex, StackOutputs, VmState, VmStateIterator,
+    ProcessState, RowIndex, StackOutputs, TraceLenSummary, VmState, VmStateIterator,
 };
 use midenc_codegen_masm::NativePtr;
 pub use midenc_hir::TraceEvent;
@@ -39,7 +39,8 @@ pub struct ExecutionTrace {
     pub(super) root_context: ContextId,
     pub(super) last_cycle: RowIndex,
     pub(super) chiplets: Chiplets,
-    pub(super) outputs: VecDeque<TestFelt>,
+    pub(super) outputs: StackOutputs,
+    pub(super) trace_len_summary: TraceLenSummary,
 }
 
 impl ExecutionTrace {
@@ -48,14 +49,27 @@ impl ExecutionTrace {
     where
         T: PopFromStack,
     {
-        let mut stack = self.outputs.clone();
+        let mut stack =
+            VecDeque::from_iter(self.outputs.clone().stack().iter().copied().map(TestFelt));
         T::try_pop(&mut stack)
     }
 
     /// Consume the [ExecutionTrace], extracting just the outputs on the operand stack
     #[inline]
-    pub fn into_outputs(self) -> VecDeque<TestFelt> {
+    pub fn into_outputs(self) -> StackOutputs {
         self.outputs
+    }
+
+    /// Return a reference to the operand stack outputs
+    #[inline]
+    pub fn outputs(&self) -> &StackOutputs {
+        &self.outputs
+    }
+
+    /// Return a reference to the trace length summary
+    #[inline]
+    pub fn trace_len_summary(&self) -> &TraceLenSummary {
+        &self.trace_len_summary
     }
 
     /// Read the word at the given Miden memory address
@@ -244,17 +258,18 @@ impl ExecutionTrace {
             }
             n => {
                 let mut buf = VecDeque::default();
-                let chunks_needed = n / 4;
+                let chunks_needed = ((n / 4) as u32) + ((n % 4) > 0) as u32;
                 if ptr.offset > 0 {
-                    todo!()
-                } else if ptr.index > 0 {
                     todo!()
                 } else {
                     for i in 0..chunks_needed {
-                        let word = self
-                            .read_memory_word_in_context(ptr.waddr + i as u32, ctx, clk)
+                        let abs_i = i + ptr.index as u32;
+                        let word = ptr.waddr + (abs_i / 4);
+                        let index = (abs_i % 4) as u8;
+                        let elem = self
+                            .read_memory_element_in_context(word, index, ctx, clk)
                             .expect("invalid memory access");
-                        buf.extend(word.into_iter().map(TestFelt));
+                        buf.push_back(TestFelt(elem));
                     }
                 }
                 Some(T::try_pop(&mut buf).unwrap_or_else(|| {

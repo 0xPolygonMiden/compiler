@@ -42,7 +42,7 @@ pub type KeyBindings = HashMap<Mode, HashMap<Vec<KeyEvent>, Action>>;
 
 impl App {
     pub async fn new(
-        inputs: Option<crate::ProgramInputs>,
+        inputs: Option<crate::DebuggerConfig>,
         args: Vec<miden_processor::Felt>,
         session: Rc<Session>,
     ) -> Result<Self, Report> {

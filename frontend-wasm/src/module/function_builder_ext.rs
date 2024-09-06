@@ -223,6 +223,11 @@ impl<'a, 'b, 'c> FunctionBuilderExt<'a, 'b, 'c> {
         self.func_ctx.clear();
     }
 
+    #[inline]
+    pub fn variable_type(&self, var: Variable) -> &Type {
+        &self.func_ctx.types[var]
+    }
+
     /// Declares the type of a variable, so that it can be used later (by calling
     /// [`FunctionBuilderExt::use_var`]). This function will return an error if the variable
     /// has been previously declared.

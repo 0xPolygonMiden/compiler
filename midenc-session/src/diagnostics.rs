@@ -1,11 +1,13 @@
-use std::{
+use alloc::{
+    boxed::Box,
     collections::BTreeMap,
     fmt::{self, Display},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    format,
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
 };
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 pub use miden_assembly::diagnostics::{
     miette,
@@ -16,13 +18,12 @@ pub use miden_assembly::diagnostics::{
     WrapErr,
 };
 pub use miden_core::debuginfo::*;
-pub use miden_diagnostics::{
-    term::termcolor::{Buffer as EmitterBuffer, ColorChoice},
-    CaptureEmitter, DefaultEmitter, Emitter, FatalError, NullEmitter,
-};
 pub use midenc_hir_macros::Spanned;
 
-use crate::{Verbosity, Warnings};
+#[cfg(feature = "std")]
+pub use crate::emitter::CaptureEmitter;
+pub use crate::emitter::{Buffer, DefaultEmitter, Emitter, NullEmitter};
+use crate::{ColorChoice, Verbosity, Warnings};
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct DiagnosticsConfig {
@@ -94,15 +95,8 @@ impl DiagnosticsHandler {
     #[track_caller]
     pub fn abort_if_errors(&self) {
         if self.has_errors() {
-            FatalError.raise();
+            panic!("Compiler has encountered unexpected errors. See diagnostics for details.")
         }
-    }
-
-    /// Emits an error message and produces a FatalError object
-    /// which can be used to terminate execution immediately
-    pub fn fatal(&self, err: impl ToString) -> FatalError {
-        self.error(err);
-        FatalError
     }
 
     /// Emit a diagnostic [Report]
@@ -144,10 +138,8 @@ impl DiagnosticsHandler {
     }
 
     /// Emits the given diagnostic
-    #[inline(always)]
+    #[inline(never)]
     pub fn emit(&self, diagnostic: impl Into<Report>) {
-        use std::io::Write;
-
         let diagnostic: Report = diagnostic.into();
         let diagnostic = match diagnostic.severity() {
             Some(Severity::Advice) if self.verbosity > Verbosity::Info => return,
@@ -170,10 +162,23 @@ impl DiagnosticsHandler {
             return;
         }
 
+        self.write_report(diagnostic);
+    }
+
+    #[cfg(feature = "std")]
+    fn write_report(&self, diagnostic: Report) {
+        use std::io::Write;
+
         let mut buffer = self.emitter.buffer();
         let printer = PrintDiagnostic::new(diagnostic);
         write!(&mut buffer, "{printer}").expect("failed to write diagnostic to buffer");
         self.emitter.print(buffer).unwrap();
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn write_report(&self, diagnostic: Report) {
+        let out = PrintDiagnostic::new(diagnostic).to_string();
+        self.emitter.print(out).unwrap();
     }
 }
 
@@ -339,18 +344,18 @@ impl InFlightDiagnostic {
 }
 
 impl fmt::Display for InFlightDiagnostic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", &self.message)
     }
 }
 
 impl fmt::Debug for InFlightDiagnostic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", &self.message)
     }
 }
 
-impl std::error::Error for InFlightDiagnostic {}
+impl core::error::Error for InFlightDiagnostic {}
 
 impl Diagnostic for InFlightDiagnostic {
     fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {

@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt, str::FromStr};
+use std::{collections::BTreeMap, fmt, str::FromStr, sync::Arc};
 
 use cranelift_entity::{entity_impl, EntityRef};
 
@@ -33,7 +33,8 @@ entity_impl!(Constant, "const");
 ///
 /// The data is expected to be in little-endian order.
 #[derive(Debug, Clone, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
-pub struct ConstantData(Vec<u8>);
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ConstantData(#[cfg_attr(feature = "serde", serde(with = "serde_bytes"))] Vec<u8>);
 impl ConstantData {
     /// Return the number of bytes in the constant.
     pub fn len(&self) -> usize {
@@ -77,6 +78,12 @@ impl ConstantData {
         }
         let bytes = bytes.as_ptr() as *const [u8; 4];
         Some(u32::from_le_bytes(unsafe { bytes.read() }))
+    }
+}
+impl From<ConstantData> for Vec<u8> {
+    #[inline(always)]
+    fn from(data: ConstantData) -> Self {
+        data.0
     }
 }
 impl FromIterator<u8> for ConstantData {
@@ -126,25 +133,39 @@ impl fmt::LowerHex for ConstantData {
 impl FromStr for ConstantData {
     type Err = ();
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str_be(s).map_err(|_| ())
+    }
+}
+impl ConstantData {
+    pub fn from_str_be(s: &str) -> Result<Self, &'static str> {
+        const NOT_EVEN: &str = "invalid hex-encoded data: expected an even number of hex digits";
+        const NOT_HEX: &str = "invalid hex-encoded data: contains invalid hex digits";
+
         let s = s.strip_prefix("0x").unwrap_or(s);
         let len = s.len();
         if len % 2 != 0 {
-            return Err(());
+            return Err(NOT_EVEN);
         }
         // Parse big-endian
         let pairs = len / 2;
         let mut data = Vec::with_capacity(pairs);
         let mut chars = s.chars();
         while let Some(a) = chars.next() {
-            let a = a.to_digit(16).ok_or(())?;
-            let b = chars.next().unwrap().to_digit(16).ok_or(())?;
+            let a = a.to_digit(16).ok_or(NOT_HEX)?;
+            let b = chars.next().unwrap().to_digit(16).ok_or(NOT_HEX)?;
             data.push(((a << 4) + b) as u8);
         }
 
-        // Make little-endian
-        data.reverse();
         Ok(Self(data))
+    }
+
+    pub fn from_str_le(s: &str) -> Result<Self, &'static str> {
+        let mut data = Self::from_str_be(s)?;
+        // Make little-endian
+        data.0.reverse();
+        Ok(data)
     }
 }
 
@@ -156,12 +177,12 @@ pub struct ConstantPool {
     ///
     /// It is important that, by construction, no entry in that list gets removed. If that ever
     /// need to happen, don't forget to update the `Constant` generation scheme.
-    constants: BTreeMap<Constant, ConstantData>,
+    constants: BTreeMap<Constant, Arc<ConstantData>>,
 
     /// Mapping of hashed `ConstantData` to the index into the other hashmap.
     ///
     /// This allows for deduplication of entries into the `handles_to_values` mapping.
-    cache: BTreeMap<ConstantData, Constant>,
+    cache: BTreeMap<Arc<ConstantData>, Constant>,
 }
 impl ConstantPool {
     /// Returns true if the pool is empty
@@ -174,9 +195,14 @@ impl ConstantPool {
         self.constants.len()
     }
 
-    /// Retrieve the constant data given a handle.
-    pub fn get(&self, id: Constant) -> &ConstantData {
-        &self.constants[&id]
+    /// Retrieve the constant data as a reference-counted pointer, given a handle.
+    pub fn get(&self, id: Constant) -> Arc<ConstantData> {
+        Arc::clone(&self.constants[&id])
+    }
+
+    /// Retrieve the constant data by reference given a handle.
+    pub fn get_by_ref(&self, id: Constant) -> &ConstantData {
+        self.constants[&id].as_ref()
     }
 
     /// Returns true if this pool contains the given constant data
@@ -192,15 +218,28 @@ impl ConstantPool {
             return *cst;
         }
 
+        let data = Arc::new(data);
         let id = Constant::new(self.len());
-        self.constants.insert(id, data.clone());
+        self.constants.insert(id, Arc::clone(&data));
+        self.cache.insert(data, id);
+        id
+    }
+
+    /// Same as [ConstantPool::insert], but for data already allocated in an [Arc].
+    pub fn insert_arc(&mut self, data: Arc<ConstantData>) -> Constant {
+        if let Some(cst) = self.cache.get(data.as_ref()) {
+            return *cst;
+        }
+
+        let id = Constant::new(self.len());
+        self.constants.insert(id, Arc::clone(&data));
         self.cache.insert(data, id);
         id
     }
 
     /// Traverse the contents of the pool
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = (Constant, &ConstantData)> {
-        self.constants.iter().map(|(k, v)| (*k, v))
+    pub fn iter(&self) -> impl Iterator<Item = (Constant, Arc<ConstantData>)> + '_ {
+        self.constants.iter().map(|(k, v)| (*k, Arc::clone(v)))
     }
 }

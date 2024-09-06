@@ -1,4 +1,4 @@
-use alloc::{alloc::Layout, collections::BTreeMap};
+use alloc::{alloc::Layout, collections::BTreeMap, sync::Arc};
 use core::{
     fmt::{self, Write},
     hash::{Hash, Hasher},
@@ -44,6 +44,11 @@ use crate::{
 /// In the future, we hope to have a better solution to this problem, preferably one involving
 /// native support from the Miden VM itself. For now though, we're working with what we've got.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde_repr::Deserialize_repr, serde_repr::Serialize_repr)
+)]
+#[repr(u8)]
 pub enum Linkage {
     /// This symbol is only visible in the containing module.
     ///
@@ -251,13 +256,18 @@ impl GlobalVariableTable {
     }
 
     /// Get the constant data associated with `id`
-    pub fn get_constant(&self, id: Constant) -> &ConstantData {
+    pub fn get_constant(&self, id: Constant) -> Arc<ConstantData> {
         self.data.get(id)
     }
 
     /// Inserts the given constant data into this table without allocating a global
     pub fn insert_constant(&mut self, data: ConstantData) -> Constant {
         self.data.insert(data)
+    }
+
+    /// Inserts the given constant data into this table without allocating a global
+    pub fn insert_refcounted_constant(&mut self, data: Arc<ConstantData>) -> Constant {
+        self.data.insert_arc(data)
     }
 
     /// Returns true if the given constant data is in the constant pool
@@ -267,7 +277,7 @@ impl GlobalVariableTable {
 
     /// Traverse all of the constants in the table
     #[inline]
-    pub fn constants(&self) -> impl Iterator<Item = (Constant, &ConstantData)> {
+    pub fn constants(&self) -> impl Iterator<Item = (Constant, Arc<ConstantData>)> + '_ {
         self.data.iter()
     }
 
@@ -458,7 +468,7 @@ impl GlobalVariableTable {
             // same, then we consider this a successful, albeit redundant,
             // operation; otherwise we raise an error.
             Some(prev_init) => {
-                let prev = self.data.get(prev_init);
+                let prev = self.data.get_by_ref(prev_init);
                 if prev != &init {
                     return Err(GlobalVariableError::AlreadyInitialized(global.name));
                 }
