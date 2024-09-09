@@ -7,6 +7,7 @@ TBD
 ### Prerequisites
 
 Install `release-plz` CLI tool following the instructions [here](https://release-plz.ieni.dev/docs/usage/installation)
+Install `cargo-semver-checks` CLI tool [here](https://github.com/obi1kenobi/cargo-semver-checks#installation) to use as an extra check in `release-plz` and bump the major versions on semver violations.
 
 ### Release of the Miden Compiler and Miden SDK crates
 
