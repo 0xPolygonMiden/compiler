@@ -104,6 +104,7 @@ midenc-compile = { version = "0.0.6", path = "midenc-compile" }
 midenc-driver = { version = "0.0.6", path = "midenc-driver" }
 midenc-debug = { version = "0.0.6", path = "midenc-debug" }
 midenc-session = { version = "0.0.6", path = "midenc-session" }
+cargo-miden = { version = "0.0.6", path = "tools/cargo-miden" }
 miden-integration-tests = { version = "0.0.0", path = "tests/integration" }
 wat = "1.0.69"
 blake3 = "1.5"
