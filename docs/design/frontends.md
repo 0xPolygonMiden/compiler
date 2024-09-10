@@ -1,4 +1,4 @@
-# Supported Frontends
+# Supported front ends
 
 ## WebAssembly (Wasm)
 

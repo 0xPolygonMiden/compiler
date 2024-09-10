@@ -168,7 +168,7 @@ Which dumps the following output (may differ slightly on your machine, depending
 
 Success!
 
-## Next Steps
+## Next steps
 
 In [Compiling WebAssembly to Miden Assembly](wasm_to_masm.md), we walk through how to take the
 WebAssembly module we just compiled, and lower it to Miden Assembly using `midenc`!

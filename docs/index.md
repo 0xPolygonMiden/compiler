@@ -1,6 +1,6 @@
-# Getting Started
+# Getting started
 
-Welcome to the documentation for the Miden compiler toolchain!
+Welcome to the documentation for the Miden compiler toolchain.
 
 !!! warning
 
@@ -78,7 +78,7 @@ We do not currently perform any optimizations on the IR, since we are primarily 
 output of compiler backends which have already applied optimizations, at this time. This may change
 in the future, but for now it is expected that you implement your own optimization passes as needed.
 
-## Known Bugs and Limitations
+## Known bugs and limitations
 
 For the latest information on known bugs, see the [issue tracker](https://github.com/0xpolygonmiden/compiler/issues).
 

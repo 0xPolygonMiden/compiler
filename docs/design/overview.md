@@ -1,4 +1,4 @@
-# Compiler Architecture
+# Compiler architecture
 
 This is an index of various design documents for the compiler and its components. Some of these
 are planned topics, and some have documentation that hasn't been polished up yet. We'll slowly

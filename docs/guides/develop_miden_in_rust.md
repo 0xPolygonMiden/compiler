@@ -1,10 +1,10 @@
-# Developing Miden Programs In Rust
+# Developing Miden programs in Rust
 
 This chapter will walk through how to develop Miden programs in Rust using the standard library
 provided by the `miden-stdlib-sys` crate (see the
-[README](https://github.com/0xPolygonMiden/compiler/sdk/stdlib-sys/README.md)).
+[README](https://github.com/0xPolygonMiden/compiler/blob/main/sdk/stdlib-sys/README.md).
 
-## Getting Started
+## Getting started
 
 Import the standard library from the `miden-stdlib-sys` crate:
 

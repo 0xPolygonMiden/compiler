@@ -122,7 +122,7 @@ We can test our compiled program like so:
 
 Success! We got the expected result of `55`.
 
-## Next Steps
+## Next steps
 
 This guide is not comprehensive, as we have not yet examined in detail the differences between
 compiling libraries vs programs, linking together multiple libraries, packages, or discussed some of

@@ -1,4 +1,4 @@
-# Canonical ABI vs Miden ABI Incompatibility
+# Canonical ABI vs Miden ABI incompatibility
 
 This document describes an issue that arises when trying to map the ad-hoc calling convention/ABI
 used by various Miden Assembly procedures, such as those comprising the transaction kernel, and
@@ -140,7 +140,7 @@ library is a part of the Miden compiler. It is not anticipated that we will have
 these; however in the near term we are going to manually map procedures to their adapter strategies,
 as we have not yet automated the pattern recognition step.
 
-### Return-via-pointer Adapter
+### Return-via-pointer adapter
 
 The return value is expected to be returned by storing its flattened representation in a pointer
 passed as an argument.
@@ -174,7 +174,7 @@ func wasm_core_add_asset(v0: f64, v1: f64, v2: f64, v3: f64, ptr: i32) {
 }
 ```
 
-### No-op Adapter
+### No-op adapter
 
 No adapter is needed. The Wasm core function type is the same as the tx kernel ad-hoc signature.
 
@@ -183,7 +183,7 @@ This Miden ABI pattern is selected if no other Miden ABI pattern is applicable a
 For example, the `get_id` function falls under this Miden ABI pattern and its calls will be translated to the tx kernel function calls without any modifications.
 
 
-## Transaction kernel functions that require manual adapter functions:
+## Transaction kernel functions that require manual adapter functions
 
 ### `get_assets`
 
