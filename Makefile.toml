@@ -256,13 +256,13 @@ category = "Test"
 description = "Set up the litcheck utility"
 install_crate = { crate_name = "litcheck", test_arg = "--help" }
 
-[tasks.book]
+[tasks.docs]
 category = "Build"
 description = "Builds the compiler documentation"
 command = "docs/mkdocs"
 args = ["build", "-d", "target/docs/site"]
 
-[tasks.serve-book]
+[tasks.serve-docs]
 category = "Build"
 description = "Opens the compiler documentation"
 command = "docs/mkdocs"

@@ -38,7 +38,8 @@ nav:
       #- Code Generation:
       #- Testing:
   - Appendices:
-      - Calling conventions: appendix/calling_conventions.md
+      - Known limitations: appendix/known-limitations.md
+      - Calling conventions: appendix/calling-conventions.md
       - Canonical ABI vs Miden ABI: appendix/canonabi-adhocabi-mismatch.md
 
 markdown_extensions:
