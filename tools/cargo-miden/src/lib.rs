@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use cargo_component::load_metadata;
-use cargo_component_core::terminal::Terminal;
 use clap::{CommandFactory, Parser};
 use config::CargoArguments;
 use midenc_session::diagnostics::Report;
@@ -14,6 +13,9 @@ pub mod config;
 mod new_project;
 mod run_cargo_command;
 mod target;
+
+// re-export cargo-component's terminal module
+pub use cargo_component_core::terminal;
 
 fn version() -> &'static str {
     option_env!("CARGO_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION"))
@@ -80,7 +82,7 @@ where
     None
 }
 
-pub fn run<T>(args: T, terminal: &Terminal) -> Result<Vec<PathBuf>, Report>
+pub fn run<T>(args: T, terminal: &terminal::Terminal) -> Result<Vec<PathBuf>, Report>
 where
     T: Iterator<Item = String>,
 {

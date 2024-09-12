@@ -2906,6 +2906,7 @@ version = "0.0.6"
 dependencies = [
  "anyhow",
  "blake3",
+ "cargo-miden",
  "cargo-util",
  "cargo_metadata",
  "concat-idents",

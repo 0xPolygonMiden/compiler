@@ -3,6 +3,7 @@
 use core::panic;
 use std::{
     borrow::Cow,
+    ffi::OsStr,
     fmt, fs,
     io::Read,
     path::{Path, PathBuf},
@@ -159,6 +160,8 @@ impl RustcTest {
 
 /// The various types of input artifacts that can be used to drive compiler tests
 pub enum CompilerTestInputType {
+    /// A project that uses `cargo miden build` to produce a Wasm module to use as input
+    CargoMiden(CargoTest),
     /// A project that uses `cargo component build` to produce a Wasm module to use as input
     CargoComponent(CargoTest),
     /// A project that uses `cargo build` to produce a core Wasm module to use as input
@@ -223,11 +226,13 @@ impl CompilerTestBuilder {
             CompilerTestInputType::Cargo(ref mut config) => config.entrypoint.take(),
             CompilerTestInputType::CargoComponent(ref mut config) => config.entrypoint.take(),
             CompilerTestInputType::Rustc(_) => Some("__main".into()),
+            CompilerTestInputType::CargoMiden(ref mut config) => config.entrypoint.take(),
         };
         let name = match source {
             CompilerTestInputType::Cargo(ref mut config) => config.name.as_ref(),
             CompilerTestInputType::CargoComponent(ref mut config) => config.name.as_ref(),
             CompilerTestInputType::Rustc(ref mut config) => config.name.as_ref(),
+            CompilerTestInputType::CargoMiden(ref mut config) => config.name.as_ref(),
         };
         let entrypoint = entrypoint.as_deref().map(|entry| FunctionIdent {
             module: Ident::with_empty_span(Symbol::intern(name)),
@@ -328,6 +333,11 @@ impl CompilerTestBuilder {
     pub fn build(self) -> CompilerTest {
         // Set up the command used to compile the test inputs (typically Rust -> Wasm)
         let mut command = match self.source {
+            CompilerTestInputType::CargoMiden(_) => {
+                let mut cmd = Command::new("cargo");
+                cmd.arg("miden").arg("build");
+                cmd
+            }
             CompilerTestInputType::CargoComponent(_) => {
                 let mut cmd = Command::new("cargo");
                 cmd.arg("component").arg("build");
@@ -343,7 +353,10 @@ impl CompilerTestBuilder {
 
         // Extract the directory in which source code is presumed to exist (or will be placed)
         let project_dir = match self.source {
-            CompilerTestInputType::CargoComponent(CargoTest {
+            CompilerTestInputType::CargoMiden(CargoTest {
+                ref project_dir, ..
+            })
+            | CompilerTestInputType::CargoComponent(CargoTest {
                 ref project_dir, ..
             })
             | CompilerTestInputType::Cargo(CargoTest {
@@ -357,8 +370,14 @@ impl CompilerTestBuilder {
 
         // Cargo-based source types share a lot of configuration in common
         match self.source {
-            CompilerTestInputType::CargoComponent(ref config)
-            | CompilerTestInputType::Cargo(ref config) => {
+            CompilerTestInputType::CargoComponent(_) => {
+                let manifest_path = project_dir.join("Cargo.toml");
+                command.arg("--manifest-path").arg(manifest_path).arg("--release");
+                // Render Cargo output as JSON
+                command.arg("--message-format=json-render-diagnostics");
+            }
+
+            CompilerTestInputType::Cargo(ref config) => {
                 let manifest_path = project_dir.join("Cargo.toml");
                 command
                     .arg("--manifest-path")
@@ -408,6 +427,42 @@ impl CompilerTestBuilder {
 
         // Build test
         match self.source {
+            CompilerTestInputType::CargoMiden(_) => {
+                use cargo_miden::terminal::*;
+                let mut args = vec![command.get_program().to_str().unwrap().to_string()];
+                let cmd_args: Vec<String> = command
+                    .get_args()
+                    .collect::<Vec<&OsStr>>()
+                    .iter()
+                    .map(|s| s.to_str().unwrap().to_string())
+                    .collect();
+                args.extend(cmd_args);
+                let terminal = Terminal::new(Verbosity::Verbose, Color::Auto);
+                let wasm_artifacts = cargo_miden::run(args.into_iter(), &terminal).unwrap();
+                let wasm_comp_path = &wasm_artifacts.first().unwrap();
+                let artifact_name =
+                    wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
+                let input_file = InputFile::from_path(wasm_comp_path).unwrap();
+                let mut inputs = vec![input_file];
+                inputs.extend(self.link_masm_modules.into_iter().map(|(path, content)| {
+                    let path = path.to_string();
+                    InputFile::new(
+                        midenc_session::FileType::Masm,
+                        InputType::Stdin {
+                            name: path.into(),
+                            input: content.into_bytes(),
+                        },
+                    )
+                }));
+
+                CompilerTest {
+                    config: self.config,
+                    session: default_session(inputs, &self.midenc_flags),
+                    artifact_name: artifact_name.into(),
+                    entrypoint: self.entrypoint,
+                    ..Default::default()
+                }
+            }
             CompilerTestInputType::CargoComponent(_) => {
                 let mut child = command.spawn().unwrap_or_else(|_| {
                     panic!(
