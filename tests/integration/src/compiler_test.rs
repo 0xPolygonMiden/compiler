@@ -1174,7 +1174,8 @@ pub fn sdk_crate_path() -> PathBuf {
 /// Get the directory for the top-level workspace
 fn get_workspace_dir() -> String {
     // Get the directory for the integration test suite project
-    let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
+        .unwrap_or(std::env::current_dir().unwrap().to_str().unwrap().to_string());
     let cargo_manifest_dir_path = Path::new(&cargo_manifest_dir);
     // "Exit" the integration test suite project directory to the compiler workspace directory
     // i.e. out of the `tests/integration` directory
