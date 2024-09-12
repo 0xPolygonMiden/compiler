@@ -1,4 +1,4 @@
-# Getting Started with Cargo
+# Getting started with Cargo
 
 As part of the Miden compiler toolchain, we provide a Cargo extension, `cargo-miden`, which provides
 a template to spin up a new Miden project in Rust, and takes care of orchestrating `rustc` and

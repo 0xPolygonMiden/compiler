@@ -1,4 +1,4 @@
-# Known Limitations
+# Known limitations
 
 !!! tip
 
@@ -13,9 +13,9 @@ important to be aware of this when using the compiler.
 The features discussed below are broken up into sections, to make them easier to navigate and
 reference.
 
-## Rust Language Support
+## Rust language support
 
-### Floating Point Types
+### Floating point types
 
 - Status: **Unsupported**
 - Tracking Issue: N/A
@@ -34,8 +34,7 @@ first place.
 At this point in time, we have no plans to support floats, but this may change if we are able to
 find a better/more natural representation for `Felt` in WebAssembly.
 
-
-### Function Call Indirection
+### Function call indirection
 
 - Status: **Unimplemented**
 - Tracking Issue: [#32](https://github.com/0xPolygonMiden/compiler/issues/32)
@@ -55,7 +54,7 @@ will raise an error when it encounters any use of `call_indirect`.
     the amount of inlining that can occur. Even then, it may not be possible to remove some forms of
     indirection, in which case you will need to find another workaround.
 
-#### Iterator Lowered to Loop
+#### Iterator lowered to loop
 
 ```rust
 pub fn is_zeroed(bytes: &[u8; 32]) -> bool {
@@ -64,7 +63,7 @@ pub fn is_zeroed(bytes: &[u8; 32]) -> bool {
 }
 ```
 
-#### Monomorphization + Inlining
+#### Monomorphization + inlining
 
 ```rust
 pub fn call<F, T>(fun: F) -> T
@@ -84,7 +83,7 @@ fn main() {
 }
 ```
 
-#### Inlined Trait Impl
+#### Inlined trait impl
 
 ```rust
 pub trait Foo {
@@ -124,7 +123,7 @@ will be expanding the SDK rapidly over the next few weeks and months, but for th
 you encounter a missing API that you need, let us know, so we can ensure it is prioritized above
 APIs which are lesser used.
 
-### Rust/Miden FFI (Foreign Function Interface) and Interop
+### Rust/Miden FFI (foreign function interface) and interop
 
 - Status: **Internal Use Only**
 - Tracking Issue: [#304](https://github.com/0xPolygonMiden/compiler/issues/304)
@@ -148,9 +147,9 @@ procedures at a minimum, and in some cases we may require details of the calling
 This metadata does not currently exist, but is on the roadmap for inclusion into Miden Assembly
 and Miden packaging. Once present, we can open up the FFI for general use.
 
-## Core Miden Functionality
+## Core Miden functionality
 
-### Dynamic Procedure Invocation
+### Dynamic procedure invocation
 
 - Status: **Unimplemented**
 - Tracking Issue: [#32](https://github.com/0xPolygonMiden/compiler/issues/32)
@@ -175,7 +174,7 @@ the body of which drop the callee hash, fix up the operand stack as necessary, a
 simple `exec` or `call` to invoke the "real" callee. We will emit a single stub for every function
 which has its "address" taken, and use the hash of the stub in place of the actual callee hash.
 
-### Cross-Context Procedure Invocation
+### Cross-context procedure invocation
 
 - Status: **Unimplemented**
 - Tracking Issue: [#303](https://github.com/0xPolygonMiden/compiler/issues/303)
@@ -213,7 +212,7 @@ subfeatures being implemented first.
 
 ## Packaging
 
-### Package Format
+### Package format
 
 - Status: **Experimental**
 - Tracking Issue: [#121](https://github.com/0xPolygonMiden/compiler/issues/121)

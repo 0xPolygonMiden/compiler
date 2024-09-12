@@ -3,3 +3,15 @@ bin/midenc
 bin/litcheck
 .crates.toml
 .crates2.json
+
+# Docs platform ignores
+.vscode
+.code
+.idea
+site/
+venv/
+env/
+*.out
+node_modules/
+*DS_Store
+*.iml

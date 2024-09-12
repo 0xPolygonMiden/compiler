@@ -1,4 +1,4 @@
-# Getting Started with `midenc`
+# Getting started with `midenc`
 
 The `midenc` executable is the command-line interface for the compiler driver, as well as other
 helpful tools, such as the interactive debugger.
@@ -110,7 +110,7 @@ than the default path that would have been used (`target/miden/foo.masp`).
 
 See [Debugging Programs](debugger.md) for details on using `midenc debug` to debug Miden programs.
 
-## Next Steps
+## Next steps
 
 We have put together two useful guides to walk through more detail on compiling Rust to WebAssembly:
 
