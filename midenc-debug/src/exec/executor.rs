@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, VecDeque},
     rc::Rc,
+    sync::Arc,
 };
 
 use miden_assembly::Library as CompiledLibrary;
@@ -29,7 +30,7 @@ use crate::{debug::CallStack, felt::PopFromStack, TestFelt};
 pub struct Executor {
     stack: StackInputs,
     advice: AdviceInputs,
-    libraries: Vec<MastForest>,
+    libraries: Vec<Arc<MastForest>>,
 }
 impl Executor {
     /// Construct an executor with the given arguments on the operand stack

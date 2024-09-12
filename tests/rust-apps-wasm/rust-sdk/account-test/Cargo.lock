@@ -534,9 +534,8 @@ checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
 name = "miden-assembly"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3aefae8d99d66c3f8666e917cb3ef976edb39247099311f695e5ba57305616d"
+version = "0.10.5"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -552,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "miden-base-sys"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "miden-assembly",
  "miden-stdlib-sys",
@@ -560,9 +559,8 @@ dependencies = [
 
 [[package]]
 name = "miden-core"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e46df4105dc2ec15aa14182ce6de299720991bfb83a9b6aa9293c6ee2b12b18"
+version = "0.10.5"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "lock_api",
  "loom",
@@ -650,7 +648,7 @@ dependencies = [
 
 [[package]]
 name = "miden-sdk"
-version = "0.0.4"
+version = "0.0.6"
 dependencies = [
  "miden-base-sys",
  "miden-sdk-alloc",
@@ -667,11 +665,11 @@ dependencies = [
 
 [[package]]
 name = "miden-sdk-alloc"
-version = "0.0.4"
+version = "0.0.6"
 
 [[package]]
 name = "miden-stdlib-sys"
-version = "0.0.4"
+version = "0.0.6"
 
 [[package]]
 name = "miden-thiserror"
