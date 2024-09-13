@@ -14,9 +14,6 @@ mod new_project;
 mod run_cargo_command;
 mod target;
 
-// re-export cargo-component's terminal module
-pub use cargo_component_core::terminal;
-
 fn version() -> &'static str {
     option_env!("CARGO_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
@@ -82,7 +79,7 @@ where
     None
 }
 
-pub fn run<T>(args: T, terminal: &terminal::Terminal) -> Result<Vec<PathBuf>, Report>
+pub fn run<T>(args: T) -> Result<Vec<PathBuf>, Report>
 where
     T: Iterator<Item = String>,
 {
@@ -114,8 +111,8 @@ where
             // Not a built-in command, run the cargo command
             let cargo_args =
                 CargoArguments::parse_from(args.clone().into_iter()).map_err(Report::msg)?;
-            let metadata = load_metadata(terminal, cargo_args.manifest_path.as_deref(), false)
-                .map_err(Report::msg)?;
+            let metadata =
+                load_metadata(cargo_args.manifest_path.as_deref()).map_err(Report::msg)?;
             if metadata.packages.is_empty() {
                 return Err(Report::msg(format!(
                     "manifest `{path}` contains no package or the workspace has no members",
