@@ -428,7 +428,6 @@ impl CompilerTestBuilder {
         // Build test
         match self.source {
             CompilerTestInputType::CargoMiden(_) => {
-                use cargo_miden::terminal::*;
                 let mut args = vec![command.get_program().to_str().unwrap().to_string()];
                 let cmd_args: Vec<String> = command
                     .get_args()
@@ -437,8 +436,7 @@ impl CompilerTestBuilder {
                     .map(|s| s.to_str().unwrap().to_string())
                     .collect();
                 args.extend(cmd_args);
-                let terminal = Terminal::new(Verbosity::Verbose, Color::Auto);
-                let wasm_artifacts = cargo_miden::run(args.into_iter(), &terminal).unwrap();
+                let wasm_artifacts = cargo_miden::run(args.into_iter()).unwrap();
                 let wasm_comp_path = &wasm_artifacts.first().unwrap();
                 let artifact_name =
                     wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();

@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
         cargo_args.color.unwrap_or_default(),
     );
 
-    if let Err(e) = run(std::env::args(), &terminal) {
+    if let Err(e) = run(std::env::args()) {
         terminal.error(format!("{e:?}"))?;
         std::process::exit(1);
     }
