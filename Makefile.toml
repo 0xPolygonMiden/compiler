@@ -18,8 +18,14 @@ BACKTRACE_DEFAULT = { source = "${CARGO_MAKE_CI}", mapping = { "true" = "1", "fa
 RUST_BACKTRACE = { value = "${BACKTRACE_DEFAULT}", condition = { env_not_set = [
     "RUST_BACKTRACE",
 ] } }
-MIDEN_BIN_DIR = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"
-MIDEN_INSTALL_DIR = "${MIDEN_BIN_DIR}/${CARGO_MAKE_RUST_TARGET_TRIPLE}"
+MIDENC_BIN_DIR = "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin"
+MIDENC_INSTALL_DIR = "${MIDENC_BIN_DIR}/${CARGO_MAKE_RUST_TARGET_TRIPLE}"
+
+[env.development]
+MIDENC_BUILD_PROFILE = "debug"
+
+[env.production]
+MIDENC_BUILD_PROFILE = "release"
 
 [tasks.init]
 run_task = "print-env"
@@ -52,8 +58,8 @@ echo "    Command: ${CARGO_MAKE_COMMAND}"
 echo "    Working Directory: ${CARGO_MAKE_WORKING_DIRECTORY}"
 echo "    Target Directory: ${CARGO_TARGET_DIR}"
 echo "    Profile: ${CARGO_MAKE_PROFILE}"
-echo "    Bin Directory: ${MIDEN_BIN_DIR}"
-echo "    Install Directory: ${MIDEN_INSTALL_DIR}"
+echo "    Bin Directory: ${MIDENC_BIN_DIR}"
+echo "    Install Directory: ${MIDENC_INSTALL_DIR}"
 echo "    Target Triple: ${CARGO_MAKE_RUST_TARGET_TRIPLE}"
 echo "    RUST_BACKTRACE: ${RUST_BACKTRACE}"
 echo "*************************************"
@@ -78,10 +84,22 @@ category = "Tools"
 condition = { env_set = ["CARGO_MAKE_RUST_CHANNEL"] }
 script = ['''
 #!@duckscript
+output = exec --fail-on-error rustc "--version"
+assert_eq ${output.code} 0
+rustc_version_parts = split ${output.stdout} " "
+hash_raw = array_get ${rustc_version_parts} 2
+hash = replace ${hash_raw} "(" ""
+date_raw = array_get ${rustc_version_parts} 3
+date = replace ${date_raw} ")\n" ""
+release ${rustc_version_parts}
+
+
 echo "*************************************"
 echo "Rust:"
 echo "    Version: ${CARGO_MAKE_RUST_VERSION}"
 echo "    Channel: ${CARGO_MAKE_RUST_CHANNEL}"
+echo "    Build Hash: ${hash}"
+echo "    Build Date: ${date}"
 echo "    Target Arch: ${CARGO_MAKE_RUST_TARGET_ARCH}"
 echo "    Target Env: ${CARGO_MAKE_RUST_TARGET_ENV}"
 echo "    Target OS: ${CARGO_MAKE_RUST_TARGET_OS}"
@@ -148,7 +166,7 @@ args = [
     "-p",
     "midenc",
     "--out-dir",
-    "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/bin",
+    "${MIDENC_BIN_DIR}",
 ]
 
 [tasks.build]
@@ -158,7 +176,7 @@ run_task = [{ name = ["midenc"] }]
 
 [tasks.install]
 category = "Install"
-description = "Installs the compiler suite via cargo"
+description = "Installs the compiler via cargo"
 run_task = [{ name = ["install-midenc"] }]
 
 [tasks.check]
@@ -186,37 +204,17 @@ args = [
     "install",
     "--path",
     "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/midenc",
-    "--debug",
+    "--${MIDENC_BUILD_PROFILE}",
     "--force",
     "--bin",
     "midenc",
 ]
 
-[tasks.install-wasm-target]
-category = "Test"
-description = "Install wasm32-unknown-unknown target"
-command = "rustup"
-args = ["target", "add", "wasm32-unknown-unknown"]
-
-[tasks.install-wasm-wasi-target]
-category = "Test"
-description = "Install wasm32-wasi target"
-command = "rustup"
-# `wasm32-wasi` target is renamed to `wasm32-wasip1`
-# https://blog.rust-lang.org/2024/04/09/updates-to-rusts-wasi-targets.html
-args = ["target", "add", "wasm32-wasip1"]
-
-[tasks.install-rust-src]
-category = "Test"
-description = "Install rust-src component"
-command = "rustup"
-args = ["component", "add", "rust-src"]
-
 [tasks.install-cargo-component]
 category = "Test"
 description = "Install cargo-component extension"
 command = "cargo"
-args = ["install", "cargo-component@0.14.0"]
+args = ["install", "cargo-component@0.16.0"]
 
 [tasks.test-rust]
 category = "Test"
@@ -229,12 +227,7 @@ args = [
     "@@split(CARGO_MAKE_CARGO_BUILD_TEST_FLAGS, )",
     "${@}",
 ]
-dependencies = [
-    "install-wasm-target",
-    "install-wasm-wasi-target",
-    "install-rust-src",
-    "install-cargo-component",
-]
+dependencies = ["install-cargo-component"]
 
 [tasks.test-lit]
 category = "Test"
@@ -288,10 +281,3 @@ args = [
     "-D",
     "warnings",
 ]
-dependencies = ["install-clippy"]
-
-[tasks.install-clippy]
-category = "Development"
-description = "Installs cargo clippy plugin."
-command = "rustup"
-args = ["component", "add", "clippy"]
