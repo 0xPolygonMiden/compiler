@@ -17,16 +17,17 @@
         br 0 (;@1;)
       end
     )
-    (func $__rust_alloc (;2;) (type 2) (param i32 i32) (result i32)
-      i32.const 1048660
+    (func $miden_sdk::bindings::__link_custom_section_describing_imports (;2;) (type 0))
+    (func $__rust_alloc (;3;) (type 2) (param i32 i32) (result i32)
+      i32.const 1048652
       local.get 1
       local.get 0
       call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
     )
-    (func $__rust_realloc (;3;) (type 3) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;4;) (type 3) (param i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
-        i32.const 1048660
+        i32.const 1048652
         local.get 2
         local.get 3
         call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -42,7 +43,7 @@
         i32.lt_u
         select
         memory.copy
-        i32.const 1048660
+        i32.const 1048652
         local.get 0
         local.get 2
         local.get 1
@@ -50,74 +51,69 @@
       end
       local.get 4
     )
-    (func $miden:base/core-types@1.0.0#account-id-from-felt (;4;) (type 4) (param i64) (result i64)
+    (func $miden:base/core-types@1.0.0#account-id-from-felt (;5;) (type 4) (param i64) (result i64)
       call $wit_bindgen_rt::run_ctors_once
       local.get 0
     )
-    (func $miden:base/types@1.0.0#from-core-asset (;5;) (type 5) (param i64 i64 i64 i64) (result i32)
+    (func $miden:base/types@1.0.0#from-core-asset (;6;) (type 5) (param i64 i64 i64 i64) (result i32)
       call $wit_bindgen_rt::run_ctors_once
-      i32.const 1048576
+      i32.const 1048584
       i32.const 19
-      i32.const 1048608
+      i32.const 1048616
       call $core::panicking::panic
       unreachable
     )
-    (func $miden:base/types@1.0.0#to-core-asset (;6;) (type 6) (param i32 i64 i64 i64 i64) (result i32)
+    (func $miden:base/types@1.0.0#to-core-asset (;7;) (type 6) (param i32 i64 i64 i64 i64) (result i32)
       call $wit_bindgen_rt::run_ctors_once
-      i32.const 1048576
+      i32.const 1048584
       i32.const 19
-      i32.const 1048624
+      i32.const 1048632
       call $core::panicking::panic
       unreachable
     )
-    (func $cabi_realloc_wit_bindgen_0_28_0 (;7;) (type 3) (param i32 i32 i32 i32) (result i32)
+    (func $wit_bindgen_rt::cabi_realloc (;8;) (type 3) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
-            block ;; label = @4
-              local.get 1
-              br_if 0 (;@4;)
-              local.get 3
-              i32.eqz
-              br_if 2 (;@2;)
-              i32.const 0
-              i32.load8_u offset=1048664
-              drop
-              local.get 3
-              local.get 2
-              call $__rust_alloc
-              local.set 2
-              br 1 (;@3;)
-            end
-            local.get 0
             local.get 1
-            local.get 2
+            br_if 0 (;@3;)
             local.get 3
-            call $__rust_realloc
+            i32.eqz
+            br_if 2 (;@1;)
+            i32.const 0
+            i32.load8_u offset=1048656
+            drop
+            local.get 3
+            local.get 2
+            call $__rust_alloc
             local.set 2
+            br 1 (;@2;)
           end
+          local.get 0
+          local.get 1
           local.get 2
-          i32.eqz
-          br_if 1 (;@1;)
+          local.get 3
+          call $__rust_realloc
+          local.set 2
         end
         local.get 2
-        return
+        br_if 0 (;@1;)
+        unreachable
       end
-      unreachable
-      unreachable
+      local.get 2
     )
-    (func $wit_bindgen_rt::run_ctors_once (;8;) (type 0)
+    (func $wit_bindgen_rt::run_ctors_once (;9;) (type 0)
       block ;; label = @1
         i32.const 0
-        i32.load8_u offset=1048665
+        i32.load8_u offset=1048657
         br_if 0 (;@1;)
         call $__wasm_call_ctors
         i32.const 0
         i32.const 1
-        i32.store8 offset=1048665
+        i32.store8 offset=1048657
       end
     )
-    (func $wee_alloc::alloc_first_fit (;9;) (type 7) (param i32 i32 i32) (result i32)
+    (func $wee_alloc::alloc_first_fit (;10;) (type 7) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 2
@@ -422,7 +418,7 @@
       end
       i32.const 0
     )
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;10;) (type 7) (param i32 i32 i32) (result i32)
+    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;11;) (type 7) (param i32 i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -526,7 +522,7 @@
       global.set $__stack_pointer
       local.get 2
     )
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;11;) (type 8) (param i32 i32 i32 i32)
+    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;12;) (type 8) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 1
@@ -556,39 +552,22 @@
           block ;; label = @3
             block ;; label = @4
               block ;; label = @5
-                block ;; label = @6
-                  block ;; label = @7
-                    local.get 3
-                    i32.const 4
-                    i32.add
-                    local.tee 7
-                    i32.load
-                    i32.const -4
-                    i32.and
-                    local.tee 8
-                    i32.eqz
-                    br_if 0 (;@7;)
-                    local.get 8
-                    i32.load
-                    local.tee 9
-                    i32.const 1
-                    i32.and
-                    i32.eqz
-                    br_if 1 (;@6;)
-                  end
-                  local.get 5
-                  i32.const -4
-                  i32.and
-                  local.tee 8
-                  i32.eqz
-                  br_if 3 (;@3;)
-                  local.get 5
-                  i32.const 2
-                  i32.and
-                  i32.eqz
-                  br_if 1 (;@5;)
-                  br 3 (;@3;)
-                end
+                local.get 1
+                i32.const -4
+                i32.add
+                local.tee 7
+                i32.load
+                i32.const -4
+                i32.and
+                local.tee 8
+                i32.eqz
+                br_if 0 (;@5;)
+                local.get 8
+                i32.load
+                local.tee 9
+                i32.const 1
+                i32.and
+                br_if 0 (;@5;)
                 block ;; label = @6
                   block ;; label = @7
                     block ;; label = @8
@@ -669,18 +648,28 @@
                 i32.store
                 br 1 (;@4;)
               end
-              local.get 8
+              local.get 5
+              i32.const 2
+              i32.and
+              br_if 1 (;@3;)
+              local.get 5
+              i32.const -4
+              i32.and
+              local.tee 5
+              i32.eqz
+              br_if 1 (;@3;)
+              local.get 5
               i32.load8_u
               i32.const 1
               i32.and
               br_if 1 (;@3;)
               local.get 1
-              local.get 8
+              local.get 5
               i32.load offset=8
               i32.const -4
               i32.and
               i32.store
-              local.get 8
+              local.get 5
               local.get 3
               i32.const 1
               i32.or
@@ -699,7 +688,6 @@
         i32.store
       end
     )
-    (func $core::ptr::drop_in_place<core::fmt::Error> (;12;) (type 1) (param i32))
     (func $core::panicking::panic_fmt (;13;) (type 9) (param i32 i32)
       (local i32)
       global.get $__stack_pointer
@@ -708,6 +696,22 @@
       local.tee 2
       global.set $__stack_pointer
       local.get 2
+      i32.const 16
+      i32.add
+      local.get 0
+      i32.const 16
+      i32.add
+      i64.load align=4
+      i64.store
+      local.get 2
+      i32.const 8
+      i32.add
+      local.get 0
+      i32.const 8
+      i32.add
+      i64.load align=4
+      i64.store
+      local.get 2
       i32.const 1
       i32.store16 offset=28
       local.get 2
@@ -715,16 +719,9 @@
       i32.store offset=24
       local.get 2
       local.get 0
-      i32.store offset=20
+      i64.load align=4
+      i64.store
       local.get 2
-      i32.const 1048644
-      i32.store offset=16
-      local.get 2
-      i32.const 1
-      i32.store offset=12
-      local.get 2
-      i32.const 12
-      i32.add
       call $rust_begin_unwind
       unreachable
     )
@@ -760,32 +757,24 @@
       call $core::panicking::panic_fmt
       unreachable
     )
-    (func $<T as core::any::Any>::type_id (;15;) (type 9) (param i32 i32)
-      local.get 0
-      i64.const 5799598635382251841
-      i64.store offset=8
-      local.get 0
-      i64.const 3885382061309546557
-      i64.store
-    )
-    (func $cabi_realloc (;16;) (type 3) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_realloc (;15;) (type 3) (param i32 i32 i32 i32) (result i32)
       local.get 0
       local.get 1
       local.get 2
       local.get 3
-      call $cabi_realloc_wit_bindgen_0_28_0
+      call $wit_bindgen_rt::cabi_realloc
     )
-    (table (;0;) 4 4 funcref)
+    (table (;0;) 3 3 funcref)
     (memory (;0;) 17)
     (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
     (export "memory" (memory 0))
     (export "miden:base/core-types@1.0.0#account-id-from-felt" (func $miden:base/core-types@1.0.0#account-id-from-felt))
     (export "miden:base/types@1.0.0#from-core-asset" (func $miden:base/types@1.0.0#from-core-asset))
     (export "miden:base/types@1.0.0#to-core-asset" (func $miden:base/types@1.0.0#to-core-asset))
-    (export "cabi_realloc_wit_bindgen_0_28_0" (func $cabi_realloc_wit_bindgen_0_28_0))
     (export "cabi_realloc" (func $cabi_realloc))
-    (elem (;0;) (i32.const 1) func $cabi_realloc $core::ptr::drop_in_place<core::fmt::Error> $<T as core::any::Any>::type_id)
-    (data $.rodata (;0;) (i32.const 1048576) "not yet implementedsrc/lib.rs\00\00\00\13\00\10\00\0a\00\00\00!\00\00\00\09\00\00\00\13\00\10\00\0a\00\00\00%\00\00\00\09\00\00\00\01\00\00\00\02\00\00\00\00\00\00\00\01\00\00\00\03\00\00\00")
+    (export "cabi_realloc_wit_bindgen_0_28_0" (func $wit_bindgen_rt::cabi_realloc))
+    (elem (;0;) (i32.const 1) func $miden_sdk::bindings::__link_custom_section_describing_imports $cabi_realloc)
+    (data $.rodata (;0;) (i32.const 1048576) "\01\00\00\00\01\00\00\00not yet implementedsrc/lib.rs\00\00\00\1b\00\10\00\0a\00\00\00!\00\00\00\09\00\00\00\1b\00\10\00\0a\00\00\00%\00\00\00\09\00\00\00\02\00\00\00")
   )
   (core instance (;0;) (instantiate 0))
   (alias core export 0 "memory" (core memory (;0;)))
