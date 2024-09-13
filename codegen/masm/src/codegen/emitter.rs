@@ -298,14 +298,14 @@ impl<'b, 'f: 'b> BlockEmitter<'b, 'f> {
     /// whether we have visited the successor block previously, nor not.
     ///
     /// * If this is the first visit to the successor, then due to the transformation passes
-    /// we expect to have been run on the input IR (namely treeification and block inlining),
-    /// it should be the case that these unconditional branches only exist in the IR when the
-    /// current block is a loop header, or the successor is a loop header.
+    ///   we expect to have been run on the input IR (namely treeification and block inlining),
+    ///   it should be the case that these unconditional branches only exist in the IR when the
+    ///   current block is a loop header, or the successor is a loop header.
     ///
     /// * If we have visited the successor previously, then we are emitting code for a loopback
-    /// edge, and the successor must be a loop header. We must emit the loop header inline in the
-    /// current block, up to the terminator, and then emit instructions to either continue the
-    /// loop, or exit the current loop to the target loop.
+    ///   edge, and the successor must be a loop header. We must emit the loop header inline in the
+    ///   current block, up to the terminator, and then emit instructions to either continue the
+    ///   loop, or exit the current loop to the target loop.
     fn emit_br(&mut self, inst_info: &InstInfo, op: &hir::Br, tasks: &mut Tasks) {
         let destination = op.successor.destination;
 

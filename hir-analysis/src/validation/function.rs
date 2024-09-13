@@ -12,7 +12,7 @@ use crate::{ControlFlowGraph, DominatorTree};
 /// * All blocks in the function body must be valid
 /// * All uses of values must be dominated by their definitions
 /// * All value uses must type check, i.e. branching to a block with a value
-/// of a different type than declared by the block parameter is invalid.
+///   of a different type than declared by the block parameter is invalid.
 pub struct FunctionValidator {
     in_kernel_module: bool,
 }

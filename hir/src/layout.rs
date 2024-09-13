@@ -58,24 +58,21 @@ intrusive_adapter!(pub LayoutAdapter<K, V> = UnsafeRef<LayoutNode<K, V>>: Layout
 /// # Pros
 ///
 /// * Once allocated, values stored in the map have a stable location, this can be useful for when
-///   you
-/// expect to store elements of the map in an intrusive collection.
+///   you expect to store elements of the map in an intrusive collection.
 /// * Keys can be more efficiently sized, i.e. rather than pointers/usize keys, you can choose
-///   arbitrarily
-/// small bitwidths, as long as there is sufficient keyspace for your use case.
+///   arbitrarily small bitwidths, as long as there is sufficient keyspace for your use case.
 /// * Attempt to keep data in the map as contiguous in memory as possible. This is again useful for
-///   when
-/// the data is also linked into an intrusive collection, like a linked list, where traversing the
-/// list will end up visiting many of the nodes in the map. If each node was its own Box, this would
-/// cause thrashing of the cache - ArenaMap sidesteps this by allocating values in chunks of memory
-/// that are friendlier to the cache.
+///   when the data is also linked into an intrusive collection, like a linked list, where
+///   traversing the list will end up visiting many of the nodes in the map. If each node was its
+///   own Box, this would cause thrashing of the cache - ArenaMap sidesteps this by allocating
+///   values in chunks of memory that are friendlier to the cache.
 ///
 /// # Cons
 ///
 /// * Memory allocated for data stored in the map is not released until the map is dropped. This is
-/// a tradeoff made to ensure that the data has a stable location in memory, but the flip side of
-/// that is increased memory usage for maps that stick around for a long time. In our case, these
-/// maps are relatively short-lived, so it isn't a problem in practice.
+///   a tradeoff made to ensure that the data has a stable location in memory, but the flip side of
+///   that is increased memory usage for maps that stick around for a long time. In our case, these
+///   maps are relatively short-lived, so it isn't a problem in practice.
 /// * It doesn't provide as rich of an API as HashMap and friends
 pub struct ArenaMap<K: EntityRef, V> {
     keys: Vec<Option<NonNull<V>>>,
@@ -237,8 +234,7 @@ impl<K: EntityRef, V> IndexMut<K> for ArenaMap<K, V> {
 /// * It is a doubly-linked list, so you can traverse equally efficiently front-to-back or
 ///   back-to-front,
 /// * It has O(1) indexing; given a key, we can directly obtain a reference to a node, and with
-///   that,
-/// obtain a cursor over the list starting at that node.
+///   that, obtain a cursor over the list starting at that node.
 pub struct OrderedArenaMap<K: EntityRef, V> {
     list: LinkedList<LayoutAdapter<K, V>>,
     map: ArenaMap<K, LayoutNode<K, V>>,

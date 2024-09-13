@@ -65,7 +65,7 @@ impl RewritePass for ApplySpills {
         // Apply the above collectively
         rewrites.apply(function, analyses, session)?;
 
-        session.print(&function, Self::FLAG).into_diagnostic()?;
+        session.print(&*function, Self::FLAG).into_diagnostic()?;
         if session.should_print_cfg(Self::FLAG) {
             use std::io::Write;
             let cfg = function.cfg_printer();
@@ -283,13 +283,13 @@ impl RewritePass for InsertSpills {
 /// the CFG (i.e. bottom-up):
 ///
 /// * We need to find uses of spilled values as we encounter them, and keep track of them until
-/// we find an appropriate definition for each use.
+///   we find an appropriate definition for each use.
 /// * We need to propagate uses up the dominance tree until all uses are matched with definitions
 /// * We need to rewrite uses when we find a definition
 /// * We need to identify whether a block we are about to leave (on our way up the CFG), is in
-/// the iterated dominance frontier for the set of spilled values we've found uses for. If it is,
-/// we must append a new block parameter, rewrite the terminator of any predecessor blocks, and
-/// rewrite all uses found so far by using the new block parameter as the dominating definition.
+///   the iterated dominance frontier for the set of spilled values we've found uses for. If it is,
+///   we must append a new block parameter, rewrite the terminator of any predecessor blocks, and
+///   rewrite all uses found so far by using the new block parameter as the dominating definition.
 ///
 /// Technically, this pass could be generalized a step further, such that it fixes up invalid
 /// def-use relationships in general, rather than just the narrow case of spills/reloads - but it is
@@ -299,8 +299,8 @@ impl RewritePass for InsertSpills {
 ///
 /// 1. No `spill` or `reload` instructions remain in the IR
 /// 2. The semantics of the original IR on which [InsertSpills] was run, will be preserved, if:
-///   * The original IR was valid
-///   * No modification to the IR was made between [InsertSpills] and [RewriteSpills]
+///    * The original IR was valid
+///    * No modification to the IR was made between [InsertSpills] and [RewriteSpills]
 /// 3. The resulting function, once compiled to Miden Assembly, will keep the operand stack depth <=
 ///    16 elements, so long as the schedule produced by the backend preserves the scheduling
 ///    semantics. For example, spills/reloads are computed based on an implied scheduling of

@@ -201,10 +201,10 @@ impl<'a> OpEmitter<'a> {
     /// but the general rules are as follows:
     ///
     /// * Any integer-to-integer cast is allowed
-    /// * Casting a signed integer to an unsigned integer will assert that the
-    /// input value is unsigned
-    /// * Casting a type with a larger range to a type with a smaller one will
-    /// assert that the input value fits within that range, e.g. u8 to i8, i16 to i8, etc.
+    /// * Casting a signed integer to an unsigned integer will assert that the input value is
+    ///   unsigned
+    /// * Casting a type with a larger range to a type with a smaller one will assert that the input
+    ///   value fits within that range, e.g. u8 to i8, i16 to i8, etc.
     /// * Casting to a larger unsigned type will use zero-extension
     /// * Casting a signed type to a larger signed type will use sign-extension
     /// * Casting an unsigned type to a larger signed type will use zero-extension

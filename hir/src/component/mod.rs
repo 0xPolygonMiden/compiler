@@ -342,7 +342,7 @@ impl<'a> ComponentBuilder<'a> {
 ///
 /// * `build` will add the module to the [ComponentBuilder] directly, rather than returning it
 /// * `function` will delegate to [ComponentFunctionBuilder] which plays a similar role to this
-/// struct, but for [ModuleFunctionBuilder].
+///   struct, but for [ModuleFunctionBuilder].
 pub struct ComponentModuleBuilder<'a, 'b: 'a> {
     cb: &'a mut ComponentBuilder<'b>,
     mb: ModuleBuilder,

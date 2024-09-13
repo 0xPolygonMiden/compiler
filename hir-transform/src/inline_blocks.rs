@@ -21,16 +21,16 @@ use crate::adt::ScopedMap;
 ///
 /// * Due to less than optimal lowering to SSA form
 /// * To split critical edges in preparation for dataflow analysis and related transformations,
-/// but ultimately no code introduced along those edges, and critical edges no longer present
-/// an obstacle to further optimization or codegen.
+///   but ultimately no code introduced along those edges, and critical edges no longer present
+///   an obstacle to further optimization or codegen.
 /// * During treeification of the CFG, where blocks with multiple predecessors were duplicated
-/// to produce a CFG in tree form, where no blocks (other than loop headers) have multiple
-/// predecessors. This process removed block arguments from these blocks, and rewrote instructions
-/// dominated by those block arguments to reference the values passed from the original predecessor
-/// to whom the subtree is attached. This transformation can expose a chain of blocks which all have
-/// a single predecessor and successor, introducing branches where none are needed, and by removing
-/// those redundant branches, all of the code from blocks in the chain can be inlined in the first
-/// block of the chain.
+///   to produce a CFG in tree form, where no blocks (other than loop headers) have multiple
+///   predecessors. This process removed block arguments from these blocks, and rewrote instructions
+///   dominated by those block arguments to reference the values passed from the original
+///   predecessor to whom the subtree is attached. This transformation can expose a chain of blocks
+///   which all have a single predecessor and successor, introducing branches where none are needed,
+///   and by removing those redundant branches, all of the code from blocks in the chain can be
+///   inlined in the first block of the chain.
 #[derive(Default, PassInfo, ModuleRewritePassAdapter)]
 pub struct InlineBlocks;
 impl RewritePass for InlineBlocks {
@@ -132,7 +132,7 @@ impl RewritePass for InlineBlocks {
             analyses.mark_preserved::<ControlFlowGraph>(&function.id);
         }
 
-        session.print(&function, Self::FLAG).into_diagnostic()?;
+        session.print(&*function, Self::FLAG).into_diagnostic()?;
         if session.should_print_cfg(Self::FLAG) {
             use std::io::Write;
             let cfg = function.cfg_printer();

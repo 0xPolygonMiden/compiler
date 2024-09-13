@@ -357,19 +357,17 @@ pub type FunctionList = LinkedList<FunctionListAdapter>;
 ///
 /// * Functions may have zero or more parameters, and produce zero or more results.
 /// * Functions are namespaced in [Module]s. You may define a function separately from a module,
-/// to aid in parallelizing compilation, but functions must be attached to a module prior to code
-/// generation. Furthermore, in order to reference other functions, you must do so using their
-/// fully-qualified names.
+///   to aid in parallelizing compilation, but functions must be attached to a module prior to code
+///   generation. Furthermore, in order to reference other functions, you must do so using their
+///   fully-qualified names.
 /// * Functions consist of one or more basic blocks, where the entry block is predefined based
-/// on the function signature.
+///   on the function signature.
 /// * Basic blocks consist of a sequence of [Instruction] without any control flow (excluding
-///   calls),
-/// terminating with a control flow instruction. Our SSA representation uses block arguments rather
-/// than phi nodes to represent join points in the control flow graph.
+///   calls), terminating with a control flow instruction. Our SSA representation uses block
+///   arguments rather than phi nodes to represent join points in the control flow graph.
 /// * Instructions consume zero or more arguments, and produce zero or more results. Results
-///   produced
-/// by an instruction constitute definitions of those values. A value may only ever have a single
-/// definition, e.g. you can't reassign a value after it is introduced by an instruction.
+///   produced by an instruction constitute definitions of those values. A value may only ever have
+///   a single definition, e.g. you can't reassign a value after it is introduced by an instruction.
 ///
 /// References to functions and global variables from a [Function] are not fully validated until
 /// link-time/code generation.

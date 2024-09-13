@@ -112,8 +112,8 @@ enum Status {
 /// * It only handles instructions which are defined in the [Op] enum
 /// * Anything related to proving, calling contracts, etc. is not supported
 /// * The default environment is empty, i.e. there are no Miden VM standard
-/// library functions available. Users must emit Miden IR for all functions
-/// they wish to call, or alternatively, provide native stubs.
+///   library functions available. Users must emit Miden IR for all functions
+///   they wish to call, or alternatively, provide native stubs.
 pub struct Emulator {
     status: Status,
     functions: FxHashMap<FunctionIdent, Stub>,

@@ -746,9 +746,8 @@ impl<'a> OpEmitter<'a> {
     /// * A machine word is a 32-bit chunk stored in a single field element
     /// * A double word is a pair of 32-bit chunks
     /// * A quad word is a quartet of 32-bit chunks (i.e. a Miden "word")
-    /// * An unaligned double-word requires three 32-bit chunks to represent,
-    /// since the first chunk does not contain a full 32-bits, so an extra is
-    /// needed to hold those bits.
+    /// * An unaligned double-word requires three 32-bit chunks to represent, since the first chunk
+    ///   does not contain a full 32-bits, so an extra is needed to hold those bits.
     ///
     /// As an example, assume the pointer we are dereferencing is a u64 value,
     /// which has 8-byte alignment, and the value is stored 40 bytes from the
@@ -789,9 +788,8 @@ impl<'a> OpEmitter<'a> {
     /// * A machine word is a 32-bit chunk stored in a single field element
     /// * A double word is a pair of 32-bit chunks
     /// * A quad word is a quartet of 32-bit chunks (i.e. a Miden "word")
-    /// * An unaligned quad-word requires five 32-bit chunks to represent,
-    /// since the first chunk does not contain a full 32-bits, so an extra is
-    /// needed to hold those bits.
+    /// * An unaligned quad-word requires five 32-bit chunks to represent, since the first chunk
+    ///   does not contain a full 32-bits, so an extra is needed to hold those bits.
     ///
     /// See the example in [OpEmitter::realign_quad_word] for more details on how bits are
     /// laid out in each word, and what is required to realign unaligned words.
