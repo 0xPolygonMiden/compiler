@@ -1,5 +1,4 @@
 #![feature(iter_array_chunks)]
-#![feature(lazy_cell)]
 #![allow(unused)]
 
 mod cli;

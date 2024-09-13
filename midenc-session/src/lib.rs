@@ -1,6 +1,4 @@
 #![feature(debug_closure_helpers)]
-#![feature(lazy_cell)]
-#![feature(error_in_core)]
 #![no_std]
 
 extern crate alloc;
