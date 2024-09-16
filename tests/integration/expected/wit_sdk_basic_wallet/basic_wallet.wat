@@ -60,16 +60,17 @@
     (import "miden:base/account@1.0.0" "remove-asset" (func $basic_wallet::bindings::miden::base::account::remove_asset::wit_import (;1;) (type 0)))
     (import "miden:base/tx@1.0.0" "create-note" (func $basic_wallet::bindings::miden::base::tx::create_note::wit_import (;2;) (type 1)))
     (func $__wasm_call_ctors (;3;) (type 2))
-    (func $__rust_alloc (;4;) (type 3) (param i32 i32) (result i32)
-      i32.const 1048580
+    (func $basic_wallet::bindings::__link_custom_section_describing_imports (;4;) (type 2))
+    (func $__rust_alloc (;5;) (type 3) (param i32 i32) (result i32)
+      i32.const 1048596
       local.get 1
       local.get 0
       call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
     )
-    (func $__rust_realloc (;5;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $__rust_realloc (;6;) (type 4) (param i32 i32 i32 i32) (result i32)
       (local i32)
       block ;; label = @1
-        i32.const 1048580
+        i32.const 1048596
         local.get 2
         local.get 3
         call $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -85,7 +86,7 @@
         i32.lt_u
         select
         memory.copy
-        i32.const 1048580
+        i32.const 1048596
         local.get 0
         local.get 2
         local.get 1
@@ -93,7 +94,7 @@
       end
       local.get 4
     )
-    (func $miden:basic-wallet/basic-wallet@1.0.0#receive-asset (;6;) (type 5) (param i64 i64 i64 i64)
+    (func $miden:basic-wallet/basic-wallet@1.0.0#receive-asset (;7;) (type 5) (param i64 i64 i64 i64)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -112,7 +113,7 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset (;7;) (type 6) (param i64 i64 i64 i64 i64 i64 i64 i64 i64)
+    (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset (;8;) (type 6) (param i64 i64 i64 i64 i64 i64 i64 i64 i64)
       (local i32)
       global.get $__stack_pointer
       i32.const 32
@@ -146,54 +147,49 @@
       i32.add
       global.set $__stack_pointer
     )
-    (func $cabi_realloc_wit_bindgen_0_28_0 (;8;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $wit_bindgen_rt::cabi_realloc (;9;) (type 4) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
         block ;; label = @2
           block ;; label = @3
-            block ;; label = @4
-              local.get 1
-              br_if 0 (;@4;)
-              local.get 3
-              i32.eqz
-              br_if 2 (;@2;)
-              i32.const 0
-              i32.load8_u offset=1048584
-              drop
-              local.get 3
-              local.get 2
-              call $__rust_alloc
-              local.set 2
-              br 1 (;@3;)
-            end
-            local.get 0
             local.get 1
-            local.get 2
+            br_if 0 (;@3;)
             local.get 3
-            call $__rust_realloc
+            i32.eqz
+            br_if 2 (;@1;)
+            i32.const 0
+            i32.load8_u offset=1048600
+            drop
+            local.get 3
+            local.get 2
+            call $__rust_alloc
             local.set 2
+            br 1 (;@2;)
           end
+          local.get 0
+          local.get 1
           local.get 2
-          i32.eqz
-          br_if 1 (;@1;)
+          local.get 3
+          call $__rust_realloc
+          local.set 2
         end
         local.get 2
-        return
+        br_if 0 (;@1;)
+        unreachable
       end
-      unreachable
-      unreachable
+      local.get 2
     )
-    (func $wit_bindgen_rt::run_ctors_once (;9;) (type 2)
+    (func $wit_bindgen_rt::run_ctors_once (;10;) (type 2)
       block ;; label = @1
         i32.const 0
-        i32.load8_u offset=1048585
+        i32.load8_u offset=1048601
         br_if 0 (;@1;)
         call $__wasm_call_ctors
         i32.const 0
         i32.const 1
-        i32.store8 offset=1048585
+        i32.store8 offset=1048601
       end
     )
-    (func $wee_alloc::alloc_first_fit (;10;) (type 7) (param i32 i32 i32) (result i32)
+    (func $wee_alloc::alloc_first_fit (;11;) (type 7) (param i32 i32 i32) (result i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 2
@@ -498,7 +494,7 @@
       end
       i32.const 0
     )
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;11;) (type 7) (param i32 i32 i32) (result i32)
+    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::alloc (;12;) (type 7) (param i32 i32 i32) (result i32)
       (local i32 i32 i32)
       global.get $__stack_pointer
       i32.const 16
@@ -602,7 +598,7 @@
       global.set $__stack_pointer
       local.get 2
     )
-    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;12;) (type 8) (param i32 i32 i32 i32)
+    (func $<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc (;13;) (type 8) (param i32 i32 i32 i32)
       (local i32 i32 i32 i32 i32 i32 i32)
       block ;; label = @1
         local.get 1
@@ -632,39 +628,22 @@
           block ;; label = @3
             block ;; label = @4
               block ;; label = @5
-                block ;; label = @6
-                  block ;; label = @7
-                    local.get 3
-                    i32.const 4
-                    i32.add
-                    local.tee 7
-                    i32.load
-                    i32.const -4
-                    i32.and
-                    local.tee 8
-                    i32.eqz
-                    br_if 0 (;@7;)
-                    local.get 8
-                    i32.load
-                    local.tee 9
-                    i32.const 1
-                    i32.and
-                    i32.eqz
-                    br_if 1 (;@6;)
-                  end
-                  local.get 5
-                  i32.const -4
-                  i32.and
-                  local.tee 8
-                  i32.eqz
-                  br_if 3 (;@3;)
-                  local.get 5
-                  i32.const 2
-                  i32.and
-                  i32.eqz
-                  br_if 1 (;@5;)
-                  br 3 (;@3;)
-                end
+                local.get 1
+                i32.const -4
+                i32.add
+                local.tee 7
+                i32.load
+                i32.const -4
+                i32.and
+                local.tee 8
+                i32.eqz
+                br_if 0 (;@5;)
+                local.get 8
+                i32.load
+                local.tee 9
+                i32.const 1
+                i32.and
+                br_if 0 (;@5;)
                 block ;; label = @6
                   block ;; label = @7
                     block ;; label = @8
@@ -745,18 +724,28 @@
                 i32.store
                 br 1 (;@4;)
               end
-              local.get 8
+              local.get 5
+              i32.const 2
+              i32.and
+              br_if 1 (;@3;)
+              local.get 5
+              i32.const -4
+              i32.and
+              local.tee 5
+              i32.eqz
+              br_if 1 (;@3;)
+              local.get 5
               i32.load8_u
               i32.const 1
               i32.and
               br_if 1 (;@3;)
               local.get 1
-              local.get 8
+              local.get 5
               i32.load offset=8
               i32.const -4
               i32.and
               i32.store
-              local.get 8
+              local.get 5
               local.get 3
               i32.const 1
               i32.or
@@ -775,23 +764,23 @@
         i32.store
       end
     )
-    (func $cabi_realloc (;13;) (type 4) (param i32 i32 i32 i32) (result i32)
+    (func $cabi_realloc (;14;) (type 4) (param i32 i32 i32 i32) (result i32)
       local.get 0
       local.get 1
       local.get 2
       local.get 3
-      call $cabi_realloc_wit_bindgen_0_28_0
+      call $wit_bindgen_rt::cabi_realloc
     )
-    (table (;0;) 2 2 funcref)
+    (table (;0;) 3 3 funcref)
     (memory (;0;) 17)
     (global $__stack_pointer (;0;) (mut i32) i32.const 1048576)
     (export "memory" (memory 0))
     (export "miden:basic-wallet/basic-wallet@1.0.0#receive-asset" (func $miden:basic-wallet/basic-wallet@1.0.0#receive-asset))
     (export "miden:basic-wallet/basic-wallet@1.0.0#send-asset" (func $miden:basic-wallet/basic-wallet@1.0.0#send-asset))
-    (export "cabi_realloc_wit_bindgen_0_28_0" (func $cabi_realloc_wit_bindgen_0_28_0))
     (export "cabi_realloc" (func $cabi_realloc))
-    (elem (;0;) (i32.const 1) func $cabi_realloc)
-    (data $.rodata (;0;) (i32.const 1048576) "\01\00\00\00")
+    (export "cabi_realloc_wit_bindgen_0_28_0" (func $wit_bindgen_rt::cabi_realloc))
+    (elem (;0;) (i32.const 1) func $basic_wallet::bindings::__link_custom_section_describing_imports $cabi_realloc)
+    (data $.rodata (;0;) (i32.const 1048576) "\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\02\00\00\00")
   )
   (core module (;1;)
     (type (;0;) (func (param i64 i64 i64 i64 i32)))

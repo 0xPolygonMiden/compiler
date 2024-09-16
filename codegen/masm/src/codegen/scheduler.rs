@@ -1126,15 +1126,16 @@ fn build_dependency_graph(
 /// This function performs two primary tasks:
 ///
 /// 1. Ensure that there are edges in the graph between instructions that must not be reordered
-/// past each other during scheduling. An obvious example is loads and stores: you might have two
-/// independent expression trees that read and write to the same memory location - but if the order
-/// in which the corresponding loads and stores are scheduled changes, it can change the behavior
-/// of the program. Other examples include function calls with side effects and inline assembly.
+///    past each other during scheduling. An obvious example is loads and stores: you might have two
+///    independent expression trees that read and write to the same memory location - but if the
+///    order in which the corresponding loads and stores are scheduled changes, it can change the
+///    behavior of the program. Other examples include function calls with side effects and inline
+///    assembly.
 ///
 /// 2. Ensure that even if an instruction has no predecessors, it still gets scheduled if it has
-/// side effects. This can happen if there are no other effectful instructions in the same block.
-/// We add an edge from the block terminator to these instructions, which will guarantee that
-/// they are executed before leaving the block.
+///    side effects. This can happen if there are no other effectful instructions in the same block.
+///    We add an edge from the block terminator to these instructions, which will guarantee that
+///    they are executed before leaving the block.
 ///
 /// We call these instruction->instruction dependencies "control dependencies", since control flow
 /// in the block depends on them being executed first. If such instructions have no predecessors

@@ -648,14 +648,14 @@ impl<'a> Iterator for ChildIter<'a> {
 /// the program above, that would give us the set `{block3}`:
 ///
 /// * The dominance frontier of the assignment in `block0` is empty, because `block0` strictly
-/// dominates all other blocks in the program.
+///   dominates all other blocks in the program.
 /// * The dominance frontier of the assignment in `block1` contains `block3`, because `block1`
-/// dominates a predecessor of `block3` (itself), but does not strictly dominate that predecessor,
-/// because a node cannot strictly dominate itself.
+///   dominates a predecessor of `block3` (itself), but does not strictly dominate that predecessor,
+///   because a node cannot strictly dominate itself.
 /// * The dominance frontier of the assignment in `block2` contains `block3`, for the same reasons
-/// as `block1`.
+///   as `block1`.
 /// * The dominance frontier of `block3` is empty, because it has no successors and thus cannot
-/// dominate any other blocks.
+///   dominate any other blocks.
 /// * The union of all the dominance frontiers is simply `{block3}`
 ///
 /// So this tells us that we need to place a phi node (a block parameter) at `block3`, and rewrite

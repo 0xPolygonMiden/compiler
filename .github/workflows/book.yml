@@ -4,35 +4,26 @@ on:
   push:
     branches:
       - main
-      - develop
+      - next
 
 jobs:
-  deploy:
+  publish_docs:
+    name: publish docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
-        with:
-          mdbook-version: 'latest'
-      - name: Install mdbook-katex
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: mdbook-katex
-      - name: Install mdbook-linkcheck
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: mdbook-linkcheck
-      - name: Build miden book
-        run: mdbook build docs/
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          rustup update --no-self-update
+          rustc --version
+      - name: Install cargo-make
+        run: |
+          cargo install cargo-make --force
+      - name: Build
+        run: |
+          cargo make docs
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/book/html
+          publish_dir: ./target/docs/site

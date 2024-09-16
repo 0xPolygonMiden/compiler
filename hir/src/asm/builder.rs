@@ -386,10 +386,10 @@ impl<'a> MasmOpBuilder<'a> {
     ///
     /// 1. There is a value of boolean type on top of the operand stack
     /// 2. The abstract state of the operand stack, assuming the boolean just mentioned
-    /// has been popped, must be consistent with the state of the operand stack when the
-    /// loop was entered, as well as if the loop was skipped due to the conditional being
-    /// false. The abstract state referred to here is the number, and type, of the elements
-    /// on the operand stack.
+    ///    has been popped, must be consistent with the state of the operand stack when the
+    ///    loop was entered, as well as if the loop was skipped due to the conditional being
+    ///    false. The abstract state referred to here is the number, and type, of the elements
+    ///    on the operand stack.
     ///
     /// Both of these are validated by [LoopBuilder], and a panic is raised if validation fails.
     pub fn while_true(self, span: SourceSpan) -> LoopBuilder<'a> {
@@ -1411,10 +1411,9 @@ pub struct LoopBuilder<'a> {
     /// `while.true`, we must validate two things:
     ///
     /// 1. That the top of the stack holds a boolean value
-    /// 2. That after popping the boolean, the output state of the operand stack
-    /// matches the input state in number and type of elements. This is required,
-    /// as otherwise program behavior is undefined based on whether the loop is
-    /// entered or not.
+    /// 2. That after popping the boolean, the output state of the operand stack matches the input
+    ///    state in number and type of elements. This is required, as otherwise program behavior is
+    ///    undefined based on whether the loop is entered or not.
     out_stack: OperandStack<Type>,
     /// The source span associated with the loop
     span: SourceSpan,

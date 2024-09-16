@@ -44,11 +44,11 @@ use crate::adt::ScopedMap;
 /// 2. For each P, clone B to a new block B', and rewrite P such that it branches to B' rather than
 ///    B.
 /// 3. For each successor S of B:
-///   a. If S is a loop header, and S appears before B in the reverse postorder sort of the CFG,
-///      then it is a loopback edge, so the corresponding edge from B' to S is left intact.
-///   b. If S is a loop header, but S appears after B in the reverse postorder sort of the CFG,
-///      then it is treated like other blocks (see c.)
-///   c. Otherwise, clone S to S', and rewrite B' to branch to S' instead of S.
+///    a. If S is a loop header, and S appears before B in the reverse postorder sort of the CFG,
+///       then it is a loopback edge, so the corresponding edge from B' to S is left intact.
+///    b. If S is a loop header, but S appears after B in the reverse postorder sort of the CFG,
+///       then it is treated like other blocks (see c.)
+///    c. Otherwise, clone S to S', and rewrite B' to branch to S' instead of S.
 /// 4. Repeat step 2 for the successors of S, recursively, until the subgraph reachable from B
 ///
 /// Since we are treeifying blocks from the leaves of the CFG to the root, and because we do not
@@ -250,7 +250,7 @@ use crate::adt::ScopedMap;
 /// * Duplicate loop headers on control flow edges leading to those headers
 /// * Emit N `push.0` instructions on control flow edges exiting the function from a loop depth of N
 /// * Emit a combination of the above on control flow edges exiting an inner loop for an outer loop,
-/// depending on what depths the predecessor and successor blocks are at
+///   depending on what depths the predecessor and successor blocks are at
 ///
 /// ```text,ignore
 /// blk0
@@ -441,7 +441,7 @@ impl RewritePass for Treeify {
             }
         }
 
-        session.print(&function, Self::FLAG).into_diagnostic()?;
+        session.print(&*function, Self::FLAG).into_diagnostic()?;
         if session.should_print_cfg(Self::FLAG) {
             use std::io::Write;
             let cfg = function.cfg_printer();

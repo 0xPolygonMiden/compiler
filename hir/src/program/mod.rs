@@ -312,7 +312,7 @@ impl<'a> ProgramBuilder<'a> {
 ///
 /// * `build` will add the module to the [ProgramBuilder] directly, rather than returning it
 /// * `function` will delegate to [ProgramFunctionBuilder] which plays a similar role to this
-/// struct, but for [ModuleFunctionBuilder].
+///   struct, but for [ModuleFunctionBuilder].
 pub struct ProgramModuleBuilder<'a, 'b: 'a> {
     pb: &'a mut ProgramBuilder<'b>,
     mb: ModuleBuilder,

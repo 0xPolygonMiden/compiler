@@ -384,11 +384,10 @@ impl<'a> OpEmitter<'a> {
     /// The semantics of this operation depend on the `overflow` setting:
     ///
     /// * There is no unchecked variant for u64, so wrapping is used instead
-    /// * When checked, both the operands and the result are validated to ensure
-    /// they are valid u64 values.
-    /// * Overflowing and wrapping variants follow the usual semantics, with the
-    /// exception that neither type validates the operands, it is assumed that
-    /// the caller has already done this.
+    /// * When checked, both the operands and the result are validated to ensure they are valid u64
+    ///   values.
+    /// * Overflowing and wrapping variants follow the usual semantics, with the exception that
+    ///   neither type validates the operands, it is assumed that the caller has already done this.
     ///
     /// The caller is assumed to know that different `overflow` settings can
     /// produce different results, and that those differences are handled.
@@ -456,11 +455,10 @@ impl<'a> OpEmitter<'a> {
     /// The semantics of this operation depend on the `overflow` setting:
     ///
     /// * There is no unchecked variant for u64, so wrapping is used instead
-    /// * When checked, both the operands and the result are validated to ensure
-    /// they are valid u64 values.
-    /// * Overflowing and wrapping variants follow the usual semantics, with the
-    /// exception that neither type validates the operands, it is assumed that
-    /// the caller has already done this.
+    /// * When checked, both the operands and the result are validated to ensure they are valid u64
+    ///   values.
+    /// * Overflowing and wrapping variants follow the usual semantics, with the exception that
+    ///   neither type validates the operands, it is assumed that the caller has already done this.
     ///
     /// The caller is assumed to know that different `overflow` settings can
     /// produce different results, and that those differences are handled.
@@ -524,11 +522,10 @@ impl<'a> OpEmitter<'a> {
     /// The semantics of this operation depend on the `overflow` setting:
     ///
     /// * There is no unchecked variant for u64, so wrapping is used instead
-    /// * When checked, both the operands and the result are validated to ensure
-    /// they are valid u64 values.
-    /// * Overflowing and wrapping variants follow the usual semantics, with the
-    /// exception that neither type validates the operands, it is assumed that
-    /// the caller has already done this.
+    /// * When checked, both the operands and the result are validated to ensure they are valid u64
+    ///   values.
+    /// * Overflowing and wrapping variants follow the usual semantics, with the exception that
+    ///   neither type validates the operands, it is assumed that the caller has already done this.
     ///
     /// The caller is assumed to know that different `overflow` settings can
     /// produce different results, and that those differences are handled.

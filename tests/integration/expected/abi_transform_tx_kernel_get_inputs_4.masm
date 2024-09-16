@@ -63,7 +63,8 @@ export."miden_base_sys::bindings::tx::get_inputs"
     movup.2
     u32div.16
     exec.::intrinsics::mem::load_sw
-    eq.0
+    push.1
+    neq
     neq.0
     if.true
         dup.1

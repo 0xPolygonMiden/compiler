@@ -42,13 +42,13 @@ impl Type {
     /// Split this type into two parts:
     ///
     /// * The first part is no more than `n` bytes in size, and may contain the type itself if it
-    /// fits
+    ///   fits
     /// * The second part is None if the first part is smaller than or equal in size to the
-    /// requested split size
+    ///   requested split size
     /// * The second part is Some if there is data left in the original type after the split. This
-    /// part will be a type that attempts to preserve, to the extent possible, the original type
-    /// structure, but will fall back to an array of bytes if a larger type must be split down
-    /// the middle somewhere.
+    ///   part will be a type that attempts to preserve, to the extent possible, the original type
+    ///   structure, but will fall back to an array of bytes if a larger type must be split down
+    ///   the middle somewhere.
     pub fn split(self, n: usize) -> (Type, Option<Type>) {
         if n == 0 {
             return (self, None);

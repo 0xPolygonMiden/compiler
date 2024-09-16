@@ -74,36 +74,34 @@ impl From<(Ident, Vec<Ident>)> for Object {
 /// following:
 ///
 /// * Determines the final layout of all code and data in the executable or library being produced,
-/// this allows the linker to know the absolute and/or relative address for every symbol in the
-/// program.
+///   this allows the linker to know the absolute and/or relative address for every symbol in the
+///   program.
 /// * Ensures that all referenced symbols (functions/globals) are defined, or that there are runtime
-/// dependencies that will satisfy the missing symbols (in practice, what actually happens is the
-/// static linker, i.e. `ld`, assumes missing symbols will be provided by the runtime dependencies,
-/// and it is the runtime dynamic linker, i.e. `rtdyld`, which handles the case where those symbols
-/// cannot be located when the program is starting up).
+///   dependencies that will satisfy the missing symbols (in practice, what actually happens is the
+///   static linker, i.e. `ld`, assumes missing symbols will be provided by the runtime
+///   dependencies, and it is the runtime dynamic linker, i.e. `rtdyld`, which handles the case
+///   where those symbols cannot be located when the program is starting up).
 /// * Rewrites instructions with symbol references to use the absolute/relative addressing once the
-/// layout of the program in memory is known.
+///   layout of the program in memory is known.
 /// * Emits the linked program in binary form, either as an executable or as a library
 ///
 /// However, there a couple of things that make [Linker] somewhat different than your typical system
 /// linker:
 ///
 /// * We do not emit assembly/run the assembler prior to linking. This is because Miden Assembly
-///   (MASM)
-/// does not have a way to represent things like data segments or global variables natively.
-/// Instead, the linker is responsible for laying those out in memory ahead of time, and then all
-/// operations involving them are lowered to use absolute addresses.
+///   (MASM) does not have a way to represent things like data segments or global variables
+///   natively. Instead, the linker is responsible for laying those out in memory ahead of time, and
+///   then all operations involving them are lowered to use absolute addresses.
 /// * [Linker] does not emit the final binary form of the program. It still plans the layout of
-///   program data
-/// in memory, and performs the same type of validations as a typical linker, but the output of the
-/// linker is a [Program], which must be emitted as Miden Assembly in a separate step _after_ being
-/// linked.
+///   program data in memory, and performs the same type of validations as a typical linker, but the
+///   output of the linker is a [Program], which must be emitted as Miden Assembly in a separate
+///   step _after_ being linked.
 /// * We cannot guarantee that the [Program] we emit constitutes a closed set of modules/functions,
-///   even
-/// accounting for functions whose definitions will be provided at runtime. This is because the
-/// Miden VM acts as the final assembler of the programs it runs, and if the [Program] we emit is
-/// used as a library, we can't know what other modules might end up being linked into the final
-/// program run by the VM. As a result, it is assumed that any code introduced separately is either:
+///   even accounting for functions whose definitions will be provided at runtime. This is because
+///   the Miden VM acts as the final assembler of the programs it runs, and if the [Program] we emit
+///   is used as a library, we can't know what other modules might end up being linked into the
+///   final program run by the VM. As a result, it is assumed that any code introduced separately is
+///   either:
 ///   1. memory-agnostic, i.e. it doesn't use the heap and/or make any assumptions about the heap
 ///      layout.
 ///   2. compatible with the layout decided upon by the linker, i.e. it uses well-known allocator
@@ -113,11 +111,11 @@ impl From<(Ident, Vec<Ident>)> for Object {
 ///      "unmanaged" memory allocations, to support scenarios whereby a linked library is used with
 ///      a program that needs its own region of heap to manage.
 /// * Miden has separate address spaces depending on the context in which a function is executed,
-///   i.e. the root
-/// vs user context distinction. Currently, all programs are assumed to be executed in the root
-/// context, and we do not provide instructions for executing calls in another context. However, we
-/// will eventually be linking programs which have a potentially unbounded number of address spaces,
-/// which is an additional complication that your typical linker doesn't have to deal with
+///   i.e. the root vs user context distinction. Currently, all programs are assumed to be executed
+///   in the root context, and we do not provide instructions for executing calls in another
+///   context. However, we will eventually be linking programs which have a potentially unbounded
+///   number of address spaces, which is an additional complication that your typical linker doesn't
+///   have to deal with
 pub struct Linker<'a> {
     diagnostics: &'a DiagnosticsHandler,
     /// This is the program being constructed by the linker
