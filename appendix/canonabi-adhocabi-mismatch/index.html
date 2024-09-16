@@ -1,0 +1,1320 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../calling-conventions/">
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.33">
+    
+    
+      
+        <title>Canonical ABI vs Miden ABI - Miden Compiler Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#canonical-abi-vs-miden-abi-incompatibility" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Miden Compiler Docs" class="md-header__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Miden Compiler Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Canonical ABI vs Miden ABI
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91 1.61 0 2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08Z"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Miden Compiler Docs" class="md-nav__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Miden Compiler Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Usage
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Usage
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/midenc/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    midenc
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/cargo-miden/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    cargo miden
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/rust_to_wasm/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Rust To WebAssembly
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/wasm_to_masm/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    WebAssembly To Miden Assembly
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/develop_miden_in_rust/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developing Miden programs In Rust
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developing Miden rollup accounts and note scripts In Rust
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/debugger/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Debugging programs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Compiler architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Compiler architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/frontends/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported front ends
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Appendices
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Appendices
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../known-limitations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known limitations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calling-conventions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Calling conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Canonical ABI vs Miden ABI
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Canonical ABI vs Miden ABI
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      Background
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Background">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#return-via-pointer-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Return-via-pointer adapter
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-op-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      No-op adapter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transaction-kernel-functions-that-require-manual-adapter-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transaction kernel functions that require manual adapter functions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Transaction kernel functions that require manual adapter functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_assets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-example-of-some-functions-signatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      The example of some functions signatures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The example of some functions signatures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add_asset-return-via-pointer-miden-abi-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_asset (return-via-pointer Miden ABI pattern)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_id-no-adapter-needed-miden-abi-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_id (no-adapter-needed Miden ABI pattern)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#background" class="md-nav__link">
+    <span class="md-ellipsis">
+      Background
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Background">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#return-via-pointer-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      Return-via-pointer adapter
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-op-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      No-op adapter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transaction-kernel-functions-that-require-manual-adapter-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Transaction kernel functions that require manual adapter functions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Transaction kernel functions that require manual adapter functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get_assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_assets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-example-of-some-functions-signatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      The example of some functions signatures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The example of some functions signatures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#add_asset-return-via-pointer-miden-abi-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      add_asset (return-via-pointer Miden ABI pattern)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_id-no-adapter-needed-miden-abi-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_id (no-adapter-needed Miden ABI pattern)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="canonical-abi-vs-miden-abi-incompatibility">Canonical ABI vs Miden ABI incompatibility<a class="headerlink" href="#canonical-abi-vs-miden-abi-incompatibility" title="Link to this section">&para;</a></h1>
+<p>This document describes an issue that arises when trying to map the ad-hoc calling convention/ABI
+used by various Miden Assembly procedures, such as those comprising the transaction kernel, and
+the &ldquo;canonical&rdquo; ABI(s) representable in Rust. It proposes a solution to this problem in the form
+of <em>adapter functions</em>, where the details of a given adapter are one of a closed set of known
+ABI <em>transformation strategies</em>.</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Link to this section">&para;</a></h2>
+<p>The gist of the problem is that in Miden, the size and number of procedure results is only constrained
+by the maximum addressable operand stack depth. In most programming languages, particularly those in
+which interop is typically performed using some variant of the C ABI (commonly the one described
+in the System V specification), the number of results is almost always limited to a single result,
+and the size of the result type is almost always limited to the size of a single machine word, in
+some cases two. On these platforms, procedure results of greater arity or size are typically handled
+by reserving space in the caller&rsquo;s stack frame, and implicitly prepending the parameter list of the
+callee with an extra parameter: a pointer to the memory allocated for the return value. The callee
+will directly write the return value via this pointer, instead of returning a value in a register.</p>
+<p>In the case of Rust, this means that attempting to represent a procedure that returns multiple values,
+or returns a larger-than-machine-word type, such as <code>Word</code>, will trigger the implicit transformation
+described above, as this is allowed by the standard Rust calling conventions. Since various Miden
+procedures that are part of the standard library and the transaction kernel are affected by this,
+the question becomes &ldquo;how do we define bindings for these procedures in Rust?&rdquo;.</p>
+<p>The solution is to have the compiler emit glue code that closes the gap between the two ABIs. It
+does so by generating adapter functions, which wrap functions that have an ABI unrepresentable in
+Rust, and orchestrate lifting/lowering arguments and results between the adapter and the &ldquo;real&rdquo;
+function.</p>
+<p>When type signatures are available for all Miden Assembly procedures, we can completely automate
+this process. For now, we will require a manually curated list of known procedures, their signatures,
+and the strategy used to &ldquo;adapt&rdquo; those procedures for binding in Rust.</p>
+<h2 id="background">Background<a class="headerlink" href="#background" title="Link to this section">&para;</a></h2>
+<p>After analyzing all of the functions in the transaction kernel API, the most common cause of a mismatch
+between Miden and Rust ABIs, is due to implicit &ldquo;sret&rdquo; parameters, i.e. the transformation mentioned
+above which inserts an implicit pointer to the caller&rsquo;s stack frame for the callee to write the return
+value to, rather than doing so in a register (or in our case, on the operand stack). This seems to
+happen for any type that is larger than 8 bytes (i64).</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For a complete list of the transaction kernel functions, in WIT format, see
+<a href="https://github.com/0xPolygonMiden/compiler/blob/main/tests/rust-apps-wasm/wit-sdk/sdk/wit/miden.wit">miden.wit</a>.</p>
+</div>
+<p>For most transaction kernel functions, the adapter function can be generated automatically using the
+pattern recognition and adapter functions described below.</p>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this section">&para;</a></h3>
+<ul>
+<li>The compiler must know the type signature for any function we wish to apply the adapter strategy to</li>
+</ul>
+<h3 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Link to this section">&para;</a></h3>
+<p>The compiler will analyze every component import to determine if that import requires an adapter,
+as determined by matching against a predefined set of patterns. The adapter generation will take
+place in the frontend, as it has access to all of the needed information, and ensures that we do
+not have any transformations or analyses that make decisions on the un-adapted procedure.</p>
+<p>The following pseudo-code can be used to recognize the various Miden ABI patterns:</p>
+<div class="highlight"><pre><span></span><code><span class="k">pub</span><span class="w"> </span><span class="k">enum</span><span class="w"> </span><span class="nc">MidenAbiPattern</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="sd">/// Calling this procedure will require an sret parameter on the Rust side, so</span>
+<span class="w">    </span><span class="sd">/// we need to emit an adapter that will lift/lower calls according to that</span>
+<span class="w">    </span><span class="sd">/// strategy.</span>
+<span class="w">    </span><span class="n">ReturnViaPointer</span><span class="p">,</span>
+<span class="w">    </span><span class="sd">/// The underlying procedure is fully representable in Rust, and requires no adaptation.</span>
+<span class="w">    </span><span class="n">NoAdapterNeeded</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">MidenAbiPatternRecognition</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">pattern</span><span class="p">:</span><span class="w"> </span><span class="nb">Option</span><span class="o">&lt;</span><span class="n">MidenAbiPattern</span><span class="o">&gt;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">component_function</span><span class="p">:</span><span class="w"> </span><span class="nc">ComponentFunctionType</span><span class="p">,</span>
+<span class="w">    </span><span class="n">wasm_core_func</span><span class="p">:</span><span class="w"> </span><span class="nc">Signature</span><span class="p">,</span>
+<span class="w">    </span><span class="n">tx_kernel_function</span><span class="p">:</span><span class="w"> </span><span class="nc">Signature</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">recognize_miden_abi_pattern</span><span class="p">(</span>
+<span class="w">    </span><span class="n">component_function</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">ComponentFunctionType</span><span class="p">,</span>
+<span class="w">    </span><span class="n">wasm_core_func</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Signature</span><span class="p">,</span>
+<span class="w">    </span><span class="n">tx_kernel_func</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">Signature</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">MidenAbiPatternRecognition</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">wasm_core_func</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">tx_kernel_func</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">MidenAbiPatternRecognition</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">pattern</span><span class="p">:</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">NoAdapterNeeded</span><span class="p">),</span>
+<span class="w">            </span><span class="n">component_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">wasm_core_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">tx_kernel_function</span><span class="p">,</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">component_function</span><span class="p">.</span><span class="n">returns</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">byte_size</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">8</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">wasm_core_func</span><span class="p">.</span><span class="n">params</span><span class="p">.</span><span class="n">last</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">I32</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">MidenAbiPatternRecognition</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">pattern</span><span class="p">:</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">ReturnViaPointer</span><span class="p">),</span>
+<span class="w">            </span><span class="n">component_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">wasm_core_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">tx_kernel_function</span><span class="p">,</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">MidenAbiPatternRecognition</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">pattern</span><span class="p">:</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span>
+<span class="w">            </span><span class="n">component_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">wasm_core_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">tx_kernel_function</span><span class="p">,</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The following pseudo-code can then be used to generate the adapter function:</p>
+<div class="highlight"><pre><span></span><code><span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">generate_adapter</span><span class="p">(</span><span class="n">recognition</span><span class="p">:</span><span class="w"> </span><span class="nc">MidenAbiPatternRecognition</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">match</span><span class="w"> </span><span class="n">recognition</span><span class="p">.</span><span class="n">pattern</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">generate_adapter</span><span class="p">(</span>
+<span class="w">            </span><span class="n">pattern</span><span class="p">,</span>
+<span class="w">            </span><span class="n">recognition</span><span class="p">.</span><span class="n">component_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">recognition</span><span class="p">.</span><span class="n">wasm_core_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">recognition</span><span class="p">.</span><span class="n">tx_kernel_function</span>
+<span class="w">        </span><span class="p">),</span>
+<span class="w">        </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">use_manual_adapter</span><span class="p">(</span>
+<span class="w">            </span><span class="n">recognition</span><span class="p">.</span><span class="n">component_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">recognition</span><span class="p">.</span><span class="n">wasm_core_function</span><span class="p">,</span>
+<span class="w">            </span><span class="n">recognition</span><span class="p">.</span><span class="n">tx_kernel_function</span>
+<span class="w">        </span><span class="p">),</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="sd">/// Escape hatch for the cases when the compiler can&#39;t generate an adapter function automatically</span>
+<span class="sd">/// and we need to provide the adapter function manually.</span>
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">use_manual_adapter</span><span class="p">(</span><span class="o">..</span><span class="p">.)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Find and use the manual adapter in the adapter library for the tx_kernel_function</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The manual adapter library is a collection of adapter functions that are used when the compiler
+can&rsquo;t generate an adapter function automatically so its expected to be provided. The manual adapter
+library is a part of the Miden compiler. It is not anticipated that we will have many, or any, of
+these; however in the near term we are going to manually map procedures to their adapter strategies,
+as we have not yet automated the pattern recognition step.</p>
+<h3 id="return-via-pointer-adapter">Return-via-pointer adapter<a class="headerlink" href="#return-via-pointer-adapter" title="Link to this section">&para;</a></h3>
+<p>The return value is expected to be returned by storing its flattened representation in a pointer
+passed as an argument.</p>
+<p>Recognize this Miden ABI pattern by looking at the Wasm component function type. If the return value
+is bigger than 64 bits, expect the last argument in the Wasm core(HIR) signature to be <code>i32</code> (a pointer).</p>
+<p>The adapter function calls the tx kernel function and stores the result in the provided pointer (the
+last argument of the Wasm core function).</p>
+<p>Here is the pseudo-code for generating the adapter function for the return-via-pointer Miden ABI
+pattern:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wasm_core_function</span><span class="p">.</span><span class="n">params</span><span class="p">.</span><span class="n">last</span><span class="p">();</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">adapter_function</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">FunctionBuilder</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">wasm_core_function</span><span class="p">.</span><span class="n">clone</span><span class="p">());</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">tx_kernel_function_params</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wasm_core_function</span><span class="p">.</span><span class="n">params</span><span class="p">.</span><span class="n">drop_last</span><span class="p">();</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">tx_kernel_func_val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adapter_function</span><span class="p">.</span><span class="n">call</span><span class="p">(</span><span class="n">tx_kernel_function</span><span class="p">,</span><span class="w"> </span><span class="n">tx_kernel_function_params</span><span class="p">);</span>
+<span class="n">adapter_function</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="n">tx_kernel_func_val</span><span class="p">,</span><span class="w"> </span><span class="n">ptr</span><span class="p">);</span>
+<span class="n">adapter_function</span><span class="p">.</span><span class="n">build</span><span class="p">();</span>
+</code></pre></div>
+<p>Here is how the adapter might look like in a pseudo-code for the <code>add_asset</code> function:</p>
+<div class="highlight"><pre><span></span><code>/// Takes an Asset as an argument and returns a new Asset
+func wasm_core_add_asset(v0: f64, v1: f64, v2: f64, v3: f64, ptr: i32) {
+    v4 = call tx_kernel_add_asset(v0, v1, v2, v3);
+    // v4 is a tuple of 4 f64 values
+    store v4 in ptr;
+}
+</code></pre></div>
+<h3 id="no-op-adapter">No-op adapter<a class="headerlink" href="#no-op-adapter" title="Link to this section">&para;</a></h3>
+<p>No adapter is needed. The Wasm core function type is the same as the tx kernel ad-hoc signature.</p>
+<p>This Miden ABI pattern is selected if no other Miden ABI pattern is applicable and the wasm core function signature is the same as the tx kernel ad-hoc signature.</p>
+<p>For example, the <code>get_id</code> function falls under this Miden ABI pattern and its calls will be translated to the tx kernel function calls without any modifications.</p>
+<h2 id="transaction-kernel-functions-that-require-manual-adapter-functions">Transaction kernel functions that require manual adapter functions<a class="headerlink" href="#transaction-kernel-functions-that-require-manual-adapter-functions" title="Link to this section">&para;</a></h2>
+<h3 id="get_assets"><code>get_assets</code><a class="headerlink" href="#get_assets" title="Link to this section">&para;</a></h3>
+<p><code>get_assets:func() -&gt; list&lt;core-asset&gt;</code> in the <code>note</code> interface is the only function that requires attention.
+In Canonical ABI, any function that returns a dynamic list of items needs to allocate memory in the caller&rsquo;s
+module due to the shared-nothing nature of the Wasm component model. For this case, a <code>realloc</code> function
+is passed as a part of lift/lower Canonical ABI options for the caller to allocate memory in the caller&rsquo;s
+module.</p>
+<p>Here are the signatures of the <code>get_assets</code> function in the WIT, core Wasm, and the tx kernel ad-hoc ABI:
+Comment from the <code>miden-base</code></p>
+<div class="highlight"><pre><span></span><code>#! Writes the assets of the currently executing note into memory starting at the specified address.
+#!
+#! Inputs: [dest_ptr]
+#! Outputs: [num_assets, dest_ptr]
+#!
+#! - dest_ptr is the memory address to write the assets.
+#! - num_assets is the number of assets in the currently executing note.
+</code></pre></div>
+<p>Wasm component function type:
+<code>get-assets: func() -&gt; list&lt;core-asset&gt;;</code></p>
+<p>Wasm core signature:
+<code>wasm_core_get_assets(i32) -&gt; ()</code></p>
+<p>If we add a new <code>get_assets_count: func() -&gt; u32;</code> function to the tx kernel and add the assets count
+parameter to the <code>get_assets</code> function (<code>get_assets: func(assets_count: u32) -&gt; list&lt;core-asset&gt;;</code>)
+we should have everything we need to manually write the adapter function for the <code>get_assets</code>
+function.</p>
+<p>The list is expected to be returned by storing the pointer to its first item in a <code>ptr</code> pointer
+passed as an argument and item count at <code>ptr + 4 bytes</code> address (<code>ptr</code> points to two pointers).</p>
+<p>We could try to recognize this Miden ABI pattern by looking at the Wasm component function type. If
+the return value is a list, expect the last argument in the Wasm core(HIR) signature to be <code>i32</code>
+(a pointer). The problem is recognizing the list count parameter in the Wasm core(HIR) signature.</p>
+<p>The adapter function calls allocates <code>asset_count * item_size</code> memory via the <code>realloc</code> call and
+passes the pointer to the newly allocated memory to the tx kernel function.</p>
+<p>Here is how the adapter function might look like in a pseudo-code for the <code>get_assets</code> function:</p>
+<div class="highlight"><pre><span></span><code><span class="n">func</span><span class="w"> </span><span class="n">wasm_core_get_assets</span><span class="p">(</span><span class="n">asset_count</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span><span class="w"> </span><span class="n">ptr_ptr</span><span class="p">:</span><span class="w"> </span><span class="kt">i32</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mem_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">asset_count</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">item_size</span><span class="p">;</span>
+<span class="w">    </span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">realloc</span><span class="p">(</span><span class="n">mem_size</span><span class="p">);</span>
+<span class="w">    </span><span class="p">(</span><span class="n">actual_asset_count</span><span class="p">,</span><span class="w"> </span><span class="n">ptr</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">call</span><span class="w"> </span><span class="n">tx_kernel_get_assets</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+<span class="w">    </span><span class="n">assert</span><span class="p">(</span><span class="n">actual_asset_count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">asset_count</span><span class="p">);</span>
+<span class="w">    </span><span class="n">store</span><span class="w"> </span><span class="n">ptr</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">ptr_ptr</span><span class="p">;</span>
+<span class="w">    </span><span class="n">store</span><span class="w"> </span><span class="n">account_count</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">ptr_ptr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since the <code>get_assets</code> tx kernel function in the current form can trash the provided memory if
+the actual assets count differs from the returned by <code>get_assets_count</code>, we can introduce the
+asset count parameter to the <code>get_assets</code> tx kernel function and check that it the same as the
+actual assets count written to memory.</p>
+</div>
+<h2 id="the-example-of-some-functions-signatures">The example of some functions signatures<a class="headerlink" href="#the-example-of-some-functions-signatures" title="Link to this section">&para;</a></h2>
+<h3 id="add_asset-return-via-pointer-miden-abi-pattern"><code>add_asset</code> (return-via-pointer Miden ABI pattern)<a class="headerlink" href="#add_asset-return-via-pointer-miden-abi-pattern" title="Link to this section">&para;</a></h3>
+<p>Comment from the <code>miden-base</code></p>
+<div class="highlight"><pre><span></span><code>#! Add the specified asset to the vault.
+#!
+#! Panics:
+#! - If the asset is not valid.
+#! - If the total value of two fungible assets is greater than or equal to 2^63.
+#! - If the vault already contains the same non-fungible asset.
+#!
+#! Stack: [ASSET]
+#! Output: [ASSET&#39;]
+#!
+#! - ASSET&#39; final asset in the account vault is defined as follows:
+#!   - If ASSET is a non-fungible asset, then ASSET&#39; is the same as ASSET.
+#!   - If ASSET is a fungible asset, then ASSET&#39; is the total fungible asset in the account vault
+#!     after ASSET was added to it.
+</code></pre></div>
+<p>Wasm component function type:
+<code>add-asset(core-asset) -&gt; core-asset</code></p>
+<p>Wasm core signature:
+<code>wasm_core_add_asset(f64, f64, f64, f64, i32) -&gt; ()</code>
+The last <code>i32</code> is a pointer to a returned value (<code>word</code>)</p>
+<p>Tx kernel ad-hoc signature:
+<code>tx_kernel_add_asset(felt, felt, felt, felt) -&gt; (felt, felt, felt, felt)</code></p>
+<h3 id="get_id-no-adapter-needed-miden-abi-pattern"><code>get_id</code> (no-adapter-needed Miden ABI pattern)<a class="headerlink" href="#get_id-no-adapter-needed-miden-abi-pattern" title="Link to this section">&para;</a></h3>
+<p>Comment from the <code>miden-base</code>
+<div class="highlight"><pre><span></span><code>#! Returns the account id.
+#!
+#! Stack: []
+#! Output: [acct_id]
+#!
+#! - acct_id is the account id.
+</code></pre></div></p>
+<p>Wasm component function type:
+<code>get-id() -&gt; account-id</code></p>
+<p>Wasm core signature:
+<code>wasm_core_get_id() -&gt; f64</code></p>
+<p>Tx kernel ad-hoc signature:
+<code>tx_kernel_get_id() -&gt; felt</code></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../calling-conventions/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Calling conventions">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Calling conventions
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["search.suggest", "search.highlight", "search.share", "navigation.instant.progress", "navigation.tracking", "navigation.integration", "navigation.indexes", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.af256bd8.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=4.8.0"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+        <script src="../../js/open_in_new_tab.js"></script>
+      
+    
+  </body>
+</html>

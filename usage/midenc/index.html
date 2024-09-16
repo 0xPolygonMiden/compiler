@@ -1,0 +1,1059 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../..">
+      
+      
+        <link rel="next" href="../cargo-miden/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.33">
+    
+    
+      
+        <title>midenc - Miden Compiler Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#getting-started-with-midenc" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Miden Compiler Docs" class="md-header__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Miden Compiler Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              midenc
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91 1.61 0 2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08Z"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Miden Compiler Docs" class="md-nav__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Miden Compiler Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Usage
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Usage
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    midenc
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    midenc
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compilation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cargo-miden/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    cargo miden
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/rust_to_wasm/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Rust To WebAssembly
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/wasm_to_masm/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    WebAssembly To Miden Assembly
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/develop_miden_in_rust/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developing Miden programs In Rust
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Developing Miden rollup accounts and note scripts In Rust
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../debugger/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Debugging programs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Compiler architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Compiler architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/frontends/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported front ends
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Appendices
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Appendices
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendix/known-limitations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Known limitations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendix/calling-conventions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Calling conventions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../appendix/canonabi-adhocabi-mismatch/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Canonical ABI vs Miden ABI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Usage
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compilation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debugging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="getting-started-with-midenc">Getting started with <code>midenc</code><a class="headerlink" href="#getting-started-with-midenc" title="Link to this section">&para;</a></h1>
+<p>The <code>midenc</code> executable is the command-line interface for the compiler driver, as well as other
+helpful tools, such as the interactive debugger.</p>
+<p>While it is a lower-level tool compared to <code>cargo-miden</code>, just like the difference between <code>rustc</code>
+and <code>cargo</code>, it provides a lot of functionality for emitting diagnostic information, controlling
+the output of the compiler, and configuring the compilation pipeline. Most users will want to use
+<code>cargo-miden</code>, but understanding <code>midenc</code> is helpful for those times where you need to get your
+hands dirty.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Link to this section">&para;</a></h2>
+<p>First, you&rsquo;ll need to have Rust installed, with the nightly toolchain (currently we&rsquo;re building
+against the <code>nightly-2024-05-07</code> toolchain, but we regularly update this).</p>
+<p>Then, simply install <code>midenc</code> using Cargo in one of the following ways:</p>
+<div class="codehilite"><pre><span></span><code>#<span class="w"> </span><span class="nv">From</span><span class="w"> </span><span class="nv">crates</span>.<span class="nv">io</span>:
+<span class="nv">cargo</span><span class="w"> </span><span class="o">+</span><span class="nv">nightly</span><span class="w"> </span><span class="nv">install</span><span class="w"> </span><span class="nv">midenc</span>
+
+#<span class="w"> </span><span class="k">If</span><span class="w"> </span><span class="nv">you</span><span class="w"> </span><span class="nv">have</span><span class="w"> </span><span class="nv">cloned</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">git</span><span class="w"> </span><span class="nv">repo</span>,<span class="w"> </span><span class="nv">and</span><span class="w"> </span><span class="nv">are</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">project</span><span class="w"> </span><span class="nv">root</span>:
+<span class="nv">cargo</span><span class="w"> </span><span class="nv">make</span><span class="w"> </span><span class="nv">install</span>
+
+#<span class="w"> </span><span class="k">If</span><span class="w"> </span><span class="nv">you</span><span class="w"> </span><span class="nv">have</span><span class="w"> </span><span class="nv">Rust</span><span class="w"> </span><span class="nv">installed</span>,<span class="w"> </span><span class="nv">but</span><span class="w"> </span><span class="nv">have</span><span class="w"> </span><span class="nv">not</span><span class="w"> </span><span class="nv">cloned</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">git</span><span class="w"> </span><span class="nv">repo</span>:
+<span class="nv">cargo</span><span class="w"> </span><span class="nv">install</span><span class="w"> </span><span class="o">--</span><span class="nv">git</span><span class="w"> </span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="mi">0</span><span class="nv">xpolygonmiden</span><span class="o">/</span><span class="nv">compiler</span><span class="w"> </span><span class="nv">midenc</span>
+</code></pre></div>
+
+<div class="admonition advice">
+<p class="admonition-title">Advice</p>
+<p>This installation method relies on Cargo-managed binaries being in your shell <code>PATH</code>,
+which is almost always the case, but if you have disabled this functionality, you&rsquo;ll need
+to add <code>midenc</code> to your <code>PATH</code> manually.</p>
+</div>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Link to this section">&para;</a></h2>
+<p>Once installed, you should be able to invoke the compiler, you should see output similar to this:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">midenc</span><span class="w"> </span><span class="n">help</span><span class="w"> </span><span class="n">compile</span>
+<span class="k">Usage</span><span class="err">:</span><span class="w"> </span><span class="n">midenc</span><span class="w"> </span><span class="n">compile</span><span class="w"> </span><span class="o">[</span><span class="n">OPTIONS</span><span class="o">]</span><span class="w"> </span><span class="o">[</span><span class="n">-- &lt;INPUTS&gt;...</span><span class="o">]</span>
+
+<span class="nl">Arguments</span><span class="p">:</span>
+<span class="w">  </span><span class="o">[</span><span class="n">INPUTS</span><span class="o">]</span><span class="p">...</span>
+<span class="w">          </span><span class="k">Path</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="k">file</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">compile</span><span class="p">.</span>
+
+<span class="w">          </span><span class="n">You</span><span class="w"> </span><span class="n">may</span><span class="w"> </span><span class="n">also</span><span class="w"> </span><span class="k">use</span><span class="w"> </span><span class="err">`</span><span class="o">-</span><span class="err">`</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">file</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="k">read</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">file</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">stdin</span><span class="p">.</span>
+
+<span class="nl">Options</span><span class="p">:</span>
+<span class="w">      </span><span class="o">--</span><span class="k">output</span><span class="o">-</span><span class="n">dir</span><span class="w"> </span><span class="o">&lt;</span><span class="n">DIR</span><span class="o">&gt;</span>
+<span class="w">          </span><span class="k">Write</span><span class="w"> </span><span class="ow">all</span><span class="w"> </span><span class="n">compiler</span><span class="w"> </span><span class="n">artifacts</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">DIR</span>
+
+<span class="w">  </span><span class="o">-</span><span class="n">W</span><span class="w"> </span><span class="o">&lt;</span><span class="k">LEVEL</span><span class="o">&gt;</span>
+<span class="w">          </span><span class="k">Modify</span><span class="w"> </span><span class="n">how</span><span class="w"> </span><span class="n">warnings</span><span class="w"> </span><span class="k">are</span><span class="w"> </span><span class="n">treated</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">compiler</span>
+
+<span class="w">          </span><span class="o">[</span><span class="n">default: auto</span><span class="o">]</span>
+
+<span class="w">          </span><span class="n">Possible</span><span class="w"> </span><span class="k">values</span><span class="err">:</span>
+<span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="k">none</span><span class="err">:</span><span class="w">  </span><span class="n">Disable</span><span class="w"> </span><span class="ow">all</span><span class="w"> </span><span class="n">warnings</span>
+<span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="nl">auto</span><span class="p">:</span><span class="w">  </span><span class="n">Enable</span><span class="w"> </span><span class="ow">all</span><span class="w"> </span><span class="n">warnings</span>
+<span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="nl">error</span><span class="p">:</span><span class="w"> </span><span class="n">Promotes</span><span class="w"> </span><span class="n">warnings</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">errors</span>
+
+<span class="w">  </span><span class="o">-</span><span class="n">v</span><span class="p">,</span><span class="w"> </span><span class="o">--</span><span class="n">verbose</span>
+<span class="w">          </span><span class="k">When</span><span class="w"> </span><span class="k">set</span><span class="p">,</span><span class="w"> </span><span class="n">produces</span><span class="w"> </span><span class="n">more</span><span class="w"> </span><span class="n">verbose</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="n">during</span><span class="w"> </span><span class="n">compilation</span>
+
+<span class="w">  </span><span class="o">-</span><span class="n">h</span><span class="p">,</span><span class="w"> </span><span class="o">--</span><span class="n">help</span>
+<span class="w">          </span><span class="k">Print</span><span class="w"> </span><span class="n">help</span><span class="w"> </span><span class="p">(</span><span class="n">see</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">summary</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="s1">&#39;-h&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The actual help output covers quite a bit more than shown here, this is just for illustrative
+purposes.</p>
+<p>The <code>midenc</code> executable supports two primary functions at this time:</p>
+<ul>
+<li><code>midenc compile</code> to compile one of our supported input formats to Miden Assembly</li>
+<li><code>midenc debug</code> to run a Miden program attached to an interactive debugger</li>
+<li><code>midenc run</code> to run a Miden program non-interactively, equivalent to <code>miden run</code></li>
+</ul>
+<h2 id="compilation">Compilation<a class="headerlink" href="#compilation" title="Link to this section">&para;</a></h2>
+<p>See the help output for <code>midenc compile</code> for detailed information on its options and their
+behavior. However, the following is an example of how one might use <code>midenc compile</code> in practice:</p>
+<div class="highlight"><pre><span></span><code>midenc<span class="w"> </span>compile<span class="w"> </span>--target<span class="w"> </span>rollup<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--entrypoint<span class="w"> </span><span class="s1">&#39;foo::main&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-lextra<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-L<span class="w"> </span>./masm<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--emit<span class="o">=</span><span class="nv">hir</span><span class="o">=</span>-,masp<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>out.masp<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>target/wasm32-wasip1/release/foo.wasm
+</code></pre></div>
+<p>In this scenario, we are in the root of a Rust crate, named <code>foo</code>, which we have compiled for the
+<code>wasm32-wasip1</code> target, which placed the resulting WebAssembly module in the
+<code>target/wasm32-wasip1/release</code> directory. This crate exports a function named <code>main</code>, which we want
+to use as the entrypoint of the program.</p>
+<p>Additionally, our Rust code links against some hand-written Miden Assembly code, namespaced under
+<code>extra</code>, which can be found in <code>./masm/extra</code>. We are telling <code>midenc</code> to link the <code>extra</code> library,
+and to add the <code>./masm</code> directory to the library search path.</p>
+<p>Lastly, we&rsquo;re configuring the output:</p>
+<ul>
+<li>We&rsquo;re using <code>--emit</code> to request <code>midenc</code> to dump Miden IR (<code>hir</code>) to stdout (specified via the <code>-</code>
+shorthand), in addition to the Miden package artifact (<code>masp</code>).</li>
+<li>We&rsquo;re telling <code>midenc</code> to write the compiled output to <code>out.masp</code> in the current directory, rather
+than the default path that would have been used (<code>target/miden/foo.masp</code>).</li>
+</ul>
+<h2 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Link to this section">&para;</a></h2>
+<p>See <a href="../debugger/">Debugging Programs</a> for details on using <code>midenc debug</code> to debug Miden programs.</p>
+<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Link to this section">&para;</a></h2>
+<p>We have put together two useful guides to walk through more detail on compiling Rust to WebAssembly:</p>
+<ol>
+<li>To learn how to compile Rust to WebAssembly so that you can invoke <code>midenc compile</code> on the
+resulting Wasm module, see <a href="../../guides/rust_to_wasm/">this guide</a>.</li>
+<li>If you already have a WebAssembly module, or know how to produce one, and want to learn how to
+compile it to Miden Assembly, see <a href="../../guides/wasm_to_masm/">this guide</a>.</li>
+</ol>
+<p>You may also be interested in our <a href="https://github.com/0xpolygonmiden/rust-templates/tree/main/account/template">basic account project template</a>,
+as a starting point for your own Rust project.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting started">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Getting started
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../cargo-miden/" class="md-footer__link md-footer__link--next" aria-label="Next: cargo miden">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                cargo miden
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["search.suggest", "search.highlight", "search.share", "navigation.instant.progress", "navigation.tracking", "navigation.integration", "navigation.indexes", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.af256bd8.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=4.8.0"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+        <script src="../../js/open_in_new_tab.js"></script>
+      
+    
+  </body>
+</html>

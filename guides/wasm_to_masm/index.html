@@ -9,20 +9,22 @@
       
       
       
+        <link rel="prev" href="../rust_to_wasm/">
       
-        <link rel="next" href="usage/midenc/">
+      
+        <link rel="next" href="../develop_miden_in_rust/">
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.33">
     
     
       
-        <title>Miden Compiler Docs</title>
+        <title>WebAssembly To Miden Assembly - Miden Compiler Docs</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.3cba04c6.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
       
       
 
@@ -45,7 +47,7 @@
     
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#getting-started" class="md-skip">
+        <a href="#compiling-webassembly-to-miden-assembly" class="md-skip">
           Skip to content
         </a>
       
@@ -80,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Miden Compiler Docs" class="md-header__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+    <a href="../.." title="Miden Compiler Docs" class="md-header__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -100,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting started
+              WebAssembly To Miden Assembly
             
           </span>
         </div>
@@ -182,7 +184,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Miden Compiler Docs" class="md-nav__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+    <a href="../.." title="Miden Compiler Docs" class="md-nav__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -197,30 +199,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Getting started
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -229,104 +211,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-provided" class="md-nav__link">
-    <span class="md-ellipsis">
-      What is provided?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-can-i-do-with-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      What can I do with it?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What can I do with it?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#rust" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rust
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#webassembly" class="md-nav__link">
-    <span class="md-ellipsis">
-      WebAssembly
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#miden-ir" class="md-nav__link">
-    <span class="md-ellipsis">
-      Miden IR
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#known-bugs-and-limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Known bugs and limitations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      Where to start?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Installation
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -379,7 +263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="usage/midenc/" class="md-nav__link">
+      <a href="../../usage/midenc/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -400,7 +284,7 @@
   
   
     <li class="md-nav__item">
-      <a href="usage/cargo-miden/" class="md-nav__link">
+      <a href="../../usage/cargo-miden/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -425,8 +309,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -443,11 +329,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -461,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Guides
@@ -475,7 +361,7 @@
   
   
     <li class="md-nav__item">
-      <a href="guides/rust_to_wasm/" class="md-nav__link">
+      <a href="../rust_to_wasm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -493,10 +379,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="guides/wasm_to_masm/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    WebAssembly To Miden Assembly
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -505,6 +411,62 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compiling-to-miden-assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compiling to Miden Assembly
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-with-the-miden-vm" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing with the Miden VM
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -517,7 +479,7 @@
   
   
     <li class="md-nav__item">
-      <a href="guides/develop_miden_in_rust/" class="md-nav__link">
+      <a href="../develop_miden_in_rust/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -538,7 +500,7 @@
   
   
     <li class="md-nav__item">
-      <a href="guides/develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-nav__link">
+      <a href="../develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -559,7 +521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="usage/debugger/" class="md-nav__link">
+      <a href="../../usage/debugger/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -628,7 +590,7 @@
   
   
     <li class="md-nav__item">
-      <a href="design/overview/" class="md-nav__link">
+      <a href="../../design/overview/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -649,7 +611,7 @@
   
   
     <li class="md-nav__item">
-      <a href="design/frontends/" class="md-nav__link">
+      <a href="../../design/frontends/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -720,7 +682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendix/known-limitations/" class="md-nav__link">
+      <a href="../../appendix/known-limitations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -741,7 +703,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendix/calling-conventions/" class="md-nav__link">
+      <a href="../../appendix/calling-conventions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -762,7 +724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="appendix/canonabi-adhocabi-mismatch/" class="md-nav__link">
+      <a href="../../appendix/canonabi-adhocabi-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -810,78 +772,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-provided" class="md-nav__link">
+  <a href="#setup" class="md-nav__link">
     <span class="md-ellipsis">
-      What is provided?
+      Setup
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-can-i-do-with-it" class="md-nav__link">
+  <a href="#compiling-to-miden-assembly" class="md-nav__link">
     <span class="md-ellipsis">
-      What can I do with it?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What can I do with it?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#rust" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rust
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#webassembly" class="md-nav__link">
-    <span class="md-ellipsis">
-      WebAssembly
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#miden-ir" class="md-nav__link">
-    <span class="md-ellipsis">
-      Miden IR
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#known-bugs-and-limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Known bugs and limitations
+      Compiling to Miden Assembly
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-start" class="md-nav__link">
+  <a href="#testing-with-the-miden-vm" class="md-nav__link">
     <span class="md-ellipsis">
-      Where to start?
+      Testing with the Miden VM
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#installation" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
-      Installation
+      Next steps
     </span>
   </a>
   
@@ -902,89 +822,117 @@
                   
 
 
-<h1 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Link to this section">&para;</a></h1>
-<p>Welcome to the documentation for the Miden compiler toolchain.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The compiler is currently in an experimental state, and has known bugs and limitations, it is
-not yet ready for production usage. However, we&rsquo;d encourage you to start experimenting with it
-yourself, and give us feedback on any issues or sharp edges you encounter.</p>
+<h1 id="compiling-webassembly-to-miden-assembly">Compiling WebAssembly to Miden Assembly<a class="headerlink" href="#compiling-webassembly-to-miden-assembly" title="Link to this section">&para;</a></h1>
+<p>This guide will walk you through compiling a WebAssembly (Wasm) module, in binary form
+(i.e. a <code>.wasm</code> file), to Miden Assembly (Masm), both in its binary package form (a <code>.masp</code> file),
+and in textual Miden Assembly syntax form (i.e. a <code>.masm</code> file).</p>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Link to this section">&para;</a></h2>
+<p>We will be making use of the example crate we created in <a href="../rust_to_wasm/">Compiling Rust to WebAssembly</a>,
+which produces a small Wasm module that is easy to examine in Wasm text format, and demonstrates a
+good set of default choices for a project compiling to Miden Assembly from Rust.</p>
+<p>In this chapter, we will be compiling Wasm to Masm using the <code>midenc</code> executable, so ensure that
+you have followed the instructions in the <a href="../../usage/midenc/">Getting Started with <code>midenc</code></a> guide
+and then return here.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While we are using <code>midenc</code> for this guide, the more common use case will be to use the
+<code>cargo-miden</code> Cargo extension to handle the gritty details of compiling from Rust to Wasm
+for you. However, the purpose of this guide is to show you what <code>cargo-miden</code> is handling
+for you, and to give you a foundation for using <code>midenc</code> yourself if needed.</p>
 </div>
-<p>The documentation found here should provide a good starting point for the current capabilities of
-the toolchain, however if you find something that is not covered, but is not listed as
-unimplemented or a known limitation, please let us know by reporting an issue on the compiler
-<a href="https://github.com/0xpolygonmiden/compiler/issues">issue tracker</a>.</p>
-<h2 id="what-is-provided">What is provided?<a class="headerlink" href="#what-is-provided" title="Link to this section">&para;</a></h2>
-<p>The compiler toolchain consists of the following primary components:</p>
-<ul>
-<li>An intermediate representation (IR), which can be lowered to by compiler backends wishing to
-support Miden as a target. The Miden IR is an SSA IR, much like Cranelift or LLVM, providing a
-much simpler path from any given source language (e.g. Rust), to Miden Assembly. It is used
-internally by the rest of the Miden compiler suite.</li>
-<li>A WebAssembly (Wasm) frontend for Miden IR. It can handle lowering both core Wasm modules, as
-well as basic components using the experimental WebAssembly Component Model. Currently, the Wasm
-frontend is known to work with Wasm modules produced by <code>rustc</code>, which is largely just what LLVM
-produces, but with the shadow stack placed at the start of linear memory rather than after
-read-only data. In the future we intend to support more variety in the structure of Wasm modules
-we accept, but for the time being we&rsquo;re primarily focused on using this as the path for lowering
-Rust to Miden.</li>
-<li>The compiler driver, in the form of the <code>midenc</code> executable, and a Rust crate, <code>midenc-compiler</code>
-to allow integrating the compiler into other tools. This plays the same role as <code>rustc</code> does in
-the Rust ecosystem.</li>
-<li>A Cargo extension, <code>cargo-miden</code>, that provides a convenient developer experience for creating
-and compiling Rust projects targeting Miden. It contains a project template for a basic Rust crate,
-and handles orchestrating <code>rustc</code> and <code>midenc</code> to compile the crate to WebAssembly, and then to
-Miden Assembly.</li>
-<li>A terminal-based interactive debugger, available via <code>midenc debug</code>, which provides a UI very
-similar to <code>lldb</code> or <code>gdb</code> when using the TUI mode. You can use this to run a program, or step
-through it cycle-by-cycle. You can set various types of breakpoints; see the source code, call
-stack, and contents of the operand stack at the current program point; as well as interatively
-read memory and format it in various ways for display.</li>
-<li>A Miden SDK for Rust, which provides types and bindings to functionality exported from the Miden
-standard library, as well as the Miden transaction kernel API. You can use this to access native
-Miden features which are not provided by Rust out-of-the-box. The project template generated by
-<code>cargo miden new</code> automatically adds this as a dependency.</li>
-</ul>
-<h2 id="what-can-i-do-with-it">What can I do with it?<a class="headerlink" href="#what-can-i-do-with-it" title="Link to this section">&para;</a></h2>
-<p>That all sounds great, but what can you do with the compiler today? The answer depends a bit on what
-aspect of the compiler you are interested in:</p>
-<h3 id="rust">Rust<a class="headerlink" href="#rust" title="Link to this section">&para;</a></h3>
-<p>The most practically useful, and interesting capability provided by the compiler currently, is the
-ability to compile arbitrary Rust programs to Miden Assembly. See the guides for more information
-on setting up and compiling a Rust crate for execution via Miden.</p>
-<h3 id="webassembly">WebAssembly<a class="headerlink" href="#webassembly" title="Link to this section">&para;</a></h3>
-<p>More generally, the compiler frontend is capable of compiling WebAssembly modules, with some
-constraints, to Miden Assembly. As a result, it is possible to compile a wider variety of languages
-to Miden Assembly than just Rust, so long as the language can compile to WebAssembly. However, we
-do not currently provide any of the language-level support for languages other than Rust, and
-have limited ability to provide engineering support for languages other than Rust at this time.</p>
-<p>Our Wasm frontend does not support all of the extensions to the WebAssembly MVP, most notably the
-reference types and GC proposals.</p>
-<h3 id="miden-ir">Miden IR<a class="headerlink" href="#miden-ir" title="Link to this section">&para;</a></h3>
-<p>If you are interested in compiling to Miden from your own compiler, you can target Miden IR, and
-invoke the driver from your compiler to emit Miden artifacts. At this point in time, we don&rsquo;t have
-the resources to provide much in the way of engineering support for this use case, but if you find
-issues in your efforts to use the IR in your compiler, we would certainly like to know about them!</p>
-<p>We do not currently perform any optimizations on the IR, since we are primarily working with the
-output of compiler backends which have already applied optimizations, at this time. This may change
-in the future, but for now it is expected that you implement your own optimization passes as needed.</p>
-<h2 id="known-bugs-and-limitations">Known bugs and limitations<a class="headerlink" href="#known-bugs-and-limitations" title="Link to this section">&para;</a></h2>
-<p>For the latest information on known bugs, see the <a href="https://github.com/0xpolygonmiden/compiler/issues">issue tracker</a>.</p>
-<p>See <a href="appendix/known-limitations/">Known Limitations</a> for details on what functionality is
-missing or only partially implemented.</p>
-<h2 id="where-to-start">Where to start?<a class="headerlink" href="#where-to-start" title="Link to this section">&para;</a></h2>
-<p>Provided here are a set of guides which are focused on documenting a couple of supported workflows
-we expect will meet the needs of most users, within the constraints of the current feature set of
-the compiler. If you find that there is something you wish to do that is not covered, and is not
-one of our known limitations, please open an issue, and we will try to address the missing docs as
-soon as possible.</p>
-<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Link to this section">&para;</a></h2>
-<p>To get started, there are a few ways you might use the Miden compiler. Select the one that applies
-to you, and the corresponding guide will walk you through getting up and running:</p>
-<ol>
-<li><a href="usage/cargo-miden/">Using the Cargo extension</a></li>
-<li><a href="usage/midenc/">Using the <code>midenc</code> executable</a></li>
-</ol>
+<h2 id="compiling-to-miden-assembly">Compiling to Miden Assembly<a class="headerlink" href="#compiling-to-miden-assembly" title="Link to this section">&para;</a></h2>
+<p>In the last chapter, we compiled a Rust crate to WebAssembly that contains an implementation
+of the Fibonacci function called <code>fib</code>, that was emitted to
+<code>target/wasm32-wasip1/release/wasm_fib.wasm</code>. All that remains is to tell <code>midenc</code> to compile this
+module to Miden Assembly.</p>
+<p>Currently, by default, the compiler will emit an experimental package format that the Miden VM does
+not yet support. We will instead use <code>midenc run</code> to execute the package using the VM for us, but
+once the package format is stabilized, this same approach will work with <code>miden run</code> as well.</p>
+<p>We also want to examine the Miden Assembly generated by the compiler, so we&rsquo;re going to ask the
+compiler to emit both types of artifacts:</p>
+<div class="highlight"><pre><span></span><code>midenc<span class="w"> </span>compile<span class="w"> </span>--emit<span class="w"> </span><span class="nv">masm</span><span class="o">=</span>wasm_fib.masm,masp<span class="w">  </span>target/wasm32-wasip1/release/wasm_fib.wasm
+</code></pre></div>
+<p>This will compile our Wasm module to a Miden package with the <code>.masp</code> extension, and also emit the
+textual Masm to <code>wasm_fib.masm</code> so we can review it. The <code>wasm_fib.masp</code> file will be emitted in the
+default output directory, which is the current working directory by default.</p>
+<p>If we dump the contents of <code>wasm_fib.masm</code>, we&rsquo;ll see the following generated code:</p>
+<div class="highlight"><pre><span></span><code>export.fib
+  push.0
+  push.1
+  movup.2
+  swap.1
+  dup.1
+  neq.0
+  push.1
+  while.true
+    if.true
+      push.4294967295
+      movup.2
+      swap.1
+      u32wrapping_add
+      dup.1
+      swap.1
+      swap.3
+      swap.1
+      u32wrapping_add
+      movup.2
+      swap.1
+      dup.1
+      neq.0
+      push.1
+    else
+      drop
+      drop
+      push.0
+    end
+  end
+end
+</code></pre></div>
+<p>If you compare this to the WebAssembly text format, you can see that this is a fairly
+faithful translation, but there may be areas where we generate sub-optimal Miden Assembly.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At the moment the compiler does only minimal optimization, late in the pipeline during codegen,
+and only in an effort to minimize operand stack management code. So if you see an instruction
+sequence you think is bad, bring it to our attention, and if it is something that we can solve
+as part of our overall optimization efforts, we will be sure to do so. There <em>are</em> limits to
+what we can generate compared to what one can write by hand, particularly because Rust&rsquo;s
+memory model requires us to emulate byte-addressable memory on top of Miden&rsquo;s word-addressable
+memory, however our goal is to keep this overhead within an acceptable bound in the general case,
+and easily-recognized patterns that can be simplified using peephole optimization are precisely
+the kind of thing we&rsquo;d like to know about, as those kinds of optimizations are likely to produce
+the most significant wins.</p>
+</div>
+<h2 id="testing-with-the-miden-vm">Testing with the Miden VM<a class="headerlink" href="#testing-with-the-miden-vm" title="Link to this section">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Because the compiler ships with the VM embedded for <code>midenc debug</code>, you can run your program
+without having to install the VM separately, though you should do that as well, as <code>midenc</code> only
+exposes a limited set of commands for executing programs, intended for debugging.</p>
+</div>
+<p>We can test our compiled program like so:</p>
+<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>midenc<span class="w"> </span>run<span class="w"> </span>--num-outputs<span class="w"> </span><span class="m">1</span><span class="w"> </span>wasm_fib.masp<span class="w"> </span>--<span class="w"> </span><span class="nv">10</span>
+<span class="o">============================================================</span>
+Run<span class="w"> </span>program:<span class="w"> </span>wasm_fib.masp
+<span class="o">============================================================</span>
+Executed<span class="w"> </span>program<span class="w"> </span>with<span class="w"> </span><span class="nb">hash</span><span class="w"> </span>0xe5ba88695040ec2477821b26190e9addbb1c9571ae30c564f5bbfd6cabf6c535<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">19</span><span class="w"> </span>milliseconds
+Output:<span class="w"> </span><span class="o">[</span><span class="m">55</span><span class="o">]</span>
+VM<span class="w"> </span>cycles:<span class="w"> </span><span class="m">295</span><span class="w"> </span>extended<span class="w"> </span>to<span class="w"> </span><span class="m">512</span><span class="w"> </span>steps<span class="w"> </span><span class="o">(</span><span class="m">42</span>%<span class="w"> </span>padding<span class="o">)</span>.
+├──<span class="w"> </span>Stack<span class="w"> </span>rows:<span class="w"> </span><span class="m">295</span>
+├──<span class="w"> </span>Range<span class="w"> </span>checker<span class="w"> </span>rows:<span class="w"> </span><span class="m">67</span>
+└──<span class="w"> </span>Chiplets<span class="w"> </span>rows:<span class="w"> </span><span class="m">250</span>
+├──<span class="w"> </span>Hash<span class="w"> </span>chiplet<span class="w"> </span>rows:<span class="w"> </span><span class="m">248</span>
+├──<span class="w"> </span>Bitwise<span class="w"> </span>chiplet<span class="w"> </span>rows:<span class="w"> </span><span class="m">0</span>
+├──<span class="w"> </span>Memory<span class="w"> </span>chiplet<span class="w"> </span>rows:<span class="w"> </span><span class="m">1</span>
+└──<span class="w"> </span>Kernel<span class="w"> </span>ROM<span class="w"> </span>rows:<span class="w"> </span><span class="m">0</span>
+</code></pre></div>
+
+<p>Success! We got the expected result of <code>55</code>.</p>
+<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Link to this section">&para;</a></h2>
+<p>This guide is not comprehensive, as we have not yet examined in detail the differences between
+compiling libraries vs programs, linking together multiple libraries, packages, or discussed some of
+the more esoteric compiler options. We will be updating this documentation with those details and
+more in the coming weeks and months, so bear with us while we flesh out our guides!</p>
 
 
 
@@ -1019,15 +967,31 @@ to you, and the corresponding guide will walk you through getting up and running
       
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
+          
+          <a href="../rust_to_wasm/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Rust To WebAssembly">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Rust To WebAssembly
+              </div>
+            </div>
+          </a>
+        
         
           
-          <a href="usage/midenc/" class="md-footer__link md-footer__link--next" aria-label="Next: midenc">
+          <a href="../develop_miden_in_rust/" class="md-footer__link md-footer__link--next" aria-label="Next: Developing Miden programs In Rust">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                midenc
+                Developing Miden programs In Rust
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1063,10 +1027,10 @@ to you, and the corresponding guide will walk you through getting up and running
       <div class="md-progress" data-md-component="progress" role="progressbar"></div>
     
     
-    <script id="__config" type="application/json">{"base": ".", "features": ["search.suggest", "search.highlight", "search.share", "navigation.instant.progress", "navigation.tracking", "navigation.integration", "navigation.indexes", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "content.code.copy", "content.action.edit"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["search.suggest", "search.highlight", "search.share", "navigation.instant.progress", "navigation.tracking", "navigation.integration", "navigation.indexes", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.af256bd8.min.js"></script>
+      <script src="../../assets/javascripts/bundle.af256bd8.min.js"></script>
       
         <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=4.8.0"></script>
       
@@ -1076,7 +1040,7 @@ to you, and the corresponding guide will walk you through getting up and running
       
         <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
       
-        <script src="js/open_in_new_tab.js"></script>
+        <script src="../../js/open_in_new_tab.js"></script>
       
     
   </body>

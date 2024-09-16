@@ -9,18 +9,22 @@
       
       
       
+        <link rel="prev" href="../wasm_to_masm/">
       
       
-      <link rel="icon" href="/assets/images/favicon.png">
+        <link rel="next" href="../develop_miden_rollup_accounts_and_note_scripts_in_rust/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.33">
     
     
       
-        <title>Miden Compiler Docs</title>
+        <title>Developing Miden programs In Rust - Miden Compiler Docs</title>
       
     
     
-      <link rel="stylesheet" href="/assets/stylesheets/main.3cba04c6.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.3cba04c6.min.css">
       
       
 
@@ -43,7 +47,7 @@
     
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
     
-    <script>__md_scope=new URL("/",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -61,6 +65,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#developing-miden-programs-in-rust" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -73,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="/." title="Miden Compiler Docs" class="md-header__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+    <a href="../.." title="Miden Compiler Docs" class="md-header__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -93,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              
+              Developing Miden programs In Rust
             
           </span>
         </div>
@@ -175,7 +184,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="/." title="Miden Compiler Docs" class="md-nav__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
+    <a href="../.." title="Miden Compiler Docs" class="md-nav__button md-logo" aria-label="Miden Compiler Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -193,7 +202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -254,7 +263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/usage/midenc/" class="md-nav__link">
+      <a href="../../usage/midenc/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -275,7 +284,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/usage/cargo-miden/" class="md-nav__link">
+      <a href="../../usage/cargo-miden/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -300,8 +309,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -318,11 +329,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -336,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Guides
@@ -350,7 +361,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/guides/rust_to_wasm/" class="md-nav__link">
+      <a href="../rust_to_wasm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -371,7 +382,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/guides/wasm_to_masm/" class="md-nav__link">
+      <a href="../wasm_to_masm/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -389,10 +400,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="/guides/develop_miden_in_rust/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Developing Miden programs In Rust
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -401,6 +432,44 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting started
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-felt-field-element-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Felt (field element) type
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -413,7 +482,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/guides/develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-nav__link">
+      <a href="../develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -434,7 +503,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/usage/debugger/" class="md-nav__link">
+      <a href="../../usage/debugger/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -503,7 +572,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/design/overview/" class="md-nav__link">
+      <a href="../../design/overview/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -524,7 +593,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/design/frontends/" class="md-nav__link">
+      <a href="../../design/frontends/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -595,7 +664,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/appendix/known-limitations/" class="md-nav__link">
+      <a href="../../appendix/known-limitations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -616,7 +685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/appendix/calling-conventions/" class="md-nav__link">
+      <a href="../../appendix/calling-conventions/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -637,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/appendix/canonabi-adhocabi-mismatch/" class="md-nav__link">
+      <a href="../../appendix/canonabi-adhocabi-mismatch/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -675,6 +744,34 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting started
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-felt-field-element-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Felt (field element) type
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -686,8 +783,46 @@
             <div class="md-content" data-md-component="content">
               <article class="md-content__inner md-typeset">
                 
-  <h1>404 - Not found</h1>
+                  
 
+
+<h1 id="developing-miden-programs-in-rust">Developing Miden programs in Rust<a class="headerlink" href="#developing-miden-programs-in-rust" title="Link to this section">&para;</a></h1>
+<p>This chapter will walk through how to develop Miden programs in Rust using the standard library
+provided by the <code>miden-stdlib-sys</code> crate (see the
+<a href="https://github.com/0xPolygonMiden/compiler/blob/main/sdk/stdlib-sys/README.md">README</a>.</p>
+<h2 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Link to this section">&para;</a></h2>
+<p>Import the standard library from the <code>miden-stdlib-sys</code> crate:</p>
+<div class="highlight"><pre><span></span><code><span class="k">use</span><span class="w"> </span><span class="n">miden_stdlib_sys</span><span class="p">::</span><span class="o">*</span><span class="p">;</span>
+</code></pre></div>
+<h2 id="using-felt-field-element-type">Using <code>Felt</code> (field element) type<a class="headerlink" href="#using-felt-field-element-type" title="Link to this section">&para;</a></h2>
+<p>The <code>Felt</code> type is a field element type that is used to represent the field element values of the
+Miden VM.</p>
+<p>To initialize a <code>Felt</code> value from an integer constant checking the range at compile time, use the
+<code>felt!</code> macro:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">felt</span><span class="o">!</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+</code></pre></div>
+<p>Otherwise, use the <code>Felt::new</code> constructor:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">let</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Felt</span><span class="p">::</span><span class="n">new</span><span class="p">(</span><span class="n">some_integer_var</span><span class="p">).</span><span class="n">unwrap</span><span class="p">();</span>
+</code></pre></div>
+<p>The constructor returns an error if the value is not a valid field element, e.g. if it is not in the
+range <code>0..=M</code> where <code>M</code> is the modulus of the field (2^64 - 2^32 + 1).</p>
+<p>The <code>Felt</code> type implements the standard arithmetic operations, e.g. addition, subtraction,
+multiplication, division, etc. which are accessible through the standard Rust operators <code>+</code>, <code>-</code>,
+<code>*</code>, <code>/</code>, etc. All arithmetic operations are wrapping, i.e. performed modulo <code>M</code>.</p>
+<p>TODO: Add examples of using operations on <code>Felt</code> type and available functions (<code>assert*</code>, etc.).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </article>
             </div>
           
@@ -705,6 +840,44 @@
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../wasm_to_masm/" class="md-footer__link md-footer__link--prev" aria-label="Previous: WebAssembly To Miden Assembly">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                WebAssembly To Miden Assembly
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../develop_miden_rollup_accounts_and_note_scripts_in_rust/" class="md-footer__link md-footer__link--next" aria-label="Next: Developing Miden rollup accounts and note scripts In Rust">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Developing Miden rollup accounts and note scripts In Rust
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
     
   
   <div class="md-footer-meta md-typeset">
@@ -731,10 +904,10 @@
       <div class="md-progress" data-md-component="progress" role="progressbar"></div>
     
     
-    <script id="__config" type="application/json">{"base": "/", "features": ["search.suggest", "search.highlight", "search.share", "navigation.instant.progress", "navigation.tracking", "navigation.integration", "navigation.indexes", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "content.code.copy", "content.action.edit"], "search": "/assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["search.suggest", "search.highlight", "search.share", "navigation.instant.progress", "navigation.tracking", "navigation.integration", "navigation.indexes", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="/assets/javascripts/bundle.af256bd8.min.js"></script>
+      <script src="../../assets/javascripts/bundle.af256bd8.min.js"></script>
       
         <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?version=4.8.0"></script>
       
@@ -744,7 +917,7 @@
       
         <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
       
-        <script src="/js/open_in_new_tab.js"></script>
+        <script src="../../js/open_in_new_tab.js"></script>
       
     
   </body>
