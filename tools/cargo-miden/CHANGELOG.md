@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7](https://github.com/0xPolygonMiden/compiler/compare/cargo-miden-v0.0.6...cargo-miden-v0.0.7) - 2024-09-17
+
+### Fixed
+- switch cargo-miden to v0.4.0 of the new project template with
+
+### Other
+- update cargo-component to v0.16.0
+- add `CompilerTestInputType::CargoMiden` and use `cargo-miden` build it
+
 ## [0.0.6](https://github.com/0xpolygonmiden/compiler/compare/cargo-miden-v0.0.5...cargo-miden-v0.0.6) - 2024-09-06
 
 ### Other
