@@ -2965,8 +2965,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2702f8adb96844e3521f49149f6c3d4773ecdd2a96a3169e3c025a2e3ee32b5e"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "miden-core",
  "miden-thiserror",
@@ -2977,8 +2976,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eae9cef4fbafb4fe26da18574bcdbd78815857cfe1099760782701ababb076c2"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -3003,8 +3001,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc3f6db878d6b56c1566cd5b832908675566d3919b9a3523d630dfb5e2f7422d"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "lock_api",
  "loom",
@@ -3131,8 +3128,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01e7b212b152b69373e89b069a18cb01742ef2c3f9c328e7b24c44e44f022e52"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -3156,8 +3152,7 @@ version = "0.0.6"
 [[package]]
 name = "miden-stdlib"
 version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41623ad4f4ea6449760f70ab8928c682c3824d735d3e330f07e3d24d1ad20bfa"
+source = "git+https://github.com/0xPolygonMiden/miden-vm?rev=1b4609e60e6409a7f0d66bd13cfdc8320ab2727c#1b4609e60e6409a7f0d66bd13cfdc8320ab2727c"
 dependencies = [
  "miden-assembly",
 ]

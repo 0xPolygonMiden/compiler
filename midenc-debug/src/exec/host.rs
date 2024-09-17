@@ -50,7 +50,7 @@ impl DebuggerHost {
     }
 
     /// Load `forest` into the MAST store for this host
-    pub fn load_mast_forest(&mut self, forest: MastForest) {
+    pub fn load_mast_forest(&mut self, forest: Arc<MastForest>) {
         self.store.insert(forest);
     }
 }
