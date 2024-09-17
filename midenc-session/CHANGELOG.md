@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7](https://github.com/0xPolygonMiden/compiler/compare/midenc-session-v0.0.6...midenc-session-v0.0.7) - 2024-09-17
+
+### Other
+- update rust toolchain
+
 ## [0.0.6](https://github.com/0xpolygonmiden/compiler/compare/midenc-session-v0.0.5...midenc-session-v0.0.6) - 2024-09-06
 
 ### Fixed
