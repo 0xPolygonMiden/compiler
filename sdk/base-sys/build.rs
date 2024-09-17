@@ -1,12 +1,11 @@
-use std::{env, path::Path, sync::Arc};
-
-use miden_assembly::{
-    diagnostics::{IntoDiagnostic, Result},
-    Assembler, Library as CompiledLibrary, LibraryNamespace,
-};
-
 /// Read and parse the contents from `./masm/*` and compile it to MASL.
-fn main() -> Result<()> {
+#[cfg(feature = "masl-lib")]
+fn main() {
+    use std::{env, path::Path, sync::Arc};
+
+    use miden_assembly::{
+        diagnostics::IntoDiagnostic, Assembler, Library as CompiledLibrary, LibraryNamespace,
+    };
     // re-build the `[OUT_DIR]/assets/` file iff something in the `./masm` directory
     // or its builder changed:
     println!("cargo:rerun-if-changed=masm");
@@ -19,12 +18,13 @@ fn main() -> Result<()> {
 
     let tx_asm_dir = Path::new(manifest_dir).join("masm").join("tx");
     let asm = Assembler::new(source_manager);
-    let txlib = CompiledLibrary::from_dir(tx_asm_dir, namespace, asm)?;
+    let txlib = CompiledLibrary::from_dir(tx_asm_dir, namespace, asm).unwrap();
     let tx_masl_path = build_dir
         .join("assets")
         .join("tx")
         .with_extension(CompiledLibrary::LIBRARY_EXTENSION);
-    txlib.write_to_file(tx_masl_path).into_diagnostic()?;
-
-    Ok(())
+    txlib.write_to_file(tx_masl_path).into_diagnostic().unwrap();
 }
+
+#[cfg(not(feature = "masl-lib"))]
+fn main() {}
