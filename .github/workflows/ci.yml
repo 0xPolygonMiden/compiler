@@ -4,132 +4,152 @@ on:
   push:
     branches:
       - main
+      - next
     paths-ignore:
       - "*.md"
+      - "*.txt"
+      - "docs"
   pull_request:
     paths-ignore:
       - "*.md"
-
-env:
-  CARGO_MAKE_TOOLCHAIN: nightly-2024-05-07
+      - "*.txt"
+      - "docs"
 
 jobs:
-  compiler:
+  lint:
+    name: lint
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-          override: true
+        run: |
+          rustup update --no-self-update
+          rustc --version
       - name: Cache Cargo
-        uses: actions/cache@v2
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+          # Use a common cache for the basic compilation/formatter/clippy checks
+          shared-key: ${{ github.workflow }}-shared
+          save-if: ${{ github.ref == 'refs/heads/next' }}
       - name: Install cargo-make
-        uses: actions-rs/cargo@v1
+        run: |
+          if ! cargo make --version 2>/dev/null; then
+            cargo install cargo-make --force
+          fi
+      - name: Clippy
+        run: |
+          cargo make clippy
+
+  check_format:
+    name: check formatting
+    runs-on: ubuntu-latest
+    # Run this job after the linter, so the cache is hot
+    needs: [lint]
+    # But run this check even if the lint check failed
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          rustup update --no-self-update
+          rustc --version
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
         with:
-          command: install
-          args: cargo-make
-      - name: Build
-        uses: actions-rs/cargo@v1
+          # Use a common cache for the basic compilation/formatter/clippy checks
+          shared-key: ${{ github.workflow }}-shared
+          # But do not save this cache, just use it
+          save-if: false
+      - name: Install cargo-make
+        run: |
+          if ! cargo make --version 2>/dev/null; then
+            cargo install cargo-make --force
+          fi
+      - name: Check Formatting
+        run: |
+          cargo make check-format
+
+  unit_tests:
+    name: midenc unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          rustup update --no-self-update
+          rustc --version
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
         with:
-          command: make
-          args: build
+          # NOTE: We use a different cache for the tests, so they can be run in parallel, but we
+          # also share the cache for the tests for efficiency
+          shared-key: ${{ github.workflow }}-shared-tests
+          save-if: ${{ github.ref == 'refs/heads/next' }}
+      - name: Install cargo-make
+        run: |
+          if ! cargo make --version 2>/dev/null; then
+            cargo install cargo-make --force
+          fi
+      - name: Check
+        # We run `cargo check` to verify that the workspace compiles correctly before attempting
+        # to execute the tests from each crate. This produces easier to read output if a compilation
+        # error occurs
+        run: |
+          cargo make check --tests
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: make
-          args: test -E 'not package(cargo-miden)'
+        run: |
+          cargo make test -E 'not (package(miden-integration-tests) or package(cargo-miden))'
 
-  cargo_miden_test_clean_env:
-    # Run cargo-miden test in the clean env to simulate user's first run.
-    # To test the installation of the required dependencies (e.g. rust-src, wasm target, etc.)
-    name: cargo-miden tests
+  midenc_integration_tests:
+    name: midenc integration tests
     runs-on: ubuntu-latest
-
+    # We only want to run the integration tests if the unit tests pass, and that has the added
+    # benefit that we can re-use the cache from the unit test job for all integration tests
+    needs: [unit_tests]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-          override: true
+        run: |
+          rustup update --no-self-update
+          rustc --version
       - name: Cache Cargo
-        uses: actions/cache@v2
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+          shared-key: ${{ github.workflow }}-shared-tests
+          # Do not persist the cache, leave that to the unit tests, we just use the cache here
+          save-if: false
       - name: Install cargo-make
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-make
+        run: |
+          if ! cargo make --version 2>/dev/null; then
+            cargo install cargo-make --force
+          fi
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: make
-          args: test -E 'package(cargo-miden)'
+        run: |
+          cargo make test -E 'package(miden-integration-tests)'
 
-  clippy:
-    name: clippy
+  cargo_miden_integration_tests:
+    name: cargo-miden integration tests
     runs-on: ubuntu-latest
+    # We only want to run the integration tests if the unit tests pass, and that has the added
+    # benefit that we can re-use the cache from the unit test job for all integration tests
+    needs: [unit_tests]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-          override: true
+        run: |
+          rustup update --no-self-update
+          rustc --version
       - name: Cache Cargo
-        uses: actions/cache@v2
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
+          shared-key: ${{ github.workflow }}-shared-tests
+          # Do not persist the cache, leave that to the unit tests, we just use the cache here
+          save-if: false
       - name: Install cargo-make
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-make
-      - name: Run clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: make
-          args: clippy
-
-  rustfmt:
-    name: rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.CARGO_MAKE_TOOLCHAIN }}
-          override: true
-      - name: Cache Cargo
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ github.workflow }}-${{ github.job }}-toolchain-${{ env.CARGO_MAKE_TOOLCHAIN }}
-      - name: Install cargo-make
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-make
-      - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: make
-          args: check-format
+        run: |
+          if ! cargo make --version 2>/dev/null; then
+            cargo install cargo-make --force
+          fi
+      - name: Test
+        run: |
+          cargo make test -E 'package(cargo-miden)'

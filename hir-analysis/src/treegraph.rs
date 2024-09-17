@@ -543,14 +543,14 @@ impl TreeGraph {
     /// The algorithm used to produce the topological ordering is simple:
     ///
     /// 1. Seed a queue with the set of treegraph roots with no predecessors, enqueuing them
-    /// in their natural sort order.
+    ///    in their natural sort order.
     /// 2. Pop the next root from the queue, remove all edges between that root and its
-    ///    dependencies,
-    /// and add the root to the output vector. If any of the dependencies have no remaining
-    /// predecessors after the aforementioned edge was removed, it is added to the queue.
+    ///    dependencies, and add the root to the output vector. If any of the dependencies have no
+    ///    remaining predecessors after the aforementioned edge was removed, it is added to the
+    ///    queue.
     /// 3. The process in step 2 is repeated until the queue is empty.
     /// 4. If there are any edges remaining in the graph, there was a cycle, and thus a
-    /// topological sort is impossible, this will result in an error being returned.
+    ///    topological sort is impossible, this will result in an error being returned.
     /// 5. Otherwise, the sort is complete.
     ///
     /// In effect, a node is only emitted once all of its dependents are emitted, so for codegen,

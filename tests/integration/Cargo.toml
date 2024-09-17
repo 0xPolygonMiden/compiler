@@ -31,6 +31,7 @@ midenc-codegen-masm.workspace = true
 midenc-session.workspace = true
 midenc-compile.workspace = true
 midenc-debug.workspace = true
+cargo-miden.workspace = true
 wasmprinter = "0.2.80"
 proptest.workspace = true
 sha2 = "0.10"

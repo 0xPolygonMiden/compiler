@@ -1,4 +1,4 @@
-# Calling Conventions
+# Calling conventions
 
 This document describes the various calling conventions recognized/handled by the compiler,
 including a specification for the interaction with the IR type system.
@@ -25,17 +25,16 @@ There are four calling conventions represented in the compiler:
   convention is allowed to have types in its signature that are/contain pointers, with certain caveats around
   those pointers.
 
-
 All four conventions above are based on the System V C ABI, tailored to the Miden VM. The only exception is
 `Fast`, which may modify the ABI arbitrarily as it sees fit, and makes no guarantees about what modifications,
 if any, it will make.
 
-# Data Representation
+## Data representation
 
 The following is a description of how the IR type system is represented in the `C` calling convention. Later,
 a description of how the other conventions extend/restrict/modify this representation will be provided.
 
-## Scalars
+### Scalars
 
 General type | C Type | IR Type | `sizeof` | Alignment (bytes) | Miden Type
 -|-|-|-|-|-
@@ -101,14 +100,14 @@ two's complement rules.
 The Miden VM only has native support for field elements, words, and `u32`; all other types are implemented in software
 using intrinsics.
 
-## Aggregates and Unions
+### Aggregates and unions
 
 Structures and unions assume the alignment of their most strictly aligned component. Each member is assigned to the
 lowest available offset with the appropriate alignment. The size of any object is always a multiple of the object's alignment.
 An array uses the same alignment as its elements. Structure and union objects can require padding to meet size and alignment
 constraints. The contents of any padding is undefined.
 
-## Memory Model
+### Memory model
 
 Interacting with memory in Miden is quite similar to WebAssembly in some ways:
 
@@ -176,12 +175,12 @@ word-aligned or element-aligned, so an unaligned load or store would require eit
 bytes starting at some arbitrary address. In practice, most loads/stores are likely to be element-aligned, so most overhead from
 emulation will come from values which cross an element or word boundary.
 
-# Function Calls
+## Function calls
 
 This section describes the conventions followed when executing a function call via `exec`, including how arguments are passed on the
 operand stack, stack frames, etc. Later, we'll cover the differences when executing calls via `call` or `syscall`.
 
-## Locals and the stack frame
+### Locals and the stack frame
 
 Miden does not have registers in the style of hardware architectures. Instead it has an operand stack, on which an arbitrary number of
 operands may be stored, and local variables. In both cases - an operand on the operand stack, or a single local variable - the value
@@ -201,7 +200,7 @@ Because there are no registers, the notion of callee-saved or caller-saved regis
 in its place, a somewhat equivalent set of rules defines the contract between caller and callee in terms of the state of the operand stack,
 those are described below in the section covering the operand stack.
 
-### The shadow stack
+#### The shadow stack
 
 Miden is a [Harvard](https://en.wikipedia.org/wiki/Harvard_architecture) architecture; as such, code and data are not in the same memory
 space. More precisely, in Miden, code is only addressable via the hash of the MAST root of that code, which must correspond to code that
@@ -222,7 +221,7 @@ constraints of the callee's calling convention).
 Languages with more elaborate requirements with regard to the stack will need to implement their own shadow stack, and emit code in function
 prologues/epilogues to manage it.
 
-### The operand stack
+#### The operand stack
 
 The Miden virtual machine is a stack machine, not a register machine. Rather than having a fixed set of registers that are used to
 store and manipulate scalar values, the Miden VM has the operand stack, which can hold an arbitrary number of operands (where each
@@ -246,7 +245,7 @@ then one of the following must happen:
   which refers to the remaining arguments on the advice provider stack. The callee must arrange to fetch the spilled arguments from the advice
   provider using that hash.
 
-### Function signatures
+#### Function signatures
 
 Miden Abstract Syntax Trees (MASTs) do not have any notion of functions, and as such are not aware of parameters, return values, etc. For
 this document, that's not a useful level of abstraction to examine. Even a step higher, Miden Assembly (MASM) has functions (procedures

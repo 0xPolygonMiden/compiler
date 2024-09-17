@@ -14,11 +14,11 @@ readme.workspace = true
 edition.workspace = true
 
 [dependencies]
-miden-assembly.workspace = true
-miden-stdlib-sys = { version = "0.0.5", path = "../stdlib-sys", optional = true }
+miden-assembly = { workspace = true, optional = true }
+miden-stdlib-sys = { version = "0.0.7", path = "../stdlib-sys", optional = true }
 
 [build-dependencies]
-miden-assembly.workspace = true
+miden-assembly = { workspace = true, optional = true }
 
 [features]
 default = []
@@ -26,4 +26,4 @@ default = []
 # User facing Rust bindings
 "bindings" = ["dep:miden-stdlib-sys"]
 # MASL library for Miden rollup (tx kernel, etc.) used by the compiler in the link phase
-"masl-lib" = []
+"masl-lib" = ["dep:miden-assembly"]

@@ -1,4 +1,4 @@
-# Debugging Programs
+# Debugging programs
 
 A very useful tool in the Miden compiler suite, is its TUI-based interactive debugger, accessible
 via the `midenc debug` command.
@@ -8,7 +8,7 @@ via the `midenc debug` command.
     The debugger is still quite new, and while very useful already, still has a fair number of
     UX annoyances. Please report any bugs you encounter, and we'll try to get them patched ASAP!
 
-## Getting Started
+## Getting started
 
 The debugger is launched by executing `midenc debug`, and giving it a path to a program compiled
 by `midenc compile`. See [Program Inputs](#program-inputs) for information on how to provide inputs
@@ -26,7 +26,7 @@ midenc compile foo.wasm -o foo.masl
 midenc debug foo.masl
 ```
 
-## Program Inputs
+## Program inputs
 
 To pass arguments to the program on the operand stack, or via the advice provider, you have two
 options, depending on the needs of the program:
@@ -35,7 +35,7 @@ options, depending on the needs of the program:
    is, the first argument you specify will be on top of the stack, and so on.
 2. Specify a configuration file from which to load inputs for the program, via the `--inputs` option.
 
-### Via Command Line
+### Via command line
 
 To specify the contents of the operand stack, you can do so following the raw arguments separator `--`.
 Each operand must be a valid field element value, in either decimal or hexadecimal format. For example:
@@ -48,7 +48,7 @@ If you pass arguments via the command line in conjunction with `--inputs`, then 
 will be used instead of the contents of the `inputs.stack` option (if set). This lets you specify a baseline
 set of inputs, and then try out different arguments using the command line.
 
-### Via Inputs Config
+### Via inputs config
 
 While simply passing operands to the `midenc debug` command is useful, it only allows you to specify
 inputs to be passed via operand stack. To provide inputs via the advice provider, you will need to use
@@ -103,7 +103,7 @@ one you get dropped into when the debugger starts. The home page contains the fo
 * Breakpoints - displays the set of current breakpoints, along with how many were hit
   at the current instruction, when relevant
 
-### Keyboard Shortcuts
+### Keyboard shortcuts
 
 On the home page, the following keyboard shortcuts are available:
 
@@ -177,7 +177,7 @@ After a breakpoint is hit, it expires if it is one of the following types:
 
 When a breakpoint expires, it is removed from the breakpoint list on the next cycle.
 
-## Reading Memory
+## Reading memory
 
 Another useful diagnostic task is examining the contents of linear memory, to verify that expected
 data has been written. You can do this via the command prompt, using `r` (or `read`), followed by

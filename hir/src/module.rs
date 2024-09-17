@@ -47,7 +47,8 @@ impl<'a> intrusive_collections::KeyAdapter<'a> for ModuleTreeAdapter {
 
 /// Represents a SSA IR module
 ///
-/// These correspond to MASM modules
+/// These correspond to MASM modules.
+///
 /// This module is largely a container for functions, but it also provides
 /// as the owner for pooled resources available to functions:
 ///
@@ -91,10 +92,10 @@ pub struct Module {
     ///
     /// * Functions with external linkage are required to use the `Kernel` calling convention.
     /// * A kernel module executes in the root context of the Miden VM, allowing one to expose
-    ///   functionality
-    /// that is protected from tampering by other non-kernel functions in the program.
+    ///   functionality that is protected from tampering by other non-kernel functions in the
+    ///   program.
     /// * Due to the above, you may not reference globals outside the kernel module, from within
-    /// kernel functions, as they are not available in the root context.
+    ///   kernel functions, as they are not available in the root context.
     is_kernel: bool,
 }
 impl fmt::Display for Module {
@@ -497,8 +498,7 @@ impl Module {
     /// NOTE: This function will panic if either of the following rules are violated:
     ///
     /// * If this module is a kernel module, public functions must use the kernel calling
-    ///   convention,
-    /// however private functions can use any convention.
+    ///   convention, however private functions can use any convention.
     /// * If this module is not a kernel module, functions may not use the kernel calling convention
     pub fn push(&mut self, function: Box<Function>) -> Result<(), SymbolConflictError> {
         assert_valid_function!(self, function);

@@ -106,9 +106,7 @@ pub fn translate_operator(
             let global_index = GlobalIndex::from_u32(*global_index);
             let name = module.global_name(global_index);
             let ty = ir_type(module.globals[global_index].ty, diagnostics)?;
-            let ptr = builder
-                .ins()
-                .symbol_addr(name.as_str(), Ptr(ty.clone().into()), span);
+            let ptr = builder.ins().symbol_addr(name.as_str(), Ptr(ty.clone().into()), span);
             let val = state.pop1();
             builder.ins().store(ptr, val, span);
         }
@@ -126,7 +124,8 @@ pub fn translate_operator(
             let (arg1, arg2, cond) = state.pop3();
             match ty {
                 wasmparser::ValType::F32 => {
-                    let cond = builder.ins().gt_imm(cond, Immediate::Felt(midenc_hir::Felt::ZERO), span);
+                    let cond =
+                        builder.ins().gt_imm(cond, Immediate::Felt(midenc_hir::Felt::ZERO), span);
                     state.push1(builder.ins().select(cond, arg1, arg2, span));
                 }
                 wasmparser::ValType::I32 => {
@@ -146,15 +145,23 @@ pub fn translate_operator(
         }
         Operator::Nop => {}
         /***************************** Control flow blocks *********************************/
-        Operator::Block { blockty } => translate_block(blockty, builder, state, mod_types, diagnostics, span)?,
-        Operator::Loop { blockty } => translate_loop(blockty, builder, state, mod_types, diagnostics, span)?,
-        Operator::If { blockty } => translate_if(blockty, state, builder, mod_types, diagnostics, span)?,
+        Operator::Block { blockty } => {
+            translate_block(blockty, builder, state, mod_types, diagnostics, span)?
+        }
+        Operator::Loop { blockty } => {
+            translate_loop(blockty, builder, state, mod_types, diagnostics, span)?
+        }
+        Operator::If { blockty } => {
+            translate_if(blockty, state, builder, mod_types, diagnostics, span)?
+        }
         Operator::Else => translate_else(state, builder, span)?,
         Operator::End => translate_end(state, builder, span),
 
         /**************************** Branch instructions *********************************/
         Operator::Br { relative_depth } => translate_br(state, relative_depth, builder, span),
-        Operator::BrIf { relative_depth } => translate_br_if(*relative_depth, builder, state, span)?,
+        Operator::BrIf { relative_depth } => {
+            translate_br_if(*relative_depth, builder, state, span)?
+        }
         Operator::BrTable { targets } => translate_br_table(targets, state, builder, span)?,
         Operator::Return => translate_return(state, builder, diagnostics, span)?,
         /************************************ Calls ****************************************/
@@ -168,7 +175,10 @@ pub fn translate_operator(
                 diagnostics,
             )?;
         }
-        Operator::CallIndirect { type_index: _, table_index: _ } => {
+        Operator::CallIndirect {
+            type_index: _,
+            table_index: _,
+        } => {
             // TODO:
         }
         /******************************* Memory management *********************************/

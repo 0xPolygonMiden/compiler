@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6](https://github.com/0xpolygonmiden/compiler/compare/midenc-compile-v0.0.5...midenc-compile-v0.0.6) - 2024-09-06
+
+### Fixed
+- *(driver)* ensure mast/masl outputs are emitted on request
+
+### Other
+- switch all crates to a single workspace version (0.0.5)
+
 ## [0.0.1](https://github.com/0xPolygonMiden/compiler/compare/midenc-compile-v0.0.0...midenc-compile-v0.0.1) - 2024-07-18
 
 ### Added

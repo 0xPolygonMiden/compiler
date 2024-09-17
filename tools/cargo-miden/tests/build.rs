@@ -1,6 +1,5 @@
 use std::{env, fs, vec};
 
-use cargo_component_core::terminal;
 use cargo_miden::run;
 
 // NOTE: This test sets the current working directory so don't run it in parallel with tests
@@ -43,19 +42,32 @@ fn build_new_project_from_template() {
     //     ),
     // );
 
-    let terminal = terminal::Terminal::new(terminal::Verbosity::Verbose, terminal::Color::Auto);
-    let outputs = run(args.into_iter(), &terminal).expect("Failed to create new project");
+    let outputs = run(args.into_iter()).expect("Failed to create new project");
     let new_project_path = outputs.first().unwrap().canonicalize().unwrap();
     dbg!(&new_project_path);
     assert!(new_project_path.exists());
     assert_eq!(new_project_path, expected_new_project_dir.canonicalize().unwrap());
     env::set_current_dir(&new_project_path).unwrap();
-    let args = ["cargo", "miden", "build", "--release"].iter().map(|s| s.to_string());
-    let outputs = run(args, &terminal).expect("Failed to compile");
+
+    // build with the dev profile
+    let args = ["cargo", "miden", "build"].iter().map(|s| s.to_string());
+    let outputs = run(args).expect("Failed to compile with the dev profile");
+    assert_eq!(outputs.len(), 1);
     let expected_masm_path = outputs.first().unwrap();
     dbg!(&expected_masm_path);
-    // eprintln!("{}", String::from_utf8(fs::read(expected_masm_path).unwrap()).unwrap());
     assert!(expected_masm_path.exists());
+    assert!(expected_masm_path.to_str().unwrap().contains("/debug/"));
+    assert!(expected_masm_path.metadata().unwrap().len() > 0);
+    // assert_eq!(expected_masm_path.metadata().unwrap().len(), 0);
+
+    // build with the release profile
+    let args = ["cargo", "miden", "build", "--release"].iter().map(|s| s.to_string());
+    let outputs = run(args).expect("Failed to compile with the release profile");
+    assert_eq!(outputs.len(), 1);
+    let expected_masm_path = outputs.first().unwrap();
+    dbg!(&expected_masm_path);
+    assert!(expected_masm_path.exists());
+    assert!(expected_masm_path.to_str().unwrap().contains("/release/"));
     assert!(expected_masm_path.metadata().unwrap().len() > 0);
 
     env::set_current_dir(restore_dir).unwrap();

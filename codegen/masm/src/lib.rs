@@ -1,6 +1,5 @@
 #![feature(array_windows)]
 #![feature(iter_array_chunks)]
-#![feature(is_sorted)]
 #![feature(debug_closure_helpers)]
 
 extern crate alloc;

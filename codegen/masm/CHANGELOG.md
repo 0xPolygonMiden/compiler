@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.7](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.6...midenc-codegen-masm-v0.0.7) - 2024-09-17
+
+### Other
+- fix up new clippy warnings
+- update rust toolchain
+
+## [0.0.6](https://github.com/0xpolygonmiden/compiler/compare/midenc-codegen-masm-v0.0.5...midenc-codegen-masm-v0.0.6) - 2024-09-06
+
+### Other
+- switch all crates to a single workspace version (0.0.5)
+
 ## [0.0.3](https://github.com/0xPolygonMiden/compiler/compare/midenc-codegen-masm-v0.0.2...midenc-codegen-masm-v0.0.3) - 2024-08-30
 
 ### Fixed

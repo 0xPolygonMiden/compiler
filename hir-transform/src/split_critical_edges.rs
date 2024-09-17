@@ -135,7 +135,7 @@ impl RewritePass for SplitCriticalEdges {
 
         analyses.insert(function.id, cfg);
 
-        session.print(&function, Self::FLAG).into_diagnostic()?;
+        session.print(&*function, Self::FLAG).into_diagnostic()?;
         if session.should_print_cfg(Self::FLAG) {
             use std::io::Write;
             let cfg = function.cfg_printer();

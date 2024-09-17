@@ -487,7 +487,6 @@
       return
     end
     unreachable
-    unreachable
   )
   (func $miden_base_sys::bindings::tx::get_id (;45;) (type 12) (result f32)
     call $miden_base_sys::bindings::tx::externs::extern_account_get_id
@@ -511,7 +510,8 @@
     block ;; label = @1
       local.get 1
       i32.load offset=4
-      i32.eqz
+      i32.const 1
+      i32.ne
       br_if 0 (;@1;)
       local.get 2
       local.get 1
@@ -602,7 +602,8 @@
     block ;; label = @1
       local.get 2
       i32.load offset=4
-      i32.eqz
+      i32.const 1
+      i32.ne
       br_if 0 (;@1;)
       local.get 1
       local.get 2
@@ -866,7 +867,6 @@
     call $dummy
   )
   (func $alloc::raw_vec::handle_error (;56;) (type 19) (param i32 i32)
-    unreachable
     unreachable
   )
   (func $get_wallet_magic_number.command_export (;57;) (type 12) (result f32)

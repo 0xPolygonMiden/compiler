@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use cargo_component::load_metadata;
-use cargo_component_core::terminal::Terminal;
 use clap::{CommandFactory, Parser};
 use config::CargoArguments;
 use midenc_session::diagnostics::Report;
@@ -80,7 +79,7 @@ where
     None
 }
 
-pub fn run<T>(args: T, terminal: &Terminal) -> Result<Vec<PathBuf>, Report>
+pub fn run<T>(args: T) -> Result<Vec<PathBuf>, Report>
 where
     T: Iterator<Item = String>,
 {
@@ -112,8 +111,8 @@ where
             // Not a built-in command, run the cargo command
             let cargo_args =
                 CargoArguments::parse_from(args.clone().into_iter()).map_err(Report::msg)?;
-            let metadata = load_metadata(terminal, cargo_args.manifest_path.as_deref(), false)
-                .map_err(Report::msg)?;
+            let metadata =
+                load_metadata(cargo_args.manifest_path.as_deref()).map_err(Report::msg)?;
             if metadata.packages.is_empty() {
                 return Err(Report::msg(format!(
                     "manifest `{path}` contains no package or the workspace has no members",

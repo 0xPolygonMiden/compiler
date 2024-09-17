@@ -1485,10 +1485,10 @@ mod tests {
     /// increase the loop depth. Additionally, we expect to see the following:
     ///
     /// * Values which are live across the outer loop, reflect the cumulative distance of the loop
-    /// nest, not just the outer loop.
+    ///   nest, not just the outer loop.
     /// * Values which are live across the inner loop, reflect the loop distance
     /// * Both inner and outer loop header parameters have their live ranges end when the
-    /// corresponding loop is continued or exited
+    ///   corresponding loop is continued or exited
     ///
     /// The following HIR is constructed for this test:
     ///

@@ -74,7 +74,7 @@ impl NewCommand {
             },
             None => TemplatePath {
                 git: Some("https://github.com/0xPolygonMiden/rust-templates".into()),
-                tag: Some("v0.3.0".into()),
+                tag: Some("v0.4.0".into()),
                 auto_path: Some("account".into()),
                 ..Default::default()
             },

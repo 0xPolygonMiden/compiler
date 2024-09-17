@@ -7,16 +7,12 @@ use super::*;
 /// The criteria for this succeeding is:
 ///
 /// 0. There must be no copies required, and at least two operands expected
-/// 1. The value on top of the stack should either be
-/// evicted, or should be moved to its expected
-/// position, and if applicable, past any remaining
-/// operands which belong before it in the final
-/// ordering
-/// 2. After moving the value on top, one of the following
-/// is true:
+/// 1. The value on top of the stack should either be evicted, or should be moved to its expected
+///    position, and if applicable, past any remaining operands which belong before it in the final
+///    ordering
+/// 2. After moving the value on top, one of the following is true:
 ///   * The stack is now ordered, and we're done
-///   * The operand on top of the stack is out of place,
-///   and the operand in its place is either:
+///   * The operand on top of the stack is out of place, and the operand in its place is either:
 ///     1. Expected to be on top of the stack, so we can swap
 ///     2. Will be moved into place if we move the top of the stack immediately past it, so we can
 ///        move
