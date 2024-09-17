@@ -58,7 +58,7 @@ Now that you've created your project, compiling it to Miden Assembly is as easy 
 following command from the root of the project directory:
 
 ```bash
-cargo miden build
+cargo miden build --release
 ```
 
 This will emit the compiled artifacts to `target/miden`.
