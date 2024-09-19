@@ -6,7 +6,7 @@
   (type (;4;) (func (param i32 i32 i32) (result i32)))
   (type (;5;) (func (param i32 i32 i32)))
   (type (;6;) (func (param i32 i32)))
-  (import "intrinsics::mem" "heap_base" (func $miden_sdk_alloc::heap_base (;0;) (type 0)))
+  (import "miden:core-import/intrinsics-mem@1.0.0" "heap-base" (func $miden_sdk_alloc::heap_base (;0;) (type 0)))
   (import "miden::note" "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_base_sys::bindings::tx::externs::extern_note_get_inputs (;1;) (type 1)))
   (func $entrypoint (;2;) (type 2) (param i32)
     local.get 0

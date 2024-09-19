@@ -370,6 +370,15 @@ impl CompilerTestBuilder {
 
         // Cargo-based source types share a lot of configuration in common
         match self.source {
+            CompilerTestInputType::CargoMiden(ref config) => {
+                let manifest_path = project_dir.join("Cargo.toml");
+                command
+                    .arg("--manifest-path")
+                    .arg(manifest_path)
+                    .arg("--release")
+                    .arg("--target")
+                    .arg(config.target.as_ref());
+            }
             CompilerTestInputType::CargoComponent(_) => {
                 let manifest_path = project_dir.join("Cargo.toml");
                 command.arg("--manifest-path").arg(manifest_path).arg("--release");
@@ -629,6 +638,23 @@ impl CompilerTestBuilder {
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or("".to_string());
         let mut builder = CompilerTestBuilder::new(CompilerTestInputType::CargoComponent(
+            CargoTest::new(name, cargo_project_folder.as_ref().to_path_buf()),
+        ));
+        builder.with_wasm_translation_config(config);
+        builder
+    }
+
+    /// Compile the Rust project using cargo-miden
+    pub fn rust_source_cargo_miden(
+        cargo_project_folder: impl AsRef<Path>,
+        config: WasmTranslationConfig,
+    ) -> Self {
+        let name = cargo_project_folder
+            .as_ref()
+            .file_stem()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or("".to_string());
+        let mut builder = CompilerTestBuilder::new(CompilerTestInputType::CargoMiden(
             CargoTest::new(name, cargo_project_folder.as_ref().to_path_buf()),
         ));
         builder.with_wasm_translation_config(config);
@@ -981,6 +1007,14 @@ impl CompilerTest {
         config: WasmTranslationConfig,
     ) -> Self {
         CompilerTestBuilder::rust_source_cargo_component(cargo_project_folder, config).build()
+    }
+
+    /// Compile the Rust project using cargo-miden
+    pub fn rust_source_cargo_miden(
+        cargo_project_folder: impl AsRef<Path>,
+        config: WasmTranslationConfig,
+    ) -> Self {
+        CompilerTestBuilder::rust_source_cargo_miden(cargo_project_folder, config).build()
     }
 
     /// Set the Rust source code to compile a library Cargo project to Wasm module

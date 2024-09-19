@@ -15,6 +15,7 @@ fn new_project_args(project_name: &str, template_path: Option<&str>) -> Vec<Stri
 
 #[test]
 fn build_new_project_from_template() {
+    // let _ = env_logger::builder().is_test(true).try_init();
     // Signal to `cargo-miden` that we're running in a test harness.
     //
     // This is necessary because cfg!(test) does not work for integration tests, so we're forced

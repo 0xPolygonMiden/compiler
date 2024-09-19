@@ -9,7 +9,7 @@ use midenc_session::{
     InputFile, OutputType,
 };
 
-pub fn build_masm(
+pub fn wasm_to_masm(
     wasm_file_path: &Path,
     output_folder: &Path,
     is_bin: bool,

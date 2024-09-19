@@ -1,5 +1,6 @@
-use cargo_component_core::terminal::{Terminal, Verbosity};
-use cargo_miden::{config::CargoArguments, run};
+use anyhow::Ok;
+use cargo_component_core::terminal::{Color, Terminal, Verbosity};
+use cargo_miden::run;
 
 fn main() -> anyhow::Result<()> {
     // Initialize logger
@@ -8,23 +9,10 @@ fn main() -> anyhow::Result<()> {
     builder.format_timestamp(None);
     builder.init();
 
-    let cargo_args = CargoArguments::parse_from(std::env::args())?;
-    let terminal = Terminal::new(
-        if cargo_args.quiet {
-            Verbosity::Quiet
-        } else {
-            match cargo_args.verbose {
-                0 => Verbosity::Normal,
-                _ => Verbosity::Verbose,
-            }
-        },
-        cargo_args.color.unwrap_or_default(),
-    );
-
     if let Err(e) = run(std::env::args()) {
-        terminal.error(format!("{e:?}"))?;
+        let terminal = Terminal::new(Verbosity::Normal, Color::Auto);
+        terminal.error(format!("{e}"))?;
         std::process::exit(1);
     }
-
     Ok(())
 }

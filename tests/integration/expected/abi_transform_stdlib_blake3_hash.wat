@@ -1,7 +1,7 @@
 (module $abi_transform_stdlib_blake3_hash.wasm
   (type (;0;) (func (param i32 i32 i32 i32 i32 i32 i32 i32 i32)))
   (type (;1;) (func (param i32 i32)))
-  (import "std::crypto::hashes::blake3" "hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>" (func $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;0;) (type 0)))
+  (import "miden:core-import/stdlib-crypto-hashes@1.0.0" "blake3-hash-one-to-one" (func $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_1to1 (;0;) (type 0)))
   (func $entrypoint (;1;) (type 1) (param i32 i32)
     (local i32 i32)
     global.get $__stack_pointer

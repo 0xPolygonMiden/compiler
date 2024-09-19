@@ -1,6 +1,6 @@
 (module $add_felt.wasm
   (type (;0;) (func (param f32 f32) (result f32)))
-  (import "miden:stdlib/intrinsics_felt" "add" (func $miden_stdlib_sys::intrinsics::felt::extern_add (;0;) (type 0)))
+  (import "miden:core-import/intrinsics-felt@1.0.0" "add" (func $miden_stdlib_sys::intrinsics::felt::extern_add (;0;) (type 0)))
   (func $entrypoint (;1;) (type 0) (param f32 f32) (result f32)
     local.get 0
     local.get 1

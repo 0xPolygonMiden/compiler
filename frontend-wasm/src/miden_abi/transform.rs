@@ -27,7 +27,7 @@ fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrate
             stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
             _ => (),
         },
-        "std::crypto::hashes::blake3" => match function_id {
+        stdlib::crypto::hashes::MODULE_ID => match function_id {
             stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => return TransformStrategy::ReturnViaPointer,
             stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => return TransformStrategy::ReturnViaPointer,
             _ => (),
@@ -40,13 +40,13 @@ fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrate
             tx_kernel::note::GET_INPUTS => return TransformStrategy::ListReturn,
             _ => (),
         },
-        "miden::account" => match function_id {
+        tx_kernel::account::MODULE_ID => match function_id {
             tx_kernel::account::ADD_ASSET => return TransformStrategy::ReturnViaPointer,
             tx_kernel::account::REMOVE_ASSET => return TransformStrategy::ReturnViaPointer,
             tx_kernel::account::GET_ID => return TransformStrategy::NoTransform,
             _ => (),
         },
-        "miden::tx" => match function_id {
+        tx_kernel::tx::MODULE_ID => match function_id {
             tx_kernel::tx::CREATE_NOTE => return TransformStrategy::NoTransform,
             _ => (),
         },
