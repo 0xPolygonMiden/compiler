@@ -58,6 +58,7 @@ fn build_new_project_from_template() {
     dbg!(&expected_masm_path);
     assert!(expected_masm_path.exists());
     assert!(expected_masm_path.to_str().unwrap().contains("/debug/"));
+    assert_eq!(expected_masm_path.extension().unwrap(), "masp");
     assert!(expected_masm_path.metadata().unwrap().len() > 0);
     // assert_eq!(expected_masm_path.metadata().unwrap().len(), 0);
 
@@ -68,6 +69,7 @@ fn build_new_project_from_template() {
     let expected_masm_path = outputs.first().unwrap();
     dbg!(&expected_masm_path);
     assert!(expected_masm_path.exists());
+    assert_eq!(expected_masm_path.extension().unwrap(), "masp");
     assert!(expected_masm_path.to_str().unwrap().contains("/release/"));
     assert!(expected_masm_path.metadata().unwrap().len() > 0);
 
