@@ -2,6 +2,7 @@ use miden_stdlib_sys::Felt;
 
 use crate::bindings::tx::{AccountId, CoreAsset, NoteId, NoteType, Tag};
 
+#[allow(improper_ctypes)]
 #[link(wasm_import_module = "miden:core-import/account@1.0.0")]
 extern "C" {
     #[link_name = "get-id"]
