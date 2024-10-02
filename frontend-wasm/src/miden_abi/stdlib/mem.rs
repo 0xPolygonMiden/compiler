@@ -3,8 +3,10 @@ use midenc_hir_type::Type::*;
 
 use crate::miden_abi::{FunctionTypeMap, ModuleFunctionTypeMap};
 
-pub(crate) const PIPE_WORDS_TO_MEMORY: &str = "pipe_words_to_memory";
-pub(crate) const PIPE_DOUBLE_WORDS_TO_MEMORY: &str = "pipe_double_words_to_memory";
+pub(crate) const MODULE_ID: &str = "miden:core-import/stdlib-mem@1.0.0";
+
+pub(crate) const PIPE_WORDS_TO_MEMORY: &str = "pipe-words-to-memory";
+pub(crate) const PIPE_DOUBLE_WORDS_TO_MEMORY: &str = "pipe-double-words-to-memory";
 
 pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     let mut m: ModuleFunctionTypeMap = Default::default();
@@ -40,6 +42,6 @@ pub(crate) fn signatures() -> ModuleFunctionTypeMap {
             ],
         ),
     );
-    m.insert("std::mem", funcs);
+    m.insert(MODULE_ID, funcs);
     m
 }

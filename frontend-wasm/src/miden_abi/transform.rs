@@ -22,7 +22,7 @@ enum TransformStrategy {
 fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrategy {
     #[allow(clippy::single_match)]
     match module_id {
-        "std::mem" => match function_id {
+        stdlib::mem::MODULE_ID => match function_id {
             stdlib::mem::PIPE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
             stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
             _ => (),
@@ -32,11 +32,11 @@ fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrate
             stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => return TransformStrategy::ReturnViaPointer,
             _ => (),
         },
-        "std::crypto::dsa::rpo_falcon512" => match function_id {
+        stdlib::crypto::dsa::MODULE_ID => match function_id {
             stdlib::crypto::dsa::RPO_FALCON512_VERIFY => return TransformStrategy::NoTransform,
             _ => (),
         },
-        "miden::note" => match function_id {
+        tx_kernel::note::MODULE_ID => match function_id {
             tx_kernel::note::GET_INPUTS => return TransformStrategy::ListReturn,
             _ => (),
         },

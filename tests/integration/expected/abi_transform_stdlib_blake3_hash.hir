@@ -1,4 +1,7 @@
 (component 
+    ;; Component Imports
+    (lower ( (type (func (abi canon)  (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32)))) (#miden:core-import/stdlib-crypto-hashes@1.0.0 #blake3-hash-one-to-one)
+
     ;; Modules
     (module #abi_transform_stdlib_blake3_hash
         ;; Constants
@@ -49,7 +52,7 @@
                 (let (v37 u32) (add.checked v36 28))
                 (let (v38 (ptr i32)) (inttoptr v37))
                 (let (v39 i32) (load v38))
-                (let [(v40 i32) (v41 i32) (v42 i32) (v43 i32) (v44 i32) (v45 i32) (v46 i32) (v47 i32)] (call (#std::crypto::hashes::blake3 #hash_1to1) v11 v15 v19 v23 v27 v31 v35 v39))
+                (let [(v40 i32) (v41 i32) (v42 i32) (v43 i32) (v44 i32) (v45 i32) (v46 i32) (v47 i32)] (call (#miden:core-import/stdlib-crypto-hashes@1.0.0 #blake3-hash-one-to-one) v11 v15 v19 v23 v27 v31 v35 v39))
                 (let (v48 u32) (bitcast v7))
                 (let (v49 (ptr i32)) (inttoptr v48))
                 (store v49 v40)
@@ -124,7 +127,7 @@
         )
 
         ;; Imports
-        (func (import #std::crypto::hashes::blake3 #hash_1to1)
+        (func (import #miden:core-import/stdlib-crypto-hashes@1.0.0 #blake3-hash-one-to-one)
               (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32))
     )
 

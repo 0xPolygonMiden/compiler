@@ -42,8 +42,6 @@ pub struct CanonAbiImport {
 pub struct MidenAbiImport {
     /// The Miden function type as it is defined in the MASM
     pub function_ty: FunctionType,
-    /// The MAST root hash of the function to be used in codegen
-    pub digest: RpoDigest,
 }
 
 /// A component import
@@ -56,13 +54,6 @@ pub enum ComponentImport {
 }
 
 impl ComponentImport {
-    pub fn digest(&self) -> RpoDigest {
-        match self {
-            ComponentImport::CanonAbiImport(import) => import.digest,
-            ComponentImport::MidenAbiImport(import) => import.digest,
-        }
-    }
-
     pub fn unwrap_canon_abi_import(&self) -> &CanonAbiImport {
         match self {
             ComponentImport::CanonAbiImport(import) => import,
@@ -90,13 +81,14 @@ impl formatter::PrettyPrint for ComponentImport {
             }
             ComponentImport::MidenAbiImport(_import) => "".to_string(),
         };
+
+        let digest = match self {
+            ComponentImport::CanonAbiImport(import) => format!("(digest {})", import.digest),
+            ComponentImport::MidenAbiImport(_) => "".to_string(),
+        };
         const_text("(")
             + text(name)
-            + const_text("(")
-            + const_text("digest")
-            + const_text(" ")
-            + display(self.digest())
-            + const_text(")")
+            + text(digest)
             + const_text(" ")
             + const_text("(")
             + const_text("type")

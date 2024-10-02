@@ -7,7 +7,7 @@ pub const MODULE_ID: &str = "miden:core-import/account@1.0.0";
 
 pub const ADD_ASSET: &str = "add-asset";
 pub const REMOVE_ASSET: &str = "remove-asset";
-pub const GET_ID: &str = "get_id";
+pub const GET_ID: &str = "get-id";
 
 pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     let mut m: ModuleFunctionTypeMap = Default::default();

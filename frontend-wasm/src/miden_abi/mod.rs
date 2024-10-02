@@ -2,29 +2,11 @@ pub(crate) mod stdlib;
 pub(crate) mod transform;
 pub(crate) mod tx_kernel;
 
-use miden_core::crypto::hash::RpoDigest;
 use midenc_hir::{FunctionType, Symbol};
 use rustc_hash::FxHashMap;
 
 pub(crate) type FunctionTypeMap = FxHashMap<&'static str, FunctionType>;
 pub(crate) type ModuleFunctionTypeMap = FxHashMap<&'static str, FunctionTypeMap>;
-
-/// Parse the stable import function name and the hex encoded digest from the function name
-pub fn parse_import_function_digest(import_name: &str) -> Result<(String, RpoDigest), String> {
-    // parse the hex encoded digest from the function name in the angle brackets
-    // and the function name (before the angle brackets) example:
-    // "miden:tx_kernel/note.get_inputs"
-    let mut parts = import_name.split('<');
-    let function_name = parts.next().unwrap();
-    let digest = parts
-        .next()
-        .and_then(|s| s.strip_suffix('>'))
-        .ok_or("Import name parsing error: missing closing angle bracket in import name")?;
-    Ok((
-        function_name.to_string(),
-        RpoDigest::try_from(digest).map_err(|e| e.to_string())?,
-    ))
-}
 
 pub fn is_miden_abi_module(module_id: Symbol) -> bool {
     is_miden_stdlib_module(module_id) || is_miden_sdk_module(module_id)
