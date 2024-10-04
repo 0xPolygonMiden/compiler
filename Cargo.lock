@@ -3374,6 +3374,7 @@ name = "midenc-hir-macros"
 version = "0.0.6"
 dependencies = [
  "Inflector",
+ "darling",
  "proc-macro2",
  "quote",
  "syn 2.0.77",
