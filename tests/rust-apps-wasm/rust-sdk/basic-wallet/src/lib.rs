@@ -19,14 +19,14 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
 
 use miden_sdk::*;
 
-bindings::export!(Component with_types_in bindings);
+bindings::export!(MyAccount with_types_in bindings);
 
 mod bindings;
 use bindings::exports::miden::basic_wallet::basic_wallet::Guest;
 
-struct Component;
+struct MyAccount;
 
-impl Guest for Component {
+impl Guest for MyAccount {
     fn receive_asset(asset: CoreAsset) {
         add_asset(asset);
     }
