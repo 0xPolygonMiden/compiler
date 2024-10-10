@@ -91,10 +91,17 @@ where
     None
 }
 
+/// Requested output type for the `build` command
+pub enum OutputType {
+    Wasm,
+    Masm,
+    // Hir,
+}
+
 /// Runs the cargo-miden command
 /// The arguments are expected to start with `["cargo", "miden", ...]` followed by a subcommand with options
 // TODO: Use Report instead of anyhow?
-pub fn run<T>(args: T) -> anyhow::Result<Vec<PathBuf>>
+pub fn run<T>(args: T, build_output_type: OutputType) -> anyhow::Result<Vec<PathBuf>>
 where
     T: Iterator<Item = String>,
 {
@@ -230,26 +237,29 @@ where
                 )?;
             }
             dbg!(&wasm_outputs);
-            return Ok(wasm_outputs);
+            match build_output_type {
+                OutputType::Wasm => wasm_outputs,
+                OutputType::Masm => {
+                    let miden_out_dir =
+                        metadata.target_directory.join("miden").join(if cargo_args.release {
+                            "release"
+                        } else {
+                            "debug"
+                        });
+                    if !miden_out_dir.exists() {
+                        std::fs::create_dir_all(&miden_out_dir)?;
+                    }
 
-            // let miden_out_dir =
-            //     metadata.target_directory.join("miden").join(if cargo_args.release {
-            //         "release"
-            //     } else {
-            //         "debug"
-            //     });
-            // if !miden_out_dir.exists() {
-            //     std::fs::create_dir_all(&miden_out_dir)?;
-            // }
-
-            // let mut outputs = Vec::new();
-            // for wasm in wasm_outputs {
-            //     let is_bin = false;
-            //     let output = wasm_to_masm(&wasm, miden_out_dir.as_std_path(), is_bin)
-            //         .map_err(|e| anyhow::anyhow!("{e}"))?;
-            //     outputs.push(output);
-            // }
-            // outputs
+                    let mut outputs = Vec::new();
+                    for wasm in wasm_outputs {
+                        let is_bin = false;
+                        let output = wasm_to_masm(&wasm, miden_out_dir.as_std_path(), is_bin)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        outputs.push(output);
+                    }
+                    outputs
+                }
+            }
         }
     };
     Ok(outputs)

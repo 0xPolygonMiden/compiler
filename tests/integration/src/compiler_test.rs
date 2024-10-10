@@ -445,7 +445,8 @@ impl CompilerTestBuilder {
                     .map(|s| s.to_str().unwrap().to_string())
                     .collect();
                 args.extend(cmd_args);
-                let wasm_artifacts = cargo_miden::run(args.into_iter()).unwrap();
+                let wasm_artifacts =
+                    cargo_miden::run(args.into_iter(), cargo_miden::OutputType::Wasm).unwrap();
                 let wasm_comp_path = &wasm_artifacts.first().unwrap();
                 let artifact_name =
                     wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();

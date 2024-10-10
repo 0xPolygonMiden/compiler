@@ -1,6 +1,6 @@
 use std::{env, fs, vec};
 
-use cargo_miden::run;
+use cargo_miden::{run, OutputType};
 
 // NOTE: This test sets the current working directory so don't run it in parallel with tests
 // that depend on the current directory
@@ -43,7 +43,7 @@ fn build_new_project_from_template() {
     //     ),
     // );
 
-    let outputs = run(args.into_iter()).expect("Failed to create new project");
+    let outputs = run(args.into_iter(), OutputType::Masm).expect("Failed to create new project");
     let new_project_path = outputs.first().unwrap().canonicalize().unwrap();
     dbg!(&new_project_path);
     assert!(new_project_path.exists());
@@ -52,7 +52,7 @@ fn build_new_project_from_template() {
 
     // build with the dev profile
     let args = ["cargo", "miden", "build"].iter().map(|s| s.to_string());
-    let outputs = run(args).expect("Failed to compile with the dev profile");
+    let outputs = run(args, OutputType::Masm).expect("Failed to compile with the dev profile");
     assert_eq!(outputs.len(), 1);
     let expected_masm_path = outputs.first().unwrap();
     dbg!(&expected_masm_path);
@@ -64,7 +64,7 @@ fn build_new_project_from_template() {
 
     // build with the release profile
     let args = ["cargo", "miden", "build", "--release"].iter().map(|s| s.to_string());
-    let outputs = run(args).expect("Failed to compile with the release profile");
+    let outputs = run(args, OutputType::Masm).expect("Failed to compile with the release profile");
     assert_eq!(outputs.len(), 1);
     let expected_masm_path = outputs.first().unwrap();
     dbg!(&expected_masm_path);
