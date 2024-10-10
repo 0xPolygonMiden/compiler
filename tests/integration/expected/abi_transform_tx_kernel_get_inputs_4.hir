@@ -1,7 +1,4 @@
 (component 
-    ;; Component Imports
-    (lower ( (type (func (abi canon)  (param i32) (result i32 i32)))) (#miden:core-import/note@1.0.0 #get-inputs)
-
     ;; Modules
     (module #abi_transform_tx_kernel_get_inputs_4
         ;; Constants
@@ -126,7 +123,7 @@
                 (condbr v60 (block 7 v68) (block 8)))
 
             (block 6
-                (let (v38 u32) (call (#miden:core-import/intrinsics-mem@1.0.0 #heap-base)))
+                (let (v38 u32) (call (#intrinsics::mem #heap_base)))
                 (let (v39 u32) (memory.size))
                 (let (v40 i32) (const.i32 16))
                 (let (v41 u32) (bitcast v40))
@@ -201,7 +198,7 @@
                 (let (v36 u32) (bitcast v34))
                 (let (v37 u32) (shr.wrapping v35 v36))
                 (let (v38 i32) (bitcast v37))
-                (let [(v39 i32) (v40 i32)] (call (#miden:core-import/note@1.0.0 #get-inputs) v38))
+                (let [(v39 i32) (v40 i32)] (call (#miden::note #get_inputs) v38))
                 (let (v41 u32) (bitcast v0))
                 (let (v42 u32) (add.checked v41 8))
                 (let (v43 u32) (mod.unchecked v42 4))
@@ -363,10 +360,8 @@
         )
 
         ;; Imports
-        (func (import #miden:core-import/intrinsics-mem@1.0.0 #heap-base)
-              (result u32))
-        (func (import #miden:core-import/note@1.0.0 #get-inputs)
-              (param i32) (result i32 i32))
+        (func (import #intrinsics::mem #heap_base) (result u32))
+        (func (import #miden::note #get_inputs) (param i32) (result i32 i32))
     )
 
 )

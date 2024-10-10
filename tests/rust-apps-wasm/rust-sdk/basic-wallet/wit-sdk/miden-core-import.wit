@@ -23,10 +23,10 @@ interface intrinsics-felt {
     add: func(a: felt, b: felt) -> felt;
 }
 
-interface stdlib-crypto-hashes {
+interface stdlib-crypto-hashes-blake3 {
     use types.{felt, ptr};
 
-    blake3-hash-one-to-one: func(a0: s32, a1: s32, a2: s32, a3: s32, a4: s32, a5: s32, a6: s32, a7: s32, result-ptr: ptr);
+    hash-one-to-one: func(a0: s32, a1: s32, a2: s32, a3: s32, a4: s32, a5: s32, a6: s32, a7: s32, result-ptr: ptr);
 }
 
 interface account {
@@ -68,7 +68,7 @@ interface tx {
 world all {
     import intrinsics-mem;
     import intrinsics-felt;
-    import stdlib-crypto-hashes;
+    import stdlib-crypto-hashes-blake3;
     import account;
     import tx;
 

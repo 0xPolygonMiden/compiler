@@ -3,9 +3,9 @@ use midenc_hir_type::Type::*;
 
 use crate::miden_abi::{FunctionTypeMap, ModuleFunctionTypeMap};
 
-pub const MODULE_ID: &str = "miden:core-import/tx@1.0.0";
+pub const MODULE_ID: &str = "miden::tx";
 
-pub const CREATE_NOTE: &str = "create-note";
+pub const CREATE_NOTE: &str = "create_note";
 
 pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     let mut m: ModuleFunctionTypeMap = Default::default();

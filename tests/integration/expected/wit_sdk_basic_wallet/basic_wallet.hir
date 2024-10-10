@@ -2,7 +2,7 @@
     ;; Component Imports
     (lower (("miden:base/account@1.0.0" #add-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #0)
     (lower (("miden:base/account@1.0.0" #remove-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #1)
-    (lower (("miden:base/tx@1.0.0" #create-note) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#miden:base/tx@1.0.0 #create-note)
+    (lower (("miden:base/tx@1.0.0" #create-note) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#miden:base/tx@1.0.0 #create_note)
 
     ;; Modules
     (module #wit-component:shim
@@ -174,7 +174,7 @@
                 (assertz 250 v30)
                 (let (v31 (ptr i64)) (inttoptr v29))
                 (let (v32 i64) (load v31))
-                (let (v33 i64) (call (#miden:base/tx@1.0.0 #create-note) v17 v22 v27 v32 v4 v5 v6 v7 v8))
+                (let (v33 i64) (call (#miden:base/tx@1.0.0 #create_note) v17 v22 v27 v32 v4 v5 v6 v7 v8))
                 (let (v34 i32) (const.i32 32))
                 (let (v35 i32) (add.wrapping v12 v34))
                 (let (v36 (ptr i32)) (global.symbol #__stack_pointer))
@@ -1190,7 +1190,7 @@
         )
 
         ;; Imports
-        (func (import #miden:base/tx@1.0.0 #create-note)
+        (func (import #miden:base/tx@1.0.0 #create_note)
               (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (param i64) (result i64))
         (func (import #wit-component:shim #indirect-miden:base/account@1.0.0-add-asset)
               (param i64) (param i64) (param i64) (param i64) (param i32))

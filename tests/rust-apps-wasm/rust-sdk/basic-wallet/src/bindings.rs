@@ -103,14 +103,14 @@ pub mod miden {
             }
         }
         #[allow(dead_code, clippy::all)]
-        pub mod stdlib_crypto_hashes {
+        pub mod stdlib_crypto_hashes_blake3 {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
             use super::super::super::_rt;
             pub type Ptr = super::super::super::miden::core_import::types::Ptr;
             #[allow(unused_unsafe, clippy::all)]
-            pub fn blake3_hash_one_to_one(
+            pub fn hash_one_to_one(
                 a0: i32,
                 a1: i32,
                 a2: i32,
@@ -124,10 +124,10 @@ pub mod miden {
                 unsafe {
                     #[cfg(target_arch = "wasm32")]
                     #[link(
-                        wasm_import_module = "miden:core-import/stdlib-crypto-hashes@1.0.0"
+                        wasm_import_module = "miden:core-import/stdlib-crypto-hashes-blake3@1.0.0"
                     )]
                     extern "C" {
-                        #[link_name = "blake3-hash-one-to-one"]
+                        #[link_name = "hash-one-to-one"]
                         fn wit_import(
                             _: i32,
                             _: i32,
@@ -636,8 +636,8 @@ r\x01\x05inner\x04\x04\0\x10vault-commitment\x03\0\x19\x01r\x01\x05inner\x01\x04
 a\x01\x01b\x01\0\x01\x04\0\x03add\x01\x04\x03\x01'miden:core-import/intrinsics-f\
 elt@1.0.0\x05\x05\x01B\x06\x02\x03\x02\x01\x02\x04\0\x04felt\x03\0\0\x02\x03\x02\
 \x01\x03\x04\0\x03ptr\x03\0\x02\x01@\x09\x02a0z\x02a1z\x02a2z\x02a3z\x02a4z\x02a\
-5z\x02a6z\x02a7z\x0aresult-ptr\x03\x01\0\x04\0\x16blake3-hash-one-to-one\x01\x04\
-\x03\x01,miden:core-import/stdlib-crypto-hashes@1.0.0\x05\x06\x01B\x07\x02\x03\x02\
+5z\x02a6z\x02a7z\x0aresult-ptr\x03\x01\0\x04\0\x0fhash-one-to-one\x01\x04\x03\x01\
+3miden:core-import/stdlib-crypto-hashes-blake3@1.0.0\x05\x06\x01B\x07\x02\x03\x02\
 \x01\x02\x04\0\x04felt\x03\0\0\x02\x03\x02\x01\x03\x04\0\x03ptr\x03\0\x02\x01@\x05\
 \x06asset0\x01\x06asset1\x01\x06asset2\x01\x06asset3\x01\x0aresult-ptr\x03\x01\0\
 \x04\0\x09add-asset\x01\x04\x04\0\x0cremove-asset\x01\x04\x03\x01\x1fmiden:core-\

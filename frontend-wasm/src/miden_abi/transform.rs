@@ -27,13 +27,19 @@ fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrate
             stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
             _ => (),
         },
-        stdlib::crypto::hashes::MODULE_ID => match function_id {
-            stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => return TransformStrategy::ReturnViaPointer,
-            stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => return TransformStrategy::ReturnViaPointer,
+        stdlib::crypto::hashes::blake3::MODULE_ID => match function_id {
+            stdlib::crypto::hashes::blake3::HASH_1TO1 => {
+                return TransformStrategy::ReturnViaPointer
+            }
+            stdlib::crypto::hashes::blake3::HASH_2TO1 => {
+                return TransformStrategy::ReturnViaPointer
+            }
             _ => (),
         },
-        stdlib::crypto::dsa::MODULE_ID => match function_id {
-            stdlib::crypto::dsa::RPO_FALCON512_VERIFY => return TransformStrategy::NoTransform,
+        stdlib::crypto::dsa::rpo_falcon::MODULE_ID => match function_id {
+            stdlib::crypto::dsa::rpo_falcon::RPO_FALCON512_VERIFY => {
+                return TransformStrategy::NoTransform
+            }
             _ => (),
         },
         tx_kernel::note::MODULE_ID => match function_id {

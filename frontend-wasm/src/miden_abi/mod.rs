@@ -2,8 +2,11 @@ pub(crate) mod stdlib;
 pub(crate) mod transform;
 pub(crate) mod tx_kernel;
 
-use midenc_hir::{FunctionType, Symbol};
+use midenc_hir::{FunctionIdent, FunctionType, Ident, Symbol};
 use rustc_hash::FxHashMap;
+use tx_kernel::note;
+
+use crate::intrinsics;
 
 pub(crate) type FunctionTypeMap = FxHashMap<&'static str, FunctionType>;
 pub(crate) type ModuleFunctionTypeMap = FxHashMap<&'static str, FunctionTypeMap>;
@@ -53,4 +56,54 @@ fn miden_stdlib_function_type(module_id: Symbol, function_id: Symbol) -> Functio
             function_id, module_id
         )
     })
+}
+
+/// Restore module and function names of the intrinsics and Miden SDK functions
+/// that were renamed to satisfy the Wasm Component Model requirements.
+///
+/// Returns the pre-renamed module and function names or does nothing if the
+/// function is not an intrinsic or Miden SDK function
+pub fn recover_imported_masm_function_id(
+    wasm_module_id: &str,
+    wasm_function_id: &str,
+) -> FunctionIdent {
+    // TODO: convert without hardcoding (`/.*@`?)
+    let module_id = if wasm_module_id.starts_with("miden:core-import/intrinsics-mem") {
+        intrinsics::mem::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/intrinsics-felt") {
+        intrinsics::felt::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/account") {
+        tx_kernel::account::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/note") {
+        note::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/tx") {
+        tx_kernel::tx::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/stdlib-mem") {
+        stdlib::mem::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/stdlib-crypto-dsa-rpo-falcon") {
+        stdlib::crypto::dsa::rpo_falcon::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import/stdlib-crypto-hashes-blake3") {
+        stdlib::crypto::hashes::blake3::MODULE_ID
+    } else if wasm_module_id.starts_with("miden:core-import") {
+        panic!(
+            "unrecovered intrinsics or Miden SDK import module ID: {wasm_module_id}, function: \
+             {wasm_function_id}"
+        )
+    } else {
+        wasm_module_id
+    };
+    // Since `hash-1to1` is an invalid name in Wasm CM (dashed part cannot start with a digit),
+    // we need to translate the CM name to the one that is expected at the linking stage
+    // TODO: look into why dashed part cannot start with a digit?
+    let function_id = if wasm_function_id == "hash-one-to-one" {
+        "hash_1to1".to_string()
+    } else if wasm_function_id == "hash-two-to-one" {
+        "hash_2to1".to_string()
+    } else {
+        wasm_function_id.replace("-", "_")
+    };
+    FunctionIdent {
+        module: Ident::from(module_id),
+        function: Ident::from(function_id.as_str()),
+    }
 }

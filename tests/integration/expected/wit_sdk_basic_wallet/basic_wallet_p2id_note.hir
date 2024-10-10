@@ -2,9 +2,9 @@
     ;; Component Imports
     (lower (("miden:base/note@1.0.0" #get-inputs) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (list (struct u64)))))) (# #0)
     (lower (("miden:base/note@1.0.0" #get-assets) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (# #1)
-    (lower (("miden:base/account@1.0.0" #get-id) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get-id)
-    (lower (("miden:base/core-types@1.0.0" #account-id-from-felt) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account-id-from-felt)
-    (lower (("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive-asset)
+    (lower (("miden:base/account@1.0.0" #get-id) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get_id)
+    (lower (("miden:base/core-types@1.0.0" #account-id-from-felt) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account_id_from_felt)
+    (lower (("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive_asset)
 
     ;; Modules
     (module #wit-component:shim
@@ -321,14 +321,14 @@
                 (assertz 250 v28)
                 (let (v29 (ptr i64)) (inttoptr v27))
                 (let (v30 i64) (load v29))
-                (let (v31 i64) (call (#miden:base/core-types@1.0.0 #account-id-from-felt) v30))
+                (let (v31 i64) (call (#miden:base/core-types@1.0.0 #account_id_from_felt) v30))
                 (let (v32 u32) (bitcast v5))
                 (let (v33 u32) (add.checked v32 8))
                 (let (v34 u32) (mod.unchecked v33 8))
                 (assertz 250 v34)
                 (let (v35 (ptr i64)) (inttoptr v33))
                 (store v35 v31)
-                (let (v36 i64) (call (#miden:base/account@1.0.0 #get-id)))
+                (let (v36 i64) (call (#miden:base/account@1.0.0 #get_id)))
                 (let (v37 u32) (bitcast v5))
                 (let (v38 u32) (add.checked v37 16))
                 (let (v39 u32) (mod.unchecked v38 8))
@@ -419,7 +419,7 @@
                 (assertz 250 v85)
                 (let (v86 (ptr i64)) (inttoptr v84))
                 (let (v87 i64) (load v86))
-                (call (#miden:basic-wallet/basic-wallet@1.0.0 #receive-asset) v72 v77 v82 v87)
+                (call (#miden:basic-wallet/basic-wallet@1.0.0 #receive_asset) v72 v77 v82 v87)
                 (let (v88 i32) (const.i32 32))
                 (let (v89 i32) (add.wrapping v68 v88))
                 (let (v91 i1) (neq v89 v90))
@@ -6297,10 +6297,10 @@
         )
 
         ;; Imports
-        (func (import #miden:base/account@1.0.0 #get-id) (result i64))
-        (func (import #miden:base/core-types@1.0.0 #account-id-from-felt)
+        (func (import #miden:base/account@1.0.0 #get_id) (result i64))
+        (func (import #miden:base/core-types@1.0.0 #account_id_from_felt)
               (param i64) (result i64))
-        (func (import #miden:basic-wallet/basic-wallet@1.0.0 #receive-asset)
+        (func (import #miden:basic-wallet/basic-wallet@1.0.0 #receive_asset)
               (param i64) (param i64) (param i64) (param i64))
         (func (import #wit-component:shim #indirect-miden:base/note@1.0.0-get-assets)
               (param i32))

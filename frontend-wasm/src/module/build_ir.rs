@@ -68,7 +68,7 @@ pub fn translate_module_as_component(
                     ext_func.function.as_symbol(),
                 );
                 let component_import =
-                    midenc_hir::ComponentImport::MidenAbiImport(MidenAbiImport { function_ty });
+                    midenc_hir::ComponentImport::MidenAbiImport(MidenAbiImport::new(function_ty));
                 cb.add_import(*ext_func, component_import);
             }
         }

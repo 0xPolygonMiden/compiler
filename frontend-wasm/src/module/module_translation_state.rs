@@ -8,7 +8,7 @@ use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Modu
 use crate::{
     error::WasmResult,
     intrinsics::is_miden_intrinsics_module,
-    miden_abi::{is_miden_abi_module, miden_abi_function_type},
+    miden_abi::{is_miden_abi_module, miden_abi_function_type, recover_imported_masm_function_id},
     translation_utils::sig_from_func_type,
 };
 
@@ -60,10 +60,8 @@ impl ModuleTranslationState {
             } else if module.is_imported_function(index) {
                 assert!((index.as_u32() as usize) < module.num_imported_funcs);
                 let import = &module.imports[index.as_u32() as usize];
-                let func_id = FunctionIdent {
-                    module: Ident::from(import.module.as_str()),
-                    function: Ident::from(import.field.as_str()),
-                };
+                let func_id =
+                    recover_imported_masm_function_id(import.module.as_str(), &import.field);
                 functions.insert(index, (func_id, sig));
             } else {
                 let func_name = module.func_name(index);
@@ -97,15 +95,22 @@ impl ModuleTranslationState {
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<FunctionIdent> {
         let (func_id, wasm_sig) = self.functions[&index].clone();
-        let sig: Signature = if is_miden_abi_module(func_id.module.as_symbol()) {
+        let (func_id, sig) = if is_miden_abi_module(func_id.module.as_symbol()) {
+            let func_id = FunctionIdent {
+                module: func_id.module,
+                function: Ident::from(func_id.function.as_str().replace("-", "_").as_str()),
+            };
             let ft =
                 miden_abi_function_type(func_id.module.as_symbol(), func_id.function.as_symbol());
-            Signature::new(
-                ft.params.into_iter().map(AbiParam::new),
-                ft.results.into_iter().map(AbiParam::new),
+            (
+                func_id,
+                Signature::new(
+                    ft.params.into_iter().map(AbiParam::new),
+                    ft.results.into_iter().map(AbiParam::new),
+                ),
             )
         } else {
-            wasm_sig.clone()
+            (func_id, wasm_sig.clone())
         };
 
         if is_miden_intrinsics_module(func_id.module.as_symbol()) {

@@ -1,11 +1,10 @@
 (component 
     ;; Component Imports
-    (lower (("miden:core-import/account@1.0.0" #add-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param felt) (param felt) (param felt) (param felt) (param i32)))) (#miden:core-import/account@1.0.0 #add-asset)
-    (lower (("miden:core-import/account@1.0.0" #remove-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param felt) (param felt) (param felt) (param felt) (param i32)))) (#miden:core-import/account@1.0.0 #remove-asset)
-    (lower (("miden:core-import/intrinsics-felt@1.0.0" #add) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param felt) (param felt) (result felt)))) (#miden:core-import/intrinsics-felt@1.0.0 #add)
-    (lower (("miden:core-import/intrinsics-mem@1.0.0" #heap-base) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result i32)))) (#miden:core-import/intrinsics-mem@1.0.0 #heap-base)
-    (lower (("miden:core-import/stdlib-crypto-hashes@1.0.0" #blake3-hash-one-to-one) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32)))) (#miden:core-import/stdlib-crypto-hashes@1.0.0 #blake3-hash-one-to-one)
-    (lower (("miden:core-import/tx@1.0.0" #create-note) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt)))) (#miden:core-import/tx@1.0.0 #create-note)
+    (lower ( (type (func (abi canon)  (result u32)))) (#intrinsics::mem #heap_base)
+    (lower ( (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #add_asset)
+    (lower ( (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #remove_asset)
+    (lower ( (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt)))) (#miden::tx #create_note)
+    (lower ( (type (func (abi canon)  (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32)))) (#std::crypto::hashes::blake3 #hash_1to1)
 
     ;; Modules
     (module #basic_wallet
@@ -348,7 +347,7 @@
                 (call #<alloc::raw_vec::RawVec<T,A> as core::ops::drop::Drop>::drop v61)
                 (let (v62 i32) (const.i32 32))
                 (let (v63 i32) (add.wrapping v8 v62))
-                (let [(v64 i32) (v65 i32) (v66 i32) (v67 i32) (v68 i32) (v69 i32) (v70 i32) (v71 i32)] (call (#miden:core-import/stdlib-crypto-hashes@1.0.0 #blake3-hash-one-to-one) v29 v33 v37 v41 v45 v49 v53 v57))
+                (let [(v64 i32) (v65 i32) (v66 i32) (v67 i32) (v68 i32) (v69 i32) (v70 i32) (v71 i32)] (call (#std::crypto::hashes::blake3 #hash_1to1) v29 v33 v37 v41 v45 v49 v53 v57))
                 (let (v72 u32) (bitcast v63))
                 (let (v73 (ptr i32)) (inttoptr v72))
                 (store v73 v64)
@@ -648,7 +647,7 @@
                 (condbr v60 (block 7 v68) (block 8)))
 
             (block 6
-                (let (v38 u32) (call (#miden:core-import/intrinsics-mem@1.0.0 #heap-base)))
+                (let (v38 u32) (call (#intrinsics::mem #heap_base)))
                 (let (v39 u32) (memory.size))
                 (let (v40 i32) (const.i32 16))
                 (let (v41 u32) (bitcast v40))
@@ -702,7 +701,7 @@
                 (assertz 250 v18)
                 (let (v19 (ptr felt)) (inttoptr v17))
                 (let (v20 felt) (load v19))
-                (let [(v21 felt) (v22 felt) (v23 felt) (v24 felt)] (call (#miden:core-import/account@1.0.0 #add-asset) v5 v10 v15 v20))
+                (let [(v21 felt) (v22 felt) (v23 felt) (v24 felt)] (call (#miden::account #add_asset) v5 v10 v15 v20))
                 (let (v25 u32) (bitcast v0))
                 (let (v26 (ptr felt)) (inttoptr v25))
                 (store v26 v21)
@@ -747,7 +746,7 @@
                 (assertz 250 v18)
                 (let (v19 (ptr felt)) (inttoptr v17))
                 (let (v20 felt) (load v19))
-                (let [(v21 felt) (v22 felt) (v23 felt) (v24 felt)] (call (#miden:core-import/account@1.0.0 #remove-asset) v5 v10 v15 v20))
+                (let [(v21 felt) (v22 felt) (v23 felt) (v24 felt)] (call (#miden::account #remove_asset) v5 v10 v15 v20))
                 (let (v25 u32) (bitcast v0))
                 (let (v26 (ptr felt)) (inttoptr v25))
                 (store v26 v21)
@@ -819,7 +818,7 @@
                 (assertz 250 v40)
                 (let (v41 (ptr felt)) (inttoptr v39))
                 (let (v42 felt) (load v41))
-                (let (v43 felt) (call (#miden:core-import/tx@1.0.0 #create-note) v8 v13 v18 v23 v1 v2 v27 v32 v37 v42))
+                (let (v43 felt) (call (#miden::tx #create_note) v8 v13 v18 v23 v1 v2 v27 v32 v37 v42))
                 (br (block 1 v43)))
 
             (block 1 (param v4 felt)
@@ -1289,16 +1288,15 @@
         )
 
         ;; Imports
-        (func (import #miden:core-import/account@1.0.0 #add-asset)
+        (func (import #intrinsics::mem #heap_base) (result u32))
+        (func (import #miden::account #add_asset)
               (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
-        (func (import #miden:core-import/account@1.0.0 #remove-asset)
+        (func (import #miden::account #remove_asset)
               (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt))
-        (func (import #miden:core-import/intrinsics-mem@1.0.0 #heap-base)
-              (result u32))
-        (func (import #miden:core-import/stdlib-crypto-hashes@1.0.0 #blake3-hash-one-to-one)
-              (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32))
-        (func (import #miden:core-import/tx@1.0.0 #create-note)
+        (func (import #miden::tx #create_note)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
+        (func (import #std::crypto::hashes::blake3 #hash_1to1)
+              (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32))
     )
 
 )

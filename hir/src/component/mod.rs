@@ -3,6 +3,7 @@ use core::ops::{Deref, DerefMut};
 
 use indexmap::IndexMap;
 use miden_core::crypto::hash::RpoDigest;
+use midenc_hir_type::Abi;
 
 use self::formatter::PrettyPrint;
 use crate::{
@@ -30,18 +31,46 @@ pub struct CanonAbiImport {
     /// The interfact function name that is being imported
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
-    pub function_ty: FunctionType,
+    function_ty: FunctionType,
     /// The MAST root hash of the function to be used in codegen
     pub digest: RpoDigest,
     /// Any options associated with this import
     pub options: CanonicalOptions,
 }
 
+impl CanonAbiImport {
+    pub fn new(
+        interface_function: InterfaceFunctionIdent,
+        function_ty: FunctionType,
+        digest: RpoDigest,
+        options: CanonicalOptions,
+    ) -> Self {
+        assert_eq!(function_ty.abi, Abi::Wasm, "expected Abi::Wasm function type ABI");
+        Self {
+            interface_function,
+            function_ty,
+            digest,
+            options,
+        }
+    }
+
+    pub fn function_ty(&self) -> &FunctionType {
+        &self.function_ty
+    }
+}
+
 /// A Miden (sdklib, tx kernel) function import that is following the Miden ABI.
 #[derive(Debug, Clone)]
 pub struct MidenAbiImport {
     /// The Miden function type as it is defined in the MASM
-    pub function_ty: FunctionType,
+    function_ty: FunctionType,
+}
+
+impl MidenAbiImport {
+    pub fn new(function_ty: FunctionType) -> Self {
+        assert_eq!(function_ty.abi, Abi::Canonical, "expected Abi::Canonical function type ABI");
+        Self { function_ty }
+    }
 }
 
 /// A component import

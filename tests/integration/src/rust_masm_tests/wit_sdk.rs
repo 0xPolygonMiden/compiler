@@ -21,12 +21,12 @@ fn sdk() {
 
 #[test]
 fn sdk_basic_wallet() {
-    let interface_tx = InterfaceIdent::from_full_ident("miden:base/tx@1.0.0".to_string());
+    let interface_tx = InterfaceIdent::from_full_ident("miden:base/tx@1.0.0");
     let create_note_ident = InterfaceFunctionIdent {
         interface: interface_tx,
         function: Symbol::intern("create-note"),
     };
-    let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0".to_string());
+    let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0");
     let add_asset_ident = InterfaceFunctionIdent {
         interface: interface_account,
         function: Symbol::intern("add-asset"),
@@ -83,11 +83,10 @@ fn sdk_basic_wallet() {
 
 #[test]
 fn sdk_basic_wallet_p2id_note() {
-    let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0".to_string());
-    let basic_wallet =
-        InterfaceIdent::from_full_ident("miden:basic-wallet/basic-wallet@1.0.0".to_string());
-    let core_types = InterfaceIdent::from_full_ident("miden:base/core-types@1.0.0".to_string());
-    let note = InterfaceIdent::from_full_ident("miden:base/note@1.0.0".to_string());
+    let interface_account = InterfaceIdent::from_full_ident("miden:base/account@1.0.0");
+    let basic_wallet = InterfaceIdent::from_full_ident("miden:basic-wallet/basic-wallet@1.0.0");
+    let core_types = InterfaceIdent::from_full_ident("miden:base/core-types@1.0.0");
+    let note = InterfaceIdent::from_full_ident("miden:base/note@1.0.0");
     let import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata> = [
         (
             InterfaceFunctionIdent {

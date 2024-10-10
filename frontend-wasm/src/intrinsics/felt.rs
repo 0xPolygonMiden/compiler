@@ -4,7 +4,7 @@ use midenc_hir::{FunctionIdent, InstBuilder, SourceSpan, Type::*, Value};
 
 use crate::module::function_builder_ext::FunctionBuilderExt;
 
-pub(crate) const MODULE_ID: &str = "miden:core-import/intrinsics-felt@1.0.0";
+pub(crate) const MODULE_ID: &str = "intrinsics::felt";
 
 /// Convert a call to a felt op intrinsic function into instruction(s)
 pub(crate) fn convert_felt_intrinsics(

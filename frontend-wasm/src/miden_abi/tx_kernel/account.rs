@@ -3,11 +3,11 @@ use midenc_hir_type::Type::*;
 
 use crate::miden_abi::{FunctionTypeMap, ModuleFunctionTypeMap};
 
-pub const MODULE_ID: &str = "miden:core-import/account@1.0.0";
+pub const MODULE_ID: &str = "miden::account";
 
-pub const ADD_ASSET: &str = "add-asset";
-pub const REMOVE_ASSET: &str = "remove-asset";
-pub const GET_ID: &str = "get-id";
+pub const ADD_ASSET: &str = "add_asset";
+pub const REMOVE_ASSET: &str = "remove_asset";
+pub const GET_ID: &str = "get_id";
 
 pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     let mut m: ModuleFunctionTypeMap = Default::default();
