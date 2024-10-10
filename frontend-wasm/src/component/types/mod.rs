@@ -1736,7 +1736,7 @@ pub fn interface_type_to_ir(
         InterfaceType::U32 => midenc_hir_type::Type::U32,
         InterfaceType::S64 => midenc_hir_type::Type::I64,
         InterfaceType::U64 => midenc_hir_type::Type::U64,
-        InterfaceType::Float32 => todo!(),
+        InterfaceType::Float32 => midenc_hir_type::Type::Felt,
         InterfaceType::Float64 => todo!(),
         InterfaceType::Char => todo!(),
         InterfaceType::String => todo!(),

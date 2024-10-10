@@ -107,10 +107,10 @@ pub fn create_note(
             asset.inner[3],
             tag,
             note_type,
-            recipient.0[0],
-            recipient.0[1],
-            recipient.0[2],
-            recipient.0[3],
+            recipient.inner[0],
+            recipient.inner[1],
+            recipient.inner[2],
+            recipient.inner[3],
         )
     }
 }

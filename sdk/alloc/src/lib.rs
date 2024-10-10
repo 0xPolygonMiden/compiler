@@ -123,7 +123,8 @@ unsafe impl GlobalAlloc for BumpAlloc {
 }
 
 #[cfg(target_family = "wasm")]
-#[link(wasm_import_module = "intrinsics::mem")]
+#[link(wasm_import_module = "miden:core-import/intrinsics-mem@1.0.0")]
 extern "C" {
+    #[link_name = "heap-base"]
     fn heap_base() -> *mut u8;
 }

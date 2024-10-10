@@ -1,7 +1,7 @@
 use midenc_hir::{
     cranelift_entity::PrimaryMap, diagnostics::Severity, CanonAbiImport, ComponentBuilder,
     ComponentExport, FunctionIdent, FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent,
-    Symbol,
+    MidenAbiImport, Symbol,
 };
 use midenc_hir_type::Abi;
 use midenc_session::Session;
@@ -16,6 +16,10 @@ use super::{
 use crate::{
     component::StringEncoding,
     error::WasmResult,
+    intrinsics::{
+        intrinsics_conversion_result, is_miden_intrinsics_module, IntrinsicsConversionResult,
+    },
+    miden_abi::{is_miden_abi_module, miden_abi_function_type, recover_imported_masm_function_id},
     module::{
         build_ir::build_ir_module,
         instance::ModuleArgument,
@@ -153,14 +157,15 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                         }
                         CoreDef::Trampoline(trampoline_idx) => {
                             let trampoline = &wasm_translation.trampolines[*trampoline_idx];
-                            let arg = self.module_arg_from_trampoline(
+                            if let Some(arg) = self.module_arg_from_trampoline(
                                 trampoline,
                                 module,
                                 idx,
                                 &wasm_translation.component,
                                 component_builder,
-                            )?;
-                            module_args.push(arg);
+                            )? {
+                                module_args.push(arg)
+                            }
                         }
                     }
                 }
@@ -191,6 +196,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     }
 
     /// Build a Wasm core module argument from the given trampoline (component import)
+    /// Returns `None` if the trampoline was an intrinsics that were converted
     fn module_arg_from_trampoline(
         &self,
         trampoline: &Trampoline,
@@ -198,7 +204,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         idx: usize,
         wasm_component: &LinearComponent,
         component_builder: &mut ComponentBuilder<'_>,
-    ) -> WasmResult<ModuleArgument> {
+    ) -> WasmResult<Option<ModuleArgument>> {
         match trampoline {
             Trampoline::LowerImport {
                 index,
@@ -207,11 +213,20 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
             } => {
                 let module_import = module.imports.get(idx).expect("module import not found");
                 let runtime_import_idx = self.lower_imports[index];
-                let function_id = function_id_from_import(module, module_import);
-                let component_import =
-                    self.translate_import(runtime_import_idx, *lower_ty, options, wasm_component)?;
-                component_builder.add_import(function_id, component_import.clone());
-                Ok(ModuleArgument::ComponentImport(component_import))
+                let function_id = function_id_from_import(module_import);
+                match self.translate_import(
+                    runtime_import_idx,
+                    *lower_ty,
+                    options,
+                    wasm_component,
+                )? {
+                    Some(component_import) => {
+                        component_builder.add_import(function_id, component_import.clone());
+                        Ok(Some(ModuleArgument::ComponentImport(component_import)))
+                    }
+
+                    None => Ok(None),
+                }
             }
             _ => unsupported_diag!(
                 &self.session.diagnostics,
@@ -257,43 +272,71 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     }
 
     /// Translate the given runtime import to the Miden IR component import
+    /// Returns `None` if the import was an intrinsics that were converted
     fn translate_import(
         &self,
         runtime_import_index: RuntimeImportIndex,
         signature: TypeFuncIndex,
         options: &CanonicalOptions,
         wasm_component: &LinearComponent,
-    ) -> WasmResult<midenc_hir::ComponentImport> {
+    ) -> WasmResult<Option<midenc_hir::ComponentImport>> {
         let (import_idx, import_names) = &wasm_component.imports[runtime_import_index];
         if import_names.len() != 1 {
             unsupported_diag!(&self.session.diagnostics, "multi-name imports not supported");
         }
         let import_func_name = import_names.first().unwrap();
         let (full_interface_name, _) = wasm_component.import_types[*import_idx].clone();
-        let interface_function = InterfaceFunctionIdent {
-            interface: InterfaceIdent::from_full_ident(full_interface_name.clone()),
-            function: Symbol::intern(import_func_name),
-        };
-        let Some(import_metadata) = self.config.import_metadata.get(&interface_function) else {
-            return Err(self
-                .session
-                .diagnostics
-                .diagnostic(Severity::Error)
-                .with_message(format!(
-                    "wasm error: import metadata for interface function {interface_function:?} \
-                     not found"
-                ))
-                .into_report());
-        };
-        let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
+        let function_id = recover_imported_masm_function_id(&full_interface_name, import_func_name);
+        dbg!(&function_id);
+        if is_miden_abi_module(function_id.module.as_symbol())
+            || is_miden_intrinsics_module(function_id.module.as_symbol())
+        {
+            let function_ty = if is_miden_abi_module(function_id.module.as_symbol()) {
+                miden_abi_function_type(
+                    function_id.module.as_symbol(),
+                    function_id.function.as_symbol(),
+                )
+            } else if is_miden_intrinsics_module(function_id.module.as_symbol()) {
+                match intrinsics_conversion_result(&function_id) {
+                    IntrinsicsConversionResult::FunctionType(function_ty) => function_ty,
+                    IntrinsicsConversionResult::MidenVmOp => {
+                        // Skip this import since it was converted to a Miden VM op(s)
+                        return Ok(None);
+                    }
+                }
+            } else {
+                panic!("no support for importing function from module {}", function_id.module);
+            };
+            let component_import =
+                midenc_hir::ComponentImport::MidenAbiImport(MidenAbiImport::new(function_ty));
+            Ok(Some(component_import))
+        } else {
+            let interface_function = InterfaceFunctionIdent {
+                interface: InterfaceIdent::from_full_ident(&full_interface_name),
+                function: Symbol::intern(import_func_name),
+            };
+            let Some(import_metadata) = self.config.import_metadata.get(&interface_function) else {
+                return Err(self
+                    .session
+                    .diagnostics
+                    .diagnostic(Severity::Error)
+                    .with_message(format!(
+                        "wasm error: import metadata for interface function \
+                         {interface_function:?} not found"
+                    ))
+                    .into_report());
+            };
+            let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
 
-        let component_import = midenc_hir::ComponentImport::CanonAbiImport(CanonAbiImport {
-            function_ty: lifted_func_ty,
-            interface_function,
-            digest: import_metadata.digest,
-            options: self.translate_canonical_options(options)?,
-        });
-        Ok(component_import)
+            let component_import =
+                midenc_hir::ComponentImport::CanonAbiImport(CanonAbiImport::new(
+                    interface_function,
+                    lifted_func_ty,
+                    import_metadata.digest,
+                    self.translate_canonical_options(options)?,
+                ));
+            Ok(Some(component_import))
+        }
     }
 
     /// Build an IR Component export from the given Wasm component export
@@ -416,12 +459,8 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
 }
 
 /// Get the function id from the given Wasm core module import
-fn function_id_from_import(_module: &Module, module_import: &ModuleImport) -> FunctionIdent {
-    let function_id = FunctionIdent {
-        module: Ident::from(module_import.module.as_str()),
-        function: Ident::from(module_import.field.as_str()),
-    };
-    function_id
+fn function_id_from_import(module_import: &ModuleImport) -> FunctionIdent {
+    recover_imported_masm_function_id(&module_import.module, module_import.field.as_str())
 }
 
 /// Get the function id from the given Wasm func_idx in the given Wasm core exporting_module

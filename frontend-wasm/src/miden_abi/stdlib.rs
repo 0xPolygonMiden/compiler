@@ -11,8 +11,8 @@ pub(crate) fn signatures() -> &'static ModuleFunctionTypeMap {
     static TYPES: OnceLock<ModuleFunctionTypeMap> = OnceLock::new();
     TYPES.get_or_init(|| {
         let mut m: ModuleFunctionTypeMap = Default::default();
-        m.extend(crypto::hashes::signatures());
-        m.extend(crypto::dsa::signatures());
+        m.extend(crypto::hashes::blake3::signatures());
+        m.extend(crypto::dsa::rpo_falcon::signatures());
         m.extend(mem::signatures());
         m
     })

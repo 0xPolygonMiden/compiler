@@ -1,9 +1,9 @@
 (component 
     ;; Component Imports
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #add_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #remove_asset)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32)))) (#std::crypto::hashes::blake3 #hash_2to1)
-    (lower ((digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param i32) (param i32) (result felt felt felt felt felt felt felt felt felt felt felt felt i32)))) (#std::mem #pipe_double_words_to_memory)
+    (lower ( (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #add_asset)
+    (lower ( (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (result felt felt felt felt)))) (#miden::account #remove_asset)
+    (lower ( (type (func (abi canon)  (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32)))) (#std::crypto::hashes::blake3 #hash_2to1)
+    (lower ( (type (func (abi canon)  (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param i32) (param i32) (result felt felt felt felt felt felt felt felt felt felt felt felt i32)))) (#std::mem #pipe_double_words_to_memory)
 
     ;; Modules
     (module #miden_sdk_account_test
@@ -528,7 +528,7 @@
                 (assertz 250 v37)
                 (let (v38 (ptr felt)) (inttoptr v36))
                 (let (v39 felt) (load v38))
-                (call (#std::crypto::dsa::rpo_falcon512 #rpo_falcon512_verify) v5 v10 v15 v20 v24 v29 v34 v39)
+                (call (#std::crypto::dsa::rpo_falcon #rpo_falcon512_verify) v5 v10 v15 v20 v24 v29 v34 v39)
                 (br (block 1)))
 
             (block 1
@@ -1599,7 +1599,7 @@
         (func (import #miden::note #get_inputs) (param i32) (result i32 i32))
         (func (import #miden::tx #create_note)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (result felt))
-        (func (import #std::crypto::dsa::rpo_falcon512 #rpo_falcon512_verify)
+        (func (import #std::crypto::dsa::rpo_falcon #rpo_falcon512_verify)
               (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt) (param felt))
         (func (import #std::crypto::hashes::blake3 #hash_1to1)
               (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (param i32) (result i32 i32 i32 i32 i32 i32 i32 i32))

@@ -12,7 +12,7 @@ impl From<AccountId> for Felt {
 
 #[repr(transparent)]
 pub struct CoreAsset {
-    pub(crate) inner: Word,
+    pub inner: Word,
 }
 
 impl CoreAsset {
@@ -26,13 +26,19 @@ impl CoreAsset {
 }
 
 #[repr(transparent)]
-pub struct Recipient(pub(crate) Word);
+pub struct Recipient {
+    pub inner: Word,
+}
 
 #[repr(transparent)]
-pub struct Tag(pub(crate) Felt);
+pub struct Tag {
+    pub inner: Felt,
+}
 
 #[repr(transparent)]
 pub struct NoteId(pub(crate) Felt);
 
 #[repr(transparent)]
-pub struct NoteType(pub(crate) Felt);
+pub struct NoteType {
+    pub inner: Felt,
+}
