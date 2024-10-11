@@ -100,7 +100,6 @@ pub enum OutputType {
 
 /// Runs the cargo-miden command
 /// The arguments are expected to start with `["cargo", "miden", ...]` followed by a subcommand with options
-// TODO: Use Report instead of anyhow?
 pub fn run<T>(args: T, build_output_type: OutputType) -> anyhow::Result<Vec<PathBuf>>
 where
     T: Iterator<Item = String>,
@@ -173,7 +172,6 @@ where
             }
 
             for package in packages.iter_mut() {
-                // TODO: do we want/need to explicitly specify the package version?
                 package.metadata.section.bindings.with = [
                     ("miden:base/core-types@1.0.0/felt", "miden_sdk::Felt"),
                     ("miden:base/core-types@1.0.0/word", "miden_sdk::Word"),
@@ -192,11 +190,9 @@ where
                 // skip functions that are provided by the Miden SDK and/or intrinsics
                 // only function names (no CM path)
                 package.metadata.section.bindings.skip = vec![
-                    // TODO: not unique enough!
-                    // If it's a proper component import or user export it would be skipped!
-                    // Option 1: make "unique" intrinsics/SDK function names by including interface
-                    // name in the function name
-                    // Option 2: add a full CM path option in wit-bindgen
+                    // Our function names can clash with user's function names leading to
+                    // skipping the bindings generation of the user's function names
+                    // see https://github.com/0xPolygonMiden/compiler/issues/341
                     "remove-asset",
                     "create-note",
                     "heap-base",
@@ -208,7 +204,6 @@ where
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect();
-                // TODO: add namespace/package name support in the `skip` field in wit-bindgen?
             }
 
             let mut spawn_args: Vec<_> = args.into_iter().collect();
@@ -248,10 +243,10 @@ where
                 )
                 .await
             })?;
-            // TODO: analyze `packages` and find the ones that don't have a WIT component and get Wasm binary (core module) for them with our own version of run_cargo_command
             if wasm_outputs.is_empty() {
-                // crates that don't have a WIT component are ignored by the `cargo-component` run_cargo_command
-                // build them with our own version of run_cargo_command
+                // crates that don't have a WIT component are ignored by the
+                // `cargo-component` run_cargo_command and return no outputs.
+                // Build them with our own version of run_cargo_command
                 wasm_outputs = run_cargo_command_for_non_component(
                     &config,
                     subcommand.as_deref(),
