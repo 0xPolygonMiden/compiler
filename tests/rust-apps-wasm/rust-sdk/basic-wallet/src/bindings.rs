@@ -7,32 +7,6 @@ pub mod miden {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            /// Unique identifier of an account.
-            ///
-            /// Account ID consists of 1 field element (~64 bits). This field element uniquely identifies a
-            /// single account and also specifies the type of the underlying account. Specifically:
-            /// - The two most significant bits of the ID specify the type of the account:
-            /// - 00 - regular account with updatable code.
-            /// - 01 - regular account with immutable code.
-            /// - 10 - fungible asset faucet with immutable code.
-            /// - 11 - non-fungible asset faucet with immutable code.
-            /// - The third most significant bit of the ID specifies whether the account data is stored on-chain:
-            /// - 0 - full account data is stored on-chain.
-            /// - 1 - only the account hash is stored on-chain which serves as a commitment to the account state.
-            /// As such the three most significant bits fully describes the type of the account.
-            #[repr(C)]
-            #[derive(Clone, Copy)]
-            pub struct AccountId {
-                pub inner: miden_sdk::Felt,
-            }
-            impl ::core::fmt::Debug for AccountId {
-                fn fmt(
-                    &self,
-                    f: &mut ::core::fmt::Formatter<'_>,
-                ) -> ::core::fmt::Result {
-                    f.debug_struct("AccountId").field("inner", &self.inner).finish()
-                }
-            }
         }
     }
     #[allow(dead_code)]
@@ -42,276 +16,36 @@ pub mod miden {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            /// Represents base field element in the field using Montgomery representation.
-            /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
-            /// The backing type is `f64` but the internal values are always integer in the range [0, M).
-            /// Field modulus M = 2^64 - 2^32 + 1
-            pub type Felt = f32;
-            pub type Ptr = i32;
         }
         #[allow(dead_code, clippy::all)]
         pub mod intrinsics_mem {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            pub type Ptr = super::super::super::miden::core_import::types::Ptr;
-            #[allow(unused_unsafe, clippy::all)]
-            pub fn heap_base() -> Ptr {
-                unsafe {
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "miden:core-import/intrinsics-mem@1.0.0"
-                    )]
-                    extern "C" {
-                        #[link_name = "heap-base"]
-                        fn wit_import() -> i32;
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import() -> i32 {
-                        unreachable!()
-                    }
-                    let ret = wit_import();
-                    ret
-                }
-            }
         }
         #[allow(dead_code, clippy::all)]
         pub mod intrinsics_felt {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type Felt = super::super::super::miden::core_import::types::Felt;
-            #[allow(unused_unsafe, clippy::all)]
-            pub fn add(a: Felt, b: Felt) -> Felt {
-                unsafe {
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "miden:core-import/intrinsics-felt@1.0.0"
-                    )]
-                    extern "C" {
-                        #[link_name = "add"]
-                        fn wit_import(_: f32, _: f32) -> f32;
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(_: f32, _: f32) -> f32 {
-                        unreachable!()
-                    }
-                    let ret = wit_import(_rt::as_f32(a), _rt::as_f32(b));
-                    ret
-                }
-            }
         }
         #[allow(dead_code, clippy::all)]
         pub mod stdlib_crypto_hashes_blake3 {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type Ptr = super::super::super::miden::core_import::types::Ptr;
-            #[allow(unused_unsafe, clippy::all)]
-            pub fn hash_one_to_one(
-                a0: i32,
-                a1: i32,
-                a2: i32,
-                a3: i32,
-                a4: i32,
-                a5: i32,
-                a6: i32,
-                a7: i32,
-                result_ptr: Ptr,
-            ) {
-                unsafe {
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(
-                        wasm_import_module = "miden:core-import/stdlib-crypto-hashes-blake3@1.0.0"
-                    )]
-                    extern "C" {
-                        #[link_name = "hash-one-to-one"]
-                        fn wit_import(
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                            _: i32,
-                        );
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                        _: i32,
-                    ) {
-                        unreachable!()
-                    }
-                    wit_import(
-                        _rt::as_i32(&a0),
-                        _rt::as_i32(&a1),
-                        _rt::as_i32(&a2),
-                        _rt::as_i32(&a3),
-                        _rt::as_i32(&a4),
-                        _rt::as_i32(&a5),
-                        _rt::as_i32(&a6),
-                        _rt::as_i32(&a7),
-                        _rt::as_i32(result_ptr),
-                    );
-                }
-            }
         }
         #[allow(dead_code, clippy::all)]
         pub mod account {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type Felt = super::super::super::miden::core_import::types::Felt;
-            pub type Ptr = super::super::super::miden::core_import::types::Ptr;
-            #[allow(unused_unsafe, clippy::all)]
-            /// Add the specified asset to the vault. Panics under various conditions.
-            /// Returns the final asset in the account vault defined as follows: If asset is
-            /// a non-fungible asset, then returns the same as asset. If asset is a
-            /// fungible asset, then returns the total fungible asset in the account
-            /// vault after asset was added to it.
-            pub fn add_asset(
-                asset0: Felt,
-                asset1: Felt,
-                asset2: Felt,
-                asset3: Felt,
-                result_ptr: Ptr,
-            ) {
-                unsafe {
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "miden:core-import/account@1.0.0")]
-                    extern "C" {
-                        #[link_name = "add-asset"]
-                        fn wit_import(_: f32, _: f32, _: f32, _: f32, _: i32);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(_: f32, _: f32, _: f32, _: f32, _: i32) {
-                        unreachable!()
-                    }
-                    wit_import(
-                        _rt::as_f32(asset0),
-                        _rt::as_f32(asset1),
-                        _rt::as_f32(asset2),
-                        _rt::as_f32(asset3),
-                        _rt::as_i32(result_ptr),
-                    );
-                }
-            }
-            #[allow(unused_unsafe, clippy::all)]
-            /// Remove the specified asset from the vault
-            pub fn remove_asset(
-                asset0: Felt,
-                asset1: Felt,
-                asset2: Felt,
-                asset3: Felt,
-                result_ptr: Ptr,
-            ) {
-                unsafe {
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "miden:core-import/account@1.0.0")]
-                    extern "C" {
-                        #[link_name = "remove-asset"]
-                        fn wit_import(_: f32, _: f32, _: f32, _: f32, _: i32);
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(_: f32, _: f32, _: f32, _: f32, _: i32) {
-                        unreachable!()
-                    }
-                    wit_import(
-                        _rt::as_f32(asset0),
-                        _rt::as_f32(asset1),
-                        _rt::as_f32(asset2),
-                        _rt::as_f32(asset3),
-                        _rt::as_i32(result_ptr),
-                    );
-                }
-            }
         }
         #[allow(dead_code, clippy::all)]
         pub mod tx {
             #[used]
             #[doc(hidden)]
             static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type Felt = super::super::super::miden::core_import::types::Felt;
-            #[allow(unused_unsafe, clippy::all)]
-            /// Creates a new note.
-            /// asset is the asset to be included in the note.
-            /// tag is the tag to be included in the note.
-            /// recipient is the recipient of the note.
-            /// Returns the id of the created note.
-            pub fn create_note(
-                asset0: Felt,
-                asset1: Felt,
-                asset2: Felt,
-                asset3: Felt,
-                tag: Felt,
-                note_type: Felt,
-                recipient0: Felt,
-                recipient1: Felt,
-                recipient2: Felt,
-                recipient3: Felt,
-            ) -> Felt {
-                unsafe {
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "miden:core-import/tx@1.0.0")]
-                    extern "C" {
-                        #[link_name = "create-note"]
-                        fn wit_import(
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                            _: f32,
-                        ) -> f32;
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                        _: f32,
-                    ) -> f32 {
-                        unreachable!()
-                    }
-                    let ret = wit_import(
-                        _rt::as_f32(asset0),
-                        _rt::as_f32(asset1),
-                        _rt::as_f32(asset2),
-                        _rt::as_f32(asset3),
-                        _rt::as_f32(tag),
-                        _rt::as_f32(note_type),
-                        _rt::as_f32(recipient0),
-                        _rt::as_f32(recipient1),
-                        _rt::as_f32(recipient2),
-                        _rt::as_f32(recipient3),
-                    );
-                    ret
-                }
-            }
         }
     }
 }
@@ -490,6 +224,10 @@ pub mod exports {
     }
 }
 mod _rt {
+    #[cfg(target_arch = "wasm32")]
+    pub fn run_ctors_once() {
+        wit_bindgen_rt::run_ctors_once();
+    }
     pub fn as_f32<T: AsF32>(t: T) -> f32 {
         t.as_f32()
     }
@@ -506,69 +244,6 @@ mod _rt {
         fn as_f32(self) -> f32 {
             self as f32
         }
-    }
-    pub fn as_i32<T: AsI32>(t: T) -> i32 {
-        t.as_i32()
-    }
-    pub trait AsI32 {
-        fn as_i32(self) -> i32;
-    }
-    impl<'a, T: Copy + AsI32> AsI32 for &'a T {
-        fn as_i32(self) -> i32 {
-            (*self).as_i32()
-        }
-    }
-    impl AsI32 for i32 {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for u32 {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for i16 {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for u16 {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for i8 {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for u8 {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for char {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    impl AsI32 for usize {
-        #[inline]
-        fn as_i32(self) -> i32 {
-            self as i32
-        }
-    }
-    #[cfg(target_arch = "wasm32")]
-    pub fn run_ctors_once() {
-        wit_bindgen_rt::run_ctors_once();
     }
     pub use alloc_crate::vec::Vec;
     pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {

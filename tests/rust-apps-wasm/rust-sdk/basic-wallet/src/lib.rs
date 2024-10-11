@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 // Global allocator to use heap memory in no-std environment
 #[global_allocator]
-static ALLOC: BumpAlloc = miden_sdk::BumpAlloc::new();
+static ALLOC: miden_sdk::BumpAlloc = miden_sdk::BumpAlloc::new();
 
 // Required for no-std crates
 #[panic_handler]
@@ -17,12 +17,15 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-use miden_sdk::*;
-
 bindings::export!(MyAccount with_types_in bindings);
 
 mod bindings;
+
 use bindings::exports::miden::basic_wallet::basic_wallet::Guest;
+use miden_sdk::{
+    add_asset, blake3_hash_1to1, create_note, remove_asset, CoreAsset, Felt, NoteType, Recipient,
+    Tag,
+};
 
 struct MyAccount;
 

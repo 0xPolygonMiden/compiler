@@ -178,13 +178,37 @@ where
                     ("miden:base/core-types@1.0.0/felt", "miden_sdk::Felt"),
                     ("miden:base/core-types@1.0.0/word", "miden_sdk::Word"),
                     ("miden:base/core-types@1.0.0/core-asset", "miden_sdk::CoreAsset"),
+                    ("miden:base/core-types@1.0.0/account-id", "miden_sdk::AccountId"),
                     ("miden:base/core-types@1.0.0/tag", "miden_sdk::Tag"),
                     ("miden:base/core-types@1.0.0/note-type", "miden_sdk::NoteType"),
                     ("miden:base/core-types@1.0.0/recipient", "miden_sdk::Recipient"),
+                    // We also need to swap the `core-import` custom types to not pollute the user's input
+                    ("miden:core-import/types@1.0.0/felt", "f32"),
+                    ("miden:core-import/types@1.0.0/ptr", "i32"),
                 ]
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect();
+                // skip functions that are provided by the Miden SDK and/or intrinsics
+                // only function names (no CM path)
+                package.metadata.section.bindings.skip = vec![
+                    // TODO: not unique enough!
+                    // If it's a proper component import or user export it would be skipped!
+                    // Option 1: make "unique" intrinsics/SDK function names by including interface
+                    // name in the function name
+                    // Option 2: add a full CM path option in wit-bindgen
+                    "remove-asset",
+                    "create-note",
+                    "heap-base",
+                    "hash-one-to-one",
+                    "hash-two-to-one",
+                    "add-asset",
+                    "add",
+                ]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect();
+                // TODO: add namespace/package name support in the `skip` field in wit-bindgen?
             }
 
             let mut spawn_args: Vec<_> = args.into_iter().collect();
