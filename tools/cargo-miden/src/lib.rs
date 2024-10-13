@@ -180,9 +180,6 @@ where
                     ("miden:base/core-types@1.0.0/tag", "miden_sdk::Tag"),
                     ("miden:base/core-types@1.0.0/note-type", "miden_sdk::NoteType"),
                     ("miden:base/core-types@1.0.0/recipient", "miden_sdk::Recipient"),
-                    // We also need to swap the `core-import` custom types to not pollute the user's input
-                    ("miden:core-import/types@1.0.0/felt", "f32"),
-                    ("miden:core-import/types@1.0.0/ptr", "i32"),
                 ]
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
