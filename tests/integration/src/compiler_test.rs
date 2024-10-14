@@ -659,6 +659,7 @@ impl CompilerTestBuilder {
             CargoTest::new(name, cargo_project_folder.as_ref().to_path_buf()),
         ));
         builder.with_wasm_translation_config(config);
+        builder.with_midenc_flags(["--target".into(), "rollup".into()]);
         builder
     }
 
@@ -1227,11 +1228,6 @@ impl CompilerTest {
                 .unwrap_or_else(|err| panic!("{err}"))
                 .unwrap_mast();
         assert!(src.is_some(), "failed to pretty print masm artifact");
-        assert!(masm_program.is_some(), "failed to capture masm artifact");
-        assert!(
-            package.is_program(),
-            "expected to have produced an executable program, not a library"
-        );
         self.masm_src = src;
         self.ir_masm_program = masm_program.map(Ok);
         self.package = Some(Ok(Arc::new(package)));
