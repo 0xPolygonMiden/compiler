@@ -16,14 +16,14 @@ fn main() {
     let source_manager = Arc::new(miden_assembly::DefaultSourceManager::default());
     let namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
 
-    let tx_asm_dir = Path::new(manifest_dir).join("masm").join("tx");
+    let asm_dir = Path::new(manifest_dir).join("masm").join("miden");
     let asm = Assembler::new(source_manager);
-    let txlib = CompiledLibrary::from_dir(tx_asm_dir, namespace, asm).unwrap();
-    let tx_masl_path = build_dir
+    let lib = CompiledLibrary::from_dir(asm_dir, namespace, asm).unwrap();
+    let masl_path = build_dir
         .join("assets")
-        .join("tx")
+        .join("miden")
         .with_extension(CompiledLibrary::LIBRARY_EXTENSION);
-    txlib.write_to_file(tx_masl_path).into_diagnostic().unwrap();
+    lib.write_to_file(masl_path).into_diagnostic().unwrap();
 }
 
 #[cfg(not(feature = "masl-lib"))]

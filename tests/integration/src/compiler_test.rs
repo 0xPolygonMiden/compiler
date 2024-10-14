@@ -370,6 +370,15 @@ impl CompilerTestBuilder {
 
         // Cargo-based source types share a lot of configuration in common
         match self.source {
+            CompilerTestInputType::CargoMiden(ref config) => {
+                let manifest_path = project_dir.join("Cargo.toml");
+                command
+                    .arg("--manifest-path")
+                    .arg(manifest_path)
+                    .arg("--release")
+                    .arg("--target")
+                    .arg(config.target.as_ref());
+            }
             CompilerTestInputType::CargoComponent(_) => {
                 let manifest_path = project_dir.join("Cargo.toml");
                 command.arg("--manifest-path").arg(manifest_path).arg("--release");
@@ -436,7 +445,8 @@ impl CompilerTestBuilder {
                     .map(|s| s.to_str().unwrap().to_string())
                     .collect();
                 args.extend(cmd_args);
-                let wasm_artifacts = cargo_miden::run(args.into_iter()).unwrap();
+                let wasm_artifacts =
+                    cargo_miden::run(args.into_iter(), cargo_miden::OutputType::Wasm).unwrap();
                 let wasm_comp_path = &wasm_artifacts.first().unwrap();
                 let artifact_name =
                     wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
@@ -632,6 +642,24 @@ impl CompilerTestBuilder {
             CargoTest::new(name, cargo_project_folder.as_ref().to_path_buf()),
         ));
         builder.with_wasm_translation_config(config);
+        builder
+    }
+
+    /// Compile the Rust project using cargo-miden
+    pub fn rust_source_cargo_miden(
+        cargo_project_folder: impl AsRef<Path>,
+        config: WasmTranslationConfig,
+    ) -> Self {
+        let name = cargo_project_folder
+            .as_ref()
+            .file_stem()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or("".to_string());
+        let mut builder = CompilerTestBuilder::new(CompilerTestInputType::CargoMiden(
+            CargoTest::new(name, cargo_project_folder.as_ref().to_path_buf()),
+        ));
+        builder.with_wasm_translation_config(config);
+        builder.with_midenc_flags(["--target".into(), "rollup".into()]);
         builder
     }
 
@@ -983,6 +1011,14 @@ impl CompilerTest {
         CompilerTestBuilder::rust_source_cargo_component(cargo_project_folder, config).build()
     }
 
+    /// Compile the Rust project using cargo-miden
+    pub fn rust_source_cargo_miden(
+        cargo_project_folder: impl AsRef<Path>,
+        config: WasmTranslationConfig,
+    ) -> Self {
+        CompilerTestBuilder::rust_source_cargo_miden(cargo_project_folder, config).build()
+    }
+
     /// Set the Rust source code to compile a library Cargo project to Wasm module
     pub fn rust_source_cargo_lib(
         cargo_project_folder: impl AsRef<Path>,
@@ -1192,11 +1228,6 @@ impl CompilerTest {
                 .unwrap_or_else(|err| panic!("{err}"))
                 .unwrap_mast();
         assert!(src.is_some(), "failed to pretty print masm artifact");
-        assert!(masm_program.is_some(), "failed to capture masm artifact");
-        assert!(
-            package.is_program(),
-            "expected to have produced an executable program, not a library"
-        );
         self.masm_src = src;
         self.ir_masm_program = masm_program.map(Ok);
         self.package = Some(Ok(Arc::new(package)));

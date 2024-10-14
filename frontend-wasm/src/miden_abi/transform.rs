@@ -22,31 +22,37 @@ enum TransformStrategy {
 fn get_transform_strategy(module_id: &str, function_id: &str) -> TransformStrategy {
     #[allow(clippy::single_match)]
     match module_id {
-        "std::mem" => match function_id {
+        stdlib::mem::MODULE_ID => match function_id {
             stdlib::mem::PIPE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
             stdlib::mem::PIPE_DOUBLE_WORDS_TO_MEMORY => return TransformStrategy::ReturnViaPointer,
             _ => (),
         },
-        "std::crypto::hashes::blake3" => match function_id {
-            stdlib::crypto::hashes::BLAKE3_HASH_1TO1 => return TransformStrategy::ReturnViaPointer,
-            stdlib::crypto::hashes::BLAKE3_HASH_2TO1 => return TransformStrategy::ReturnViaPointer,
+        stdlib::crypto::hashes::blake3::MODULE_ID => match function_id {
+            stdlib::crypto::hashes::blake3::HASH_1TO1 => {
+                return TransformStrategy::ReturnViaPointer
+            }
+            stdlib::crypto::hashes::blake3::HASH_2TO1 => {
+                return TransformStrategy::ReturnViaPointer
+            }
             _ => (),
         },
-        "std::crypto::dsa::rpo_falcon512" => match function_id {
-            stdlib::crypto::dsa::RPO_FALCON512_VERIFY => return TransformStrategy::NoTransform,
+        stdlib::crypto::dsa::rpo_falcon::MODULE_ID => match function_id {
+            stdlib::crypto::dsa::rpo_falcon::RPO_FALCON512_VERIFY => {
+                return TransformStrategy::NoTransform
+            }
             _ => (),
         },
-        "miden::note" => match function_id {
+        tx_kernel::note::MODULE_ID => match function_id {
             tx_kernel::note::GET_INPUTS => return TransformStrategy::ListReturn,
             _ => (),
         },
-        "miden::account" => match function_id {
+        tx_kernel::account::MODULE_ID => match function_id {
             tx_kernel::account::ADD_ASSET => return TransformStrategy::ReturnViaPointer,
             tx_kernel::account::REMOVE_ASSET => return TransformStrategy::ReturnViaPointer,
             tx_kernel::account::GET_ID => return TransformStrategy::NoTransform,
             _ => (),
         },
-        "miden::tx" => match function_id {
+        tx_kernel::tx::MODULE_ID => match function_id {
             tx_kernel::tx::CREATE_NOTE => return TransformStrategy::NoTransform,
             _ => (),
         },

@@ -1,4 +1,3 @@
-use miden_core::crypto::hash::RpoDigest;
 use midenc_hir::{
     diagnostics::{DiagnosticsHandler, Severity},
     AbiParam, CallConv, DataFlowGraph, FunctionIdent, Ident, Linkage, Signature,
@@ -9,7 +8,7 @@ use super::{instance::ModuleArgument, ir_func_type, EntityIndex, FuncIndex, Modu
 use crate::{
     error::WasmResult,
     intrinsics::is_miden_intrinsics_module,
-    miden_abi::{is_miden_abi_module, miden_abi_function_type, parse_import_function_digest},
+    miden_abi::{is_miden_abi_module, miden_abi_function_type, recover_imported_masm_function_id},
     translation_utils::sig_from_func_type,
 };
 
@@ -17,8 +16,6 @@ pub struct ModuleTranslationState {
     /// Imported and local functions
     /// Stores both the function reference and its signature
     functions: FxHashMap<FuncIndex, (FunctionIdent, Signature)>,
-    /// Parsed MAST root hash for imported functions for Miden SDK
-    digests: FxHashMap<FunctionIdent, RpoDigest>,
     /// Number of imported or aliased functions in the module.
     pub num_imported_funcs: usize,
     // stable_imported_miden_abi_functions: FxHashMap<FunctionIdent, String>,
@@ -54,7 +51,6 @@ impl ModuleTranslationState {
             }
         }
         let mut functions = FxHashMap::default();
-        let mut digests = FxHashMap::default();
         for (index, func_type) in &module.functions {
             let wasm_func_type = mod_types[func_type.signature].clone();
             let ir_func_type = ir_func_type(&wasm_func_type, diagnostics).unwrap();
@@ -64,21 +60,9 @@ impl ModuleTranslationState {
             } else if module.is_imported_function(index) {
                 assert!((index.as_u32() as usize) < module.num_imported_funcs);
                 let import = &module.imports[index.as_u32() as usize];
-                if let Ok((func_stable_name, digest)) = parse_import_function_digest(&import.field)
-                {
-                    let func_id = FunctionIdent {
-                        module: Ident::from(import.module.as_str()),
-                        function: Ident::from(func_stable_name.as_str()),
-                    };
-                    functions.insert(index, (func_id, sig));
-                    digests.insert(func_id, digest);
-                } else {
-                    let func_id = FunctionIdent {
-                        module: Ident::from(import.module.as_str()),
-                        function: Ident::from(import.field.as_str()),
-                    };
-                    functions.insert(index, (func_id, sig));
-                };
+                let func_id =
+                    recover_imported_masm_function_id(import.module.as_str(), &import.field);
+                functions.insert(index, (func_id, sig));
             } else {
                 let func_name = module.func_name(index);
                 let func_id = FunctionIdent {
@@ -90,7 +74,6 @@ impl ModuleTranslationState {
         }
         Self {
             functions,
-            digests,
             num_imported_funcs: module.num_imported_funcs,
         }
     }
@@ -99,11 +82,6 @@ impl ModuleTranslationState {
     /// for the given function index.
     pub fn signature(&self, index: FuncIndex) -> &Signature {
         &self.functions[&index].1
-    }
-
-    /// Returns parsed MAST root hash for the given function id (if it is imported and has one)
-    pub fn digest(&self, func_id: &FunctionIdent) -> Option<&RpoDigest> {
-        self.digests.get(func_id)
     }
 
     /// Get the `FunctionIdent` that should be used to make a direct call to function
@@ -117,15 +95,22 @@ impl ModuleTranslationState {
         diagnostics: &DiagnosticsHandler,
     ) -> WasmResult<FunctionIdent> {
         let (func_id, wasm_sig) = self.functions[&index].clone();
-        let sig: Signature = if is_miden_abi_module(func_id.module.as_symbol()) {
+        let (func_id, sig) = if is_miden_abi_module(func_id.module.as_symbol()) {
+            let func_id = FunctionIdent {
+                module: func_id.module,
+                function: Ident::from(func_id.function.as_str().replace("-", "_").as_str()),
+            };
             let ft =
                 miden_abi_function_type(func_id.module.as_symbol(), func_id.function.as_symbol());
-            Signature::new(
-                ft.params.into_iter().map(AbiParam::new),
-                ft.results.into_iter().map(AbiParam::new),
+            (
+                func_id,
+                Signature::new(
+                    ft.params.into_iter().map(AbiParam::new),
+                    ft.results.into_iter().map(AbiParam::new),
+                ),
             )
         } else {
-            wasm_sig.clone()
+            (func_id, wasm_sig.clone())
         };
 
         if is_miden_intrinsics_module(func_id.module.as_symbol()) {

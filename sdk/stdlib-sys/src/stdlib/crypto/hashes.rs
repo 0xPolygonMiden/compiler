@@ -2,14 +2,14 @@
 //! functions. The input and output elements are assumed to contain one 32-bit
 //! value per element.
 
-#[link(wasm_import_module = "std::crypto::hashes::blake3")]
+#[link(wasm_import_module = "miden:core-import/stdlib-crypto-hashes-blake3@1.0.0")]
 extern "C" {
     /// Computes BLAKE3 1-to-1 hash.
     ///
     /// Input: 32-bytes stored in the first 8 elements of the stack (32 bits per element).
     /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element).
     /// The output is passed back to the caller via a pointer.
-    #[link_name = "hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "hash-one-to-one"]
     fn extern_blake3_hash_1to1(
         e1: u32,
         e2: u32,
@@ -27,7 +27,7 @@ extern "C" {
     /// Input: 64-bytes stored in the first 16 elements of the stack (32 bits per element).
     /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element)
     /// The output is passed back to the caller via a pointer.
-    #[link_name = "hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "hash-two-to-one"]
     fn extern_blake3_hash_2to1(
         e1: u32,
         e2: u32,
@@ -49,14 +49,14 @@ extern "C" {
     );
 }
 
-#[link(wasm_import_module = "std::crypto::hashes::sha256")]
+#[link(wasm_import_module = "miden:core-import/stdlib-crypto-hashes-sha256@1.0.0")]
 extern "C" {
     /// Computes SHA256 1-to-1 hash.
     ///
     /// Input: 32-bytes stored in the first 8 elements of the stack (32 bits per element).
     /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element).
     /// The output is passed back to the caller via a pointer.
-    #[link_name = "sha256_hash_1to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "sha256-hash-one-to-one"]
     fn extern_sha256_hash_1to1(
         e1: u32,
         e2: u32,
@@ -74,7 +74,7 @@ extern "C" {
     /// Input: 64-bytes stored in the first 16 elements of the stack (32 bits per element).
     /// Output: A 32-byte digest stored in the first 8 elements of stack (32 bits per element).
     /// The output is passed back to the caller via a pointer.
-    #[link_name = "sha256_hash_2to1<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "sha256-hash-two-to-one"]
     fn extern_sha256_hash_2to1(
         e1: u32,
         e2: u32,

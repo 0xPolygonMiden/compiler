@@ -87,11 +87,12 @@ fn memory_copy() {
             (let (v0 i32) (const.i32 20))
             (let (v1 i32) (const.i32 10))
             (let (v2 i32) (const.i32 1))
-            (let (v3 u32) (bitcast v0))
-            (let (v4 (ptr u8)) (inttoptr v3))
-            (let (v5 u32) (bitcast v1))
-            (let (v6 (ptr u8)) (inttoptr v5))
-            (memcpy v6 v4 v2)
+            (let (v3 u32) (bitcast v2))
+            (let (v4 u32) (bitcast v0))
+            (let (v5 (ptr u8)) (inttoptr v4))
+            (let (v6 u32) (bitcast v1))
+            (let (v7 (ptr u8)) (inttoptr v6))
+            (memcpy v7 v5 v3)
         "#]],
     )
 }

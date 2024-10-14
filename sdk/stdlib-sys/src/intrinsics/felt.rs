@@ -2,7 +2,7 @@
 
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[link(wasm_import_module = "miden:stdlib/intrinsics_felt")]
+#[link(wasm_import_module = "miden:core-import/intrinsics-felt@1.0.0")]
 extern "C" {
     #[link_name = "from_u64_unchecked"]
     fn extern_from_u64_unchecked(value: u64) -> Felt;
@@ -80,8 +80,10 @@ pub enum FeltError {
 }
 
 #[repr(transparent)]
-#[derive(Copy, Clone)]
-pub struct Felt(f32);
+#[derive(Copy, Clone, Debug)]
+pub struct Felt {
+    pub inner: f32,
+}
 
 impl Felt {
     /// Field modulus = 2^64 - 2^32 + 1
@@ -141,26 +143,34 @@ impl From<Felt> for u64 {
 
 impl From<u32> for Felt {
     fn from(value: u32) -> Self {
-        Self(unsafe { core::mem::transmute::<u32, f32>(value) })
+        Self {
+            inner: unsafe { core::mem::transmute::<u32, f32>(value) },
+        }
     }
 }
 
 impl From<u16> for Felt {
     fn from(value: u16) -> Self {
-        Self(unsafe { core::mem::transmute::<u32, f32>(value as u32) })
+        Self {
+            inner: unsafe { core::mem::transmute::<u32, f32>(value as u32) },
+        }
     }
 }
 
 impl From<u8> for Felt {
     fn from(value: u8) -> Self {
-        Self(unsafe { core::mem::transmute::<u32, f32>(value as u32) })
+        Self {
+            inner: unsafe { core::mem::transmute::<u32, f32>(value as u32) },
+        }
     }
 }
 
 #[cfg(target_pointer_width = "32")]
 impl From<usize> for Felt {
     fn from(value: usize) -> Self {
-        Self(unsafe { core::mem::transmute(value as u32) })
+        Self {
+            inner: unsafe { core::mem::transmute(value as u32) },
+        }
     }
 }
 

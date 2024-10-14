@@ -1,6 +1,6 @@
 (module $ge_felt.wasm
   (type (;0;) (func (param f32 f32) (result i32)))
-  (import "miden:stdlib/intrinsics_felt" "ge" (func $miden_stdlib_sys::intrinsics::felt::extern_ge (;0;) (type 0)))
+  (import "miden:core-import/intrinsics-felt@1.0.0" "ge" (func $miden_stdlib_sys::intrinsics::felt::extern_ge (;0;) (type 0)))
   (func $entrypoint (;1;) (type 0) (param f32 f32) (result i32)
     local.get 0
     local.get 1

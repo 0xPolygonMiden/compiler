@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 
 use crate::{Felt, Word};
 
-#[link(wasm_import_module = "std::mem")]
+#[link(wasm_import_module = "miden:core-import/stdlib-mem@1.0.0")]
 extern "C" {
 
     /// Moves an arbitrary number of words from the advice stack to memory.
@@ -18,7 +18,7 @@ extern "C" {
     /// Cycles:
     /// - Even num_words: 48 + 9 * num_words / 2
     /// - Odd num_words: 65 + 9 * round_down(num_words / 2)
-    #[link_name = "pipe_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "pipe-words-to-memory"]
     fn extern_pipe_words_to_memory(num_words: Felt, ptr: *mut Felt, out_ptr: *mut Felt);
 
     /// Moves an even number of words from the advice stack to memory.
@@ -33,7 +33,7 @@ extern "C" {
     /// - The value num_words = end_ptr - write_ptr must be positive and even
     ///
     /// Cycles: 10 + 9 * num_words / 2
-    #[link_name = "pipe_double_words_to_memory<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "pipe-double-words-to-memory"]
     fn extern_pipe_double_words_to_memory(
         c0: Felt,
         c1: Felt,

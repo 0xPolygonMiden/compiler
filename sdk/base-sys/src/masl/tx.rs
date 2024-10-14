@@ -17,8 +17,9 @@ impl From<MidenTxKernelLibrary> for CompiledLibrary {
 
 impl Default for MidenTxKernelLibrary {
     fn default() -> Self {
-        let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/tx.masl"));
-        let contents = CompiledLibrary::read_from_bytes(bytes).expect("failed to read std masl!");
+        let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/miden.masl"));
+        let contents =
+            CompiledLibrary::read_from_bytes(bytes).expect("failed to read Miden tx kernel masl!");
         Self(contents)
     }
 }

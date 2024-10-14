@@ -16,7 +16,7 @@ pub struct InterfaceIdent {
 impl InterfaceIdent {
     /// Create a new [InterfaceIdent] from a fully-qualified interface identifier, e.g.
     /// `namespace::package/interface@version`
-    pub fn from_full_ident(full_ident: String) -> Self {
+    pub fn from_full_ident<S: Into<String>>(full_ident: S) -> Self {
         Self {
             full_name: Symbol::intern(full_ident),
         }
@@ -47,9 +47,9 @@ pub struct InterfaceFunctionIdent {
 impl InterfaceFunctionIdent {
     /// Create a new [InterfaceFunctionIdent] from a fully-qualified interface
     /// identifier(e.g. `namespace::package/interface@version`) and a function name
-    pub fn from_full(interface: String, function: String) -> Self {
+    pub fn from_full<S: Into<String>>(interface: S, function: S) -> Self {
         Self {
-            interface: InterfaceIdent::from_full_ident(interface.to_string()),
+            interface: InterfaceIdent::from_full_ident(interface),
             function: Symbol::intern(function),
         }
     }

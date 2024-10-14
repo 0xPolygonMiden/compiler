@@ -1,6 +1,9 @@
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use expect_test::expect_file;
+use miden_core::crypto::hash::RpoDigest;
+use midenc_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
+use midenc_hir::{InterfaceFunctionIdent, InterfaceIdent, Symbol};
 
 use crate::{cargo_proj::project, compiler_test::sdk_crate_path, CompilerTest};
 
@@ -26,31 +29,14 @@ fn account() {
 }
 
 #[test]
-fn basic_wallet() {
+fn rust_sdk_basic_wallet() {
+    let _ = env_logger::builder().is_test(true).try_init();
     let project_name = "rust_sdk_basic_wallet";
-    let source = r#"
-
-pub struct Account;
-
-impl Account {
-    #[no_mangle]
-    pub fn receive_asset(asset: CoreAsset) {
-        add_asset(asset);
-    }
-
-    #[no_mangle]
-    pub fn send_asset(asset: CoreAsset, tag: Tag, note_type: NoteType, recipient: Recipient) {
-        let asset = remove_asset(asset);
-        create_note(asset, tag, note_type, recipient);
-    }
-}
-"#;
-
-    let mut test = CompilerTest::rust_source_with_sdk(project_name, source, true, None, None);
-    let artifact_name = test.artifact_name();
-    test.expect_wasm(expect_file![format!("../../expected/{project_name}/{artifact_name}.wat")]);
-    test.expect_ir(expect_file![format!("../../expected/{project_name}/{artifact_name}.hir")]);
-    // TODO: fix flaky test, "exec."_ZN19miden_sdk_tx_kernel9add_asset17h6f4cff304c095ffc" is
-    // changing the suffix on every n-th run test.expect_masm(expect_file![format!("../../
-    // expected/{project_name}/{artifact_name}.masm" )]);
+    let config = WasmTranslationConfig::default();
+    let mut test =
+        CompilerTest::rust_source_cargo_miden("../rust-apps-wasm/rust-sdk/basic-wallet", config);
+    let artifact_name = test.artifact_name().to_string();
+    test.expect_wasm(expect_file![format!("../../expected/rust_sdk/{artifact_name}.wat")]);
+    test.expect_ir(expect_file![format!("../../expected/rust_sdk/{artifact_name}.hir")]);
+    test.expect_masm(expect_file![format!("../../expected/rust_sdk/{artifact_name}.masm")]);
 }

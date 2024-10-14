@@ -2,25 +2,26 @@ use miden_stdlib_sys::Felt;
 
 use crate::bindings::tx::{AccountId, CoreAsset, NoteId, NoteType, Tag};
 
-#[link(wasm_import_module = "miden::account")]
+#[allow(improper_ctypes)]
+#[link(wasm_import_module = "miden:core-import/account@1.0.0")]
 extern "C" {
-    #[link_name = "get_id<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "get-id"]
     pub fn extern_account_get_id() -> AccountId;
-    #[link_name = "add_asset<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "add-asset"]
     pub fn extern_account_add_asset(_: Felt, _: Felt, _: Felt, _: Felt, ptr: *mut CoreAsset);
-    #[link_name = "remove_asset<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "remove-asset"]
     pub fn extern_account_remove_asset(_: Felt, _: Felt, _: Felt, _: Felt, ptr: *mut CoreAsset);
 }
 
-#[link(wasm_import_module = "miden::note")]
+#[link(wasm_import_module = "miden:core-import/note@1.0.0")]
 extern "C" {
-    #[link_name = "get_inputs<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "get-inputs"]
     pub fn extern_note_get_inputs(ptr: *mut Felt) -> usize;
 }
 
-#[link(wasm_import_module = "miden::tx")]
+#[link(wasm_import_module = "miden:core-import/tx@1.0.0")]
 extern "C" {
-    #[link_name = "create_note<0x0000000000000000000000000000000000000000000000000000000000000000>"]
+    #[link_name = "create-note"]
     pub fn extern_tx_create_note(
         asset_f0: Felt,
         asset_f1: Felt,
