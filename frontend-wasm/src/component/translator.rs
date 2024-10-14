@@ -76,7 +76,7 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
     ) -> WasmResult<midenc_hir::Component> {
         let mut component_builder: midenc_hir::ComponentBuilder<'a> =
             midenc_hir::ComponentBuilder::new(&self.session.diagnostics);
-        dbg!(&wasm_translation.component.initializers);
+        // dbg!(&wasm_translation.component.initializers);
         for initializer in &wasm_translation.component.initializers {
             match initializer {
                 GlobalInitializer::InstantiateModule(instantiate_module) => {
@@ -287,7 +287,6 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
         let import_func_name = import_names.first().unwrap();
         let (full_interface_name, _) = wasm_component.import_types[*import_idx].clone();
         let function_id = recover_imported_masm_function_id(&full_interface_name, import_func_name);
-        dbg!(&function_id);
         if is_miden_abi_module(function_id.module.as_symbol())
             || is_miden_intrinsics_module(function_id.module.as_symbol())
         {

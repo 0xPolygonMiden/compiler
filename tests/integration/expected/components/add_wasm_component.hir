@@ -52,8 +52,8 @@
             (block 1 (param v4 i32)
                 (ret v4))
 
-            (block 2 (param v22 i32)
-                (br (block 1 v22)))
+            (block 2 (param v23 i32)
+                (br (block 1 v23)))
 
             (block 3
                 (let (v11 u32) (bitcast v1))
@@ -62,13 +62,14 @@
                 (let (v14 i32) (sext v13))
                 (let (v15 i1) (neq v14 0))
                 (let (v16 i32) (select v15 v1 v3))
-                (let (v17 u32) (bitcast v7))
-                (let (v18 (ptr u8)) (inttoptr v17))
-                (let (v19 u32) (bitcast v0))
-                (let (v20 (ptr u8)) (inttoptr v19))
-                (memcpy v20 v18 v16)
-                (let (v21 i32) (const.i32 1048584))
-                (call #<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc v21 v0 v2 v1)
+                (let (v17 u32) (bitcast v16))
+                (let (v18 u32) (bitcast v7))
+                (let (v19 (ptr u8)) (inttoptr v18))
+                (let (v20 u32) (bitcast v0))
+                (let (v21 (ptr u8)) (inttoptr v20))
+                (memcpy v21 v19 v17)
+                (let (v22 i32) (const.i32 1048584))
+                (call #<wee_alloc::WeeAlloc as core::alloc::global::GlobalAlloc>::dealloc v22 v0 v2 v1)
                 (br (block 2 v7)))
         )
 

@@ -38,4 +38,5 @@ fn rust_sdk_basic_wallet() {
     let artifact_name = test.artifact_name().to_string();
     test.expect_wasm(expect_file![format!("../../expected/rust_sdk/{artifact_name}.wat")]);
     test.expect_ir(expect_file![format!("../../expected/rust_sdk/{artifact_name}.hir")]);
+    test.expect_masm(expect_file![format!("../../expected/rust_sdk/{artifact_name}.masm")]);
 }

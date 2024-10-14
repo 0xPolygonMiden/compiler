@@ -194,12 +194,13 @@ pub fn translate_operator(
         Operator::MemoryCopy { dst_mem, src_mem } => {
             // See semantics at https://github.com/WebAssembly/bulk-memory-operations/blob/master/proposals/bulk-memory-operations/Overview.md#memorycopy-instruction
             if *src_mem == 0 && src_mem == dst_mem {
-                let len = state.pop1();
+                let count_i32 = state.pop1();
                 let src_i32 = state.pop1();
                 let dst_i32 = state.pop1();
+                let count = builder.ins().bitcast(count_i32, Type::U32, span);
                 let dst = prepare_addr(dst_i32, &U8, None, builder, span);
                 let src = prepare_addr(src_i32, &U8, None, builder, span);
-                builder.ins().memcpy(src, dst, len, span);
+                builder.ins().memcpy(src, dst, count, span);
             } else {
                 unsupported_diag!(diagnostics, "MemoryCopy: only single memory is supported");
             }

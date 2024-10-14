@@ -140,7 +140,7 @@ where
             // Not a built-in command, run the cargo command
             let args = args.into_iter().skip_while(|arg| arg == "miden").collect::<Vec<_>>();
             let cargo_args = CargoArguments::parse_from(args.clone().into_iter())?;
-            dbg!(&cargo_args);
+            // dbg!(&cargo_args);
             let cache_dir = std::env::var(CACHE_DIR_ENV_VAR).map(PathBuf::from).ok();
             let config_file = std::env::var(CONFIG_FILE_ENV_VAR).map(PathBuf::from).ok();
             let config = Config::new(
@@ -225,7 +225,7 @@ where
 
             let mut builder = tokio::runtime::Builder::new_current_thread();
             let rt = builder.enable_all().build()?;
-            dbg!(&packages);
+            // dbg!(&packages);
             let mut wasm_outputs = rt.block_on(async {
                 let client = config.client(cache_dir, cargo_args.offline).await?;
                 run_cargo_command(
@@ -252,7 +252,7 @@ where
                     &env_vars,
                 )?;
             }
-            dbg!(&wasm_outputs);
+            // dbg!(&wasm_outputs);
             match build_output_type {
                 OutputType::Wasm => wasm_outputs,
                 OutputType::Masm => {
