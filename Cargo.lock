@@ -2963,6 +2963,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "miden"
+version = "0.0.7"
+dependencies = [
+ "miden-base-sys",
+ "miden-sdk-alloc",
+ "miden-stdlib-sys",
+]
+
+[[package]]
 name = "miden-air"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3138,15 +3147,6 @@ dependencies = [
  "miden-core",
  "tracing",
  "winter-prover",
-]
-
-[[package]]
-name = "miden-sdk"
-version = "0.0.7"
-dependencies = [
- "miden-base-sys",
- "miden-sdk-alloc",
- "miden-stdlib-sys",
 ]
 
 [[package]]

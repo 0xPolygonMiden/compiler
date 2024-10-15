@@ -1,6 +1,6 @@
 extern crate alloc;
 
-use miden_sdk::*;
+use miden::*;
 
 #[global_allocator]
 static ALLOC: BumpAlloc = BumpAlloc::new();

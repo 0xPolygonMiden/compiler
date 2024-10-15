@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 // Global allocator to use heap memory in no-std environment
 #[global_allocator]
-static ALLOC: miden_sdk::BumpAlloc = miden_sdk::BumpAlloc::new();
+static ALLOC: miden::BumpAlloc = miden::BumpAlloc::new();
 
 // Required for no-std crates
 #[panic_handler]
@@ -22,7 +22,7 @@ bindings::export!(MyAccount with_types_in bindings);
 mod bindings;
 
 use bindings::exports::miden::basic_wallet::basic_wallet::Guest;
-use miden_sdk::{
+use miden::{
     add_asset, blake3_hash_1to1, create_note, remove_asset, CoreAsset, Felt, NoteType, Recipient,
     Tag,
 };

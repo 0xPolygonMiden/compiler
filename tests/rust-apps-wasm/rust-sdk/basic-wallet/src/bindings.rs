@@ -64,13 +64,13 @@ pub mod exports {
                     arg3: f32,
                 ) {
                     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
-                    T::receive_asset(miden_sdk::CoreAsset {
-                        inner: miden_sdk::Word {
+                    T::receive_asset(miden::CoreAsset {
+                        inner: miden::Word {
                             inner: (
-                                miden_sdk::Felt { inner: arg0 },
-                                miden_sdk::Felt { inner: arg1 },
-                                miden_sdk::Felt { inner: arg2 },
-                                miden_sdk::Felt { inner: arg3 },
+                                miden::Felt { inner: arg0 },
+                                miden::Felt { inner: arg1 },
+                                miden::Felt { inner: arg2 },
+                                miden::Felt { inner: arg3 },
                             ),
                         },
                     });
@@ -91,29 +91,29 @@ pub mod exports {
                 ) {
                     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
                     T::send_asset(
-                        miden_sdk::CoreAsset {
-                            inner: miden_sdk::Word {
+                        miden::CoreAsset {
+                            inner: miden::Word {
                                 inner: (
-                                    miden_sdk::Felt { inner: arg0 },
-                                    miden_sdk::Felt { inner: arg1 },
-                                    miden_sdk::Felt { inner: arg2 },
-                                    miden_sdk::Felt { inner: arg3 },
+                                    miden::Felt { inner: arg0 },
+                                    miden::Felt { inner: arg1 },
+                                    miden::Felt { inner: arg2 },
+                                    miden::Felt { inner: arg3 },
                                 ),
                             },
                         },
-                        miden_sdk::Tag {
-                            inner: miden_sdk::Felt { inner: arg4 },
+                        miden::Tag {
+                            inner: miden::Felt { inner: arg4 },
                         },
-                        miden_sdk::NoteType {
-                            inner: miden_sdk::Felt { inner: arg5 },
+                        miden::NoteType {
+                            inner: miden::Felt { inner: arg5 },
                         },
-                        miden_sdk::Recipient {
-                            inner: miden_sdk::Word {
+                        miden::Recipient {
+                            inner: miden::Word {
                                 inner: (
-                                    miden_sdk::Felt { inner: arg6 },
-                                    miden_sdk::Felt { inner: arg7 },
-                                    miden_sdk::Felt { inner: arg8 },
-                                    miden_sdk::Felt { inner: arg9 },
+                                    miden::Felt { inner: arg6 },
+                                    miden::Felt { inner: arg7 },
+                                    miden::Felt { inner: arg8 },
+                                    miden::Felt { inner: arg9 },
                                 ),
                             },
                         },
@@ -127,10 +127,10 @@ pub mod exports {
                 ) -> f32 {
                     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
                     let result0 = T::test_felt_intrinsics(
-                        miden_sdk::Felt { inner: arg0 },
-                        miden_sdk::Felt { inner: arg1 },
+                        miden::Felt { inner: arg0 },
+                        miden::Felt { inner: arg1 },
                     );
-                    let miden_sdk::Felt { inner: inner1 } = result0;
+                    let miden::Felt { inner: inner1 } = result0;
                     _rt::as_f32(inner1)
                 }
                 #[doc(hidden)]
@@ -163,17 +163,17 @@ pub mod exports {
                     _rt::cabi_dealloc(base2, len2 * 1, 1);
                 }
                 pub trait Guest {
-                    fn receive_asset(core_asset: miden_sdk::CoreAsset);
+                    fn receive_asset(core_asset: miden::CoreAsset);
                     fn send_asset(
-                        core_asset: miden_sdk::CoreAsset,
-                        tag: miden_sdk::Tag,
-                        note_type: miden_sdk::NoteType,
-                        recipient: miden_sdk::Recipient,
+                        core_asset: miden::CoreAsset,
+                        tag: miden::Tag,
+                        note_type: miden::NoteType,
+                        recipient: miden::Recipient,
                     );
                     fn test_felt_intrinsics(
-                        a: miden_sdk::Felt,
-                        b: miden_sdk::Felt,
-                    ) -> miden_sdk::Felt;
+                        a: miden::Felt,
+                        b: miden::Felt,
+                    ) -> miden::Felt;
                     fn test_stdlib(input: _rt::Vec<u8>) -> _rt::Vec<u8>;
                 }
                 #[doc(hidden)]

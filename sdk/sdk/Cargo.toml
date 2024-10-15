@@ -1,5 +1,5 @@
 [package]
-name = "miden-sdk"
+name = "miden"
 description = "Miden SDK"
 version.workspace = true
 rust-version.workspace = true
