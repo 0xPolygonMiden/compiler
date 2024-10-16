@@ -7,10 +7,10 @@
   (type (;5;) (func (param i32 i32 i32)))
   (type (;6;) (func (param i32 i32)))
   (import "miden:core-import/intrinsics-mem@1.0.0" "heap-base" (func $miden_sdk_alloc::heap_base (;0;) (type 0)))
-  (import "miden:core-import/note@1.0.0" "get-inputs" (func $miden_base_sys::bindings::tx::externs::extern_note_get_inputs (;1;) (type 1)))
+  (import "miden:core-import/note@1.0.0" "get-inputs" (func $miden_base_sys::bindings::note::extern_note_get_inputs (;1;) (type 1)))
   (func $entrypoint (;2;) (type 2) (param i32)
     local.get 0
-    call $miden_base_sys::bindings::tx::get_inputs
+    call $miden_base_sys::bindings::note::get_inputs
   )
   (func $__rust_alloc (;3;) (type 3) (param i32 i32) (result i32)
     i32.const 1048576
@@ -102,7 +102,7 @@
     end
     unreachable
   )
-  (func $miden_base_sys::bindings::tx::get_inputs (;6;) (type 2) (param i32)
+  (func $miden_base_sys::bindings::note::get_inputs (;6;) (type 2) (param i32)
     (local i32 i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -136,7 +136,7 @@
     local.tee 3
     i32.const 4
     i32.shr_u
-    call $miden_base_sys::bindings::tx::externs::extern_note_get_inputs
+    call $miden_base_sys::bindings::note::extern_note_get_inputs
     i32.store offset=8
     local.get 0
     local.get 3

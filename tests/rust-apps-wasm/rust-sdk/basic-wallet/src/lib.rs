@@ -22,21 +22,18 @@ bindings::export!(MyAccount with_types_in bindings);
 mod bindings;
 
 use bindings::exports::miden::basic_wallet::basic_wallet::Guest;
-use miden::{
-    add_asset, blake3_hash_1to1, create_note, remove_asset, CoreAsset, Felt, NoteType, Recipient,
-    Tag,
-};
+use miden::{blake3_hash_1to1, CoreAsset, Felt, NoteType, Recipient, Tag};
 
 struct MyAccount;
 
 impl Guest for MyAccount {
     fn receive_asset(asset: CoreAsset) {
-        add_asset(asset);
+        miden::account::add_asset(asset);
     }
 
     fn send_asset(asset: CoreAsset, tag: Tag, note_type: NoteType, recipient: Recipient) {
-        let asset = remove_asset(asset);
-        create_note(asset, tag, note_type, recipient);
+        let asset = miden::account::remove_asset(asset);
+        miden::tx::create_note(asset, tag, note_type, recipient);
     }
 
     fn test_felt_intrinsics(a: Felt, b: Felt) -> Felt {

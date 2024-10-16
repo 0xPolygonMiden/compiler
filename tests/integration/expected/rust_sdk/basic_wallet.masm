@@ -2019,7 +2019,7 @@ export."miden:basic-wallet/basic-wallet@1.0.0#send-asset"
     u32wrapping_add
     dup.9
     swap.1
-    exec."miden_base_sys::bindings::tx::remove_asset"
+    exec."miden_base_sys::bindings::account::remove_asset"
     push.32
     dup.9
     swap.1
@@ -2070,7 +2070,7 @@ export."miden:basic-wallet/basic-wallet@1.0.0#send-asset"
 end
 
 
-export."miden_base_sys::bindings::tx::remove_asset"
+export."miden_base_sys::bindings::account::remove_asset"
     dup.1
     add.12
     u32assert
@@ -2405,7 +2405,7 @@ export."miden:basic-wallet/basic-wallet@1.0.0#receive-asset"
     u32wrapping_add
     movup.5
     swap.1
-    exec."miden_base_sys::bindings::tx::add_asset"
+    exec."miden_base_sys::bindings::account::add_asset"
     push.1114112
     movup.5
     swap.1
@@ -2429,7 +2429,7 @@ export."miden:basic-wallet/basic-wallet@1.0.0#receive-asset"
 end
 
 
-export."miden_base_sys::bindings::tx::add_asset"
+export."miden_base_sys::bindings::account::add_asset"
     dup.1
     add.12
     u32assert
