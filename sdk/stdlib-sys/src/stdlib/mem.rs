@@ -3,7 +3,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use crate::{Felt, Word};
+use crate::intrinsics::{Felt, Word};
 
 #[link(wasm_import_module = "miden:core-import/stdlib-mem@1.0.0")]
 extern "C" {

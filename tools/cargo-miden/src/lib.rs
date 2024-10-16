@@ -173,13 +173,13 @@ where
 
             for package in packages.iter_mut() {
                 package.metadata.section.bindings.with = [
-                    ("miden:base/core-types@1.0.0/felt", "miden_sdk::Felt"),
-                    ("miden:base/core-types@1.0.0/word", "miden_sdk::Word"),
-                    ("miden:base/core-types@1.0.0/core-asset", "miden_sdk::CoreAsset"),
-                    ("miden:base/core-types@1.0.0/account-id", "miden_sdk::AccountId"),
-                    ("miden:base/core-types@1.0.0/tag", "miden_sdk::Tag"),
-                    ("miden:base/core-types@1.0.0/note-type", "miden_sdk::NoteType"),
-                    ("miden:base/core-types@1.0.0/recipient", "miden_sdk::Recipient"),
+                    ("miden:base/core-types@1.0.0/felt", "miden::Felt"),
+                    ("miden:base/core-types@1.0.0/word", "miden::Word"),
+                    ("miden:base/core-types@1.0.0/core-asset", "miden::CoreAsset"),
+                    ("miden:base/core-types@1.0.0/account-id", "miden::AccountId"),
+                    ("miden:base/core-types@1.0.0/tag", "miden::Tag"),
+                    ("miden:base/core-types@1.0.0/note-type", "miden::NoteType"),
+                    ("miden:base/core-types@1.0.0/recipient", "miden::Recipient"),
                 ]
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))

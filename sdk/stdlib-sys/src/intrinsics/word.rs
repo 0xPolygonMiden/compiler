@@ -1,6 +1,6 @@
 use core::ops::{Index, IndexMut};
 
-use crate::Felt;
+use super::felt::Felt;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(C, align(32))]

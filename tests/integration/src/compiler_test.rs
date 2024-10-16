@@ -789,6 +789,7 @@ impl CompilerTestBuilder {
                     r#"
                 #![no_std]
                 #![no_main]
+                #![allow(unused_imports)]
 
                 #[panic_handler]
                 fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
@@ -803,6 +804,7 @@ impl CompilerTestBuilder {
                 use miden_stdlib_sys::*;
 
                 #[no_mangle]
+                #[allow(improper_ctypes_definitions)]
                 pub extern "C" fn entrypoint{}
             "#,
                     source
@@ -842,7 +844,7 @@ authors = []
 
 [dependencies]
 miden-sdk-alloc = {{ path = "{sdk_alloc_path}" }}
-miden-sdk = {{ path = "{sdk_path}" }}
+miden = {{ path = "{sdk_path}" }}
 
 [lib]
 crate-type = ["cdylib"]
@@ -863,6 +865,7 @@ debug = true
                 format!(
                     r#"#![no_std]
 #![no_main]
+#![allow(unused_imports)]
 
 #[panic_handler]
 fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
@@ -873,8 +876,8 @@ fn my_panic(_info: &core::panic::PanicInfo) -> ! {{
 #[global_allocator]
 static ALLOC: miden_sdk_alloc::BumpAlloc = miden_sdk_alloc::BumpAlloc::new();
 
-extern crate miden_sdk;
-use miden_sdk::*;
+extern crate miden;
+use miden::*;
 
 extern crate alloc;
 use alloc::vec::Vec;

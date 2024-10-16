@@ -41,7 +41,7 @@ end
         expect3 = expected_inputs.get(2).map(|i| i.as_int()).unwrap_or(0),
         expect4 = expected_inputs.get(3).map(|i| i.as_int()).unwrap_or(0),
     );
-    let main_fn = "() -> Vec<Felt> { get_inputs() }";
+    let main_fn = "() -> Vec<Felt> { miden::note::get_inputs() }";
     let artifact_name = format!("abi_transform_tx_kernel_get_inputs_{}", test_name);
     let mut test_builder =
         CompilerTestBuilder::rust_fn_body_with_sdk(artifact_name.clone(), main_fn, true, None);

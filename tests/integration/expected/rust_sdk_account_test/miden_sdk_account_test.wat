@@ -12,8 +12,8 @@
   (type (;10;) (func (param f32 f32 f32 f32 f32 f32 f32 f32)))
   (type (;11;) (func (result i32)))
   (type (;12;) (func (result f32)))
-  (type (;13;) (func (param i32) (result i32)))
-  (type (;14;) (func (param f32 f32 f32 f32 i32)))
+  (type (;13;) (func (param f32 f32 f32 f32 i32)))
+  (type (;14;) (func (param i32) (result i32)))
   (type (;15;) (func (param f32 f32 f32 f32 f32 f32 f32 f32 f32 f32) (result f32)))
   (type (;16;) (func (param f32 i32 i32)))
   (type (;17;) (func (param f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 f32 i32 i32 i32)))
@@ -49,11 +49,11 @@
   (import "miden:core-import/stdlib-crypto-hashes-blake3@1.0.0" "hash-two-to-one" (func $miden_stdlib_sys::stdlib::crypto::hashes::extern_blake3_hash_2to1 (;20;) (type 9)))
   (import "miden:core-import/stdlib-crypto-dsa-rpo-falcon@1.0.0" "rpo-falcon512-verify" (func $miden_stdlib_sys::stdlib::crypto::dsa::extern_rpo_falcon512_verify (;21;) (type 10)))
   (import "miden:core-import/intrinsics-mem@1.0.0" "heap-base" (func $miden_sdk_alloc::heap_base (;22;) (type 11)))
-  (import "miden:core-import/account@1.0.0" "get-id" (func $miden_base_sys::bindings::tx::externs::extern_account_get_id (;23;) (type 12)))
-  (import "miden:core-import/note@1.0.0" "get-inputs" (func $miden_base_sys::bindings::tx::externs::extern_note_get_inputs (;24;) (type 13)))
-  (import "miden:core-import/account@1.0.0" "add-asset" (func $miden_base_sys::bindings::tx::externs::extern_account_add_asset (;25;) (type 14)))
-  (import "miden:core-import/account@1.0.0" "remove-asset" (func $miden_base_sys::bindings::tx::externs::extern_account_remove_asset (;26;) (type 14)))
-  (import "miden:core-import/tx@1.0.0" "create-note" (func $miden_base_sys::bindings::tx::externs::extern_tx_create_note (;27;) (type 15)))
+  (import "miden:core-import/account@1.0.0" "get-id" (func $miden_base_sys::bindings::account::extern_account_get_id (;23;) (type 12)))
+  (import "miden:core-import/account@1.0.0" "add-asset" (func $miden_base_sys::bindings::account::extern_account_add_asset (;24;) (type 13)))
+  (import "miden:core-import/account@1.0.0" "remove-asset" (func $miden_base_sys::bindings::account::extern_account_remove_asset (;25;) (type 13)))
+  (import "miden:core-import/note@1.0.0" "get-inputs" (func $miden_base_sys::bindings::note::extern_note_get_inputs (;26;) (type 14)))
+  (import "miden:core-import/tx@1.0.0" "create-note" (func $miden_base_sys::bindings::tx::extern_tx_create_note (;27;) (type 15)))
   (import "miden:core-import/stdlib-mem@1.0.0" "pipe-words-to-memory" (func $miden_stdlib_sys::stdlib::mem::extern_pipe_words_to_memory (;28;) (type 16)))
   (import "miden:core-import/stdlib-mem@1.0.0" "pipe-double-words-to-memory" (func $miden_stdlib_sys::stdlib::mem::extern_pipe_double_words_to_memory (;29;) (type 17)))
   (func $core::alloc::global::GlobalAlloc::alloc_zeroed (;30;) (type 18) (param i32 i32 i32) (result i32)
@@ -74,7 +74,7 @@
   )
   (func $get_wallet_magic_number (;31;) (type 12) (result f32)
     (local f32)
-    call $miden_base_sys::bindings::tx::get_id
+    call $miden_base_sys::bindings::account::get_id
     local.set 0
     i64.const 42
     call $miden_stdlib_sys::intrinsics::felt::extern_from_u64_unchecked
@@ -117,7 +117,7 @@
     i32.const 32
     i32.add
     local.get 1
-    call $miden_base_sys::bindings::tx::add_asset
+    call $miden_base_sys::bindings::account::add_asset
     local.get 1
     f32.load offset=32
     local.set 2
@@ -227,7 +227,7 @@
     local.get 0
     i32.const 4
     i32.add
-    call $miden_base_sys::bindings::tx::get_inputs
+    call $miden_base_sys::bindings::note::get_inputs
     local.get 0
     i32.load offset=12
     i32.const 2
@@ -393,7 +393,7 @@
     global.set $__stack_pointer
     local.get 2
     local.get 0
-    call $miden_base_sys::bindings::tx::remove_asset
+    call $miden_base_sys::bindings::account::remove_asset
     local.get 2
     f32.load
     local.set 3
@@ -488,10 +488,34 @@
     end
     unreachable
   )
-  (func $miden_base_sys::bindings::tx::get_id (;45;) (type 12) (result f32)
-    call $miden_base_sys::bindings::tx::externs::extern_account_get_id
+  (func $miden_base_sys::bindings::account::get_id (;45;) (type 12) (result f32)
+    call $miden_base_sys::bindings::account::extern_account_get_id
   )
-  (func $miden_base_sys::bindings::tx::get_inputs (;46;) (type 24) (param i32)
+  (func $miden_base_sys::bindings::account::add_asset (;46;) (type 19) (param i32 i32)
+    local.get 1
+    f32.load
+    local.get 1
+    f32.load offset=4
+    local.get 1
+    f32.load offset=8
+    local.get 1
+    f32.load offset=12
+    local.get 0
+    call $miden_base_sys::bindings::account::extern_account_add_asset
+  )
+  (func $miden_base_sys::bindings::account::remove_asset (;47;) (type 19) (param i32 i32)
+    local.get 1
+    f32.load
+    local.get 1
+    f32.load offset=4
+    local.get 1
+    f32.load offset=8
+    local.get 1
+    f32.load offset=12
+    local.get 0
+    call $miden_base_sys::bindings::account::extern_account_remove_asset
+  )
+  (func $miden_base_sys::bindings::note::get_inputs (;48;) (type 24) (param i32)
     (local i32 i32 i32)
     global.get $__stack_pointer
     i32.const 16
@@ -525,7 +549,7 @@
     local.tee 3
     i32.const 4
     i32.shr_u
-    call $miden_base_sys::bindings::tx::externs::extern_note_get_inputs
+    call $miden_base_sys::bindings::note::extern_note_get_inputs
     i32.store offset=8
     local.get 0
     local.get 3
@@ -537,30 +561,6 @@
     i32.const 16
     i32.add
     global.set $__stack_pointer
-  )
-  (func $miden_base_sys::bindings::tx::add_asset (;47;) (type 19) (param i32 i32)
-    local.get 1
-    f32.load
-    local.get 1
-    f32.load offset=4
-    local.get 1
-    f32.load offset=8
-    local.get 1
-    f32.load offset=12
-    local.get 0
-    call $miden_base_sys::bindings::tx::externs::extern_account_add_asset
-  )
-  (func $miden_base_sys::bindings::tx::remove_asset (;48;) (type 19) (param i32 i32)
-    local.get 1
-    f32.load
-    local.get 1
-    f32.load offset=4
-    local.get 1
-    f32.load offset=8
-    local.get 1
-    f32.load offset=12
-    local.get 0
-    call $miden_base_sys::bindings::tx::externs::extern_account_remove_asset
   )
   (func $miden_base_sys::bindings::tx::create_note (;49;) (type 22) (param i32 f32 f32 i32) (result f32)
     local.get 0
@@ -581,7 +581,7 @@
     f32.load offset=8
     local.get 3
     f32.load offset=12
-    call $miden_base_sys::bindings::tx::externs::extern_tx_create_note
+    call $miden_base_sys::bindings::tx::extern_tx_create_note
   )
   (func $alloc::vec::Vec<T>::with_capacity (;50;) (type 19) (param i32 i32)
     (local i32 i32)

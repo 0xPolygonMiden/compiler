@@ -4,11 +4,11 @@ use.miden::note
 use.intrinsics::mem
 
 export.entrypoint
-    exec."miden_base_sys::bindings::tx::get_inputs"
+    exec."miden_base_sys::bindings::note::get_inputs"
 end
 
 
-export."miden_base_sys::bindings::tx::get_inputs"
+export."miden_base_sys::bindings::note::get_inputs"
     mem_load.0x00011000
     push.16
     u32wrapping_sub

@@ -1,7 +1,10 @@
 use core::ops::{Deref, DerefMut};
 
-pub(crate) mod felt;
-pub(crate) mod word;
+mod felt;
+mod word;
+
+pub use felt::*;
+pub use word::*;
 
 #[repr(C, align(32))]
 pub struct WordAligned<T>(T);
