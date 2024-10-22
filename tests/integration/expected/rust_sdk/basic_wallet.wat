@@ -79,7 +79,7 @@
     (func $__wasm_call_ctors (;6;) (type 5))
     (func $basic_wallet::bindings::__link_custom_section_describing_imports (;7;) (type 5))
     (func $__rust_alloc (;8;) (type 6) (param i32 i32) (result i32)
-      i32.const 1048616
+      i32.const 1048620
       local.get 1
       local.get 0
       call $<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -87,7 +87,7 @@
     (func $__rust_dealloc (;9;) (type 7) (param i32 i32 i32))
     (func $__rust_realloc (;10;) (type 8) (param i32 i32 i32 i32) (result i32)
       block ;; label = @1
-        i32.const 1048616
+        i32.const 1048620
         local.get 2
         local.get 3
         call $<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -108,7 +108,7 @@
     )
     (func $__rust_alloc_zeroed (;11;) (type 6) (param i32 i32) (result i32)
       block ;; label = @1
-        i32.const 1048616
+        i32.const 1048620
         local.get 1
         local.get 0
         call $<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc
@@ -341,10 +341,10 @@
           i32.const 0
           local.get 2
           i64.load offset=8
-          i64.store offset=1048608 align=4
+          i64.store offset=1048612 align=4
           local.get 3
           global.set $__stack_pointer
-          i32.const 1048608
+          i32.const 1048612
           return
         end
         unreachable
@@ -373,7 +373,7 @@
             i32.eqz
             br_if 2 (;@1;)
             i32.const 0
-            i32.load8_u offset=1048620
+            i32.load8_u offset=1048624
             drop
             local.get 3
             local.get 2
@@ -397,12 +397,12 @@
     (func $wit_bindgen_rt::run_ctors_once (;19;) (type 5)
       block ;; label = @1
         i32.const 0
-        i32.load8_u offset=1048621
+        i32.load8_u offset=1048625
         br_if 0 (;@1;)
         call $__wasm_call_ctors
         i32.const 0
         i32.const 1
-        i32.store8 offset=1048621
+        i32.store8 offset=1048625
       end
     )
     (func $<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc (;20;) (type 12) (param i32 i32 i32) (result i32)
@@ -704,7 +704,7 @@
           local.get 3
           br_if 0 (;@2;)
           i32.const 0
-          i32.load8_u offset=1048620
+          i32.load8_u offset=1048624
           drop
           local.get 2
           local.get 1
@@ -809,7 +809,7 @@
     (export "cabi_realloc_wit_bindgen_0_28_0" (func $cabi_realloc_wit_bindgen_0_28_0))
     (export "cabi_realloc" (func $cabi_realloc))
     (elem (;0;) (i32.const 1) func $basic_wallet::bindings::__link_custom_section_describing_imports $cabi_realloc)
-    (data $.rodata (;0;) (i32.const 1048576) "\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\02\00\00\00")
+    (data $.rodata (;0;) (i32.const 1048576) "\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\01\00\00\00\02\00\00\00")
   )
   (alias export 2 "add" (func (;0;)))
   (core func (;0;) (canon lower (func 0)))

@@ -1,8 +1,8 @@
 (component 
     ;; Component Imports
-    (lower (("miden:base/account@1.0.0" #add-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #0)
-    (lower (("miden:base/account@1.0.0" #remove-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #1)
-    (lower (("miden:base/tx@1.0.0" #create-note) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#miden:base/tx@1.0.0 #create_note)
+    (lower (("miden:base/account@1.0.0" #add-asset)  (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #0)
+    (lower (("miden:base/account@1.0.0" #remove-asset)  (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (# #1)
+    (lower (("miden:base/tx@1.0.0" #create-note)  (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (param (struct (struct u64))) (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))) (result (struct (struct u64)))))) (#miden:base/tx@1.0.0 #create_note)
 
     ;; Modules
     (module #wit-component:shim

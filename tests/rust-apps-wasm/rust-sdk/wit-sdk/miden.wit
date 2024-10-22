@@ -138,6 +138,13 @@ interface core-types {
 
 }
 
+
+/// Note script interface that is expected to be implemented by the note script.
+interface note-script {
+    note-script: func();
+}
+
 world base-world {
     export core-types;
+    export note-script;
 }

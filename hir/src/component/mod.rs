@@ -2,7 +2,6 @@ use alloc::collections::BTreeMap;
 use core::ops::{Deref, DerefMut};
 
 use indexmap::IndexMap;
-use miden_core::crypto::hash::RpoDigest;
 use midenc_hir_type::Abi;
 
 use self::formatter::PrettyPrint;
@@ -32,8 +31,6 @@ pub struct CanonAbiImport {
     pub interface_function: InterfaceFunctionIdent,
     /// The component(lifted) type of the imported function
     function_ty: FunctionType,
-    /// The MAST root hash of the function to be used in codegen
-    pub digest: RpoDigest,
     /// Any options associated with this import
     pub options: CanonicalOptions,
 }
@@ -42,14 +39,12 @@ impl CanonAbiImport {
     pub fn new(
         interface_function: InterfaceFunctionIdent,
         function_ty: FunctionType,
-        digest: RpoDigest,
         options: CanonicalOptions,
     ) -> Self {
         assert_eq!(function_ty.abi, Abi::Wasm, "expected Abi::Wasm function type ABI");
         Self {
             interface_function,
             function_ty,
-            digest,
             options,
         }
     }
@@ -111,13 +106,8 @@ impl formatter::PrettyPrint for ComponentImport {
             ComponentImport::MidenAbiImport(_import) => "".to_string(),
         };
 
-        let digest = match self {
-            ComponentImport::CanonAbiImport(import) => format!("(digest {})", import.digest),
-            ComponentImport::MidenAbiImport(_) => "".to_string(),
-        };
         const_text("(")
             + text(name)
-            + text(digest)
             + const_text(" ")
             + const_text("(")
             + const_text("type")

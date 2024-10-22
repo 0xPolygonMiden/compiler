@@ -64,12 +64,11 @@ fn inline(
 
 #[cfg(test)]
 mod tests {
-    use miden_core::crypto::hash::RpoDigest;
     use midenc_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol};
     use midenc_hir_type::Type;
 
     use super::*;
-    use crate::{component::StaticModuleIndex, config::ImportMetadata, test_utils::test_context};
+    use crate::{component::StaticModuleIndex, test_utils::test_context};
 
     #[test]
     fn translate_simple() {
@@ -182,19 +181,8 @@ mod tests {
             interface: InterfaceIdent::from_full_ident("miden:add/add@1.0.0"),
             function: Symbol::intern("add"),
         };
-        let import_metadata = [(
-            interface_function_ident,
-            ImportMetadata {
-                digest: RpoDigest::default(),
-            },
-        )]
-        .into_iter()
-        .collect();
 
-        let config = WasmTranslationConfig {
-            import_metadata,
-            ..Default::default()
-        };
+        let config = WasmTranslationConfig::default();
         let (mut component_types_builder, parsed_component) =
             parse(&config, &wasm, &context.session).unwrap();
         let component_translation =

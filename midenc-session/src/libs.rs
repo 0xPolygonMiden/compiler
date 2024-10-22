@@ -31,12 +31,15 @@ pub enum LibraryKind {
     Mast,
     /// A source-form MASM library, using the standard project layout
     Masm,
+    // A Miden package (MASP)
+    Masp,
 }
 impl fmt::Display for LibraryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Mast => f.write_str("mast"),
             Self::Masm => f.write_str("masm"),
+            Self::Masp => f.write_str("masp"),
         }
     }
 }
@@ -47,6 +50,7 @@ impl FromStr for LibraryKind {
         match s {
             "mast" | "masl" => Ok(Self::Mast),
             "masm" => Ok(Self::Masm),
+            "masp" => Ok(Self::Masp),
             _ => Err(()),
         }
     }
@@ -107,6 +111,9 @@ impl LinkLibrary {
                     path.display()
                 ))
             }),
+            LibraryKind::Masp => {
+                todo!("Should be implemented as part of the https://github.com/0xPolygonMiden/compiler/issues/346")
+            }
         }
     }
 
@@ -145,6 +152,14 @@ impl LinkLibrary {
                         if !path.is_dir() {
                             return Err(Report::msg(format!(
                                 "unable to load Miden Assembly library from '{}': not a directory",
+                                path.display()
+                            )));
+                        }
+                    }
+                    LibraryKind::Masp => {
+                        if !path.is_file() {
+                            return Err(Report::msg(format!(
+                                "unable to load Miden Assembly package from '{}': not a file",
                                 path.display()
                             )));
                         }

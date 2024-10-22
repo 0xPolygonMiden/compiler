@@ -1,21 +1,4 @@
-use alloc::{borrow::Cow, collections::BTreeMap, fmt};
-
-use miden_core::crypto::hash::RpoDigest;
-use midenc_hir::InterfaceFunctionIdent;
-
-/// Represents Miden VM codegen metadata for a function import.
-/// This struct will have more fields in the future e.g. where the function
-/// for this MAST hash is located (to be loaded by the VM)
-#[derive(Clone)]
-pub struct ImportMetadata {
-    /// The MAST root hash of the function to be used in codegen
-    pub digest: RpoDigest,
-}
-impl fmt::Debug for ImportMetadata {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_map().entry(&"digest", &self.digest.to_hex()).finish()
-    }
-}
+use alloc::borrow::Cow;
 
 /// Configuration for the WASM translation.
 #[derive(Debug)]
@@ -33,11 +16,6 @@ pub struct WasmTranslationConfig {
 
     /// Whether or not to retain DWARF sections in compiled modules.
     pub parse_wasm_debuginfo: bool,
-
-    /// Import metadata for MAST hashes, calling convention, of
-    /// each imported function. Having it here might be a temporary solution,
-    /// later we might want to move it to Wasm custom section.
-    pub import_metadata: BTreeMap<InterfaceFunctionIdent, ImportMetadata>,
 }
 
 impl Default for WasmTranslationConfig {
@@ -47,7 +25,6 @@ impl Default for WasmTranslationConfig {
             override_name: None,
             generate_native_debuginfo: false,
             parse_wasm_debuginfo: true,
-            import_metadata: Default::default(),
         }
     }
 }

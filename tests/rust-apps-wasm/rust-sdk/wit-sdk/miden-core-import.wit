@@ -1,5 +1,8 @@
 package miden:core-import@1.0.0;
 
+// The function signatures should be kept in sync with the signatures in the
+// Rust SDK `extern` functions (see `/sdk`);
+
 interface intrinsics-mem {
 
     heap-base: func() -> s32;
@@ -8,6 +11,7 @@ interface intrinsics-mem {
 interface intrinsics-felt {
 
     add: func(a: f32, b: f32) -> f32;
+    eq: func(a: f32, b: f32) -> bool;
 }
 
 interface stdlib-crypto-hashes-blake3 {
@@ -25,6 +29,17 @@ interface account {
     add-asset: func(asset0: f32, asset1: f32, asset2: f32, asset3: f32, result-ptr: s32);
     /// Remove the specified asset from the vault
     remove-asset: func(asset0: f32, asset1: f32, asset2: f32, asset3: f32, result-ptr: s32);
+    /// Get the id of the currently executing account
+    get-id: func() -> f32;
+}
+
+
+interface note {
+
+    /// Get the inputs of the currently executed note
+    get-inputs: func(ptr: s32) -> s32;
+    /// Get the assets of the currently executing note
+    get-assets: func(ptr: s32) -> s32;
 }
 
 interface tx {
@@ -54,6 +69,7 @@ world all {
     import intrinsics-felt;
     import stdlib-crypto-hashes-blake3;
     import account;
+    import note;
     import tx;
 
 }
