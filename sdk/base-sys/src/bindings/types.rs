@@ -4,6 +4,12 @@ use miden_stdlib_sys::{Felt, Word};
 #[derive(Copy, Clone)]
 pub struct AccountId(Felt);
 
+impl AccountId {
+    pub fn as_felt(&self) -> Felt {
+        self.0
+    }
+}
+
 impl From<AccountId> for Felt {
     fn from(account_id: AccountId) -> Felt {
         account_id.0

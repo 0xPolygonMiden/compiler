@@ -240,6 +240,7 @@ where
                 )
                 .await
             })?;
+            dbg!(&wasm_outputs);
             if wasm_outputs.is_empty() {
                 // crates that don't have a WIT component are ignored by the
                 // `cargo-component` run_cargo_command and return no outputs.
@@ -252,7 +253,6 @@ where
                     &env_vars,
                 )?;
             }
-            // dbg!(&wasm_outputs);
             match build_output_type {
                 OutputType::Wasm => wasm_outputs,
                 OutputType::Masm => {

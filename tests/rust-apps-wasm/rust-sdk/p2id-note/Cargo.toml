@@ -1,5 +1,5 @@
 [package]
-name = "basic_wallet"
+name = "p2id"
 version = "0.1.0"
 edition = "2021"
 
@@ -37,8 +37,9 @@ debug = true
 
 # TODO: switch to miden table
 [package.metadata.component]
-package = "miden:basic-wallet"
+package = "miden:p2id"
 
 [package.metadata.component.target.dependencies]
 "miden:base" = { path = "../wit-sdk/miden.wit" }
 "miden:core-import" = { path = "../wit-sdk/miden-core-import.wit" }
+"miden:basic-wallet" = { path = "../basic-wallet/wit/basic-wallet.wit" }

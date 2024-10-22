@@ -314,24 +314,11 @@ impl<'a, 'data> ComponentTranslator<'a, 'data> {
                 interface: InterfaceIdent::from_full_ident(&full_interface_name),
                 function: Symbol::intern(import_func_name),
             };
-            let Some(import_metadata) = self.config.import_metadata.get(&interface_function) else {
-                return Err(self
-                    .session
-                    .diagnostics
-                    .diagnostic(Severity::Error)
-                    .with_message(format!(
-                        "wasm error: import metadata for interface function \
-                         {interface_function:?} not found"
-                    ))
-                    .into_report());
-            };
             let lifted_func_ty = convert_lifted_func_ty(&signature, &self.component_types);
-
             let component_import =
                 midenc_hir::ComponentImport::CanonAbiImport(CanonAbiImport::new(
                     interface_function,
                     lifted_func_ty,
-                    import_metadata.digest,
                     self.translate_canonical_options(options)?,
                 ));
             Ok(Some(component_import))

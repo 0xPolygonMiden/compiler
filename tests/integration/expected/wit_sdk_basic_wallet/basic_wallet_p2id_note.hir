@@ -1,10 +1,10 @@
 (component 
     ;; Component Imports
-    (lower (("miden:base/note@1.0.0" #get-inputs) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (list (struct u64)))))) (# #0)
-    (lower (("miden:base/note@1.0.0" #get-assets) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (# #1)
-    (lower (("miden:base/account@1.0.0" #get-id) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get_id)
-    (lower (("miden:base/core-types@1.0.0" #account-id-from-felt) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account_id_from_felt)
-    (lower (("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset) (digest 0x0000000000000000000000000000000000000000000000000000000000000000) (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive_asset)
+    (lower (("miden:base/note@1.0.0" #get-inputs)  (type (func (abi wasm)  (result (list (struct u64)))))) (# #0)
+    (lower (("miden:base/note@1.0.0" #get-assets)  (type (func (abi wasm)  (result (list (struct (struct (struct u64) (struct u64) (struct u64) (struct u64)))))))) (# #1)
+    (lower (("miden:base/account@1.0.0" #get-id)  (type (func (abi wasm)  (result (struct (struct u64)))))) (#miden:base/account@1.0.0 #get_id)
+    (lower (("miden:base/core-types@1.0.0" #account-id-from-felt)  (type (func (abi wasm)  (param (struct u64)) (result (struct (struct u64)))))) (#miden:base/core-types@1.0.0 #account_id_from_felt)
+    (lower (("miden:basic-wallet/basic-wallet@1.0.0" #receive-asset)  (type (func (abi wasm)  (param (struct (struct (struct u64) (struct u64) (struct u64) (struct u64))))))) (#miden:basic-wallet/basic-wallet@1.0.0 #receive_asset)
 
     ;; Modules
     (module #wit-component:shim

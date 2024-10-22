@@ -1,6 +1,6 @@
 use expect_test::expect_file;
 use miden_core::crypto::hash::RpoDigest;
-use midenc_frontend_wasm::{ImportMetadata, WasmTranslationConfig};
+use midenc_frontend_wasm::WasmTranslationConfig;
 use midenc_hir::{FunctionType, Ident, InterfaceFunctionIdent, InterfaceIdent, Symbol, Type};
 
 use crate::{cargo_proj::project, CompilerTest};
@@ -90,19 +90,8 @@ fn wcm_import() {
         interface: InterfaceIdent::from_full_ident("miden:add-package/add-interface@1.0.0"),
         function: Symbol::intern("add"),
     };
-    let import_metadata = [(
-        interface_function_ident,
-        ImportMetadata {
-            digest: RpoDigest::default(),
-        },
-    )]
-    .into_iter()
-    .collect();
 
-    let config = WasmTranslationConfig {
-        import_metadata,
-        ..Default::default()
-    };
+    let config = WasmTranslationConfig::default();
 
     // Create the add component that will be imported in the wcm_import project
     let _add_proj_dep = project("wcm_import_add")

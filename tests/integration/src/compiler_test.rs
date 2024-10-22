@@ -447,6 +447,7 @@ impl CompilerTestBuilder {
                 args.extend(cmd_args);
                 let wasm_artifacts =
                     cargo_miden::run(args.into_iter(), cargo_miden::OutputType::Wasm).unwrap();
+                assert_eq!(wasm_artifacts.len(), 1);
                 let wasm_comp_path = &wasm_artifacts.first().unwrap();
                 let artifact_name =
                     wasm_comp_path.file_stem().unwrap().to_str().unwrap().to_string();
@@ -462,6 +463,7 @@ impl CompilerTestBuilder {
                         },
                     )
                 }));
+                dbg!(&inputs);
 
                 CompilerTest {
                     config: self.config,
@@ -649,6 +651,7 @@ impl CompilerTestBuilder {
     pub fn rust_source_cargo_miden(
         cargo_project_folder: impl AsRef<Path>,
         config: WasmTranslationConfig,
+        midenc_flags: impl IntoIterator<Item = Cow<'static, str>>,
     ) -> Self {
         let name = cargo_project_folder
             .as_ref()
@@ -660,6 +663,7 @@ impl CompilerTestBuilder {
         ));
         builder.with_wasm_translation_config(config);
         builder.with_midenc_flags(["--target".into(), "rollup".into()]);
+        builder.with_midenc_flags(midenc_flags);
         builder
     }
 
@@ -1018,8 +1022,10 @@ impl CompilerTest {
     pub fn rust_source_cargo_miden(
         cargo_project_folder: impl AsRef<Path>,
         config: WasmTranslationConfig,
+        midenc_flags: impl IntoIterator<Item = Cow<'static, str>>,
     ) -> Self {
-        CompilerTestBuilder::rust_source_cargo_miden(cargo_project_folder, config).build()
+        CompilerTestBuilder::rust_source_cargo_miden(cargo_project_folder, config, midenc_flags)
+            .build()
     }
 
     /// Set the Rust source code to compile a library Cargo project to Wasm module
