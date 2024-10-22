@@ -1,12 +1,7 @@
 # mod abi_transform_tx_kernel_get_inputs_4
 
-use.miden::note
 use.intrinsics::mem
-
-export.entrypoint
-    exec."miden_base_sys::bindings::note::get_inputs"
-end
-
+use.miden::note
 
 export."miden_base_sys::bindings::note::get_inputs"
     mem_load.0x00011000
@@ -174,6 +169,11 @@ export."miden_base_sys::bindings::note::get_inputs"
         push.0
         assert
     end
+end
+
+
+export."alloc::raw_vec::handle_error"
+    push.0 assert
 end
 
 
@@ -494,71 +494,6 @@ export."alloc::raw_vec::RawVec<T,A>::try_allocate_in"
 end
 
 
-export."__rust_alloc"
-    push.1048576
-    movup.2
-    swap.1
-    exec."<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc"
-end
-
-
-export."__rust_alloc_zeroed"
-    push.1048576
-    dup.1
-    swap.2
-    swap.3
-    swap.1
-    exec."<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc"
-    dup.0
-    eq.0
-    neq.0
-    if.true
-        swap.1 drop
-    else
-        push.0
-        push.128
-        u32and
-        movup.2
-        dup.2
-        push.0
-        dup.2
-        gte.0
-        while.true
-            dup.1
-            dup.1
-            push.1
-            u32overflowing_madd
-            assertz
-            dup.4
-            swap.1
-            dup.0
-            u32mod.16
-            dup.0
-            u32mod.4
-            swap.1
-            u32div.4
-            movup.2
-            u32div.16
-            dup.2
-            dup.2
-            dup.2
-            exec.::intrinsics::mem::load_sw
-            push.4294967040
-            u32and
-            movup.5
-            u32or
-            movdn.4
-            exec.::intrinsics::mem::store_sw
-            u32wrapping_add.1
-            dup.0
-            dup.3
-            u32gte
-        end
-        dropw
-    end
-end
-
-
 export."<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc"
     push.32
     dup.2
@@ -770,8 +705,73 @@ export."<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc"
 end
 
 
-export."alloc::raw_vec::handle_error"
-    push.0 assert
+export."__rust_alloc"
+    push.1048576
+    movup.2
+    swap.1
+    exec."<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc"
+end
+
+
+export."__rust_alloc_zeroed"
+    push.1048576
+    dup.1
+    swap.2
+    swap.3
+    swap.1
+    exec."<miden_sdk_alloc::BumpAlloc as core::alloc::global::GlobalAlloc>::alloc"
+    dup.0
+    eq.0
+    neq.0
+    if.true
+        swap.1 drop
+    else
+        push.0
+        push.128
+        u32and
+        movup.2
+        dup.2
+        push.0
+        dup.2
+        gte.0
+        while.true
+            dup.1
+            dup.1
+            push.1
+            u32overflowing_madd
+            assertz
+            dup.4
+            swap.1
+            dup.0
+            u32mod.16
+            dup.0
+            u32mod.4
+            swap.1
+            u32div.4
+            movup.2
+            u32div.16
+            dup.2
+            dup.2
+            dup.2
+            exec.::intrinsics::mem::load_sw
+            push.4294967040
+            u32and
+            movup.5
+            u32or
+            movdn.4
+            exec.::intrinsics::mem::store_sw
+            u32wrapping_add.1
+            dup.0
+            dup.3
+            u32gte
+        end
+        dropw
+    end
+end
+
+
+export.entrypoint
+    exec."miden_base_sys::bindings::note::get_inputs"
 end
 
 

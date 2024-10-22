@@ -233,7 +233,9 @@ impl midenc_hir::formatter::PrettyPrint for Module {
             }
         }
 
-        for (i, import) in self.imports.iter().enumerate() {
+        let mut imports_sorted = self.imports.iter().collect::<Vec<_>>();
+        imports_sorted.sort();
+        for (i, import) in imports_sorted.iter().enumerate() {
             if i > 0 {
                 doc += nl();
             }
@@ -266,7 +268,9 @@ impl midenc_hir::formatter::PrettyPrint for Module {
             doc += nl() + nl();
         }
 
-        for (i, func) in self.functions.iter().enumerate() {
+        let mut functions_sorted = self.functions.iter().collect::<Vec<_>>();
+        functions_sorted.sort_by_key(|f| f.name);
+        for (i, func) in functions_sorted.iter().enumerate() {
             if i > 0 {
                 doc += nl();
             }
