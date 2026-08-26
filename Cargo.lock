@@ -4508,6 +4508,7 @@ dependencies = [
  "midenc-session",
  "proptest",
  "sha2",
+ "tempfile",
  "walkdir",
 ]
 
