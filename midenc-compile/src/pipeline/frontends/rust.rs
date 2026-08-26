@@ -674,7 +674,7 @@ trim-paths = [\"diagnostics\", \"object\"]
     cargo.args(&cargo_build_args);
 
     // Handle the target for buildable commands
-    crate::rust::install_wasm32_target(wasi, toolchain.as_deref())?;
+    crate::rust::install_wasm32_target(wasi, toolchain.as_deref(), options.cargo_offline)?;
 
     cargo.arg("--target").arg(format!("wasm32-{wasi}"));
 
@@ -2020,6 +2020,7 @@ pub(crate) mod manifest {
             &cargo_build_args,
             env,
             cargo_target_dir.as_deref(),
+            cargo_opts.offline,
         )?;
 
         assert_eq!(wasm_outputs.len(), 1, "expected only one Wasm artifact");
@@ -2221,6 +2222,7 @@ pub(crate) mod manifest {
         spawn_args: &[String],
         env: E,
         cargo_target_dir: Option<&Path>,
+        offline: bool,
     ) -> CompilerResult<Vec<PathBuf>>
     where
         E: IntoIterator<Item = (&'static str, String)>,
@@ -2245,7 +2247,7 @@ pub(crate) mod manifest {
         cargo.args(spawn_args);
 
         // Handle the target for buildable commands
-        crate::rust::install_wasm32_target(wasi, None)?;
+        crate::rust::install_wasm32_target(wasi, None, offline)?;
 
         cargo.arg("--target").arg(format!("wasm32-{wasi}"));
 
