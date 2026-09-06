@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Append a reproducible wall-time record for one command (without invoking a shell)."""
+"""Append a reproducible wall-time record for one command (without invoking a shell).
+
+For example:
+
+python3 tools/time-command.py --label warm-unchanged-1 \
+  --output /tmp/compiler-timings.jsonl -- cargo nextest run --profile ci -p midenc-integration-tests
+"""
 
 import argparse
 import datetime
@@ -13,9 +19,9 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--label", required=True, help="Cache/edit state, e.g. warm-unchanged-1")
-    parser.add_argument("--output", type=Path, required=True, help="Append-only JSONL results")
-    parser.add_argument("command", nargs=argparse.REMAINDER)
+    _ = parser.add_argument("--label", required=True, help="Cache/edit state, e.g. warm-unchanged-1")
+    _ = parser.add_argument("--output", type=Path, required=True, help="Append-only JSONL results")
+    _ = parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command
     if command[:1] == ["--"]:
