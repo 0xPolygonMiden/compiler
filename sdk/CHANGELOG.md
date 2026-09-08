@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and note storage fields no longer accept `Vec`. Follow the
   [migration guidance](./sdk/MIGRATION.md#rewrite-tuple-note-and-vec-storage-layouts) to preserve
   field order with named fields and replace dynamic vectors with a fixed schema. (#1307)
+- A crate can now contain only one `#[note]` struct. The linker rejects a second struct because
+  both structs define the same note storage schema uniqueness guard symbol. Follow the
+  [migration guidance](./sdk/MIGRATION.md#keep-one-note-struct-in-each-crate) to move each extra
+  note struct into its own crate. (#1307)
 
 ## [0.14.0]
 
