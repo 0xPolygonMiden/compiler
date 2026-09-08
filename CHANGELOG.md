@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1]
+
+### Compiler and `midenc`
+
+- Signed 64-bit remainder with a runtime divisor (Wasm `i64.rem_s`, Rust `i64 % divisor`) now
+  compiles; the compiler previously panicked with `checked_mod for i64 is not supported`. The
+  result takes the sign of the dividend, `i64::MIN % -1` is `0`, and a zero divisor traps, matching
+  Wasm semantics.
+- `memory.grow` now detects heap-address overflow correctly. Growth that would exceed the
+  addressable heap returns `-1` and leaves the heap metadata untouched, and successful growth
+  returns the previous page count. The intrinsic previously tested the wrong limb of the candidate
+  heap address and aborted the VM with `if statement expected a binary value`.
+- Folding `arith.trunc`, `arith.zext`, and `arith.sext` applied to a constant no longer rewrites
+  the constant in place, which changed the value and type seen by every other use of that
+  constant. Folded results now carry the coercion's target type.
+- Common-subexpression elimination compares operations with regions, such as `scf.if`,
+  structurally and merges equivalent ones; it previously panicked with `not yet implemented` when
+  two such operations were candidates. Successor targets, switch keys, and variadic operand groups
+  now participate in equivalence, and replaced nested operations are erased in dependency order.
+- Reading a program from standard input (`midenc -`) in an unrecognized format no longer hangs
+  while `midenc` probes `rustc` for Rust source. The probe uses the active Rust toolchain instead
+  of a separately installed `nightly` channel.
+- `hir-opt` runs pass pipelines in the order written. Nested pipelines were previously executed
+  before the passes declared alongside them, and printing a parsed pipeline reordered it the same
+  way. Pipelines naming an unknown dialect or operation at any nesting level now report a
+  diagnostic instead of panicking.
+
+### `cargo-miden`
+
+- `cargo miden test` forwards Cargo options and the `--` boundary exactly as `cargo test` does.
+  Every argument was previously handed to the test harness, so options such as `--release`, `-p`,
+  `--features`, or `--no-run` were rejected by libtest instead of reaching Cargo.
+
+### Libraries and public APIs
+
+- `midenc-hir-eval` heap growth is now additive and independent of lazily materialized memory.
+  `ExecutionContext::memory_grow` returns whether growth succeeded, a failed growth yields
+  `u32::MAX` without changing the heap, and `reset` restores the initial empty heap. Growth
+  previously resized memory to exactly the requested page count and panicked on overflow. The
+  addressable range now matches the MASM `HEAP_END` limit.
+- `derive(EffectOpInterface)` combines repeated `#[effects(...)]` attributes and mixed struct- and
+  field-level declarations of the same effect kind into one implementation. Only the first
+  attribute was previously read, and mixing scopes produced conflicting implementations. An empty
+  declaration such as `#[effects(MemoryEffect())]` now marks the operation effect-free, and
+  malformed declarations are reported before any code is emitted.
+- `midenc-hir-analysis` sparse lattice guards apply the lattice `meet` operation when intersecting
+  states; they previously applied `join`. This affects sparse backward analyses, of which the
+  compiler itself defines none. Lattice anchors with colliding hashes now keep independent
+  analysis states, while typed and erased references to the same value still share one anchor.
+- `Operation::is_equivalent` and `hash_with_options` cover regions, successor keys and operand
+  groups, and variadic group shapes, and match commutative operands as multisets under the chosen
+  value strategy.
+- `midenc_hir_symbol::sync::LazyLock` in `no_std` Wasm builds now requires the stored value to be
+  `Send + Sync`; it previously exposed thread-safe auto traits for any value type.
+- `midenc-hir` no longer pulls FileCheck into non-test builds.
+
+### Migration and breaking changes
+
+- Test-harness flags passed to `cargo miden test` must follow a `--` separator, as with
+  `cargo test`. Invocations that relied on the previous behavior, such as
+  `cargo miden test --nocapture`, must become `cargo miden test -- --nocapture`.
+- The unused `::intrinsics::mem::memset_sw` and `::intrinsics::mem::memset_dw` procedures have
+  been removed from the compiler's MASM intrinsics library. Hand-written MASM that called them
+  should use the maintained memory store operations instead.
+
 ## [0.10.0]
 
 ### Compiler and `midenc`
