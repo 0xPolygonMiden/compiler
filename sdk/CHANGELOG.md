@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so no host capability is reachable from codec code.
 - Added optional `codec-component` support to the new `miden-note-schema` host crate. It can
   load author-defined note codecs from a package without adding Wasmtime to the default feature
-  set or the guest SDK dependency graph.
+  set or the guest SDK dependency graph. Consumers run codecs under an explicit Wasm feature
+  policy, fixed structural caps that the producer also enforces at build time, and host-policy
+  `CodecLimits`; call failures report a `CodecFailure` class.
 - Added the `miden-note-codec` author crate. Its codec-side `from_project!` and `from_package!`
   macros generate host types from a note package, `AuthorTypeCodec` defines text conversion and
   validation, `#[note_codec]` registers each custom type, and `export_codecs!` exports the
