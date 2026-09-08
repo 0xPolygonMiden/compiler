@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Compiler and `midenc`
+
+- Added `--locked` and `--offline`, which forward the matching Cargo flags to Rust builds. Use them
+  to keep `Cargo.lock` unchanged and to build without network access.
+- Note packages built from a named-field `#[note]` struct now carry a `note_storage_schema` section.
+  The section holds the WIT document that describes the note's storage layout, so a host can decode
+  the note storage without the note's source.
+- A note project can declare an author codec crate with `[package.metadata.midenc.note-codec]`. The
+  compiler builds that crate to a Wasm component after assembly and attaches it to the note package,
+  which gives hosts typed parsing and display for the note's storage types.
+
 ### Migration and breaking changes
 
 - BREAKING: `#[export_type]` now rejects conflicting registrations for the same WIT type and
