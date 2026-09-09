@@ -11,3 +11,5 @@ units = ["compiler"]
 version = "0.10.1"
 tag = "v0.10.1"
 prerelease = false
+
+# comment to satisfy the requirement that the last commit should touch this file
