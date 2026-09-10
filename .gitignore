@@ -39,7 +39,7 @@ __pycache__/
 
 # Ignore personalized agent configuration or state
 .superpowers
+AGENTS.md
 AGENTS.local.md
 .claude/*
-!.claude/CLAUDE.md
 CLAUDE.local.md
