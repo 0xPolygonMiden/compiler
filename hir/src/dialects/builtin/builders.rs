@@ -31,7 +31,7 @@ pub trait BuiltinOpBuilder<'f, B: ?Sized + Builder> {
         op_builder(name, visibility, signature)
     }
 
-    /// Create a [`crate::FunctionAlias`] referring to `target`.
+    /// Create a [FunctionAlias] referring to `target`.
     fn create_function_alias<C: AsCallableSymbolRef>(
         &mut self,
         name: Ident,
