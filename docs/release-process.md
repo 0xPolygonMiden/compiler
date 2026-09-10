@@ -279,7 +279,7 @@ Fully automated. Nothing to do but watch.
 | --- | --- |
 | `plan` | Validates the subject against `main`, lints the candidate, generates the intent. |
 | `verify` | Calls `release-verify.yml` at the full tier. |
-| `seal and stage` | Seals the intent into a plan; builds the template bundle. |
+| `seal and stage` | Seals the intent into a plan; builds the template bundle when the candidate includes `templates`. |
 | `build <binary> (<target>)` | A 3 × 2 matrix — `midenc`, `cargo-miden`, `miden-objtool` × Linux, macOS — building, smoke-testing, and archiving each executable. |
 | `attest artifacts` | Records build provenance for the six executables. |
 | `stage drafts` | Creates the draft releases, routes every artifact to a unit by its `assets` globs, uploads, and reads each one back. |
@@ -448,9 +448,10 @@ Follow Phase A and Phase B exactly as written in §4, let Phase C run, and at D1
 **do not approve**. That is the only difference from a production release. Clean
 up with [§8.1](#81-discarding-drafts).
 
-*Expect:* draft releases carrying the executables, the template bundle,
-`SHA256SUMS`, and the sealed plan; build attestations for the six executables;
-**no tags**, and **nothing on crates.io**.
+*Expect:* draft releases carrying the executables, the template bundle (when
+the candidate includes `templates`), `SHA256SUMS`, and the sealed plan; build
+attestations for the six executables; **no tags**, and **nothing on
+crates.io**.
 
 This is the only way to exercise the real GitHub path — draft creation, asset
 upload and readback, real runners, real artifacts. It still does not prove that
