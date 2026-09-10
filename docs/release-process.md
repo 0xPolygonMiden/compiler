@@ -175,7 +175,7 @@ creates a tag, or publishes anything.
    The set of units to release is declared in `.release/release.toml`. Usually
    it will contain the last released set. You can delete the file and it will
    be regenerated in the next step. Don't edit the versions manually, use `
-   set-versiont` (see next step).
+   set-version` (see next step).
 5. **Choose the units and set the versions,** once per unit:
    ```bash
    cargo make release set-version --unit sdk 0.14.0
@@ -186,7 +186,7 @@ creates a tag, or publishes anything.
    `Cargo.lock`, `.release/release.toml`, and — for an SDK bump — the template
    manifests and `extra/templates/bundle.toml`.
    ([R1](#r1-set-version-reports-disagreeing-versions))
-6. When releasing SDK, run the full test suite via `cargo make test-all` to
+6. When releasing the SDK, run the full test suite via `cargo make test-all` to
    update `Cargo.lock` files in example projects and test fixtures.
 7. **Write the changelog** for each unit being released:
    ```bash
