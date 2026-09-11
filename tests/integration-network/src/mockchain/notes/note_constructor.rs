@@ -40,8 +40,11 @@ pub fn tx_script_creates_p2id_note_via_note_constructor() {
     let note_package = compile_rust_package("../../examples/p2id-note", true);
     let tx_script_package = compile_rust_package("../../examples/p2id-tx-script", true);
 
-    let wallet_component =
-        AccountComponent::from_package(&wallet_package, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        wallet_package.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let max_supply = 1_000_000_000u64;

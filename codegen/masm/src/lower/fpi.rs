@@ -203,6 +203,7 @@ mod tests {
         }
 
         let mut emitter = BlockEmitter {
+            aligned_num_locals: 0,
             liveness: &liveness,
             link_info: &link_info,
             invoked: &mut invoked,

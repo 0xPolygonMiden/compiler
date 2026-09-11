@@ -91,10 +91,10 @@ fn compile_swapp_packages() -> SwappPackages {
             // debug sections, which normal untrusted package deserialization discards.
             SwappPackages {
                 wallet: Arc::new(
-                    Package::read_from_bytes_unchecked(&wallet).expect("invalid cached wallet"),
+                    Package::read_from_bytes_trusted(&wallet).expect("invalid cached wallet"),
                 ),
                 swapp: Arc::new(
-                    Package::read_from_bytes_unchecked(&swapp).expect("invalid cached note"),
+                    Package::read_from_bytes_trusted(&swapp).expect("invalid cached note"),
                 ),
             }
         })
@@ -307,8 +307,11 @@ fn swapp_note_package_size() {
 #[test]
 fn swapp_note_full_fill_transfers_assets() {
     let packages = compile_swapp_packages();
-    let wallet_component =
-        AccountComponent::from_package(&packages.wallet, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        packages.wallet.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let usdc_faucet = builder
@@ -379,8 +382,11 @@ fn swapp_note_full_fill_transfers_assets() {
 #[test]
 fn swapp_note_partial_fill_creates_remainder_and_chains() {
     let packages = compile_swapp_packages();
-    let wallet_component =
-        AccountComponent::from_package(&packages.wallet, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        packages.wallet.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let usdc_faucet = builder
@@ -485,8 +491,11 @@ fn swapp_note_partial_fill_creates_remainder_and_chains() {
 #[test]
 fn swapp_note_creator_reclaims_offered_asset() {
     let packages = compile_swapp_packages();
-    let wallet_component =
-        AccountComponent::from_package(&packages.wallet, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        packages.wallet.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let usdc_faucet = builder
@@ -536,8 +545,11 @@ fn swapp_note_creator_reclaims_offered_asset() {
 #[test]
 fn swapp_note_inflight_cross_swap_without_capital() {
     let packages = compile_swapp_packages();
-    let wallet_component =
-        AccountComponent::from_package(&packages.wallet, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        packages.wallet.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let usdc_faucet = builder
@@ -641,8 +653,11 @@ fn assert_swapp_fill_fails(
     note_args: Word,
     context: &str,
 ) {
-    let wallet_component =
-        AccountComponent::from_package(&packages.wallet, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        packages.wallet.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let usdc_faucet = builder
@@ -743,8 +758,11 @@ fn swapp_note_non_divisible_full_fill_fails() {
 #[test]
 fn swapp_note_private_partial_fill_creates_private_notes() {
     let packages = compile_swapp_packages();
-    let wallet_component =
-        AccountComponent::from_package(&packages.wallet, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        packages.wallet.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let usdc_faucet = builder

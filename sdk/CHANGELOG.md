@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Target Miden VM `0.32.1` and protocol `0.17.0-rc.4`. Transaction block accessors retain their
+  reference-block semantics, and generic note attachment readers use public core primitives now that
+  the protocol helpers are internal.
+
 ## [0.14.0]
 
 ### Added

@@ -36,8 +36,11 @@ pub fn basic_wallet_p2id_transfers_asset_with_custom_tx_script() {
     let note_package = compile_rust_package("../../examples/p2id-note", true);
     let tx_script_package = compile_rust_package("../../examples/basic-wallet-tx-script", true);
 
-    let wallet_component =
-        AccountComponent::from_package(&wallet_package, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        wallet_package.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let max_supply = 1_000_000_000u64;
@@ -166,8 +169,11 @@ pub fn basic_wallet_p2ide_allows_recipient_claim() {
     let p2id_note_package = compile_rust_package("../../examples/p2id-note", true);
     let p2ide_note_package = compile_rust_package("../../examples/p2ide-note", true);
 
-    let wallet_component =
-        AccountComponent::from_package(&wallet_package, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        wallet_package.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let mut builder = MockChain::builder();
     let max_supply = 1_000_000_000u64;
@@ -319,8 +325,11 @@ pub fn basic_wallet_p2ide_allows_sender_reclaim() {
         .unwrap();
     let faucet_id = faucet_account.id();
 
-    let wallet_component =
-        AccountComponent::from_package(&wallet_package, &InitStorageData::default()).unwrap();
+    let wallet_component = AccountComponent::from_package(
+        wallet_package.as_ref().clone(),
+        &InitStorageData::default(),
+    )
+    .unwrap();
 
     let alice_account = builder
         .add_existing_account_from_components(

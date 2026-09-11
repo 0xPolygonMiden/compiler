@@ -134,11 +134,6 @@ fn get_transform_strategy(path: &SymbolPath) -> Option<TransformStrategy> {
                         tx_kernel::note::COMPUTE_AND_STORE_RECIPIENT => {
                             Some(TransformStrategy::ReturnViaPointer)
                         }
-                        tx_kernel::note::WRITE_ATTACHMENT_COMMITMENTS_TO_MEMORY
-                        | tx_kernel::note::WRITE_ATTACHMENT_TO_MEMORY
-                        | tx_kernel::note::WRITE_INDEXED_ATTACHMENT_TO_MEMORY => {
-                            Some(TransformStrategy::NoTransform)
-                        }
                         tx_kernel::note::COMPUTE_STORAGE_COMMITMENT
                         | tx_kernel::note::COMPUTE_RECIPIENT
                         | tx_kernel::note::METADATA_INTO_SENDER
@@ -221,7 +216,6 @@ fn get_transform_strategy(path: &SymbolPath) -> Option<TransformStrategy> {
                         | tx_kernel::input_note::GET_SCRIPT_ROOT
                         | tx_kernel::input_note::GET_SERIAL_NUMBER
                         | tx_kernel::input_note::GET_ATTACHMENTS_COMMITMENT
-                        | tx_kernel::input_note::GET_ATTACHMENTS_COMMITMENT_RAW
                         | tx_kernel::input_note::FIND_ATTACHMENT => {
                             Some(TransformStrategy::ReturnViaPointer)
                         }
@@ -254,7 +248,7 @@ fn get_transform_strategy(path: &SymbolPath) -> Option<TransformStrategy> {
                 }
                 symbols::Tx => match components.next_if(|c| c.is_leaf())?.as_symbol_name().as_str()
                 {
-                    tx_kernel::tx::GET_BLOCK_NUMBER
+                    tx_kernel::tx::GET_REFERENCE_BLOCK_NUMBER
                     | tx_kernel::tx::GET_BLOCK_TIMESTAMP
                     | tx_kernel::tx::GET_NUM_INPUT_NOTES
                     | tx_kernel::tx::GET_NUM_OUTPUT_NOTES
@@ -264,7 +258,7 @@ fn get_transform_strategy(path: &SymbolPath) -> Option<TransformStrategy> {
                     }
                     tx_kernel::tx::GET_INPUT_NOTES_COMMITMENT
                     | tx_kernel::tx::GET_OUTPUT_NOTES_COMMITMENT
-                    | tx_kernel::tx::GET_BLOCK_COMMITMENT
+                    | tx_kernel::tx::GET_REFERENCE_BLOCK_COMMITMENT
                     | tx_kernel::tx::GET_TX_SCRIPT_ROOT => {
                         Some(TransformStrategy::ReturnViaPointer)
                     }

@@ -1,16 +1,16 @@
 use std::{path::Path, sync::Arc};
 
 use anyhow::Context;
-use integration::helpers::{build_project_in_dir, counter_storage_slot, COUNTER_STORAGE_KEY};
+use integration::helpers::{COUNTER_STORAGE_KEY, build_project_in_dir, counter_storage_slot};
 use miden_client::{
+    Word,
     account::{
-        component::InitStorageData, AccountBuilder, AccountComponent, AccountType, StorageMapKey,
+        AccountBuilder, AccountComponent, AccountType, StorageMapKey, component::InitStorageData,
     },
     auth::AuthSchemeId,
     crypto::RandomCoin,
     note::NoteScript,
     transaction::RawOutputNote,
-    Word,
 };
 use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{AccountState, Auth, MockChain};
@@ -26,22 +26,19 @@ async fn counter_test() -> anyhow::Result<()> {
     })?;
 
     // Build contracts
-    let contract_package = Arc::new(build_project_in_dir(
-        Path::new("../contracts/counter-account"),
-        true,
-    )?);
-    let note_package = Arc::new(build_project_in_dir(
-        Path::new("../contracts/increment-note"),
-        true,
-    )?);
+    let contract_package =
+        Arc::new(build_project_in_dir(Path::new("../contracts/counter-account"), true)?);
+    let note_package =
+        Arc::new(build_project_in_dir(Path::new("../contracts/increment-note"), true)?);
 
     // Create the counter account with its initial storage through the component schema.
     let counter_storage_slot = counter_storage_slot()?;
     let mut init_storage_data = InitStorageData::default();
     init_storage_data.insert_map_entry(counter_storage_slot.clone(), COUNTER_STORAGE_KEY, 0_u64)?;
 
-    let counter_component = AccountComponent::from_package(&contract_package, &init_storage_data)
-        .context("failed to build account component from counter package")?;
+    let counter_component =
+        AccountComponent::from_package(contract_package.as_ref().clone(), &init_storage_data)
+            .context("failed to build account component from counter package")?;
     let counter_account = builder.add_account_from_builder(
         Auth::BasicAuth {
             auth_scheme: AuthSchemeId::Falcon512Poseidon2,
@@ -89,10 +86,6 @@ async fn counter_test() -> anyhow::Result<()> {
         .expect("Failed to get counter value from storage slot");
 
     // Map values are returned as scalar words in `[value, 0, 0, 0]` layout.
-    assert_eq!(
-        count[0].as_canonical_u64(),
-        1,
-        "Count value is not equal to 1"
-    );
+    assert_eq!(count[0].as_canonical_u64(), 1, "Count value is not equal to 1");
     Ok(())
 }

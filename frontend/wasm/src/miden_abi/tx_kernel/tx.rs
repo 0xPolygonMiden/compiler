@@ -13,8 +13,8 @@ pub(crate) const MODULE_PREFIX: &[SymbolNameComponent] = &[
     SymbolNameComponent::Component(symbols::Tx),
 ];
 
-pub const GET_BLOCK_NUMBER: &str = "get_block_number";
-pub const GET_BLOCK_COMMITMENT: &str = "get_block_commitment";
+pub const GET_REFERENCE_BLOCK_NUMBER: &str = "get_reference_block_number";
+pub const GET_REFERENCE_BLOCK_COMMITMENT: &str = "get_reference_block_commitment";
 pub const GET_BLOCK_TIMESTAMP: &str = "get_block_timestamp";
 pub const GET_INPUT_NOTES_COMMITMENT: &str = "get_input_notes_commitment";
 pub const GET_OUTPUT_NOTES_COMMITMENT: &str = "get_output_notes_commitment";
@@ -28,9 +28,12 @@ pub const EXECUTE_FOREIGN_PROCEDURE_INDIRECT: &str = "execute_foreign_procedure_
 pub(crate) fn signatures() -> ModuleFunctionTypeMap {
     let mut m: ModuleFunctionTypeMap = Default::default();
     let mut tx: FunctionTypeMap = Default::default();
-    tx.insert(Symbol::from(GET_BLOCK_NUMBER), FunctionType::new(CallConv::Wasm, [], [Felt]));
     tx.insert(
-        Symbol::from(GET_BLOCK_COMMITMENT),
+        Symbol::from(GET_REFERENCE_BLOCK_NUMBER),
+        FunctionType::new(CallConv::Wasm, [], [Felt]),
+    );
+    tx.insert(
+        Symbol::from(GET_REFERENCE_BLOCK_COMMITMENT),
         FunctionType::new(CallConv::Wasm, [], [Felt, Felt, Felt, Felt]),
     );
     tx.insert(Symbol::from(GET_BLOCK_TIMESTAMP), FunctionType::new(CallConv::Wasm, [], [Felt]));

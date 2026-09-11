@@ -27,8 +27,9 @@ pub fn counter_note_basic_auth_increments_storage() {
     init_storage_data
         .insert_map_entry(counter_storage_slot.clone(), COUNTER_CONTRACT_STORAGE_KEY, 1_u64)
         .unwrap();
-    let contract_component = AccountComponent::from_package(&contract_package, &init_storage_data)
-        .expect("Failed to build account component from counter project");
+    let contract_component =
+        AccountComponent::from_package(contract_package.as_ref().clone(), &init_storage_data)
+            .expect("Failed to build account component from counter project");
 
     let mut builder = MockChain::builder();
     let counter_account = builder

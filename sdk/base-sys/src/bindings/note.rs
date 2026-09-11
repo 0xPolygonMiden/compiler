@@ -6,7 +6,7 @@ use miden_stdlib_sys::{Felt, Word, WordAligned};
 
 use super::{
     AccountId, MAX_ATTACHMENT_WORDS, MAX_ATTACHMENTS_PER_NOTE, NoteType, RawAccountId,
-    RawAttachmentLocation, Recipient, Tag, assert_attachment_count, assert_attachment_word_count,
+    RawAttachmentLocation, Recipient, Tag, assert_attachment_count,
 };
 
 const MAX_NOTE_STORAGE_ITEMS: usize = 1024;
@@ -35,32 +35,6 @@ unsafe extern "C" {
         num_storage_items: usize,
         ptr: *mut Word,
     );
-    #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
-    #[link_name = "miden::protocol::note::write_attachment_commitments_to_memory"]
-    fn extern_note_write_attachment_commitments_to_memory(
-        attachments_commitment_f0: Felt,
-        attachments_commitment_f1: Felt,
-        attachments_commitment_f2: Felt,
-        attachments_commitment_f3: Felt,
-        dest_ptr: *mut Felt,
-    ) -> usize;
-    #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
-    #[link_name = "miden::protocol::note::write_attachment_to_memory"]
-    fn extern_note_write_attachment_to_memory(
-        attachment_commitment_f0: Felt,
-        attachment_commitment_f1: Felt,
-        attachment_commitment_f2: Felt,
-        attachment_commitment_f3: Felt,
-        dest_ptr: *mut Felt,
-    ) -> usize;
-    #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
-    #[link_name = "miden::protocol::note::write_indexed_attachment_to_memory"]
-    fn extern_note_write_indexed_attachment_to_memory(
-        num_attachments: Felt,
-        attachment_commitments_ptr: *const Felt,
-        attachment_idx: Felt,
-        dest_ptr: *mut Felt,
-    ) -> usize;
     #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
     #[link_name = "miden::protocol::note::compute_recipient"]
     fn extern_note_compute_recipient(
@@ -241,44 +215,14 @@ pub fn compute_storage_commitment(storage: &[Felt]) -> Word {
 ///
 /// The advice map must contain the preimage committed to by `attachments_commitment`.
 pub fn write_attachment_commitments_to_memory(attachments_commitment: Word) -> Vec<Word> {
-    let mut commitments: Vec<Word> = Vec::with_capacity(MAX_ATTACHMENTS_PER_NOTE);
-    let num_attachments = unsafe {
-        let ptr = (commitments.as_mut_ptr().addr() / 4) as u32;
-        extern_note_write_attachment_commitments_to_memory(
-            attachments_commitment[0],
-            attachments_commitment[1],
-            attachments_commitment[2],
-            attachments_commitment[3],
-            ptr as *mut Felt,
-        )
-    };
-    assert_attachment_count(num_attachments);
-    unsafe {
-        commitments.set_len(num_attachments);
-    }
-    commitments
+    load_attachment_words(attachments_commitment, MAX_ATTACHMENTS_PER_NOTE)
 }
 
 /// Writes one attachment from the advice map to memory.
 ///
 /// The advice map must contain the attachment elements committed to by `attachment_commitment`.
 pub fn write_attachment_to_memory(attachment_commitment: Word) -> Vec<Word> {
-    let mut attachment: Vec<Word> = Vec::with_capacity(MAX_ATTACHMENT_WORDS);
-    let num_words = unsafe {
-        let ptr = (attachment.as_mut_ptr().addr() / 4) as u32;
-        extern_note_write_attachment_to_memory(
-            attachment_commitment[0],
-            attachment_commitment[1],
-            attachment_commitment[2],
-            attachment_commitment[3],
-            ptr as *mut Felt,
-        )
-    };
-    assert_attachment_word_count(num_words);
-    unsafe {
-        attachment.set_len(num_words);
-    }
-    attachment
+    load_attachment_words(attachment_commitment, MAX_ATTACHMENT_WORDS)
 }
 
 /// Writes the indexed attachment from an attachment commitment list to memory.
@@ -289,27 +233,21 @@ pub fn write_indexed_attachment_to_memory(
     attachment_idx: u32,
 ) -> Vec<Word> {
     assert_attachment_count(attachment_commitments.len());
+    write_attachment_to_memory(attachment_commitments[attachment_idx as usize])
+}
 
-    let mut attachment: Vec<Word> = Vec::with_capacity(MAX_ATTACHMENT_WORDS);
-    let num_words = unsafe {
-        let commitments_ptr = if attachment_commitments.is_empty() {
-            0
-        } else {
-            (attachment_commitments.as_ptr().addr() / 4) as u32
-        };
-        let dest_ptr = (attachment.as_mut_ptr().addr() / 4) as u32;
-        extern_note_write_indexed_attachment_to_memory(
-            Felt::from_u32(attachment_commitments.len() as u32),
-            commitments_ptr as *const Felt,
-            Felt::from_u32(attachment_idx),
-            dest_ptr as *mut Felt,
-        )
-    };
-    assert_attachment_word_count(num_words);
-    unsafe {
-        attachment.set_len(num_words);
-    }
-    attachment
+/// Loads and authenticates a bounded word preimage using the public core library primitives.
+fn load_attachment_words(commitment: Word, max_words: usize) -> Vec<Word> {
+    use miden_stdlib_sys::{adv_load_preimage, intrinsics::advice::adv_push_mapvaln};
+
+    let num_elements = adv_push_mapvaln(commitment).as_canonical_u64();
+    assert!(num_elements <= (max_words * 4) as u64, "attachment exceeds protocol limit");
+    assert_eq!(num_elements % 4, 0, "attachment must contain whole words");
+    let elements = adv_load_preimage(Felt::from_u32((num_elements / 4) as u32), commitment);
+    elements
+        .chunks_exact(4)
+        .map(|word| Word::new(word.try_into().unwrap()))
+        .collect()
 }
 
 /// Computes a note recipient from serial number, script root, and storage commitment.

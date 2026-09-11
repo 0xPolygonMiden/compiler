@@ -20,8 +20,17 @@ pub struct NativePtr {
     /// in the root context.
     ///
     /// Currently this has no effect, but is here as we expand support for multiple memories.
+    #[serde(with = "AddressSpaceDef")]
     pub addrspace: midenc_hir::AddressSpace,
 }
+// Keep NativePtr's serialized representation independent of upstream serde support.
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "midenc_hir::AddressSpace")]
+enum AddressSpaceDef {
+    Byte,
+    Element,
+}
+
 impl NativePtr {
     pub fn new(addr: u32, offset: u8) -> Self {
         Self {
@@ -77,5 +86,27 @@ impl NativePtr {
     /// Converts this native pointer back to a byte-addressable pointer value
     pub const fn as_ptr(&self) -> u32 {
         (self.addr * 4) + self.offset as u32
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn address_space_serialization_is_stable() {
+        for (addrspace, name) in [
+            (midenc_hir::AddressSpace::Byte, "Byte"),
+            (midenc_hir::AddressSpace::Element, "Element"),
+        ] {
+            let pointer = NativePtr {
+                addr: 42,
+                offset: 2,
+                addrspace,
+            };
+            let json = serde_json::json!({"addr": 42, "offset": 2, "addrspace": name});
+            assert_eq!(serde_json::to_value(pointer).unwrap(), json);
+            assert_eq!(serde_json::from_value::<NativePtr>(json).unwrap(), pointer);
+        }
     }
 }

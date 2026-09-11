@@ -120,10 +120,10 @@ impl ForeignProcedureInvocation {
 #[allow(improper_ctypes)]
 unsafe extern "C" {
     #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
-    #[link_name = "miden::protocol::tx::get_block_number"]
+    #[link_name = "miden::protocol::tx::get_reference_block_number"]
     pub fn extern_tx_get_block_number() -> Felt;
     #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
-    #[link_name = "miden::protocol::tx::get_block_commitment"]
+    #[link_name = "miden::protocol::tx::get_reference_block_commitment"]
     pub fn extern_tx_get_block_commitment(ptr: *mut Word);
     #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
     #[link_name = "miden::protocol::tx::get_block_timestamp"]
@@ -157,7 +157,7 @@ unsafe extern "C" {
     );
 }
 
-/// Returns the current block number.
+/// Returns the transaction reference block number.
 pub fn get_block_number() -> BlockNumber {
     BlockNumber {
         // The transaction kernel guarantees block numbers fit in a u32.

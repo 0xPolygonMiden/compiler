@@ -73,7 +73,7 @@ impl TryFrom<Word> for AccountId {
 /// A fungible or non-fungible asset encoded as separate vault key and value words.
 ///
 /// The `key` identifies the asset in the account vault and the `value` stores the corresponding
-/// asset contents. This matches the v0.14 protocol/base ABI.
+/// asset contents. The key word contains the protocol asset ID.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromFeltRepr, ToFeltRepr)]
 #[repr(C)]
 pub struct Asset {
@@ -118,11 +118,9 @@ impl Asset {
     /// fungibility.
     #[inline]
     pub fn is_fungible(&self) -> bool {
-        // The composition field occupies the lowest bits of the vault-key metadata byte (the
-        // low byte of the faucet-id suffix limb, mirroring
-        // `miden_protocol::asset::AssetVaultKey`), and `Fungible = 0b01` is the only odd
-        // composition, so the limb's parity discriminates fungible assets.
-        self.key[2].as_canonical_u64() & 1 == 1
+        // Asset ID version 1 stores the composition in bits 4..=5 of the third limb;
+        // the lower four bits identify the encoding version.
+        (self.key[2].as_canonical_u64() >> 4) & 0b11 == 0b01
     }
 }
 
@@ -881,45 +879,43 @@ mod tests {
         assert_eq!(u64::from(amount), 500);
     }
 
-    /// Creates a raw fungible asset encoding (composition bits `0b01` in the key metadata byte)
-    /// for amount tests.
+    /// Creates a version-1 fungible asset encoding for amount tests.
     fn fungible_asset(amount: Felt) -> Asset {
         Asset::new(
-            Word::new([felt!(0), felt!(0), felt!(1), felt!(0)]),
+            Word::new([felt!(0), felt!(0), felt!(17), felt!(0)]),
             Word::new([amount, felt!(0), felt!(0), felt!(0)]),
         )
     }
 
-    /// Ensures the fungibility check discriminates by the composition parity.
+    /// Use upstream encodings so version bits cannot be mistaken for composition bits.
     #[test]
     fn asset_is_fungible() {
-        let non_fungible = Asset::new(
-            Word::new([felt!(0), felt!(0), felt!(2), felt!(0)]),
-            Word::new([felt!(42), felt!(0), felt!(0), felt!(0)]),
-        );
+        use miden_protocol::{
+            account::AccountId,
+            asset::{AssetClass, AssetComposition, AssetId},
+        };
 
-        assert!(fungible_asset(felt!(42)).is_fungible());
-        assert!(!non_fungible.is_fungible());
+        let faucet = AccountId::try_from_elements(felt!(0), felt!(1)).unwrap();
+        for composition in [AssetComposition::None, AssetComposition::Fungible] {
+            let id = AssetId::new(AssetClass::default(), faucet, composition).unwrap();
+            let asset =
+                Asset::new(id.to_word(), Word::new([felt!(42), felt!(0), felt!(0), felt!(0)]));
+            assert_eq!(asset.is_fungible(), composition.is_fungible());
+        }
     }
 
-    /// Ensures fungible asset amounts are decoded from valid key/value encodings.
+    /// Ensures fungible asset amounts are decoded from version-1 key/value encodings.
     #[test]
     fn asset_amount_decodes_valid_fungible_assets() {
-        let asset = fungible_asset(felt!(42));
-        // Metadata byte 0b101: fungible composition with the callback flag set.
-        let callback_asset =
-            Asset::new(Word::new([felt!(0), felt!(0), felt!(5), felt!(0)]), asset.value);
-
-        assert_eq!(asset.amount(), AssetAmount::new(42).unwrap());
-        assert_eq!(callback_asset.amount(), AssetAmount::new(42).unwrap());
+        assert_eq!(fungible_asset(felt!(42)).amount(), AssetAmount::new(42).unwrap());
     }
 
-    /// Ensures the amount accessor panics for non-fungible assets (even composition bits).
+    /// Ensures the amount accessor panics for non-fungible assets.
     #[test]
     #[should_panic(expected = "asset is not fungible")]
     fn asset_amount_panics_on_non_fungible() {
         let non_fungible = Asset::new(
-            Word::new([felt!(1), felt!(0), felt!(0), felt!(0)]),
+            Word::new([felt!(1), felt!(0), felt!(1), felt!(0)]),
             Word::new([felt!(42), felt!(0), felt!(0), felt!(0)]),
         );
 
