@@ -172,7 +172,11 @@ creates a tag, or publishes anything.
    [§2](#2-what-this-repository-releases) for what forces what — in particular an
    SDK minor bump or prerelease requires the templates to move with it, as does a
    compiler change that needs a template change.
-5. **Move the versions,** once per unit:
+   The set of units to release is declared in `.release/release.toml`. Usually
+   it will contain the last released set. You can delete the file and it will
+   be regenerated in the next step. Don't edit the versions manually, use `
+   set-version` (see next step).
+5. **Choose the units and set the versions,** once per unit:
    ```bash
    cargo make release set-version --unit sdk 0.14.0
    cargo make release set-version --unit compiler 0.10.0
@@ -182,7 +186,9 @@ creates a tag, or publishes anything.
    `Cargo.lock`, `.release/release.toml`, and — for an SDK bump — the template
    manifests and `extra/templates/bundle.toml`.
    ([R1](#r1-set-version-reports-disagreeing-versions))
-6. **Write the changelog** for each unit being released:
+6. When releasing the SDK, run the full test suite via `cargo make test-all` to
+   update `Cargo.lock` files in example projects and test fixtures.
+7. **Write the changelog** for each unit being released:
    ```bash
    cargo make release changelog-prompt compiler --version 0.10.0
    ```
@@ -191,22 +197,22 @@ creates a tag, or publishes anything.
    filtered to that unit's paths — but the `sdk/v*` and `templates/v*` namespaces
    have no baseline until each has been released once, so pass a range
    explicitly for those (`cargo make release changelog-prompt sdk v0.9.2..HEAD`).
-7. **Regenerate the template bundle,** if this release includes templates or any
+8. **Regenerate the template bundle,** if this release includes templates or any
    template file changed:
    `cargo make release bundle --output tools/cargo-miden/templates.tar.gz`
    ([R2](#r2-the-embedded-template-bundle-is-stale))
-8. **Lint locally:** `cargo make release lint`. Expect
+9. **Lint locally:** `cargo make release lint`. Expect
    `release lint: 42 packages classified, no findings`.
    ([R2](#r2-the-embedded-template-bundle-is-stale),
    [R3](#r3-release-lint-findings),
    [R11](#r11-the-templates-cannot-resolve-the-sdk-being-released))
-9. **Open the release-candidate pull request into `main`,** containing the
+10. **Open the release-candidate pull request into `main`,** containing the
    version, lockfile, changelog, `.release/release.toml`, and any template bundle
    changes. Expect `release / gate` to run — roughly 8 minutes, since the package
    closure is in scope for any candidate.
    ([R3](#r3-release-lint-findings),
    [R5](#r5-package-closure-verification-fails))
-10. **Review and merge** with a merge that leaves the candidate as `main`'s tip
+11. **Review and merge** with a merge that leaves the candidate as `main`'s tip
     and as the last commit to have touched `.release/release.toml`. The workflow
     checks both.
 
@@ -273,7 +279,7 @@ Fully automated. Nothing to do but watch.
 | --- | --- |
 | `plan` | Validates the subject against `main`, lints the candidate, generates the intent. |
 | `verify` | Calls `release-verify.yml` at the full tier. |
-| `seal and stage` | Seals the intent into a plan; builds the template bundle. |
+| `seal and stage` | Seals the intent into a plan; builds the template bundle when the candidate includes `templates`. |
 | `build <binary> (<target>)` | A 3 × 2 matrix — `midenc`, `cargo-miden`, `miden-objtool` × Linux, macOS — building, smoke-testing, and archiving each executable. |
 | `attest artifacts` | Records build provenance for the six executables. |
 | `stage drafts` | Creates the draft releases, routes every artifact to a unit by its `assets` globs, uploads, and reads each one back. |
@@ -442,9 +448,10 @@ Follow Phase A and Phase B exactly as written in §4, let Phase C run, and at D1
 **do not approve**. That is the only difference from a production release. Clean
 up with [§8.1](#81-discarding-drafts).
 
-*Expect:* draft releases carrying the executables, the template bundle,
-`SHA256SUMS`, and the sealed plan; build attestations for the six executables;
-**no tags**, and **nothing on crates.io**.
+*Expect:* draft releases carrying the executables, the template bundle (when
+the candidate includes `templates`), `SHA256SUMS`, and the sealed plan; build
+attestations for the six executables; **no tags**, and **nothing on
+crates.io**.
 
 This is the only way to exercise the real GitHub path — draft creation, asset
 upload and readback, real runners, real artifacts. It still does not prove that

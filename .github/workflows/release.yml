@@ -44,6 +44,7 @@ jobs:
       contents: read
     outputs:
       subject: ${{ steps.subject.outputs.sha }}
+      templates: ${{ steps.intent.outputs.templates }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -88,10 +89,17 @@ jobs:
         run: release-tool lint
 
       - name: Generate the intent
+        id: intent
         run: |
           release-tool plan \
             --subject "${GITHUB_SHA}" --output "${RUNNER_TEMP}/intent.json"
           cat "${RUNNER_TEMP}/intent.json"
+          # The template bundle is an asset of the `templates` unit alone.
+          # Built for a candidate that omits the unit, it reaches `stage` as an
+          # asset routed nowhere, which is refused rather than dropped (R13).
+          # So the bundle steps run only when the intent stages `templates`.
+          templates=$(jq -r 'any(.stages[]; .unit == "templates")' "${RUNNER_TEMP}/intent.json")
+          echo "templates=${templates}" >> "${GITHUB_OUTPUT}"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -142,10 +150,14 @@ jobs:
             --cache-dir "${RUNNER_TEMP}/index-cache"
 
       - name: Build the template bundle
+        if: needs.plan.outputs.templates == 'true'
         run: |
           release-tool bundle \
             --output "${RUNNER_TEMP}/templates.tar.gz"
 
+      # The bundle is absent when the candidate omits `templates`. That is fine
+      # here: `if-no-files-found` fires only when no path matches at all, and
+      # `plan.json` always does.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-plan
@@ -280,6 +292,7 @@ jobs:
           path: ${{ runner.temp }}/artifacts
 
       - name: Collect the template bundle
+        if: needs.plan.outputs.templates == 'true'
         run: cp "${RUNNER_TEMP}/templates.tar.gz" "${RUNNER_TEMP}/artifacts/"
 
       # Uploads every asset and reads each one back, while the release is still
