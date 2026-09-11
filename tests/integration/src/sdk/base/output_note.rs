@@ -1,4 +1,4 @@
-use miden_processor::{ExecutionOptions, StackInputs, advice::AdviceInputs, execute_sync};
+use miden_processor::{ExecutionOptions, FastProcessor, StackInputs, advice::AdviceInputs};
 
 use super::*;
 use crate::end_to_end::support::default_host_with_core_lib;
@@ -123,17 +123,17 @@ end
 
     let mut host = default_host_with_core_lib();
     let program = package.unwrap_program();
-    let result = execute_sync(
-        &program,
+    let result = FastProcessor::new_with_options(
         StackInputs::default(),
         AdviceInputs::default(),
-        &mut host,
         ExecutionOptions::default(),
-    );
+    )
+    .expect("test processor should initialize")
+    .execute_sync(&program, &mut host);
 
     if should_succeed {
-        let trace = result.expect("accepted attachment length should execute");
-        assert_eq!(trace.stack.get_num_elements(1), &[miden_core::Felt::ONE]);
+        let output = result.expect("accepted attachment length should execute");
+        assert_eq!(output.stack.get_num_elements(1), &[miden_core::Felt::ONE]);
     } else {
         let error = result.expect_err("invalid attachment length should panic in the guest");
         let error = error.to_string();

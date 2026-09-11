@@ -63,21 +63,7 @@ pub extern "C" fn input_note_get_serial_number_plain(_note_index: f32, _out: *mu
 #[unsafe(export_name = "miden::protocol::input_note::get_attachments_commitment")]
 #[optimize(none)]
 #[inline(never)]
-pub extern "C" fn input_note_get_attachments_commitment_plain(
-    _note_index: f32,
-    _out: *mut c_void,
-) {
-    unsafe { core::hint::unreachable_unchecked() }
-}
-
-#[unsafe(export_name = "miden::protocol::input_note::get_attachments_commitment_raw")]
-#[optimize(none)]
-#[inline(never)]
-pub extern "C" fn input_note_get_attachments_commitment_raw_plain(
-    _is_active_note: f32,
-    _note_index: f32,
-    _out: *mut c_void,
-) {
+pub extern "C" fn input_note_get_attachments_commitment_plain(_note_index: f32, _out: *mut c_void) {
     unsafe { core::hint::unreachable_unchecked() }
 }
 

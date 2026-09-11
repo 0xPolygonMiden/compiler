@@ -1,13 +1,13 @@
 use core::ffi::c_void;
 
-#[unsafe(export_name = "miden::protocol::tx::get_block_number")]
+#[unsafe(export_name = "miden::protocol::tx::get_reference_block_number")]
 #[optimize(none)]
 #[inline(never)]
 pub extern "C" fn tx_get_block_number_plain() -> f32 {
     unsafe { core::hint::unreachable_unchecked() }
 }
 
-#[unsafe(export_name = "miden::protocol::tx::get_block_commitment")]
+#[unsafe(export_name = "miden::protocol::tx::get_reference_block_commitment")]
 #[optimize(none)]
 #[inline(never)]
 pub extern "C" fn tx_get_block_commitment_plain(_out: *mut c_void) {

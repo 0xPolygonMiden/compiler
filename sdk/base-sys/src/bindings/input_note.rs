@@ -41,13 +41,6 @@ unsafe extern "C" {
     #[link_name = "miden::protocol::input_note::get_attachments_commitment"]
     fn extern_input_note_get_attachments_commitment(note_index: Felt, ptr: *mut Word);
     #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
-    #[link_name = "miden::protocol::input_note::get_attachments_commitment_raw"]
-    fn extern_input_note_get_attachments_commitment_raw(
-        is_active_note: Felt,
-        note_index: Felt,
-        ptr: *mut Word,
-    );
-    #[cfg_attr(target_family = "wasm", linkage = "extern_weak")]
     #[link_name = "miden::protocol::input_note::write_attachment_commitments_to_memory"]
     fn extern_input_note_write_attachment_commitments_to_memory(
         dest_ptr: *mut Felt,
@@ -181,16 +174,14 @@ pub fn get_attachments_commitment(note_index: NoteIdx) -> Word {
     }
 }
 
-/// Returns the attachment commitment using the protocol's shared active/indexed input-note path.
+/// Returns the attachment commitment of the active note when `is_active_note` is one, or of
+/// the indexed input note when it is zero.
 pub fn get_attachments_commitment_raw(is_active_note: Felt, note_index: NoteIdx) -> Word {
-    unsafe {
-        let mut ret_area = WordAligned::new(::core::mem::MaybeUninit::<Word>::uninit());
-        extern_input_note_get_attachments_commitment_raw(
-            is_active_note,
-            note_index.inner,
-            ret_area.as_mut_ptr(),
-        );
-        ret_area.into_inner().assume_init()
+    assert!(is_active_note == Felt::from_u32(0) || is_active_note == Felt::from_u32(1));
+    if is_active_note == Felt::from_u32(1) {
+        super::active_note::get_attachments_commitment()
+    } else {
+        get_attachments_commitment(note_index)
     }
 }
 

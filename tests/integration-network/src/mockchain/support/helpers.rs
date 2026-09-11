@@ -396,7 +396,8 @@ pub(crate) fn build_existing_counter_account_builder_with_auth_package(
     let init_storage_data =
         InitStorageData::new(values, map_entries).expect("invalid init storage data");
     let auth_component =
-        AccountComponent::from_package(&auth_component_package, &init_storage_data).unwrap();
+        AccountComponent::from_package(auth_component_package.as_ref().clone(), &init_storage_data)
+            .unwrap();
 
     AccountBuilder::new(seed)
         .account_type(AccountType::Public)
@@ -420,8 +421,11 @@ pub(crate) fn build_counter_account_with_rust_rpo_auth(
         .insert_map_entry(counter_storage_slot_name(), key, 1_u64)
         .expect("failed to insert counter map entry");
 
-    let counter_component =
-        AccountComponent::from_package(&component_package, &counter_init_storage_data).unwrap();
+    let counter_component = AccountComponent::from_package(
+        component_package.as_ref().clone(),
+        &counter_init_storage_data,
+    )
+    .unwrap();
 
     let mut rng = StdRng::seed_from_u64(1);
     let secret_key = AuthSecretKey::new_falcon512_poseidon2_with_rng(&mut rng);

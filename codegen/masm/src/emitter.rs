@@ -16,6 +16,8 @@ use crate::{
 
 pub(crate) struct BlockEmitter<'b> {
     pub liveness: &'b LivenessAnalysis,
+    /// Aligned size of the current procedure frame, in field elements.
+    pub aligned_num_locals: u32,
     pub link_info: &'b LinkInfo,
     pub invoked: &'b mut BTreeSet<masm::Invoke>,
     pub target: Vec<masm::Op>,
@@ -27,6 +29,7 @@ impl BlockEmitter<'_> {
     pub fn nest<'nested, 'current: 'nested>(&'current mut self) -> BlockEmitter<'nested> {
         BlockEmitter {
             liveness: self.liveness,
+            aligned_num_locals: self.aligned_num_locals,
             link_info: self.link_info,
             invoked: self.invoked,
             target: Default::default(),

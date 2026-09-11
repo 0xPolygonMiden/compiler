@@ -19,7 +19,8 @@ impl fmt::Display for TypePrinter<'_> {
             Type::List(ty) => {
                 write!(f, "list<{}>", TypePrinter(ty))
             }
-            Type::Struct(ty) => {
+            Type::Struct(ty) if !ty.is_recursive() => {
+                let ty = ty.get();
                 let fields =
                     crate::formatter::DisplayValues::new(ty.fields().iter().map(|field| {
                         let align = if field.align as usize != field.ty.min_alignment() {
